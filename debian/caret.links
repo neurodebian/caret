@@ -1,0 +1,9 @@
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret5
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_command
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_copy_spec
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_edit
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_file_convert
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_map_fmri
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_metric
+/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_zip_spec
+/usr/lib/caret/bin /usr/share/caret/bin

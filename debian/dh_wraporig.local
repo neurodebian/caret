@@ -1,0 +1,21 @@
+source=repack
+
+#
+# files/directories to delete. bash patterns
+delete_files='caret_vtk4_classes'
+
+#
+# suffix to attach
+suffix_out=~dfsg
+
+#
+# for now we better simply create a symlink
+do_orig_symlink=yes
+
+#
+# Create README.Debian-source
+do_create_readme=yes
+
+#
+# post_command=svn-upgrade
+post_command=

@@ -1,0 +1,20 @@
+Source: caret
+Section: science
+Priority: optional
+Maintainer: Michael Hanke <michael.hanke@gmail.com>
+Build-Depends: debhelper (>= 5), dpatch, libqt4-dev, libqwt5-qt4-dev, libvtk5-dev, libminc0-dev
+Standards-Version: 3.7.2
+
+Package: caret
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: caret-data (>= 5.5~dfsg.1)
+Description: Computerized Anatomical Reconstruction and Editing Toolkit
+ This software allows for creating, viewing and manipulating surface
+ reconstructions of the cerebral and cerebellar cortex, viewing volumes and for
+ displaying experimental data on the surfaces and volumes.
+ .
+ Caret can download and use stereotaxic atlases (human, monkey, mouse and rat)
+ from an open online database.
+ .
+  Homepage: http://brainmap.wustl.edu/caret

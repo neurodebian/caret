@@ -2457,7 +2457,7 @@ operationVolumeScalePercent0to255(int argc, char* argv[], int argIndex)
          << "      " << std::endl
          << "      The \"percent-minimum\" and \"percent-maximum\" values should" << std::endl
          << "      range from 0.0 to 100.0.  Setting the \"percent-minimum\" to " << std::endl
-         << "      2.0 and the \"percent-maximum\ to 3.0 will result in the first" << std::endl
+         << "      2.0 and the \"percent-maximum\" to 3.0 will result in the first" << std::endl
          << "      two percent of voxel values being mapped to zero and the last" << std::endl
          << "      three percent of voxel values being mapped to two hundred " << std::endl
          << "      fifty five." << std::endl
@@ -13637,8 +13637,8 @@ main(int argc, char* argv[])
    //
    // Get image plugins so JPEGs can be loaded
    //   
-   Q_IMPORT_PLUGIN(QJpegPlugin)
-   Q_IMPORT_PLUGIN(QGifPlugin)
+   //Q_IMPORT_PLUGIN(QJpegPlugin)
+   //Q_IMPORT_PLUGIN(QGifPlugin)
 
    //
    // Command line QT application

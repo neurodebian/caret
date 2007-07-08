@@ -1,0 +1,11 @@
+caret for Debian
+----------------
+
+Due to patent issues Debian VTK comes without MPEG2 support. Therefore the MPEG
+support in CARET is disabled as well.
+
+CARET is build with MINC support, but at the moment without ITK support. This
+will change once the Debian maintainer can determine what advantages building
+against ITK provides.
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Sun, 29 Apr 2007 11:45:03 +0200

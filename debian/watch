@@ -1,0 +1,10 @@
+# Compulsory line, this is a version 3 file
+version=3
+
+# download area is password protected so this will not work!
+# however, the password is known -- not listing it here to be polite
+opts="dversionmangle=s/~dfsg\.\d+$//" \
+  http://brainvis.wustl.edu/pub/caret/index.html \
+  caret_source\.v(.*)\.zip debian dh_wraporig
+
+

@@ -1,0 +1,111 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# caret build depends on some env vars
+export VTK_INC_DIR=/usr/include/vtk-5.0
+export VTK_LIB_DIR=/usr/lib
+export QWT_INC_DIR=/usr/include/qwt-qt4
+export QWT_LIB_DIR=/usr/lib
+export NETCDF_INC_DIR=/usr/include
+export NETCDF_LIB_DIR=/usr/lib
+export QTDIR=/usr
+
+CARET_BINARIES="caret/caret5 caret_command/caret_command caret_copy_spec/caret_copy_spec caret_edit/caret_edit caret_file_convert/caret_file_convert caret_map_fmri/caret_map_fmri caret_metric/caret_metric caret_zip_spec/caret_zip_spec"
+
+include /usr/share/dpatch/dpatch.make
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+
+
+configure: patch configure-stamp
+configure-stamp:
+	dh_testdir
+	
+	$(MAKE) qmake-dynamic
+	
+	touch configure-stamp
+
+
+build: build-stamp
+
+build-stamp: configure
+	dh_testdir
+	
+	# Add here commands to compile the package.
+	$(MAKE) build
+	#docbook-to-man debian/caret.sgml > caret.1
+
+	touch $@
+
+clean: clean-patched unpatch
+clean-patched:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+	
+	# proper cleaning is available only for patched sources
+	if [ -f patch-stamp ]; then $(MAKE) clean; fi
+	
+	# clean internal libs
+	-find $(CURDIR) -name '*.so' -exec rm \{\} \;
+	-find $(CURDIR) -name '*.a' -exec rm \{\} \;
+	-find $(CURDIR) -mindepth 2 -name Makefile -exec rm \{\} \;
+	
+	# clean binaries
+	-for b in $(CARET_BINARIES); do \
+		rm $$b ;\
+	done
+	
+	dh_clean 
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+	
+	# install internal libs
+	find $(CURDIR) -name '*.so' -exec cp \{\} $(CURDIR)/debian/caret/usr/lib/caret/lib \;
+	
+	# install binaries
+	for b in $(CARET_BINARIES); do \
+		cp $$b $(CURDIR)/debian/caret/usr/lib/caret/bin; \
+	done
+	
+	# ensure executable permissions for wrapper script
+	chmod +x debian/caret_app_wrapper
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs 
+	dh_installdocs
+	dh_install
+	dh_installmenu
+	dh_installman
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure

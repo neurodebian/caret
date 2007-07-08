@@ -1,0 +1,23 @@
+caret (5.5~dfsg.1-1) unstable; urgency=low
+
+  [ Michael Hanke ]
+  * Initial release. (Closes: #421703)
+  * MPEG support is disabled as VTK in Debian does not provide the necessary
+    library for patent reasons (see #408552).
+  * The package builds internal libraries as shared libs instead of static
+    linking to reduce the size of the distributed binaries.
+  * A desktop and menu file for Caret5 was added.
+  * Caret binaries are called via a wrapper script that sets an appropriate
+    LD_LIBRARY_PATH for the necessary caret-internal libs and some Qt image
+    format plugins.
+  * Caret depends on the caret-data package that provides tutorials, online
+    help and atlas datasets. While these files are part of the binary
+    distribution of Caret they are not part of the sources. The Debian
+    maintainer packaged them in a separate source package using the binary
+    distribution as source (caret-data).
+
+  [ Yaroslav Halchenko ]
+  * Uses dh_wraporig to make source tarball DFSG-free
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Tue, 22 May 2007 12:43:33 +0200
+

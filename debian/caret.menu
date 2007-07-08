@@ -1,0 +1,6 @@
+?package(caret): \
+  needs="X11" \
+  section="Apps/Science" \
+  title="Caret" \
+  command="/usr/bin/caret5" \
+  hints="MRI,fMRI"
