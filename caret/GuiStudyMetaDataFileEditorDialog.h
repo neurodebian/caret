@@ -893,7 +893,7 @@ class GuiStudyMetaDataNewDialog : public QtDialogModal {
 
 #ifdef __GUI_STUDY_META_DATA_FILE_EDITOR_DIALOG_MAIN_
 int GuiStudyMetaDataNewDialog::lastCheckedID = -1;
-#endif __GUI_STUDY_META_DATA_FILE_EDITOR_DIALOG_MAIN_
+#endif // __GUI_STUDY_META_DATA_FILE_EDITOR_DIALOG_MAIN_
 
 #endif // __GUI_STUDY_META_DATA_FILE_EDITOR_DIALOG_H__
 

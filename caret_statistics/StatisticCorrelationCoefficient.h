@@ -42,7 +42,10 @@ class StatisticCorrelationCoefficient : public StatisticAlgorithm {
       void execute() throw (StatisticException);
       
       // get the correlation coefficient (r2 or r-squared)
-      float getCorrelationCoefficient() const { return correlationCoefficientR2; }
+      float getCorrelationCoefficientR2() const { return correlationCoefficientR2; }
+      
+      // get the correlation coefficient (r  NOT r-squared)
+      float getCorrelationCoefficientR() const { return correlationCoefficientR; }
       
       /// get the t-value
       float getTValue() const { return tValue; }
@@ -54,8 +57,11 @@ class StatisticCorrelationCoefficient : public StatisticAlgorithm {
       float getPValue() const { return pValue; }
       
    protected:
-      /// the correlation coefficient
+      /// the correlation coefficient R-Squared
       float correlationCoefficientR2;
+      
+      /// the correlation coefficient R
+      float correlationCoefficientR;
       
       /// t-value
       float tValue;

@@ -1791,10 +1791,10 @@ GuiDisplayControlDialog::createOverlayUnderlayVolumeSettingsPage()
                           volumeOverlaySurfaceSelectionComboBox[i], SLOT(setEnabled(bool)));
       }
    }
-   volumeShowSurfaceOutlineGroupLayout->setColStretch(0, 0);
-   volumeShowSurfaceOutlineGroupLayout->setColStretch(1, 0);
-   volumeShowSurfaceOutlineGroupLayout->setColStretch(2, 0);
-   volumeShowSurfaceOutlineGroupLayout->setColStretch(3, 100);
+   volumeShowSurfaceOutlineGroupLayout->setColumnStretch(0, 0);
+   volumeShowSurfaceOutlineGroupLayout->setColumnStretch(1, 0);
+   volumeShowSurfaceOutlineGroupLayout->setColumnStretch(2, 0);
+   volumeShowSurfaceOutlineGroupLayout->setColumnStretch(3, 100);
    volumeShowSurfaceOutlineGroupBox->setFixedHeight(volumeShowSurfaceOutlineGroupBox->sizeHint().height());
    
    //
@@ -4231,9 +4231,9 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_NODES_AND_LINKS,
                                     "Nodes and Links");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_TILES,
-                                    "Tiles");
+                                    "Tiles without Lighting");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT,
-                                    "Tiles with Lighting");
+                                    "Tiles with Lighting (Default)");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_TILES_LINKS_NODES,
                                     "Tiles, Links, and Nodes (surface editing)");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_NONE,
@@ -10309,7 +10309,7 @@ GuiDisplayControlDialog::updateBorderItems(const bool filesChanged)
    
    showBordersCheckBox->setChecked(dsb->getDisplayBorders());
    layersBorderCheckBox->setChecked(dsb->getDisplayBorders());
-   borderSymbolComboBox->setCurrentItem(dsb->getSymbolType());
+   borderSymbolComboBox->setCurrentIndex(dsb->getSymbolType());
    overrideBorderWithAreaColorsCheckBox->setChecked(dsb->getOverrideBorderColorsWithAreaColors());
    borderOpacityDoubleSpinBox->setValue(dsb->getOpacity());
    
@@ -10407,7 +10407,7 @@ GuiDisplayControlDialog::readBorderSelections()
    dsb->setDrawMode(static_cast<DisplaySettingsBorders::BORDER_DRAW_MODE>(
                                  bordersDrawTypeComboBox->currentIndex()));
    dsb->setDrawSize(borderSizeSpinBox->value());
-   dsb->setSymbolType(static_cast<ColorFile::ColorStorage::SYMBOL>(borderSymbolComboBox->currentItem()));
+   dsb->setSymbolType(static_cast<ColorFile::ColorStorage::SYMBOL>(borderSymbolComboBox->currentIndex()));
    dsb->setOpacity(borderOpacityDoubleSpinBox->value());
    dsb->setDrawAsStretchedLinesStretchFactor(unstretchedBordersDoubleSpinBox->value());
    BorderColorFile* borderColors = theMainWindow->getBrainSet()->getBorderColorFile();
@@ -12745,7 +12745,7 @@ GuiDisplayControlDialog::arealEstFileSelection(int col)
    }
    arealEstimationSelectionButtonGroup->blockSignals(false);
    arealEstSelectionComboBox->blockSignals(true);
-   arealEstSelectionComboBox->setCurrentItem(col);
+   arealEstSelectionComboBox->setCurrentIndex(col);
    arealEstSelectionComboBox->blockSignals(false);
 }
 

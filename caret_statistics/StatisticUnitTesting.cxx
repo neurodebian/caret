@@ -1775,11 +1775,14 @@ StatisticUnitTesting::testCorrelationCoefficient()
    }
    
    problem |= verify("StatisticCorrelationCoefficient Correlation Coefficient R2",
-                     correlate.getCorrelationCoefficient(),
+                     correlate.getCorrelationCoefficientR2(),
                      0.765756); 
+   problem |= verify("StatisticCorrelationCoefficient Correlation Coefficient R",
+                     correlate.getCorrelationCoefficientR(),
+                     0.875075); 
    problem |= verify("StatisticCorrelationCoefficient T-Value",
                      correlate.getTValue(),
-                     3.13164); // 3.317 in book
+                     3.13164); // 3.17 in book
    problem |= verify("StatisticCorrelationCoefficient Degrees of Freedom",
                      correlate.getDegreesOfFreedom(),
                      3.0); 

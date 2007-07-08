@@ -33,7 +33,7 @@
 class CaretVersion {
    public:
       /// get the version of caret as a QString
-      static QString getCaretVersionAsString() { return "5.504"; }
+      static QString getCaretVersionAsString() { return "5.51"; }
 };
 
 #endif // __CARET_VERSION_H__

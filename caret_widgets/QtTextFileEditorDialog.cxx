@@ -336,7 +336,7 @@ QtTextFileEditorDialog::slotFind()
                                                            this);
    }
    findReplaceDialog->show();
-   findReplaceDialog->setActiveWindow();
+   findReplaceDialog->activateWindow();
 }
 
 /**

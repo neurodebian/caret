@@ -321,7 +321,7 @@ GuiVocabularyFileEditorDialog::slotApplyButton()
       ve->setClassName(classNameLineEdit->text());
       ve->setVocabularyID(vocabularyIdLineEdit->text());
       ve->setStudyMetaDataLink(smdl);
-      int studyNum = studyNumberComboBox->currentItem();
+      int studyNum = studyNumberComboBox->currentIndex();
       if (studyNumberComboBox->currentText() == noneStudyName) {
          studyNum = -1;
       }
@@ -329,7 +329,7 @@ GuiVocabularyFileEditorDialog::slotApplyButton()
          studyNum = -1;
       }
       ve->setStudyNumber(studyNum);
-      ve->setDescription(descriptionTextEdit->text());
+      ve->setDescription(descriptionTextEdit->toPlainText());
    }
    else if (tabWidget->currentWidget() == studyInfoEditorWidget) {
       studyInfoEditorWidget->slotAcceptEditorContents();
@@ -362,7 +362,7 @@ GuiVocabularyFileEditorDialog::slotLoadVocabularyEntry(int indx)
           (studyNum >= vf->getNumberOfStudyInfo())) {
          studyNum = vf->getNumberOfStudyInfo();
       }
-      studyNumberComboBox->setCurrentItem(studyNum);
+      studyNumberComboBox->setCurrentIndex(studyNum);
       descriptionTextEdit->setText(ve->getDescription());
       vocabularyStudyMetaDataLineEdit->setText(ve->getStudyMetaDataLink().getLinkAsCodedText());
    }   
@@ -473,7 +473,7 @@ void
 GuiVocabularyFileEditorDialog::slotUpdateStudyNumberComboBox()
 {
    const bool noneFlag = (studyNumberComboBox->currentText() == noneStudyName);
-   const int oldIndx = studyNumberComboBox->currentItem();
+   const int oldIndx = studyNumberComboBox->currentIndex();
    
    studyNumberComboBox->clear();
    
@@ -495,13 +495,13 @@ GuiVocabularyFileEditorDialog::slotUpdateStudyNumberComboBox()
    studyNumberComboBox->addItem(noneStudyName);
    
    if (noneFlag) {
-      studyNumberComboBox->setCurrentItem(noneIndex);
+      studyNumberComboBox->setCurrentIndex(noneIndex);
    }
    else if ((oldIndx >= 0) && (oldIndx < numStudys)) {
-      studyNumberComboBox->setCurrentItem(oldIndx);
+      studyNumberComboBox->setCurrentIndex(oldIndx);
    }
    else {
-      studyNumberComboBox->setCurrentItem(noneIndex);
+      studyNumberComboBox->setCurrentIndex(noneIndex);
    }
 }      
 

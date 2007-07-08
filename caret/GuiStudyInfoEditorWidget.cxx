@@ -198,20 +198,20 @@ GuiStudyInfoEditorWidget::loadStudySelectionComboBox()
    // Set selected item
    //
    if (newRetainFlag) {
-      studySelectionComboBox->setCurrentItem(indexNewStudyRetainEntries);
+      studySelectionComboBox->setCurrentIndex(indexNewStudyRetainEntries);
    }
    else if (newClearFlag) {
-      studySelectionComboBox->setCurrentItem(indexNewStudyClearEntries);
+      studySelectionComboBox->setCurrentIndex(indexNewStudyClearEntries);
    }
    else if ((currentStudyNumber >= 0) &&
             (currentStudyNumber < numStudies)) {
-      studySelectionComboBox->setCurrentItem(currentStudyNumber);
+      studySelectionComboBox->setCurrentIndex(currentStudyNumber);
    }
    else {
-      studySelectionComboBox->setCurrentItem(indexNewStudyRetainEntries);
+      studySelectionComboBox->setCurrentIndex(indexNewStudyRetainEntries);
    }
    
-   slotStudySelectionComboBox(studySelectionComboBox->currentItem());
+   slotStudySelectionComboBox(studySelectionComboBox->currentIndex());
 }
 
 /**
@@ -290,7 +290,7 @@ GuiStudyInfoEditorWidget::slotAcceptEditorContents()
    csi.setStereotaxicSpace(stereotaxicSpaceLineEdit->text());
    csi.setPartitioningSchemeAbbreviation(partitioningSchemeAbbreviationLineEdit->text());
    csi.setPartitioningSchemeFullName(partitioningSchemeFullNameLineEdit->text());
-   csi.setComment(commentTextEdit->text());
+   csi.setComment(commentTextEdit->toPlainText());
    
    if (studySelectionComboBox->currentText() == newStudyClearEntriesString) {
       titleLineEdit->setText("");

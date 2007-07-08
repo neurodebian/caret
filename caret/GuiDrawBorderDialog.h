@@ -68,6 +68,9 @@ class GuiDrawBorderDialog : public QtDialog {
       /// get the 3D flag
       bool getThreeDimensional() const;
       
+      /// get the auto project border flag
+      bool getAutoProjectBorder() const;
+      
       /// new border just drawn - create it
       void createNewBorder(BrainModel* bm, Border& border);
       
@@ -123,6 +126,12 @@ class GuiDrawBorderDialog : public QtDialog {
       
       /// 3D radio button
       QRadioButton* threeDimensionalRadioButton;
+      
+      /// auto project yes radio button
+      QRadioButton* autoProjectYesRadioButton;
+      
+      /// auto project no radio button
+      QRadioButton* autoProjectNoRadioButton;
       
       /// color index for the border
       int borderColorIndex;

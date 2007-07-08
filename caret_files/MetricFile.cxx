@@ -78,6 +78,31 @@ MetricFile::MetricFile(const QString& descriptiveName,
 }
 
 /**
+ * constructor.
+ */
+MetricFile::MetricFile(const int initialNumberOfNodes,
+                       const int initialNumberOfColumns,
+                       const QString& descriptiveName,
+                       const QString& defaultDataArrayCategoryIn,
+                       const QString& defaultExt)
+   : GiftiNodeDataFile(descriptiveName, 
+                       defaultDataArrayCategoryIn,
+                       GiftiDataArray::DATA_TYPE_FLOAT32,
+                       1,
+                       defaultExt,
+                       AbstractFile::FILE_FORMAT_ASCII,
+                       FILE_IO_READ_AND_WRITE, 
+                       FILE_IO_READ_AND_WRITE, 
+                       FILE_IO_NONE,
+                       FILE_IO_READ_AND_WRITE)
+{
+   setNumberOfNodesAndColumns(initialNumberOfNodes, initialNumberOfColumns);
+   for (int j = 0; j < initialNumberOfColumns; j++) {
+      setColumnAllNodesToScalar(j, 0.0);
+   }
+}
+                 
+/**
  * copy constructor.
  */
 MetricFile::MetricFile(const MetricFile& mf)
@@ -707,7 +732,7 @@ MetricFile::correlationCoefficient(const int columnOfInterestNumber,
          const FileException fe(e);
          std::cout << "Correlation coeffiecient error: " << fe.whatQString().toAscii().constData() << std::endl;
       }
-      correlationCoefficients[i] = coeff.getCorrelationCoefficient();
+      correlationCoefficients[i] = coeff.getCorrelationCoefficientR2();
    }
 }
 
@@ -1933,6 +1958,20 @@ MetricFile::setColumnForAllNodes(const int columnNumber,
    }
 }
 
+/**
+ * Set a column with a scalar for all nodes.
+ */
+void 
+MetricFile::setColumnAllNodesToScalar(const int columnNumber,
+                                      const float value)
+{
+   const int numberOfNodes = getNumberOfNodes();
+   for (int i = 0; i < numberOfNodes; i++) {
+      setValue(i, columnNumber, value);
+   }
+   setColumnColorMappingMinMax(columnNumber, value, value);
+}
+      
 /**
  * Get a column of values for all nodes (values should have getNumberOfNodes() elements)
  */
@@ -3307,6 +3346,106 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
    return outputMetric;
 }
                                                
+/**
+ * compute correlation coefficient map.
+ */
+MetricFile* 
+MetricFile::computeCorrelationCoefficientMap(const MetricFile* m1,
+                                             const MetricFile* m2) throw (FileException)
+{
+   //
+   // Check inputs
+   //
+   if (m1 == NULL) {
+      throw FileException("First metric file is NULL (invalid).");
+   }
+   if (m2 == NULL) {
+      throw FileException("Second metric file is NULL (invalid).");
+   }   
+   const int numNodes = m1->getNumberOfNodes();
+   if (numNodes <= 0) {
+      throw FileException("First metric file has an invalid number of nodes.");
+   }
+   if (numNodes != m2->getNumberOfNodes()) {
+      throw FileException("Input metric files have a different number of nodes.");
+   }
+   
+   const int numCols = m1->getNumberOfColumns();
+   if (numCols <= 0) {
+      throw FileException("First metric file has an invalid number of columns.");
+   }
+   if (numCols != m2->getNumberOfColumns()) {
+      throw FileException("Input metric files have a different number of columns.");
+   }
+   
+   //
+   // Create output metric file
+   //
+   int colCtr = 0;
+   const int rColumnNumber = colCtr++;
+   const int tColumnNumber = colCtr++;
+   const int pColumnNumber = colCtr++;
+   const int dofColumnNumber = colCtr++;
+   const int numOutputColumns = colCtr;
+   MetricFile* metricOut = new MetricFile(numNodes, numOutputColumns);
+   if (rColumnNumber >= 0) {
+      metricOut->setColumnName(rColumnNumber, "r - Correlation Coefficient");
+   }
+   if (tColumnNumber >= 0) {
+      metricOut->setColumnName(tColumnNumber, "T-Value");
+   }
+   if (pColumnNumber >= 0) {
+      metricOut->setColumnName(pColumnNumber, "P-Value");
+   }
+   if (dofColumnNumber >= 0) {
+      metricOut->setColumnName(dofColumnNumber, "DOF - Degrees of Freedom");
+   }
+   
+   //
+   // Compute correlation coefficients
+   //
+   float* data1 = new float[numCols];
+   float* data2 = new float[numCols];
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         data1[j] = m1->getValue(i, j);
+         data2[j] = m2->getValue(i, j);
+         
+         StatisticDataGroup sdg1(data1, numCols, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+         StatisticDataGroup sdg2(data2, numCols, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+         
+         StatisticCorrelationCoefficient scc;
+         scc.addDataGroup(&sdg1);
+         scc.addDataGroup(&sdg2);
+         try {
+            scc.execute();
+         }
+         catch (StatisticException& e) {
+            throw FileException(e);
+         }
+         
+         if (rColumnNumber >= 0) {
+            metricOut->setValue(i, rColumnNumber, scc.getCorrelationCoefficientR());
+         }
+         if (tColumnNumber >= 0) {
+            metricOut->setValue(i, tColumnNumber, scc.getTValue());
+         }
+         if (pColumnNumber >= 0) {
+            metricOut->setValue(i, pColumnNumber, scc.getPValue());
+         }
+         if (dofColumnNumber >= 0) {
+            metricOut->setValue(i, dofColumnNumber, scc.getDegreesOfFreedom());
+         }
+      }
+   }
+   delete[] data1;
+   data1 = NULL;
+   delete[] data2;
+   data2 = NULL;
+   
+   return metricOut;
+}
+                                                   
 /**
  * subract the average of both files form each file (output files are replaced)
  */

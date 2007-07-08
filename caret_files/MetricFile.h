@@ -117,6 +117,13 @@ class MetricFile : public GiftiNodeDataFile {
                  const QString& defaultDataArrayCategoryIn = GiftiCommon::categoryFunctional,
                  const QString& defaultExt = SpecFile::getMetricFileExtension());
 
+      // constructor
+      MetricFile(const int initialNumberNodes,
+                 const int initialNumberOfColumns,
+                 const QString& descriptiveName = "MetricFile",
+                 const QString& defaultDataArrayCategoryIn = GiftiCommon::categoryFunctional,
+                 const QString& defaultExt = SpecFile::getMetricFileExtension());
+                 
       // copy constructor
       MetricFile(const MetricFile& nndf);
       
@@ -277,7 +284,11 @@ class MetricFile : public GiftiNodeDataFile {
       // compute normalization of all columns
       MetricFile* computeNormalization(const float mean,
                                        const float standardDeviation) const throw (FileException);
-                                       
+        
+      // compute correlation coefficient map
+      static MetricFile* computeCorrelationCoefficientMap(const MetricFile* m1,
+                                                          const MetricFile* m2) throw (FileException);
+                                                   
       // remap values in a column so that they fit a normal distribution
       // with the media at the normal distribution's mean
       void remapColumnToNormalDistribution(const int inputColumnNumber,
@@ -372,6 +383,10 @@ class MetricFile : public GiftiNodeDataFile {
       /// Set a column of values for all nodes
       void setColumnForAllNodes(const int columnNumber,
                                 const float* values);
+      
+      /// Set a column with a scalar for all nodes
+      void setColumnAllNodesToScalar(const int columnNumber,
+                                     const float value);
       
       /// get the column number for the column with the specified name
       int getNamedColumnNumber(const QString& name) const;

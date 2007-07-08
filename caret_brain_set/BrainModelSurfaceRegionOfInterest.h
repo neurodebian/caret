@@ -29,20 +29,27 @@
 
 #include <vector>
 
+#include "BorderFile.h"
 #include "BrainModelAlgorithm.h"
 
 class BrainModelSurface;
 
+class CoordinateFile;
 class LatLonFile;
 class MetricFile;
 class PaintFile;
 class SurfaceShapeFile;
+class TopologyFile;
 
 /// class for performing region of interest operations on a surface
 class BrainModelSurfaceRegionOfInterest : public BrainModelAlgorithm {
    public:
       /// operation
       enum OPERATION {
+         /// operation create border
+         OPERATION_CREATE_BORDER,
+         /// surface XYZ means report
+         OPERATION_SURFACE_XYZ_MEANS_REPORT,
          /// text report
          OPERATION_TEXT_REPORT
       };
@@ -62,6 +69,18 @@ class BrainModelSurfaceRegionOfInterest : public BrainModelAlgorithm {
       // get the report text
       QString getReportText() const { return reportText; }
       
+      // set create border options
+      void setCreateBorderControlsAndOptions(const QString& borderNameIn,
+                                             const int startNodeIn,
+                                             const int endNodeIn,
+                                             const float samplingDensityIn);
+                                             
+      // get the border that was created by create border mode
+      Border getBorder() const;
+      
+      // set surface means report controls and options
+      void setSurfaceMeansReportControlsAndOptions(std::vector<CoordinateFile*>& coordFilesIn);
+                                                    
       // set report controls and options
       void setTextReportControlsAndOptions(MetricFile* metricFileIn,
                                            const std::vector<bool>& selectedMetricColumnsForReportIn,
@@ -79,11 +98,17 @@ class BrainModelSurfaceRegionOfInterest : public BrainModelAlgorithm {
 
    protected:
       // create the text report
-      void createTextReport();
+      void createTextReport() throw (BrainModelAlgorithmException);
+      
+      // create the surface means text report
+      void createSurfaceMeansTextReport() throw (BrainModelAlgorithmException);
       
       // Create the report header
       void createReportHeader(float& roiAreaOut);
        
+      // create the border
+      void createBorder(const int numNodesInROI) throw (BrainModelAlgorithmException);
+      
       // Peform Metric and Surface Shape Report.
       void metricAndSurfaceShapeReport(const bool metricFlag);
 
@@ -150,6 +175,24 @@ class BrainModelSurfaceRegionOfInterest : public BrainModelAlgorithm {
       
       /// the metric correction column
       int metricCorrectionColumn;
+      
+      /// coord files for surface means 
+      std::vector<CoordinateFile*> surfaceMeansCoordFiles;
+      
+      /// name for create border
+      QString createBorderName;
+      
+      /// create border option border
+      Border createBorderModeBorder;
+
+      /// create border start node
+      int createBorderStartNode;
+      
+      /// create border end node
+      int createBorderEndNode;
+      
+      /// create border sampling density
+      float createBorderSamplingDensity;
       
       /// the separator character
       static const QString separatorCharacter;

@@ -240,6 +240,39 @@ GuiDrawBorderDialog::createMainPage()
    
    //--------------------------------------------------------------------------------------
    //
+   // Auto Project Yes/No radio buttons
+   //
+   autoProjectYesRadioButton = new QRadioButton("Yes");
+   autoProjectNoRadioButton = new QRadioButton("No");
+    
+   //
+   // Button Group for Auto Project Yes/No
+   //
+   QButtonGroup* autoProjectButtonGroup = new QButtonGroup(this);
+   autoProjectButtonGroup->addButton(autoProjectYesRadioButton);
+   autoProjectButtonGroup->addButton(autoProjectNoRadioButton);
+   
+   //
+   // Group Box and Layout for Auto Project
+   //
+   QGroupBox* autoProjectGroupBox = new QGroupBox("Auto Project");
+   QVBoxLayout* autoProjectLayout = new QVBoxLayout(autoProjectGroupBox);
+   autoProjectLayout->addWidget(autoProjectYesRadioButton);
+   autoProjectLayout->addWidget(autoProjectNoRadioButton);
+   typeDimHBoxLayout->addWidget(autoProjectGroupBox);
+   
+   //
+   // Default proj off
+   //
+   autoProjectNoRadioButton->setChecked(true);
+   
+   //
+   // Add stretch on right of type/dim/auto proj
+   //
+   typeDimHBoxLayout->addStretch();
+   
+   //--------------------------------------------------------------------------------------
+   //
    // Assign nodes within closed border section
    //
    assignVGroup = new QGroupBox("Closed Border Assignment");
@@ -565,6 +598,15 @@ GuiDrawBorderDialog::getClosedBorderFlag() const
    return closedBorderRadioButton->isChecked();
 }
 
+/**
+ * get the auto project border flag.
+ */
+bool 
+GuiDrawBorderDialog::getAutoProjectBorder() const 
+{ 
+   return autoProjectYesRadioButton->isChecked(); 
+}
+      
 /**
  * Get the 3D flag
  */
@@ -990,6 +1032,18 @@ GuiDrawBorderDialog::createNewBorder(BrainModel* bm, Border& border)
          assignPaintColumnComboBox->setCurrentIndex(newPaintColumnCreated);   
          slotAssignPaintColumnSelection(newPaintColumnCreated);      
       }
+      
+      if (getAutoProjectBorder()) {
+         const int borderNumber = bmbs->getNumberOfBorders() - 1;
+         if (borderNumber >= 0) {
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            bmbs->projectBorders(bms,
+                                 true,
+                                 borderNumber,
+                                 borderNumber);
+            QApplication::restoreOverrideCursor();
+         }
+      }
    }
    
    //
@@ -1001,6 +1055,7 @@ GuiDrawBorderDialog::createNewBorder(BrainModel* bm, Border& border)
    fm.setBorderModified();
    fm.setPaintModified();
    theMainWindow->fileModificationUpdate(fm);   
+   GuiBrainModelOpenGL::updateAllGL(NULL);
 }
 
 /**

@@ -35,6 +35,7 @@
  */
 StatisticCorrelationCoefficient::StatisticCorrelationCoefficient()
 {
+   correlationCoefficientR  = 0.0;
    correlationCoefficientR2 = 0.0;
    pValue = 0.0;
    tValue = -1000000.0;
@@ -55,6 +56,8 @@ void
 StatisticCorrelationCoefficient::execute() throw (StatisticException)
 {
    correlationCoefficientR2 = 0.0;
+   correlationCoefficientR  = 0.0;
+   
    pValue = 0.0;
    tValue = -1000000.0;
    tDegreesOfFreedom = 0.0;
@@ -101,6 +104,9 @@ StatisticCorrelationCoefficient::execute() throw (StatisticException)
    if (denom != 0.0) {
       correlationCoefficientR2 = static_cast<float>((ssxy * ssxy) / denom);
    }
+   if (correlationCoefficientR2 >= 0.0) {
+      correlationCoefficientR = std::sqrt(correlationCoefficientR2);
+   }
       
    //
    // T-Value calculation from:
@@ -109,12 +115,11 @@ StatisticCorrelationCoefficient::execute() throw (StatisticException)
    //           2nd Edition, 1999
    //           page 98-99
    //
-   const float r = std::sqrt(correlationCoefficientR2);
    float tDenom = 1.0 - correlationCoefficientR2;
    if (tDenom <= 1.0) {
       tDegreesOfFreedom = numFloat - 2.0;
       if (tDegreesOfFreedom >= 0.0) {
-         const float tNum = r * std::sqrt(tDegreesOfFreedom);
+         const float tNum = correlationCoefficientR * std::sqrt(tDegreesOfFreedom);
          tValue = tNum / std::sqrt(tDenom);
          pValue = StatisticGeneratePValue::getOneTailTTestPValue(tDegreesOfFreedom, tValue);
       }

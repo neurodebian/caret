@@ -91,6 +91,13 @@
 #include "vtkTransform.h"
 #include "vtkTriangle.h"
 
+//#define DEBUG_OPENGL_FLAG 1
+#ifdef DEBUG_OPENGL_FLAG 
+#define DebugOpenGLMacro(bm, msg)   checkForOpenGLError(bm, msg);
+#else 
+#define DebugOpenGLMacro(bm, msg)
+#endif
+
 /**
  * Constructor.
  */
@@ -283,8 +290,10 @@ BrainModelOpenGL::identifyBrainModelItemWebCaret(BrainSet* bs,
                                  enableVocabularyLinks);
 }
       
-/// all brain models displayed in windows for identification
-/// ONLY VALID WHEN ::identifyBrainModel... called
+/**
+ * all brain models displayed in windows for identification
+ * ONLY VALID WHEN ::identifyBrainModel... called
+ */
 BrainModel* 
 BrainModelOpenGL::getBrainModelInWindowNumberForIdentification(const int windowNumber) 
 { 
@@ -381,6 +390,8 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
                                  const int viewportIn[4],
                                  QGLWidget* glWidgetIn)
 {
+   DebugOpenGLMacro(bm, "At beginning of drawBrainModelPrivate()")
+   
    brainModel = bm;
    mainWindowFlag = (viewingWindowNumberIn == 0);
    viewport[0]    = viewportIn[0];
@@ -515,6 +526,7 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       }
    }
       
+/**
    GLenum errorCode = glGetError();
    if (errorCode != GL_NO_ERROR) {
       std::cout << std::endl;
@@ -535,12 +547,48 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       std::cout << "Name Matrix Stack Depth " << nameStackDepth << std::endl;
       std::cout << std::endl;
    }
+*/
    
    glFlush();
    
    paintMutex.unlock();   
+
+   checkForOpenGLError(bm, "At end of drawBrainModelPrivate().");
+   DebugOpenGLMacro(bm, "TESTING")
 }
 
+/**
+ * check for an OpenGL Error.
+ */
+void 
+BrainModelOpenGL::checkForOpenGLError(const BrainModel* bm,
+                                      const QString& msg)
+{
+   GLenum errorCode = glGetError();
+   if (errorCode != GL_NO_ERROR) {
+      std::cout << std::endl;
+      std::cout << "OpenGL Error: " << (char*)gluErrorString(errorCode) << std::endl;
+      if (msg.isEmpty() == false) {
+         std::cout << msg.toAscii().constData() << std::endl;
+      }
+      if (bm != NULL) {
+         std::cout << "While drawing brain model " << bm->getDescriptiveName().toAscii().constData() << std::endl;
+      }
+      std::cout << "In window number " << viewingWindowNumber << std::endl;
+      GLint nameStackDepth, modelStackDepth, projStackDepth;
+      glGetIntegerv(GL_PROJECTION_STACK_DEPTH,
+                    &projStackDepth);
+      glGetIntegerv(GL_MODELVIEW_STACK_DEPTH,
+                    &modelStackDepth);
+      glGetIntegerv(GL_NAME_STACK_DEPTH,
+                    &nameStackDepth);
+      std::cout << "Projection Matrix Stack Depth " << projStackDepth << std::endl;
+      std::cout << "Model Matrix Stack Depth " << modelStackDepth << std::endl;
+      std::cout << "Name Matrix Stack Depth " << nameStackDepth << std::endl;
+      std::cout << std::endl;
+   }
+}
+      
 /**
  * initialize OpenGL (should only call one time).
  */
@@ -628,17 +676,6 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
       glMatrixMode(GL_PROJECTION);
       glLoadIdentity();
       
-/*
-      const double aspectRatio = (static_cast<double>(viewport[2])) /
-                                 (static_cast<double>(viewport[3]));     
-   
-      orthographicRight[viewingWindowNumber]  =    defaultOrthoWindowSize * aspectRatio;
-      orthographicLeft[viewingWindowNumber]   =   -defaultOrthoWindowSize * aspectRatio;
-      orthographicTop[viewingWindowNumber]    =    defaultOrthoWindowSize;
-      orthographicBottom[viewingWindowNumber] =   -defaultOrthoWindowSize;
-      orthographicNear[viewingWindowNumber]   = -10000.0;
-      orthographicFar[viewingWindowNumber]    =  10000.0;  
-*/
       glOrtho(orthographicLeft[viewingWindowNumber], orthographicRight[viewingWindowNumber], 
               orthographicBottom[viewingWindowNumber], orthographicTop[viewingWindowNumber], 
               orthographicNear[viewingWindowNumber], orthographicFar[viewingWindowNumber]);
@@ -1894,25 +1931,6 @@ BrainModelOpenGL::drawTransformationMatrixAxes(const BrainModel* bm)
                glPopName();
                glPopName();
             }
-/*            
-            glPushMatrix();
-            {
-               //
-               // Do the transformation
-               //
-               double matrix[16];
-               tm->getMatrix(matrix);
-               glMultMatrixd(matrix);
-            
-               //
-               // Draw the data files associated with the axes
-               //
-               if (volumeFlag == false) {
-                  drawTransformationDataFiles(tm);
-               }
-            }
-            glPopMatrix();
-*/
          } // if show axes
       } // for (i ==
    }  // if (drawAxes)
@@ -1938,192 +1956,6 @@ BrainModelOpenGL::drawTransformationMatrixAxes(const BrainModel* bm)
       glPopMatrix();
    }
 }
-/*
-void 
-BrainModelOpenGL::drawTransformationAxes(const BrainModel* bm)
-{
-   //
-   // See if Translation axes should be drawn
-   //
-   bool drawAxes = false;
-   bool volumeFlag = false;
-   const BrainModelSurface* bms = dynamic_cast<const BrainModelSurface*>(bm);
-   if (bms != NULL) {
-      switch (bms->getSurfaceType()) {
-         case BrainModelSurface::SURFACE_TYPE_RAW:
-         case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
-            drawAxes = true;
-            break;
-         case BrainModelSurface::SURFACE_TYPE_INFLATED:
-         case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
-         case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
-         case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
-         case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
-         case BrainModelSurface::SURFACE_TYPE_FLAT:
-         case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
-         case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
-         case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-            break;
-      }
-   }
-   if (dynamic_cast<const BrainModelVolume*>(bm) != NULL) {
-      drawAxes = true;
-      volumeFlag = true;
-   }
-   if (dynamic_cast<const BrainModelSurfaceAndVolume*>(bm) != NULL) {
-      drawAxes = true;
-   }
-   
-   //
-   // Draw the translation axes
-   //
-   if (drawAxes) {
-      const CoordinateAxes* axes = brainSet->getTransformationAxes();
-      if (axes->getDisplayFlag()) {
-         bool popNamesFlag = false;
-         bool drawIt = false;
-         if (selectionMask == SELECTION_MASK_OFF) {
-            drawIt = true;
-         }
-         else if (selectionMask & SELECTION_MASK_TRANSFORMATION_AXES) {
-            drawIt = true;
-            glPushName(SELECTION_MASK_TRANSFORMATION_AXES);
-            glPushName(0);
-            popNamesFlag = true;
-         }
-         
-         if (drawIt) {
-            glPushMatrix();
-            {
-               //
-               // Do the translation
-               //
-               float trans[3];
-               axes->getTranslation(trans);
-               glTranslatef(trans[0], trans[1], trans[2]);
-               
-               //
-               // Do the rotation
-               //
-               float matrix[16];
-               axes->getRotationMatrix(matrix);
-               glMultMatrixf(matrix);
-               
-               const unsigned char xColor[3] = { 255,   0,   0 };
-               const unsigned char yColor[3] = {   0, 255,   0 };
-               const unsigned char zColor[3] = {   0,   0, 255 };
-
-               if (volumeFlag) {
-                  //
-                  // Draw the axes as OpenGL lines
-                  //
-                  const float axisEnd = axes->getAxesLength();
-                  const float axisStart = -axisEnd * 0.10;
-                  glLineWidth(axes->getLineThickness());
-                  glBegin(GL_LINES);
-                     glColor3ubv(xColor);
-                     glVertex3f(axisStart, 0.0, 0.0);
-                     glVertex3f(axisEnd,   0.0, 0.0);
-                     glColor3ubv(yColor);
-                     glVertex3f(0.0, axisStart, 0.0);
-                     glVertex3f(0.0, axisEnd,   0.0);
-                     glColor3ubv(zColor);
-                     glVertex3f(0.0, 0.0, axisStart);
-                     glVertex3f(0.0, 0.0, axisEnd);
-                  glEnd();
-               }
-               else {
-                  //
-                  // Draw the axes as cylinders
-                  //
-                  const float axesDiameter = axes->getLineThickness();
-                  const float axesLength = axes->getAxesLength();
-                  const float axisBehindOriginLength = axesLength * 0.10;
-                  const float axisTotalLength = axesLength + axisBehindOriginLength;
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  glPushMatrix();
-                     glColor3ubv(xColor);
-                     glRotatef(90.0, 0.0, 1.0, 0.0);
-                     glTranslatef(0.0, 0.0, -axisBehindOriginLength);
-                     glPushMatrix();
-                        glScalef(1.0, 1.0, -1.0);
-                        drawDisk(axesDiameter);  // caps off end of cylinder
-                     glPopMatrix();
-                     glScalef(axesDiameter, axesDiameter, axisTotalLength);
-                     glCallList(cylinderDisplayList);
-                  glPopMatrix();
-                  glPushMatrix();
-                     glColor3ubv(yColor);
-                     glRotatef(-90.0, 1.0, 0.0, 0.0);
-                     glTranslatef(0.0, 0.0, -axisBehindOriginLength);
-                     glPushMatrix();
-                        glScalef(1.0, 1.0, -1.0);
-                        drawDisk(axesDiameter);  // caps off end of cylinder
-                     glPopMatrix();
-                     glScalef(axesDiameter, axesDiameter, axisTotalLength);
-                     glCallList(cylinderDisplayList);
-                  glPopMatrix();
-                  glPushMatrix();
-                     glColor3ubv(zColor);
-                     glTranslatef(0.0, 0.0, -axisBehindOriginLength);
-                     glPushMatrix();
-                        glScalef(1.0, 1.0, -1.0);
-                        drawDisk(axesDiameter);  // caps off end of cylinder
-                     glPopMatrix();
-                     glScalef(axesDiameter, axesDiameter, axisTotalLength);
-                     glCallList(cylinderDisplayList);
-                  glPopMatrix();
-
-                  //
-                  // Draw the arrow heads
-                  //
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  const float coneSize = axesDiameter + 5.0;
-                  glPushMatrix();
-                     glColor3ubv(xColor);
-                     glTranslatef(axesLength, 0.0, 0.0);
-                     glRotatef(90.0, 0.0, 1.0, 0.0);
-                     glScalef(coneSize, coneSize, coneSize);
-                     glCallList(coneDisplayList);
-                  glPopMatrix();
-                  glPushMatrix();
-                     glColor3ubv(yColor);
-                     glTranslatef(0.0, axesLength, 0.0);
-                     glRotatef(-90.0, 1.0, 0.0, 0.0);
-                     glScalef(coneSize, coneSize, coneSize);
-                     glCallList(coneDisplayList);
-                  glPopMatrix();
-                  glPushMatrix();
-                     glColor3ubv(zColor);
-                     glTranslatef(0.0, 0.0, axesLength);
-                     glScalef(coneSize, coneSize, coneSize);
-                     glCallList(coneDisplayList);
-                  glPopMatrix();
-                  glDisable(GL_COLOR_MATERIAL);
-                  glDisable(GL_LIGHTING);
-                  
-                  const float letterPos = axesLength + coneSize + 5;
-                  glColor3ubv(xColor);
-                  glWidget->renderText(letterPos, 0.0, 0.0, "X");
-                  glColor3ubv(yColor);
-                  glWidget->renderText(0.0, letterPos, 0.0, "Y");
-                  glColor3ubv(zColor);
-                  glWidget->renderText(0.0, 0.0, letterPos, "Z");
-               }
-            }
-            glPopMatrix();
-         }
-         
-         if (popNamesFlag) {
-            glPopName();
-            glPopName();
-         }
-      }
-   }
-}
-*/
       
 /**
  * draw surface and volume.
@@ -3470,56 +3302,6 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
             //
             const TransformationMatrix* obtm = dsv->getObliqueSlicesTransformationMatrix();
             if (obtm != NULL) {
-            /*
-               TransformationMatrix mat = *obtm;
-               //mat.transpose();
-               
-               //
-               // Get position in volume and convert to slices
-               //
-               float tx, ty, tz;
-               mat.getTranslation(tx, ty, tz);
-               float pos[3] = { tx, ty, tz }; 
-               int slices[3];
-               masterVolume->convertCoordinatesToVoxelIJK(pos, slices);
-            */
-               
-
-/*
-               //
-               // Add in slice offsets
-               //
-               int sliceOffsets[3];
-               bmv->getSelectedObliqueSliceOffsets(viewingWindowNumber, sliceOffsets);
-               tm.getTranslation(tx, ty, tz);
-               slices[0] += sliceOffsets[0];
-               slices[1] += sliceOffsets[1];
-               slices[2] += sliceOffsets[2];
-               
-               //
-               // Montage offsets
-               //
-               slices[0] += montageSliceOffsets[0];
-               slices[1] += montageSliceOffsets[1];
-               slices[2] += montageSliceOffsets[2];
-*/
-               
-               //tm.setTranslation(tx, ty, tz);
-/*x
-               //
-               // Get coordinate of slices
-               //
-               float xyz[3];
-               masterVolume->getVoxelCoordinate(slices, 
-                                                BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(), 
-                                                xyz);
-      
-               // 10/7
-               tm = mat;
-               tm.setTranslation(xyz[0], xyz[1], xyz[2]);
-               TransformationMatrix rotMatrix = tm;
-               rotMatrix.setTranslation(0.0, 0.0, 0.0);
-*/               
                tm = *obtm;
                TransformationMatrix rotMatrix = tm;
                rotMatrix.setTranslation(0.0, 0.0, 0.0);
@@ -3546,70 +3328,8 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                TransformationMatrix tm2;
                tm2.translate(offsetXYZ[0], offsetXYZ[1], offsetXYZ[2]);
                tm.multiply(tm2);
-
-
-
-
-               
-      /* 10/7
-               //
-               // Translate by the slices
-               //
-               tm.translate(xyz);
-               
-               //
-               // Rotate by the oblique rotation matrix MAIN WINDOW !!!
-               //
-               TransformationMatrix rotMatrix = mat;
-               rotMatrix.setTranslation(0.0, 0.0, 0.0);
-               rotMatrix.transpose();
-               tm.multiply(rotMatrix);
-      */
             }
             else {
-/*
-               //
-               // Get the current oblique slices 
-               //
-               int slices[3];
-               bmv->getSelectedObliqueSlices(slices);
-               
-               //
-               // Add in slice offsets
-               //
-               bmv->getSelectedObliqueSliceOffsets(viewingWindowNumber, sliceOffsets);
-               slices[0] += sliceOffsets[0];
-               slices[1] += sliceOffsets[1];
-               slices[2] += sliceOffsets[2];
-               
-               //
-               // Montage offsets
-               //
-               slices[0] += montageSliceOffsets[0];
-               slices[1] += montageSliceOffsets[1];
-               slices[2] += montageSliceOffsets[2];
-               
-               //
-               // Get coordinate of slices
-               //
-               float xyz[3];
-               masterVolume->getVoxelCoordinate(slices, 
-                                                BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(), 
-                                                xyz);
-      
-               //
-               // Translate by the slices
-               //
-               tm.translate(xyz);
-            
-               //
-               // Rotate by the oblique rotation matrix MAIN WINDOW !!!
-               //
-               vtkTransform* rotationMatrix = bmv->getObliqueRotationMatrix();
-               TransformationMatrix rotMatrix;
-               rotMatrix.setMatrix(rotationMatrix);
-               tm.multiply(rotMatrix);
-*/
                //
                // Get the rotation matrix
                //
@@ -3684,14 +3404,6 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
    float scale[3];
    bmv->getScaling(viewingWindowNumber, scale);
    glScalef(scale[0], scale[1], scale[2]);
-/*
-   const float scaleInv[3] = {
-      1.0 / scale[0],
-      1.0 / scale[1],
-      1.0 / scale[2],
-   };
-   tm.scale(scaleInv);
-*/
    
    //
    // Get voxel coloring 
@@ -4349,10 +4061,6 @@ BrainModelOpenGL::drawVolumeCrosshairs(BrainModelVolume* bmv,
          //
          // Coordinate
          //
-         //float origin[3];
-         //float spacing[3];
-         //vf->getOrigin(origin);
-         //vf->getSpacing(spacing);
          float xyz[3];
          vf->getVoxelCoordinate(slices,
                                 BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(),
@@ -4518,17 +4226,6 @@ BrainModelOpenGL::drawVolumeCrosshairCoordinates(BrainModelVolume* bmv,
       //
       // Determine the crosshair coordinates
       //
-      /*
-      float origin[3];
-      float spacing[3];
-      vf->getOrigin(origin);
-      vf->getSpacing(spacing);
-      const float xyz[3] = {
-                              slices[0] * spacing[0] + origin[0],
-                              slices[1] * spacing[1] + origin[1],
-                              slices[2] * spacing[2] + origin[2]
-                           };
-      */
       float xyz[3];
       vf->getVoxelCoordinate(slices, 
                              BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(), 
@@ -4541,7 +4238,9 @@ BrainModelOpenGL::drawVolumeCrosshairCoordinates(BrainModelVolume* bmv,
       QString s;
       s.sprintf("(%0.2f, %0.2f, %0.2f)", xyz[0], xyz[1], xyz[2]); 
       if (glWidget != NULL) {
+         DebugOpenGLMacro(bmv, "Before renderText() in drawVolumeCrosshairCoordinates")
          glWidget->renderText(10, viewportHeight - 15, s, font);
+         DebugOpenGLMacro(bmv, "After renderText() in drawVolumeCrosshairCoordinates")
       }
    }
 }
@@ -4688,6 +4387,8 @@ BrainModelOpenGL::drawBrainModelVolumeMontage(BrainModelVolume* bmv)
 void 
 BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
 {
+   DebugOpenGLMacro(bmv, "Beginning of drawBrainModelVolume()")
+
    const DisplaySettingsVolume* dsv = brainSet->getDisplaySettingsVolume();
    switch (bmv->getSelectedAxis(viewingWindowNumber)) {
       case VolumeFile::VOLUME_AXIS_X:
@@ -4784,138 +4485,16 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
          return;
    }
    
+   DebugOpenGLMacro(bmv, "Before drawVolumeSliceOverlayAndUnderlay")
    VolumeFile* firstVolume = NULL;
    drawVolumeSliceOverlayAndUnderlay(bmv, volumeSliceAxis, currentSlice, firstVolume);
+   DebugOpenGLMacro(bmv, "After drawVolumeSliceOverlayAndUnderlay")
    
-/*
-   bool firstVolumeFlag = true;
-   float volumeSliceCoordinate = 0.0;
-   VolumeFile* firstVolume = NULL;
-   float firstVolumeVoxelSize = 1.0;
-   
-   //
-   // Draw the underlay and the overlays
-   //
-   for (int i = 0; i < 3; i++) {
-      unsigned long theSelectionMask = SELECTION_MASK_OFF;
-      VolumeFile* vf = NULL;
-      switch(i) {
-         case 0:
-            theSelectionMask = SELECTION_MASK_VOXEL_UNDERLAY;
-            vf = bmv->getUnderlayVolumeFile();
-            break;
-         case 1:
-            theSelectionMask = SELECTION_MASK_VOXEL_OVERLAY_SECONDARY;
-            vf = bmv->getOverlaySecondaryVolumeFile();
-            break;
-         case 2:
-            theSelectionMask = SELECTION_MASK_VOXEL_OVERLAY_PRIMARY;
-            vf = bmv->getOverlayPrimaryVolumeFile();
-            break;
-      }
-
-      if (vf != NULL) {
-         //
-         // Get origin and spacing
-         //
-         float origin[3], spacing[3];
-         int dim[3];
-         vf->getOrigin(origin);
-         vf->getSpacing(spacing);
-         vf->getDimensions(dim);
-         
-         int sliceToDraw = currentSlice;
-         if (firstVolumeFlag) {
-            firstVolumeFlag = false;
-            firstVolume = vf;
-            switch(volumeSliceAxis) {
-               case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
-                  volumeSliceCoordinate = currentSlice * spacing[0] + origin[0];
-                  firstVolumeVoxelSize = spacing[0];
-                  break;
-               case VolumeFile::VOLUME_AXIS_Y:  // CORONAL
-                  volumeSliceCoordinate = currentSlice * spacing[1] + origin[1];
-                  firstVolumeVoxelSize = spacing[1];
-                  break;
-               case VolumeFile::VOLUME_AXIS_Z:  // HORIZONTAL
-                  volumeSliceCoordinate = currentSlice * spacing[2] + origin[2];
-                  firstVolumeVoxelSize = spacing[2];
-                  break;
-               default:
-                  std::cout << "PROGRAM ERROR: Invalid volume axis at " << __LINE__ << " in " 
-                           << __FILE__ << std::endl;
-                  return;
-            }
-         }
-         else {
-            sliceToDraw = 0;
-            float sliceDistance = std::numeric_limits<float>::max();
-            
-            switch(volumeSliceAxis) {
-               case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
-                  for (int i = 0; i < dim[0]; i++) {
-                     const float val = i * spacing[0] + origin[0];
-                     const float dist = fabs(volumeSliceCoordinate - val);
-                     if (dist < sliceDistance) {
-                        sliceToDraw = i;
-                        sliceDistance = dist;
-                     }
-                  }
-                  break;
-               case VolumeFile::VOLUME_AXIS_Y:  // CORONAL
-                  for (int i = 0; i < dim[1]; i++) {
-                     const float val = i * spacing[1] + origin[1];
-                     const float dist = fabs(volumeSliceCoordinate - val);
-                     if (dist < sliceDistance) {
-                        sliceToDraw = i;
-                        sliceDistance = dist;
-                     }
-                  }
-                  break;
-               case VolumeFile::VOLUME_AXIS_Z:  // HORIZONTAL
-                  for (int i = 0; i < dim[2]; i++) {
-                     const float val = i * spacing[2] + origin[2];
-                     const float dist = fabs(volumeSliceCoordinate - val);
-                     if (dist < sliceDistance) {
-                        sliceToDraw = i;
-                        sliceDistance = dist;
-                     }
-                  }
-                  break;
-               default:
-                  std::cout << "PROGRAM ERROR: Invalid volume axis at " << __LINE__ << " in " 
-                           << __FILE__ << std::endl;
-                  return;
-            }
-         }
-         
-         drawVolumeFileSlice(vf, volumeSliceAxis, sliceToDraw, theSelectionMask);
-      }
-   }
-
-   //
-   // Draw volume borders
-   //   
-   DisplaySettingsBorders* dsb = brainSet->getDisplaySettingsBorders();
-   if (dsb->getDisplayBorders()) {
-      drawVolumeBorderFile(volumeSliceAxis, volumeSliceCoordinate, firstVolumeVoxelSize);
-   }
-   
-   //
-   // Draw outline of surface and transformation axes
-   //
-   drawVolumeSurfaceOutlineAndTransformationAxes(bmv, volumeSliceAxis, volumeSliceCoordinate);
-   
-   //
-   // Draw the identify symbols
-   //
-   drawVolumeIdentifySymbols(volumeSliceAxis, volumeSliceCoordinate);
-
-*/   
    //
    // Draw the palette
    //
    drawMetricPalette(0, false);
+   DebugOpenGLMacro(bmv, "After drawing palette")
    
    //
    // Draw the cropping volume is cropping dialog valid and this is the underlay volume
@@ -4925,61 +4504,6 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
       VolumeFile* underlayVolume = bmv->getUnderlayVolumeFile();
       if (underlayVolume != NULL) {
          drawVolumeCroppingLines(bmv, underlayVolume, volumeSliceAxis);
-/*
-         if (dsv->getCroppingSlicesValid()) {
-            int croppingLines[6];
-            dsv->getCroppingSlices(croppingLines);
-            float origin[3];
-            float spacing[3];
-            underlayVolume->getOrigin(origin);
-            underlayVolume->getSpacing(spacing);
-            float crosshairX1 = 0;
-            float crosshairX2 = 0;
-            float crosshairY1 = 0;
-            float crosshairY2 = 0;
-            switch(volumeSliceAxis) {
-               case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
-                  crosshairX1 = croppingLines[2] * spacing[1] + origin[1];
-                  crosshairX2 = croppingLines[3] * spacing[1] + origin[1];
-                  crosshairY1 = croppingLines[4] * spacing[2] + origin[2];
-                  crosshairY2 = croppingLines[5] * spacing[2] + origin[2];
-                  break;
-               case VolumeFile::VOLUME_AXIS_Y:  // CORONAL
-                  crosshairX1 = croppingLines[0] * spacing[0] + origin[0];
-                  crosshairX2 = croppingLines[1] * spacing[0] + origin[0];
-                  crosshairY1 = croppingLines[4] * spacing[2] + origin[2];
-                  crosshairY2 = croppingLines[5] * spacing[2] + origin[2];
-                  break;
-               case VolumeFile::VOLUME_AXIS_Z:  // HORIZONTAL
-                  crosshairX1 = croppingLines[0] * spacing[0] + origin[0];
-                  crosshairX2 = croppingLines[1] * spacing[0] + origin[0];
-                  crosshairY1 = croppingLines[2] * spacing[1] + origin[1];
-                  crosshairY2 = croppingLines[3] * spacing[1] + origin[1];
-                  break;
-               case VolumeFile::VOLUME_AXIS_UNKNOWN:
-                  break;
-            }
-            const float bigNumber = 10000;
-            glLineWidth(1.0);
-            glBegin(GL_LINES);
-               glColor3ub(0, 150, 150);
-               glVertex3f(crosshairX1, -bigNumber, 0.0);
-               glVertex3f(crosshairX1,  bigNumber, 0.0);
-               glColor3ub(0, 255, 255);
-               glVertex3f(crosshairX2, -bigNumber, 0.0);
-               glVertex3f(crosshairX2,  bigNumber, 0.0);
-            glEnd();
-            glBegin(GL_LINES);
-               glColor3ub(150, 150, 0);
-               glVertex3f(-bigNumber, crosshairY1, 0.0);
-               glVertex3f( bigNumber, crosshairY1, 0.0);
-               glColor3ub(255, 255, 0);
-               glVertex3f(-bigNumber, crosshairY2, 0.0);
-               glVertex3f( bigNumber, crosshairY2, 0.0);
-            glEnd();
-            croppingLinesDisplayed = true;
-         }
-*/
       }
    }
    
@@ -4993,98 +4517,9 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
       // Draw the crosshairs and coordinates
       //
       drawVolumeCrosshairs(bmv, firstVolume, volumeSliceAxis);
+      DebugOpenGLMacro(bmv, "After drawVolumeCrosshairs")
       drawVolumeCrosshairCoordinates(bmv, firstVolume, viewport[3]);
-/*
-      if (dsv->getDisplayCrosshairs() && (glWidget != NULL)) {
-         unsigned char red[3]   = { 255, 0, 0 };
-         unsigned char green[3] = { 0, 255, 0 };
-         unsigned char blue[3]  = { 0, 0, 255 };
-         float origin[3];
-         float spacing[3];
-         firstVolume->getOrigin(origin);
-         firstVolume->getSpacing(spacing);
-         float crosshairX = 0;
-         float crosshairY = 0;
-         unsigned char* xColor = red;
-         unsigned char* yColor = red;
-         switch(volumeSliceAxis) {
-            case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
-               crosshairX = slices[1] * spacing[1] + origin[1];
-               xColor = green;
-               crosshairY = slices[2] * spacing[2] + origin[2];
-               yColor = blue;
-               break;
-            case VolumeFile::VOLUME_AXIS_Y:  // CORONAL
-               crosshairX = slices[0] * spacing[0] + origin[0];
-               xColor = red;
-               crosshairY = slices[2] * spacing[2] + origin[2];
-               yColor = blue;
-               break;
-            case VolumeFile::VOLUME_AXIS_Z:  // HORIZONTAL
-               crosshairX = slices[0] * spacing[0] + origin[0];
-               xColor = red;
-               crosshairY = slices[1] * spacing[1] + origin[1];
-               yColor = green;
-               break;
-            case VolumeFile::VOLUME_AXIS_UNKNOWN:
-               break;
-         }
-         const float bigNumber = 10000;
-         glLineWidth(1.0);
-         glColor3ubv(xColor);
-         glBegin(GL_LINES);
-            glVertex3f(crosshairX, -bigNumber, 0.0);
-            glVertex3f(crosshairX,  bigNumber, 0.0);
-         glEnd();
-         glColor3ubv(yColor);
-         glBegin(GL_LINES);
-            glVertex3f(-bigNumber, crosshairY, 0.0);
-            glVertex3f( bigNumber, crosshairY, 0.0);
-         glEnd();
-      }
-
-      //
-      // Draw the coordinate's of the crosshairs
-      //
-      if (dsv->getDisplayCrosshairCoordinates() && (glWidget != NULL)) {
-         //
-         // Draw in the foreground color
-         //
-         PreferencesFile* pf = brainSet->getPreferencesFile();
-         unsigned char rf, gf, bf;
-         pf->getSurfaceForegroundColor(rf, gf, bf);
-         glColor3ub(rf, gf, bf);
-   
-         //
-         // Font for drawing numbers
-         //
-         const int fontHeight = 12;
-         QFont font("times", fontHeight);
-            
-         //
-         // Determine the crosshair coordinates
-         //
-         float origin[3];
-         float spacing[3];
-         firstVolume->getOrigin(origin);
-         firstVolume->getSpacing(spacing);
-         const float xyz[3] = {
-                                 slices[0] * spacing[0] + origin[0],
-                                 slices[1] * spacing[1] + origin[1],
-                                 slices[2] * spacing[2] + origin[2]
-                              };
-                              
-         //
-         // Draw the text (Note: this renderText() method is done in window coordinates
-         // with the origin in the top left corner of the window).
-         //
-         QString s;
-         s.sprintf("(%0.2f, %0.2f, %0.2f)", xyz[0], xyz[1], xyz[2]); 
-         if (glWidget != NULL) {
-            glWidget->renderText(10, viewport[3] - 15, s, font);
-         }
-      }
-*/
+      DebugOpenGLMacro(bmv, "After drawVolumeCrosshairCoordinates")
    }
      
    if ((selectionMask == SELECTION_MASK_OFF) && (glWidget != NULL)) {
@@ -5150,6 +4585,7 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
                        orientBottomSideLabel, font);
             glWidget->renderText(halfX - (fontWidth / 2), static_cast<int>(fontHeight * 1.5),
                        orientTopSideLabel, font);
+            DebugOpenGLMacro(bmv, "After drawing orientation labels")
          }
       }
    }
@@ -5702,13 +5138,10 @@ BrainModelOpenGL::drawObliqueContourFile(const VolumeFile::VOLUME_AXIS axis,
                               planeNormal);
                               
    const int numContours = cf->getNumberOfContours();
-   //const float spacing = cf->getSectionSpacing();
 
    if (numContours > 0) {
       for (int i = 0; i < numContours; i++) {
          const CaretContour* contour = cf->getContour(i);
-         //const int sectionNumber = contour->getSectionNumber();
-         //const float z = sectionNumber * spacing;
          const int numPoints = contour->getNumberOfPoints();
          
          for (int j = 0; j < numPoints; j++) {
@@ -5822,7 +5255,6 @@ BrainModelOpenGL::drawVolumeContourFile(const VolumeFile::VOLUME_AXIS axis,
    const DisplaySettingsContours* dsc = brainSet->getDisplaySettingsContours();
    const float halfVoxelSize = voxelSize * 0.6;
    
-//   if (dsc->getShowContours()) {
       BrainModelContours* bmc = brainSet->getBrainModelContours();
       if (bmc != NULL) {
          const ContourFile* cf = bmc->getContourFile();
@@ -5915,7 +5347,6 @@ BrainModelOpenGL::drawVolumeContourFile(const VolumeFile::VOLUME_AXIS axis,
             }
          }
       }
-//   }
 }
 
 /**
@@ -6038,66 +5469,6 @@ BrainModelOpenGL::drawVolumeCellOrFociFile(const CellFile* cf,
                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             }
             drawSymbol(symbol, xyz[0], xyz[1], xyz[2], size, NULL);
-/*
-            switch (symbol) {
-               case ColorFile::ColorStorage::SYMBOL_OPENGL_POINT:
-                  //
-                  // Points must be at least 1.0 for OpenGL to draw something
-                  //
-                  size = std::max(size, 1.0f);
-                  glPointSize(size);
-                  glBegin(GL_POINTS);
-                     glVertex3f(xyz[0], xyz[1], xyz[2]);
-                  glEnd();
-                  break;
-               case ColorFile::ColorStorage::SYMBOL_SPHERE:
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  glPushMatrix();
-                      glTranslatef(xyz[0], xyz[1], xyz[2]);
-                      drawSphere(size);
-                  glPopMatrix();
-                  break;
-               case ColorFile::ColorStorage::SYMBOL_BOX:
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  glPushMatrix();
-                      glTranslatef(xyz[0], xyz[1], xyz[2]);
-                      glScalef(size, size, size);
-                      drawBox();
-                  glPopMatrix();
-                  break;
-               case ColorFile::ColorStorage::SYMBOL_DIAMOND:
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  glPushMatrix();
-                      glTranslatef(xyz[0], xyz[1], xyz[2]);
-                      glScalef(size, size, size);
-                      drawDiamond();
-                  glPopMatrix();
-                  break;
-               case ColorFile::ColorStorage::SYMBOL_RING:
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  glPushMatrix();
-                      glTranslatef(xyz[0], xyz[1], xyz[2]);
-                      glScalef(size, size, size);
-                      drawRing();
-                  glPopMatrix();
-                  break;
-               case ColorFile::ColorStorage::SYMBOL_NONE:
-                  break;
-               case ColorFile::ColorStorage::SYMBOL_SQUARE:
-                  glEnable(GL_LIGHTING);
-                  glEnable(GL_COLOR_MATERIAL);
-                  glPushMatrix();
-                      glTranslatef(xyz[0], xyz[1], xyz[2]);
-                      glScalef(size, size, size);
-                      drawSquare();
-                  glPopMatrix();
-                  break;
-            }
-*/
             if (selectFlag) {
                glPopName();
             }
@@ -6323,22 +5694,6 @@ BrainModelOpenGL::drawVolumeIdentifySymbols(const VolumeFile::VOLUME_AXIS axis,
    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
    
    glColor4f(0.0, 1.0, 0.0, 0.5);
-
-/*   
-   const int numSymbols = bmv->getNumberOfVoxelIdSymbols();
-   for (int i = 0; i < numSymbols; i++) {
-      float xyz[3], radius;
-      bmv->getVoxelIdSymbol(i, xyz, radius);
-      
-      if (fabs(xyz[axisIndex] - axisCoord) < radius) {
-         convertVolumeItemXYZToScreenXY(axis, xyz);
-         glPushMatrix();
-            glTranslatef(xyz[0], xyz[1], xyz[2]);
-            drawDisk(radius * 2.0);
-         glPopMatrix();
-      }
-   } 
-*/   
 
    const BrainModelSurface* bms = brainSet->getActiveFiducialSurface();
    if (bms != NULL) {
@@ -6709,7 +6064,6 @@ BrainModelOpenGL::drawVolumeFileSlice(VolumeFile* vf, const VolumeFile::VOLUME_A
                   // Above threshold is green so turn off red and blue
                   //
                   rgb[0] = 0;
-                  //rgb[1] = 255;
                   rgb[2] = 0;
                }
             }
@@ -6717,12 +6071,7 @@ BrainModelOpenGL::drawVolumeFileSlice(VolumeFile* vf, const VolumeFile::VOLUME_A
             //
             // Set the voxels color
             //
-            //if (alphaBlendingOn) {
-               glColor4ub(rgb[0], rgb[1], rgb[2], alphaValue);
-            //}
-            //else {
-            //   glColor3ubv(rgb);
-            //}
+            glColor4ub(rgb[0], rgb[1], rgb[2], alphaValue);
             
             //
             // If selecting voxels
@@ -7918,9 +7267,6 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
                                    TopologyFile* tf, const int numTiles,
                                    const int numCoords)
 {  
-   //glEnable(GL_POLYGON_STIPPLE);
-   //glPolygonStipple(polygonStipple);
-    
    const BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
    
    const int modelNumber = s->getBrainModelIndex();
@@ -8367,91 +7713,6 @@ BrainModelOpenGL::drawTransformationCellOrFociFile(BrainModel* bm,
          }
          
          drawSymbol(symbol, xyz[0], xyz[1], z, size, bm);
-/*         
-         switch (symbol) {
-            case ColorFile::ColorStorage::SYMBOL_OPENGL_POINT:
-               //
-               // Points must be at least 1.0 for OpenGL to draw something
-               //
-               size = std::max(size, 1.0f);
-               glPointSize(size);
-               glBegin(GL_POINTS);
-                  glVertex3f(xyz[0], xyz[1], z);
-               glEnd();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_SPHERE:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-                   glTranslatef(xyz[0], xyz[1], z);
-                   drawSphere(size);
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_BOX:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-                   glTranslatef(xyz[0], xyz[1], z);
-                   glScalef(size, size, size);
-                   drawBox();
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_DIAMOND:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-                   glTranslatef(xyz[0], xyz[1], z);
-                   glScalef(size, size, size);
-                   drawDiamond();
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_RING:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-               {
-                   glTranslatef(xyz[0], xyz[1], z);
-                   //
-                   // Undo Rotation
-                   //
-                   const BrainModelSurface* bms = dynamic_cast<const BrainModelSurface*>(bm);
-                   if (bms != NULL) {
-                      float matrix[16];
-                      bms->getRotationMatrixInverse(viewingWindowNumber, matrix);
-                      glMultMatrixf(matrix);
-                   }
-                   glScalef(size, size, size);
-                   drawRing();
-               }
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_NONE:
-               break;
-            case ColorFile::ColorStorage::SYMBOL_SQUARE:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-               {
-                   glTranslatef(xyz[0], xyz[1], z);
-                   //
-                   // Undo Rotation
-                   //
-                   const BrainModelSurface* bms = dynamic_cast<const BrainModelSurface*>(bm);
-                   if (bms != NULL) {
-                      float matrix[16];
-                      bms->getRotationMatrixInverse(viewingWindowNumber, matrix);
-                      glMultMatrixf(matrix);
-                   }
-                   glScalef(size, size, size);
-                   drawSquare();
-               }
-               glPopMatrix();
-               break;
-         }
-         glDisable(GL_BLEND);
-         glDisable(GL_LIGHTING);
-         glDisable(GL_COLOR_MATERIAL);
-*/
    
          if (selectFlag) {
             glPopName();
@@ -8718,9 +7979,6 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
          }
          
          float size = pointSize * cellSize;
-         //if (cd->getSize() > 0.0) {
-         //   size *= cd->getSize();
-         //}
          
          //
          // Double size for highlighting
@@ -8746,9 +8004,6 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
          
          glColor4ub(r, g, b, alpha);
          float z = xyz[2];
-         //if (drawRaised) {
-         //   z = 1.0;
-         //}
          if (selectFlag) {
             glPushName(i);
          }
@@ -8763,88 +8018,6 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
          }
       
          drawSymbol(symbol, xyz[0], xyz[1], z, size, bms);
-/*         
-         switch (symbol) {
-            case ColorFile::ColorStorage::SYMBOL_OPENGL_POINT:
-               //
-               // Points must be at least 1.0 for OpenGL to draw something
-               //
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               size = std::max(size, 1.0f);
-               glPointSize(size);
-               glBegin(GL_POINTS);
-                  glVertex3f(xyz[0], xyz[1], z);
-               glEnd();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_SPHERE:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-                   glTranslatef(xyz[0], xyz[1], z);
-                   drawSphere(size);
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_BOX:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-                   glTranslatef(xyz[0], xyz[1], z);
-                   glScalef(size, size, size);
-                   drawBox();
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_DIAMOND:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-                   glTranslatef(xyz[0], xyz[1], z);
-                   glScalef(size, size, size);
-                   drawDiamond();
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_RING:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-               {
-                   glTranslatef(xyz[0], xyz[1], z);
-                   //
-                   // Undo Rotation
-                   //
-                   float matrix[16];
-                   bms->getRotationMatrixInverse(viewingWindowNumber, matrix);
-                   glMultMatrixf(matrix);
-                   glScalef(size, size, size);
-                   drawRing();
-               }
-               glPopMatrix();
-               break;
-            case ColorFile::ColorStorage::SYMBOL_NONE:
-               break;
-            case ColorFile::ColorStorage::SYMBOL_SQUARE:
-               glEnable(GL_LIGHTING);
-               glEnable(GL_COLOR_MATERIAL);
-               glPushMatrix();
-               {
-                   glTranslatef(xyz[0], xyz[1], z);
-                   //
-                   // Undo Rotation
-                   //
-                   float matrix[16];
-                   bms->getRotationMatrixInverse(viewingWindowNumber, matrix);
-                   glMultMatrixf(matrix);
-                   glScalef(size, size, size);
-                   drawSquare();
-               }
-               glPopMatrix();
-               break;
-         }
-         
-         glDisable(GL_BLEND);
-         glDisable(GL_LIGHTING);
-         glDisable(GL_COLOR_MATERIAL);
-*/   
          if (selectFlag) {
             glPopName();
          }
@@ -9150,12 +8323,6 @@ BrainModelOpenGL::drawBorders(BrainModelSurface* s)
                            xyz[2] = 1.0;
                         }
                         drawSymbol(symbol, xyz[0], xyz[1], xyz[2], pointSize*drawSize, s);
-                        /*
-                        glPointSize(pointSize * drawSize);
-                        glBegin(GL_POINTS);
-                           glVertex3fv(xyz);
-                        glEnd();
-                        */
                      glPopName();
                   }
                glPopName();
@@ -9175,12 +8342,6 @@ BrainModelOpenGL::drawBorders(BrainModelSurface* s)
                         xyz[2] = 1.0;
                      }
                      drawSymbol(symbol, xyz[0], xyz[1], xyz[2], pointSize*drawSize, s);
-                     /*
-                     glPointSize(pointSize * drawSize);
-                     glBegin(GL_POINTS);
-                        glVertex3fv(xyz);
-                     glEnd();
-                     */
                      startLink = 1;
                   }
                   glColor4ub(red, green, blue, alpha);
@@ -9192,12 +8353,6 @@ BrainModelOpenGL::drawBorders(BrainModelSurface* s)
                         xyz[2] = 1.0;
                      }
                      drawSymbol(symbol, xyz[0], xyz[1], xyz[2], pointSize*drawSize, s);
-                     /*
-                     glPointSize(pointSize * drawSize);
-                     glBegin(GL_POINTS);
-                        glVertex3fv(xyz);
-                     glEnd();
-                     */
                   }
                   glDisable(GL_LIGHTING);      // get turned on when drawing symbols
                   glDisable(GL_COLOR_MATERIAL);
@@ -9354,8 +8509,6 @@ BrainModelOpenGL::drawShapePalette(const int modelNumber)
                     static_cast<int>(viewport[2] * 0.25);
    const GLint colorbarViewportHeight = 50;
 
-   //const GLint colorbarViewportLeft = windowWidth[viewingWindowNumber]
-   //                                 - colorbarViewportWidth;
    const GLint colorbarViewportLeft = 10;
                                     
    const int yOffset = 15;   // prevent colorbar under resize tab
@@ -9472,7 +8625,6 @@ BrainModelOpenGL::drawShapePalette(const int modelNumber)
                const int colorIndex = pe->getColorIndex();
                const PaletteColor* color = pf->getPaletteColor(colorIndex);
                const QString name = color->getName();
-               //const bool noneColorFlag  = color->isNoneColor();
                unsigned char rgb[3];
                color->getRGB(rgb);
 
@@ -9781,7 +8933,6 @@ BrainModelOpenGL::drawMetricPalette(const int modelNumber,
          const int colorIndex = pe->getColorIndex();
          const PaletteColor* color = pf->getPaletteColor(colorIndex);
          const QString name = color->getName();
-         //const bool noneColorFlag  = color->isNoneColor();
          unsigned char rgb[3];
          color->getRGB(rgb);
 
@@ -10155,47 +9306,6 @@ BrainModelOpenGL::displayAnImage(QImage* image)
    glMatrixMode(GL_PROJECTION);
    glPopMatrix();
    glMatrixMode(GL_MODELVIEW);
-   
-/*
-   glMatrixMode(GL_PROJECTION);
-   glPushMatrix();
-      glLoadIdentity();
-      glOrtho(0, viewport[2], 0, viewport[3], -600.0, 600.0); //-1.0, 1.0); 
-      glMatrixMode(GL_MODELVIEW);
-      glPushMatrix();
-         glLoadIdentity();
-
-         glRasterPos3f(xPos, yPos, -500.0); // set Z so image behind surface
-         glPixelZoom(pixelZoom, pixelZoom);
-
-         glDrawPixels(image->width(), image->height(),
-                     GL_RGBA, GL_UNSIGNED_BYTE, image->bits());
-      glPopMatrix();
-   glMatrixMode(GL_PROJECTION);
-   glPopMatrix();
-   glMatrixMode(GL_MODELVIEW);
-*/
-/*  Depth test causes surface rendering problems ???
-   glMatrixMode(GL_PROJECTION);
-   glPushMatrix();
-      glEnable(GL_DEPTH_TEST);
-      glLoadIdentity();
-      glOrtho(0, viewport[2], 0, viewport[3], -600.0, 600.0); //-1.0, 1.0); 
-      glMatrixMode(GL_MODELVIEW);
-      glPushMatrix();
-         glLoadIdentity();
-            
-         glRasterPos3f(xPos, yPos, -500.0); // set Z so image behind surface and contours
-         glPixelZoom(pixelZoom, pixelZoom);
-         
-         glDrawPixels(image->width(), image->height(),
-                     GL_RGBA, GL_UNSIGNED_BYTE, image->bits());
-      glPopMatrix();
-      glMatrixMode(GL_PROJECTION);
-      glDisable(GL_DEPTH_TEST);
-   glPopMatrix();
-   glMatrixMode(GL_MODELVIEW);
-*/
 }
 
 /**
@@ -10506,14 +9616,6 @@ BrainModelOpenGL::drawTransformationDataFiles(const TransformationMatrix* tm)
             
             ContourFile* cf = dynamic_cast<ContourFile*>(af);
             if (cf != NULL) {
-               //TransformationMatrixFile* tmf = brainSet->getTransformationMatrixFile();
-               //const TransformationMatrix* tm = cf->getAssociatedTransformationMatrix();
-               //if (tmf->getMatrixIndex(tm) >= 0) {
-               //   float matrix[16];
-               //   tm->getMatrix(matrix);
-              ///    glMultMatrixf(matrix);
-               //}
-               
                const DisplaySettingsContours* dsc = brainSet->getDisplaySettingsContours();
                const int numContours = cf->getNumberOfContours();
                const float spacing = cf->getSectionSpacing();

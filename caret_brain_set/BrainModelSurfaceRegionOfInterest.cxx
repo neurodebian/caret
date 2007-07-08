@@ -28,11 +28,15 @@
 #include <QStringList>
 
 #include "BrainModelSurface.h"
+#include "BrainModelSurfaceGeodesic.h"
 #define __BRAIN_MODEL_SURFACE_REGION_MAIN__
 #include "BrainModelSurfaceRegionOfInterest.h"
 #undef __BRAIN_MODEL_SURFACE_REGION_MAIN__
 #include "BrainSet.h"
 #include "CoordinateFile.h"
+#include "DebugControl.h"
+#include "FileUtilities.h"
+#include "GeodesicDistanceFile.h"
 #include "LatLonFile.h"
 #include "MathUtilities.h"
 #include "MetricFile.h"
@@ -54,6 +58,15 @@ BrainModelSurfaceRegionOfInterest::BrainModelSurfaceRegionOfInterest(BrainSet* b
    bms = bmsIn;
    operation = operationIn;
    selectedNodeFlags = selectedNodeFlagsIn;
+   
+   reportLatLonFile = NULL;
+   reportMetricFile = NULL;
+   reportShapeFile = NULL;
+   reportPaintFile = NULL;
+   reportMetricCorrectionFile = NULL;
+   
+   createBorderStartNode = -1;
+   createBorderEndNode = -1;
 }                                  
 
 /**
@@ -75,19 +88,305 @@ BrainModelSurfaceRegionOfInterest::execute() throw (BrainModelAlgorithmException
    if (bms->getNumberOfNodes() <= 0) {
       throw BrainModelAlgorithmException("Surface contains no nodes.");
    }
-   if (std::count(selectedNodeFlags.begin(), selectedNodeFlags.end(), true) <= 0) {
+   const int numNodesInROI = std::count(selectedNodeFlags.begin(), 
+                                        selectedNodeFlags.end(), 
+                                        true);
+   if (numNodesInROI <= 0) {
       throw BrainModelAlgorithmException("No nodes are selected.");
    }
    
    reportText = "";
    
    switch (operation) {
+      case OPERATION_CREATE_BORDER:
+         createBorder(numNodesInROI);
+         break;
+      case OPERATION_SURFACE_XYZ_MEANS_REPORT:
+         createSurfaceMeansTextReport();
+         break;
       case OPERATION_TEXT_REPORT:
          createTextReport();
          break;
    }
 }
 
+/**
+ * create the border.
+ */
+void 
+BrainModelSurfaceRegionOfInterest::createBorder(const int numNodesInROI) throw (BrainModelAlgorithmException)
+{
+   if (numNodesInROI == 1) {
+      throw BrainModelAlgorithmException("There is only one node, the starting node, in the ROI.");
+   }
+   
+   const int numNodes = bms->getNumberOfNodes();
+   
+   createBorderModeBorder.clearLinks();
+   
+   //
+   // Check Inputs
+   //
+   if (createBorderName.isEmpty()) {
+      throw BrainModelAlgorithmException("Name for border is empty.");
+   }
+   
+   if (createBorderStartNode >= 0) {
+      if (createBorderStartNode >= numNodes) {
+         throw BrainModelAlgorithmException("Starting node is invalid.");
+      }
+      if (selectedNodeFlags[createBorderStartNode] == false) {
+         throw BrainModelAlgorithmException("Starting node is not in the ROI.");
+      }
+   }
+   
+   if (createBorderEndNode >= 0) {
+      if (createBorderEndNode >= numNodes) {
+         throw BrainModelAlgorithmException("Ending node is invalid.");
+      }
+      if (selectedNodeFlags[createBorderEndNode] == false) {
+         throw BrainModelAlgorithmException("Ending node is not in the ROI.");
+      }
+      if (createBorderStartNode < 0) {
+         throw BrainModelAlgorithmException("If the end node is specified, the start node must also be specified");
+      }
+      if (createBorderStartNode == createBorderEndNode) {
+         throw BrainModelAlgorithmException("Starting and ending node are the same.");
+      }
+   }
+   
+   //
+   // If starting node is not specified
+   //
+   int iterStart = 2;
+   if (createBorderStartNode < 0) {
+      //
+      // First iteration will find the starting node
+      //
+      iterStart = 1;
+      
+      //
+      // Just pick the first selected node to use as the starting node
+      //
+      for (int i = 0; i < numNodes; i++) {
+         if (selectedNodeFlags[i]) {
+            createBorderStartNode = 1;
+            break;
+         }
+      }
+   }
+   
+   //
+   // (Iter == 1) is only performed if a starting node was not specified.  In this
+   // iteration, find the node that is furthest from the first selected node which 
+   // should be at one end of the sulcus.  Use this node as the start node.
+   //
+   // (Iter == 2) performs the geodesic calculation from the start node.  If the 
+   // end node was not specified, just pick the node furthest from the starting
+   // node as the end node.
+   //
+   for (int iter = iterStart; iter <= 2; iter++) {
+      //
+      // Determine the geodesic distances
+      //
+      GeodesicDistanceFile geodesicFile;
+      BrainModelSurfaceGeodesic geodesic(brainSet,
+                                         bms,
+                                         NULL,
+                                         -2,
+                                         "metric-column-name",
+                                         &geodesicFile,
+                                         -2,
+                                         "geodesic-column-name",
+                                         createBorderStartNode,
+                                         &selectedNodeFlags);
+      geodesic.execute();
+      
+      //
+      // Verify geodesic file
+      //
+      if ((geodesicFile.getNumberOfNodes() != numNodes) ||
+          (geodesicFile.getNumberOfColumns() != 1)) {
+         throw BrainModelAlgorithmException("PROGRAM ERROR: Geodesic distance file was not properly created.");
+      }
+      
+      //
+      // Find node furthest from start node for this iteration
+      //
+      int furthestNode = -1;
+      float furthestNodeDistance = 0.0;
+      for (int i = 0; i < numNodes; i++) {
+         const float dist = geodesicFile.getNodeParentDistance(i, 0);
+         if (dist > furthestNodeDistance) {
+            furthestNodeDistance = dist;
+            furthestNode = i;
+         }
+      }
+         
+      //
+      // If searching for the starting node
+      //
+      if (iter == 1) {
+         createBorderStartNode = furthestNode;
+         if (createBorderStartNode < 0) {
+            throw BrainModelAlgorithmException("Unable to determine starting node for sulcus.");
+         }
+         if (DebugControl::getDebugOn()) {
+            std::cout << "Starting node is " << createBorderStartNode << std::endl;
+         }
+      }
+
+      //
+      // If finding geodesic path and possibly the end node
+      //
+      if (iter == 2) {      
+         //
+         // Was end node NOT specified
+         //
+         if (createBorderEndNode < 0) {
+            createBorderEndNode = furthestNode;
+            
+            if (createBorderEndNode < 0) {
+               throw BrainModelAlgorithmException("Unable to determine the ending node for the border.");
+            }
+            
+            if (DebugControl::getDebugOn()) {
+               std::cout << "Ending node is " << createBorderEndNode << std::endl;
+            }
+         }
+         
+         
+         //
+         // Set border name
+         //
+         createBorderModeBorder.setName(createBorderName);
+         
+         //
+         // Find path for border
+         //
+         bool done = false;
+         int nodeNum = createBorderEndNode;
+         const CoordinateFile* coordFile = bms->getCoordinateFile();
+         while (done == false) {
+            //
+            // Add on to border
+            //
+            float xyz[3];
+            coordFile->getCoordinate(nodeNum, xyz);
+            createBorderModeBorder.addBorderLink(xyz);
+            
+            //
+            // Next node in geodesic path
+            //
+            nodeNum = geodesicFile.getNodeParent(nodeNum, 0);
+            if ((nodeNum == createBorderStartNode) ||
+                (nodeNum < 0)) {
+               done = true;
+            }
+         }
+      } // if (iter == 2...
+   }  // for (iter...
+   
+   //
+   // resample the border
+   //
+   if (createBorderSamplingDensity >= 0) {
+      int dummyUnused;
+      createBorderModeBorder.resampleBorderToDensity(createBorderSamplingDensity,
+                                                     2,
+                                                     dummyUnused);
+   }
+   
+   //
+   // Need to reverse the links since we start from the end node in the geodesic path
+   //
+   createBorderModeBorder.reverseBorderLinks();
+}
+
+/**
+ * set create border options.
+ */
+void 
+BrainModelSurfaceRegionOfInterest::setCreateBorderControlsAndOptions(const QString& borderNameIn,
+                                                                     const int startNodeIn,
+                                                                     const int endNodeIn,
+                                                                     const float samplingDensityIn)
+{
+   createBorderName      = borderNameIn;
+   createBorderStartNode = startNodeIn;
+   createBorderEndNode   = endNodeIn;
+   createBorderSamplingDensity = samplingDensityIn;
+}
+                                       
+/**
+ * get the border that was created by create border mode.
+ */
+Border 
+BrainModelSurfaceRegionOfInterest::getBorder() const
+{
+   return createBorderModeBorder;
+}
+
+/**
+ * set surface means report controls and options.
+ */
+void 
+BrainModelSurfaceRegionOfInterest::setSurfaceMeansReportControlsAndOptions(std::vector<CoordinateFile*>& coordFilesIn)
+{
+   surfaceMeansCoordFiles = coordFilesIn;
+}
+                                              
+/**
+ * create the surface means text report.
+ */
+void 
+BrainModelSurfaceRegionOfInterest::createSurfaceMeansTextReport() throw (BrainModelAlgorithmException)
+{
+   const int numCoordFiles = static_cast<int>(surfaceMeansCoordFiles.size());
+   if (numCoordFiles <= 0) {
+      throw BrainModelAlgorithmException("ERROR: There are no coord files.");
+   }
+   
+   //
+   // Determine surface means
+   //
+   const int numNodes = brainSet->getNumberOfNodes();
+   for (int j = 0; j < numCoordFiles; j++) {
+      double meanX = 0.0;
+      double meanY = 0.0;
+      double meanZ = 0.0;
+      double nodeCount = 0.0;
+      
+      const CoordinateFile* coordFile = surfaceMeansCoordFiles[j];
+      for (int i = 0; i < numNodes; i++) {
+         if (selectedNodeFlags[i]) {
+            float xyz[3];
+            coordFile->getCoordinate(i, xyz);
+            meanX += xyz[0];
+            meanY += xyz[1];
+            meanZ += xyz[2];
+            nodeCount += 1.0;
+         }
+      }
+      
+      meanX /= nodeCount;
+      meanY /= nodeCount;
+      meanZ /= nodeCount;
+      
+      const QString s = 
+         (FileUtilities::basename(coordFile->getFileName())
+          + " "
+          + QString::number(meanX, 'f', 6)
+          + " "
+          + QString::number(meanY, 'f', 6)
+          + " "
+          + QString::number(meanZ, 'f', 6)
+          + "\n");
+          
+      reportText.append(s);
+   }
+}
+      
 /**
  * set report controls and options.
  */
@@ -126,7 +425,7 @@ BrainModelSurfaceRegionOfInterest::setTextReportControlsAndOptions(
  * create the text report.
  */
 void 
-BrainModelSurfaceRegionOfInterest::createTextReport()
+BrainModelSurfaceRegionOfInterest::createTextReport() throw (BrainModelAlgorithmException)
 {
    float roiArea = 0.0;
    createReportHeader(roiArea);
