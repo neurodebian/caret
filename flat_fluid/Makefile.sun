@@ -1,0 +1,9 @@
+ABI	= 
+CC	= gcc 
+CFLAGS	= 
+INCLUDE = -I.
+LD	= g77
+LIBS	= /home/john/lapack/lapack_solaris.a \
+	  /home/john/lapack/blas_solaris.a
+
+include Makefile.include

@@ -1,0 +1,22 @@
+ABI	= 
+CC	= gcc 
+CFLAGS	= 
+INCLUDE = -I.
+LD	= g77
+
+LIBS	= /home/john/LAPACK/lapack_LINUX.a \
+	  /home/john/ATLAS/lib/LINUX/libf77blas.a \
+	  /home/john/ATLAS/lib/LINUX/libatlas.a
+
+#	  /home/john/ATLAS/lib/LINUX/liblapack.a 
+#	  /home/john/ATLAS/lib/LINUX/libf77blas.a 
+#	  /home/john/ATLAS/lib/LINUX/libcblas.a 
+#	  /home/john/ATLAS/lib/LINUX/libatlas.a
+#	  /home/john/ATLAS/lib/LINUX/libtstatlas.a 
+		
+
+#LIBS	= /usr/lib/liblapack.a 
+#	  /usr/lib/libblas.a 
+
+
+include Makefile.include

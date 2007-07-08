@@ -1,0 +1,10 @@
+
+
+ABI	= -mips2 -O2
+CC	= cc 
+CFLAGS	= -DHAVE_IRISGL
+INCLUDE = -I.
+LD	= cc
+LIBS	= -lcomplib.sgimath -lgl -lX11
+
+include Makefile.include

@@ -1,0 +1,22 @@
+
+all : flat_fluid
+
+flat_fluid : flat_fluid.o surface_io.o surface_utils.o resamp.o
+	${LD} ${LDFLAGS} ${ABI} -o flat_fluid \
+		flat_fluid.o surface_io.o surface_utils.o resamp.o \
+		${LIBS} \
+		-lm
+
+flat_fluid.o : flat_fluid.c
+	${CC} ${ABI} ${CFLAGS} ${INCLUDE} -c flat_fluid.c
+
+surface_io.o : surface_io.c
+	${CC} ${ABI} ${CFLAGS} ${INCLUDE} -c surface_io.c
+
+surface_utils.o : surface_utils.c
+	${CC} ${ABI} ${CFLAGS} ${INCLUDE} -c surface_utils.c
+
+resamp.o : resamp.c
+	${CC} ${ABI} ${CFLAGS} ${INCLUDE} -c resamp.c
+
+surface.h : surface_defs.h

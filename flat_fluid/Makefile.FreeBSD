@@ -1,0 +1,19 @@
+######################################
+# flat_fluid Makefile for FreeBSD 5.3
+# Jason W. Bacon
+# jbacon@mcw.edu
+#
+# This Makefile requires the following ports/packages to be installed:
+#   math/lapack
+#   math/blas
+#   math/atlas
+
+ABI     = 
+CC      = gcc 
+CFLAGS  = 
+INCLUDE = -I.
+LD      = gcc
+
+LIBS    = -L /usr/local/lib -llapack -lblas -latlas
+
+include Makefile.include

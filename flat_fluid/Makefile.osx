@@ -1,0 +1,11 @@
+ABI	= 
+CC	= gcc 
+CFLAGS	= -DMAC_OSX_SYSTEM -faltivec -framework vecLib \
+          -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+INCLUDE = -I. -I/System/Library/Frameworks/vecLib.framework/Headers
+LD	= gcc
+
+#LDFLAGS = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+LIBS	= /System/Library/Frameworks/vecLib.framework/vecLib
+
+include Makefile.include
