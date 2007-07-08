@@ -1819,7 +1819,7 @@ StudyWidget::slotStudyPartitioningSchemeFullNameLineEditChanged()
 void 
 StudyWidget::slotStudyCommentTextEditChanged()
 {
-   studyMetaData->setComment(studyCommentTextEdit->text());
+   studyMetaData->setComment(studyCommentTextEdit->toPlainText());
 }
 
 /**
@@ -2091,7 +2091,7 @@ StudyTableWidget::slotTableHeaderLineEditChanged()
 void 
 StudyTableWidget::slotTableFooterTextEditChanged()
 {
-   table->setFooter(tableFooterTextEdit->text());
+   table->setFooter(tableFooterTextEdit->toPlainText());
 }
 
 /**
@@ -3017,7 +3017,7 @@ StudyPageReferenceWidget::slotPageReferenceHeaderLineEditChanged()
 void 
 StudyPageReferenceWidget::slotPageReferenceCommentTextEditChanged()
 {
-   pageReference->setComment(pageReferenceCommentTextEdit->text());
+   pageReference->setComment(pageReferenceCommentTextEdit->toPlainText());
 }
 
 /**
@@ -3235,6 +3235,6 @@ StudyMetaAnalysisWidget::slotSaveData()
 void 
 StudyMetaAnalysisWidget::slotMetaAnalysisStudiesTextEditChanged()
 {
-  metaAnalysisStudies->setAll(metaAnalysisStudiesTextEdit->text());
+  metaAnalysisStudies->setAll(metaAnalysisStudiesTextEdit->toPlainText());
 }
 

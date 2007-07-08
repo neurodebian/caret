@@ -39,6 +39,7 @@ class BrainModelVolumeSegmentationStereotaxic : public BrainModelAlgorithm {
       BrainModelVolumeSegmentationStereotaxic(BrainSet* brainSetIn,
                                               const VolumeFile* anatomicalVolumeFileIn,
                                               const int uniformityIterationsIn,
+                                              const bool disconnectEyeFlagIn,
                                               const bool errorCorrectVolumeFlagIn,
                                               const bool errorCorrectSurfaceFlagIn,
                                               const bool maxPolygonsFlagIn,
@@ -82,7 +83,10 @@ class BrainModelVolumeSegmentationStereotaxic : public BrainModelAlgorithm {
       bool flatteningFilesFlag;
       
       /// number of uniformity iterations
-      bool uniformityIterations;
+      int uniformityIterations;
+      
+      /// disconnect the eye flag
+      bool disconnectEyeFlag;
 };
 
 #endif // __BRAIN_MODEL_VOLUME_SEGMENTATION_STEREOTAXIC_H__

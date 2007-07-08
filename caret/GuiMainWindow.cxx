@@ -2450,6 +2450,14 @@ GuiMainWindow::updateStatusBarLabel()
          modeLabel      = "CAPTURE IMAGE REGION";
          leftLabel      = "Select Region";
          break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_START:
+         modeLabel      = "Surface Border ROI";
+         clickLeftLabel = "Select Start Node";
+         break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_END:
+         modeLabel      = "Surface Border ROI";
+         clickLeftLabel = "Select End Node";
+         break;
    }
    
    statusBarMouseModeLabel->setText(modeLabel);
@@ -3498,7 +3506,7 @@ GuiMainWindow::saveSceneColorKeyDialog(std::vector<SceneFile::SceneClass>& mainW
                                        GuiColorKeyDialog* colorKeyDialog)
 {
    if (colorKeyDialog != NULL) {
-      if (colorKeyDialog->isShown()) {
+      if (colorKeyDialog->isVisible()) {
          mainWindowSceneClasses.push_back(colorKeyDialog->saveScene());
       }
    }

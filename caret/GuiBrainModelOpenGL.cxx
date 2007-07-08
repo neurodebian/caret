@@ -1262,6 +1262,116 @@ GuiBrainModelOpenGL::keyTranslationAxes(GuiBrainModelOpenGLKeyEvent& ke)
 }
        
 /**
+ * key processing for contours.
+ */
+void 
+GuiBrainModelOpenGL::keyContourView(GuiBrainModelOpenGLKeyEvent& ke)
+{
+   BrainModelContours* bmc = getDisplayedBrainModelContours();
+   if (bmc == NULL) {
+      return;
+   }
+   
+   //
+   // Panning
+   //
+   float dt[3] = { 0, 0, 0 };
+   if ((ke.key == Qt::Key_Left) &&
+       ke.shiftKeyDown) {
+      if (ke.altKeyDown) {
+         dt[0] = -1;
+      }
+      else {
+         dt[0] = -5;
+      }
+   }
+   if ((ke.key == Qt::Key_Right) &&
+       ke.shiftKeyDown) {
+      if (ke.altKeyDown) {
+         dt[0] = 1;
+      }
+      else {
+         dt[0] = 5;
+      }
+   }
+   if ((ke.key == Qt::Key_Up) &&
+       ke.shiftKeyDown) {
+      if (ke.altKeyDown) {
+         dt[1] = 1;
+      }
+      else {
+         dt[1] = 5;
+      }
+   }
+   if ((ke.key == Qt::Key_Down) &&
+       ke.shiftKeyDown) {
+      if (ke.altKeyDown) {
+         dt[1] = -1;
+      }
+      else {
+         dt[1] = -5;
+      }
+   }
+   if ((dt[0] != 0.0) || (dt[1] != 0.0) || (dt[2] != 0.0)) {
+      float translate[3];
+      bmc->getTranslation(viewingWindowIndex, translate);
+      translate[0] += dt[0];
+      translate[1] += dt[1];
+      translate[2] =  dt[2];
+      bmc->setTranslation(viewingWindowIndex, translate);
+      updateAllGL(this);
+      ke.setKeyEventUsed(true);
+      return;
+   }
+
+   //
+   // Do zooming
+   //
+   float dZoom = 0.0;
+   if ((ke.key == Qt::Key_Up) && 
+       (ke.controlKeyDown)) {
+      if (ke.altKeyDown) {
+         dZoom = 1;
+      }
+      else {
+         dZoom = 5;
+      }
+   }
+   else if ((ke.key == Qt::Key_Down) && 
+            (ke.controlKeyDown)) {
+      if (ke.altKeyDown) {
+         dZoom = -1;
+      }
+      else {
+         dZoom = -5;
+      }
+   }
+   if (dZoom != 0.0) {
+      float scale[3];
+      bmc->getScaling(viewingWindowIndex, scale);
+      scale[0] += dZoom * scale[0] * 0.01;
+      scale[1] += dZoom * scale[1] * 0.01;
+      scale[0] = std::max(scale[0], 0.01f);
+      scale[1] = std::max(scale[1], 0.01f);
+      scale[2] = 1.0;
+      bmc->setScaling(viewingWindowIndex, scale);
+      ke.setKeyEventUsed(true);
+      updateAllGL(this);
+      return;
+   }
+
+   //
+   // Reset view
+   //
+   if (ke.key == Qt::Key_Home) {
+      bmc->setToStandardView(viewingWindowIndex, BrainModelSurface::VIEW_RESET);
+      ke.setKeyEventUsed(true);
+      updateAllGL(this);
+      return;
+   }   
+}
+       
+/**
  * key processing for surface.
  */
 void 
@@ -2098,6 +2208,10 @@ GuiBrainModelOpenGL::keyPressEvent(QKeyEvent* ke)
             break;
          case GuiBrainModelOpenGL::MOUSE_MODE_IMAGE_SUBREGION:
             break;
+         case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_START:
+            break;
+         case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_END:
+            break;
       }
    }
 
@@ -2110,6 +2224,9 @@ GuiBrainModelOpenGL::keyPressEvent(QKeyEvent* ke)
       }
       else if (getDisplayedBrainModelVolume() != NULL) {
          keyVolumeView(kv);
+      }
+      else if (getDisplayedBrainModelContours() != NULL) {
+         keyContourView(kv);
       }
    }
    
@@ -3072,6 +3189,12 @@ GuiBrainModelOpenGL::routeMouseEvent(const GuiBrainModelOpenGLMouseEvent& me)
             break;
          case MOUSE_MODE_IMAGE_SUBREGION:
             mouseImageSubRegion(me);
+            break;
+         case MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_START:
+            mouseSurfaceROISulcalBorderNodeStart(me);
+            break;
+         case MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_END:
+            mouseSurfaceROISulcalBorderNodeEnd(me);
             break;
       }
    }
@@ -5096,6 +5219,10 @@ GuiBrainModelOpenGL::mouseContourView(const GuiBrainModelOpenGLMouseEvent& me)
    const int biggestChange = (abs(me.dy) > abs(me.dx)) ? me.dy : me.dx;
 
    BrainModelContours* bmc = getDisplayedBrainModelContours();
+   if (bmc == NULL) {
+      return;
+   }
+   
    switch(me.event) {
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
          //
@@ -5853,7 +5980,77 @@ GuiBrainModelOpenGL::mouseContourCellMove(const GuiBrainModelOpenGLMouseEvent& m
    }
 }
 
- /**
+/**
+ * mouse process for roi sulcal border start node.
+ */
+void 
+GuiBrainModelOpenGL::mouseSurfaceROISulcalBorderNodeStart(const GuiBrainModelOpenGLMouseEvent& me)
+{
+   switch(me.event) {
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_PRESS:
+         selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_NODE);
+         if (selectedNode.getItemIndex1() >= 0) {
+            GuiSurfaceRegionOfInterestDialog* roi = theMainWindow->getSurfaceRegionOfInterestDialog(false);
+            if (roi != NULL) {               
+               roi->setCreateBorderOpenStartNode(selectedNode.getItemIndex1());
+            }
+         }
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_SHIFT_PRESS:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CONTROL_PRESS:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_SHIFT_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CONTROL_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_ALT_MOVE:
+         break;
+   }
+}
+ 
+/**
+ * mouse process for roi sulcal border end node.
+ */
+void 
+GuiBrainModelOpenGL::mouseSurfaceROISulcalBorderNodeEnd(const GuiBrainModelOpenGLMouseEvent& me)
+{
+   switch(me.event) {
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_PRESS:
+         selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_NODE);
+         if (selectedNode.getItemIndex1() >= 0) {
+            GuiSurfaceRegionOfInterestDialog* roi = theMainWindow->getSurfaceRegionOfInterestDialog(false);
+            if (roi != NULL) {               
+               roi->setCreateBorderOpenEndNode(selectedNode.getItemIndex1());
+            }
+         }
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_SHIFT_PRESS:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CONTROL_PRESS:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_SHIFT_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CONTROL_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_ALT_MOVE:
+         break;
+   }
+}       
+
+/**
   * mouse process for image subregion selection.
   */
 void 

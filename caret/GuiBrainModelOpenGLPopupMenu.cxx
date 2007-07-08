@@ -647,7 +647,9 @@ GuiBrainModelOpenGLPopupMenu::slotShowBorders()
 {
    DisplaySettingsBorders* dsb = brainModelOpenGL->getBrainSet()->getDisplaySettingsBorders();
    dsb->setDisplayBorders(! dsb->getDisplayBorders());
+   dsb->determineDisplayedBorders();
    theMainWindow->updateDisplayControlDialog();  
+   //GuiBrainModelOpenGL::updateAllGL();
 }
 
 /**

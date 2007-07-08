@@ -42,7 +42,8 @@ class BrainModelSurfaceClusterToBorderConverter : public BrainModelAlgorithm {
                                                 BrainModelSurface* bms,
                                                 TopologyFile* tfIn,
                                                 const QString& borderName,
-                                                const std::vector<bool>& inputNodeClusterFlagIn);
+                                                const std::vector<bool>& inputNodeClusterFlagIn,
+                                                const bool projectTheBordersFlagIn);
       
       // destructor
       ~BrainModelSurfaceClusterToBorderConverter();
@@ -66,6 +67,12 @@ class BrainModelSurfaceClusterToBorderConverter : public BrainModelAlgorithm {
          STATUS_WAS_BOUNDARY
       };
 
+      // execute original algorithm that misses some clusters
+      void executeOriginal() throw (BrainModelAlgorithmException);
+      
+      // execute new algorithm
+      void executeNew() throw (BrainModelAlgorithmException);
+      
       // get the boundary neighor count for a node
       int getBoundaryNeighborCount(const int nodeNumber) const;
       
@@ -92,6 +99,9 @@ class BrainModelSurfaceClusterToBorderConverter : public BrainModelAlgorithm {
       
       /// input cluster flag for nodes
       std::vector<bool> inputNodeClusterFlag;
+      
+      /// project the borders flag
+      bool projectTheBordersFlag;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_CLUSTER_TO_BORDER_CONVERTER_H__

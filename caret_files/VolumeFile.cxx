@@ -2523,6 +2523,40 @@ VolumeFile::setVoxel(const std::vector<int> indicies, const float voxelValue)
 }
       
 /**
+ * set all voxels within a rectangle.
+ */
+void 
+VolumeFile::setAllVoxelsInRectangle(const int extentIn[6],
+                                    const float value)
+{
+   int extent[6] = {
+      extentIn[0],
+      extentIn[1],
+      extentIn[2],
+      extentIn[3],
+      extentIn[4],
+      extentIn[5]
+   };
+   
+   clampVoxelDimension(VOLUME_AXIS_X, extent[0]);
+   clampVoxelDimension(VOLUME_AXIS_X, extent[1]);
+   clampVoxelDimension(VOLUME_AXIS_Y, extent[2]);
+   clampVoxelDimension(VOLUME_AXIS_Y, extent[3]);
+   clampVoxelDimension(VOLUME_AXIS_Z, extent[4]);
+   clampVoxelDimension(VOLUME_AXIS_Z, extent[5]);
+
+   for (int i = extent[0]; i < extent[1]; i++) {
+      for (int j = extent[2]; j < extent[3]; j++) {
+         for (int k = extent[4]; k < extent[5]; k++) {
+            for (int m = 0; m < numberOfComponentsPerVoxel; m++) {
+               setVoxel(i, j, k, m, value);
+            }
+         }
+      }
+   }
+}
+
+/**
  * set all of the voxels to a value.
  */
 void 

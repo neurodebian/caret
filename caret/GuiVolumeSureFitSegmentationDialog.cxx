@@ -495,7 +495,7 @@ GuiVolumeSureFitSegmentationDialog::slotSpecFileSelected(const QString& name)
       SpecFile sf;
       sf.readFile(name);
       specFileCommentTextEdit->setPlainText(sf.getFileComment());
-      specFileCommentTextEdit->setModified(false);
+      specFileCommentTextEdit->setWindowModified(false);
    }
    catch (FileException&) {
    }

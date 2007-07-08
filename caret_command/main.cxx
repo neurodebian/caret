@@ -55,6 +55,7 @@
 #include "BrainModelSurfaceMetricOneAndPairedTTest.h"
 #include "BrainModelSurfaceMetricTwinComparison.h"
 #include "BrainModelSurfacePointProjector.h"
+#include "BrainModelSurfaceRegionOfInterest.h"
 #include "BrainModelSurfaceSulcalDepthWithNormals.h"
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "BrainModelSurfaceToVolumeSegmentationConverter.h"
@@ -1479,6 +1480,7 @@ operationVolumeSegmentationStereotaxicSpace(int argc, char* argv[], int argIndex
          << "         [-ecs] \\" << std::endl
          << "         [-flat] \\" << std::endl
          << "         [-mp] \\" << std::endl
+         << "         [-noeye] \\" << std::endl
          //<< "         [-uniform iterations] \\" << std::endl
          << "         <spec-file-name> \\" << std::endl
          << "         <anatomical-volume-file-name> " << std::endl
@@ -1514,6 +1516,8 @@ operationVolumeSegmentationStereotaxicSpace(int argc, char* argv[], int argIndex
          << "      " << std::endl
          << "         -mp    Generate surface with maxmimum number of polygons." << std::endl
          << "      " << std::endl
+         << "         -noeye  Do NOT disconnect eye and strip skull" << std::endl
+         << "      " << std::endl
          //<< "         -uniform iterations    Perform the specified number of iterations" << std::endl
          //<< "                during non-uniformity correction.  The default number of" << std::endl
          //<< "                iterations is " << BrainModelVolumeSegmentationStereotaxic::getDefaultUniformityIterations() << "." << std::endl
@@ -1521,6 +1525,8 @@ operationVolumeSegmentationStereotaxicSpace(int argc, char* argv[], int argIndex
          << "" << std::endl;
       return 0;
    }
+   
+   bool disconnectEyeAndSkull = true;
    
    argIndex++;
    while (argIndex < argc) {
@@ -1545,6 +1551,9 @@ operationVolumeSegmentationStereotaxicSpace(int argc, char* argv[], int argIndex
       }
       else if (arg == "-mp") {
          maxPolygonsFlag = true;
+      }
+      else if (arg == "-noeye") {
+         disconnectEyeAndSkull = false;
       }
       else if (arg == "-uniform") {
          CommandLineUtilities::getNextParameter("Uniformity Iterations",
@@ -1639,6 +1648,7 @@ operationVolumeSegmentationStereotaxicSpace(int argc, char* argv[], int argIndex
    BrainModelVolumeSegmentationStereotaxic segment(&brainSet,
                                                    brainSet.getVolumeAnatomyFile(0),
                                                    uniformityIterations,
+                                                   disconnectEyeAndSkull,
                                                    errorCorrectVolumeFlag,
                                                    errorCorrectSurfaceFlag,
                                                    maxPolygonsFlag,
@@ -3221,6 +3231,67 @@ operationVolumePadVolume(int argc, char* argv[], int argIndex)
    // pad the volume
    //
    volume.padSegmentation(pad);
+   
+   //
+   // Write the volume
+   //
+   writeVolumeFile(volume, outputName, outputLabel);
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
+ * Make a rectangle.
+ */
+static int
+operationVolumeMakeRectangle(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("VOLUME MAKE RECTANGLE", "-volume-make-rectangle");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   VOLUME MAKE RECTANGLE" << std::endl
+         << "      " << programName.toAscii().constData()<< " -volume-make-rectangle \\ " << std::endl
+         << "         <i-min> <i-max> <j-min> <j-max> <k-min> <k-max> <f-voxel-value>\\" << std::endl
+         << "         <input-volume-name> <output-volume-name>" << std::endl
+         << "         " << std::endl
+         << "      Set the voxels within the range [i-min, i-max), ." << std::endl
+         << "      [j-min, j-max), [k-min, k-max) to the specified value." << std::endl
+         << "      " << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   int extent[6];
+   getExtentFromParameters(argc, argv, argIndex, extent);
+   
+   float voxelValue;
+   CommandLineUtilities::getNextParameter("Voxel Value",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          voxelValue);
+   
+   QString inputName, outputName, outputLabel;
+   getInputAndOutputVolumeFileNames(argc, argv, argIndex, inputName, outputName, outputLabel);
+   
+   //
+   // Read the input file
+   //
+   VolumeFile volume;
+   readVolumeFile(volume, inputName);
+   
+   //
+   // set the voxels
+   //
+   volume.setAllVoxelsInRectangle(extent, voxelValue);
    
    //
    // Write the volume
@@ -6685,6 +6756,239 @@ operationSurfaceCrossoverCheck(int argc, char* argv[], int argIndex)
              << FileUtilities::basename(topoFileName).toAscii().constData() << std::endl;
    std::cout << "   Tile Crossovers: " << tileCrossovers << std::endl;
    std::cout << "   Node Crossovers: " << nodeCrossovers << std::endl;
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
+ * Smooth an identified area on a surface.
+ */
+static int
+operationSurfaceRoiCoordReport(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("SURFACE ROI COORD REPORT", "-surface-roi-coord-report");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   SURFACE ROI COORD REPORT" << std::endl
+         << "      " << programName.toAscii().constData() << " -surface-roi-coord-report \\ " << std::endl
+         << "         <output-file-name.txt> \\" << std::endl
+         << "         <input-topo-file-name> \\" << std::endl
+         << "         <input-paint-file-name> \\" << std::endl
+         << "         <i-input-paint-file-column> \\" << std::endl
+         << "         <input-paint-name> \\" << std::endl
+         << "         <input-coord-file-1> \\" << std::endl
+         << "         <input-coord-file-2> \\" << std::endl
+         << "         ...\\" << std::endl
+         << "         <input-coord-file-N" << std::endl
+         << "         " << std::endl
+         << "      Print a report listing the mean X, Y, an Z coordinates for " << std::endl
+         << "      the nodes identified by the paint name.  " << std::endl
+         << "      " << std::endl
+         << "      Note: The paint file column indices start at one." << std::endl
+         << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   QString outputTextFileName;
+   CommandLineUtilities::getNextParameter("Output Text File Name",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          outputTextFileName);
+
+   QString topoFileName;
+   CommandLineUtilities::getNextParameter("Topology File Name",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          topoFileName);
+   
+   QString paintFileName;
+   CommandLineUtilities::getNextParameter("Paint File Name",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          paintFileName);
+   
+   int paintColumnNumber;
+   CommandLineUtilities::getNextParameter("Paint Column Number",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          paintColumnNumber);
+   
+   QString paintName;
+   CommandLineUtilities::getNextParameter("Paint Name",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          paintName);
+   
+   //
+   // Coordinate files
+   //
+   std::vector<QString> inputCoordFileNames;
+   for (int i = (argIndex + 1); i < argc; i++) {
+      inputCoordFileNames.push_back(argv[i]);
+   }
+   const int numInputCoordFiles = static_cast<int>(inputCoordFileNames.size());
+   if (numInputCoordFiles <= 0) {
+      std::cout << "ERROR: No coordinate files are specified." << std::endl;
+      std::exit(-1);
+   }
+   
+   //
+   // Read the spec file into a brain set
+   //
+   SpecFile specFile;
+   for (int i = 0; i < numInputCoordFiles; i++) {
+      specFile.addToSpecFile(SpecFile::fiducialCoordFileTag,
+                             inputCoordFileNames[i],
+                             "",
+                             false);
+   }
+   specFile.addToSpecFile(SpecFile::closedTopoFileTag,
+                          topoFileName,
+                          "",
+                          false);
+   specFile.addToSpecFile(SpecFile::paintFileTag,
+                          paintFileName,
+                          "",
+                          false);
+                          
+   //
+   // Read the spec file into a brain set
+   //
+   QString errorMessage;
+   BrainSet brainSet(true);
+   brainSet.setIgnoreTopologyFileInCoordinateFileHeaderFlag(true);
+   if (brainSet.readSpecFile(specFile, "", errorMessage)) {
+      std::cout << "ERROR: Reading spec file: " << std::endl
+                << errorMessage.toAscii().constData() << std::endl;
+      std::exit(-1);
+   }
+
+   //
+   // Find the paint file column with the proper name
+   //
+   const PaintFile* paintFile = brainSet.getPaintFile();
+   paintColumnNumber--;  // user enters 1..N but index 0..N-1
+   if ((paintColumnNumber < 0) ||
+       (paintColumnNumber >= paintFile->getNumberOfColumns())) {
+      std::cout << "ERROR: Invalid paint column number: "
+                << paintColumnNumber << std::endl;
+      std::exit(-1);
+   }
+   
+   //
+   // Find the index of the paint name
+   //
+   const int paintIndex = paintFile->getPaintIndexFromName(paintName);
+   if (paintIndex < 0) {
+      std::cout << "Unable to find a paint named " << paintName.toAscii().constData() << " in the paint file." << std::endl;
+      std::exit(-1);
+   }
+   
+   //
+   // Find the coordinate files
+   //
+   std::vector<CoordinateFile*> coordFiles;
+   for (int i = 0; i < brainSet.getNumberOfBrainModels(); i++) {
+      BrainModelSurface* bms = brainSet.getBrainModelSurface(i);
+      if (bms != NULL) {
+         coordFiles.push_back(bms->getCoordinateFile());
+      }
+   }
+   const int numCoordFiles = static_cast<int>(coordFiles.size());
+   if (numCoordFiles <= 0) {
+      std::cout << "ERROR: No surfaces were read." << std::endl;
+      std::exit(-1);
+   }
+
+   //
+   // Get topology file
+   //
+   if (brainSet.getNumberOfTopologyFiles() < 0) {
+      std::cout << "ERROR: No topology file was read." << std::endl;
+      std::exit(-1);
+   }
+   else if (brainSet.getNumberOfTopologyFiles() > 1) {
+      std::cout << "ERROR: There is more than one topology file." << std::endl;
+      std::exit(-1);
+   }
+   const TopologyFile* topoFile = brainSet.getTopologyFile(0);
+   
+   //
+   // Verify surface has nodes
+   //
+   const int numNodes = brainSet.getNumberOfNodes();
+   if (numNodes <= 0) {
+      std::cout << "The surfaces contain no nodes." << std::endl;
+      std::exit(-1);
+   }
+   
+   //
+   // Create a topology helper
+   //
+   const TopologyHelper* topologyHelper = topoFile->getTopologyHelper(false, true, false);
+   
+   //
+   // Flag the nodes for the ROI
+   //
+   std::vector<bool> roiNodes(numNodes);
+   for (int i = 0; i < numNodes; i++) {
+      roiNodes[i] = false;
+      if (topologyHelper->getNodeHasNeighbors(i)) {
+         if (paintFile->getPaint(i, paintColumnNumber) == paintIndex) {
+            roiNodes[i] = true;
+         }
+      }
+   }
+
+   //
+   // Generate the report
+   //   
+   BrainModelSurfaceRegionOfInterest surfaceROI(&brainSet,
+                                                brainSet.getBrainModelSurface(0),
+                                                BrainModelSurfaceRegionOfInterest::OPERATION_SURFACE_XYZ_MEANS_REPORT,
+                                                roiNodes);
+   surfaceROI.setSurfaceMeansReportControlsAndOptions(coordFiles);
+   try {
+      surfaceROI.execute();
+   }
+   catch (BrainModelAlgorithmException& e) {
+      std::cout << e.whatQString().toAscii().constData() << std::endl;
+      std::exit(-1);
+   }
+   
+   //
+   // File for text report
+   //
+   TextFile textReportFile;
+   textReportFile.setText(surfaceROI.getReportText());
+
+   //
+   // Write the text file
+   //
+   try {
+      textReportFile.writeFile(outputTextFileName);
+   }
+   catch (FileException& e) {
+      std::cout << e.whatQString().toAscii().constData() << std::endl;
+   }
    
    return 0;
 }
@@ -10829,6 +11133,355 @@ operationDeformationMapPathUpdate(int argc, char* argv[], int argIndex)
 }
 
 /*----------------------------------------------------------------------------------------
+ * Metric file set column name
+ */
+static int
+operationMetricFileSetColumnName(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("METRIC/SHAPE FILE SET COLUMN NAME", "-metric-or-shape-set-column-name");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   METRIC/SHAPE FILE SET COLUMN NAME" << std::endl
+         << "      " << programName.toAscii().constData() << " -metric-or-shape-set-column-name \\ " << std::endl
+         << "         <column-number> \\ " << std::endl
+         << "         <new-column-name> \\" << std::endl
+         << "         <metric-or-shape-file>  " << std::endl
+         << "         " << std::endl
+         << "      Set the name of a column in the metric/shape file." << std::endl
+         << "         " << std::endl
+         << "      Note: Column numbers start at one." << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   int columnNumber;
+   CommandLineUtilities::getNextParameter("Column Number",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          columnNumber);
+   QString newColumnName;
+   CommandLineUtilities::getNextParameter("New Column Name",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          newColumnName);
+   QString metricFileName;
+   CommandLineUtilities::getNextParameter("Metric/Shape File",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          metricFileName);
+
+   columnNumber--;
+   try {
+      MetricFile metricFile;
+      metricFile.readFile(metricFileName);
+      if ((columnNumber >= 0) && (columnNumber < metricFile.getNumberOfColumns())) {
+         metricFile.setColumnName(columnNumber, newColumnName);
+      }
+      else {
+         throw FileException("Invalid column number.");
+      }
+      metricFile.writeFile(metricFileName);
+   }
+   catch (FileException& e) {
+      std::cout << "ERROR" << e.whatQString().toAscii().constData() << std::endl;
+      exit(-1);
+   }
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
+ * Metric file info
+ */
+static int
+operationMetricFileInfo(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("METRIC/SHAPE FILE INFORMATION", "-metric-or-shape-file-info");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   METRIC/SHAPE FILE INFORMATION" << std::endl
+         << "      " << programName.toAscii().constData() << " -metric-or-shape-file-info \\ " << std::endl
+         << "         <metric-or-shape-file>  " << std::endl
+         << "         " << std::endl
+         << "      Print information about contents of a metric or shape file." << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   QString metricFileName;
+   CommandLineUtilities::getNextParameter("Metric/Shape File",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          metricFileName);
+
+   try {
+      std::cout << "Filename: " 
+                << FileUtilities::basename(metricFileName).toAscii().constData()
+                << std::endl;
+      MetricFile metricFile;
+      metricFile.readFile(metricFileName);
+      
+      const int numNodes = metricFile.getNumberOfNodes();
+      const int numCols  = metricFile.getNumberOfColumns();
+      std::cout << "Number of Nodes: " << numNodes << std::endl;
+      std::cout << "Number of Columns: " << numCols << std::endl;
+      
+      std::cout << QString("column").rightJustified(6).toAscii().constData() << " "
+                << QString("min-value").rightJustified(12).toAscii().constData() << " "
+                << QString("max-value").rightJustified(12).toAscii().constData() << "   "
+                << "column-name"
+                << std::endl;
+      for (int i = 0; i < numCols; i++) {
+         float minVal, maxVal;
+         metricFile.getDataColumnMinMax(i, minVal, maxVal);
+         const QString colString = QString::number(i + 1).rightJustified(6);
+         const QString minString = QString::number(minVal, 'f', 3).rightJustified(12);
+         const QString maxString = QString::number(maxVal, 'f', 3).rightJustified(12);
+         std::cout << colString.toAscii().constData() << " "
+                   << minString.toAscii().constData() << " "
+                   << maxString.toAscii().constData() << "   "
+                   << metricFile.getColumnName(i).toAscii().constData()
+                   << std::endl;
+      }
+   }
+   catch (FileException& e) {
+      std::cout << "ERROR" << e.whatQString().toAscii().constData() << std::endl;
+      exit(-1);
+   }
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
+ * Metric file set column to scalar value
+ */
+static int
+operationMetricFileSetColumnToScalar(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("METRIC/SHAPE FILE SET COLUMN TO VALUE", "-metric-or-shape-set-column-to-value");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   METRIC/SHAPE FILE SET COLUMN TO VALUE" << std::endl
+         << "      " << programName.toAscii().constData() << " -metric-or-shape-set-column-to-value \\ " << std::endl
+         << "         <column-number> \\ " << std::endl
+         << "         <new-value> \\" << std::endl
+         << "         <metric-or-shape-file>  " << std::endl
+         << "         " << std::endl
+         << "      Set the value for all nodes in a column." << std::endl
+         << "         " << std::endl
+         << "      Note: Column numbers start at one." << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   int columnNumber;
+   CommandLineUtilities::getNextParameter("Column Number",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          columnNumber);
+   float value;
+   CommandLineUtilities::getNextParameter("New Value",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          value);
+   QString metricFileName;
+   CommandLineUtilities::getNextParameter("Metric/Shape File",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          metricFileName);
+
+   columnNumber--;
+   try {
+      MetricFile metricFile;
+      metricFile.readFile(metricFileName);
+      if ((columnNumber >= 0) && (columnNumber < metricFile.getNumberOfColumns())) {
+         metricFile.setColumnAllNodesToScalar(columnNumber, value);
+      }
+      else {
+         throw FileException("Invalid column number.");
+      }
+      metricFile.writeFile(metricFileName);
+      std::cout << metricFile.getColumnName(columnNumber).toAscii().constData()
+                << " has been set to "
+                << value
+                << std::endl;
+   }
+   catch (FileException& e) {
+      std::cout << "ERROR" << e.whatQString().toAscii().constData() << std::endl;
+      exit(-1);
+   }
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
+ * Metric file creation
+ */
+static int
+operationMetricFileCreate(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("METRIC/SHAPE FILE CREATE", "-metric-or-shape-create");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   METRIC/SHAPE FILE CREATE" << std::endl
+         << "      " << programName.toAscii().constData() << " -metric-or-shape-create \\ " << std::endl
+         << "         <number-of-nodes> \\ " << std::endl
+         << "         <number-of-columns> \\" << std::endl
+         << "         <output-metric-or-shape-file>  " << std::endl
+         << "         " << std::endl
+         << "      Create a metric or shape file with the specified number of nodes and" << std::endl
+         << "      columns.  All values are initialized to zero." << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   int numberOfNodes;
+   CommandLineUtilities::getNextParameter("Number of Nodes",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          numberOfNodes);
+   int numberOfColumns;
+   CommandLineUtilities::getNextParameter("Number of Columns",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          numberOfColumns);
+   QString outputMetricFileName;
+   CommandLineUtilities::getNextParameter("Output Metric/Shape File",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          outputMetricFileName);
+
+   try {
+      MetricFile outputMetricFile(numberOfNodes, numberOfColumns);
+      outputMetricFile.writeFile(outputMetricFileName);
+   }
+   catch (FileException& e) {
+      std::cout << "ERROR" << e.whatQString().toAscii().constData() << std::endl;
+      exit(-1);
+   }
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
+ * Metric correlation coefficient map
+ */
+static int
+operationMetricCorrelationCoefficientMap(int argc, char* argv[], int argIndex)
+{
+   if ((argIndex < 0) || (argc == 2)) {
+      if (argIndex == HELP_BRIEF) {
+         printBriefHelp("METRIC/SHAPE FILE CORRELATION COEFFICIENT MAP", "-metric-or-shape-correlation-map");
+         return 0;
+      }
+      printSeparatorLine();
+      std::cout
+         << "   METRIC/SHAPE FILE CORRELATION COEFFICIENT MAP" << std::endl
+         << "      " << programName.toAscii().constData() << " -metric-or-shape-correlation-map \\ " << std::endl
+         << "         <input-metric-or-shape-file-A> \\ " << std::endl
+         << "         <input-metric-or-shape file-B> \\" << std::endl
+         << "         <output-metric-or-shape-file>  " << std::endl
+         << "         " << std::endl
+         << "      For each node, compute a correlation coefficient from the node's values" << std::endl
+         << "      in the two input metric files.  The two input files must have the same" << std::endl
+         << "      number of columns and column 'x' in the two files should contain data" << std::endl
+         << "      for the same subject." << std::endl
+         << std::endl;
+      return 0;
+   }
+   
+   //
+   // Get the parameters
+   //
+   QString inputMetricFileNameA;
+   CommandLineUtilities::getNextParameter("Input Metric/Shape File A",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          inputMetricFileNameA);
+   QString inputMetricFileNameB;
+   CommandLineUtilities::getNextParameter("Input Metric/Shape File B",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          inputMetricFileNameB);
+   QString outputMetricFileName;
+   CommandLineUtilities::getNextParameter("Output Metric/Shape File",
+                                          argc,
+                                          argv,
+                                          true,
+                                          argIndex,
+                                          outputMetricFileName);
+
+   try {
+      MetricFile metricFileA, metricFileB;
+      metricFileA.readFile(inputMetricFileNameA);
+      metricFileB.readFile(inputMetricFileNameB);
+      MetricFile* outputMetricFile = MetricFile::computeCorrelationCoefficientMap(&metricFileA,
+                                                                                  &metricFileB);
+      outputMetricFile->writeFile(outputMetricFileName);
+      delete outputMetricFile;
+      outputMetricFile = NULL;
+   }
+   catch (FileException& e) {
+      std::cout << "ERROR" << e.whatQString().toAscii().constData() << std::endl;
+      exit(-1);
+   }
+   
+   return 0;
+}
+
+/*----------------------------------------------------------------------------------------
  * Composite columns in metric files
  */
 static int
@@ -13385,6 +14038,16 @@ printHelp(int argc, char* argv[], const int helpNumber)
    
    operationMetricStatisticsCoordinateDifference(argc, argv, helpNumber);
    
+   operationMetricCorrelationCoefficientMap(argc, argv, helpNumber);
+   
+   operationMetricFileInfo(argc, argv, helpNumber);
+   
+   operationMetricFileSetColumnName(argc, argv, helpNumber);
+   
+   operationMetricFileSetColumnToScalar(argc, argv, helpNumber);
+   
+   operationMetricFileCreate(argc, argv, helpNumber);
+   
    operationMetricStatisticsAnovaOneWay(argc, argv, helpNumber);
    
    operationMetricStatisticsInterhemisphericClusters(argc, argv, helpNumber);
@@ -13449,6 +14112,8 @@ printHelp(int argc, char* argv[], const int helpNumber)
    
    operationSurfaceRegistrationSpherical(argc, argv, helpNumber);
    
+   operationSurfaceRoiCoordReport(argc, argv, helpNumber);
+   
    operationSurfaceSphericalMultiResMorphing(argc, argv, helpNumber);
    
    operationSurfaceSulcalDepth(argc, argv, helpNumber);
@@ -13512,6 +14177,8 @@ printHelp(int argc, char* argv[], const int helpNumber)
    operationVolumeIntersectVolumeWithSurface(argc, argv, helpNumber);
    
    operationVolumeMakePlane(argc, argv, helpNumber);
+   
+   operationVolumeMakeRectangle(argc, argv, helpNumber);
    
    operationVolumeMakeShell(argc, argv, helpNumber);
    
@@ -13702,6 +14369,21 @@ main(int argc, char* argv[])
       else if (operation == "-metric-or-shape-copy-columns-to-new-file") {
          result = operationMetricCopyColumnsToNewFile(argc, argv, 1);
       }
+      else if (operation == "-metric-or-shape-correlation-map") {
+         result = operationMetricCorrelationCoefficientMap(argc, argv, 1);
+      }
+      else if (operation == "-metric-or-shape-file-info") {
+         result = operationMetricFileInfo(argc, argv, 1);
+      }
+      else if (operation == "-metric-or-shape-set-column-name") {
+         result = operationMetricFileSetColumnName(argc, argv, 1);
+      }
+      else if (operation == "-metric-or-shape-set-column-to-value") {
+         result = operationMetricFileSetColumnToScalar(argc, argv, 1);
+      }
+      else if (operation == "-metric-or-shape-create") {
+         result = operationMetricFileCreate(argc, argv, 1);
+      }
       else if (operation == "-metric-or-shape-stat-anova-one-way") {
          result = operationMetricStatisticsAnovaOneWay(argc, argv, 1);
       }
@@ -13813,6 +14495,9 @@ main(int argc, char* argv[])
       else if (operation == "-show-scene") {
          result = operationShowScene(argc, argv, 1);
       }
+      else if (operation == "-surface-roi-coord-report") {
+         result = operationSurfaceRoiCoordReport(argc, argv, 1);
+      }
       else if (operation == "-surface-smooth-area") {
          result = operationSurfaceSmoothArea(argc, argv, 1);
       }
@@ -13896,6 +14581,9 @@ main(int argc, char* argv[])
       }
       else if (operation == "-volume-make-plane") {
          result = operationVolumeMakePlane(argc, argv, 1);
+      }
+      else if (operation == "-volume-make-rectangle") {
+         result = operationVolumeMakeRectangle(argc, argv, 1);
       }
       else if (operation == "-volume-make-shell") {
          result = operationVolumeMakeShell(argc, argv, 1);

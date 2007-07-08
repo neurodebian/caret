@@ -182,7 +182,8 @@ BrainModelSurfacePaintToBorderConverter::execute() throw (BrainModelAlgorithmExc
                                                                             bms,
                                                                             topologyFile,
                                                                             paintFile->getPaintNameFromIndex(paintIndex),
-                                                                            nodeInPaintCluster);
+                                                                            nodeInPaintCluster,
+                                                                            false);
                   borderGenerator.execute();
                   
                   //

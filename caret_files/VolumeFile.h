@@ -586,6 +586,10 @@ class VolumeFile : public AbstractFile {
       /// set all of the voxels to a value
       void setAllVoxels(const float value);
       
+      /// set all voxels within a rectangle
+      void setAllVoxelsInRectangle(const int extent[6],
+                                   const float value);
+                                   
       /// set all of the voxels in a slice
       void setAllVoxelsInSlice(const VOLUME_AXIS axis, const int sliceNumber,
                                const float value);

@@ -377,7 +377,7 @@ GuiColorKeyDialog::updateColorLabel(const int indx)
    QPalette pal;
    pal.setColor(QPalette::Window, labelColor);
    if (nameTable[indx].highlightedFlag) {
-      pal.setColor(QColorGroup::Window, labelColor);
+      pal.setColor(QPalette::Window, labelColor);
    }
    colorLabel->setAutoFillBackground(autoFill);
    colorLabel->setBackgroundRole(backgroundRole);

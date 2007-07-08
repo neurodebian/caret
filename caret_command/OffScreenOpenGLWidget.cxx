@@ -62,7 +62,7 @@ OffScreenOpenGLWidget::drawToImage(BrainSet* bs,
    
    brainSet = bs;
    brainModel = bm;
-   imageOut.reset();
+   imageOut = QImage();  // ".reset()" should not be used
    
    PreferencesFile* pf = brainSet->getPreferencesFile();
   

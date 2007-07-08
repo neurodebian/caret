@@ -84,6 +84,12 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// set node for geodesic query
       void setNodeForGeodesicQuery(const int nodeNumber);
       
+      /// set open border start node
+      void setCreateBorderOpenStartNode(const int nodeNumber);
+      
+      /// set open border end node
+      void setCreateBorderOpenEndNode(const int nodeNumber);
+      
    private slots:
       /// called when dialog closed
       void close();
@@ -211,6 +217,18 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// called to run compute integrated folding index
       void slotComputeIntegratedFoldingIndex();
       
+      /// called to create a border from the ROI
+      void slotCreateBorderFromROIPushButton();
+      
+      /// called to set name of border for border from ROI
+      void slotCreateBorderFromROINamePushButton();
+      
+      /// called to select start node for border from ROI
+      void slotCreateBorderFromROIStartNodePushButton();
+      
+      /// called to select start node for border from ROI
+      void slotCreateBorderFromROIEndNodePushButton();
+      
    private:
    
       /// operation mode
@@ -220,6 +238,7 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
          OPERATION_MODE_ASSIGN_SURFACE_SHAPE,
          OPERATION_MODE_COMPUTE_INTEGRATED_FOLDING_INDEX,
          OPERATION_MODE_CREATE_BORDERS_FROM_CLUSTERS,
+         OPERATION_MODE_CREATE_BORDERS_FROM_ROI,
          OPERATION_MODE_CREATE_VOLUME_ROI,
          OPERATION_MODE_DISCONNECT_NODES,
          OPERATION_MODE_GEODESIC,
@@ -286,6 +305,9 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       
       /// create the borders around clusters section
       void createOperationsBordersAroundClusters();
+      
+      /// create the border from ROI
+      void createOperationsBordersFromROI();
       
       /// create the create volume ROI operation section
       void createOperationCreateVolumeROI();
@@ -412,10 +434,10 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       QVBoxLayout* metricOutputLayout;
       
       /// line edit for lower metric threshold
-      QLineEdit* metricLowerThresholdLineEdit;
+      QDoubleSpinBox* metricLowerThresholdDoubleSpinBox;
       
       /// line edit for upper metric threshold
-      QLineEdit* metricUpperThresholdLineEdit;
+      QDoubleSpinBox* metricUpperThresholdDoubleSpinBox;
       
       /// metric all nodes radio button
       QRadioButton* metricAllNodesRadioButton;
@@ -519,6 +541,9 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// create borders around clusters widget
       QWidget* operationCreateBordersFromClustersWidget;
       
+      /// create border from ROI widget
+      QWidget* operationCreateBordersFromROIWidget;
+      
       /// volume ROI operation widget
       QWidget* operationCreateVolumeRoiWidget;
       
@@ -574,10 +599,10 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       QWidget* nodesWithShapeQVBox;
       
       /// shape lower threshold line edit
-      QLineEdit* shapeLowerThresholdLineEdit;
+      QDoubleSpinBox* shapeLowerThresholdDoubleSpinBox;
 
       /// shape upper threshold line edit
-      QLineEdit* shapeUpperThresholdLineEdit;
+      QDoubleSpinBox* shapeUpperThresholdDoubleSpinBox;
       
       /// shape radio button
       QRadioButton* shapeAllNodesRadioButton;
@@ -595,7 +620,7 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       QLineEdit* metricColumnAssignNameLineEdit;
       
       /// metric column assign line 
-      QLineEdit* metricValueLineEdit;
+      QDoubleSpinBox* metricValueDoubleSpinBox;
       
       /// surface shape column assign combo box
       GuiNodeAttributeColumnSelectionComboBox* surfaceShapeColumnAssignComboBox;
@@ -604,7 +629,7 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       QLineEdit* surfaceShapeColumnAssignNameLineEdit;
       
       /// surface shape column assign line 
-      QLineEdit* surfaceShapeValueLineEdit;
+      QDoubleSpinBox* surfaceShapeValueDoubleSpinBox;
       
       /// geodesic metric file column combo box
       GuiNodeAttributeColumnSelectionComboBox* geodesicMetricColumnComboBox;
@@ -639,11 +664,35 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// line edit for name for border around clusters
       QLineEdit* clusterBorderNameLineEdit;
       
+      /// auto project borders around clusters
+      QCheckBox* clusterBorderAutoProjectCheckBox;
+      
       /// distortion correction for statistical report
       GuiNodeAttributeColumnSelectionComboBox* distortionCorrectionMetricColumnComboBox;
 
       /// tab widget for dialog
       QTabWidget* tabWidget;
+      
+      /// name for create border from ROI line edit
+      QLineEdit* createBorderFromROINameLineEdit;
+
+      /// create border automatic radio button
+      QRadioButton* createBorderFromROIAutomaticRadioButton;
+      
+      /// create border choose nodes radio button
+      QRadioButton* createBorderFromROIManualRadioButton;
+      
+      /// create border start node spin box
+      QSpinBox* createBorderFromROIStartNodeSpinBox;
+      
+      /// create border end node spin box
+      QSpinBox* createBorderFromROIEndNodeSpinBox;
+      
+      /// create border from roi node selection widget
+      QWidget* createBorderFromROINodeSelectionWidget;
+      
+      /// create border from roi sampling density
+      QDoubleSpinBox* createBorderFromROISamplingDensityDoubleSpinBox;
 };
 
 #endif // __VE_GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__

@@ -522,7 +522,7 @@ GuiMapStereotaxicFocusDialog::loadFocusSlot()
        (studyNumber >= ff->getNumberOfStudyInfo())) {
       studyNumber = ff->getNumberOfStudyInfo();
    }
-   focusStudyComboBox->setCurrentItem(studyNumber);
+   focusStudyComboBox->setCurrentIndex(studyNumber);
 }
 
 /**
@@ -884,7 +884,7 @@ void
 GuiMapStereotaxicFocusDialog::slotUpdateStudyNumberComboBox()
 {
    const bool noneFlag = (focusStudyComboBox->currentText() == noneStudyName);
-   const int oldIndx = focusStudyComboBox->currentItem();
+   const int oldIndx = focusStudyComboBox->currentIndex();
    
    focusStudyComboBox->clear();
    
@@ -906,13 +906,13 @@ GuiMapStereotaxicFocusDialog::slotUpdateStudyNumberComboBox()
    focusStudyComboBox->addItem(noneStudyName);
    
    if (noneFlag) {
-      focusStudyComboBox->setCurrentItem(noneIndex);
+      focusStudyComboBox->setCurrentIndex(noneIndex);
    }
    else if ((oldIndx >= 0) && (oldIndx < numStudys)) {
-      focusStudyComboBox->setCurrentItem(oldIndx);
+      focusStudyComboBox->setCurrentIndex(oldIndx);
    }
    else {
-      focusStudyComboBox->setCurrentItem(noneIndex);
+      focusStudyComboBox->setCurrentIndex(noneIndex);
    }
 }      
 

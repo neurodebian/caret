@@ -108,7 +108,9 @@ class GuiBrainModelOpenGLMouseEvent;
          MOUSE_MODE_TRANSFORMATION_MATRIX_AXES,
          MOUSE_MODE_TRANSFORMATION_MATRIX_SET_TRANSLATE,
          MOUSE_MODE_VOLUME_PAINT_EDIT,
-         MOUSE_MODE_IMAGE_SUBREGION
+         MOUSE_MODE_IMAGE_SUBREGION,
+         MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_START,
+         MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_END
       };
       
        /// Constructor
@@ -285,6 +287,9 @@ class GuiBrainModelOpenGLMouseEvent;
        /// update the node display flags
        static void updateNodeDisplayFlags(const int numNodes);
        
+       /// key processing for contours
+       void keyContourView(GuiBrainModelOpenGLKeyEvent& ke);
+       
        /// key processing for surface
        void keySurfaceView(GuiBrainModelOpenGLKeyEvent& ke);
        
@@ -365,6 +370,12 @@ class GuiBrainModelOpenGLMouseEvent;
        
        /// mouse process for image subregion selection
        void mouseImageSubRegion(const GuiBrainModelOpenGLMouseEvent& me);
+       
+       /// mouse process for roi sulcal border start node
+       void mouseSurfaceROISulcalBorderNodeStart(const GuiBrainModelOpenGLMouseEvent& me);
+       
+       /// mouse process for roi sulcal border end node
+       void mouseSurfaceROISulcalBorderNodeEnd(const GuiBrainModelOpenGLMouseEvent& me);
        
        /// mouse process for contour transforms in view mode
        void mouseContourView(const GuiBrainModelOpenGLMouseEvent& me);

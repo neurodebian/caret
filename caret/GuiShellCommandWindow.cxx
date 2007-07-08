@@ -28,6 +28,7 @@
 
 #include <QGlobalStatic>
 #include <QComboBox>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>

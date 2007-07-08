@@ -46,6 +46,7 @@ BrainModelVolumeSegmentationStereotaxic::BrainModelVolumeSegmentationStereotaxic
                                                 BrainSet* brainSetIn,
                                                 const VolumeFile* anatomicalVolumeFileIn,
                                                 const int uniformityIterationsIn,
+                                                const bool disconnectEyeFlagIn,
                                                 const bool errorCorrectVolumeFlagIn,
                                                 const bool errorCorrectSurfaceFlagIn,
                                                 const bool maxPolygonsFlagIn,
@@ -53,6 +54,7 @@ BrainModelVolumeSegmentationStereotaxic::BrainModelVolumeSegmentationStereotaxic
    : BrainModelAlgorithm(brainSetIn),
      anatomicalVolumeFile(anatomicalVolumeFileIn)
 {
+   disconnectEyeFlag = disconnectEyeFlagIn;
    uniformityIterations = uniformityIterationsIn;
    errorCorrectVolumeFlag = errorCorrectVolumeFlagIn;
    errorCorrectSurfaceFlag = errorCorrectSurfaceFlagIn;
@@ -269,7 +271,7 @@ BrainModelVolumeSegmentationStereotaxic::generateSegmentation(
    //
    // Get the peaks and adjust the gray peak a little bit low
    //
-   const int grayOffset = -3;
+   const int grayOffset = 0; //-3;
    const float grayPeak = grayWhiteHistogram.getDataValueForBucket(grayPeakBucketNumber
                                                                    + grayOffset);
    const float whitePeak = grayWhiteHistogram.getDataValueForBucket(whitePeakBucketNumber);
@@ -301,7 +303,7 @@ BrainModelVolumeSegmentationStereotaxic::generateSegmentation(
                                                grayPeak,
                                                0.0,
                                                brainSet->getStructure().getType(),
-                                               true,  // eye
+                                               disconnectEyeFlag,  // eye
                                                true,  // hindbrain
                                                true,  // high thresh
                                                true,   // cut corpus callosum

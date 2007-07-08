@@ -35,6 +35,7 @@
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -66,6 +67,7 @@
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "BrainSet.h"
 #include "ColorFile.h"
+#include "DisplaySettingsBorders.h"
 #include "DisplaySettingsMetric.h"
 #include "DisplaySettingsSurface.h"
 #include "DisplaySettingsSurfaceShape.h"
@@ -87,7 +89,6 @@
 #include "MathUtilities.h"
 #include "MetricFile.h"
 #include "NameIndexSort.h"
-#include <QDoubleSpinBox>
 #include "QtUtilities.h"
 #include "PaintFile.h"
 #include "ProbabilisticAtlasFile.h"
@@ -794,8 +795,8 @@ GuiSurfaceRegionOfInterestDialog::selectNodesMetric()
       return;
    }
    
-   const float lowMetric  = metricLowerThresholdLineEdit->text().toFloat();
-   const float highMetric = metricUpperThresholdLineEdit->text().toFloat();
+   const float lowMetric  = metricLowerThresholdDoubleSpinBox->value();
+   const float highMetric = metricUpperThresholdDoubleSpinBox->value();
    
    if (checkAllNodes) {
       for (int i = 0; i < numNodes; i++) {
@@ -904,8 +905,8 @@ GuiSurfaceRegionOfInterestDialog::selectNodesShape()
       return;
    }
    
-   const float lowShape  = shapeLowerThresholdLineEdit->text().toFloat();
-   const float highShape = shapeUpperThresholdLineEdit->text().toFloat();
+   const float lowShape  = shapeLowerThresholdDoubleSpinBox->value();
+   const float highShape = shapeUpperThresholdDoubleSpinBox->value();
    
    if (checkAllNodes) {
       for (int i = 0; i < numNodes; i++) {
@@ -1639,6 +1640,8 @@ GuiSurfaceRegionOfInterestDialog::createQuerySelectionPage()
                                  "Compute Integrated Folding Index");
    operationComboBox->insertItem(OPERATION_MODE_CREATE_BORDERS_FROM_CLUSTERS,
                                  "Create Borders Around Clusters");
+   operationComboBox->insertItem(OPERATION_MODE_CREATE_BORDERS_FROM_ROI,
+                                 "Create Open (Linear) Border from ROI");
    operationComboBox->insertItem(OPERATION_MODE_CREATE_VOLUME_ROI,
                                  "Create Volume ROI from Selected Nodes");
    operationComboBox->insertItem(OPERATION_MODE_DISCONNECT_NODES,
@@ -1692,6 +1695,12 @@ GuiSurfaceRegionOfInterestDialog::createQuerySelectionPage()
    //
    createOperationsBordersAroundClusters();
    operationsWidgetStack->addWidget(operationCreateBordersFromClustersWidget);
+   
+   //
+   // Create border from ROI widget
+   //
+   createOperationsBordersFromROI();
+   operationsWidgetStack->addWidget(operationCreateBordersFromROIWidget);
    
    //
    // create the create volume roi operations widget
@@ -1798,9 +1807,13 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignMetric()
    // Metric value and assign button
    //
    QLabel* valueLabel = new QLabel("New Value "); 
-   metricValueLineEdit = new QLineEdit;
-   metricValueLineEdit->setFixedWidth(150);
-   metricValueLineEdit->setText("0.0");
+   metricValueDoubleSpinBox = new QDoubleSpinBox;
+   metricValueDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
+   metricValueDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   metricValueDoubleSpinBox->setSingleStep(1.0);
+   metricValueDoubleSpinBox->setDecimals(3);
+   metricValueDoubleSpinBox->setFixedWidth(150);
+   metricValueDoubleSpinBox->setValue(0.0);
    QPushButton* assignMetricPushButton = new QPushButton("Assign Metric");
    assignMetricPushButton->setFixedSize(assignMetricPushButton->sizeHint());
    assignMetricPushButton->setAutoDefault(false);
@@ -1808,7 +1821,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignMetric()
                     this, SLOT(slotAssignMetricToNodes()));
    QHBoxLayout* assignLayout = new QHBoxLayout;
    assignLayout->addWidget(valueLabel);
-   assignLayout->addWidget(metricValueLineEdit);
+   assignLayout->addWidget(metricValueDoubleSpinBox);
    assignLayout->addWidget(new QLabel("  "));
    assignLayout->addWidget(assignMetricPushButton);
    assignLayout->addStretch();
@@ -1821,6 +1834,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignMetric()
    metricLayout->setSpacing(3);
    metricLayout->addLayout(columnLayout);
    metricLayout->addLayout(assignLayout);
+   metricLayout->addStretch();
 }
 
 /**
@@ -1864,7 +1878,7 @@ GuiSurfaceRegionOfInterestDialog::slotAssignMetricToNodes()
    //
    // Assign the metric index to the nodes
    //
-   const float value = metricValueLineEdit->text().toFloat();
+   const float value = metricValueDoubleSpinBox->value();
    for (int i = 0; i < numNodes; i++) {
       if (nodeInROI[i]) {
          mf->setValue(i, metricColumn, value);
@@ -1895,6 +1909,330 @@ GuiSurfaceRegionOfInterestDialog::slotAssignMetricToNodes()
 }
 
 /**
+ * create the border from ROI.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::createOperationsBordersFromROI()
+{
+   //
+   // Border info widgets
+   //
+   QPushButton* borderNamePushButton = new QPushButton("Name...");
+   borderNamePushButton->setAutoDefault(false);
+   borderNamePushButton->setFixedSize(borderNamePushButton->sizeHint());
+   QObject::connect(borderNamePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotCreateBorderFromROINamePushButton()));
+   createBorderFromROINameLineEdit = new QLineEdit;
+   createBorderFromROINameLineEdit->setMaximumWidth(250);
+   QLabel* densityLabel = new QLabel("Sampling Density");
+   createBorderFromROISamplingDensityDoubleSpinBox = new QDoubleSpinBox;
+   createBorderFromROISamplingDensityDoubleSpinBox->setMinimum(0.01);
+   createBorderFromROISamplingDensityDoubleSpinBox->setMaximum(100000.0);
+   createBorderFromROISamplingDensityDoubleSpinBox->setSingleStep(1.0);
+   createBorderFromROISamplingDensityDoubleSpinBox->setDecimals(2);
+   createBorderFromROISamplingDensityDoubleSpinBox->setValue(2.0);
+   createBorderFromROISamplingDensityDoubleSpinBox->setMaximumWidth(100);
+   
+   //
+   // Border info group box and layout
+   //
+   QGroupBox* borderGroupBox = new QGroupBox("Border Information");
+   QGridLayout* borderGroupLayout = new QGridLayout(borderGroupBox);
+   borderGroupLayout->addWidget(borderNamePushButton, 0, 0);
+   borderGroupLayout->addWidget(createBorderFromROINameLineEdit, 0, 1);
+   borderGroupLayout->addWidget(densityLabel, 0, 2);
+   borderGroupLayout->addWidget(createBorderFromROISamplingDensityDoubleSpinBox, 0, 3);
+   
+   //
+   // Node selection options
+   //
+   createBorderFromROIAutomaticRadioButton   = new QRadioButton("Automatic");
+   createBorderFromROIManualRadioButton = new QRadioButton("Manual");
+   QLabel* startNodeLabel = new QLabel("Start Node");
+   QLabel* endNodeLabel   = new QLabel("End Node");
+   createBorderFromROIStartNodeSpinBox = new QSpinBox;
+   createBorderFromROIStartNodeSpinBox->setMinimum(0);
+   createBorderFromROIStartNodeSpinBox->setMaximum(std::numeric_limits<int>::max());
+   createBorderFromROIStartNodeSpinBox->setSingleStep(1);
+   createBorderFromROIEndNodeSpinBox = new QSpinBox;
+   createBorderFromROIEndNodeSpinBox->setMinimum(-1);
+   createBorderFromROIEndNodeSpinBox->setMaximum(std::numeric_limits<int>::max());
+   createBorderFromROIEndNodeSpinBox->setSingleStep(1);
+   
+   //
+   // Select start/end nodes with mouse push buttons
+   //
+   QPushButton* selectStartNodeWithMousePushButton = new QPushButton("Select with Mouse");
+   selectStartNodeWithMousePushButton->setAutoDefault(false);
+   selectStartNodeWithMousePushButton->setFixedSize(selectStartNodeWithMousePushButton->sizeHint());
+   QObject::connect(selectStartNodeWithMousePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotCreateBorderFromROIStartNodePushButton()));
+   QPushButton* selectEndNodeWithMousePushButton = new QPushButton("Select with Mouse");
+   selectEndNodeWithMousePushButton->setAutoDefault(false);
+   selectEndNodeWithMousePushButton->setFixedSize(selectEndNodeWithMousePushButton->sizeHint());
+   QObject::connect(selectEndNodeWithMousePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotCreateBorderFromROIEndNodePushButton()));
+   
+   //
+   // Button group to keep radio buttons mutually exclusive
+   //
+   QButtonGroup* buttGroup = new QButtonGroup;
+   buttGroup->addButton(createBorderFromROIAutomaticRadioButton);
+   buttGroup->addButton(createBorderFromROIManualRadioButton);
+   
+   //
+   // Layout for node selection options
+   //
+   createBorderFromROINodeSelectionWidget = new QWidget;
+   QGridLayout* nodeNumbersLayout = new QGridLayout(createBorderFromROINodeSelectionWidget);
+   nodeNumbersLayout->addWidget(startNodeLabel, 0, 0);
+   nodeNumbersLayout->addWidget(createBorderFromROIStartNodeSpinBox, 0, 1);
+   nodeNumbersLayout->addWidget(selectStartNodeWithMousePushButton, 0, 2);
+   nodeNumbersLayout->addWidget(endNodeLabel, 1, 0);
+   nodeNumbersLayout->addWidget(createBorderFromROIEndNodeSpinBox, 1, 1);
+   nodeNumbersLayout->addWidget(selectEndNodeWithMousePushButton, 1, 2);
+   QGroupBox* nodeSelectionGroupBox = new QGroupBox("Starting and Ending Node Selection");
+   QGridLayout* nodeSelectionLayout = new QGridLayout(nodeSelectionGroupBox);
+   nodeSelectionLayout->addWidget(createBorderFromROIAutomaticRadioButton, 0, 0);
+   nodeSelectionLayout->addWidget(createBorderFromROIManualRadioButton, 1, 0);
+   nodeSelectionLayout->addWidget(createBorderFromROINodeSelectionWidget, 1, 1);
+
+   //
+   // Connect signals to disable node selection if automatic
+   //
+   createBorderFromROINodeSelectionWidget->setEnabled(false);
+   QObject::connect(createBorderFromROIManualRadioButton, SIGNAL(toggled(bool)),
+                    createBorderFromROINodeSelectionWidget, SLOT(setEnabled(bool)));
+   createBorderFromROIAutomaticRadioButton->setChecked(true);
+   
+   //
+   // Create border push button
+   //
+   QPushButton* createBorderPushButton = new QPushButton("Create Border Along Sulcus");
+   createBorderPushButton->setAutoDefault(false);
+   createBorderPushButton->setFixedSize(createBorderPushButton->sizeHint());
+   QObject::connect(createBorderPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotCreateBorderFromROIPushButton()));
+                    
+   //
+   // Widget and layout for panel
+   //
+   operationCreateBordersFromROIWidget = new QWidget;
+   QVBoxLayout* layout = new QVBoxLayout(operationCreateBordersFromROIWidget);
+   layout->addWidget(borderGroupBox);
+   layout->addWidget(nodeSelectionGroupBox, 0, Qt::AlignLeft);
+   layout->addWidget(createBorderPushButton);
+   layout->addStretch();
+}
+
+/**
+ * called to select start node for border from ROI.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIStartNodePushButton()
+{
+   theMainWindow->getBrainModelOpenGL()->setMouseMode(
+                GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_START);
+}
+
+/**
+ * called to select start node for border from ROI.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIEndNodePushButton()
+{
+   theMainWindow->getBrainModelOpenGL()->setMouseMode(
+                GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_END);
+}
+      
+/**
+ * set open border start node.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::setCreateBorderOpenStartNode(const int nodeNumber)
+{
+   if ((nodeNumber >= 0) &&
+       (nodeNumber < static_cast<int>(nodeInROI.size()))) {
+      if (nodeInROI[nodeNumber]) {
+         createBorderFromROIStartNodeSpinBox->setValue(nodeNumber);
+      }
+      else {
+         GuiMessageBox::critical(this, "ERROR", "Node selected is not in the ROI.", "OK");
+      }
+   }
+}
+
+/**
+ * set open border end node.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::setCreateBorderOpenEndNode(const int nodeNumber)
+{
+   if ((nodeNumber >= 0) &&
+       (nodeNumber < static_cast<int>(nodeInROI.size()))) {
+      if (nodeInROI[nodeNumber]) {
+         createBorderFromROIEndNodeSpinBox->setValue(nodeNumber);
+      }
+      else {
+         GuiMessageBox::critical(this, "ERROR", "Node selected is not in the ROI.", "OK");
+      }
+   }
+}
+
+/**
+ * called to set name of borer for border from ROI.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROINamePushButton()
+{
+   static GuiNameSelectionDialog::LIST_ITEMS_TYPE itemForDisplay =
+                   GuiNameSelectionDialog::LIST_BORDER_COLORS_ALPHA;
+
+   GuiNameSelectionDialog nsd(this,
+                              GuiNameSelectionDialog::LIST_ALL,
+                              itemForDisplay);
+   if (nsd.exec() == QDialog::Accepted) {
+      createBorderFromROINameLineEdit->setText(nsd.getName());
+   }
+}
+      
+/**
+ * called to create a border from the ROI.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIPushButton()
+{
+   //
+   // Create the border from the ROI
+   //
+   BrainModelSurface* operationSurface = operationSurfaceComboBox->getSelectedBrainModelSurface(); 
+   BrainModelSurfaceRegionOfInterest roi(theMainWindow->getBrainSet(),
+                                         operationSurface,
+                                         BrainModelSurfaceRegionOfInterest::OPERATION_CREATE_BORDER,
+                                         nodeInROI);
+   int startNode = -1;
+   int endNode   = -1;
+   if (createBorderFromROIManualRadioButton->isChecked()) {
+      startNode = createBorderFromROIStartNodeSpinBox->value();
+      endNode   = createBorderFromROIEndNodeSpinBox->value();
+   }
+   const QString borderName(createBorderFromROINameLineEdit->text());
+   roi.setCreateBorderControlsAndOptions(borderName,
+                                         startNode,
+                                         endNode,
+                                         createBorderFromROISamplingDensityDoubleSpinBox->value());
+   try {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      roi.execute();
+      QApplication::restoreOverrideCursor();
+   }
+   catch (BrainModelAlgorithmException& e) {
+      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      return;
+   }
+   
+   //
+   // Get border created and display it
+   //
+   Border border = roi.getBorder();
+   if (border.getNumberOfLinks() <= 0) {
+      GuiMessageBox::critical(this, "ERROR", "Border created has no links.", "OK");
+      return;
+   }
+
+   //
+   // Find the matching color
+   //
+   bool borderColorMatch = false;
+   BorderColorFile* borderColorFile = theMainWindow->getBrainSet()->getBorderColorFile();
+   int borderColorIndex = borderColorFile->getColorIndexByName(borderName, borderColorMatch);
+  
+   //
+   // Border color may need to be created
+   //
+   bool createBorderColor = false;
+   if ((borderColorIndex >= 0) && (borderColorMatch == true)) {
+      createBorderColor = false;
+   }
+   else if ((borderColorIndex >= 0) && (borderColorMatch == false)) {
+      QString msg("Use border color \"");
+      msg.append(borderColorFile->getColorNameByIndex(borderColorIndex));
+      msg.append("\" for border ");
+      msg.append(borderName);
+      msg.append(" ?");
+      QString noButton("No, define color ");
+      noButton.append(borderName);
+      if (GuiMessageBox::information(this, "Use Partially Matching Color",
+                                   msg, "Yes", noButton, QString::null, 0) != 0) {
+         createBorderColor = true;      }
+   }   
+   else {
+      createBorderColor = true;
+   }
+   
+   if (createBorderColor) {
+      QString title("Create Border Color: ");
+      title.append(borderName);
+      QApplication::beep();
+      GuiColorSelectionDialog* csd = new GuiColorSelectionDialog(this,
+                                                                 title,
+                                                                 false,
+                                                                 false,
+                                                                 false,
+                                                                 false);
+      csd->exec();
+
+      //
+      // Add new border color
+      //
+      float pointSize = 2.0, lineSize = 1.0;
+      unsigned char r, g, b, a;
+      ColorFile::ColorStorage::SYMBOL symbol;
+      csd->getColorInformation(r, g, b, a, pointSize, lineSize, symbol);
+      borderColorFile->addColor(borderName, r, g, b, a, pointSize, lineSize, symbol);
+      borderColorIndex = borderColorFile->getNumberOfColors() - 1;
+   }
+
+
+   //
+   // Add border
+   //
+   BrainModelBorder* b = new BrainModelBorder(theMainWindow->getBrainSet(),
+                                              &border, 
+                                              operationSurface->getSurfaceType());
+   BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+   bmbs->addBorder(b);
+   
+   //
+   // Project the border
+   //
+   const int borderNumber = bmbs->getNumberOfBorders() - 1;
+   if (borderNumber >= 0) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      bmbs->projectBorders(operationSurface,
+                           true,
+                           borderNumber,
+                           borderNumber);
+      QApplication::restoreOverrideCursor();
+   }
+
+   //
+   // Display borders
+   //
+   DisplaySettingsBorders* dsb = theMainWindow->getBrainSet()->getDisplaySettingsBorders();
+   dsb->setDisplayBorders(true);
+   
+   //
+   // Files have changed
+   //
+   GuiFilesModified fm;
+   fm.setBorderColorModified();
+   fm.setBorderModified();
+   theMainWindow->fileModificationUpdate(fm);
+   GuiBrainModelOpenGL::updateAllGL();
+}
+      
+/**
  * create the borders around clusters operation section
  */
 void
@@ -1916,6 +2254,12 @@ GuiSurfaceRegionOfInterestDialog::createOperationsBordersAroundClusters()
    borderNameLayout->addStretch();
    
    //
+   // Auto project borders
+   //
+   clusterBorderAutoProjectCheckBox = new QCheckBox("Auto Project");
+   clusterBorderAutoProjectCheckBox->setChecked(true);
+   
+   //
    // create borders push button
    //
    QPushButton* createBordersPushButton = new QPushButton("Create Borders Around Clusters");
@@ -1928,6 +2272,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationsBordersAroundClusters()
    QVBoxLayout* layout = new QVBoxLayout(operationCreateBordersFromClustersWidget);
    layout->setSpacing(3);
    layout->addLayout(borderNameLayout);
+   layout->addWidget(clusterBorderAutoProjectCheckBox);
    layout->addWidget(createBordersPushButton);
    layout->addStretch();
 }
@@ -1975,7 +2320,8 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBordersFromClusters()
                                                      bms,
                                                      topologyFile,
                                                      borderName,
-                                                     nodeInROI);
+                                                     nodeInROI,
+                                                     clusterBorderAutoProjectCheckBox->isChecked());
       scbc.execute();
       numberOfBordersCreated = scbc.getNumberOfBordersCreated();
    }
@@ -2055,7 +2401,16 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBordersFromClusters()
          borderColorFile->addColor(borderName, r, g, b, a, pointSize, lineSize, symbol);
       }
       
+      //
+      // Display borders
+      //
       theMainWindow->getBrainSet()->assignBorderColors();
+      DisplaySettingsBorders* dsb = theMainWindow->getBrainSet()->getDisplaySettingsBorders();
+      dsb->setDisplayBorders(true);
+
+      //
+      // Update GUI
+      //
       GuiFilesModified fm;
       fm.setBorderColorModified();
       fm.setBorderModified();
@@ -2102,9 +2457,13 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignSurfaceShape()
    // Value to assign
    //
    QLabel* valueLabel = new QLabel("New Value ");
-   surfaceShapeValueLineEdit = new QLineEdit;
-   surfaceShapeValueLineEdit->setFixedWidth(150);
-   surfaceShapeValueLineEdit->setText("0.0");
+   surfaceShapeValueDoubleSpinBox = new QDoubleSpinBox;
+   surfaceShapeValueDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
+   surfaceShapeValueDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   surfaceShapeValueDoubleSpinBox->setSingleStep(1.0);
+   surfaceShapeValueDoubleSpinBox->setDecimals(3);
+   surfaceShapeValueDoubleSpinBox->setFixedWidth(150);
+   surfaceShapeValueDoubleSpinBox->setValue(0.0);
    
    //
    // Assign surfaceShape push button
@@ -2120,7 +2479,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignSurfaceShape()
    //
    QHBoxLayout* assignLayout = new QHBoxLayout;
    assignLayout->addWidget(valueLabel);
-   assignLayout->addWidget(surfaceShapeValueLineEdit);
+   assignLayout->addWidget(surfaceShapeValueDoubleSpinBox);
    assignLayout->addWidget(new QLabel(" "));
    assignLayout->addWidget(assignSurfaceShapePushButton);
    assignLayout->addStretch();
@@ -2133,6 +2492,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignSurfaceShape()
    layout->setSpacing(3);
    layout->addLayout(columnLayout);
    layout->addLayout(assignLayout);
+   layout->addStretch();
 }
 
 /**
@@ -2171,7 +2531,7 @@ GuiSurfaceRegionOfInterestDialog::slotAssignSurfaceShapeToNodes()
    //
    // Assign the surface shape index to the nodes
    //
-   const float value = surfaceShapeValueLineEdit->text().toFloat();
+   const float value = surfaceShapeValueDoubleSpinBox->value();
    for (int i = 0; i < numNodes; i++) {
       if (nodeInROI[i]) {
          ssf->setValue(i, surfaceShapeColumn, value);
@@ -2267,6 +2627,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignPaint()
    layout->addLayout(columnLayout);
    layout->addLayout(assignLayout);
    layout->addWidget(assignPaintPushButton);
+   layout->addStretch();
 }
 
 /**
@@ -2433,6 +2794,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationCreateVolumeROI()
    operationCreateVolumeRoiWidget = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(operationCreateVolumeRoiWidget);
    layout->addWidget(createVolumeFromQueryNodesPushButton);
+   layout->addStretch();
 }
 
 /**
@@ -2453,6 +2815,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationProbAtlas()
    QVBoxLayout* layout = new QVBoxLayout(operationProbAtlasWidget);;
    layout->addWidget(createReportPushButton);
    layout->addWidget(probAtlasTabSeparateCheckBox);
+   layout->addStretch();
 }
 
 /**
@@ -2671,6 +3034,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationDisconnectNodes()
    operationDisconnectNodesWidget = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(operationDisconnectNodesWidget);
    layout->addWidget(disconnectButton);
+   layout->addStretch();
 }
 
 /**
@@ -2703,6 +3067,7 @@ GuiSurfaceRegionOfInterestDialog::createShapeClusterReport()
    layout->addLayout(threshLayout);
    layout->addWidget(shapeClusterTabSeparateCheckBox);
    layout->addWidget(createClusterReportPushButton);
+   layout->addStretch();
 }
 
 /**
@@ -2945,6 +3310,7 @@ GuiSurfaceRegionOfInterestDialog::createShapeCorrelationCoefficientReport()
    layout->addLayout(columnLayout);
    layout->addWidget(shapeCorrelationTabSeparateCheckBox);
    layout->addWidget(createReportPushButton);
+   layout->addStretch();
 }
 
 /**
@@ -3091,6 +3457,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationIntegratedFoldingIndex()
    operationComputeIntegratedFoldingIndexWidget = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(operationComputeIntegratedFoldingIndexWidget);
    layout->addWidget(computePushButton);
+   layout->addStretch();
 }
 
 /**
@@ -3271,6 +3638,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationGeodesicDistance()
    layout->addLayout(nodeLayout);
    layout->addLayout(fileLayout);
    layout->addWidget(geodesicButton);
+   layout->addStretch();
 }
 
 /**
@@ -3351,6 +3719,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationSmoothNodes()
    operationSmoothNodesWidget = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(operationSmoothNodesWidget);
    layout->addWidget(smoothButton);
+   layout->addStretch();
 }
 
 /**
@@ -3405,7 +3774,8 @@ GuiSurfaceRegionOfInterestDialog::createOperationStatisticalReport()
    QVBoxLayout* layout = new QVBoxLayout(operationStatisticalReportWidget);
    layout->addLayout(distLayout);
    layout->addWidget(tabSeparateReportCheckBox);
-   layout->addWidget(createReportButton);   
+   layout->addWidget(createReportButton);  
+   layout->addStretch();
 }
 
 /**
@@ -3442,6 +3812,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationStatisticalPaintReport()
    layout->addLayout(columnLayout);
    layout->addWidget(tabSeparatePaintReportCheckBox);
    layout->addWidget(createPaintReportButton);
+   layout->addStretch();
 }
 
 /**
@@ -3467,6 +3838,9 @@ GuiSurfaceRegionOfInterestDialog::slotOperationMode(int item)
          break;
       case OPERATION_MODE_CREATE_BORDERS_FROM_CLUSTERS:
          operationsWidgetStack->setCurrentWidget(operationCreateBordersFromClustersWidget);
+         break;
+      case OPERATION_MODE_CREATE_BORDERS_FROM_ROI:
+         operationsWidgetStack->setCurrentWidget(operationCreateBordersFromROIWidget);
          break;
       case OPERATION_MODE_CREATE_VOLUME_ROI:
          operationsWidgetStack->setCurrentWidget(operationCreateVolumeRoiWidget);
@@ -3751,20 +4125,28 @@ void
 GuiSurfaceRegionOfInterestDialog::createNodeSelectionMetric()
 {
    QLabel* lowLabel = new QLabel("Threshold   Low");
-   metricLowerThresholdLineEdit = new QLineEdit;
-   metricLowerThresholdLineEdit->setText("1.0");
-   metricLowerThresholdLineEdit->setFixedWidth(120);
+   metricLowerThresholdDoubleSpinBox = new QDoubleSpinBox;
+   metricLowerThresholdDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
+   metricLowerThresholdDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   metricLowerThresholdDoubleSpinBox->setSingleStep(1.0);
+   metricLowerThresholdDoubleSpinBox->setDecimals(3);
+   metricLowerThresholdDoubleSpinBox->setValue(1.0);
+   metricLowerThresholdDoubleSpinBox->setFixedWidth(120);
 
    QLabel* highLabel = new QLabel("  High");
-   metricUpperThresholdLineEdit = new QLineEdit;
-   metricUpperThresholdLineEdit->setText("50000.0");
-   metricUpperThresholdLineEdit->setFixedWidth(120);
+   metricUpperThresholdDoubleSpinBox = new QDoubleSpinBox;
+   metricUpperThresholdDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
+   metricUpperThresholdDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   metricUpperThresholdDoubleSpinBox->setSingleStep(1.0);
+   metricUpperThresholdDoubleSpinBox->setDecimals(3);
+   metricUpperThresholdDoubleSpinBox->setValue(50000.0);
+   metricUpperThresholdDoubleSpinBox->setFixedWidth(120);
    
    QHBoxLayout* threshLayout = new QHBoxLayout;
    threshLayout->addWidget(lowLabel);
-   threshLayout->addWidget(metricLowerThresholdLineEdit);
+   threshLayout->addWidget(metricLowerThresholdDoubleSpinBox);
    threshLayout->addWidget(highLabel);
-   threshLayout->addWidget(metricUpperThresholdLineEdit);
+   threshLayout->addWidget(metricUpperThresholdDoubleSpinBox);
    threshLayout->addStretch();
    
    QButtonGroup* metricSelectionButtonGroup = new QButtonGroup(this);
@@ -3797,19 +4179,27 @@ void
 GuiSurfaceRegionOfInterestDialog::createNodeSelectionShape()
 {
    QLabel* lowLabel = new QLabel("Threshold   Low");
-   shapeLowerThresholdLineEdit = new QLineEdit;
-   shapeLowerThresholdLineEdit->setText("1.0");
-   shapeLowerThresholdLineEdit->setFixedWidth(120);
+   shapeLowerThresholdDoubleSpinBox = new QDoubleSpinBox;
+   shapeLowerThresholdDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
+   shapeLowerThresholdDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   shapeLowerThresholdDoubleSpinBox->setSingleStep(1.0);
+   shapeLowerThresholdDoubleSpinBox->setDecimals(3);
+   shapeLowerThresholdDoubleSpinBox->setValue(1.0);
+   shapeLowerThresholdDoubleSpinBox->setFixedWidth(120);
 
    QLabel* highLabel = new QLabel("  High");
-   shapeUpperThresholdLineEdit = new QLineEdit;
-   shapeUpperThresholdLineEdit->setText("50000.0");
-   shapeUpperThresholdLineEdit->setFixedWidth(120);
+   shapeUpperThresholdDoubleSpinBox = new QDoubleSpinBox;
+   shapeUpperThresholdDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
+   shapeUpperThresholdDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   shapeUpperThresholdDoubleSpinBox->setSingleStep(1.0);
+   shapeUpperThresholdDoubleSpinBox->setDecimals(3);
+   shapeUpperThresholdDoubleSpinBox->setValue(50000.0);
+   shapeUpperThresholdDoubleSpinBox->setFixedWidth(120);
    QHBoxLayout* threshLayout = new QHBoxLayout;
    threshLayout->addWidget(lowLabel);
-   threshLayout->addWidget(shapeLowerThresholdLineEdit);
+   threshLayout->addWidget(shapeLowerThresholdDoubleSpinBox);
    threshLayout->addWidget(highLabel);
-   threshLayout->addWidget(shapeUpperThresholdLineEdit);
+   threshLayout->addWidget(shapeUpperThresholdDoubleSpinBox);
    threshLayout->addStretch();
    
    QButtonGroup* shapeSelectionButtonGroup = new QButtonGroup(this);

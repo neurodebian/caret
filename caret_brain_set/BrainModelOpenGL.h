@@ -616,6 +616,9 @@ class BrainModelOpenGL {
                            const int currentSlice,
                            VolumeFile* &firstVolume);
 
+      /// check for an OpenGL Error
+      void checkForOpenGLError(const BrainModel* bm, const QString& msg = "");
+      
       /// linear (border, cut, contour) being drawn
       Border linearObjectBeingDrawn;
        

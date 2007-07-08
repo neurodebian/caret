@@ -960,7 +960,7 @@ GuiVolumeRegionOfInterestDialog::slotFinishPushButtonPressed()
       }
       
       if (reportText.isEmpty() == false) {
-         const QString newText = reportTextEdit->text()
+         const QString newText = reportTextEdit->toPlainText()
                                + "\n"
                                + reportText;
          reportTextEdit->setPlainText(newText);

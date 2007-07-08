@@ -266,7 +266,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
          linkToFigureRadioButton->setChecked(true);
          for (int i = 0; i < linkFigureSelectionComboBox->count(); i++) {
             if (linkFigureSelectionComboBox->itemData(i).toString() == figNum) {
-               linkFigureSelectionComboBox->setCurrentItem(i);
+               linkFigureSelectionComboBox->setCurrentIndex(i);
                slotLinkFigureSelectionComboBox(i);
                
                //
@@ -275,7 +275,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
                for (int j = 0; j < linkFigurePanelSelectionComboBox->count(); j++) {
                   if (linkFigurePanelSelectionComboBox->itemData(j).toString() ==
                       smdl.getFigurePanelNumberOrLetter()) {
-                     linkFigurePanelSelectionComboBox->setCurrentItem(j);
+                     linkFigurePanelSelectionComboBox->setCurrentIndex(j);
                      break;
                   }
                }
@@ -300,7 +300,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
             for (int j = 0; j < linkPageReferenceSubHeaderSelectionComboBox->count(); j++) {
                if (linkPageReferenceSubHeaderSelectionComboBox->itemData(j).toString() ==
                    smdl.getPageReferenceSubHeaderNumber()) {
-                  linkPageReferenceSubHeaderSelectionComboBox->setCurrentItem(j);
+                  linkPageReferenceSubHeaderSelectionComboBox->setCurrentIndex(j);
                }
             }
          }
@@ -323,7 +323,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
                for (int j = 0; j < linkTableSubHeaderSelectionComboBox->count(); j++) {
                   if (linkTableSubHeaderSelectionComboBox->itemData(j).toString() ==
                       smdl.getTableSubHeaderNumber()) {
-                     linkTableSubHeaderSelectionComboBox->setCurrentItem(j);
+                     linkTableSubHeaderSelectionComboBox->setCurrentIndex(j);
                      break;
                   }
                }
