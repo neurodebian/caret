@@ -8,21 +8,10 @@ http://svn.debian.org/wsvn/pkg-exppsy/tools/dh_wraporig
 
 For this package dh_wraporig performed following actions:
 * Extracted files from
- md5:f34ebb2b773aa16e144f5d4475c1a881  ../caret_source.v5.5.zip
+ md5:4bef8b9181d264364e1ba61480321d9b  ../caret_source.v5.51.zip
 * Removed following files/directories:
  caret_vtk4_classes
 * Additional parameters for tar on tarball creation were:
   --exclude *~
 
-
-Additional information:
-* Following patches were present to be applied to the original source
- at build time
-0-fix_typo.dpatch
-10b-debian_use_qt4.dpatch
-10c-debian_vtk_use_native_libs.dpatch
-11-debian_disable_mpeg2_support.dpatch
-12-disable_vtk4_classes.dpatch
-14-qt_plugins.dpatch
-15-internal_shared_libs.dpatch
 
