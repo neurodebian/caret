@@ -94,6 +94,7 @@ binary-arch: build install
 	dh_install
 	dh_installmenu
 	dh_installman
+	dh_desktop
 	dh_link
 	dh_strip
 	dh_compress

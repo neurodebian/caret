@@ -6,5 +6,5 @@ Exec=caret5
 TryExec=caret5
 Type=Application
 Terminal=false
-Categories=Science;MedicalSoftware;
+Categories=Utility;Science;MedicalSoftware;
 

@@ -1,6 +1,14 @@
+caret (5.51~dfsg.1-2) unstable; urgency=low
+
+  * Added a manpage.
+  * Fixed desktop and menu files to comply to the latest menu policy.
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Tue, 11 Sep 2007 21:59:09 +0200
+
 caret (5.51~dfsg.1-1) unstable; urgency=low
 
   * New Upstream Version.
+  * Abandoned dpatch in favor of Git.
 
  -- Michael Hanke <michael.hanke@gmail.com>  Sun,  8 Jul 2007 13:17:27 +0200
 
