@@ -3,7 +3,7 @@
 ######################################################################
 
 TARGET	 = CaretWidgets
-CONFIG	 += staticlib
+CONFIG	 += plugin
 INCLUDEPATH += . \
                ../caret_common
 

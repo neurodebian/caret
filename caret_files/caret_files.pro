@@ -4,7 +4,7 @@
 
 TARGET   = CaretFiles
 TEMPLATE = lib
-CONFIG  += staticlib
+CONFIG  += staticlib # has to remain static because of unclear FTBFS
 INCLUDEPATH += .
 
 include(../caret_qmake_include.pro)
