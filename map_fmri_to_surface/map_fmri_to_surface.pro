@@ -82,10 +82,7 @@ unix:!macx {
    # FreeBSD also does not have libdl, but integrates its functions
    # into libc.
    !exists( /etc/rc.conf ) {
-      LIBS += -lvtkjpeg \
-              -lvtkpng \
-              -lvtkexpat \
-              -ldl 
+      LIBS += -ldl 
    }       
            
    LIBS +=-lGLw \

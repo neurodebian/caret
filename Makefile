@@ -15,8 +15,7 @@ LIBS	= \
 	  caret_files \
 	  caret_brain_set \
 	  caret_uniformize \
-	  caret_widgets \
-	  caret_vtk4_classes
+	  caret_widgets
 
 DIRS	= $(LIBS) $(PROGS)
 
@@ -35,7 +34,7 @@ doc:
 	doxygen Doxyfile
 
 build:
-	@for i in ${DIRS} ; do \
+	for i in ${DIRS} ; do \
 	   echo "making " $$i ; \
 	   cd $$i ; \
 	   make ; \
@@ -84,13 +83,13 @@ qmake-dynamic:
 	@for i in ${LIBS} ; do \
 	   echo "creating makefile for dynamic libs with qmake for " $$i ; \
 	   cd $$i ; \
-	   qmake "CONFIG+=dll"; \
+	   qmake-qt4 "CONFIG+=dll"; \
 	   cd .. ; \
 	done
 	@for i in ${PROGS} ; do \
 	   echo "creating makefile with qmake for " $$i ; \
 	   cd $$i ; \
-	   qmake ; \
+	   qmake-qt4 ; \
 	   cd .. ; \
 	done
 	
