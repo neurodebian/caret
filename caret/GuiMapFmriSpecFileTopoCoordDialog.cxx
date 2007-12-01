@@ -29,13 +29,13 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextEdit>
 
 #include "FileUtilities.h"
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiMapFmriSpecFileTopoCoordDialog.h"
-#include "GuiMessageBox.h"
 #include "QtUtilities.h"
 #include "SpecFile.h"
 
@@ -182,7 +182,7 @@ GuiMapFmriSpecFileTopoCoordDialog::slotSelectSpecPushButton()
       catch (FileException& e) {
          QString msg("Unable to read spec file ");
          msg.append(FileUtilities::basename(specFileName));
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
 
@@ -224,7 +224,7 @@ GuiMapFmriSpecFileTopoCoordDialog::slotSelectSpecPushButton()
       }
       
       if (errorMessage.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+         QMessageBox::critical(this, "ERROR", errorMessage);
          return;
       }
    }
@@ -249,8 +249,8 @@ GuiMapFmriSpecFileTopoCoordDialog::done(int r)
       std::vector<QString> names;
       getCoordFileNames(names);
       if (names.empty()) {
-         GuiMessageBox::critical(this, "ERROR", 
-                       "You must select at least one coordinate file.", "OK");
+         QMessageBox::critical(this, "ERROR", 
+                       "You must select at least one coordinate file.");
          return;
       }
    }

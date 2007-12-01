@@ -89,6 +89,14 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       /// execute the algorithm for only identifying sulci
       void executeIdentifySulci() throw (BrainModelAlgorithmException);
       
+      /// generate the corpus callosum slice (assumes AC at center)
+      /// estimate white matter peak if invalid
+      static void generateCorpusCallosumSlice(const VolumeFile& anatomyVolumeFileIn,
+                                              VolumeFile& corpusCallosumVolumeFileOut,
+                                              const Structure& structure,
+                                              const float grayMatterPeakIn,
+                                              const float whiteMatterPeakIn) throw (BrainModelAlgorithmException);
+                                              
    protected:
       /// apply volume mask and white matter maximum
       void applyVolumeMaskAndWhiteMatterMaximum() throw (BrainModelAlgorithmException);

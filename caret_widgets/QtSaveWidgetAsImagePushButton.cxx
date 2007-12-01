@@ -28,7 +28,6 @@
 #include <vector>
 
 #include <QApplication>
-#include <QFileDialog>
 #include <QImage>
 #include <QMessageBox>
 #include <QPixmap>
@@ -37,6 +36,7 @@
 #include "FileUtilities.h"
 #include "QtSaveWidgetAsImagePushButton.h"
 #include "StringUtilities.h"
+#include "WuQFileDialog.h"
 
 /**
  * Constructor.
@@ -97,12 +97,12 @@ QtSaveWidgetAsImagePushButton::slotClicked()
    //
    // Create the file dialog
    //
-   QFileDialog saveImageDialog(this);
+   WuQFileDialog saveImageDialog(this);
    saveImageDialog.setModal(true);
    saveImageDialog.setWindowTitle("Save Image File");
-   saveImageDialog.setFileMode(QFileDialog::AnyFile);
+   saveImageDialog.setFileMode(WuQFileDialog::AnyFile);
    saveImageDialog.setDirectory(".");
-   saveImageDialog.setAcceptMode(QFileDialog::AcceptSave);
+   saveImageDialog.setAcceptMode(WuQFileDialog::AcceptSave);
    
    
    //
@@ -122,7 +122,7 @@ QtSaveWidgetAsImagePushButton::slotClicked()
    //
    // Execute the dialog
    //
-   if (saveImageDialog.exec() == QFileDialog::Accepted) {
+   if (saveImageDialog.exec() == WuQFileDialog::Accepted) {
       QString name(saveImageDialog.selectedFiles().at(0));
       
       //

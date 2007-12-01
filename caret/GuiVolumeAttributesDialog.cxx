@@ -31,12 +31,13 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDateTime>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTabWidget>
@@ -48,13 +49,12 @@
 #include "BrainModelVolumeBiasCorrection.h"
 #include "BrainModelVolumeVoxelColoring.h"
 #include "BrainSet.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiHistogramDisplayDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiToolBar.h"
 #include "GuiVolumeAttributesDialog.h"
 #include "GuiVolumeFileOrientationComboBox.h"
@@ -347,7 +347,7 @@ GuiVolumeAttributesDialog::slotCrosshairsAlignAC()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -367,7 +367,7 @@ GuiVolumeAttributesDialog::slotCrosshairsAlignPC()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -387,7 +387,7 @@ GuiVolumeAttributesDialog::slotCrosshairsAlignLF()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -527,17 +527,19 @@ GuiVolumeAttributesDialog::slotUniformityCorrection()
             str << "Uniformity Correction Time: "
                 << elapsedTime
                 << " minutes.";
-            GuiMessageBox::information(this, "INFO", str.str().c_str(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::information(this, "INFO", str.str().c_str());
             beep();
             GuiBrainModelOpenGL::updateAllGL();
-            QApplication::restoreOverrideCursor();
          }
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
    }
 }
@@ -665,10 +667,10 @@ GuiVolumeAttributesDialog::resampleVolume()
       if ((volSpace[0] <= 0.0) ||
           (volSpace[1] <= 0.0) ||
           (volSpace[2] <= 0.0)) {
-         GuiMessageBox::critical(this, "ERROR", 
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", 
                                  "The volume's X, Y, and Z voxel sizes (set using the Coordinates tab)\n"
-                                 "must all be positive for resampling to function correctly.",
-                                 "OK");
+                                 "must all be positive for resampling to function correctly.");
          return;
       }
       const float spacing[3] = {
@@ -679,10 +681,10 @@ GuiVolumeAttributesDialog::resampleVolume()
       if ((spacing[0] <= 0.0) ||
           (spacing[1] <= 0.0) ||
           (spacing[2] <= 0.0)) {
-         GuiMessageBox::critical(this, "ERROR", 
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", 
                                  "The volume's X, Y, and Z resampling voxel sizes must\n"
-                                 "all be positive for resampling to function correctly.",
-                                 "OK");
+                                 "all be positive for resampling to function correctly.");
          return;
       }
       vf->resampleToSpacing(spacing);
@@ -1058,7 +1060,7 @@ GuiVolumeAttributesDialog::slotParamsUpdateAC()
    int ac[3];
    for (int i = 0; i < 3; i++) {
       if (voxelSize[i] == 0.0) {
-         GuiMessageBox::critical(this, "ERROR", "All voxel sizes must be non-zero.", "OK");
+         QMessageBox::critical(this, "ERROR", "All voxel sizes must be non-zero.");
          return;
       }
       ac[i] = -static_cast<int>(origin[i] / voxelSize[i]);
@@ -1074,7 +1076,7 @@ GuiVolumeAttributesDialog::slotParamsUpdateAC()
    catch (FileException& e) {
       QString msg("Unable to write parameters file:  ");
       msg.append(e.whatQString());
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
+      QMessageBox::critical(this, "ERROR", msg);
    }
    
    GuiFilesModified fm;
@@ -1102,7 +1104,7 @@ GuiVolumeAttributesDialog::slotParamsUpdateWholeVolumeAC()
    int ac[3];
    for (int i = 0; i < 3; i++) {
       if (voxelSize[i] == 0.0) {
-         GuiMessageBox::critical(this, "ERROR", "All voxel sizes must be non-zero.", "OK");
+         QMessageBox::critical(this, "ERROR", "All voxel sizes must be non-zero.");
          return;
       }
       ac[i] = -static_cast<int>(origin[i] / voxelSize[i]);
@@ -1118,7 +1120,7 @@ GuiVolumeAttributesDialog::slotParamsUpdateWholeVolumeAC()
    catch (FileException& e) {
       QString msg("Unable to write parameters file:  ");
       msg.append(e.whatQString());
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
+      QMessageBox::critical(this, "ERROR", msg);
    }
    
    GuiFilesModified fm;
@@ -1168,8 +1170,8 @@ GuiVolumeAttributesDialog::slotParamsStandardSpacePushButton()
    }
    
    if (matchingSpaces.empty()) {
-      GuiMessageBox::critical(this, "ERROR", 
-                              "No standard spaces have matching volume dimensions.", "OK");
+      QMessageBox::critical(this, "ERROR", 
+                              "No standard spaces have matching volume dimensions.");
       return;
    }
    
@@ -1222,7 +1224,7 @@ GuiVolumeAttributesDialog::slotMainWindowXHairPushButton()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -1273,7 +1275,7 @@ GuiVolumeAttributesDialog::slotParamsAcPushButton()
    ParamsFile* pf = theMainWindow->getBrainSet()->getParamsFile();
    float x, y, z;
    if (pf->empty()) {
-      GuiMessageBox::critical(this, "ERROR", "No parameters are loaded.", "OK");
+      QMessageBox::critical(this, "ERROR", "No parameters are loaded.");
    }
    else if (pf->getParameter(ParamsFile::keyACx, x) &&
             pf->getParameter(ParamsFile::keyACy, y) &&
@@ -1313,7 +1315,7 @@ GuiVolumeAttributesDialog::slotParamsAcPushButton()
       originZDoubleSpinBox->setValue(origin[2]);
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", "AC not found in params file", "OK");
+      QMessageBox::critical(this, "ERROR", "AC not found in params file", "OK");
    }
 }
 
@@ -1326,7 +1328,7 @@ GuiVolumeAttributesDialog::slotParamsWholeAcPushButton()
    ParamsFile* pf = theMainWindow->getBrainSet()->getParamsFile();
    float x, y, z;
    if (pf->empty()) {
-      GuiMessageBox::critical(this, "ERROR", "No parameters are loaded.", "OK");
+      QMessageBox::critical(this, "ERROR", "No parameters are loaded.");
    }
    else if (pf->getParameter(ParamsFile::keyWholeVolumeACx, x) &&
             pf->getParameter(ParamsFile::keyWholeVolumeACy, y) &&
@@ -1366,7 +1368,7 @@ GuiVolumeAttributesDialog::slotParamsWholeAcPushButton()
       originZDoubleSpinBox->setValue(origin[2]);
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", "AC not found in params file", "OK");
+      QMessageBox::critical(this, "ERROR", "AC not found in params file");
    }
 }
 
@@ -1388,7 +1390,8 @@ GuiVolumeAttributesDialog::slotLpiPushButton()
          vf->permuteToOrientation(lpiOrientation);
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
       GuiBrainModelOpenGL::updateAllGL();
@@ -1442,7 +1445,8 @@ GuiVolumeAttributesDialog::slotRotatePushButton()
             "Flipping the signs of these two items will correct the problem.\n"
             "Note that Caret is designed to display and operate on volumes in an LPI\n"
             "(Left=neg-X,  Posterior=neg-Y,  Inferior=neg-Z) orientation.";
-         QMessageBox::information(this, "INFO", msg, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::information(this, "INFO", msg);
       }
    }
 }
@@ -1521,13 +1525,13 @@ GuiVolumeAttributesDialog::slotParamtersFromVolumePushButton()
    //
    // Create a spec file dialog to select the spec file.
    //
-   QFileDialog openVolumeFileDialog(this);
+   WuQFileDialog openVolumeFileDialog(this);
    openVolumeFileDialog.setModal(true);
-   openVolumeFileDialog.setAcceptMode(QFileDialog::AcceptOpen);
+   openVolumeFileDialog.setAcceptMode(WuQFileDialog::AcceptOpen);
    openVolumeFileDialog.setDirectory(QDir::currentPath());
    openVolumeFileDialog.setWindowTitle("Choose Volume File");
-   openVolumeFileDialog.setFileMode(QFileDialog::ExistingFile);
-   openVolumeFileDialog.setFilter(GuiDataFileDialog::volumeGenericFileFilter);
+   openVolumeFileDialog.setFileMode(WuQFileDialog::ExistingFile);
+   openVolumeFileDialog.setFilter(FileFilters::getVolumeGenericFileFilter());
    if (openVolumeFileDialog.exec() == QDialog::Accepted) {
       const QString vname(openVolumeFileDialog.selectedFiles().at(0));
       if (vname.isEmpty() == false) {
@@ -1554,7 +1558,7 @@ GuiVolumeAttributesDialog::slotParamtersFromVolumePushButton()
             voxelSizeZDoubleSpinBox->setValue(spacing[2]);
          }
          catch (FileException& e) {
-            GuiMessageBox::critical(this, "Error Reading Volume", e.whatQString(), "OK");
+            QMessageBox::critical(this, "Error Reading Volume", e.whatQString());
          }
       }
    }
@@ -1639,9 +1643,10 @@ GuiVolumeAttributesDialog::slotFlipYPushButton()
       }
    }
    if (volumeInMainWindow = false) {
-      GuiMessageBox::critical(this, "ERROR",
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR",
                             "The selected volume must be displayed in\n"
-                            "the main window to use this operation.", "OK");
+                            "the main window to use this operation.");
    }
 }
 
@@ -1798,9 +1803,12 @@ GuiVolumeAttributesDialog::getSelectedVolume(const bool requireVolumeInMainWindo
       }
       
       if (inMainWindowFlag == false) {
-         if (GuiMessageBox::question(this, "ERROR",
+         if (QMessageBox::question(this, "ERROR",
                 "The selected volume is not displayed in the main window.\n"
-                "Do you want to continue applying your changes?", "Yes", "No") != 0) {
+                "Do you want to continue applying your changes?", 
+                (QMessageBox::Yes | QMessageBox::No),
+                QMessageBox::No)
+                   == QMessageBox::No) {
             vf = NULL;
          }
       }

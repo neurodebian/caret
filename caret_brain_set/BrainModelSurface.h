@@ -35,6 +35,7 @@
 #include "Structure.h"
 
 class BorderFile;
+class BrainModelSurfaceROINodeSelection;
 class BrainVoyagerFile;
 class CellProjectionFile;
 class DeformationFieldFile;
@@ -97,6 +98,9 @@ class BrainModelSurface : public BrainModel {
       /// Apply a transformation matrix to the surface
       void applyTransformationMatrix(TransformationMatrix& tm);
       
+      /// apply a view (transformation) to the coordinates of the surface
+      void applyViewToCoordinates(const BrainModel::STANDARD_VIEWS surfaceView);
+      
       /// Apply current view to surface
       void applyCurrentView(const int surfaceViewNumber,
                             const bool applyTranslation,
@@ -129,6 +133,9 @@ class BrainModelSurface : public BrainModel {
       
       /// append a string to the topology file's comment
       void appendToTopologyFileComment(const QString& s);
+      
+      /// get node closest to point
+      int getNodeClosestToPoint(const float xyz[3]) const;
       
       /// get access to coordinate file for this surface
       CoordinateFile* getCoordinateFile() { return &coordinates; }
@@ -297,6 +304,12 @@ class BrainModelSurface : public BrainModel {
       /// set the structure
       void setStructure(const Structure s);
       
+      /// see if surface is a fiducial surface
+      bool getIsFiducialSurface() const;
+      
+      /// see if surface is a flat surface
+      bool getIsFlatSurface() const;
+      
       /// get the surface type
       SURFACE_TYPES getSurfaceType() const { return surfaceType; }
       
@@ -315,6 +328,10 @@ class BrainModelSurface : public BrainModel {
       /// Get the spec file tag from the surface type.
       static QString getSurfaceSpecFileTagFromSurfaceType(const SURFACE_TYPES st);
 
+      /// Get all surface types and names
+      static void getSurfaceTypesAndNames(std::vector<SURFACE_TYPES>& typesOut,
+                                          std::vector<QString>& typeNamesOut);
+                                          
       /// flip the normals
       void flipNormals();
       
@@ -335,9 +352,15 @@ class BrainModelSurface : public BrainModel {
       
       ///  Get the area of a tile in the surface using three nodes
       float getTileArea(const int n1, const int n2, const int n3) const;    
+            
+      /// get the area of all tiles
+      void getAreaOfAllTiles(std::vector<float>& tileAreas) const;
+      
+      /// get the area of all nodes
+      void getAreaOfAllNodes(std::vector<float>& nodeAreas) const;
       
       /// get the mean distance between nodes
-      float getMeanDistanceBetweenNodes(const std::vector<bool>* roiFlag = NULL) const;
+      float getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI = NULL) const;
       
       /// push (save) the coordinates
       void pushCoordinates();

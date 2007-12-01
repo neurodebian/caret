@@ -26,6 +26,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <sstream>
 
 #include "StatisticAnovaOneWay.h"
 #include "StatisticAnovaTwoWay.h"
@@ -36,8 +37,12 @@
 #include "StatisticException.h"
 #include "StatisticFalseDiscoveryRate.h"
 #include "StatisticHistogram.h"
+#include "StatisticKruskalWallis.h"
 #include "StatisticLeveneVarianceEquality.h"
+#include "StatisticLinearRegression.h"
+#include "StatisticMatrix.h"
 #include "StatisticMeanAndDeviation.h"
+#include "StatisticMultipleRegression.h"
 #include "StatisticNormalizeDistribution.h"
 #include "StatisticPermutation.h"
 #include "StatisticRankTransformation.h"
@@ -52,6 +57,7 @@
  * constructor.
  */
 StatisticUnitTesting::StatisticUnitTesting(const bool printTestValuesFlagIn)
+   : StatisticAlgorithm("Unit Testing")
 {
    printTestValuesFlag = printTestValuesFlagIn;
 }
@@ -103,7 +109,19 @@ StatisticUnitTesting::execute() throw (StatisticException)
    problemFlag |= testHistogram();
    std::cout << std::endl;
    
+   problemFlag |= testKruskalWallis();
+   std::cout << std::endl;
+   
    problemFlag |= testLevenesTest();
+   std::cout << std::endl;
+   
+   problemFlag |= testLinearRegression();
+   std::cout << std::endl;
+   
+   problemFlag |= testMatrixOperations();
+   std::cout << std::endl;
+   
+   problemFlag |= testMultipleLinearRegression();
    std::cout << std::endl;
    
    problemFlag |= testNormalizeDistributionSorted();
@@ -158,10 +176,9 @@ StatisticUnitTesting::testValueIndexSort()
    const float data[numData] = { 3, 5, 7, 2, 4, 9, 1, 13, 12, 6 };
    const float dataSorted[numData] = { 1, 2, 3, 4, 5, 6, 7, 9, 12, 13 };
    const float indicesSorted[numData] = { 6, 3, 0, 4, 1, 9, 2, 5, 8, 7 };
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
    
    StatisticValueIndexSort vis;
-   vis.addDataGroup(&sdg);
+   vis.addDataArray(data, numData);
    
    try {
       vis.execute();
@@ -225,10 +242,8 @@ StatisticUnitTesting::testStatisticDescriptive()
       8.0
    };
    
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    StatisticDescriptiveStatistics sds;
-   sds.addDataGroup(&sdg);
+   sds.addDataArray(data, numData);
    
    try {
       sds.execute();
@@ -325,10 +340,8 @@ StatisticUnitTesting::testStatisticMeanAndDeviation()
       8.0
    };
    
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    StatisticMeanAndDeviation smad;
-   smad.addDataGroup(&sdg);
+   smad.addDataArray(data, numData);
    
    try {
       smad.execute();
@@ -395,11 +408,9 @@ StatisticUnitTesting::testStatisticTtestOneSample()
       5.0
    };
    
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    const float knownMeanMu = 4.0;
    StatisticTtestOneSample tTest(knownMeanMu);
-   tTest.addDataGroup(&sdg);
+   tTest.addDataArray(data, numData);
 
    try {
       tTest.execute();
@@ -486,12 +497,9 @@ StatisticUnitTesting::testStatisticTtestPaired()
    };
    
    
-   StatisticDataGroup sdgAfter(dataAfter, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgBefore(dataBefore, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    StatisticTtestPaired tTest;
-   tTest.addDataGroup(&sdgAfter);
-   tTest.addDataGroup(&sdgBefore);
+   tTest.addDataArray(dataAfter, numData);
+   tTest.addDataArray(dataBefore, numData);
 
    try {
       tTest.execute();
@@ -560,12 +568,9 @@ StatisticUnitTesting::testStatisticTtestTwoSamplePooledVariance()
    };
    
    
-   StatisticDataGroup sdgA(dataA, numDataA, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgB(dataB, numDataB, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    StatisticTtestTwoSample tTest(StatisticTtestTwoSample::VARIANCE_TYPE_POOLED);
-   tTest.addDataGroup(&sdgA);
-   tTest.addDataGroup(&sdgB);
+   tTest.addDataArray(dataA, numDataA);
+   tTest.addDataArray(dataB, numDataB);
 
    try {
       tTest.execute();
@@ -633,13 +638,9 @@ StatisticUnitTesting::testStatisticTtestTwoSampleUnpooledVariance()
       94
    };
    
-   
-   StatisticDataGroup sdgA(dataA, numDataA, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgB(dataB, numDataB, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    StatisticTtestTwoSample tTest(StatisticTtestTwoSample::VARIANCE_TYPE_UNPOOLED);
-   tTest.addDataGroup(&sdgA);
-   tTest.addDataGroup(&sdgB);
+   tTest.addDataArray(dataA, numDataA);
+   tTest.addDataArray(dataB, numDataB);
 
    try {
       tTest.execute();
@@ -741,18 +742,13 @@ StatisticUnitTesting::testStatisticAnovaTwoWayFixedEffectCase1()
    //Boys
    //Girls
    
-   StatisticDataGroup sdgBoysLow(boysLowAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgBoysHigh(boysHighAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgGirlsLow(girlsLowAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgGirlsHigh(girlsHighAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-
    StatisticAnovaTwoWay anova;
    anova.setAnovaModelType(StatisticAnovaTwoWay::ANOVA_MODEL_TYPE_FIXED_EFFECT);
    anova.setNumberOfFactorLevels(2, 2);
-   anova.setDataGroup(0, 0, &sdgBoysLow);
-   anova.setDataGroup(0, 1, &sdgBoysHigh);
-   anova.setDataGroup(1, 0, &sdgGirlsLow);
-   anova.setDataGroup(1, 1, &sdgGirlsHigh);
+   anova.setDataArray(0, 0, boysLowAffiliation, numData);
+   anova.setDataArray(0, 1, boysHighAffiliation, numData);
+   anova.setDataArray(1, 0, girlsLowAffiliation, numData);
+   anova.setDataArray(1, 1, girlsHighAffiliation, numData);
    
    try {
       anova.execute();
@@ -934,22 +930,15 @@ StatisticUnitTesting::testStatisticAnovaTwoWayFixedEffectCase2()
    //Middle
    //Top
    
-   StatisticDataGroup sdgBottomRegular(bottomRegular, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgMiddleRegular(middleRegular, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgTopRegular(topRegular, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgBottomWide(bottomWide, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgMiddleWide(middleWide, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgTopWide(topWide, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-
    StatisticAnovaTwoWay anova;
    anova.setAnovaModelType(StatisticAnovaTwoWay::ANOVA_MODEL_TYPE_FIXED_EFFECT);
    anova.setNumberOfFactorLevels(3, 2);
-   anova.setDataGroup(0, 0, &sdgBottomRegular);
-   anova.setDataGroup(1, 0, &sdgMiddleRegular);
-   anova.setDataGroup(2, 0, &sdgTopRegular);
-   anova.setDataGroup(0, 1, &sdgBottomWide);
-   anova.setDataGroup(1, 1, &sdgMiddleWide);
-   anova.setDataGroup(2, 1, &sdgTopWide);
+   anova.setDataArray(0, 0, bottomRegular, numData);
+   anova.setDataArray(1, 0, middleRegular, numData);
+   anova.setDataArray(2, 0, topRegular, numData);
+   anova.setDataArray(0, 1, bottomWide, numData);
+   anova.setDataArray(1, 1, middleWide, numData);
+   anova.setDataArray(2, 1, topWide, numData);
    
    try {
       anova.execute();
@@ -1173,18 +1162,13 @@ StatisticUnitTesting::testStatisticAnovaTwoWayRandomEffect()
    //Boys
    //Girls
    
-   StatisticDataGroup sdgBoysLow(boysLowAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgBoysHigh(boysHighAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgGirlsLow(girlsLowAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgGirlsHigh(girlsHighAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-
    StatisticAnovaTwoWay anova;
    anova.setAnovaModelType(StatisticAnovaTwoWay::ANOVA_MODEL_TYPE_RANDOM_EFFECT);
    anova.setNumberOfFactorLevels(2, 2);
-   anova.setDataGroup(0, 0, &sdgBoysLow);
-   anova.setDataGroup(0, 1, &sdgBoysHigh);
-   anova.setDataGroup(1, 0, &sdgGirlsLow);
-   anova.setDataGroup(1, 1, &sdgGirlsHigh);
+   anova.setDataArray(0, 0, boysLowAffiliation, numData);
+   anova.setDataArray(0, 1, boysHighAffiliation, numData);
+   anova.setDataArray(1, 0, girlsLowAffiliation, numData);
+   anova.setDataArray(1, 1, girlsHighAffiliation, numData);
    
    try {
       anova.execute();
@@ -1408,18 +1392,13 @@ StatisticUnitTesting::testStatisticAnovaTwoWayMixedEffect()
    //Boys
    //Girls
    
-   StatisticDataGroup sdgBoysLow(boysLowAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgBoysHigh(boysHighAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgGirlsLow(girlsLowAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgGirlsHigh(girlsHighAffiliation, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-
    StatisticAnovaTwoWay anova;
-   anova.setAnovaModelType(StatisticAnovaTwoWay::ANOVE_MODEL_TYPE_MIXED_EFFECT);
+   anova.setAnovaModelType(StatisticAnovaTwoWay::ANOVA_MODEL_TYPE_MIXED_EFFECT);
    anova.setNumberOfFactorLevels(2, 2);
-   anova.setDataGroup(0, 0, &sdgBoysLow);
-   anova.setDataGroup(0, 1, &sdgBoysHigh);
-   anova.setDataGroup(1, 0, &sdgGirlsLow);
-   anova.setDataGroup(1, 1, &sdgGirlsHigh);
+   anova.setDataArray(0, 0, boysLowAffiliation, numData);
+   anova.setDataArray(0, 1, boysHighAffiliation, numData);
+   anova.setDataArray(1, 0, girlsLowAffiliation, numData);
+   anova.setDataArray(1, 1, girlsHighAffiliation, numData);
    
    try {
       anova.execute();
@@ -1589,16 +1568,11 @@ StatisticUnitTesting::testStatisticAnovaOneWay()
    float data4[] = { 381, 346, 340, 471, 318 };
    const int numData4 = sizeof(data4) / sizeof(float);
 
-   StatisticDataGroup sdg1(data1, numData1, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdg2(data2, numData2, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdg3(data3, numData3, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdg4(data4, numData4, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   
    StatisticAnovaOneWay anova;
-   anova.addDataGroup(&sdg1);
-   anova.addDataGroup(&sdg2);
-   anova.addDataGroup(&sdg3);
-   anova.addDataGroup(&sdg4);
+   anova.addDataArray(data1, numData1);
+   anova.addDataArray(data2, numData2);
+   anova.addDataArray(data3, numData3);
+   anova.addDataArray(data4, numData4);
 
    try {
       anova.execute();
@@ -1660,6 +1634,132 @@ StatisticUnitTesting::testStatisticAnovaOneWay()
 }      
 
 /**
+ * test Kruskal-Wallis.
+ * Data from Applied Linear Statistical Models
+ *           John Neter, William Wasserman, Michael H. Kutner
+ *           3rd Edition
+ *           Page 644
+ */
+bool 
+StatisticUnitTesting::testKruskalWallis()
+{
+   float dataA[] = { 105, 3, 90, 217, 22 };
+   const int numDataA = sizeof(dataA) / sizeof(float);
+   float dataB[] = { 56, 43, 1, 37, 14 };
+   const int numDataB = sizeof(dataB) / sizeof(float);
+   float dataC[] = { 183, 144, 219, 86, 39 };
+   const int numDataC = sizeof(dataC) / sizeof(float);
+
+   StatisticKruskalWallis kw;
+   kw.addDataArray(dataA, numDataA);
+   kw.addDataArray(dataB, numDataB);
+   kw.addDataArray(dataC, numDataC);
+
+   try {
+      kw.execute();
+   }
+   catch (StatisticException& e) {
+      std::cout << "FAILED StatisticKruskalWallis threw exception: "
+                << e.whatStdString() << std::endl;
+      return true;
+   }
+   
+   bool problem = false;
+   
+   problem |= verify("StatisticKruskalWallis SSTR",
+                     kw.getSumOfSquaresTreatmentSSTR(),
+                     96.4);
+                     
+   problem |= verify("StatisticKruskalWallis SSE",
+                     kw.getSumOfSquaresErrorSSE(),
+                     183.6);
+                                          
+   problem |= verify("StatisticKruskalWallis MSTR",
+                     kw.getMeanSumOfSquaresTreatmentMSTR(),
+                     48.2);
+                     
+   problem |= verify("StatisticKruskalWallis MSE",
+                     kw.getMeanSumOfSquaresErrorMSE(),
+                     15.3);
+                     
+   problem |= verify("StatisticKruskalWallis DOF Between",
+                     kw.getDegreesOfFreedomBetweenTreatments(),
+                     2.0);
+                     
+   problem |= verify("StatisticKruskalWallis DOF Within",
+                     kw.getDegreesOfFreedomWithinTreatments(),
+                     12.0);
+                     
+   problem |= verify("StatisticKruskalWallis DOF Total",
+                     kw.getDegreesOfFreedomTotal(),
+                     14.0);
+                     
+   problem |= verify("StatisticKruskalWallis F-Statistic",
+                     kw.getFStatistic(),
+                     3.15);
+                     
+   problem |= verify("StatisticKruskalWallis P-Value",
+                     kw.getPValue(),
+                     0.08);
+                     
+                     
+   if (problem == false) {
+      std::cout << "PASSED StatisticKruskalWallis " << std::endl;
+   }
+   
+   return problem;
+}      
+
+/*
+ * verify that two matrices numbers are nearly identical (false if ok).
+ */
+bool 
+StatisticUnitTesting::verify(const std::string& testName,
+            const StatisticMatrix& computedMatrix,
+            const StatisticMatrix& correctMatrix,
+            const float acceptableDifference)
+{
+   bool printThem = false;
+   bool errorFlag = false;
+   std::string printWord;
+   const int numRows = computedMatrix.getNumberOfRows();
+   const int numCols = computedMatrix.getNumberOfColumns();
+   if ((numRows == correctMatrix.getNumberOfRows()) &&
+       (numCols == correctMatrix.getNumberOfColumns())) {
+      for (int i = 0; i < numRows; i++) {
+         for (int j = 0; j < numCols; j++) {
+            const float diff = std::fabs(computedMatrix.getElement(i, j)
+                                         - correctMatrix.getElement(i, j));
+            if (diff > acceptableDifference) {
+               printWord = "FAILED";
+               printThem = true;
+               errorFlag = true;
+            }
+            else if (printTestValuesFlag) {
+               printThem = true;
+            }
+         }
+      }
+   }
+   else {
+      printWord = "FAILED";
+      printThem = true;
+      errorFlag = true;
+   }
+   
+   if (printThem) {
+      std::cout << printWord << " "
+                << testName << std::endl;
+      computedMatrix.print(std::cout, "      ", "   Computed Matrix: ");
+      if (errorFlag) {
+         correctMatrix.print(std::cout, "      ", "   Correct Matrix: ");
+      }
+   }
+   
+   return errorFlag;
+}
+                  
+/**
  * verify that two floating point numbers are nearly identical (false if ok).
  */
 bool 
@@ -1694,6 +1794,42 @@ StatisticUnitTesting::verify(const std::string& testName,
 }
 
 /**
+ * verify that a group of coefficients are nearly identical (false if ok).
+ */
+bool
+StatisticUnitTesting::verifyCoefficients(const std::string& testName,
+                                         const std::vector<float>& computedCoefficients,
+                                         const std::vector<float>& correctCoefficients,
+                                         const float acceptableDifference)
+{   
+   bool errorFlag = false;
+   
+   for (int i = 0; i < static_cast<int>(correctCoefficients.size()); i++) {
+      if (i < static_cast<int>(computedCoefficients.size())) {
+         std::ostringstream str;
+         str << testName
+             << "  coefficient["
+             << i 
+             << "]";
+         errorFlag |= verify(str.str(),
+                             computedCoefficients[i],
+                             correctCoefficients[i],
+                             acceptableDifference); 
+      }
+      else {
+         std::cout << testName
+                   << " computed coefficient "
+                   << i
+                   << " is missing."
+                   << std::endl;
+         errorFlag |= true;
+      }
+   }
+   
+   return errorFlag;
+}
+      
+/**
  * test convert to z-score.
  */
 bool 
@@ -1713,10 +1849,9 @@ StatisticUnitTesting::testConvertToZScore()
 
    const int numData = 10;
    const float data[numData] = { 7, 8, 8, 7, 3, 1, 6, 9, 3, 8 };
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
    
    StatisticConvertToZScore convertToZ;
-   convertToZ.addDataGroup(&sdg);
+   convertToZ.addDataArray(data, numData);
    
    try {
       convertToZ.execute();
@@ -1758,12 +1893,10 @@ StatisticUnitTesting::testCorrelationCoefficient()
    const int numData = 5;
    const float numEmployees[numData] = { 6, 8, 3, 10, 8 };
    const float stressLevel[numData]  = { 7, 8, 1,  8, 6 };
-   StatisticDataGroup sdgEmployees(numEmployees, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgStress(stressLevel, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    StatisticCorrelationCoefficient correlate;
-   correlate.addDataGroup(&sdgEmployees);
-   correlate.addDataGroup(&sdgStress);
+   correlate.addDataArray(numEmployees, numData);
+   correlate.addDataArray(stressLevel, numData);
    
    try {
       correlate.execute();
@@ -1810,12 +1943,9 @@ StatisticUnitTesting::testFalseDiscoveryRate()
    const float data[numData] = { 0.8, 0.01, 0.07, 0.12, 0.15, 0.0015,
                                  0.3, 0.02, 0.03, 0.03, 0.34, 0.0375 };
    const float q = 0.05;
-   StatisticDataGroup sdg(data,
-                          numData,
-                          StatisticDataGroup::DATA_STORAGE_MODE_POINT);
    StatisticFalseDiscoveryRate fdr(q,
                                    StatisticFalseDiscoveryRate::C_CONSTANT_1);
-   fdr.addDataGroup(&sdg);
+   fdr.addDataArray(data, numData);
    try {
       fdr.execute();
    }
@@ -1846,11 +1976,10 @@ StatisticUnitTesting::testHistogram()
 {
    const int numData = 15;
    const float data[numData] = { 1, 2, 9, 4, 3, 7, 5, 4, 5, 8, 2, 5, 3, 4, 4};
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    const int numBuckets = 5;
    StatisticHistogram hist(numBuckets);
-   hist.addDataGroup(&sdg);
+   hist.addDataArray(data, numData);
    try {
       hist.execute();
    }
@@ -1903,12 +2032,10 @@ StatisticUnitTesting::testLevenesTest()
    const int numData = 5;
    const float dataA[numData] = { 1.4, 2.6, 0.8, 1.3, 1.9 };
    const float dataB[numData] = { 2.4, 1.8, 2.7, 2.3, 1.6 };
-   StatisticDataGroup sdgA(dataA, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgB(dataB, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    StatisticLeveneVarianceEquality levene;
-   levene.addDataGroup(&sdgA);
-   levene.addDataGroup(&sdgB);
+   levene.addDataArray(dataA, numData);
+   levene.addDataArray(dataB, numData);
    
    try {
       levene.execute();
@@ -1942,6 +2069,56 @@ StatisticUnitTesting::testLevenesTest()
 }
 
 /**
+ * test linear regression.
+ */
+bool 
+StatisticUnitTesting::testLinearRegression()
+{
+   //
+   // Example from Applied Linear Regression Models
+   //              John Neter, William Wasserman, and Michael H. Kutner
+   //              Second Edition
+   //              Page 44
+   //
+   const int numData = 10;
+   const float xi[numData] = { 30, 20, 60, 80, 40, 50, 60, 30, 70, 60 };
+   const float yi[numData] = { 73, 50, 128, 170, 87, 108, 135, 69, 148, 132 };
+   
+   StatisticDataGroup dependentDataGroup(yi, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+   StatisticDataGroup independentDataGroup(xi, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+   StatisticLinearRegression regression;
+   regression.setDependentDataArray(yi, numData);
+   regression.setIndependentDataArray(xi, numData);
+
+   try {
+      regression.execute();
+   }
+   catch (StatisticException& e) {
+      std::cout << "FAILED StatisticLinearRegression threw exception: "
+                << e.whatStdString() << std::endl;
+      return true;
+   }
+   
+   bool problem = false;
+
+   float b0, b1;
+   regression.getRegressionCoefficients(b0, b1);
+   problem |= verify("StatisticLinearRegression b0 (intercept)",
+                     b0,
+                     10.0); 
+
+   problem |= verify("StatisticLinearRegression b1 (slope)",
+                     b1,
+                     2.0); 
+
+   if (problem == false) {
+      std::cout << "PASSED StatisticLinearRegression " << std::endl;
+   }
+   
+   return problem;
+}
+      
+/**
  * test rank transformation.
  */
 bool 
@@ -1952,12 +2129,10 @@ StatisticUnitTesting::testRankTransformation()
    const float groupB[numData]  = { 8, 10, 2, 7, 3, 10, 15 };
    const float resultA[numData] = { 4.5, 10, 1.5, 7.5, 6, 1.5, 12 };
    const float resultB[numData] = { 9, 12, 3, 7.5, 4.5, 12, 14 };
-   
-   StatisticDataGroup sdgA(groupA, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-   StatisticDataGroup sdgB(groupB, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+
    StatisticRankTransformation srt;
-   srt.addDataGroup(&sdgA, false);
-   srt.addDataGroup(&sdgB, false);
+   srt.addDataArray(groupA, numData);
+   srt.addDataArray(groupB, numData);
    
    try {
       srt.execute();
@@ -2010,6 +2185,471 @@ StatisticUnitTesting::testRankTransformation()
 }
  
 /**
+ * test matrix operations.
+ */
+bool 
+StatisticUnitTesting::testMatrixOperations()
+{
+   bool problem = false;
+   
+   //
+   // Test matrix inverse 2x2
+   //
+   {
+      const float m1Data[4] = { 2, 4, 
+                                3, 1 };
+      const float m1InverseData[4] = { -0.1, 0.4, 
+                                        0.3, -0.2 };
+      StatisticMatrix m1(2, 2);
+      m1.setMatrixFromOneDimensionalArray(m1Data);
+      StatisticMatrix m1Inverse;
+      StatisticMatrix m1CorrectInverse(2,2);
+      m1CorrectInverse.setMatrixFromOneDimensionalArray(m1InverseData);
+      try {
+         m1Inverse = m1.inverse();
+         problem |= verify("Matrix Inverse (m1)",
+                           m1Inverse,
+                           m1CorrectInverse);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix m1 inverse failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test matrix inverse (4x4)
+   //
+   {
+      const float m2Data[16] = {  2,  0, 1, -1,
+                                  1, -1, 0,  2,
+                                  0, -1, 2,  1,
+                                 -2,  1, 3,  0 };
+      const float m2InverseData[16] = { 7,   6,  -5,  1,  // divide all by 18 after
+                                        5,  12, -19, 11,  // in StatisticMatrix
+                                        3,   0,   3,  3,
+                                       -1,  12,  -7,  5 };
+      StatisticMatrix m2(4, 4);
+      m2.setMatrixFromOneDimensionalArray(m2Data);
+      StatisticMatrix m2Inverse;
+      StatisticMatrix m2CorrectInverse(4, 4);
+      m2CorrectInverse.setMatrixFromOneDimensionalArray(m2InverseData);
+      m2CorrectInverse = m2CorrectInverse.multiplyByScalar(1.0 / 18.0);
+      //std::cout << "Input matrix: " << std::endl;
+      //m2.print(std::cout, "   ");
+      try {
+         m2Inverse = m2.inverse();
+         problem |= verify("Matrix Inverse (m2)",
+                           m2Inverse,
+                           m2CorrectInverse);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix m1 inverse failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test Multiply
+   //
+   {
+      const float dataA[4] = { 9, 13,
+                               2,  3 };
+      StatisticMatrix ma(2, 2);
+      ma.setMatrixFromOneDimensionalArray(dataA);
+      
+      const float dataB[4] = {  7,  5,
+                               -3, -2 };
+      StatisticMatrix mb(2, 2);
+      mb.setMatrixFromOneDimensionalArray(dataB);
+      
+      const float dataC[4] = { 24, 19,
+                                5,  4 };
+      StatisticMatrix mc(2, 2);
+      mc.setMatrixFromOneDimensionalArray(dataC);
+             
+      try {
+         const StatisticMatrix product = ma.multiply(mb);
+         problem |= verify("Matrix Multiply (A*B)",
+                           product,
+                           mc);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix multiply A*B failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test Multiply
+   //
+   {
+      const float dataA[6] = { 3, -1,
+                               0,  2,
+                               1, -1 };
+      StatisticMatrix ma(3, 2);
+      ma.setMatrixFromOneDimensionalArray(dataA);
+      
+      const float dataB[8] = { 2, -1, 0, 1,
+                               3,  0, 1, 2 };
+      StatisticMatrix mb(2, 4);
+      mb.setMatrixFromOneDimensionalArray(dataB);
+      
+      const float dataC[12] = {  3, -3, -1,  1,
+                                 6,  0,  2,  4,
+                                -1, -1, -1, -1 };
+      StatisticMatrix mc(3, 4);
+      mc.setMatrixFromOneDimensionalArray(dataC);
+             
+      try {
+         const StatisticMatrix product = ma.multiply(mb);
+         problem |= verify("Matrix Multiply (A*B)",
+                           product,
+                           mc);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix multiply A*B failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test Transpose
+   //
+   {
+      const float data[3] = { 1, 2, 3 };
+      StatisticMatrix ma(1, 3);
+      ma.setMatrixFromOneDimensionalArray(data);
+      StatisticMatrix mb(3, 1);
+      mb.setMatrixFromOneDimensionalArray(data);
+      
+      const StatisticMatrix trans = ma.transpose();
+      problem |= verify("Matrix Transpose One-Dimensional",
+                        trans,
+                        mb);
+   }
+   
+   //
+   // Test Transpose
+   //
+   {
+      const float dataA[6] = { 2,  1, -3, 
+                               4, -1,  5 };
+      StatisticMatrix ma(2, 3);
+      ma.setMatrixFromOneDimensionalArray(dataA);
+      const float dataB[6] = {  2,  4,
+                                1, -1, 
+                               -3,  5 };
+      StatisticMatrix mb(3, 2);
+      mb.setMatrixFromOneDimensionalArray(dataB);
+      
+      const StatisticMatrix trans = ma.transpose();
+      problem |= verify("Matrix Transpose 3x2",
+                        trans,
+                        mb);
+   }
+   
+   if (problem == false) {
+      std::cout << "PASSED StatisticMatrix " << std::endl;
+   }
+   return problem;
+}
+      
+/**
+ * test multiple linear regression.
+ */
+bool 
+StatisticUnitTesting::testMultipleLinearRegression()
+{
+   bool problem = false;
+
+   {
+      //
+      // Example from Applied Linear Regression Models
+      //              John Neter, William Wasserman, and Michael H. Kutner
+      //              Second Edition
+      //              Page 44
+      //
+      // b = Inverse(Xt * X) * Xt * Y
+      //
+      
+      const int numData = 10;
+      const float xi[numData] = { 30, 20, 60, 80, 40, 50, 60, 30, 70, 60 };
+      const float yi[numData] = { 73, 50, 128, 170, 87, 108, 135, 69, 148, 132 };
+      
+      StatisticMultipleRegression regression;
+      regression.setNumberOfIndependentDataGroups(1);
+      regression.setDependentDataArray(yi, numData);
+      regression.setIndependentDataArray(0, xi, numData);
+
+      try {
+         regression.execute();
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED StatisticMultipleRegression 1-X threw exception: "
+                   << e.whatStdString() << std::endl;
+         return true;
+      }
+      
+      std::vector<float> computedCoefficients, correctCoefficients;
+      correctCoefficients.push_back(10.0);
+      correctCoefficients.push_back(2.0);
+      regression.getRegressionCoefficients(computedCoefficients);
+
+      problem |= verifyCoefficients("Multiple Regression Test 1-X",
+                                    computedCoefficients,
+                                    correctCoefficients);
+   }
+                                 
+   {
+      //
+      // Example from Applied Linear Regression Models
+      //              John Neter, William Wasserman, and Michael H. Kutner
+      //              Second Edition
+      //              Page 207, 249-252
+      //
+      const int numData = 15;
+      const float y[numData] = {  162, 120, 223, 131,  67, 
+                                  169,  81, 192, 116,  55, 
+                                  252, 232, 144, 103, 212 };
+      const float x1[numData] = { 274, 180, 375, 205, 86,
+                                  265,  98, 330, 195, 53,
+                                  430, 372, 236, 157, 370 };
+      const float x2[numData] = { 2450, 3254, 3802, 2838, 2347,
+                                  3782, 3008, 2450, 2137, 2560,
+                                  4020, 4427, 2660, 2088, 2605 };
+      
+      StatisticMultipleRegression regression;
+      regression.setNumberOfIndependentDataGroups(2);
+      regression.setDependentDataArray(y, numData);
+      regression.setIndependentDataArray(0, x1, numData);
+      regression.setIndependentDataArray(1, x2, numData);
+
+      float SSTO, SSE, SSR, MSR, MSE, F, pValue, R2;
+      int regressionDOF, errorDOF, totalDOF;
+      try {
+         regression.execute();
+         regression.getAnovaParameters(SSTO, 
+                                       SSE, 
+                                       SSR, 
+                                       MSR, 
+                                       MSE, 
+                                       F, 
+                                       pValue,
+                                       R2,
+                                       regressionDOF, 
+                                       errorDOF, 
+                                       totalDOF);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED StatisticMultipleRegression 2-X threw exception: "
+                   << e.whatStdString() << std::endl;
+         return true;
+      }
+      
+      std::vector<float> computedCoefficients, correctCoefficients;
+      correctCoefficients.push_back(3.452613);
+      correctCoefficients.push_back(0.496005);
+      correctCoefficients.push_back(0.009199);
+      regression.getRegressionCoefficients(computedCoefficients);
+
+      problem |= verifyCoefficients("Multiple Regression Test 2-X",
+                                    computedCoefficients,
+                                    correctCoefficients);
+                                    
+      problem |= verify("Multiple Regression Test 2-X SSTO",
+                        SSTO,
+                        53901.6);
+      problem |= verify("Multiple Regression Test 2-X SSE",
+                        SSE,
+                        56.884);
+      problem |= verify("Multiple Regression Test 2-X SSR",
+                        SSR,
+                        53844.716,
+                        0.01);
+      problem |= verify("Multiple Regression Test 2-X MSR",
+                        MSR,
+                        26922.358,
+                        0.01);
+      problem |= verify("Multiple Regression Test 2-X MSE",
+                        MSE,
+                        4.740);
+      problem |= verify("Multiple Regression Test 2-X F",
+                        F,
+                        5679.47,  //5680.0);
+                        0.01);
+      problem |= verify("Multiple Regression Test 2-X P-Value",
+                        pValue,
+                        0.0);
+      problem |= verify("Multiple Regression Test 2-X R2",
+                        R2,
+                        .9989);
+      problem |= verify("Multiple Regression Test 2-X Regression DOF",
+                        regressionDOF,
+                        2.0);
+      problem |= verify("Multiple Regression Test 2-X Error DOF",
+                        errorDOF,
+                        12.0);
+      problem |= verify("Multiple Regression Test 2-X Total DOF",
+                        totalDOF,
+                        14.0);
+   }
+                                 
+   {
+      //
+      // Example from Applied Linear Regression Models
+      //              John Neter, William Wasserman, and Michael H. Kutner
+      //              Second Edition
+      //              Page 272
+      //
+      const int numData = 20;
+      const float y[numData] = {  11.9, 22.8, 18.7, 20.1, 12.9, 
+                                  21.7, 27.1, 25.4, 21.3, 19.3,
+                                  25.4, 27.2, 11.7, 17.8, 12.8,
+                                  23.9, 22.6, 25.4, 14.8, 21.1 };
+      const float x1[numData] = { 19.5, 24.7, 30.7, 29.8, 19.1,
+                                  25.6, 31.4, 27.9, 22.1, 25.5,
+                                  31.1, 30.4, 18.7, 19.7, 14.6,
+                                  29.5, 27.7, 30.2, 22.7, 25.2 };
+      const float x2[numData] = { 43.1, 49.8, 51.9, 54.3, 42.2,
+                                  53.9, 58.5, 52.1, 49.9, 53.5,
+                                  56.6, 56.7, 46.5, 44.2, 42.7,
+                                  54.4, 55.3, 58.6, 48.2, 51.0 };
+      const float x3[numData] = { 29.1, 28.2, 37.0, 31.1, 30.9,
+                                  23.7, 27.6, 30.6, 23.2, 24.8,
+                                  30.0, 28.3, 23.0, 28.6, 21.3,
+                                  30.1, 25.7, 24.6, 27.1, 27.5 };
+      StatisticMultipleRegression regression;
+      regression.setNumberOfIndependentDataGroups(3);
+      regression.setDependentDataArray(y, numData);
+      regression.setIndependentDataArray(0, x1, numData);
+      regression.setIndependentDataArray(1, x2, numData);
+      regression.setIndependentDataArray(2, x3, numData);
+
+      try {
+         regression.execute();
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED StatisticMultipleRegression 3-X threw exception: "
+                   << e.whatStdString() << std::endl;
+         return true;
+      }
+      
+      std::vector<float> computedCoefficients, correctCoefficients;
+      correctCoefficients.push_back(117.084);
+      correctCoefficients.push_back(4.334);
+      correctCoefficients.push_back(-2.857);
+      correctCoefficients.push_back(-2.186);
+      regression.getRegressionCoefficients(computedCoefficients);
+
+      problem |= verifyCoefficients("Multiple Regression Test 3-X",
+                                    computedCoefficients,
+                                    correctCoefficients);
+   }
+                                 
+   {
+      //
+      // Data from Statistics for Psychology
+      //           Arthur Aron & Elaine Aron
+      //           2nd Edition, 1999
+      //           Table 3-2, page 78
+      //           Regression, page 105, 112
+      //           T-stats page 99
+      const int numData = 5;
+      const float numEmployees[numData] = { 6, 8, 3, 10, 8 };
+      const float stressLevel[numData]  = { 7, 8, 1,  8, 6 };
+
+      StatisticDataGroup dependentDataGroup(stressLevel, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+      StatisticDataGroup independentDataGroup1(numEmployees, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+      StatisticMultipleRegression regression;
+      regression.setNumberOfIndependentDataGroups(1);
+      regression.setDependentDataArray(stressLevel, numData);
+      regression.setIndependentDataArray(0, numEmployees, numData);
+
+      float SSTO, SSE, SSR, MSR, MSE, F, pValue, R2;
+      int regressionDOF, errorDOF, totalDOF;
+      try {
+         regression.execute();
+         regression.getAnovaParameters(SSTO, 
+                                       SSE, 
+                                       SSR, 
+                                       MSR, 
+                                       MSE, 
+                                       F, 
+                                       pValue,
+                                       R2,
+                                       regressionDOF, 
+                                       errorDOF, 
+                                       totalDOF);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED StatisticMultipleRegression 4-X threw exception: "
+                   << e.whatStdString() << std::endl;
+         return true;
+      }
+      
+      std::vector<float> computedCoefficients, correctCoefficients;
+      correctCoefficients.push_back(-0.75);
+      correctCoefficients.push_back(0.964286);
+      regression.getRegressionCoefficients(computedCoefficients);
+
+      problem |= verifyCoefficients("Multiple Regression Test 4-X",
+                                    computedCoefficients,
+                                    correctCoefficients);
+                                    
+      problem |= verify("Multiple Regression Test 4-X SSTO",
+                        SSTO,
+                        34);
+      problem |= verify("Multiple Regression Test 4-X SSE",
+                        SSE,
+                        7.96429);
+      problem |= verify("Multiple Regression Test 4-X SSR",
+                        SSR,
+                        26.0357,  
+                        0.01);
+      problem |= verify("Multiple Regression Test 4-X MSR",
+                        MSR,
+                        26.04,
+                        0.01);
+      problem |= verify("Multiple Regression Test 4-X MSE",
+                        MSE,
+                        2.65476);
+      problem |= verify("Multiple Regression Test 4-X F",
+                        F,
+                        9.80717,  // T=sqrt(9.81) = 3.132 ~= 3.17
+                        0.01);
+      problem |= verify("Multiple Regression Test 4-X P-Value",
+                        pValue,
+                        0.052);
+      problem |= verify("Multiple Regression Test 4-X R2",
+                        R2,
+                        0.765756);
+      problem |= verify("Multiple Regression Test 4-X Regression DOF",
+                        regressionDOF,
+                        1.0);
+      problem |= verify("Multiple Regression Test 4-X Error DOF",
+                        errorDOF,
+                        3.0);
+      problem |= verify("Multiple Regression Test 4-X Total DOF",
+                        totalDOF,
+                        4.0);
+   }
+
+   if (problem == false) {
+      std::cout << "PASSED StatisticMultipleRegression " << std::endl;
+   }
+   return problem;
+}
+
+/**
  * test normalization of a distribution.
  */
 bool 
@@ -2022,10 +2662,9 @@ StatisticUnitTesting::testNormalizeDistributionSorted()
    const float data[numData] = { 1, 3, 3, 3, 4, 4, 5, 7, 7, 8, 9, 10, 12, 14, 16 };
    const float normValues[numData] = { -5.7, -1.2, -0.85, -0.55, -0.3, -0.1, 0.0, 0.1, 0.3, 0.5, 0.75, 1.05, 1.45, 1.7, 10.0 };
    //const float normValues[numData] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    StatisticNormalizeDistribution normal(0.0, 1.0);
-   normal.addDataGroup(&sdg);
+   normal.addDataArray(data, numData);
    
    try {
       normal.execute();
@@ -2072,10 +2711,9 @@ StatisticUnitTesting::testNormalizeDistributionUnsorted()
    const int numData = 15;
    const float data[numData] = { 1, 3, 7, 4, 12, 8, 5, 4, 9, 10, 3, 14, 3, 7, 16 };
    const float normValues[numData] = { -5.7, -1.2, 0.1, -0.3, 1.45, 0.5, 0.0, -0.1, 0.75, 1.05, -0.85, 1.7, -0.55, 0.3, 10 };
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    StatisticNormalizeDistribution normal(0.0, 1.0);
-   normal.addDataGroup(&sdg);
+   normal.addDataArray(data, numData);
    
    try {
       normal.execute();
@@ -2128,10 +2766,9 @@ StatisticUnitTesting::testPermutationRandomShuffle()
    const int numData = 10;
    const float data[numData] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
    const float shuffledData[numData] = { 3, 5, 2, 1, 7, 8, 6, 9, 10, 4 };
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    StatisticPermutation perm(StatisticPermutation::PERMUTATION_METHOD_RANDOM_ORDER);
-   perm.addDataGroup(&sdg);
+   perm.addDataArray(data, numData);
    
    //
    // Run the algorithm
@@ -2187,10 +2824,9 @@ StatisticUnitTesting::testPermutationSignFlipping()
    const int numData = 10;
    const float data[numData] = { -1, 2, -3, 4, -5, 6, -7, 8, -9, 10 };
    const float signFlippedData[numData] = { -1, -2, 3, -4, -5, 6, -7, 8, -9, -10 };
-   StatisticDataGroup sdg(data, numData, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
 
    StatisticPermutation perm(StatisticPermutation::PERMUTATION_METHOD_RANDOM_SIGN_FLIP);
-   perm.addDataGroup(&sdg);
+   perm.addDataArray(data, numData);
    
    //
    // Run the algorithm

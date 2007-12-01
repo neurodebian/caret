@@ -37,6 +37,7 @@
 #include <QTextStream>
 
 #include "FileException.h"
+#include "StudyMetaDataLinkSet.h"
 
 class CommaSeparatedValueFile;
 class QDomDocument;
@@ -107,6 +108,7 @@ class AbstractFile {
          UNARY_OPERATION_MULTIPLY,
          UNARY_OPERATION_FIX_NOT_A_NUMBER,
          UNARY_OPERATION_SQUARE_ROOT,
+         UNARY_OPERATION_SUBTRACT_FROM_ONE,
          UNARY_OPERATION_LOG2
       };
       
@@ -152,7 +154,7 @@ class AbstractFile {
       void setFileName(const QString name) { filename = name; }
 
       /// get the default file name (also overrides current file name)
-      QString makeDefaultFileName(const QString& description = "") const;
+      virtual QString makeDefaultFileName(const QString& description = "") const;
       
       /// replace the caret standard file name's description
       void replaceFileNameDescription(const QString& newDescription);
@@ -208,6 +210,12 @@ class AbstractFile {
       
       /// set file has header
       void setFileHasHeader(const bool hh) { fileHasHeader = hh; }
+      
+      // get the study metadata link for this file
+      StudyMetaDataLinkSet getStudyMetaDataLinkSet() const;
+      
+      // set the study metadata link for this file
+      void setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls);
       
       /// Read a file tag's line  (form: tag value)
       static void readTagLine(const QString& filenameIn, QTextStream& stream , QString& tag, 
@@ -281,6 +289,17 @@ class AbstractFile {
       /// get the data type of file that was read
       FILE_FORMAT getFileReadType() const { return fileReadType; }
       
+      /// convert a format type to its name
+      static QString convertFormatTypeToName(const FILE_FORMAT formatIn);
+      
+      /// convert a file format name to its type
+      static FILE_FORMAT convertFormatNameToType(const QString& name,
+                                                 bool* validNameOut = NULL);
+      
+      /// get file format types and names
+      static void getFileFormatTypesAndNames(std::vector<FILE_FORMAT>& typesOut,
+                                             std::vector<QString>& namesOut);
+                                             
       /// set read/write type for a format
       void setFileReadWriteType(const FILE_FORMAT format, const FILE_IO readAndOrWrite);
       
@@ -319,11 +338,11 @@ class AbstractFile {
       void setDefaultFileNameExtension(const QString& s) { defaultExtension = s; }
       
       /// get the preferred write type
-      static FILE_FORMAT getPreferredWriteType() 
+      static std::vector<FILE_FORMAT> getPreferredWriteType() 
          { return preferredWriteType; }
 
       /// set the preferred write type
-      static void setPreferredWriteType(const FILE_FORMAT t)
+      static void setPreferredWriteType(const std::vector<FILE_FORMAT> t)
                                              { preferredWriteType = t; }
       
       /// set the default file name prefix and number of nodes
@@ -332,6 +351,9 @@ class AbstractFile {
       
       /// get the default file name prefix
       static void getDefaultFileNamePrefix(QString& prefix, int& numNodes);
+      
+      /// get the root element name
+      QString getRootXmlElementTagName() const { return rootXmlElementTagName; }
       
       /// set the root element name
       void setRootXmlElementTagName(const QString& s) { rootXmlElementTagName = s; }
@@ -463,6 +485,14 @@ class AbstractFile {
          
       /// copy an abstract file to this one (used by copy constructor and operator=)
       void copyHelperAbstractFile(const AbstractFile& af);
+      
+      /// set XML version read with SAX parser
+      void setXmlVersionReadWithSaxParser(const bool b)
+                         { xmlVersionReadWithSaxParserFlag = b; }
+      
+      /// get XML version read with SAX parser
+      bool getXmlVersionReadWithSaxParser() const 
+                         { return xmlVersionReadWithSaxParserFlag; }
       
       /// set the read meta data only flag
       void setReadMetaDataOnlyFlag(const bool flag) { readMetaDataOnlyFlag = flag; }
@@ -630,11 +660,14 @@ class AbstractFile {
       /// matrix associated with this file
       TransformationMatrix* transMatrix;
       
+      /// xml version of file is read with sax parser
+      bool xmlVersionReadWithSaxParserFlag;
+      
       /// append version id when files written
       static bool appendVersionIdWhenFilesWritten;
       
       /// write to this data type whenever possible
-      static FILE_FORMAT preferredWriteType;
+      static std::vector<FILE_FORMAT> preferredWriteType;
       
       /// the number of digits right of the decimal when writing float to text files
       static int textFileDigitsRightOfDecimal;
@@ -652,26 +685,28 @@ class AbstractFile {
       /// time to read the file in seconds
       float timeToReadFileInSeconds;
       
-   protected:
-      static const QString tagFileTitle;
-      static const QString tagFileVersion;
-      static const QString tagBeginData;
+   public:
       static const QString xmlHeaderTagName;
       static const QString xmlHeaderElementTagName;
       static const QString xmlHeaderElementName;
       static const QString xmlHeaderElementValue;
+
+   protected:
+      static const QString tagFileTitle;
+      static const QString tagFileVersion;
+      static const QString tagBeginData;
       static const QString xmlHeaderOldTagName;
       static const QString headerTagPubMedID;
       static const QString headerTagComment;  // keep this private
                                                   // use get/setHeaderComment
    public:
-      static const QString headerTagEncodingValueAscii;
-      static const QString headerTagEncodingValueBinary;
-      static const QString headerTagEncodingValueXML;
-      static const QString headerTagEncodingValueXMLBase64;
-      static const QString headerTagEncodingValueXMLGZipBase64;
-      static const QString headerTagEncodingValueOther;
-      static const QString headerTagEncodingValueCommaSeparatedValueFile;
+      static QString getHeaderTagEncodingValueAscii() { return "ASCII"; }
+      static QString getHeaderTagEncodingValueBinary() { return "BINARY"; }
+      static QString getHeaderTagEncodingValueXML() { return "XML"; }
+      static QString getHeaderTagEncodingValueXMLBase64() { return "XML_BASE64"; }
+      static QString getHeaderTagEncodingValueXMLGZipBase64() { return "XML_BASE64_GZIP"; }
+      static QString getHeaderTagEncodingValueOther() { return "OTHER"; }
+      static QString getHeaderTagEncodingValueCommaSeparatedValueFile() { return "COMMA_SEPARATED_VALUE_FILE"; }
       static const QString headerTagConfigurationID;
       static const QString headerTagCoordFrameID;
       static const QString headerTagDate;
@@ -681,6 +716,7 @@ class AbstractFile {
       static const QString headerTagResolution;
       static const QString headerTagSampling;
       static const QString headerTagScale;
+      static const QString headerTagStudyMetaDataLinkSet;
       static const QString headerTagVersionID;
 
       static const QString headerTagSpace;
@@ -711,6 +747,7 @@ class AbstractFile {
    const QString AbstractFile::headerTagResolution       = "resolution";
    const QString AbstractFile::headerTagSampling         = "sampling";
    const QString AbstractFile::headerTagScale            = "scale";
+   const QString AbstractFile::headerTagStudyMetaDataLinkSet = "study_metadata_link_set";
    const QString AbstractFile::headerTagVersionID        = "version_id";
    
    const QString AbstractFile::headerTagSpace        = "space";
@@ -719,16 +756,8 @@ class AbstractFile {
    const QString AbstractFile::headerTagCategory     = "category";
    const QString AbstractFile::headerTagSubject      = "subject";
       
-   const QString AbstractFile::headerTagEncodingValueAscii  = "ASCII";
-   const QString AbstractFile::headerTagEncodingValueBinary = "BINARY";
-   const QString AbstractFile::headerTagEncodingValueXML    = "XML";
-   const QString AbstractFile::headerTagEncodingValueXMLBase64    = "XML_BASE64";
-   const QString AbstractFile::headerTagEncodingValueXMLGZipBase64    = "XML_GZIP_BASE64";
-   const QString AbstractFile::headerTagEncodingValueOther  = "OTHER";
-   const QString AbstractFile::headerTagEncodingValueCommaSeparatedValueFile = "COMMA_SEPARATED_VALUE_FILE";
    int AbstractFile::textFileDigitsRightOfDecimal = 6;
-   AbstractFile::FILE_FORMAT AbstractFile::preferredWriteType =
-                                       AbstractFile::FILE_FORMAT_OTHER; 
+   std::vector<AbstractFile::FILE_FORMAT> AbstractFile::preferredWriteType; 
    bool AbstractFile::appendVersionIdWhenFilesWritten = false;
    QString AbstractFile::defaultFileNamePrefix = "";
    int AbstractFile::defaultFileNameNumberOfNodes = 0;

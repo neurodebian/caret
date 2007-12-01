@@ -29,10 +29,11 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BrainModelSurface.h"
@@ -41,7 +42,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #define __GUI_SURFACE_SPM_TRANSFORM_DIALOG_MAIN_H__
 #include "GuiSurfaceSpmTransformDialog.h"
 #undef __GUI_SURFACE_SPM_TRANSFORM_DIALOG_MAIN_H__
@@ -260,7 +260,7 @@ GuiSurfaceSpmTransformDialog::done(int r)
       }
       
       if (msg.isEmpty() == false) {
-         GuiMessageBox::critical(this, "Error", msg, "OK");
+         QMessageBox::critical(this, "Error", msg);
          return;
       }
       
@@ -448,7 +448,8 @@ GuiSurfaceSpmTransformDialog::done(int r)
          
       }
       catch(FileException& e) {
-         GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error", e.whatQString());
          return;
       }
       GuiBrainModelOpenGL::updateAllGL(NULL);
@@ -515,9 +516,9 @@ GuiSurfaceSpmTransformDialog::selectVolumeFile(const FILE_SELECTION_TYPE fst)
          break;
    }
    
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setDirectory(QDir::currentPath());
    fd.setFilter("SPM Volume Files (*.hdr)");
    fd.setWindowTitle(caption);

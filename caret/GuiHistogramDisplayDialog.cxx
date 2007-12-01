@@ -252,7 +252,7 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
    // Histogram smoothing
    //
    QPushButton* smoothPushButton = NULL;
-   if (DebugControl::getTestFlag()) {
+   if (DebugControl::getTestFlag1()) {
       smoothPushButton = new QPushButton("Smooth Histogram...");
       smoothPushButton->setFixedSize(smoothPushButton->sizeHint());
       smoothPushButton->setAutoDefault(false);

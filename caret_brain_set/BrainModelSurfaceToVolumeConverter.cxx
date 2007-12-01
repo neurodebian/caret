@@ -40,6 +40,7 @@
 #include <QDateTime>
 
 #include "BrainModelSurface.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "BrainSet.h"
 #include "BrainModelSurfaceNodeColoring.h"
@@ -253,7 +254,7 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
    //
    // the study meta data link
    //
-   StudyMetaDataLink studyMetaDataLink;
+   StudyMetaDataLinkSet studyMetaDataLinkSet;
    
    //
    // Set the type of volume and voxels
@@ -275,7 +276,7 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
                removeProgressDialog();
                throw BrainModelAlgorithmException("Invalid paint column");
             }
-            studyMetaDataLink = pf->getColumnStudyMetaDataLink(nodeAttributeColumn);
+            studyMetaDataLinkSet = pf->getColumnStudyMetaDataLinkSet(nodeAttributeColumn);
          }
          break;
       case CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE:
@@ -288,7 +289,7 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
                removeProgressDialog();
                throw BrainModelAlgorithmException("Invalid metric column");
             }
-            studyMetaDataLink = mf->getColumnStudyMetaDataLink(nodeAttributeColumn);
+            studyMetaDataLinkSet = mf->getColumnStudyMetaDataLinkSet(nodeAttributeColumn);
          }
          break;
       case CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE:
@@ -300,7 +301,7 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
                removeProgressDialog();
                throw BrainModelAlgorithmException("Invalid surface shape column");
             }
-            studyMetaDataLink = ssf->getColumnStudyMetaDataLink(nodeAttributeColumn);
+            studyMetaDataLinkSet = ssf->getColumnStudyMetaDataLinkSet(nodeAttributeColumn);
          }
          break;
       case CONVERT_TO_ROI_VOLUME_USING_ROI_NODES:
@@ -329,7 +330,7 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
                   false,
                   true);
    volume->setVolumeType(volumeType);
-   volume->setStudyMetaDataLink(studyMetaDataLink);
+   volume->setStudyMetaDataLinkSet(studyMetaDataLinkSet);
    
    const int numberOfVoxels = volume->getTotalNumberOfVoxels();
    voxelSet.resize(numberOfVoxels, false);
@@ -1004,6 +1005,9 @@ BrainModelSurfaceToVolumeConverter::conversionIntersectTilesAndVoxels()
    MetricFile* metricFile = brainSet->getMetricFile();
    SurfaceShapeFile* surfaceShapeFile = brainSet->getSurfaceShapeFile();
    
+   const BrainModelSurfaceROINodeSelection* surfaceROI =
+           brainSet->getBrainModelSurfaceRegionOfInterestNodeSelection();
+           
    for (int m = 0; m < numTiles; m++) {
       //
       // Get the nodes in the tiles
@@ -1029,12 +1033,9 @@ BrainModelSurfaceToVolumeConverter::conversionIntersectTilesAndVoxels()
             // See if any of the tile's nodes are part of the query
             //
             {
-               const BrainSetNodeAttribute* bna1 = brainSet->getNodeAttributes(n1);
-               const BrainSetNodeAttribute* bna2 = brainSet->getNodeAttributes(n2);
-               const BrainSetNodeAttribute* bna3 = brainSet->getNodeAttributes(n3);
-               if (bna1->getNodeInROI() ||
-                   bna2->getNodeInROI() ||
-                   bna3->getNodeInROI()) {
+               if (surfaceROI->getNodeSelected(n1) ||
+                   surfaceROI->getNodeSelected(n2) ||
+                   surfaceROI->getNodeSelected(n3)) {
                   useTile = true;
                }
             }

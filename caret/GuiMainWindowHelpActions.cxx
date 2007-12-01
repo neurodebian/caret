@@ -34,7 +34,6 @@
 #include "GuiCaretTipsDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowHelpActions.h"
-#include "GuiMessageBox.h"
 #include "QtTextEditDialog.h"
 #include "SystemUtilities.h"
 #include "global_variables.h"
@@ -56,61 +55,61 @@ GuiMainWindowHelpActions::GuiMainWindowHelpActions(QWidget* parent)
    aboutAction = new QAction(parent);
    aboutAction->setText("About Caret 5...");
    aboutAction->setObjectName("aboutAction");
-   QObject::connect(aboutAction, SIGNAL(activated()),
+   QObject::connect(aboutAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuAbout()));
    
    aboutQtAction = new QAction(parent);
    aboutQtAction->setText("About QT...");
    aboutQtAction->setObjectName("aboutQtAction");
-   QObject::connect(aboutQtAction, SIGNAL(activated()),
+   QObject::connect(aboutQtAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuAboutQT()));
 
    aboutOpenGLAction = new QAction(parent);
    aboutOpenGLAction->setText("About OpenGL...");
    aboutOpenGLAction->setObjectName("aboutOpenGLAction");
-   QObject::connect(aboutOpenGLAction, SIGNAL(activated()),
+   QObject::connect(aboutOpenGLAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuAboutOpenGL()));
 
    caretHelpAction = new QAction(parent);
    caretHelpAction->setText("Caret Help...");
    caretHelpAction->setObjectName("caretHelpAction");
-   QObject::connect(caretHelpAction, SIGNAL(activated()),
+   QObject::connect(caretHelpAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuCaretHelp()));
 
    caretTipsAction = new QAction(parent);
    caretTipsAction->setText("Caret Tips...");
    caretTipsAction->setObjectName("caretTipsAction");
-   QObject::connect(caretTipsAction, SIGNAL(activated()),
+   QObject::connect(caretTipsAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuCaretTips()));
 
    caretWebSiteAction = new QAction(parent);
    caretWebSiteAction->setText("Go To Caret Web Site...");
    caretWebSiteAction->setObjectName("caretWebSiteAction");
-   QObject::connect(caretWebSiteAction, SIGNAL(activated()),
+   QObject::connect(caretWebSiteAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuCaretWebSite()));
 
    caretSearchWebSiteAction = new QAction(parent);
    caretSearchWebSiteAction->setText("Search Caret Web Site...");
    caretSearchWebSiteAction->setObjectName("caretSearchWebSiteAction");
-   QObject::connect(caretSearchWebSiteAction, SIGNAL(activated()),
+   QObject::connect(caretSearchWebSiteAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuCaretSearchWebSite()));
 
    sumbsWebSiteAction = new QAction(parent);
    sumbsWebSiteAction->setText("Go To SuMS Database Web Site...");
    sumbsWebSiteAction->setObjectName("sumbsWebSiteAction");
-   QObject::connect(sumbsWebSiteAction, SIGNAL(activated()),
+   QObject::connect(sumbsWebSiteAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuSumsWebSite()));
 
    sumsAtlasAction = new QAction(parent);
    sumsAtlasAction->setText("Go To SuMS Database Atlases...");
    sumsAtlasAction->setObjectName("sumsAtlasAction");
-   QObject::connect(sumsAtlasAction, SIGNAL(activated()),
+   QObject::connect(sumsAtlasAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuSumsAtlases()));
 
    sumsTutorialsAction = new QAction(parent);
    sumsTutorialsAction->setText("Go To SuMS Database Tutorials...");
    sumsTutorialsAction->setObjectName("sumsTutorialsAction");
-   QObject::connect(sumsTutorialsAction, SIGNAL(activated()),
+   QObject::connect(sumsTutorialsAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuSumsTutorials()));
 }
 
@@ -276,7 +275,7 @@ GuiMainWindowHelpActions::helpMenuAboutOpenGL()
    if (format.doubleBuffer()) msg.append("on\n");
    else msg.append("off\n");
    
-   GuiMessageBox::information(theMainWindow, "OpenGL Information", msg, QMessageBox::Ok);
+   QMessageBox::information(theMainWindow, "OpenGL Information", msg);
 }
 
 /**

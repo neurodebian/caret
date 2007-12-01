@@ -31,6 +31,7 @@
 #include "BrainModelAlgorithm.h"
 
 class BrainModelSurface;
+class BrainModelSurfaceROINodeSelection;
 class TopologyFile;
 class TopologyHelper;
 
@@ -42,7 +43,7 @@ class BrainModelSurfaceClusterToBorderConverter : public BrainModelAlgorithm {
                                                 BrainModelSurface* bms,
                                                 TopologyFile* tfIn,
                                                 const QString& borderName,
-                                                const std::vector<bool>& inputNodeClusterFlagIn,
+                                                BrainModelSurfaceROINodeSelection *surfaceROIIn,
                                                 const bool projectTheBordersFlagIn);
       
       // destructor
@@ -97,8 +98,8 @@ class BrainModelSurfaceClusterToBorderConverter : public BrainModelAlgorithm {
       /// number of borders created
       int numberOfBordersCreated;
       
-      /// input cluster flag for nodes
-      std::vector<bool> inputNodeClusterFlag;
+      /// surface region of interest node selection
+      BrainModelSurfaceROINodeSelection* surfaceROI;
       
       /// project the borders flag
       bool projectTheBordersFlag;

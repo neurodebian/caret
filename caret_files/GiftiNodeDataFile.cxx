@@ -40,6 +40,7 @@
 #include "StringUtilities.h"
 
 static const QString studyLinkMetaDataTag("tagStudyMetaDataLink");
+static const QString studyLinkSetMetaDataTag("tagStudyMetaDataLinkSet");
 
 /**
  * Constructor
@@ -118,6 +119,66 @@ GiftiNodeDataFile::setColumnName(const int col, const QString& name)
    setDataArrayName(col, name);
 }
 
+
+/**
+ * get a node attribute file column number where input may be a column 
+ * name or number.  Input numbers range 1..N and output column 
+ * numbers range 0..(N-1).
+ */
+int 
+GiftiNodeDataFile::getColumnFromNameOrNumber(const QString& columnNameOrNumber,
+                                             const bool addColumnIfNotFoundAndNotNumber) throw (FileException)
+{
+   //
+   // Try name first
+   //
+   const int numCols = getNumberOfColumns();
+   for (int i = 0; i < numCols; i++) {
+      const QString name = getColumnName(i);
+      if (name == columnNameOrNumber) {
+         return i;
+      }
+   }
+   
+   //
+   // To see if it is a number, simply convert to int and check for success
+   //
+   bool ok = false;
+   const int columnNumber = columnNameOrNumber.toInt(&ok);
+   if (ok) {
+      if ((columnNumber > 0) && 
+          (columnNumber <= getNumberOfColumns())) {
+         return (columnNumber - 1);
+      }
+      else {
+         throw FileException("ERROR Invalid column name/number " 
+                             + QString::number(columnNumber)
+                             + " in file "
+                             + FileUtilities::basename(getFileName()));
+      }
+   }
+   
+   //
+   // Add column if there are nodes
+   //
+   if (addColumnIfNotFoundAndNotNumber) {
+      if (getNumberOfNodes() > 0) {
+         addColumns(1);
+         const int col = getNumberOfColumns() - 1;
+         setColumnName(col, columnNameOrNumber);
+         return col;
+      }
+   }
+   
+   //
+   // faild to find 
+   //
+   throw FileException("ERROR column name/number " 
+                          + columnNameOrNumber
+                          + " not found in file "
+                          + FileUtilities::basename(getFileName()));
+}
+
 /**
  * Get the column index for a column with the specified name.  If the
  * name is not found a negative number is returned.
@@ -177,34 +238,39 @@ GiftiNodeDataFile::getColumnComment(const int col) const
 }
 
 /**
- * get the study metadata link for a column.
+ * get the study metadata link set for a column.
  */
-StudyMetaDataLink 
-GiftiNodeDataFile::getColumnStudyMetaDataLink(const int columnNumber) const
+StudyMetaDataLinkSet
+GiftiNodeDataFile::getColumnStudyMetaDataLinkSet(const int columnNumber) const
 {
-   StudyMetaDataLink smdl;
+   StudyMetaDataLinkSet smdls;
    if ((columnNumber >= 0) &&
        (columnNumber < getNumberOfDataArrays())) {
       QString s;
+      if (dataArrays[columnNumber]->getMetaData()->get(studyLinkSetMetaDataTag, s)) {
+         smdls.setLinkSetFromCodedText(s);
+      }
       if (dataArrays[columnNumber]->getMetaData()->get(studyLinkMetaDataTag, s)) {
+         StudyMetaDataLink smdl;
          smdl.setLinkFromCodedText(s);
+         smdls.addStudyMetaDataLink(smdl);
       }
    }
    
-   return smdl;
+   return smdls;
 }
 
 /**
  * set the study metadata link for a column.
  */
 void 
-GiftiNodeDataFile::setColumnStudyMetaDataLink(const int columnNumber,
-                                              const StudyMetaDataLink smdl)
+GiftiNodeDataFile::setColumnStudyMetaDataLinkSet(const int columnNumber,
+                                              const StudyMetaDataLinkSet smdls)
 {
    if ((columnNumber >= 0) &&
        (columnNumber < getNumberOfDataArrays())) {
-      const QString s = smdl.getLinkAsCodedText(); 
-      dataArrays[columnNumber]->getMetaData()->set(studyLinkMetaDataTag, s);
+      const QString s = smdls.getLinkSetAsCodedText(); 
+      dataArrays[columnNumber]->getMetaData()->set(studyLinkSetMetaDataTag, s);
       setModified();
    }
 }
@@ -237,9 +303,15 @@ GiftiNodeDataFile::transferFileDataForDeformation(const DeformationMapFile& dmf,
    destinationFile.setFileComment(comment);
 */   
    for (int j = 0; j < getNumberOfColumns(); j++) {
+      GiftiDataArray* destDataArray = destinationFile.getDataArray(j);
+      const GiftiDataArray* myDataArray = getDataArray(j);
+      destDataArray->setMetaData(myDataArray->getMetaData());
+   }
+   for (int j = 0; j < getNumberOfColumns(); j++) {
       QString name(dmf.getDeformedColumnNamePrefix());
       name.append(getColumnName(j));
       destinationFile.setColumnName(j, name);
+      
       QString comment(getColumnComment(j));
       if (comment.isEmpty() == false) {
          comment.append("\n");
@@ -372,7 +444,7 @@ GiftiNodeDataFile::addColumns(const int numberOfNewColumns,
    dim.push_back(numberOfElementsPerColumn);
    for (int i = 0; i < numberOfNewColumns; i++) {
       addDataArray(new GiftiDataArray(this,
-                                      getDefaultDataArrayCategory(),
+                                      getDefaultDataArrayIntent(),
                                       defaultDataType,
                                       dim));
    }
@@ -404,7 +476,7 @@ GiftiNodeDataFile::addNodes(const int numberOfNodesToAdd)
          dim.push_back(numberOfNodesToAdd);
          dim.push_back(numberOfElementsPerColumn);
          addDataArray(new GiftiDataArray(this,
-                                         getDefaultDataArrayCategory(),
+                                         getDefaultDataArrayIntent(),
                                          defaultDataType,
                                          dim));
          

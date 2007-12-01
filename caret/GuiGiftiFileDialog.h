@@ -27,10 +27,10 @@
  */
 /*LICENSE_END*/
 
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 
 /// dialog for opening/saving GIFTI files
-class GuiGiftiFileDialog : public QFileDialog {
+class GuiGiftiFileDialog : public WuQFileDialog {
    Q_OBJECT
    
    public:

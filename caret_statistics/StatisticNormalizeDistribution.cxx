@@ -39,6 +39,7 @@
  */
 StatisticNormalizeDistribution::StatisticNormalizeDistribution(const float meanIn,
                                                                const float deviationIn)
+   : StatisticAlgorithm("Normalize Distribution")
 {
    outputDataGroupContainingNormalizeValues = NULL;
    mean = meanIn;

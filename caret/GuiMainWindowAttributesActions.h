@@ -94,50 +94,11 @@ class GuiMainWindowAttributesActions : public QObject {
       ///  for modifying shape data
       QAction* getShapeModificationAction() { return shapeModificationAction; }
       
-      ///  for metric and shape normalization
-      QAction* getMetricShapeNormalizationAction() { return metricShapeNormalizationAction; }
-      
-      ///  for metric and shape coordinate difference
-      QAction* getMetricShapeCoordinateDifferenceAction() { return metricShapeCoordinateDifferenceAction; }
-      
-      ///  for metric and shape root mean square
-      QAction* getMetricShapeRootMeanSquareAction() { return metricShapeRootMeanSquareAction; }
-      
-      ///  for metric and shape Levene computation
-      QAction* getMetricShapeLeveneMapAction() { return metricShapeLeveneMapAction; }
-      
-      ///  for metric and shape Z-Map computation
-      QAction* getMetricShapeZMapAction() { return metricShapeZMapAction; }
-      
-      ///  for metric and shape T-Map computation
-      QAction* getMetricShapeTMapAction() { return metricShapeTMapAction; }
-      
-      ///  for metric and shape subtract average computation
-      QAction* getMetricShapeSubtractAverageAction() { return metricShapeSubtractAverageAction; }
-      
-      ///  for metric and shape T-Map shuffled columns
-      QAction* getMetricShapeTMapShuffledColumnsAction() { return metricShapeTMapShuffledColumnsAction; }
-      
-      ///  for metric and shuffled correlation columns
-      QAction* getMetricShapeShuffledCorrelationColumnsAction() { return metricShapeShuffledCorrelationColumnsAction; }
-      
-      ///  for metric one sample t-test
-      QAction* getMetricShapeOneSampleTTestAction() { return metricShapeOneSampleTTestAction; }
-      
-      ///  for metric paired t-test
-      QAction* getMetricShapePairedTTestAction() { return metricShapePairedTTestAction; }
-      
-      ///  for metric and shape two-sample T-Test
-      QAction* getMetricShapeTwoSampleTTestAction() { return metricShapeTwoSampleTTestAction; }
-      
-      ///  for metric and shape wilcoxon rank-sum
-      QAction* getMetricShapeWilcoxonRankSum() { return metricShapeWilcoxonRankSum; }
-      
-      ///  for metric and shape inter-hemisphere clusters
-      QAction* getMetricShapeInterHemClustersAction() { return metricShapeInterHemClustersAction; }
-
       ///  for cleaning paint file names
       QAction* getPaintCleanNamesAction() { return paintCleanNamesAction; }
+      
+      ///  for generates names for paints
+      QAction* getGenerateColorsForPaints() { return generateColorsForPaints; }
       
       ///  for converting paint to volume
       QAction* getPaintToVolumeAction() { return paintToVolumeAction; }
@@ -240,56 +201,14 @@ class GuiMainWindowAttributesActions : public QObject {
       /// slot for modifying shape data
       void slotShapeModification();
       
-      /// slot for metric shape coordinate difference
-      void slotMetricShapeCoordinateDifference();
-      
-      /// slot for metric and shape normalization
-      void slotMetricShapeNormalization();
-      
-      /// slot for metric and shape Z-Map computation
-      void slotMetricShapeZMap();
-      
-      /// slot for metric and shape T-Map computation
-      void slotMetricShapeTMap();
-      
-      /// slot for metric and shape Levene Map computation
-      void slotMetricShapeLeveneMap();
-      
-      /// slot for metric and shape root mean square 
-      void slotMetricShapeRootMeanSquare();
-      
-      /// slot metric and shape one-sample t-test dialog
-      void slotMetricShapeOneSampleTTestDialog();
-      
-      /// slot metric and shape paired t-test dialog
-      void slotMetricShapePairedTTestDialog();
-      
-      /// slot metric and shape significant clusters dialog
-      void slotMetricShapeTwoSampleTTestDialog();
-      
-      /// slot metric and shape wilcoxon rank-sum dialog
-      void slotMetricShapeWilcoxonRankSumDialog();
-      
-      /// slot metric and shape inter-hem clusters dialog
-      void slotMetricShapeInterHemClustersDialog();
-      
-      /// slot metric and shape subtract average computation
-      void slotMetricShapeSubtractAverage();
-      
-      /// slot metric and shape T-Map shuffled columns
-      void slotMetricShapeTMapShuffledColumns();
-      
-      /// slot metric and shuffled correlation columns
-      void slotMetricShapeShuffledCorrelationColumns();
-      
       /// slot for cleaning paint file names
       void slotPaintCleanNames();
       
+      /// slot for generating colors for non-matching paint names
+      void slotGenerateColorsForPaints();
+      
       /// slot for converting paint to volume
       void slotPaintToVolume();
-      
-      /// slot for editing paint names
-      void slotPaintNamesEdit();
       
       /// slot for assigning paints within displayed borders
       void slotPaintAssignWithinDisplayedBorders();
@@ -379,50 +298,11 @@ class GuiMainWindowAttributesActions : public QObject {
       ///  for modifying shape data
       QAction* shapeModificationAction;
       
-      ///  for metric and shape coordinate difference
-      QAction* metricShapeCoordinateDifferenceAction;
-      
-      ///  for metric and shape normalization
-      QAction* metricShapeNormalizationAction;
-      
-      ///  for metric and shape Levene-Map computation
-      QAction* metricShapeLeveneMapAction;
-      
-      ///  for metric and shape root mean square
-      QAction* metricShapeRootMeanSquareAction; 
-      
-      ///  for metric and shape Z-Map computation
-      QAction* metricShapeZMapAction;
-      
-      ///  for metric and shape T-Map computation
-      QAction* metricShapeTMapAction;
-      
-      ///  for metric and shape subtract average computation
-      QAction* metricShapeSubtractAverageAction;
-      
-      ///  for metric and shape T-Map shuffled columns
-      QAction* metricShapeTMapShuffledColumnsAction;
-      
-      ///  for metric and shuffled correlation columns
-      QAction* metricShapeShuffledCorrelationColumnsAction;
-      
-      ///  for metric and shape one-sample T-Test
-      QAction* metricShapeOneSampleTTestAction;
-      
-      ///  for metric and shape two-sample T-Test
-      QAction* metricShapePairedTTestAction;
-      
-      ///  for metric and shape significant clusters
-      QAction* metricShapeTwoSampleTTestAction;
-      
-      ///  for metric and shape wilcoxon rank-sum
-      QAction* metricShapeWilcoxonRankSum;
-      
-      ///  for metric and shape inter-hemisphere clusters
-      QAction* metricShapeInterHemClustersAction;
-      
       ///  for cleaning paint file names
       QAction* paintCleanNamesAction;
+      
+      ///  for generate colors for paints
+      QAction* generateColorsForPaints;
       
       ///  for converting paint to volume
       QAction* paintToVolumeAction;

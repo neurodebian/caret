@@ -34,6 +34,7 @@
 #include <QImage>
 #include <QObject>
 #include <QDateTime>
+#include <QMutex>
 
 #include "BrainModelAlgorithmException.h"
 #include "BrainModelBorderSet.h"
@@ -59,6 +60,7 @@ class BorderFile;
 class BrainModelContours;
 class BrainModelSurfaceAndVolume;
 class BrainModelSurfaceNodeColoring;
+class BrainModelSurfaceROINodeSelection;
 class BrainModelVolumeVoxelColoring;
 class BrainModelVolume;
 class BrainModelVolumeRegionOfInterest;
@@ -143,9 +145,11 @@ class BrainSet : public QObject {
                const bool readAllFilesInSpecFile,
                const bool primaryBrainSetFlagIn);
       
-      /// Construct a brain set from a topology file and a coordinate file
+      /// Construct a brain set from a topology file and one or more coordinate files
       BrainSet(const QString& topoFileName,
-               const QString& coordFileName);
+               const QString& coordFileName1,
+               const QString& coordFileName2 = "",
+               const bool primaryBrainSetFlagIn = false);
        
       /// Construct a brain set from a vtk surface file
       BrainSet(const QString& vtkSurfaceFileName,
@@ -303,6 +307,14 @@ class BrainSet : public QObject {
       /// get the identification object
       BrainModelIdentification* getBrainModelIdentification() { return brainModelIdentification; }
       
+      /// get the region of interest node selection object
+      BrainModelSurfaceROINodeSelection* getBrainModelSurfaceRegionOfInterestNodeSelection() 
+         { return brainModelSurfaceRegionOfInterestNodeSelection; }
+
+      /// get the region of interest node selection object const method
+      const BrainModelSurfaceROINodeSelection* getBrainModelSurfaceRegionOfInterestNodeSelection() const
+         { return brainModelSurfaceRegionOfInterestNodeSelection; }
+
       /// get access to node coloring
       BrainModelSurfaceNodeColoring* getNodeColoring() { return nodeColoring; }
       
@@ -341,6 +353,9 @@ class BrainSet : public QObject {
       
       /// set the structure
       void setStructure(const Structure& s);
+      
+      /// guess subject, species, and structure if not specified
+      void guessSubjectSpeciesStructureFromCoordTopoFileNames();
       
       /// add a document file
       void addDocumentFile(const QString& documentFileName);
@@ -445,6 +460,13 @@ class BrainSet : public QObject {
                                        const bool saveHullVolumeFileFlag)
                                            throw (BrainModelAlgorithmException);
       
+      /// generate the cerebral hull vtk file
+      /// caller must delete the output files (hull volume and VTK file)
+      void generateCerebralHullVtkFile(const VolumeFile* segmentationVolumeIn,
+                                       VolumeFile* &cerebralHullVolumeOut,
+                                       vtkPolyData* &cerebralHullVtkPolyDataOut)
+                                               throw (BrainModelAlgorithmException);
+                                               
       /// get the areal estimation settings
       DisplaySettingsArealEstimation* getDisplaySettingsArealEstimation() {
          return displaySettingsArealEstimation;
@@ -582,7 +604,8 @@ class BrainSet : public QObject {
       void reset(const bool keepSceneData = false);
       
       /// reset all data files
-      void resetDataFiles(const bool keepSceneData);
+      void resetDataFiles(const bool keepSceneData,
+                          const bool keepFociAndFociColorsAndStudyMetaData);
       
       /// reset all node attribute files
       void resetNodeAttributeFiles();
@@ -620,6 +643,14 @@ class BrainSet : public QObject {
       
       /// read the spec file (returns true if reading was aborted by user)
       bool readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
+                        const SpecFile& specFileIn, 
+                        const QString& specFileNameIn,
+                        std::vector<QString>& errorMessagesOut,
+                        const TransformationMatrix* specTransformationMatrixIn,
+                        QProgressDialog* progressDialog);
+                        
+      /// read the spec file (returns true if reading was aborted by user)
+      bool readSpecFileMultiThreaded(const SPEC_FILE_READ_MODE specReadMode,
                         const SpecFile& specFileIn, 
                         const QString& specFileNameIn,
                         std::vector<QString>& errorMessagesOut,
@@ -1577,6 +1608,9 @@ class BrainSet : public QObject {
          ignoreTopologyFileInCoordinateFileHeaderFlag = b;
       }
       
+      /// sort the brain models (raw, fiducial, ..., volume, surf&vol, contours)
+      void sortBrainModels();
+      
    public slots:
       /// clear the file
       void clearAreaColorFile();
@@ -1722,6 +1756,9 @@ class BrainSet : public QObject {
       /// the identification object
       BrainModelIdentification* brainModelIdentification;
       
+      /// region of interest node selection object
+      BrainModelSurfaceROINodeSelection* brainModelSurfaceRegionOfInterestNodeSelection;
+
       /// node coloring class
       BrainModelSurfaceNodeColoring* nodeColoring;
       
@@ -2004,6 +2041,138 @@ class BrainSet : public QObject {
       /// display cross timer
       QTimer* displayCrossTimer;
       
+      /// mutex for add to spec file
+      QMutex mutexAddToSpecFile;
+      
+      /// mutex for reading topology files
+      QMutex mutexReadTopologyFile;
+      
+      /// mutex for reading coordinate files
+      QMutex mutexReadCoordinateFile;
+      
+      /// mutex for reading surface files
+      QMutex mutexReadSurfaceFile;
+      
+      /// mutex for adding brain model
+      QMutex mutexAddBrainModel;
+      
+      /// mutex for creating surface and volume
+      QMutex mutexCreateSurfaceAndVolume;
+      
+      /// mutex for reading area color file
+      QMutex mutexAreaColorFile;
+      
+      /// mutex for reading areal estimation file
+      QMutex mutexArealEstimationFile;
+      
+      /// mutex for reading volume border file
+      QMutex mutexVolumeBorderFile;
+      
+      /// mutex for reading surface border and border projection files
+      QMutex mutexBorderAndBorderProjectionFile;
+      
+      /// mutex for reading border color file
+      QMutex mutexBorderColorFile;
+      
+      /// mutex for reading cell and cell projection file
+      QMutex mutexCellAndCellProjectionFile;
+      
+      /// mutex for reading volume cell file
+      QMutex mutexVolumeCellFile;
+      
+      /// mutex for reading cell color file
+      QMutex mutexCellColorFile;
+      
+      /// mutex for reading cocomac file
+      QMutex mutexCocomacFile;
+      
+      /// mutex for reading contour file
+      QMutex mutexContourFile;
+      
+      /// mutex for reading contour cell file
+      QMutex mutexContourCellFile;
+      
+      /// mutex for reading contour cell color file
+      QMutex mutexContourCellColorFile;
+      
+      /// mutex for reading cuts file
+      QMutex mutexCutsFile;
+      
+      /// mutex for adding volume file
+      QMutex mutexAddVolumeFile;
+      
+      /// mutex for reading foci and foci projection file
+      QMutex mutexFociAndFociProjectionFile;
+      
+      /// mutex for reading volume foci file
+      QMutex mutexVolumeFociFile;
+      
+      /// mutex for reading foci color file
+      QMutex mutexFociColorFile;
+      
+      /// mutex for reading geodesic distance file
+      QMutex mutexGeodesicDistanceFile;
+      
+      /// mutex for reading lat lon file
+      QMutex mutexLatLonFile;
+      
+      /// mutex for reading metric file
+      QMutex mutexMetricFile;
+      
+      /// mutex for reading deformation field file
+      QMutex mutexDeformationFieldFile;
+      
+      /// mutex for reading paint file
+      QMutex mutexPaintFile;
+      
+      /// mutex for reading study meta data file
+      QMutex mutexStudyMetaDataFile;
+      
+      /// mutex for reading vocabulary file
+      QMutex mutexVocabularyFile;
+      
+      /// mutex for reading wustl region file
+      QMutex mutexWustlRegionFile;
+      
+      /// mutex for reading palette file
+      QMutex mutexPaletteFile;
+      
+      /// mutex for reading params file
+      QMutex mutexParamsFile;
+      
+      /// mutex for reading prob atlas file
+      QMutex mutexProbAtlasFile;
+      
+      /// mutex for reading rgb paint file
+      QMutex mutexRgbPaintFile;
+      
+      /// mutex for reading scene file
+      QMutex mutexSceneFile;
+      
+      /// mutex for reading section file
+      QMutex mutexSectionFile;
+      
+      /// mutex for reading surface shape file
+      QMutex mutexSurfaceShapeFile;
+      
+      /// mutex for reading surface vector file
+      QMutex mutexSurfaceVectorFile;
+      
+      /// mutex for reading topography file
+      QMutex mutexTopographyFile;
+      
+      /// mutex for reading transformation matrix file
+      QMutex mutexTransformationMatrixFile;
+      
+      /// mutex for reading transformation data file
+      QMutex mutexTransformationDataFile;
+      
+      /// mutex for reading image files
+      QMutex mutexImageFile;
+      
+      /// mutex for reading vtk models
+      QMutex mutexVtkModelFile;
+      
       /// update displayed model indices
       void updateDisplayedModelIndices();
       
@@ -2073,6 +2242,8 @@ class BrainSet : public QObject {
       
       /// Update all display settings.
       void updateAllDisplaySettings();
+      
+   friend class BrainSetMultiThreadedSpecFileReader;
 };
 
 // initialize static members

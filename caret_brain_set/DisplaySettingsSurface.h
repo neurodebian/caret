@@ -162,12 +162,6 @@ class DisplaySettingsSurface : public DisplaySettings {
       void setSectionHighlighting(const int sectionToHighlightIn,
                                   const bool highlightEveryXIn);
                                   
-      /// set display region of interest node highlights
-      void setDisplayRoiNodeHighlights(const bool val) { displayRoiNodeHighlights = val; }
-
-      /// get display region of interest node highlights
-      bool getDisplayRoiNodeHighlights() const { return displayRoiNodeHighlights; }
-
       /// Get show surface axes info
       void getSurfaceAxesInfo(bool& showAxes,
                               bool& showLetters,
@@ -242,9 +236,6 @@ class DisplaySettingsSurface : public DisplaySettings {
       
       /// the viewing projection
       VIEWING_PROJECTION viewingProjection;
-      
-      /// display Region Of Interest Node Highlights
-      bool displayRoiNodeHighlights;
       
       /// show surface axes
       bool showSurfaceAxes;

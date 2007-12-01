@@ -20,7 +20,7 @@
  *  along with CARET; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- */
+ */ 
 /*LICENSE_END*/
 
 #include <iostream>
@@ -33,6 +33,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextEdit>
 
@@ -52,7 +53,6 @@
 #include "GuiColorSelectionDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #include "QtListBoxSelectionDialog.h"
 #include "QtUtilities.h"
@@ -322,7 +322,7 @@ GuiAddCellsDialog::addCellAtNodeNumber(const int nodeNumber)
    // Is there an error ?
    //
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "Cell Error", errorMessage, "OK");
+      QMessageBox::critical(this, "Cell Error", errorMessage);
       return;
    }
    //
@@ -347,7 +347,7 @@ GuiAddCellsDialog::addCellAtNodeNumber(const int nodeNumber)
    // Is there an error ?
    //
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "Cell Error", errorMessage, "OK");
+      QMessageBox::critical(this, "Cell Error", errorMessage);
       return;
    }
 
@@ -575,7 +575,7 @@ GuiAddCellsDialog::getCellClass()
    //
    cellClassName = classLineEdit->text();
    if (cellClassName.isEmpty()) {
-      GuiMessageBox::critical(this, "Cell Error", "You must enter a class name.", "OK");
+      QMessageBox::critical(this, "Cell Error", "You must enter a class name.");
       return true;
    }
    cellClassNameChanged = false;
@@ -596,7 +596,7 @@ GuiAddCellsDialog::getNameAndColor()
    //
    cellName = nameLineEdit->text();
    if (cellName.isEmpty()) {
-      GuiMessageBox::critical(this, "Cell Error", "You must enter a cell name.", "OK");
+      QMessageBox::critical(this, "Cell Error", "You must enter a cell name.");
       return true;
    }
 
@@ -635,8 +635,12 @@ GuiAddCellsDialog::getNameAndColor()
       msg.append(" ?");
       QString noButton("No, define color ");
       noButton.append(cellName);
-      if (GuiMessageBox::question(this, "Use Partially Matching Color",
-                                   msg, "Yes", noButton, QString::null, 0) != 0) {
+      if (QMessageBox::question(this, 
+                                  "Use Partially Matching Color",
+                                  msg, 
+                                  (QMessageBox::Yes | QMessageBox::No), 
+                                  QMessageBox::No) 
+                                     == QMessageBox::No) {
          createColor = true;
       }
    }
@@ -748,7 +752,7 @@ GuiAddCellsDialog::slotClassButton()
       }
    }
    else {
-      GuiMessageBox::information(this, "No Classes", "Cell File has no classes", "OK");   
+      QMessageBox::information(this, "No Classes", "Cell File has no classes");   
    }
 }
 

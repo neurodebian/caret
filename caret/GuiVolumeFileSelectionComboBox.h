@@ -35,16 +35,20 @@ class GuiVolumeFileSelectionComboBox : public QComboBox {
    public:
       /// Constructor
       GuiVolumeFileSelectionComboBox(const VolumeFile::VOLUME_TYPE volumeTypeIn,
-                                     QWidget* parent,
-                                     const char* name);
+                                     const bool addAllSelectionFlag = false,
+                                     QWidget* parent = 0,
+                                     const char* name = 0);
                                      
       /// Destructor
       ~GuiVolumeFileSelectionComboBox();
       
-      /// Get the selected volume file
+      /// get all volumes selected
+      bool getAllVolumesSelected() const;
+      
+      /// Get the selected volume file (NULL if no volumes or ALL selected)
       VolumeFile* getSelectedVolumeFile();
       
-      /// Get the selected volume file index
+      /// Get the selected volume file index (negative if no volumes or ALL selected)
       int getSelectedVolumeFileIndex() const;
       
       /// Set the selected volume file index
@@ -60,8 +64,8 @@ class GuiVolumeFileSelectionComboBox : public QComboBox {
       /// type of volumes for this combo box
       VolumeFile::VOLUME_TYPE volumeType;
       
-      /// pointers to the volume files
-      std::vector<VolumeFile*> volumeFilePointers;
+      /// all selection enabled
+      bool allSelectionEnabled;
 };
 
 #endif // __GUI_VOLUME_SELECTION_COMBO_BOX_H__

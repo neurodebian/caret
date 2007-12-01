@@ -60,7 +60,7 @@
  */
 CoordinateFile::CoordinateFile()
    : GiftiNodeDataFile("Coordinate File", 
-                  GiftiCommon::categoryCoordinates,
+                  GiftiCommon::intentCoordinates,
                   GiftiDataArray::DATA_TYPE_FLOAT32,
                   3,
                   SpecFile::getCoordinateFileExtension(),

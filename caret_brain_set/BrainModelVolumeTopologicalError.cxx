@@ -29,6 +29,7 @@
  * Constructor.
  */
 BrainModelVolumeTopologicalError::BrainModelVolumeTopologicalError(const int voxelIJKIn[3],
+                                                    const float voxelXYZIn[3],
                                                     const int slicesIn[2],
                                                     const std::vector<int>& handleVoxelsIn,
                                                     const int numVoxelsIn,
@@ -37,6 +38,9 @@ BrainModelVolumeTopologicalError::BrainModelVolumeTopologicalError(const int vox
    voxelIJK[0]  = voxelIJKIn[0];
    voxelIJK[1]  = voxelIJKIn[1];
    voxelIJK[2]  = voxelIJKIn[2];
+   voxelXYZ[0]  = voxelXYZIn[0];
+   voxelXYZ[1]  = voxelXYZIn[1];
+   voxelXYZ[2]  = voxelXYZIn[2];
    slices[0]    = slicesIn[0];
    slices[1]    = slicesIn[1];
    handleVoxels = handleVoxelsIn;
@@ -65,6 +69,7 @@ BrainModelVolumeTopologicalError::BrainModelVolumeTopologicalError(const int vox
  */
 void 
 BrainModelVolumeTopologicalError::getInfo(int voxelIJKOut[3],
+                                          float voxelXYZOut[3],
                                           int slicesOut[2],
                                           int& numVoxelsOut,
                                           VolumeFile::VOLUME_AXIS& axisOut) const
@@ -72,6 +77,9 @@ BrainModelVolumeTopologicalError::getInfo(int voxelIJKOut[3],
    voxelIJKOut[0] = voxelIJK[0];
    voxelIJKOut[1] = voxelIJK[1];
    voxelIJKOut[2] = voxelIJK[2];
+   voxelXYZOut[0] = voxelXYZ[0];
+   voxelXYZOut[1] = voxelXYZ[1];
+   voxelXYZOut[2] = voxelXYZ[2];
    slicesOut[0]   = slices[0];
    slicesOut[1]   = slices[1];
    numVoxelsOut   = numVoxels;

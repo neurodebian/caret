@@ -157,6 +157,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// action for foci report
       QAction* getFociReportAction() { return fociReportAction; }
       
+      /// action for foci attribute assignment
+      QAction* getFociAttributeAssignmentAction() { return fociAttributeAssignmentAction; }
+      
       /// action for foci clear highlighting
       QAction* getFociClearHighlightingAction() { return fociClearHighlightingAction; }
       
@@ -255,6 +258,9 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// action for when contour move cell selected
       QAction* getContourCellsMoveWithMouseAction() { return contourCellsMoveWithMouseAction; }
+      
+      /// action for when contour information action selected
+      QAction* getContourInformationAction() { return contourInformationAction; }
       
    public slots:
       /// update the actions (typically called when menu is about to show)
@@ -470,6 +476,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot called when contour move cell selected
       void slotContourCellsMoveWithMouse();
       
+      /// slot called when contour information selected
+      void slotContourInformation();
+      
    protected slots:      
       /// slot called when contour cell colors are changed
       void slotContourCellsColorsChanged();
@@ -598,6 +607,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for foci report
       QAction* fociReportAction;
       
+      /// foci attribute assignment action
+      QAction* fociAttributeAssignmentAction;
+      
       /// foci clear highlighting action
       QAction* fociClearHighlightingAction;
       
@@ -696,6 +708,9 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// slot called when contour move cell selected
       QAction* contourCellsMoveWithMouseAction;
+      
+      /// contour information action
+      QAction* contourInformationAction;
 };
 
 #endif  // __GUI_MAIN_WINDOW_LAYERS_ACTIONS_H__

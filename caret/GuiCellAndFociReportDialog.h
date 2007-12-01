@@ -31,9 +31,10 @@
 
 #include "QtDialog.h"
 
-class QCheckBox;
-
+class GuiBrainModelSelectionComboBox;
 class CellFile;
+class QCheckBox;
+class QtTableDialog;
 
 /// dialog for cell and foci reports
 class GuiCellAndFociReportDialog : public QtDialog {
@@ -47,11 +48,15 @@ class GuiCellAndFociReportDialog : public QtDialog {
       // destructor
       ~GuiCellAndFociReportDialog();
       
-   protected slots:
-   
+      /// get the table dialog containing the results
+      QtTableDialog* getResultsTableDialog() { return resultsTableDialog; }
+      
    protected:
       // called when ok/cancel button pressed
       virtual void done(int r);
+      
+      // create the surface section
+      QWidget* createSurfaceSection();
       
       // create the cell/foci section
       QWidget* createCellFociSection(const QString& typeString);
@@ -61,6 +66,9 @@ class GuiCellAndFociReportDialog : public QtDialog {
       
       // determine if a check box is shown and checked
       bool checked(const QCheckBox* cb) const;
+      
+      /// table dialog containing results
+      QtTableDialog* resultsTableDialog;
       
       /// number check box
       QCheckBox* numberCheckBox;
@@ -103,6 +111,13 @@ class GuiCellAndFociReportDialog : public QtDialog {
       
       /// foci flag
       bool fociFlag;
+      
+      /// combo box for left hem surface selection
+      GuiBrainModelSelectionComboBox* leftHemSelectionComboBox;
+      
+      /// combo box for right hem surface selection
+      GuiBrainModelSelectionComboBox* rightHemSelectionComboBox;
+      
 };
 
 #endif // __GUI_CELL_AND_FOCI_REPORT_DIALOG_H__

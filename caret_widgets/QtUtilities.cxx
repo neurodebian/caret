@@ -30,7 +30,6 @@
 #include <QClipboard>
 #include <QDesktopWidget>
 #include <QDir>
-#include <QFileDialog>
 #include <QImage>
 #include <QImageWriter>
 #include <QKeyEvent>
@@ -48,6 +47,7 @@
 #include "QtRadioButtonSelectionDialog.h"
 #include "QtUtilities.h"
 #include "StringUtilities.h"
+#include "WuQFileDialog.h"
 
 /**
  * Set the sizes of a vector of buttons to the size of the button with
@@ -316,11 +316,11 @@ QtUtilities::saveWidgetAsImageToFile(QWidget* widget, QImage& image)
    //
    // Create the file dialog
    //
-   QFileDialog saveImageDialog(widget);
+   WuQFileDialog saveImageDialog(widget);
    saveImageDialog.setModal(true);
    saveImageDialog.setWindowTitle(QString("Save Image of ") + widget->objectName());
-   saveImageDialog.setFileMode(QFileDialog::AnyFile);
-   saveImageDialog.setAcceptMode(QFileDialog::AcceptSave);
+   saveImageDialog.setFileMode(WuQFileDialog::AnyFile);
+   saveImageDialog.setAcceptMode(WuQFileDialog::AcceptSave);
    saveImageDialog.setDirectory(QDir::currentPath());
    
    //
@@ -340,7 +340,7 @@ QtUtilities::saveWidgetAsImageToFile(QWidget* widget, QImage& image)
    //
    // Execute the dialog
    //
-   if (saveImageDialog.exec() == QFileDialog::Accepted) {
+   if (saveImageDialog.exec() == WuQFileDialog::Accepted) {
       QString name(saveImageDialog.selectedFiles().at(0));
       
       //

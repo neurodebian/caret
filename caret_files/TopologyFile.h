@@ -32,6 +32,7 @@
 #include "GiftiDataArrayFile.h"
 
 class PaintFile;
+class NodeRegionOfInterestFile;
 class TopologyHelper;
 class vtkPolyData;
 
@@ -95,6 +96,9 @@ class TopologyFile : public GiftiDataArrayFile {
                           
       // disconnect islands (retain largest number of connected nodes; disconnect others)
       int disconnectIslands();
+      
+      // disconnect nodes that are in the region of interest
+      void disconnectNodesInRegionOfInterest(const NodeRegionOfInterestFile& roiFile) throw (FileException);
       
       // disconnect nodes that are labeled with the specified name and in the specified column
       void disconnectNodesUsingPaint(const PaintFile& paintFile,

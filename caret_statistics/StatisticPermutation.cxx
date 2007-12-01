@@ -36,6 +36,7 @@
  * constructor.
  */
 StatisticPermutation::StatisticPermutation(const PERMUTATION_METHOD permutationMethodIn)
+   : StatisticAlgorithm("Permutation")
 {
    permutationMethod = permutationMethodIn;
    outputDataGroup = NULL;

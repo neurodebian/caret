@@ -144,12 +144,15 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
       for (int i = firstFocusIndex; i < numFoci; i++) {
          CellProjection* cp = fociProjectionFile->getCellProjection(i);
          const float* xyz = cp->getXYZ();
-         const StudyMetaDataLink smdl = cp->getStudyMetaDataLink();
-         const int studyMetaDataIndex = smdf->getStudyIndexFromLink(smdl);
-         if ((studyMetaDataIndex >= 0) &&
-             (studyMetaDataIndex < smdf->getNumberOfStudyMetaData())) {
-            const StudyMetaData* smd = smdf->getStudyMetaData(studyMetaDataIndex);
-            focusSpace[i] = smd->getStereotaxicSpace();
+         const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
+         if (smdls.getNumberOfStudyMetaDataLinks() > 0) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(0);
+            const int studyMetaDataIndex = smdf->getStudyIndexFromLink(smdl);
+            if ((studyMetaDataIndex >= 0) &&
+                (studyMetaDataIndex < smdf->getNumberOfStudyMetaData())) {
+               const StudyMetaData* smd = smdf->getStudyMetaData(studyMetaDataIndex);
+               focusSpace[i] = smd->getStereotaxicSpace();
+            }
          }
          else {
             const int studyNumber = cp->getStudyNumber();

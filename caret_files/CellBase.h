@@ -30,7 +30,7 @@
 #include <QString>
 
 #include "Structure.h"
-#include "StudyMetaDataLink.h"
+#include "StudyMetaDataLinkSet.h"
 
 class QDomDocument;
 class QDomElement;
@@ -89,11 +89,11 @@ class CellBase {
       // set study number
       void setStudyNumber(const int sn);
       
-      /// get the study metadata link
-      StudyMetaDataLink getStudyMetaDataLink() const { return studyMetaDataLink; }
+      /// get the study metadata link set
+      StudyMetaDataLinkSet getStudyMetaDataLinkSet() const { return studyMetaDataLinkSet; }
       
-      /// set the study metadata link
-      void setStudyMetaDataLink(const StudyMetaDataLink smdl);
+      /// set the study metadata link set
+      void setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls);
             
       /// get geography
       QString getGeography() const { return geography; }
@@ -176,6 +176,10 @@ class CellBase {
       /// set the highlight flag
       void setHighlightFlag(const bool value) { highlightFlag = value; }
       
+      /// set base element from text (used by SAX XML parser)
+      void setBaseElementFromText(const QString& elementName,
+                              const QString& textValue);
+                              
    protected:
       /// called to read from an XML structure
       virtual void readXML(QDomNode& node) throw (FileException);
@@ -200,7 +204,7 @@ class CellBase {
       int studyNumber;
       
       /// the link to study metadata
-      StudyMetaDataLink studyMetaDataLink;
+      StudyMetaDataLinkSet studyMetaDataLinkSet;
       
       /// geography
       QString geography;
@@ -240,7 +244,64 @@ class CellBase {
       
       /// highlight flag
       bool highlightFlag;
+      
+      /// tag for reading and writing cells
+      static const QString tagCellBase;
+      
+      /// tag for reading and writing cells
+      static const QString tagXYZ;
+      
+      /// tag for reading and writing cells
+      static const QString tagSectionNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagName;
+      
+      /// tag for reading and writing cells
+      static const QString tagStudyNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagGeography;
+      
+      /// tag for reading and writing cells
+      static const QString tagArea;
+      
+      /// tag for reading and writing cells
+      static const QString tagSize;
+      
+      /// tag for reading and writing cells
+      static const QString tagStatistic;
+      
+      /// tag for reading and writing cells
+      static const QString tagComment;
+      
+      /// tag for reading and writing cells
+      static const QString tagClassName;
+      
+      /// tag for reading and writing cells
+      static const QString tagSignedDistanceAboveSurface;
+      
+      /// tag for reading and writing cells
+      static const QString tagStructure;      
+      
+   friend class CellProjectionFileSaxReader;
 };
+
+#ifdef __CELL_BASE_MAIN__
+      const QString CellBase::tagCellBase = "CellBase";
+      const QString CellBase::tagXYZ = "xyz";
+      const QString CellBase::tagSectionNumber = "sectionNumber";
+      const QString CellBase::tagName = "name";
+      const QString CellBase::tagStudyNumber = "studyNumber";
+      const QString CellBase::tagGeography = "geography";
+      const QString CellBase::tagArea = "area";
+      const QString CellBase::tagSize = "size";
+      const QString CellBase::tagStatistic = "statistic";
+      const QString CellBase::tagComment = "comment";
+      const QString CellBase::tagClassName = "className";
+      const QString CellBase::tagSignedDistanceAboveSurface = "signedDistanceAboveSurface";
+      const QString CellBase::tagStructure = "structure";      
+#endif // __CELL_BASE_MAIN__
 
 #endif // __CELL_BASE__
 

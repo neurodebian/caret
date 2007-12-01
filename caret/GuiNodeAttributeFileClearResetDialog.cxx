@@ -50,7 +50,6 @@
 #include "GeodesicDistanceFile.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiNodeAttributeFileClearResetDialog.h"
 #include "LatLonFile.h"

@@ -26,19 +26,19 @@
 #include <sstream>
 
 #include <QApplication>
-#include <QFileDialog>
 #include <QGridLayout>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BorderFile.h"
 #include "GuiBorderComparisonDialog.h"
-#include "GuiMessageBox.h"
 #include "MathUtilities.h"
 #include "QtTextEditDialog.h"
 #include "QtUtilities.h"
 #include "SpecFile.h"
+#include "WuQFileDialog.h"
 
 /**
  * constructor.
@@ -137,12 +137,12 @@ GuiBorderComparisonDialog::slotApplyButton()
    //
    const QString fileNameA = borderFileALineEdit->text();
    if (fileNameA.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Border file A not specified.", "OK");
+      QMessageBox::critical(this, "ERROR", "Border file A not specified.");
       return;
    }
    const QString fileNameB = borderFileBLineEdit->text();
    if (fileNameB.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Border file B not specified.", "OK");
+      QMessageBox::critical(this, "ERROR", "Border file B not specified.");
       return;
    }
 
@@ -154,7 +154,7 @@ GuiBorderComparisonDialog::slotApplyButton()
       fileA.readFile(fileNameA);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    BorderFile fileB;
@@ -162,7 +162,7 @@ GuiBorderComparisonDialog::slotApplyButton()
       fileB.readFile(fileNameB);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    
@@ -171,7 +171,7 @@ GuiBorderComparisonDialog::slotApplyButton()
    //
    const int num = fileA.getNumberOfBorders();
    if (num <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "File A contains 0 borders.",  "OK");
+      QMessageBox::critical(this, "ERROR", "File A contains 0 borders.");
       return;
    }
    
@@ -249,11 +249,11 @@ GuiBorderComparisonDialog::slotApplyButton()
 void 
 GuiBorderComparisonDialog::slotButtonBorderFileA()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
    fd.setWindowTitle("Choose Border File");
-   fd.setFileMode(QFileDialog::ExistingFile); 
+   fd.setFileMode(WuQFileDialog::ExistingFile); 
    fd.setFilter(QString("Border Files (*%1)").arg(SpecFile::getBorderFileExtension()));
    if (fd.exec() == QDialog::Accepted) {
       borderFileALineEdit->setText(fd.selectedFiles().at(0));
@@ -266,11 +266,11 @@ GuiBorderComparisonDialog::slotButtonBorderFileA()
 void 
 GuiBorderComparisonDialog::slotButtonBorderFileB()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
    fd.setWindowTitle("Choose Border File");
-   fd.setFileMode(QFileDialog::ExistingFile); 
+   fd.setFileMode(WuQFileDialog::ExistingFile); 
    fd.setFilter(QString("Border Files (*%1)").arg(SpecFile::getBorderFileExtension()));
    if (fd.exec() == QDialog::Accepted) {
       borderFileBLineEdit->setText(fd.selectedFiles().at(0));

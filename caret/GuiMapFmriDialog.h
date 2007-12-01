@@ -46,6 +46,7 @@ class QStackedWidget;
 
 class QDoubleSpinBox;
 
+#include "BrainModelVolumeToSurfaceMapperAlgorithmParameters.h"
 #include "MapFmriAtlasSpecFileInfo.h"
 #include "GuiMapFmriMappingSet.h"
 #include "GuiMapFmriVolume.h"
@@ -184,7 +185,7 @@ class GuiMapFmriDialog : public QtDialog {
       void resetMappingSets();
       
       /// Load the algorithm parameters from the preferences file.
-      void loadSaveAlgorithmParametersFromPreferences(const bool loadThem);
+      void loadAlgorithmParametersFromPreferences();
 
       /// Load the metric naming combo box
       void loadMetricNamingComboBox();
@@ -204,6 +205,9 @@ class GuiMapFmriDialog : public QtDialog {
       /// map the volumes to paint files
       void mapDataToPaintFiles(QProgressDialog& progressDialog);
       
+      /// the mapping parameters
+      BrainModelVolumeToSurfaceMapperAlgorithmParameters mappingParameters;
+   
       /// type of data being mapped
       DATA_MAPPING_TYPE dataMappingType;
       
@@ -289,25 +293,31 @@ class GuiMapFmriDialog : public QtDialog {
       QStackedWidget* algorithmParameterWidgetStack;
       
       /// algorithm average nodes parameters widget
-      QWidget* algorithmAverageNodesParametersBox;
+      QWidget* algorithmMetricAverageNodesParametersBox;
       
       /// algorithm average voxel parameters widget
-      QWidget* algorithmAverageVoxelParametersBox;
+      QWidget* algorithmMetricAverageVoxelParametersBox;
       
       /// algorithm enclosing voxel parameters widget
-      QWidget* algorithmEnclosingVoxelParametersBox;
+      QWidget* algorithmMetricEnclosingVoxelParametersBox;
       
       /// algorithm gaussian parameters widget
-      QWidget* algorithmGaussianParametersBox;
+      QWidget* algorithmMetricGaussianParametersBox;
       
       /// algorithm interpolated voxel parameters widget
-      QWidget* algorithmInterpolatedVoxelParametersBox;
+      QWidget* algorithmMetricInterpolatedVoxelParametersBox;
       
       /// algorithm maximum voxel parameters widget
-      QWidget* algorithmMaximumVoxelParametersBox;
+      QWidget* algorithmMetricMaximumVoxelParametersBox;
       
       /// algorithm mcw brain fish parameters widget
-      QWidget* algorithmMcwBrainFishParametersBox;
+      QWidget* algorithmMetricMcwBrainFishParametersBox;
+      
+      /// algorithm strongest voxel parameters widget
+      QWidget* algorithmMetricStrongestVoxelParametersBox;
+      
+      /// algorithm paint enclosing voxel parameters widget
+      QWidget* algorithmPaintEnclosingVoxelParametersBox;
       
       /// algorithm average voxel neighbor size float spin box
       QDoubleSpinBox* algorithmAverageVoxelNeighborDoubleSpinBox;
@@ -338,6 +348,9 @@ class GuiMapFmriDialog : public QtDialog {
       
       /// algorithm brain fish splat factor spin box
       QSpinBox* algorithmBrainFishSplatFactorSpinBox;
+      
+      /// algorithm strongest voxel neighbor size float spin box
+      QDoubleSpinBox* algorithmStrongestVoxelNeighborDoubleSpinBox;
       
       /// the summary page text edit
       QTextEdit* summaryTextEdit;

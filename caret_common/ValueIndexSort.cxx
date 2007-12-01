@@ -30,14 +30,9 @@
 /**
  * Constructor.
  */
-ValueIndexSort::ValueIndexSort(const std::vector<int>& indicesIn,
-                             const std::vector<float>& valuesIn)
+ValueIndexSort::ValueIndexSort()
 {
-   for (unsigned int i = 0; i < indicesIn.size(); i++) {
-      values.push_back(ValueIndexPair(indicesIn[i], valuesIn[i]));
-   }
-   
-   std::sort(values.begin(), values.end());
+   values.clear();
 }
               
 /**
@@ -47,6 +42,24 @@ ValueIndexSort::~ValueIndexSort()
 {
 }
 
+/**
+ * add an index value pair (must call sort() when all added).
+ */
+void 
+ValueIndexSort::addValueIndexPair(const int indx, const float value)
+{
+   values.push_back(ValueIndexPair(indx, value));
+}
+
+/**
+ * sort the items (use if addValueIndexPair) was used.
+ */
+void 
+ValueIndexSort::sort()
+{
+   std::sort(values.begin(), values.end());
+}
+      
 /**
  * get number of value indice pairs.
  */

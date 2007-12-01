@@ -65,35 +65,20 @@ class GuiMainWindowFileActions : public QObject {
       /// zip spec file action
       QAction* getZipSpecFileAction() { return zipSpecFileAction; }
       
-      /// import file action
-      QAction* getImportFileAction() { return importFileAction; }
-      
       /// record as mpeg action
       QAction* getRecordAsMpegAction() { return recordAsMpegAction; }
       
-      /// export file action
-      QAction* getExportFileAction() { return exportFileAction; }
+      /// data file open action
+      QAction* getDataFileOpenAction() { return dataFileOpenAction; }
       
-      /// open data file action
-      QAction* getOpenDataFileAction() { return openDataFileAction; }
-      
-      /// save data file action
-      QAction* getSaveDataFileAction() { return saveDataFileAction; }
-      
-      /// open image file action
-      QAction* getOpenImageFileAction() { return openImageFileAction; }
+      /// data file save action
+      QAction* getDataFileSaveAction() { return dataFileSaveAction; }
       
       /// copy main window to clipboard action
       QAction* getCopyMainWindowToClipboardAction() { return copyMainWindowToClipboardAction; }
       
       /// print main window action
       QAction* getPrintMainWindowAction() { return printMainWindowAction; }
-      
-      /// save image file action
-      QAction* getSaveImageFileAction() { return saveImageFileAction; }
-      
-      /// save window as image action
-      QAction* getSaveWindowAsImageAction() { return saveWindowAsImageAction; }
       
       /// open spec file action
       QAction* getOpenSpecFileAction() { return openSpecFileAction; }
@@ -132,32 +117,17 @@ class GuiMainWindowFileActions : public QObject {
       /// add document to spec file action
       void addDocumentToSpecFileSlot();
       
+      /// data file open slot
+      void dataFileOpenSlot();
+      
+      /// data file save slot
+      void dataFileSaveSlot();
+      
       /// open spec file action
       void openSpecFileSlot();
          
       /// set current directory action
       void slotSetCurrentDirectory();
-      
-      /// open data file action
-      void openDataFileSlot();
-      
-      /// open image file action
-      void openImageFileSlot();
-      
-      /// import file action
-      void importFileSlot();
-      
-      /// export file action
-      void exportFileSlot();
-      
-      /// save data file action
-      void saveDataFileSlot();
-      
-      /// save window as image file action
-      void saveWindowAsImageFileSlot();
-       
-      /// save image file action
-      void saveImageFileSlot();
       
       /// copy main window to clipboard action
       void copyMainWindowToClipboard();
@@ -223,23 +193,14 @@ class GuiMainWindowFileActions : public QObject {
       /// zip spec file action
       QAction* zipSpecFileAction;
       
-      /// import file action
-      QAction* importFileAction;
-      
       /// record as mpeg action
       QAction* recordAsMpegAction;
       
-      /// export file action
-      QAction* exportFileAction;
+      /// data file open action
+      QAction* dataFileOpenAction;
       
-      /// open data file action
-      QAction* openDataFileAction;
-      
-      /// save data file action
-      QAction* saveDataFileAction;
-      
-      /// open image file action
-      QAction* openImageFileAction;
+      /// data file save action
+      QAction* dataFileSaveAction;
       
       /// copy main window to clipboard action
       QAction* copyMainWindowToClipboardAction;
@@ -249,12 +210,6 @@ class GuiMainWindowFileActions : public QObject {
       
       /// print main window action
       QAction* printMainWindowAction;
-      
-      /// save image file action
-      QAction* saveImageFileAction;
-      
-      /// save window as image action
-      QAction* saveWindowAsImageAction;
       
       /// open spec file action
       QAction* openSpecFileAction;

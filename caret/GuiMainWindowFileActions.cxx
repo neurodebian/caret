@@ -32,11 +32,13 @@
 #include <QClipboard>
 #include <QDateTime>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QImage>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPrintDialog>
 #include <QPrinter>
+#include <QPushButton>
 
 #include "BrainSet.h"
 #include "BrainModelSurface.h"
@@ -48,16 +50,12 @@
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiConvertDataFileDialog.h"
 #include "GuiCopySpecFileDialog.h"
-#include "GuiExportDataFileDialog.h"
+#include "GuiDataFileOpenDialog.h"
+#include "GuiDataFileSaveDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiGiftiFileDialog.h"
-#include "GuiImageFileOpenSaveDialog.h"
-#include "GuiImportDataFileDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
-#include "GuiMessageBox.h"
-#include "GuiOpenDataFileDialog.h"
-#include "GuiSaveDataFileDialog.h"
 #include "GuiPreferencesDialog.h"
 #include "GuiSpecFileDialog.h"
 #include "GuiViewCurrentFilesDialog.h"
@@ -79,155 +77,125 @@ GuiMainWindowFileActions::GuiMainWindowFileActions(GuiMainWindow* parent) :
    fastOpenDataFileAction->setText("Fast Open Data File...");
    fastOpenDataFileAction->setShortcut(Qt::CTRL+Qt::Key_F);
    fastOpenDataFileAction->setObjectName("fastOpenDataFileAction");
-   QObject::connect(fastOpenDataFileAction, SIGNAL(activated()),
+   QObject::connect(fastOpenDataFileAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayFastOpenDataFileDialog()));
 
    showPreferencesDialogAction = new QAction(parent);
    showPreferencesDialogAction->setText("Preferences...");
    showPreferencesDialogAction->setObjectName("showPreferencesDialogAction");
-   QObject::connect(showPreferencesDialogAction, SIGNAL(activated()),
+   QObject::connect(showPreferencesDialogAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayPreferencesDialog()));
 
    setCurrentDirectoryAction = new QAction(parent);
    setCurrentDirectoryAction->setText("Set Current Directory...");
    setCurrentDirectoryAction->setObjectName("setCurrentDirectoryAction");
-   QObject::connect(setCurrentDirectoryAction, SIGNAL(activated()),
+   QObject::connect(setCurrentDirectoryAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSetCurrentDirectory()));
 
    convertDataFileAction = new QAction(parent);
    convertDataFileAction->setText("Convert Data File Formats...");
    convertDataFileAction->setObjectName("convertDataFileAction");
-   QObject::connect(convertDataFileAction, SIGNAL(activated()),
+   QObject::connect(convertDataFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(convertDataFileSlot()));
 
    copySpecFileAction = new QAction(parent);
    copySpecFileAction->setText("Copy Spec File...");
    copySpecFileAction->setObjectName("copySpecFileAction");
-   QObject::connect(copySpecFileAction, SIGNAL(activated()),
+   QObject::connect(copySpecFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(copySpecFileSlot()));
 
    validateSpecFileAction = new QAction(parent);
    validateSpecFileAction->setText("Validate a Spec File...");
    validateSpecFileAction->setObjectName("validateSpecFileAction");
-   QObject::connect(validateSpecFileAction, SIGNAL(activated()),
+   QObject::connect(validateSpecFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(validateSpecFileSlot()));
 
    zipSpecFileAction = new QAction(parent);
    zipSpecFileAction->setText("Zip a Spec File...");
    zipSpecFileAction->setObjectName("zipSpecFileAction");
-   QObject::connect(zipSpecFileAction, SIGNAL(activated()),
+   QObject::connect(zipSpecFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(zipSpecFileSlot()));
-
-   importFileAction = new QAction(parent);
-   importFileAction->setText("Import File...");
-   importFileAction->setObjectName("importFileAction");
-   QObject::connect(importFileAction, SIGNAL(activated()),
-                    this, SLOT(importFileSlot()));
 
    recordAsMpegAction = new QAction(parent);
    recordAsMpegAction->setText("Record Main Window Images as Movie...");
    recordAsMpegAction->setObjectName("recordAsMpegAction");
-   QObject::connect(recordAsMpegAction, SIGNAL(activated()),
+   QObject::connect(recordAsMpegAction, SIGNAL(triggered(bool)),
                     this, SLOT(recordAsMpegSlot()));
 
-   exportFileAction = new QAction(parent);
-   exportFileAction->setText("Export File...");
-   exportFileAction->setObjectName("exportFileAction");
-   QObject::connect(exportFileAction, SIGNAL(activated()),
-                    this, SLOT(exportFileSlot()));
-
-   openDataFileAction = new QAction(parent);
-   openDataFileAction->setText("Open Data File...");
-   openDataFileAction->setShortcut(Qt::CTRL+Qt::Key_O);
-   openDataFileAction->setObjectName("openDataFileAction");
-   QObject::connect(openDataFileAction, SIGNAL(activated()),
-                    this, SLOT(openDataFileSlot()));
-
-   saveDataFileAction = new QAction(parent);
-   saveDataFileAction->setText("Save Data File...");
-   saveDataFileAction->setShortcut(Qt::CTRL+Qt::Key_S);
-   saveDataFileAction->setObjectName("saveDataFileAction");
-   QObject::connect(saveDataFileAction, SIGNAL(activated()),
-                    this, SLOT(saveDataFileSlot()));
-
-   openImageFileAction = new QAction(parent);
-   openImageFileAction->setText("Open Image Files...");
-   openImageFileAction->setObjectName("openImageFileAction");
-   QObject::connect(openImageFileAction, SIGNAL(activated()),
-                    this, SLOT(openImageFileSlot()));
-
+   dataFileOpenAction = new QAction(parent);
+   dataFileOpenAction->setText("Open Data File...");
+   dataFileOpenAction->setShortcut(Qt::CTRL+Qt::Key_O);
+   dataFileOpenAction->setObjectName("dataFileOpenAction");
+   QObject::connect(dataFileOpenAction, SIGNAL(triggered(bool)),
+                    this, SLOT(dataFileOpenSlot()));
+                    
+   dataFileSaveAction = new QAction(parent);
+   dataFileSaveAction->setText("Save Data File...");
+   dataFileSaveAction->setShortcut(Qt::CTRL+Qt::Key_S);
+   dataFileSaveAction->setObjectName("dataFileSaveAction");
+   QObject::connect(dataFileSaveAction, SIGNAL(triggered(bool)),
+                    this, SLOT(dataFileSaveSlot()));                    
+   
    copyMainWindowToClipboardAction = new QAction(parent);
    copyMainWindowToClipboardAction->setText("Copy Main Window Image to Clipboard");
    copyMainWindowToClipboardAction->setObjectName("copyMainWindowToClipboardAction");
-   QObject::connect(copyMainWindowToClipboardAction, SIGNAL(activated()),
+   QObject::connect(copyMainWindowToClipboardAction, SIGNAL(triggered(bool)),
                     this, SLOT(copyMainWindowToClipboard()));
 
    printMainWindowAction = new QAction(parent);
    printMainWindowAction->setText("Print Main Window...");
    printMainWindowAction->setObjectName("printMainWindowAction");
-   QObject::connect(printMainWindowAction, SIGNAL(activated()),
+   QObject::connect(printMainWindowAction, SIGNAL(triggered(bool)),
                     this, SLOT(printMainWindowImage()));
-
-   saveImageFileAction = new QAction(parent);
-   saveImageFileAction->setText("Save Image File...");
-   saveImageFileAction->setObjectName("saveImageFileAction");
-   QObject::connect(saveImageFileAction, SIGNAL(activated()),
-                    this, SLOT(saveImageFileSlot()));
-
-   saveWindowAsImageAction = new QAction(parent);
-   saveWindowAsImageAction->setText("Save Main Window to Image File...");
-   saveWindowAsImageAction->setObjectName("saveWindowAsImageAction");
-   QObject::connect(saveWindowAsImageAction, SIGNAL(activated()),
-                    this, SLOT(saveWindowAsImageFileSlot()));
 
    captureMainWindowImageAction = new QAction(parent);
    captureMainWindowImageAction->setText("Capture Image of Main Window...");
    captureMainWindowImageAction->setObjectName("captureMainWindowImageAction");
-   QObject::connect(captureMainWindowImageAction, SIGNAL(activated()),
+   QObject::connect(captureMainWindowImageAction, SIGNAL(triggered(bool)),
                     this, SLOT(captureMainWindowImageSlot()));
                     
    openSpecFileAction = new QAction(parent);
    openSpecFileAction->setText("Open Spec File...");
    openSpecFileAction->setShortcut(Qt::CTRL+Qt::Key_N);
    openSpecFileAction->setObjectName("openSpecFileAction");
-   QObject::connect(openSpecFileAction, SIGNAL(activated()),
+   QObject::connect(openSpecFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(openSpecFileSlot()));
 
    addDocumentToSpecFileAction = new QAction(parent);
    addDocumentToSpecFileAction->setText("Add Document File to Spec File...");
    addDocumentToSpecFileAction->setObjectName("addDocumentToSpecFileAction");
-   QObject::connect(addDocumentToSpecFileAction, SIGNAL(activated()),
+   QObject::connect(addDocumentToSpecFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(addDocumentToSpecFileSlot()));
                     
    closeSpecFileAction = new QAction(parent);
    closeSpecFileAction->setText("Close Current Spec File");
    closeSpecFileAction->setObjectName("closeSpecFileAction");
-   QObject::connect(closeSpecFileAction, SIGNAL(activated()),
+   QObject::connect(closeSpecFileAction, SIGNAL(triggered(bool)),
                     parent, SLOT(slotCloseSpecFile()));
 
    viewCurrentFilesAction = new QAction(parent);
    viewCurrentFilesAction->setText("View Current Files...");
    viewCurrentFilesAction->setObjectName("viewCurrentFilesAction");
-   QObject::connect(viewCurrentFilesAction, SIGNAL(activated()),
+   QObject::connect(viewCurrentFilesAction, SIGNAL(triggered(bool)),
                     this, SLOT(viewCurrentFilesSlot()));
 
    exitCaretAction = new QAction(parent);
    exitCaretAction->setText("Exit...");
    exitCaretAction->setShortcut(Qt::CTRL+Qt::Key_Q);
    exitCaretAction->setObjectName("exitCaretAction");
-   QObject::connect(exitCaretAction, SIGNAL(activated()),
+   QObject::connect(exitCaretAction, SIGNAL(triggered(bool)),
                     parent, SLOT(slotCloseProgram()));  //SLOT(close()));
 
    openGiftiFileDialogAction = new QAction(parent);
    openGiftiFileDialogAction->setText("Open GIFTI File...");
    openGiftiFileDialogAction->setObjectName("openGiftiFile");
-   QObject::connect(openGiftiFileDialogAction, SIGNAL(activated()),
+   QObject::connect(openGiftiFileDialogAction, SIGNAL(triggered(bool)),
                     this, SLOT(openGiftiFileSlot()));
 
    saveGiftiFileDialogAction = new QAction(parent);
    saveGiftiFileDialogAction->setText("Save GIFTI File...");
    saveGiftiFileDialogAction->setObjectName("saveGiftiFile");
-   QObject::connect(saveGiftiFileDialogAction, SIGNAL(activated()),
+   QObject::connect(saveGiftiFileDialogAction, SIGNAL(triggered(bool)),
                     this, SLOT(saveGiftiFileSlot()));
 }
 
@@ -244,14 +212,15 @@ GuiMainWindowFileActions::~GuiMainWindowFileActions()
 void 
 GuiMainWindowFileActions::slotSetCurrentDirectory()
 {
-   QFileDialog fd(theMainWindow);
+   WuQFileDialog fd(theMainWindow);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setDirectory(QDir::currentPath());
    fd.setWindowTitle("Choose Directory");
-   fd.setFileMode(QFileDialog::DirectoryOnly);
+   fd.setFileMode(WuQFileDialog::DirectoryOnly);
    if (fd.exec() == QDialog::Accepted) {
-      QDir::setCurrent(fd.selectedFiles().at(0));
+      const QString path(fd.directory().absolutePath());
+      QDir::setCurrent(path); // selectedFiles().at(0));
    }
 }
       
@@ -298,14 +267,14 @@ GuiMainWindowFileActions::validateSpecFileSlot()
          sf.readFile(csfd.getSelectedSpecFile());
          QString msg;
          if (sf.validate(msg)) {
-            GuiMessageBox::information(theMainWindow, "SUCCESS", "Spec File is Valid.", "OK");
+            QMessageBox::information(theMainWindow, "SUCCESS", "Spec File is Valid.");
          }
          else {
-            GuiMessageBox::critical(theMainWindow, "ERROR", msg, "OK");
+            QMessageBox::critical(theMainWindow, "ERROR", msg);
          }
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
       }
    }
 }      
@@ -325,20 +294,6 @@ GuiMainWindowFileActions::zipSpecFileSlot()
    zipSpecDialog->activateWindow();
 }      
 
-/** 
- * Import file slot.
- */
-void
-GuiMainWindowFileActions::importFileSlot()
-{
-   static GuiImportDataFileDialog* fd = NULL;
-   if (fd == NULL) {
-      fd = new GuiImportDataFileDialog(theMainWindow);
-   }
-   fd->show();
-   fd->activateWindow();
-}
-
 /**
  * Record as MPEG slot.
  */
@@ -348,60 +303,36 @@ GuiMainWindowFileActions::recordAsMpegSlot()
    theMainWindow->getRecordingDialog(true);
 }
 
-/** 
- * Export file slot.
+/**
+ * data file open slot.
  */
-void
-GuiMainWindowFileActions::exportFileSlot()
+void 
+GuiMainWindowFileActions::dataFileOpenSlot()
 {
-   static GuiExportDataFileDialog* fd = NULL;
+   static GuiDataFileOpenDialog* fd = NULL;
    if (fd == NULL) {
-      fd = new GuiExportDataFileDialog(theMainWindow);
+      fd = new GuiDataFileOpenDialog(theMainWindow);
    }
+   fd->setDirectory(QDir::currentPath());
    fd->show();
+   fd->raise();
    fd->activateWindow();
 }
-
+      
 /**
- * Open Data file slot.
+ * data file save slot.
  */
-void
-GuiMainWindowFileActions::openDataFileSlot()
+void 
+GuiMainWindowFileActions::dataFileSaveSlot()
 {
-   static GuiOpenDataFileDialog* fd = NULL;
-   if (fd == NULL) {
-      fd = new GuiOpenDataFileDialog(theMainWindow);
+   static QString lastFileFilter;
+   
+   GuiDataFileSaveDialog fd(theMainWindow);
+   if (lastFileFilter.isEmpty() == false) {
+      fd.selectFileType(lastFileFilter);
    }
-   fd->show();
-   fd->activateWindow();
-}
-
-/**
- * Save Data file slot.
- */
-void
-GuiMainWindowFileActions::saveDataFileSlot()
-{
-   static GuiSaveDataFileDialog* fd = NULL;
-   if (fd == NULL) {
-      fd = new GuiSaveDataFileDialog(theMainWindow);   
-   }
-   fd->show();
-   fd->activateWindow();
-}
-
-/**
- * Open Image File slot.
- */
-void
-GuiMainWindowFileActions::openImageFileSlot()
-{
-   static GuiImageFileOpenSaveDialog* sd = NULL;
-   if (sd == NULL) {
-      sd = new GuiImageFileOpenSaveDialog(theMainWindow, GuiImageFileOpenSaveDialog::DIALOG_MODE_OPEN_FILES);
-   }
-   sd->show();
-   sd->activateWindow();
+   fd.exec();
+   lastFileFilter = fd.getFileTypeFilter();
 }
 
 /**
@@ -441,38 +372,10 @@ GuiMainWindowFileActions::printMainWindowImage()
                     "will not work on your computer.  This is a problem\n"
                     "seen on Windows versions of Caret5 and there is no\n"
                     "solution to this problem.";
-      GuiMessageBox::critical(theMainWindow, "ERROR", msg, "OK");
+      QMessageBox::critical(theMainWindow, "ERROR", msg);
    }
 #endif // Q_OS_WIN32
 }      
-
-/**
- * Called to save an image file.
- */
-void 
-GuiMainWindowFileActions::saveImageFileSlot()
-{
-   static GuiImageFileOpenSaveDialog* sd = NULL;
-   if (sd == NULL) {
-      sd = new GuiImageFileOpenSaveDialog(theMainWindow, GuiImageFileOpenSaveDialog::DIALOG_MODE_SAVE_LOADED_IMAGE);
-   }
-   sd->show();
-   sd->activateWindow();
-}      
-
-/**
- * Save Window as Image File slot.
- */
-void
-GuiMainWindowFileActions::saveWindowAsImageFileSlot()
-{
-   static GuiImageFileOpenSaveDialog* sd = NULL;
-   if (sd == NULL) {
-      sd = new GuiImageFileOpenSaveDialog(theMainWindow, GuiImageFileOpenSaveDialog::DIALOG_MODE_SAVE_IMAGE_OF_MAIN_WINDOW);
-   }
-   sd->show();
-   sd->activateWindow();
-}
 
 /**
  * add document to spec file action.
@@ -480,13 +383,13 @@ GuiMainWindowFileActions::saveWindowAsImageFileSlot()
 void 
 GuiMainWindowFileActions::addDocumentToSpecFileSlot()
 {
-   QFileDialog fd(theMainWindow);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   WuQFileDialog fd(theMainWindow);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setDirectory(".");
-   fd.setFileMode(QFileDialog::ExistingFile);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
    fd.setFilter("Any File (*)");
-   fd.setLabelText(QFileDialog::Accept, "Add");
-   if (fd.exec() == QFileDialog::Accepted) {
+   fd.setLabelText(WuQFileDialog::Accept, "Add");
+   if (fd.exec() == WuQFileDialog::Accepted) {
       if (fd.selectedFiles().size() > 0) {
          const QString name = fd.selectedFiles().at(0);
          theMainWindow->getBrainSet()->addDocumentFile(name);
@@ -500,9 +403,75 @@ GuiMainWindowFileActions::addDocumentToSpecFileSlot()
 void
 GuiMainWindowFileActions::openSpecFileSlot()
 {
-   GuiChooseSpecFileDialog csfd(theMainWindow, theMainWindow->getBrainSet()->getPreferencesFile(), true);
+   GuiChooseSpecFileDialog csfd(theMainWindow, 
+                                theMainWindow->getBrainSet()->getPreferencesFile(), 
+                                true,
+                                true);
    if (csfd.exec() == QDialog::Accepted) {
-      theMainWindow->readSpecFile(csfd.getSelectedSpecFile());
+      std::vector<QString> specFileNames = csfd.getSelectedSpecFiles();
+      const int numSpecFiles = static_cast<int>(specFileNames.size());
+      if (numSpecFiles == 1) {
+         theMainWindow->readSpecFile(specFileNames[0]);
+      }
+      else {
+         //
+         // If data files loaed allow append or replace
+         //
+         QMessageBox msgBox(theMainWindow);
+         msgBox.setWindowTitle("Spec File Open");
+         msgBox.setText("You have selected multiple spec files.  Do "
+                                     "you want to load all files in each of the "
+                                     "spec files or pick and choose files in each"
+                                     "of the spec files?");
+         QPushButton* loadAllPushButton = msgBox.addButton("Load All", 
+                                                           QMessageBox::ActionRole);
+         QPushButton* pickAndChoosePushButton = msgBox.addButton("Pick and Choose", 
+                                                           QMessageBox::ActionRole);
+         QPushButton* cancelPushButton = msgBox.addButton("Cancel", 
+                                                           QMessageBox::ActionRole);
+         msgBox.exec();
+         int answer = 0;
+         if (msgBox.clickedButton() == loadAllPushButton) {
+            answer = 0;
+         }
+         else if (msgBox.clickedButton() == pickAndChoosePushButton) {
+            answer = 1;
+         }
+         else if (msgBox.clickedButton() == cancelPushButton) {
+            answer = 2;
+         }
+         if (answer == 0) {
+            QString msg;
+            
+            for (int i = 0; i < numSpecFiles; i++) {
+               try {
+                  SpecFile sf;
+                  QString path(FileUtilities::dirname(specFileNames[i]));
+                  if (QDir::isRelativePath(path)) {
+                     path = QDir::currentPath();
+                     path.append("/"); 
+                     path.append(specFileNames[i]);
+                     specFileNames[i] = QDir::cleanPath(path);
+                  }
+                  sf.readFile(specFileNames[i]);
+                  sf.setAllFileSelections(SpecFile::SPEC_TRUE);
+                  theMainWindow->loadSpecFilesDataFiles(sf, NULL, true);
+               }
+               catch (FileException& e) {
+                  msg += e.whatQString() + "\n";
+               }
+            }  
+            
+            if (msg.isEmpty() == false) {
+               QMessageBox::warning(theMainWindow, "ERROR", msg);
+            }
+         }
+         else if (answer == 1) {
+            for (int i = 0; i < numSpecFiles; i++) {
+               theMainWindow->readSpecFile(specFileNames[i]);
+            }
+         }
+      }
    }
 }
 
@@ -579,7 +548,5 @@ GuiMainWindowFileActions::updateActions()
       }
    }
    closeSpecFileAction->setText(name);
-   
-   saveImageFileAction->setEnabled(theMainWindow->getBrainSet()->getNumberOfImageFiles() > 0);
 }
 

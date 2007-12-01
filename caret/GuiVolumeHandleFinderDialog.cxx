@@ -32,6 +32,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 
@@ -48,10 +49,9 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiToolBar.h"
 #include "GuiVolumeHandleFinderDialog.h"
-#include "QtWidgetGroup.h"
+#include "WuQWidgetGroup.h"
 #include "RgbPaintFile.h"
 
 #include "global_variables.h"
@@ -89,7 +89,7 @@ GuiVolumeHandleFinderDialog::GuiVolumeHandleFinderDialog(QWidget* parent)
    //
    // Widget group for enabling/disabling search axis check boxes
    //
-   searchSegmentationWidgetGroup = new QtWidgetGroup(this);
+   searchSegmentationWidgetGroup = new WuQWidgetGroup(this);
    searchSegmentationWidgetGroup->addWidget(searchAxisXCheckBox);
    searchSegmentationWidgetGroup->addWidget(searchAxisYCheckBox);
    searchSegmentationWidgetGroup->addWidget(searchAxisZCheckBox);
@@ -272,32 +272,32 @@ GuiVolumeHandleFinderDialog::handleListBoxSelection(int item)
          selectedHandleIndex = item;
          BrainModelVolumeTopologicalError& handle = handles[item];
          
+         float xyz[3];
          int ijk[3], slices[2], numVoxels;
          VolumeFile::VOLUME_AXIS axis;
-         handle.getInfo(ijk, slices, numVoxels, axis);
+         handle.getInfo(ijk, xyz, slices, numVoxels, axis);
          
-         //
-         // Highlight in all windows
-         //
-         for (int i = 0; i < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; i++) {
-            bmv->setSelectedOrthogonalSlices(i, ijk);
-            
-            if ((axis == VolumeFile::VOLUME_AXIS_X) ||
-                (axis == VolumeFile::VOLUME_AXIS_Y) ||
-                (axis == VolumeFile::VOLUME_AXIS_Z)) {
-               bmv->setSelectedAxis(i, axis);
+         const VolumeFile* vf = bmv->getMasterVolumeFile();
+         if (vf != NULL) {
+            vf->convertCoordinatesToVoxelIJK(xyz, ijk);
+            //
+            // Highlight in all windows
+            //
+            for (int i = 0; i < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; i++) {
+               bmv->setSelectedOrthogonalSlices(i, ijk);
+               
+               if ((axis == VolumeFile::VOLUME_AXIS_X) ||
+                   (axis == VolumeFile::VOLUME_AXIS_Y) ||
+                   (axis == VolumeFile::VOLUME_AXIS_Z)) {
+                  bmv->setSelectedAxis(i, axis);
+               }
             }
-         }
-         
-         //
-         // Highlight nearby node in surfaces
-         //
-         BrainModelSurface* bms = bs->getActiveFiducialSurface();
-         if (bms != NULL) {
-            const VolumeFile* vf = bmv->getMasterVolumeFile();
-            if (vf != NULL) {
-               float xyz[3];
-               vf->getVoxelCoordinate(ijk, true, xyz);
+            
+            //
+            // Highlight nearby node in surfaces
+            //
+            BrainModelSurface* bms = bs->getActiveFiducialSurface();
+            if (bms != NULL) {
                const CoordinateFile* cf = bms->getCoordinateFile();
                const int nodeNum = cf->getCoordinateIndexClosestToPoint(xyz[0], xyz[1], xyz[2]);
                if (nodeNum >= 0) {
@@ -306,10 +306,10 @@ GuiVolumeHandleFinderDialog::handleListBoxSelection(int item)
                   bna->setHighlighting(BrainSetNodeAttribute::HIGHLIGHT_NODE_LOCAL);
                }
             }
+            
+            GuiToolBar::updateAllToolBars(false);
+            GuiBrainModelOpenGL::updateAllGL();
          }
-         
-         GuiToolBar::updateAllToolBars(false);
-         GuiBrainModelOpenGL::updateAllGL();
       }
    }
 }
@@ -371,10 +371,11 @@ GuiVolumeHandleFinderDialog::loadHandlesIntoListBox()
    const int numHandles = static_cast<int>(handles.size());
    for (int i = 0; i < numHandles; i++) {
       const BrainModelVolumeTopologicalError& handle = handles[i];
+      float xyz[3];
       int ijk[3], slices[2], numVoxels;
       VolumeFile::VOLUME_AXIS axis;
       
-      handle.getInfo(ijk, slices, numVoxels, axis);
+      handle.getInfo(ijk, xyz, slices, numVoxels, axis);
       
       char axisChar = ' ';
       switch (axis) {
@@ -410,30 +411,34 @@ GuiVolumeHandleFinderDialog::loadHandlesIntoListBox()
             break;
       }
       
-      std::ostringstream str;
-      str << "voxel ("
-          << ijk[0] << ", "
-          << ijk[1] << ", "
-          << ijk[2] << ")";
+      QString str =
+         // + "voxel ("
+         // + QString::number(ijk[0]) + ","
+         // + QString::number(ijk[1]) + ","
+         // + QString::number(ijk[2]) + ") "
+          + "xyz ("
+          + QString::number(xyz[0], 'f', 1) + ","
+          + QString::number(xyz[1], 'f', 1) + ","
+          + QString::number(xyz[2], 'f', 1) + ") ";
       if (axisChar != 'U') {
-         str << " " << axisChar;
+         str += axisChar;
       }
       if (slices[0] >= 0) {
-         str << " slices ("
-             << slices[0] 
-             << ", "
-             << slices[1]
-             << ")";
+         str += " slices ("
+                + QString::number(slices[0]) 
+                + ", "
+                + QString::number(slices[1])
+                + ")";
       }
-      str << " involves "
-          << numVoxels
-          << " voxels.";
+      str += " involves "
+             + QString::number(numVoxels)
+             + " voxels.";
           
       if (DebugControl::getDebugOn()) {
-         std::cout << str.str().c_str() << std::endl;
+         std::cout << str.toAscii().constData() << std::endl;
       }
       handlesListWidget->blockSignals(true);
-      handlesListWidget->addItem(str.str().c_str());
+      handlesListWidget->addItem(str);
       handlesListWidget->blockSignals(false);
    }
 }
@@ -457,12 +462,12 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
          if ((searchAxisXCheckBox->isChecked() == false) &&
              (searchAxisYCheckBox->isChecked() == false) &&
              (searchAxisZCheckBox->isChecked() == false)) {
-            GuiMessageBox::critical(this, "ERROR", "You must choose at least one axis to search.", "OK");
+            QMessageBox::critical(this, "ERROR", "You must choose at least one axis to search.");
             return;
          }
       }
       else if (searchCrossoversRadioButton->isChecked() == false) {
-         GuiMessageBox::critical(this, "ERROR", "You must select a search method.", "OK");
+         QMessageBox::critical(this, "ERROR", "You must select a search method.");
          return;
       }
        
@@ -483,7 +488,8 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
             bmvchf.execute();
             const int numHandles = bmvchf.getNumberOfHandles();
             if (numHandles == 0) {
-               GuiMessageBox::information(this, "Information", "No handles found.", "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::information(this, "Information", "No handles found.");
             }
             else {
                for (int i = 0; i < numHandles; i++) {
@@ -502,7 +508,8 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
             }
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "ERROR", e.whatQString());
          }
       }
       else {
@@ -525,7 +532,8 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
             
             const int numHandles = bmvhf.getNumberOfHandles();
             if (numHandles == 0) {
-               GuiMessageBox::information(this, "Information", "No handles found.", "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::information(this, "Information", "No handles found.");
             }
             else {
                for (int i = 0; i < numHandles; i++) {
@@ -604,7 +612,8 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
             }
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "ERROR", e.whatQString());
          }
                
       }
@@ -639,7 +648,7 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
          //
          BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
          bsnc->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT);
-         bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::UNDERLAY_SURFACE_SHAPE);
+         bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
          bsnc->assignColors();
       }
                

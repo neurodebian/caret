@@ -99,7 +99,9 @@ BrainModelSurfaceToVolumeSegmentationConverter::execute() throw (BrainModelAlgor
       throw BrainModelAlgorithmException("Unable to find volume created by intersecting with surface.");
    }
    const QString filename = outputSegmentationVolume->getFileName();
+   const VolumeFile::FILE_READ_WRITE_TYPE fileWriteType = outputSegmentationVolume->getFileWriteType();
    *outputSegmentationVolume = *vf;
+   outputSegmentationVolume->setFileWriteType(fileWriteType);
    outputSegmentationVolume->setFileName(filename);
    
    

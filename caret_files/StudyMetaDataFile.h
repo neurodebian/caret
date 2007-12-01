@@ -27,8 +27,9 @@
  */
 /*LICENSE_END*/
 
+#include <map>
+
 #include "AbstractFile.h"
-#include "StudyMetaDataLink.h"
 #include "StudyNamePubMedID.h"
 
 class CellFile;
@@ -637,6 +638,75 @@ class StudyMetaData {
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       };  // end of class PageReference
       
+      /// provenance
+      class Provenance {
+         public:
+            // constructor
+            Provenance();
+            
+            // destructor
+            ~Provenance();
+            
+            // copy constructor
+            Provenance(const Provenance& p);
+            
+            // assignment operator
+            Provenance& operator=(const Provenance& p);
+            
+            // clear the page link
+            void clear();
+            
+            /// get the name
+            QString getName() const { return name; }
+            
+            // set the name
+            void setName(const QString& s);
+            
+            /// get the date
+            QString getDate() const { return date; }
+            
+            // set the date
+            void setDate(const QString& s);
+            
+            /// get the command
+            QString getComment() const { return comment; }
+            
+            // set the comment
+            void setComment(const QString& s);
+            
+            // called to read from XML 
+            void readXML(QDomNode& node) throw (FileException);
+            
+            // called to write to an XML structure
+            void writeXML(QDomDocument& xmlDoc,
+                          QDomElement&  parentElement) const throw (FileException);
+         
+            // set parent
+            void setParent(StudyMetaData* parentStudyMetaDataIn);
+            
+            // set modified
+            void setModified();
+            
+         protected:
+            // copy helper
+            void copyHelper(const Provenance& p);
+            
+            /// study metadata that is parent of this table (DO NOT COPY)
+            StudyMetaData* parentStudyMetaData;
+      
+            /// the name
+            QString name;
+            
+            /// the date
+            QString date;
+            
+            /// the comment
+            QString comment;
+            
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // If additional members are added be sure to update copyHelper() method.
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      };  // end of class Provenance
       
       // constructor
       StudyMetaData();
@@ -676,6 +746,12 @@ class StudyMetaData {
       // read the data from a StringTable
       static void readDataFromStringTable(std::vector<StudyMetaData*>& smd,
                                     const StringTable& st) throw (FileException);
+      
+      // get the study data format entries
+      static void getStudyDataFormatEntries(std::vector<QString>& entries);
+      
+      // get the study data type entries
+      static void getStudyDataTypeEntries(std::vector<QString>& entries);
       
       // retrieve data from PubMed using PubMed ID
       void updateDataFromPubMedDotComUsingPubMedID() throw (FileException);
@@ -727,6 +803,24 @@ class StudyMetaData {
       
       /// get a table by its table number (const method)
       const Table* getTableByTableNumber(const QString& tableNumber) const;
+      
+      // add a provenance
+      void addProvenance(Provenance* p);
+      
+      // delete a provenance
+      void deleteProvenance(const int indx);
+      
+      // delete a provenance
+      void deleteProvenance(const Provenance* p);
+      
+      /// get number of provenances
+      int getNumberOfProvenances() const { return provenances.size(); }
+      
+      /// get a provenance
+      Provenance* getProvenance(const int indx) { return provenances[indx]; }
+      
+      /// get a provenance (const method)
+      const Provenance* getProvenance(const int indx) const { return provenances[indx]; }
       
       // add a page reference
       void addPageReference(PageReference* pr);
@@ -848,11 +942,29 @@ class StudyMetaData {
       /// get the Project ID prefix when used as a
       static QString getProjectIDInPubMedIDPrefix() { return "ProjID"; }
       
-      /// get the last provenance save date
-      QString getLastProvenanceSaveDate() const;
+      /// get the most recent save date
+      QString getMostRecentDateAndTimeStamp() const;
       
-      /// get the provenance
-      QString getProvenance() const { return provenanceDateAndTimeStamps; }
+      /// get the data and time stamps
+      QString getDateAndTimeStamps() const { return dateAndTimeStamps; }
+      
+      /// get the quality
+      QString getQuality() const { return quality; }
+      
+      /// set the quality
+      void setQuality(const QString& s);
+      
+      /// get the study data format
+      QString getStudyDataFormat() const { return studyDataFormat; }
+      
+      /// set the study data format
+      void setStudyDataFormat(const QString& s);
+      
+      /// get the study data type
+      QString getStudyDataType() const { return studyDataType; }
+      
+      /// set the study data type
+      void setStudyDataType(const QString& s);
       
       /// get title
       QString getTitle() const { return title; }
@@ -885,8 +997,8 @@ class StudyMetaData {
       // copy helper used by copy constructor and assignment operator
       void copyHelper(const StudyMetaData& smd);
       
-      // set the provenance
-      void setProvenance(const QString& p);
+      // set the date and time stamps
+      void setDateAndTimeStamps(const QString& p);
       
       /// study metadata file that is a parent of this instance (do not copy)
       StudyMetaDataFile* parentStudyMetaDataFile;
@@ -924,6 +1036,15 @@ class StudyMetaData {
       /// the PubMed ID
       QString pubMedID;
       
+      /// quality of data
+      QString quality;
+      
+      /// study data format
+      QString studyDataFormat;
+      
+      /// study data type
+      QString studyDataType;
+      
       /// stereotaxic space
       QString stereotaxicSpace;
       
@@ -939,6 +1060,9 @@ class StudyMetaData {
       /// figures in the study
       std::vector<Figure*> figures;
       
+      /// provenances
+      std::vector<Provenance*> provenances;
+      
       /// page references
       std::vector<PageReference*> pageReferences;
       
@@ -948,8 +1072,8 @@ class StudyMetaData {
       /// meta-analysis flag
       bool metaAnalysisFlag;
       
-      /// the date and time stamp provenance (DO NOT COPY)
-      mutable QString provenanceDateAndTimeStamps;
+      /// the date and time stamps  (DO NOT COPY)
+      mutable QString dateAndTimeStamps;
       
       /// the modified flag, cleared when file is written (DO NOT COPY)
       mutable bool studyDataModifiedFlag;
@@ -1009,7 +1133,7 @@ class StudyMetaDataFile : public AbstractFile {
       int getStudyMetaDataIndex(const StudyMetaData* smdToFind) const;
       
       // get the index of study meta data matching the study metadata link (-1 if no match found)
-      int getStudyIndexFromLink(const StudyMetaDataLink smdl) const;
+      int getStudyIndexFromLink(const StudyMetaDataLink& smdl) const;
                    
       // get study from a PubMed ID (may match PubMed ID or Project ID)
       int getStudyIndexFromPubMedID(const QString& pubMedID) const;
@@ -1040,7 +1164,7 @@ class StudyMetaDataFile : public AbstractFile {
       // read the file's data from a comma separated values file (throws exception if not supported)               
       virtual void readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& csv) throw (FileException); 
 
-      // clear study meta data modified (prevents provenance updates)
+      // clear study meta data modified (prevents date and time stamp updates)
       void clearAllStudyMetaDataElementsModified();
       
       // get all keywords
@@ -1066,6 +1190,18 @@ class StudyMetaDataFile : public AbstractFile {
       void createStudiesFromMetaAnalysisStudiesWithPubMedDotCom(const StudyNamePubMedID* ms,
                                                               const bool fetchDataFromPubMedFlag) throw (FileException);
       
+      // count the number of studies without at least one provenance entry
+      int getNumberOfStudyMetaDatWithoutProvenceEntries() const;
+      
+      // update all studies without a provenance entry
+      void addProvenanceToStudiesWithoutProvenanceEntries(const QString& name,
+                                                          const QString& date,
+                                                          const QString& comment);
+                                                          
+      // find duplicate studies (map key is PubMedID, value is filename)
+      static void findDuplicateStudies(const std::vector<QString>& studyFileNames,
+                                       std::multimap<QString,QString>& duplicatesStudiesOut)
+                                                                throw (FileException);
    protected:
       // copy helper used by copy constructor and assignment operator
       void copyHelper(const StudyMetaDataFile& smdf);

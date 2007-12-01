@@ -100,6 +100,64 @@ NodeAttributeFile::setColumnName(const int col, const QString& name)
 }
 
 /**
+ * get a node attribute file column number where input may be a column 
+ * name or number.  Input numbers range 1..N and output column 
+ * numbers range 0..(N-1).
+ */
+int 
+NodeAttributeFile::getColumnFromNameOrNumber(const QString& columnNameOrNumber,
+                                             const bool addColumnIfNotFoundAndNotNumber) throw (FileException)
+{
+   //
+   // Try name first
+   //
+   const int numCols = getNumberOfColumns();
+   for (int i = 0; i < numCols; i++) {
+      if (getColumnName(i) == columnNameOrNumber) {
+         return i;
+      }
+   }
+   
+   //
+   // To see if it is a number, simply convert to int and check for success
+   //
+   bool ok = false;
+   const int columnNumber = columnNameOrNumber.toInt(&ok);
+   if (ok) {
+      if ((columnNumber > 0) && 
+          (columnNumber <= getNumberOfColumns())) {
+         return (columnNumber - 1);
+      }
+      else {
+         throw FileException("ERROR Invalid column name/number " 
+                             + QString::number(columnNumber)
+                             + " in file "
+                             + FileUtilities::basename(getFileName()));
+      }
+   }
+   
+   //
+   // Add column if there are nodes
+   //
+   if (addColumnIfNotFoundAndNotNumber) {
+      if (getNumberOfNodes() > 0) {
+         addColumns(1);
+         const int col = getNumberOfColumns() - 1;
+         setColumnName(col, columnNameOrNumber);
+         return col;
+      }
+   }
+   
+   //
+   // faild to find 
+   //
+   throw FileException("ERROR column name/number " 
+                          + columnNameOrNumber
+                          + " not found in file "
+                          + FileUtilities::basename(getFileName()));
+}
+
+/**
  * Get the column index for a column with the specified name.  If the
  * name is not found a negative number is returned.
  */
@@ -154,6 +212,35 @@ NodeAttributeFile::prependToColumnComment(const int col, const QString& comm)
 }
 
 /**
+ * get the study metadata link set for a column.
+ */
+StudyMetaDataLinkSet
+NodeAttributeFile::getColumnStudyMetaDataLinkSet(const int columnNumber) const
+{
+   StudyMetaDataLinkSet smdls;
+   if ((columnNumber >= 0) &&
+       (columnNumber < getNumberOfColumns())) {
+      smdls = studyMetaDataLinkSet[columnNumber];
+   }
+   
+   return smdls;
+}
+
+/**
+ * set the study metadata link for a column.
+ */
+void 
+NodeAttributeFile::setColumnStudyMetaDataLinkSet(const int columnNumber,
+                                              const StudyMetaDataLinkSet smdls)
+{
+   if ((columnNumber >= 0) &&
+       (columnNumber < getNumberOfColumns())) {
+      studyMetaDataLinkSet[columnNumber] = smdls;
+      setModified();
+   }
+}
+      
+/**
  * Get the comment for a column.
  */
 QString
@@ -174,10 +261,12 @@ NodeAttributeFile::numberOfNodesColumnsChanged()
    if (numberOfColumns == 0) {
       columnNames.clear();
       columnComments.clear();
+      studyMetaDataLinkSet.clear();
    }
    else {
       columnNames.resize(numberOfColumns);
       columnComments.resize(numberOfColumns);
+      studyMetaDataLinkSet.resize(numberOfColumns);
       for (int i = oldNumberOfColumns; i < numberOfColumns; i++) {
          std::ostringstream str;
          str << "column " << i << " ";
@@ -195,6 +284,7 @@ NodeAttributeFile::clearNodeAttributeFile()
    clearAbstractFile();
    columnNames.clear();
    columnComments.clear();
+   studyMetaDataLinkSet.clear();
 }
 
 /**
@@ -226,6 +316,8 @@ NodeAttributeFile::transferFileDataForDeformation(const DeformationMapFile& dmf,
       comment.append("Deformed with: ");
       comment.append(FileUtilities::basename(dmf.getFileName()));
       destinationFile.setColumnComment(j, comment);
+      
+      destinationFile.studyMetaDataLinkSet = studyMetaDataLinkSet;
    }
 }
 

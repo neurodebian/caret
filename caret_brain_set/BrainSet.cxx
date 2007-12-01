@@ -25,6 +25,7 @@
 
 
 #include <QGlobalStatic>
+#include <QMutexLocker>
 #include <QTextStream>
 #include <QTimer>
 
@@ -66,11 +67,13 @@
 #include "BrainModelSurfaceAndVolume.h"
 #include "BrainModelSurfaceCurvature.h"
 #include "BrainModelSurfaceNodeColoring.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainModelSurfaceResection.h"
 #include "BrainModelVolume.h"
 #include "BrainModelVolumeToSurfaceConverter.h"
 #include "BrainModelVolumeVoxelColoring.h"
 #include "BrainModelVolumeRegionOfInterest.h"
+#include "BrainSetMultiThreadedSpecFileReader.h"
 #include "BrainVoyagerFile.h"
 #include "CellColorFile.h"
 #include "CellFile.h"
@@ -191,15 +194,23 @@ BrainSet::BrainSet(const QString& vtkSurfaceFileName,
  * For success, check to see if there is one brain model surface.
  */
 BrainSet::BrainSet(const QString& topoFileName,
-                   const QString& coordFileName)
+                   const QString& coordFileName1,
+                   const QString& coordFileName2,
+                   const bool primaryBrainSetFlagIn)
 {
    constructBrainSet();
+   primaryBrainSetFlag = primaryBrainSetFlagIn;
    
    //
    // Create a spec file with the two files
    //
    SpecFile sf;
-   sf.setTopoAndCoordSelected(topoFileName, coordFileName, getStructure());
+   std::vector<QString> coordFileNames;
+   coordFileNames.push_back(coordFileName1);
+   coordFileNames.push_back(coordFileName2);
+   sf.setTopoAndCoordSelected(topoFileName, 
+                              coordFileNames,
+                              getStructure());
    
    //
    // Read the spec file
@@ -252,12 +263,17 @@ BrainSet::BrainSet(const QString& topoFileName,
    //
    // Structure needs to be set
    //
-   if (getNumberOfBrainModels() > 0) {
-      const BrainModelSurface* bms = getBrainModelSurface(0);
+   for (int i = 0; i < getNumberOfBrainModels(); i++) {
+      const BrainModelSurface* bms = getBrainModelSurface(i);
       if (bms != NULL) {
-         setStructure(bms->getStructure());
+         if (bms->getStructure().getType() != Structure::STRUCTURE_TYPE_INVALID) {
+            setStructure(bms->getStructure());
+            break;
+         }
       }
    }
+   
+   updateDefaultFileNamePrefix();
 }               
 
 /**
@@ -354,6 +370,7 @@ BrainSet::constructBrainSet()
    brainModelIdentification       = new BrainModelIdentification(this);
    nodeColoring                   = new BrainModelSurfaceNodeColoring(this);
    voxelColoring                  = new BrainModelVolumeVoxelColoring(this);
+   brainModelSurfaceRegionOfInterestNodeSelection = new BrainModelSurfaceROINodeSelection(this);
    brainModelVolumeRegionOfInterest = new BrainModelVolumeRegionOfInterest(this);
    displaySettingsArealEstimation = new DisplaySettingsArealEstimation(this);
    displaySettingsBorders         = new DisplaySettingsBorders(this);
@@ -583,6 +600,7 @@ BrainSet::~BrainSet()
    delete nodeColoring;
    delete voxelColoring;
    delete brainModelVolumeRegionOfInterest;
+   delete brainModelSurfaceRegionOfInterestNodeSelection;
    delete displaySettingsArealEstimation;  
    delete displaySettingsBorders;
    delete displaySettingsDeformationField;
@@ -699,6 +717,58 @@ BrainSet::clearAllDisplayLists()
 void
 BrainSet::deleteAllBrainModels()
 {
+   deleteAllTopologyFiles();
+   
+   for (unsigned int k = 0; k < volumeFunctionalFiles.size(); k++) {
+      if (volumeFunctionalFiles[k] != NULL) {
+         delete volumeFunctionalFiles[k];
+         volumeFunctionalFiles[k] = NULL;
+      }
+   }
+   volumeFunctionalFiles.clear();
+   for (unsigned int k = 0; k < volumePaintFiles.size(); k++) {
+      if (volumePaintFiles[k] != NULL) {
+         delete volumePaintFiles[k];
+         volumePaintFiles[k] = NULL;
+      }
+   }
+   volumePaintFiles.clear();
+   for (unsigned int k = 0; k < volumeProbAtlasFiles.size(); k++) {
+      if (volumeProbAtlasFiles[k] != NULL) {
+         delete volumeProbAtlasFiles[k];
+         volumeProbAtlasFiles[k] = NULL;
+      }
+   }
+   volumeProbAtlasFiles.clear();
+   for (unsigned int k = 0; k < volumeRgbFiles.size(); k++) {
+      if (volumeRgbFiles[k] != NULL) {
+         delete volumeRgbFiles[k];
+         volumeRgbFiles[k] = NULL;
+      }
+   }
+   volumeRgbFiles.clear();
+   for (unsigned int k = 0; k < volumeSegmentationFiles.size(); k++) {
+      if (volumeSegmentationFiles[k] != NULL) {
+         delete volumeSegmentationFiles[k];
+         volumeSegmentationFiles[k] = NULL;
+      }
+   }
+   volumeSegmentationFiles.clear();
+   for (unsigned int k = 0; k < volumeAnatomyFiles.size(); k++) {
+      if (volumeAnatomyFiles[k] != NULL) {
+         delete volumeAnatomyFiles[k];
+         volumeAnatomyFiles[k] = NULL;
+      }
+   }
+   volumeAnatomyFiles.clear();
+   for (unsigned int k = 0; k < volumeVectorFiles.size(); k++) {
+      if (volumeVectorFiles[k] != NULL) {
+         delete volumeVectorFiles[k];
+         volumeVectorFiles[k] = NULL;
+      }
+   }
+   volumeVectorFiles.clear();
+   
    for (unsigned int i = 0; i < brainModels.size(); i++) {
       if (brainModels[i] != NULL) {
          delete brainModels[i];
@@ -732,7 +802,7 @@ BrainSet::reset(const bool keepSceneData)
    
    deleteAllBrainModels();
    
-   resetDataFiles(keepSceneData);
+   resetDataFiles(keepSceneData, false);
    if (keepSceneData) {
       loadedFilesSpecFile.sceneFile = savedSceneFile;
    }
@@ -787,17 +857,20 @@ BrainSet::reset(const bool keepSceneData)
  * Reset data files.
  */
 void
-BrainSet::resetDataFiles(const bool keepSceneData)
+BrainSet::resetDataFiles(const bool keepSceneData,
+                         const bool keepFociAndFociColorsAndStudyMetaData)
 {
-   deleteAllTopologyFiles();
-   
    deleteAllBorders();
 
-   cocomacFile->clear();
+   //cocomacFile->clear();
+   clearCocomacConnectivityFile();
    contourCellFile->clear();
-   contourCellColorFile->clear();
-   cutsFile->clear();
-   areaColorFile->clear();
+   //contourCellColorFile->clear();
+   clearContourCellColorFile();
+   //cutsFile->clear();
+   clearCutsFile();
+   //areaColorFile->clear();
+   clearAreaColorFile();
    paramsFile->clear();
    if (keepSceneData == false) {
       sceneFile->clear();
@@ -807,70 +880,30 @@ BrainSet::resetDataFiles(const bool keepSceneData)
    paletteFile->addDefaultPalettes();
    paletteFile->clearModified();
    
-   borderColorFile->clear();
+   //borderColorFile->clear();
+   clearBorderColorFile();
    
-   cellColorFile->clear();
-   cellProjectionFile->clear();
-   volumeCellFile->clear();
+   //cellColorFile->clear();
+   clearCellColorFile();
+   //cellProjectionFile->clear();
+   //volumeCellFile->clear();
+   deleteAllCells(true, true);
    
-   fociColorFile->clear();
-   fociProjectionFile->clear();
+   if (keepFociAndFociColorsAndStudyMetaData == false) {
+      //fociColorFile->clear();
+      clearFociColorFile();
+      //fociProjectionFile->clear();
+      deleteAllFoci(true, true);
+   }
    
-   studyMetaDataFile->clear();
+   if (keepFociAndFociColorsAndStudyMetaData == false) {
+      studyMetaDataFile->clear();
+   }
+   
    vocabularyFile->clear();
    
    volumeFociFile->clear();
-   
-   for (unsigned int k = 0; k < volumeFunctionalFiles.size(); k++) {
-      if (volumeFunctionalFiles[k] != NULL) {
-         delete volumeFunctionalFiles[k];
-         volumeFunctionalFiles[k] = NULL;
-      }
-   }
-   volumeFunctionalFiles.clear();
-   for (unsigned int k = 0; k < volumePaintFiles.size(); k++) {
-      if (volumePaintFiles[k] != NULL) {
-         delete volumePaintFiles[k];
-         volumePaintFiles[k] = NULL;
-      }
-   }
-   volumePaintFiles.clear();
-   for (unsigned int k = 0; k < volumeProbAtlasFiles.size(); k++) {
-      if (volumeProbAtlasFiles[k] != NULL) {
-         delete volumeProbAtlasFiles[k];
-         volumeProbAtlasFiles[k] = NULL;
-      }
-   }
-   volumeProbAtlasFiles.clear();
-   for (unsigned int k = 0; k < volumeRgbFiles.size(); k++) {
-      if (volumeRgbFiles[k] != NULL) {
-         delete volumeRgbFiles[k];
-         volumeRgbFiles[k] = NULL;
-      }
-   }
-   volumeRgbFiles.clear();
-   for (unsigned int k = 0; k < volumeSegmentationFiles.size(); k++) {
-      if (volumeSegmentationFiles[k] != NULL) {
-         delete volumeSegmentationFiles[k];
-         volumeSegmentationFiles[k] = NULL;
-      }
-   }
-   volumeSegmentationFiles.clear();
-   for (unsigned int k = 0; k < volumeAnatomyFiles.size(); k++) {
-      if (volumeAnatomyFiles[k] != NULL) {
-         delete volumeAnatomyFiles[k];
-         volumeAnatomyFiles[k] = NULL;
-      }
-   }
-   volumeAnatomyFiles.clear();
-   for (unsigned int k = 0; k < volumeVectorFiles.size(); k++) {
-      if (volumeVectorFiles[k] != NULL) {
-         delete volumeVectorFiles[k];
-         volumeVectorFiles[k] = NULL;
-      }
-   }
-   volumeVectorFiles.clear();
-   
+      
    transformationMatrixFile->clear();
    
    for (int i = 0; i < getNumberOfTransformationDataFiles(); i++) {
@@ -1291,6 +1324,7 @@ BrainSet::showScene(const SceneFile::Scene* ss,
          }
       }
       
+/*
       //
       // clear colors
       //
@@ -1319,7 +1353,24 @@ BrainSet::showScene(const SceneFile::Scene* ss,
       //
       clearProbabilisticAtlasFile();
       probabilisticAtlasSurfaceFile->clearModified();
-      
+*/
+      //
+      // Clear data files
+      //      
+      resetDataFiles(true,
+                     displaySettingsScene->getPreserveFociAndFociColorsAndStudyMetaDataFlag());
+
+      //
+      // Get rid of volume prob atlas files
+      //      
+      for (unsigned int k = 0; k < volumeProbAtlasFiles.size(); k++) {
+         if (volumeProbAtlasFiles[k] != NULL) {
+            delete volumeProbAtlasFiles[k];
+            volumeProbAtlasFiles[k] = NULL;
+         }
+      }
+      volumeProbAtlasFiles.clear();
+
       //
       // Clear node identify symbols
       //
@@ -1822,6 +1873,82 @@ BrainSet::setSpecies(const QString& s)
 }
 
 /**
+ * guess subject, species, and structure if not specified.
+ */
+void 
+BrainSet::guessSubjectSpeciesStructureFromCoordTopoFileNames()
+{
+   if (species.isEmpty() ||
+       subject.isEmpty() ||
+       (structure.getType() == Structure::STRUCTURE_TYPE_INVALID)) {
+      //
+      // Get names of topo and coord files
+      //
+      std::vector<QString> fileNames;
+      for (int i = 0; i < getNumberOfTopologyFiles(); i++) {
+         fileNames.push_back(FileUtilities::basename(getTopologyFile(i)->getFileName()));
+      }
+      for (int i = 0; i < getNumberOfBrainModels(); i++) {
+         const BrainModelSurface* bms = getBrainModelSurface(i);
+         if (bms != NULL) {
+            fileNames.push_back(FileUtilities::basename(bms->getCoordinateFile()->getFileName()));
+         }
+      }
+      
+      //
+      // Loop through file names
+      //
+      for (int i = 0; i < static_cast<int>(fileNames.size()); i++) {
+         QString fDir, fSpecies, fCasename, fAnatomy, fHemisphere,
+                 fDescription, fDescriptionNoTypeName, fTheDate,
+                 fNumNodes, fExtension;
+         //
+         // Is this a valid caret data file name
+         //
+         if (FileUtilities::parseCaretDataFileName(fileNames[i],
+                                                   fDir, 
+                                                   fSpecies, 
+                                                   fCasename, 
+                                                   fAnatomy, 
+                                                   fHemisphere,
+                                                   fDescription, 
+                                                   fDescriptionNoTypeName, 
+                                                   fTheDate,
+                                                   fNumNodes, 
+                                                   fExtension)) {
+            //
+            // Update data
+            //
+            if (species.isEmpty() &&
+                (fSpecies.isEmpty() == false)) {
+               species = fSpecies;
+            }
+            if (subject.isEmpty() &&
+                (fCasename.isEmpty() == false)) {
+               subject = fCasename;
+            }
+            if ((structure.getType() == Structure::STRUCTURE_TYPE_INVALID) &&
+                (fHemisphere.isEmpty() == false)) {
+               const Structure s(fHemisphere);
+               if (s.getType() != Structure::STRUCTURE_TYPE_INVALID) {
+                  structure = s;
+               }
+            }
+         }
+         
+         //
+         // See if done
+         //
+         if ((species.isEmpty() == false) &&
+             (subject.isEmpty() == false) &&
+             (structure.getType() == Structure::STRUCTURE_TYPE_INVALID)) {
+            break;
+         }
+      }
+   }
+}
+      
+/**
  * update the default file naming prefix.
  */
 void 
@@ -1829,7 +1956,9 @@ BrainSet::updateDefaultFileNamePrefix()
 {
    if (primaryBrainSetFlag) {
       QString defaultFileNamePrefix;
-      
+
+      guessSubjectSpeciesStructureFromCoordTopoFileNames();
+            
       const QString hem = structure.getTypeAsAbbreviatedString();
       if ((hem != "U") && 
           (hem.isEmpty() == false) && 
@@ -1860,7 +1989,7 @@ BrainSet::getBrainModelContours(const int modelIndex)
          }
       }
    }
-   else {
+   else if (modelIndex < getNumberOfBrainModels()) {
       return dynamic_cast<BrainModelContours*>(brainModels[modelIndex]);
    }
    return NULL;
@@ -1880,7 +2009,7 @@ BrainSet::getBrainModelContours(const int modelIndex) const
          }
       }
    }
-   else {
+   else if (modelIndex < getNumberOfBrainModels()) {
       return dynamic_cast<BrainModelContours*>(brainModels[modelIndex]);
    }
    return NULL;
@@ -1900,7 +2029,7 @@ BrainSet::getBrainModelVolume(const int modelIndex)
          }
       }
    }
-   else {
+   else if (modelIndex < getNumberOfBrainModels()) {
       return dynamic_cast<BrainModelVolume*>(brainModels[modelIndex]);
    }
    return NULL;
@@ -1920,7 +2049,7 @@ BrainSet::getBrainModelVolume(const int modelIndex) const
          }
       }
    }
-   else {
+   else if (modelIndex < getNumberOfBrainModels()) {
       return dynamic_cast<BrainModelVolume*>(brainModels[modelIndex]);
    }
    return NULL;
@@ -1940,7 +2069,7 @@ BrainSet::getBrainModelSurfaceAndVolume(const int modelIndex)
          }
       }
    }
-   else {
+   else if (modelIndex < getNumberOfBrainModels()) {
       return dynamic_cast<BrainModelSurfaceAndVolume*>(brainModels[modelIndex]);
    }
    return NULL;
@@ -1960,7 +2089,7 @@ BrainSet::getBrainModelSurfaceAndVolume(const int modelIndex) const
          }
       }
    }
-   else {
+   else if (modelIndex < getNumberOfBrainModels()) {
       return dynamic_cast<BrainModelSurfaceAndVolume*>(brainModels[modelIndex]);
    }
    return NULL;
@@ -2050,6 +2179,11 @@ BrainSet::addNodes(const int numNodesToAdd)
 void
 BrainSet::createBrainModelSurfaceAndVolume()
 {
+   //
+   // Prevent more than one thread from executing this code
+   //
+   QMutexLocker locker(&mutexCreateSurfaceAndVolume);
+   
    BrainModelSurfaceAndVolume* bmsv = getBrainModelSurfaceAndVolume();
    if (bmsv != NULL) {
       //
@@ -2079,12 +2213,12 @@ BrainSet::createBrainModelSurfaceAndVolume()
 BrainModelSurface* 
 BrainSet::getBrainModelSurface(const int modelIndex) 
 { 
-   if (brainModels[modelIndex]->getModelType() == BrainModel::BRAIN_MODEL_SURFACE) {
-      return dynamic_cast<BrainModelSurface*>(brainModels[modelIndex]); 
+   if (modelIndex < getNumberOfBrainModels()) {
+      if (brainModels[modelIndex]->getModelType() == BrainModel::BRAIN_MODEL_SURFACE) {
+         return dynamic_cast<BrainModelSurface*>(brainModels[modelIndex]); 
+      }
    }
-   else {
-      return NULL;
-   }
+   return NULL;
 }
 
 /**
@@ -2093,12 +2227,12 @@ BrainSet::getBrainModelSurface(const int modelIndex)
 const BrainModelSurface* 
 BrainSet::getBrainModelSurface(const int modelIndex) const 
 { 
-   if (brainModels[modelIndex]->getModelType() == BrainModel::BRAIN_MODEL_SURFACE) {
-      return dynamic_cast<BrainModelSurface*>(brainModels[modelIndex]); 
+   if (modelIndex < getNumberOfBrainModels()) {
+      if (brainModels[modelIndex]->getModelType() == BrainModel::BRAIN_MODEL_SURFACE) {
+         return dynamic_cast<BrainModelSurface*>(brainModels[modelIndex]); 
+      }
    }
-   else {
-      return NULL;
-   }
+   return NULL;
 }
       
 /**
@@ -2678,6 +2812,11 @@ BrainSet::addToSpecFile(const QString& specFileTag, const QString& fileName,
                         const QString& fileName2)
 {
    //
+   // The remainder of this routine must not be run by more than one thread
+   //
+   QMutexLocker locker(&mutexAddToSpecFile);
+   
+   //
    // Do not call sf.setStructure() since Unknown screws things up.
    //
    switch (structure.getType()) {
@@ -2751,6 +2890,8 @@ void
 BrainSet::readAreaColorFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexAreaColorFile);   
+   
    if (append == false) {
       clearAreaColorFile();
    }
@@ -2772,6 +2913,7 @@ BrainSet::readAreaColorFile(const QString& name, const bool append,
       QString msg;
       areaColorFile->append(cf);
    }
+   
    areaColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
@@ -2806,11 +2948,13 @@ void
 BrainSet::readArealEstimationFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexArealEstimationFile);
+   
    if (append == false) {
       clearArealEstimationFile();
    }
    const unsigned long modified = arealEstimationFile->getModified();
-   
+      
    if (arealEstimationFile->getNumberOfColumns() == 0) {         
       try {
          arealEstimationFile->readFile(name);
@@ -2837,9 +2981,10 @@ BrainSet::readArealEstimationFile(const QString& name, const bool append,
          throw FileException(FileUtilities::basename(name), e.whatQString());
       }
    }
+   
    arealEstimationFile->setModifiedCounter(modified);
    displaySettingsArealEstimation->update();  
-   
+
    if (updateSpec) {
       addToSpecFile(SpecFile::arealEstimationFileTag, name);
    }
@@ -2855,7 +3000,10 @@ BrainSet::readVolumeBorderFile(const QString& name,
 {
    BorderFile* borderFile = getVolumeBorderFile();
    
+   QMutexLocker locker(&mutexVolumeBorderFile);
+   
    if (append || (borderFile->getNumberOfBorders() <= 0)) {
+   
       borderFile->readFile(name);
    }
    else {
@@ -3052,10 +3200,6 @@ BrainSet::readBorderFile(const QString& name, const BrainModelSurface::SURFACE_T
       throw FileException(FileUtilities::basename(name), e.whatQString());
    }
    
-   if (append == false) {
-      deleteAllBorders();
-   }
-   
    //
    // Update configuration ID in the border file
    //
@@ -3078,8 +3222,17 @@ BrainSet::readBorderFile(const QString& name, const BrainModelSurface::SURFACE_T
    //
    // Add to current borders.
    //
+   QMutexLocker locker(&mutexBorderAndBorderProjectionFile);
+
+   if (append == false) {
+      deleteAllBorders();
+   }
+   
    brainModelBorderSet->copyBordersFromBorderFile(&borderFile, st);
-   displaySettingsBorders->update();   
+   
+   if (readingSpecFileFlag == false) {
+      displaySettingsBorders->update();   
+   }
    
    if (updateSpec) {
       addToSpecFile(tag, name);
@@ -3104,9 +3257,12 @@ void
 BrainSet::readBorderColorFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexBorderColorFile);
+
    if (append == false) {
       clearBorderColorFile();
    }
+   
    const unsigned long modified = borderColorFile->getModified();
    
    if (borderColorFile->getNumberOfColors() == 0) {         
@@ -3124,6 +3280,7 @@ BrainSet::readBorderColorFile(const QString& name, const bool append,
       cf.readFile(name);
       borderColorFile->append(cf);
    }
+   
    borderColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
@@ -3167,11 +3324,6 @@ BrainSet::readBorderProjectionFile(const QString& name,
                                    const bool append,
                                    const bool updateSpec) throw (FileException)
 {
-   if (append == false) {
-      deleteAllBorders();
-   }
-   bool modified = brainModelBorderSet->getProjectionsModified();
-   
    BorderProjectionFile borderProjFile;         
    try {
       borderProjFile.readFile(name);
@@ -3180,10 +3332,20 @@ BrainSet::readBorderProjectionFile(const QString& name,
       throw FileException(FileUtilities::basename(name), e.whatQString());
    }
 
+   QMutexLocker locker(&mutexBorderAndBorderProjectionFile);
+   
+   if (append == false) {
+      deleteAllBorders();
+   }
+   bool modified = brainModelBorderSet->getProjectionsModified();
+   
    const bool hadBorders = (brainModelBorderSet->getNumberOfBorders() > 0);
    brainModelBorderSet->copyBordersFromBorderProjectionFile(&borderProjFile);
    brainModelBorderSet->setProjectionsModified(modified);
-   displaySettingsBorders->update();
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsBorders->update();   
+   }
    
    if (hadBorders == false) {
       brainModelBorderSet->setAllModifiedStatus(false);
@@ -3235,6 +3397,8 @@ BrainSet::readCellFile(const QString& name,
                        const bool append,
                        const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexCellAndCellProjectionFile);
+   
    if (append == false) {
       //deleteCellsOfType(st);
       deleteAllCells(true, true);
@@ -3290,6 +3454,8 @@ BrainSet::readVolumeCellFile(const QString& name,
                              const bool append,
                              const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexVolumeCellFile);
+   
    if (append == false) {
       deleteAllCells(false, true);
    }
@@ -3356,6 +3522,8 @@ void
 BrainSet::readCellColorFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexCellColorFile);
+   
    if (append == false) {
       clearCellColorFile();
    }
@@ -3374,9 +3542,10 @@ BrainSet::readCellColorFile(const QString& name, const bool append,
       // Append to existing 
       CellColorFile cf;
       cf.readFile(name);
-      QString msg;
+      //QString msg;
       cellColorFile->append(cf);
    }
+   
    cellColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
@@ -3403,6 +3572,8 @@ BrainSet::readCellProjectionFile(const QString& name,
                                  const bool append,
                                  const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexCellAndCellProjectionFile);
+   
    if (append == false) {
       deleteAllCellProjections();
    }
@@ -3424,6 +3595,7 @@ BrainSet::readCellProjectionFile(const QString& name,
       QString msg;
       cellProjectionFile->append(cf);
    }
+   
    cellProjectionFile->setModifiedCounter(modified);
    displaySettingsCells->update();
    
@@ -3450,6 +3622,8 @@ void
 BrainSet::readCocomacConnectivityFile(const QString& name, const bool append,
                                       const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexCocomacFile);
+   
    if (append == false) {
       clearCocomacConnectivityFile();
    }
@@ -3474,6 +3648,7 @@ BrainSet::readCocomacConnectivityFile(const QString& name, const bool append,
          throw FileException(FileUtilities::basename(name), msg);
       }
    }
+   
    cocomacFile->setModifiedCounter(modified);
    displaySettingsCoCoMac->update();
    
@@ -3501,9 +3676,12 @@ BrainSet::readContourFile(const QString& name,
                           const bool append,
                           const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexContourFile);
+   
    if (append == false) {
       clearContourFile(false);
    }
+   
    BrainModelContours* bmc = getBrainModelContours(-1);
    bool createdBrainModelContours = false;
    if (bmc == NULL) {
@@ -3547,12 +3725,14 @@ BrainSet::readContourCellFile(const QString& name,
                               const bool append,
                               const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexContourCellFile);     
+   
    if (append == false) {
       clearContourCellFile();
    }
    const unsigned long modified = contourCellFile->getModified();
    
-   if (contourCellFile->getNumberOfCells() == 0) {         
+   if (contourCellFile->getNumberOfCells() == 0) {    
       try {
          contourCellFile->readFile(name);
       }
@@ -3567,6 +3747,7 @@ BrainSet::readContourCellFile(const QString& name,
       cf.readFile(name);
       contourCellFile->append(cf);
    }
+
    contourCellFile->setModifiedCounter(modified);
    displaySettingsCells->update();
    
@@ -3594,6 +3775,8 @@ BrainSet::readContourCellColorFile(const QString& name,
                                    const bool append,
                                    const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexContourCellColorFile);
+   
    if (append == false) {
       clearContourCellColorFile();
    }
@@ -3652,6 +3835,8 @@ void
 BrainSet::readCutsFile(const QString& name, const bool append,
                        const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexCutsFile);
+   
    if (append == false) {
       clearCutsFile();
    }
@@ -3905,46 +4090,6 @@ BrainSet::readVolumeFile(const QString& name, const VolumeFile::VOLUME_TYPE vt,
       }
       addVolumeFile(vt, vf, name, append, updateSpec); 
    }
-/*   
-   VolumeFile* vf = new VolumeFile;
-   
-   try {
-      vf->readFile(name);
-      //
-      // Should a transformation matrix be applied ?
-      //
-      if (specDataFileTransformationMatrix.isIdentity() == false) {
-         vf->applyTransformationMatrix(specDataFileTransformationMatrix);
-         vf->clearModified();
-      }
-      
-      addVolumeFile(vt, vf, name, append, updateSpec); 
-      
-      //
-      // Read any additional subvolumes
-      //
-      const int numSubVolumes = vf->getNumberOfSubVolumes();
-      for (int i = 1; i < numSubVolumes; i++) {
-         vf = new VolumeFile;
-         vf->readVolumeHeader(name, VolumeFile::FILE_READ_WRITE_TYPE_UNKNOWN);
-         vf->readVolumeData(i);
-
-         //
-         // Should a transformation matrix be applied ?
-         //
-         if (specDataFileTransformationMatrix.isIdentity() == false) {
-            vf->applyTransformationMatrix(specDataFileTransformationMatrix);
-            vf->clearModified();
-         }
-      
-         addVolumeFile(vt, vf, name, true, false);
-      }
-   }
-   catch (FileException& e) {
-     delete vf;
-     throw e;
-   }
-*/
 }
 
 /**
@@ -3955,6 +4100,8 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
                         const QString& name,
                         const bool append, const bool updateSpec)
 {
+   QMutexLocker locker(&mutexAddVolumeFile);
+   
    QString tag;
    
    //
@@ -4141,9 +4288,11 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
    }
 */
    
-   displaySettingsVolume->update();
-   displaySettingsWustlRegion->update();
-   
+   if (readingSpecFileFlag == false) {
+      displaySettingsVolume->update();
+      displaySettingsWustlRegion->update();
+   }
+      
    if (createdBrainModelVolume) {
       bmv->initializeSelectedSlicesAllViews(true);
    }
@@ -4444,6 +4593,15 @@ BrainSet::readSurfaceFile(const QString& name,
 {
    BrainModelSurface::SURFACE_TYPES surfaceType = surfaceTypeIn;
    
+   BrainModelSurface* bms = new BrainModelSurface(this);
+   bool normalsValid = false;
+   bms->readSurfaceFile(name, normalsValid);
+   if (surfaceType == BrainModelSurface::SURFACE_TYPE_UNKNOWN) {
+      surfaceType = bms->getSurfaceType();
+   }
+
+   QMutexLocker mutex(&mutexReadSurfaceFile);
+   
    bool needToInitialize = false;
    if (readingSpecFile == false) {
       needToInitialize = true;
@@ -4458,12 +4616,6 @@ BrainSet::readSurfaceFile(const QString& name,
       deleteSurfacesOfType(surfaceType);
    }
    
-   BrainModelSurface* bms = new BrainModelSurface(this);
-   bool normalsValid = false;
-   bms->readSurfaceFile(name, normalsValid);
-   if (surfaceType == BrainModelSurface::SURFACE_TYPE_UNKNOWN) {
-      surfaceType = bms->getSurfaceType();
-   }
    if (getNumberOfNodes() == 0) {
       if (bms->getNumberOfNodes() > 0) {
          numNodesMessage = " contains a different number of nodes than ";
@@ -4581,16 +4733,9 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
                              const bool append,
                              const bool updateSpec) throw (FileException)
 {
-   bool needToInitialize = false;
-   if (readingSpecFile == false) {
-      needToInitialize = true;
-      for (int i = 0; i < getNumberOfBrainModels(); i++) {
-         if (getBrainModelSurface(i) != NULL) {
-            needToInitialize = false;
-         }
-      }
-   }
-   
+   //
+   // get type of surface from file, if needed
+   //
    BrainModelSurface::SURFACE_TYPES st = stin;
    if ((st == BrainModelSurface::SURFACE_TYPE_UNSPECIFIED) ||
        (st == BrainModelSurface::SURFACE_TYPE_UNKNOWN)) {
@@ -4602,8 +4747,34 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
       }
    }
    
+   //
+   // Read the coordinate file
+   //
    BrainModelSurface* bms = new BrainModelSurface(this);
    bms->readCoordinateFile(name);
+   
+   //
+   // The remainder of this routine must not be run by more than one thread
+   //
+   QMutexLocker locker(&mutexReadCoordinateFile);
+   
+   //
+   // See if initialization needed
+   //
+   bool needToInitialize = false;
+   if (readingSpecFile == false) {
+      needToInitialize = true;
+      for (int i = 0; i < getNumberOfBrainModels(); i++) {
+         if ((getBrainModelSurface(i) != NULL) &&
+             (getBrainModelSurface(i) != bms)) {
+            needToInitialize = false;
+         }
+      }
+   }
+   
+   //
+   // Check nodes
+   //
    if (getNumberOfNodes() == 0) {
       if (bms->getNumberOfNodes() > 0) {
          numNodesMessage = " contains a different number of nodes than ";
@@ -4818,6 +4989,11 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
 void
 BrainSet::addBrainModel(BrainModel* bm, const bool readingSpecFile)
 {
+   //
+   // The remainder of this routine must not be run by more than one thread
+   //
+   QMutexLocker locker(&mutexAddBrainModel);
+
    brainModels.push_back(bm);
    brainModelBorderSet->addBrainModel(bm);
    
@@ -4954,10 +5130,6 @@ BrainSet::readFociFile(const QString& name,
                        const bool append,
                        const bool updateSpec) throw (FileException)
 {
-   if (append == false) {
-      deleteAllFoci(true, false);
-   }
-   
    FociFile fociFile;
    try {
       fociFile.readFile(name);
@@ -4974,6 +5146,12 @@ BrainSet::readFociFile(const QString& name,
    }
    catch (FileException& e) {
       throw FileException(FileUtilities::basename(name), e.whatQString());
+   }
+   
+   QMutexLocker locker(&mutexFociAndFociProjectionFile);
+   
+   if (append == false) {
+      deleteAllFoci(true, false);
    }
    
    fociProjectionFile->append(fociFile);
@@ -5011,6 +5189,8 @@ BrainSet::readVolumeFociFile(const QString& name,
                        const bool append,
                        const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexVolumeFociFile);
+   
    if (append == false) {
       deleteAllFoci(false, true);
    }
@@ -5077,6 +5257,8 @@ void
 BrainSet::readFociColorFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexFociColorFile);
+   
    if (append == false) {
       clearFociColorFile();
    }
@@ -5124,6 +5306,8 @@ BrainSet::readFociProjectionFile(const QString& name,
                             const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexFociAndFociProjectionFile);
+   
    if (append == false) {
       deleteAllFociProjections();
    }
@@ -5146,7 +5330,10 @@ BrainSet::readFociProjectionFile(const QString& name,
       fociProjectionFile->append(cf);
    }
    fociProjectionFile->setModifiedCounter(modified);
-   displaySettingsFoci->update();
+   
+   if (readingSpecFileFlag == false) {
+      displaySettingsFoci->update();
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::fociProjectionFileTag, name);
@@ -5174,6 +5361,8 @@ BrainSet::readGeodesicDistanceFile(const QString& name,
                          const AbstractFile::FILE_COMMENT_MODE fcm,
                          const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexGeodesicDistanceFile);
+   
    GeodesicDistanceFile gdf;
    gdf.readFile(name);
    if (gdf.getNumberOfNodes() != getNumberOfNodes()) {
@@ -5205,6 +5394,8 @@ void
 BrainSet::readGeodesicDistanceFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexGeodesicDistanceFile);
+   
    if (append == false) {
       clearGeodesicDistanceFile();
    }
@@ -5265,6 +5456,8 @@ BrainSet::readLatLonFile(const QString& name,
                          const AbstractFile::FILE_COMMENT_MODE fcm,
                          const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexLatLonFile);
+   
    LatLonFile llf;
    llf.readFile(name);
    if (llf.getNumberOfNodes() != getNumberOfNodes()) {
@@ -5295,6 +5488,8 @@ void
 BrainSet::readLatLonFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexLatLonFile);
+   
    if (append == false) {
       clearLatLonFile();
    }
@@ -5354,6 +5549,8 @@ BrainSet::readMetricFile(const QString& name,
                          const AbstractFile::FILE_COMMENT_MODE fcm,
                          const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexMetricFile);
+   
    const bool metricFileEmpty = metricFile->empty();
    
    MetricFile mf;
@@ -5379,7 +5576,10 @@ BrainSet::readMetricFile(const QString& name,
    else {
       metricFile->setModified();
    }
-   displaySettingsMetric->update(); 
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsMetric->update(); 
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::metricFileTag, name);
@@ -5394,6 +5594,8 @@ void
 BrainSet::readMetricFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexMetricFile);
+   
    if (append == false) {
       clearMetricFile();
    }
@@ -5426,7 +5628,10 @@ BrainSet::readMetricFile(const QString& name, const bool append,
       }
    }
    metricFile->setModifiedCounter(modified);
-   displaySettingsMetric->update(); 
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsMetric->update(); 
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::metricFileTag, name);
@@ -5454,6 +5659,8 @@ BrainSet::readDeformationFieldFile(const QString& name,
                          const AbstractFile::FILE_COMMENT_MODE fcm,
                          const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexDeformationFieldFile);
+   
    DeformationFieldFile dff;
    dff.readFile(name);
    if (dff.getNumberOfNodes() != getNumberOfNodes()) {
@@ -5486,6 +5693,8 @@ void
 BrainSet::readDeformationFieldFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexDeformationFieldFile);
+   
    if (append == false) {
       clearDeformationFieldFile();
    }
@@ -5546,6 +5755,8 @@ BrainSet::readPaintFile(const QString& name,
                         const AbstractFile::FILE_COMMENT_MODE fcm,
                         const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexPaintFile);
+   
    const bool paintFileEmpty = paintFile->empty();
    
    PaintFile pf;
@@ -5571,7 +5782,10 @@ BrainSet::readPaintFile(const QString& name,
    else {
       paintFile->setModified();
    }
-   displaySettingsPaint->update();
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsPaint->update();
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::paintFileTag, name);
@@ -5585,6 +5799,8 @@ void
 BrainSet::readPaintFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexPaintFile);
+   
    if (append == false) {
       clearPaintFile();
    }
@@ -5617,7 +5833,10 @@ BrainSet::readPaintFile(const QString& name, const bool append,
       }
    }
    paintFile->setModifiedCounter(modified);
-   displaySettingsPaint->update();
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsPaint->update();
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::paintFileTag, name);
@@ -5631,6 +5850,8 @@ void
 BrainSet::readStudyMetaDataFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexStudyMetaDataFile);
+   
    if (append == false) {
       clearStudyMetaDataFile();
    }
@@ -5657,7 +5878,9 @@ BrainSet::readStudyMetaDataFile(const QString& name, const bool append,
       addToSpecFile(SpecFile::studyMetaDataFileTag, name);
    }
    
-   displaySettingsStudyMetaData->update();
+   if (readingSpecFileFlag == false) {
+      displaySettingsStudyMetaData->update();
+   }
 }
       
 /** 
@@ -5680,6 +5903,8 @@ void
 BrainSet::readVocabularyFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexVocabularyFile);
+   
    if (append == false) {
       clearVocabularyFile();
    }
@@ -5725,6 +5950,8 @@ void
 BrainSet::readWustlRegionFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexWustlRegionFile);
+   
    if (append == false) {
       clearWustlRegionFile();
    }
@@ -5782,6 +6009,8 @@ void
 BrainSet::readPaletteFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexPaletteFile);
+   
    if (append == false) {
       clearPaletteFile();
    }
@@ -5829,6 +6058,8 @@ void
 BrainSet::readParamsFile(const QString& name, const bool append,
                          const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexParamsFile);
+   
    if (append == false) {
       clearParamsFile();
    }
@@ -5878,6 +6109,8 @@ void
 BrainSet::readProbabilisticAtlasFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexProbAtlasFile);
+   
    if (append == false) {
       clearProbabilisticAtlasFile();
    }
@@ -5935,6 +6168,8 @@ void
 BrainSet::readRgbPaintFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexRgbPaintFile);
+   
    if (append == false) {
       clearRgbPaintFile();
    }
@@ -5992,6 +6227,8 @@ void
 BrainSet::readSceneFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexSceneFile);
+   
    if (append == false) {
       clearSceneFile();
    }
@@ -6053,6 +6290,8 @@ void
 BrainSet::readSectionFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexSectionFile);
+   
    if (append == false) {
       clearSectionFile();
    }
@@ -6113,6 +6352,8 @@ BrainSet::readSurfaceShapeFile(const QString& name,
                                const AbstractFile::FILE_COMMENT_MODE fcm,
                                const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexSurfaceShapeFile);
+   
    const bool shapeEmpty = surfaceShapeFile->empty();
    
    SurfaceShapeFile ssf;
@@ -6139,7 +6380,10 @@ BrainSet::readSurfaceShapeFile(const QString& name,
    else {
       surfaceShapeFile->setModified();
    }
-   displaySettingsSurfaceShape->update();  
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsSurfaceShape->update();  
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::surfaceShapeFileTag, name);
@@ -6153,6 +6397,8 @@ void
 BrainSet::readSurfaceShapeFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexSurfaceShapeFile);
+   
    if (append == false) {
       clearSurfaceShapeFile();
    }
@@ -6185,7 +6431,10 @@ BrainSet::readSurfaceShapeFile(const QString& name, const bool append,
       }
    }
    surfaceShapeFile->setModifiedCounter(modified);
-   displaySettingsSurfaceShape->update();  
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsSurfaceShape->update();  
+   }
    
    if (updateSpec) {
       addToSpecFile(SpecFile::surfaceShapeFileTag, name);
@@ -6213,6 +6462,8 @@ BrainSet::readSurfaceVectorFile(const QString& name,
                                const AbstractFile::FILE_COMMENT_MODE fcm,
                                const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexSurfaceVectorFile);
+   
    const bool vectorsEmpty = surfaceVectorFile->empty();
    
    SurfaceVectorFile svf;
@@ -6252,6 +6503,8 @@ void
 BrainSet::readSurfaceVectorFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexSurfaceVectorFile);
+   
    if (append == false) {
       clearSurfaceVectorFile();
    }
@@ -6309,6 +6562,8 @@ void
 BrainSet::readTopographyFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexTopographyFile);
+   
    if (append == false) {
       clearTopographyFile();
    }
@@ -6368,6 +6623,8 @@ void
 BrainSet::readTransformationMatrixFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexTransformationMatrixFile);
+   
    if (append == false) {
       clearTransformationMatrixFile();
    }
@@ -6402,6 +6659,8 @@ void
 BrainSet::readTransformationDataFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
+   QMutexLocker locker(&mutexTransformationDataFile);
+   
    if (append == false) {
       transformationDataFiles.clear();
    }
@@ -6511,6 +6770,11 @@ BrainSet::readTopologyFile(const QString& name, const TopologyFile::TOPOLOGY_TYP
    // This allows the new topology file to be applied to coordinate files.
    //
    std::vector<TopologyFile*> replacedTopologyFiles;
+   
+   //
+   // The remainder of this routine must not be run by more than one thread
+   //
+   QMutexLocker locker(&mutexReadTopologyFile);
    
    //
    // If not appending, remove any topology files that are the same type as
@@ -6794,6 +7058,15 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
                        const TransformationMatrix* specTransformationMatrixIn,
                        QProgressDialog* progressDialog)
 {
+   if (preferencesFile.getNumberOfFileReadingThreads() > 1) {
+      return readSpecFileMultiThreaded(specReadMode,
+                                specFileIn,
+                                specFileNameIn,
+                                errorMessages,
+                                specTransformationMatrixIn,
+                                progressDialog);
+   }
+   
    specFileTimeOfLoading = QDateTime::currentDateTime();
 
    readingSpecFileFlag = true;
@@ -6846,7 +7119,7 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
          setSpecies(loadedFilesSpecFile.getSpecies());
          setSubject(loadedFilesSpecFile.getSubject());
          stereotaxicSpace = loadedFilesSpecFile.getSpace();
-         resetDataFiles(false);
+         resetDataFiles(false, false);
          break;
       case SPEC_FILE_READ_MODE_APPEND:
          break;
@@ -8193,7 +8466,7 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
    postSpecFileReadInitializations();
 
    resetNodeAttributes();
-
+   
    //
    // Emit the signal that this brain set has changed
    //
@@ -8204,6 +8477,239 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
    return false;
 }
 
+/**
+ * Read the BrainSet data files.  Any error message will be placed
+ * into "errorMessages".  The size of errorMessages will correspond to
+ * the number files that failed to read correctly.  If the size of 
+ * errorMessages is 0, no file reading errors were encountered.
+ *
+ * Returns "true" if the user aborted loading files with the progress dialog.
+ */
+bool
+BrainSet::readSpecFileMultiThreaded(const SPEC_FILE_READ_MODE specReadMode,
+                       const SpecFile& specFileIn,
+                       const QString& specFileNameIn,
+                       std::vector<QString>& errorMessages,
+                       const TransformationMatrix* specTransformationMatrixIn,
+                       QProgressDialog* progressDialog)
+{
+   specFileTimeOfLoading = QDateTime::currentDateTime();
+
+   readingSpecFileFlag = true;
+   
+   switch (specReadMode) {
+      case SPEC_FILE_READ_MODE_NORMAL:
+         //
+         // clear out "this" brain set
+         //
+         reset();
+         break;
+      case SPEC_FILE_READ_MODE_APPEND:
+         break;
+   }
+   
+   if (specTransformationMatrixIn != NULL) {
+      specDataFileTransformationMatrix = *specTransformationMatrixIn;
+   }
+   
+   errorMessages.clear();
+
+   //int progressFileCounter = 0;
+   
+   switch (specReadMode) {
+      case SPEC_FILE_READ_MODE_NORMAL:
+         //
+         // Copy spec file passed and clear all selections in BrainSet::specFile
+         //
+         loadedFilesSpecFile = specFileIn;
+         loadedFilesSpecFile.setAllFileSelections(SpecFile::SPEC_FALSE);
+         //loadedFilesSpecFile.setFileName(specFileNameIn);
+         loadedFilesSpecFile.setCurrentDirectoryToSpecFileDirectory();
+         
+         specFileName = specFileNameIn;
+         
+         structure.setTypeFromString(specFileIn.getStructure());
+/*
+         hemisphere = Hemisphere::HEMISPHERE_UNKNOWN;
+         if (specFileIn.getStructure() == "right") {
+            hemisphere = BrainModelSurface::HEMISPHERE_RIGHT;
+         }
+         else if (specFileIn.getStructure() == "left") {
+            hemisphere = BrainModelSurface::HEMISPHERE_LEFT;
+         }
+         else if (specFileIn.getStructure() == "both") {
+            hemisphere = BrainModelSurface::HEMISPHERE_BOTH;
+         }
+         setStructure(hemisphere);
+*/
+         setSpecies(loadedFilesSpecFile.getSpecies());
+         setSubject(loadedFilesSpecFile.getSubject());
+         stereotaxicSpace = loadedFilesSpecFile.getSpace();
+         resetDataFiles(false, false);
+         break;
+      case SPEC_FILE_READ_MODE_APPEND:
+         break;
+   }
+   
+   const int numTopoFilesBeforeLoading = getNumberOfTopologyFiles();
+   
+   //
+   // Create the multi-threaded reader and read files
+   //
+   const int numThreads = preferencesFile.getNumberOfFileReadingThreads();
+   BrainSetMultiThreadedSpecFileReader multiThreadReader(this);
+   multiThreadReader.readDataFiles(numThreads,
+                                   specFileIn,
+                                   progressDialog,
+                                   errorMessages);
+   
+        
+
+   //
+   // Add default palettes
+   //
+   switch (specReadMode) {
+      case SPEC_FILE_READ_MODE_NORMAL:
+         paletteFile->addDefaultPalettes();
+         paletteFile->clearModified();
+         break;
+      case SPEC_FILE_READ_MODE_APPEND:
+         break;
+   }
+   
+   cellProjectionFile->clearModified();
+   
+   fociProjectionFile->clearModified();
+      
+   if (progressDialog != NULL) {
+      if (progressDialog->wasCanceled()) {
+         readingSpecFileFlag = false;
+         return true;
+      }
+
+      progressDialog->setLabelText("Initializing Data");
+      progressDialog->setValue(progressDialog->value() + 1);
+      qApp->processEvents();  // note: qApp is global in QApplication
+   }
+   
+   //
+   // If no surface shape file was selected
+   //
+   if (surfaceShapeFile->getNumberOfColumns() == 0) {
+      //
+      // Compute curvature for a fiducial or raw surface
+      //
+      if (getNumberOfTopologyFiles() > 0) {
+         BrainModelSurface* curvatureSurface = NULL;
+         for (int i = 0; i < getNumberOfBrainModels(); i++) {
+            BrainModelSurface* bms = getBrainModelSurface(i);
+            if (bms != NULL) {
+               if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+                  curvatureSurface = bms;
+                  break;
+               }
+               else if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_RAW) {
+                  curvatureSurface = bms;
+               }
+            }
+         }
+         if (curvatureSurface != NULL) {
+            BrainModelSurfaceCurvature bmsc(this,
+                                            curvatureSurface,
+                                            getSurfaceShapeFile(),
+                                            BrainModelSurfaceCurvature::CURVATURE_COLUMN_CREATE_NEW,
+                                            BrainModelSurfaceCurvature::CURVATURE_COLUMN_DO_NOT_GENERATE,
+                                            "Folding (Mean Curvature)",
+                                            "");
+            try {
+               bmsc.execute();
+               getSurfaceShapeFile()->clearModified();
+            }
+            catch (BrainModelAlgorithmException& /*e*/) {
+               clearSurfaceShapeFile();
+            }
+         }
+      }
+   }
+   
+   for (int ii = numTopoFilesBeforeLoading; ii < getNumberOfTopologyFiles(); ii++) {
+      TopologyFile* tf = getTopologyFile(ii);
+      tf->clearModified();
+   }
+
+   postSpecFileReadInitializations();
+
+   resetNodeAttributes();
+   
+   //
+   // Emit the signal that this brain set has changed
+   //
+   emit signalBrainSetChanged();
+   
+   readingSpecFileFlag = false;
+   
+   return false;
+}
+
+/**
+ * sort the brain models (raw, fiducial, ..., volume, surf&vol, contours).
+ */
+void 
+BrainSet::sortBrainModels()
+{
+   const int numModels = static_cast<int>(brainModels.size());
+   if (numModels <= 0) {
+      return;
+   }
+   
+   //
+   // Assign priority to the models
+   //
+   const int surfacePriority = 0;
+   const int volumePriority  = 20;
+   const int surfaceAndVolumePriority = 21;
+   const int contourPriority = 22;
+   const int noPriority      = 23;
+   std::vector<int> modelPriority(numModels, noPriority);
+   for (int i = 0; i < numModels; i++) {
+      int priority = noPriority;
+      if (getBrainModelSurfaceAndVolume(i) != NULL) {
+         priority = surfaceAndVolumePriority;
+      }
+      else if (getBrainModelSurface(i) != NULL) {
+         const BrainModelSurface* bms = getBrainModelSurface(i);
+         priority = surfacePriority
+                    + static_cast<int>(bms->getSurfaceType());
+      }
+      else if (getBrainModelVolume(i) != NULL) {
+         priority = volumePriority;
+      }
+      else if (getBrainModelContours(i) != NULL) {
+         priority = contourPriority;
+      }
+      
+      modelPriority[i] = priority;
+   }
+   
+   //
+   // Replace the models in sorted order
+   //
+   std::vector<BrainModel*> sortedModels;
+   for (int ip = 0; ip <= noPriority; ip++) {
+      for (int j = 0; j < numModels; j++) {
+         if (modelPriority[j] == ip) {
+            sortedModels.push_back(brainModels[j]);
+         }
+      }
+   }
+   if (brainModels.size() == sortedModels.size()) {
+      brainModels = sortedModels;
+   }
+   else {
+      std::cout << "INFO: Sorting of brain models failed." << std::endl;
+   }
+}
+      
 /**
  * Update all display settings.
  */
@@ -8285,9 +8791,9 @@ BrainSet::postSpecFileReadInitializations()
    nodeColoring->assignColors(); // need to do this to allocate underlay/overlay arrays
    if ((nodeColoring->getPrimaryOverlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
        (nodeColoring->getSecondaryOverlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
-       (nodeColoring->getUnderlay(-1) == BrainModelSurfaceNodeColoring::UNDERLAY_NONE)) {  
+       (nodeColoring->getUnderlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE)) {  
       if (getSurfaceShapeFile()->getNumberOfColumns() > 0) {
-         nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::UNDERLAY_SURFACE_SHAPE);
+         nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
       }
    }
    nodeColoring->assignColors();
@@ -8646,6 +9152,58 @@ BrainSet::generateCerebralHullVtkFile(const VolumeFile* segmentationVolume,
    // Set name of cerebral null
    //
    cerebralHullFileName = vtkName;
+}      
+
+/**
+ * generate the cerebral hull vtk file
+ * caller must delete the output files (hull volume and VTK file)
+ */
+void 
+BrainSet::generateCerebralHullVtkFile(const VolumeFile* segmentationVolumeIn,
+                                      VolumeFile* &cerebralHullVolumeOut,
+                                      vtkPolyData* &cerebralHullVtkPolyDataOut)
+                                             throw (BrainModelAlgorithmException)
+{
+   //
+   // Create the cerebral hull volume
+   //
+   cerebralHullVolumeOut = new VolumeFile;
+   segmentationVolumeIn->createCerebralHullVolume(*cerebralHullVolumeOut);
+
+   //
+   // Create a new brain set
+   //
+   BrainSet bs;
+   
+   //
+   // Generate a surface from the cerebral hull volume
+   //
+   BrainModelVolumeToSurfaceConverter bmvsc(&bs,
+                                            cerebralHullVolumeOut,
+                     BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_SUREFIT_SURFACE,
+                                            true,
+                                            false);
+   try {
+      bmvsc.execute();
+   }
+   catch (BrainModelAlgorithmException& e) {
+      QString msg("ERROR creating cerebral hull VTK file: \n");
+      msg.append(e.whatQString());
+      throw BrainModelAlgorithmException(msg);
+   }
+   
+   //
+   //  Find the fiducial surface
+   //
+   BrainModelSurface* bms = bs.getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_FIDUCIAL);
+   if (bms == NULL) {
+      throw BrainModelAlgorithmException("Unable to find surface generated from cerebral hull volume.");
+   }
+   
+   //
+   // Get VTK poly data from surface
+   //
+   cerebralHullVtkPolyDataOut = bms->convertToVtkPolyData();
 }      
 
 /**
@@ -9115,19 +9673,23 @@ void
 BrainSet::readImageFile(const QString& name, const bool append,
                       const bool updateSpec) throw (FileException)
 {
-   if (append == false) {
-      deleteAllImageFiles();
-   }
-   
    ImageFile* img = new ImageFile;
    try {
       img->readFile(name);
-      imageFiles.push_back(img);
    }
    catch (FileException& e) {
       delete img;
       throw(e);
    }
+   
+   QMutexLocker locker(&mutexImageFile);
+   
+   if (append == false) {
+      deleteAllImageFiles();
+   }
+   
+   imageFiles.push_back(img);
+   
    if (updateSpec) {
       addToSpecFile(SpecFile::imageFileTag, name);
    }
@@ -9209,19 +9771,24 @@ void
 BrainSet::readVtkModelFile(const QString& name, const bool append,
                         const bool updateSpec) throw (FileException)
 {
-   if (append == false) {
-      deleteAllVtkModelFiles();
-   }
    
    VtkModelFile* vmf = new VtkModelFile();
    try {
       vmf->readFile(name);
-      vtkModelFiles.push_back(vmf);
    }
    catch (FileException& e) {
       delete vmf;
       throw(e);
    }
+   
+   QMutexLocker locker(&mutexVtkModelFile);
+   
+   if (append == false) {
+      deleteAllVtkModelFiles();
+   }
+   
+   vtkModelFiles.push_back(vmf);
+   
    if (updateSpec) {
       addToSpecFile(SpecFile::vtkModelFileTag, name);
    }
@@ -9261,6 +9828,7 @@ BrainSet::resetNodeAttributes()
    if (getNumberOfNodes() > static_cast<int>(nodeAttributes.size())) {
       nodeAttributes.resize(getNumberOfNodes());
    }
+   brainModelSurfaceRegionOfInterestNodeSelection->update();
 }
 
 /**
@@ -10186,7 +10754,7 @@ BrainSet::simplifySurface(const BrainModelSurface* bms,
       //
       // "Import" the decimated surface
       //
-      TopologyFile::TOPOLOGY_TYPES tt;
+      TopologyFile::TOPOLOGY_TYPES tt = TopologyFile::TOPOLOGY_TYPE_UNKNOWN;
       const TopologyFile* tf = bms->getTopologyFile();
       if (tf != NULL) {
          tt = tf->getTopologyType();
@@ -10294,7 +10862,7 @@ BrainSet::importVtkTypeFileHelper(const QString& filename, vtkPolyData* polyData
       //
       nodeColoring->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
       nodeColoring->setSecondaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-      nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::UNDERLAY_NONE);
+      nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
       
       if (importColors) {
          if (rgbPaintFile->getNumberOfColumns() > 0) {

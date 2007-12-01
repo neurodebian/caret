@@ -56,9 +56,11 @@ class BrainModelSurfaceNodeColoring {
          OVERLAY_SHOW_CROSSOVERS,
          OVERLAY_SHOW_EDGES,
          OVERLAY_SURFACE_SHAPE,
-         OVERLAY_TOPOGRAPHY
+         OVERLAY_TOPOGRAPHY,
+         OVERLAY_GEOGRAPHY_BLENDING
       };
 
+/*
       /// Primary Overlay Underlay Selections
       enum UNDERLAY_SELECTIONS {
          UNDERLAY_NONE,
@@ -72,6 +74,7 @@ class BrainModelSurfaceNodeColoring {
          UNDERLAY_TOPOGRAPHY,
          UNDERLAY_GEOGRAPHY_BLENDING
       };
+*/
 
       /// Color source for node
       enum NODE_COLOR_SOURCE {
@@ -126,11 +129,11 @@ class BrainModelSurfaceNodeColoring {
       void setSecondaryOverlay(const int model, const OVERLAY_SELECTIONS os);
       
       /// get the underlay selection
-      UNDERLAY_SELECTIONS getUnderlay(const int model) const;
+      OVERLAY_SELECTIONS getUnderlay(const int model) const;
       
       /// set the underlay selection
       /// For the change to take place, updateNodeColors() must also be called.
-      void setUnderlay(const int model, const UNDERLAY_SELECTIONS us);
+      void setUnderlay(const int model, const OVERLAY_SELECTIONS us);
             
       /// get overall lighting on
       bool getLightingOn() const { return lightingOn; }
@@ -176,8 +179,7 @@ class BrainModelSurfaceNodeColoring {
       void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
                
       /// see if an overlay or underlay is of a specific type
-      bool isUnderlayOrOverlay(const UNDERLAY_SELECTIONS ul, 
-                               const OVERLAY_SELECTIONS  ol) const;
+      bool isUnderlayOrOverlay(const OVERLAY_SELECTIONS  ol) const;
                                
    private:
       /// class for storing colors associated with a node
@@ -232,7 +234,7 @@ class BrainModelSurfaceNodeColoring {
       std::vector<OVERLAY_SELECTIONS> secondaryOverlay;
       
       /// underlay
-      std::vector<UNDERLAY_SELECTIONS> underlay;
+      std::vector<OVERLAY_SELECTIONS> underlay;
       
       /// paint file for saving prob atlas paint assignment
       PaintFile* probAtlasThreshPaintFile;

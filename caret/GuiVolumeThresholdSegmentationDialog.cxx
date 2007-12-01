@@ -28,6 +28,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -38,7 +39,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiVolumeThresholdSegmentationDialog.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -207,7 +207,7 @@ GuiVolumeThresholdSegmentationDialog::slotApplyPushButton()
    if (bmv != NULL) {
       VolumeFile* vf = bmv->getSelectedVolumeAnatomyFile();
       if (vf == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "No anatomy volume selected.", "OK");
+         QMessageBox::critical(this, "ERROR", "No anatomy volume selected.");
          return;
       }
 
@@ -222,7 +222,8 @@ GuiVolumeThresholdSegmentationDialog::slotApplyPushButton()
          bmvts.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
       

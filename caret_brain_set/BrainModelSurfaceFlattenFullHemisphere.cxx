@@ -411,15 +411,15 @@ BrainModelSurfaceFlattenFullHemisphere::execute() throw (BrainModelAlgorithmExce
    BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
    if ((bsnc->getPrimaryOverlay(-1)   == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
        (bsnc->getSecondaryOverlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
-       (bsnc->getUnderlay(-1)         == BrainModelSurfaceNodeColoring::UNDERLAY_NONE)) {
+       (bsnc->getUnderlay(-1)         == BrainModelSurfaceNodeColoring::OVERLAY_NONE)) {
       SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
       if (ssf->getNumberOfColumns() > 0) {
-         bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::UNDERLAY_SURFACE_SHAPE);
+         bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
       }
       else {
          PaintFile* pf = brainSet->getPaintFile();
          if (pf->getNumberOfColumns() > 0) {
-            bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::UNDERLAY_PAINT);            
+            bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_PAINT);            
          }
       }
    }

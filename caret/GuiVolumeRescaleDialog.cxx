@@ -29,11 +29,11 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QValidator>
 
 #include "GuiBrainModelOpenGL.h"
-#include "GuiMessageBox.h"
 #include "GuiVolumeRescaleDialog.h"
 #include "QtRadioButtonSelectionDialog.h"
 #include "QtUtilities.h"
@@ -275,7 +275,7 @@ GuiVolumeRescaleDialog::chooseValuesDialog(const bool inputVolumeFlag)
    if (rbsd.exec() == QDialog::Accepted) {
       const int item = rbsd.getSelectedItemIndex();
       if (item < 0) {
-         GuiMessageBox::critical(this, "ERROR", "No selection made.", "OK");
+         QMessageBox::critical(this, "ERROR", "No selection made.");
          return;
       }
       

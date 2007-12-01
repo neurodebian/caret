@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QLayout>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QTextEdit>
 
 #include "BrainSet.h"
@@ -14,7 +15,6 @@
 #include "GuiFlattenHemisphereInstructionsDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowSurfaceActions.h"
-#include "GuiMessageBox.h"
 #include "GuiMorphingMeasurementsDialog.h"
 #include "GuiMultiresolutionMorphingDialog.h"
 #include "QtUtilities.h"
@@ -284,8 +284,8 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                //
                BrainModelSurface* fiducialSurface = theMainWindow->getBrainSet()->getActiveFiducialSurface();
                if (fiducialSurface == NULL) {
-                  GuiMessageBox::critical(this, "Morph Error",
-                     "Unable to find fiducial surface.", "OK");
+                  QMessageBox::critical(this, "Morph Error",
+                     "Unable to find fiducial surface.");
                   return;
                }   
                
@@ -295,8 +295,8 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                BrainModelSurface* flatSurface = 
                   theMainWindow->getBrainSet()->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_FLAT);
                if (flatSurface == NULL) {
-                  GuiMessageBox::critical(this, "Morph Error",
-                     "Unable to find flat surface.", "OK");
+                  QMessageBox::critical(this, "Morph Error",
+                     "Unable to find flat surface.");
                   return;
                }   
                
@@ -306,8 +306,8 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                BrainModelSurface* sphericalSurface = 
                   theMainWindow->getBrainSet()->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
                if (sphericalSurface == NULL) {
-                  GuiMessageBox::critical(this, "Morph Error",
-                     "Unable to find spherical surface.", "OK");
+                  QMessageBox::critical(this, "Morph Error",
+                     "Unable to find spherical surface.");
                   return;
                }   
                
@@ -329,7 +329,8 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                   flatMRM.execute();
                }
                catch (BrainModelAlgorithmException& e) {
-                  GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(theMainWindow, "Error", e.whatQString());
                   return;
                }
                const float flatElapsedTime = flatTimer.elapsed() * 0.001;
@@ -350,7 +351,8 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                   sphericalMRM.execute();
                }
                catch (BrainModelAlgorithmException& e) {
-                  GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(theMainWindow, "Error", e.whatQString());
                   return;
                }
                const float sphericalElapsedTime = sphericalTimer.elapsed() * 0.001;
@@ -433,8 +435,9 @@ GuiFlattenHemisphereInstructionsDialog::doFlattenFullHemispherePart2()
       theMainWindow->updateDisplayControlDialog();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(this, "Flatten Error",
-                           e.whatQString(), "OK");               
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "Flatten Error",
+                           e.whatQString());               
    }
    delete algorithm;
    

@@ -23,9 +23,10 @@
  */
 /*LICENSE_END*/
 
-
+#include <QAction>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
 #include <QMainWindow>
@@ -34,12 +35,17 @@
 
 #include "BrainModelContours.h"
 #include "BrainModelSurfaceAndVolume.h"
+#include "BrainModelVolumeVoxelColoring.h"
 #include "BrainSet.h"
+#include "DisplaySettingsCuts.h"
 #include "DisplaySettingsSurface.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainSetAndModelSelectionControl.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
+#include "GuiMainWindowLayersActions.h"
+#include "GuiMainWindowVolumeActions.h"
+#include "GuiMouseModePopupMenu.h"
 #include "GuiToolBarActions.h"
 
 #define __GUI_TOOLBAR_MAIN__
@@ -100,7 +106,14 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
       // View mode tool button
       //
       viewButton = new QToolButton;
-      viewButton->setDefaultAction(toolBarActions->getViewModeAction());
+      viewButton->setText("View");
+      QObject::connect(viewButton, SIGNAL(clicked()),
+                       this, SLOT(slotViewModeButtonClicked()));
+      //viewButton->setDefaultAction(toolBarActions->getViewModeAction());
+      viewButton->setMenu(new GuiMouseModePopupMenu(brainModelOpenGL,
+                                                    false,
+                                                    viewButton));
+      viewButton->setPopupMode(QToolButton::MenuButtonPopup);
    }
                    
    //
@@ -286,8 +299,6 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
       yokeButton->setDefaultAction(toolBarActions->getYokeAction());
    }
 
-#define TWO_ROWS
-#ifdef TWO_ROWS
    QHBoxLayout* l1 = new QHBoxLayout;
    if (viewButton != NULL) {
       l1->addWidget(viewButton, 0);
@@ -320,58 +331,42 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
    if (yokeButton != NULL) {
       l1->addWidget(yokeButton, 0);
    }
-   l1->addStretch(1000);
+   l1->addStretch();  //1000);
    
-   QHBoxLayout* l2 = new QHBoxLayout;
+   //
+   // Layout for second and third rows (mode and mouse)
+   //
+   QGridLayout* modeMouseLayout = new QGridLayout;
+   modeMouseLayout->setColumnStretch(0, 0);
+   modeMouseLayout->setColumnStretch(1, 1000);
+   
+   //
+   // Model selection control
+   //
    QLabel* modelLabel = new QLabel("Model ");
-   l2->addWidget(modelLabel);
-   l2->setStretchFactor(modelLabel, 0);
-   l2->addWidget(modelFileComboBox);
-   l2->setStretchFactor(modelFileComboBox, 1000);
+   modeMouseLayout->addWidget(modelLabel, 0, 0);
+   modeMouseLayout->addWidget(modelFileComboBox, 0, 1);
+   
+   //
+   // Mouse mode combo box
+   //
+   mouseModeComboBox = NULL;
+   const bool showMouseModeComboBoxFlag = false;  //mainWindowFlag;
+   if (showMouseModeComboBoxFlag) {
+      QLabel* mouseModeLabel = new QLabel("Mouse ");
+      mouseModeComboBox = new QComboBox;
+      QObject::connect(mouseModeComboBox, SIGNAL(activated(int)),
+                       this, SLOT(slotMouseModeComboBoxActivated(int)));
+      modeMouseLayout->addWidget(mouseModeLabel, 1, 0);
+      modeMouseLayout->addWidget(mouseModeComboBox, 1, 1);
+   }
    
    QWidget* vb = new QWidget;
    QVBoxLayout* vl = new QVBoxLayout(vb);
    vl->addLayout(l1);
-   vl->addLayout(l2);
+   vl->addLayout(modeMouseLayout);
    
    addWidget(vb);
-#else // TWO_ROWS
-   //
-   // Add the widgets
-   //
-   addWidget(modelFileComboBox);
-   if (viewButton != NULL) {
-      addWidget(viewButton);
-   }
-   addWidget(medialViewToolButton);
-   addWidget(lateralViewToolButton);
-   addWidget(anteriorViewToolButton);
-   addWidget(posteriorViewToolButton);
-   addWidget(dorsalViewToolButton);
-   addWidget(ventralViewToolButton);
-   addWidget(resetViewToolButton);
-   addWidget(xRotation90ToolButton);
-   addWidget(yRotation90ToolButton);
-   addWidget(zRotation90ToolButton);
-   addWidget(rotationAxisComboBox);
-   addWidget(volumeStereotaxicCoordinatesToolButton);
-   addWidget(volumeAxisComboBox);
-   addWidget(volumeSpinBoxSliceX);
-   addWidget(volumeSpinBoxSliceY);
-   addWidget(volumeSpinBoxSliceZ);
-   if (dcButton != NULL) {
-      addWidget(dcButton);
-   }
-   if (specButton != NULL) {
-      addWidget(specButton);
-   }
-   if (volumeUnderlayOnlyButton != NULL) {
-      addWidget(volumeUnderlayOnlyButton);
-   }
-   if (yokeButton != NULL) {
-      addWidget(yokeButton);
-   }
-#endif // TWO_ROWS
    
    //
    // Keep track of all toolbars that get created
@@ -392,6 +387,11 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
       loadModelComboBox();
       updateViewControls();
 //   }
+
+   setMinimumWidth(512);
+#if (QT_VERSION == QT_VERSION_CHECK(4,3,0))
+ //  setMaximumWidth(512);   // QT 4.3 bug make toolbar way too wide
+#endif
 }
 
 /**
@@ -408,6 +408,15 @@ GuiToolBar::~GuiToolBar()
 }
 
 /**
+ * view mode button clicked.
+ */
+void 
+GuiToolBar::slotViewModeButtonClicked()
+{
+   brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_VIEW);
+}
+
+/**
  * Update toolbar
  */
 void
@@ -417,7 +426,75 @@ GuiToolBar::updateViewControls()
    bool showSurfaceControls = false;
    bool showVolumeControls  = false;
 
+   //
+   // Model number selected
+   //
    const int modelNum = modelFileComboBox->currentIndex();
+
+   //
+   // Loop through brain sets
+   //
+   if (theMainWindow != NULL) {
+      int modelComboBoxOffset = 0;
+      const int numBrainSets = theMainWindow->getNumberOfBrainSets();
+      for (int i = 0; i < numBrainSets; i++) {
+         //
+         // Get a brain set and its number of models
+         //
+         BrainSet* bs = theMainWindow->getBrainSetByIndex(i);
+         const int brainSetNumberOfModels = bs->getNumberOfBrainModels();
+         
+         //
+         // See if model combo box is using this brain set's model
+         //
+         const int firstBrainModelIndex = modelComboBoxOffset;
+         const int lastBrainModelIndex  = modelComboBoxOffset + brainSetNumberOfModels;
+         if ((modelNum >= firstBrainModelIndex) &&
+             (modelNum < lastBrainModelIndex)) {
+            //
+            // Update controls based upon type of brain model 
+            //
+            BrainModel* bm = bs->getBrainModel(modelNum - modelComboBoxOffset);
+            if (bm != NULL) {
+               switch (bm->getModelType()) {
+                  case BrainModel::BRAIN_MODEL_CONTOURS:
+                     showContourControls = true;
+                     break;
+                  case BrainModel::BRAIN_MODEL_SURFACE:
+                     showSurfaceControls = true;
+                     break;
+                  case BrainModel::BRAIN_MODEL_SURFACE_AND_VOLUME:
+                     showSurfaceControls = true;
+                     break;
+                  case BrainModel::BRAIN_MODEL_VOLUME:
+                     showVolumeControls = true;
+                     break;
+               }
+            }
+            
+            //
+            // Jump out of loop
+            //
+            break;
+         }
+         
+         //
+         // model combo box offset for next brain set
+         //
+         modelComboBoxOffset += brainSetNumberOfModels;
+      }
+   }
+   
+   //
+   // If no controls enabled, show surface controls
+   //
+   if ((showContourControls == false) &&
+       (showSurfaceControls == false) &&
+       (showVolumeControls  == false)) {
+      showSurfaceControls = true;
+   }
+   
+/*
    if (theMainWindow != NULL) {
       const int numModels = theMainWindow->getBrainSet(brainModelOpenGL->getModelViewNumber())->getNumberOfBrainModels();
       if ((modelNum >= 0) &&
@@ -448,6 +525,7 @@ GuiToolBar::updateViewControls()
          showSurfaceControls = true;
       }
    }
+*/
    
    //
    // Show surface controls
@@ -652,6 +730,8 @@ GuiToolBar::updateViewControls()
       volumeSpinBoxSliceZ->blockSignals(false);
       volumeStereotaxicCoordinatesToolButton->blockSignals(false);
    }
+   
+   updateMouseModeComboBox();
    
    adjustSize();
 }
@@ -1161,5 +1241,274 @@ GuiToolBar::resizeEvent(QResizeEvent* /*e*/)
    updateViewControls();
 */
 }
+      
+/**
+ * update mouse mode combo box.
+ */
+void 
+GuiToolBar::updateMouseModeComboBox()
+{
+   if (mouseModeComboBox == NULL) {
+      return;
+   }
+   
+   //
+   // Clear combo box
+   //
+   mouseModeComboBox->clear();
+   mouseModeComboBox->addItem("Select Mode", GuiBrainModelOpenGL::MOUSE_MODE_NONE);
+   
+   BrainModel* bm = brainModelOpenGL->getDisplayedBrainModel();
+   if (bm != NULL) {
+      switch (bm->getModelType()) {
+         case BrainModel::BRAIN_MODEL_SURFACE:
+            mouseModeComboBox->addItem("View", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VIEW));
+            mouseModeComboBox->addItem("Border Draw", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW));
+            mouseModeComboBox->addItem("Border Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE));
+            mouseModeComboBox->addItem("Border Rename", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_RENAME));
+            mouseModeComboBox->addItem("Border Reverse Point Order", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_REVERSE));
+            mouseModeComboBox->addItem("Border Point Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE_POINT));
+            mouseModeComboBox->addItem("Border Point Move", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT));
+            mouseModeComboBox->addItem("Cell Add", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CELL_ADD));
+            mouseModeComboBox->addItem("Cell Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CELL_DELETE));
+            mouseModeComboBox->addItem("Cut Draw", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CUT_DRAW));
+            mouseModeComboBox->addItem("Cut Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CUT_DELETE));
+            mouseModeComboBox->addItem("Foci Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_FOCI_DELETE));
+            break;
+         case BrainModel::BRAIN_MODEL_SURFACE_AND_VOLUME:
+            mouseModeComboBox->addItem("View", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VIEW));
+            break;
+         case BrainModel::BRAIN_MODEL_CONTOURS:
+            mouseModeComboBox->addItem("View", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VIEW));
+            mouseModeComboBox->addItem("Contour Draw", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_DRAW));
+            mouseModeComboBox->addItem("Contour Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_DELETE));
+            mouseModeComboBox->addItem("Contour Merge", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_MERGE));
+            mouseModeComboBox->addItem("Contour Reverse Point Order", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_REVERSE));
+            mouseModeComboBox->addItem("Contour Point Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_POINT_DELETE));
+            mouseModeComboBox->addItem("Contour Point Move", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_POINT_MOVE));
+            mouseModeComboBox->addItem("Contour Cell Add", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_CELL_ADD));
+            mouseModeComboBox->addItem("Contour Cell Delete", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_CELL_DELETE));
+            mouseModeComboBox->addItem("Contour Cell Move", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_CELL_MOVE));
+            break;
+         case BrainModel::BRAIN_MODEL_VOLUME:
+            {
+               BrainModelVolumeVoxelColoring* voxelColoring =
+                  theMainWindow->getBrainSet()->getVoxelColoring();
+               mouseModeComboBox->addItem("View", 
+                  static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VIEW));
+               mouseModeComboBox->addItem("Border Delete", 
+                  static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE));
+               mouseModeComboBox->addItem("Border Rename", 
+                  static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_RENAME));
+               mouseModeComboBox->addItem("Border Reverse Point Order", 
+                  static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_REVERSE));
+               mouseModeComboBox->addItem("Border Point Delete", 
+                  static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE_POINT));
+               mouseModeComboBox->addItem("Border Point Move", 
+                  static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT));
+                  
+               if (voxelColoring->isUnderlayOrOverlay(BrainModelVolumeVoxelColoring::UNDERLAY_OVERLAY_PAINT)) {
+                  mouseModeComboBox->addItem("Volume Paint Edit", 
+                     static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VOLUME_PAINT_EDIT));
+               }
+               if (voxelColoring->isUnderlayOrOverlay(BrainModelVolumeVoxelColoring::UNDERLAY_OVERLAY_SEGMENTATION)) {
+                  mouseModeComboBox->addItem("Volume Segmentation Edit", 
+                     static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VOLUME_SEGMENTATION_EDIT));
+               }
+            }
+            break;
+      }
+   }
+   
+   //
+   // Display the current mode 
+   //
+   int defaultItem = 0;
+   const int num = mouseModeComboBox->count();
+   for (int i = 0; i < num; i++) {
+      const GuiBrainModelOpenGL::MOUSE_MODES mode =
+         static_cast<GuiBrainModelOpenGL::MOUSE_MODES>(mouseModeComboBox->itemData(i).toInt());
+      if (mode == brainModelOpenGL->getMouseMode()) {
+         defaultItem = i;
+         break;
+      }
+   }
+   
+   mouseModeComboBox->blockSignals(true);
+   mouseModeComboBox->setCurrentIndex(defaultItem);
+   mouseModeComboBox->blockSignals(false);
+}
+      
+/**
+ * called when a mouse mode is selected.
+ */
+void 
+GuiToolBar::slotMouseModeComboBoxActivated(int indx)
+{
+   
+   //
+   // Set the mouse mode
+   //
+   if ((indx >= 0) && (indx < mouseModeComboBox->count())) {
+      const GuiBrainModelOpenGL::MOUSE_MODES mode =
+         static_cast<GuiBrainModelOpenGL::MOUSE_MODES>(mouseModeComboBox->itemData(indx).toInt());
+      if (mode != GuiBrainModelOpenGL::MOUSE_MODE_NONE) {
+         brainModelOpenGL->setMouseMode(mode);
+         
+         //
+         // main window actions
+         //
+         GuiMainWindowLayersActions* layersActions = theMainWindow->getLayersActions();
+         GuiMainWindowVolumeActions* volumeActions = theMainWindow->getVolumeActions();
+         
+         //
+         // Possibly display dialogs
+         //
+         switch (mode) {
+            case GuiBrainModelOpenGL::MOUSE_MODE_NONE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_VIEW:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW:
+               {
+                  QAction* action = layersActions->getBordersDrawAction();
+                  action->trigger();
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE_POINT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_INTERPOLATE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_REVERSE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_RENAME:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CUT_DRAW:
+               {
+                  DisplaySettingsCuts* dsc = theMainWindow->getBrainSet()->getDisplaySettingsCuts();
+                  dsc->setDisplayCuts(! dsc->getDisplayCuts());
+                  GuiBrainModelOpenGL::updateAllGL(NULL);
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CUT_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_FOCI_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CELL_ADD:
+               {
+                  QAction* action = layersActions->getCellsAddAction();
+                  action->trigger();
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CELL_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_BORDER_SELECT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_PAINT_INDEX_SELECT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_METRIC_NODE_SELECT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_GEODESIC_NODE_SELECT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_ALIGN_STANDARD_ORIENTATION:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_SET_SCALE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_DRAW:
+               {
+                  QAction* action = layersActions->getContourDrawAction();
+                  action->trigger();
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_ALIGN:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_ALIGN_REGION:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_POINT_MOVE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_POINT_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_REVERSE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_MERGE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_CELL_ADD:
+               {
+                  QAction* action = layersActions->getCellsAddAction();
+                  action->trigger();
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_CELL_DELETE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_CELL_MOVE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_VOLUME_SEGMENTATION_EDIT:
+               {
+                  QAction* action = volumeActions->getEditSegmentationAction();
+                  action->trigger();
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_EDIT_ADD_NODE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_EDIT_ADD_TILE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_EDIT_DELETE_TILE_BY_LINK:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_EDIT_DISCONNECT_NODE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_EDIT_MOVE_NODE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SHAPE_NODE_SELECT:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_TRANSFORMATION_MATRIX_AXES:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_TRANSFORMATION_MATRIX_SET_TRANSLATE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_VOLUME_PAINT_EDIT:
+               {
+                  QAction* action = volumeActions->getEditPaintVolumeAction();
+                  action->trigger();
+               }
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_IMAGE_SUBREGION:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_START:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_SULCAL_BORDER_NODE_END:
+               break;
+         }
+      }
+   }   
+}
+
       
 

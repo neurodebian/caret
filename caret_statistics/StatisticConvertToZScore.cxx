@@ -32,6 +32,7 @@
  * constructor.
  */
 StatisticConvertToZScore::StatisticConvertToZScore()
+   : StatisticAlgorithm("Convert to Z-Score")
 {
    mean = 0.0;
    deviation = 1.0;

@@ -26,11 +26,11 @@
 
 #include <QLayout>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QIcon>
 #include <QPixmap>
 
-#include "GuiMessageBox.h"
 #include "GuiPaletteColorSelectionDialog.h"
 #include "PaletteFile.h"
 #include "QtUtilities.h"
@@ -145,7 +145,7 @@ GuiPaletteColorSelectionDialog::done(int r)
    if (r == QDialog::Accepted) {
       if (colorSelectionListBox->count() > 0) {
          if (getSelectedColorIndex() < 0) {
-            GuiMessageBox::critical(this, "ERROR", "No color selected.", "OK");
+            QMessageBox::critical(this, "ERROR", "No color selected.");
             return;
          }
       }

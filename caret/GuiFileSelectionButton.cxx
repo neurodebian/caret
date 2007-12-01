@@ -24,7 +24,7 @@
 /*LICENSE_END*/
 
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include "GuiFileSelectionButton.h"
 
 /**
@@ -56,17 +56,17 @@ GuiFileSelectionButton::~GuiFileSelectionButton()
 void 
 GuiFileSelectionButton::slotFileSelected()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setDirectory(QDir::currentPath());
    fd.setModal(true);
    fd.setWindowTitle("Choose File");
    if (fileMustExist) {
-      fd.setFileMode(QFileDialog::ExistingFile);
-      fd.setAcceptMode(QFileDialog::AcceptOpen);
+      fd.setFileMode(WuQFileDialog::ExistingFile);
+      fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    }
    else {
-      fd.setFileMode(QFileDialog::AnyFile);
-      fd.setAcceptMode(QFileDialog::AcceptSave);
+      fd.setFileMode(WuQFileDialog::AnyFile);
+      fd.setAcceptMode(WuQFileDialog::AcceptSave);
    }
    
    fd.setFilters(QStringList(fileFilter));

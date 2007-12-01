@@ -68,6 +68,9 @@ class QtDialogNonModal : public QtDialog {
       /// show the help button
       void showHelpButton(const bool showIt);
       
+      /// resize the buttons
+      void resizeButtons();
+      
    private:
       /// layout for the dialog
       QVBoxLayout* usersLayout;

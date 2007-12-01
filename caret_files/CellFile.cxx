@@ -34,9 +34,11 @@
 #include <QDomNode>
 #include <QDomText>
 
-#define CELL_MAIN
+#define __CELL_FILE_MAIN__
+#define __CELL_DATA_MAIN__
 #include "CellFile.h"
-#undef CELL_MAIN
+#undef __CELL_DATA_MAIN__
+#undef __CELL_FILE_MAIN__
 
 #include "CellStudyInfo.h"
 #include "ColorFile.h"
@@ -132,7 +134,7 @@ CellData::readXML(QDomNode& nodeIn) throw (FileException)
    if (elem.isNull()) {
       return;
    }
-   if (elem.tagName() != "CellData") {
+   if (elem.tagName() != tagCellData) {
       QString msg("Incorrect element type passed to CellData::readXML() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
@@ -142,15 +144,15 @@ CellData::readXML(QDomNode& nodeIn) throw (FileException)
    while (node.isNull() == false) {
       QDomElement elem = node.toElement();
       if (elem.isNull() == false) {
-         if (elem.tagName() == "cellNumber") {
+         if (elem.tagName() == tagCellNumber) {
          }
-         else if (elem.tagName() == "className") {
+         else if (elem.tagName() == tagClassName) {
             className = AbstractFile::getXmlElementFirstChildAsString(elem);
             if (className == "???") {
                className = "";
             }
          }
-         else if (elem.tagName() == "CellBase") {
+         else if (elem.tagName() == tagCellBase) {
             CellBase::readXML(node);
          }
          else {
@@ -174,18 +176,18 @@ CellData::writeXML(QDomDocument& xmlDoc,
    //
    // Create the element for this class instance's data
    //
-   QDomElement cellDataElement = xmlDoc.createElement("CellData");
+   QDomElement cellDataElement = xmlDoc.createElement(CellData::tagCellData);
 
    //
    // cell number
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellDataElement, 
-                                   "cellNumber", cellNumber);
+                                   tagCellNumber, cellNumber);
    
    //
    // name of cell
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellDataElement, "className", className);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellDataElement, tagClassName, className);
    
    //
    // Write the base class' data
@@ -800,7 +802,20 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
       ct->setElement(i, structureCol, Structure::convertTypeToString(cd->getCellStructure()));
       ct->setElement(i, classNameCol, cd->getClassName());
       
-      const StudyMetaDataLink smdl = cd->getStudyMetaDataLink();
+      const StudyMetaDataLinkSet smdls = cd->getStudyMetaDataLinkSet();
+      StudyMetaDataLink smdl;
+      if (smdls.getNumberOfStudyMetaDataLinks() > 1) {
+         const QString msg("Cell[" 
+                           + QString::number(i)
+                           + "] named \""
+                           + cd->getName()
+                           + "\" has more than one Study Metadata Link so it "
+                             "cannot be written as a Comma Separated Value File");
+         throw FileException(msg);
+      }
+      else if (smdls.getNumberOfStudyMetaDataLinks() == 1) {
+         smdl = smdls.getStudyMetaDataLink(0);
+      }
       ct->setElement(i, studyMetaPubMedCol, smdl.getPubMedID());
       ct->setElement(i, studyMetaTableCol, smdl.getTableNumber());
       ct->setElement(i, studyMetaTableSubHeaderCol, smdl.getTableSubHeaderNumber());
@@ -1024,7 +1039,11 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
       cd.setComment(comment);
       cd.setCellStructure(structure);
       cd.setClassName(className);
-      cd.setStudyMetaDataLink(smdl);
+      StudyMetaDataLinkSet smdls;
+      if (smdl.getPubMedID().isEmpty() == false) {
+         smdls.addStudyMetaDataLink(smdl);
+      }
+      cd.setStudyMetaDataLinkSet(smdls);
 
       addCell(cd);
    }
@@ -1362,12 +1381,12 @@ CellFile::readFileData(QFile& file,
                   //
                   // Is this a "CellData" element
                   //
-                  if (elem.tagName() == "CellData") {
+                  if (elem.tagName() == CellData::tagCellData) {
                      CellData cd;
                      cd.readXML(node);
                      addCell(cd);
                   }
-                  else if (elem.tagName() == "CellStudyInfo") {
+                  else if (elem.tagName() == CellStudyInfo::tagCellStudyInfo) {
                      CellStudyInfo csi;
                      csi.readXML(node);
                      addStudyInfo(csi);

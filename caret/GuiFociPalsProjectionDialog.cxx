@@ -29,6 +29,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QRadioButton>
 
 #include "BrainModelSurface.h"
@@ -38,7 +39,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiFociPalsProjectionDialog.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
@@ -185,7 +185,8 @@ GuiFociPalsProjectionDialog::done(int r)
          fociProjector.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
       GuiFilesModified fm;
       

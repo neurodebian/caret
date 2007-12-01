@@ -29,12 +29,13 @@
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QToolTip>
@@ -44,7 +45,6 @@
 #include "FileUtilities.h"
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiCopySpecFileDialog.h"
-#include "GuiMessageBox.h"
 #include "PreferencesFile.h"
 #include "QtUtilities.h"
 #include "SpecFile.h"
@@ -254,11 +254,11 @@ GuiCopySpecFileDialog::slotApplyButton()
    //
    QString specFileToCopy(copySpecFileLineEdit->text());
    if (specFileToCopy.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Name of spec file for copying is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Name of spec file for copying is empty.");
       return;
    }
    if (QFile::exists(specFileToCopy) == false) {
-      GuiMessageBox::critical(this, "ERROR", "Name of spec file for copying does not exist.", "OK");
+      QMessageBox::critical(this, "ERROR", "Name of spec file for copying does not exist.");
       return;
    }
  
@@ -274,14 +274,14 @@ GuiCopySpecFileDialog::slotApplyButton()
          msg.append(FileUtilities::basename(specFileToCopy));
          msg.append(":\n");
          msg.append(msg1);
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
    }
    catch (FileException&) {
       QString msg("Unable to read: ");
       msg.append(FileUtilities::basename(specFileToCopy));
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
+      QMessageBox::critical(this, "ERROR", msg);
       return;
    }
 
@@ -290,7 +290,7 @@ GuiCopySpecFileDialog::slotApplyButton()
    //
    const QString directory(copyIntoDirectoryLineEdit->text());
    if (directory.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Name of directory is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Name of directory is empty.");
       return;
    }
    
@@ -299,7 +299,7 @@ GuiCopySpecFileDialog::slotApplyButton()
    //
    QString outputFileName(newSpecFileNameLineEdit->text());
    if (outputFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Name of new spec file is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Name of new spec file is empty.");
       return;
    }
    
@@ -309,7 +309,7 @@ GuiCopySpecFileDialog::slotApplyButton()
    if ((copyDataFilesRadioButton->isChecked() == false) &&
        (pointToDataFilesAbsPathRadioButton->isChecked() == false) &&
        (pointToDataFilesRelPathRadioButton->isChecked() == false)) {
-      GuiMessageBox::critical(this, "ERROR", "There is no data file copying selection.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no data file copying selection.");
       return;
    }
    
@@ -322,7 +322,7 @@ GuiCopySpecFileDialog::slotApplyButton()
       // Make sure output directory was successfully created
       //
       if (QFile::exists(directory) == false) {
-         GuiMessageBox::critical(this, "ERROR", "Unable to create output directory.", "OK");
+         QMessageBox::critical(this, "ERROR", "Unable to create output directory.");
          return;
       }
    }
@@ -404,8 +404,10 @@ GuiCopySpecFileDialog::slotApplyButton()
       msg.append(outputFileName);
       msg.append(" exists.\n");
       msg.append("Press \"Continue\" to overwrite it, else press \"Cancel\"");
-      if (GuiMessageBox::question(this, "Overwrite Spec File", msg, 
-                                  "Continue", "Cancel") != 0) {
+      QApplication::restoreOverrideCursor();
+      if (QMessageBox::question(this, "Overwrite Spec File", msg,
+                                (QMessageBox::Ok | QMessageBox::Cancel),
+                                QMessageBox::Ok) == QMessageBox::Cancel) { 
          return;
       }
    }
@@ -426,15 +428,17 @@ GuiCopySpecFileDialog::slotApplyButton()
    //
    QDir::setCurrent(savedDirectory);
    
+   QApplication::restoreOverrideCursor();
+   
    //
    // Did the copy fail ?
    //
    if (error) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }
    else {
-      GuiMessageBox::information(this, "SUCCESS", "Spec file has been copied.", "OK");
+      QMessageBox::information(this, "SUCCESS", "Spec file has been copied.");
    }
            
    //
@@ -443,8 +447,6 @@ GuiCopySpecFileDialog::slotApplyButton()
    if (preferencesFile != NULL) {
       preferencesFile->addToRecentSpecFiles(outputSpecFileName, true);
    }
-   
-   QApplication::restoreOverrideCursor();
 }
 
 /**
@@ -471,13 +473,13 @@ GuiCopySpecFileDialog::slotCopySpecFilePushButton()
 void 
 GuiCopySpecFileDialog::slotCopyIntoDirectoryPushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setWindowTitle("Choose Output Directory");
    fd.setDirectory(QDir::currentPath());
-   fd.setFileMode(QFileDialog::DirectoryOnly);
-   if (fd.exec() == QFileDialog::Accepted) {
-      copyIntoDirectoryLineEdit->setText(fd.selectedFiles().at(0));
+   fd.setFileMode(WuQFileDialog::DirectoryOnly);
+   if (fd.exec() == WuQFileDialog::Accepted) {
+      copyIntoDirectoryLineEdit->setText(fd.directory().absolutePath());
    }
 }

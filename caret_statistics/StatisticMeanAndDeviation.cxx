@@ -33,6 +33,7 @@
  * constructor.
  */
 StatisticMeanAndDeviation::StatisticMeanAndDeviation()
+   : StatisticAlgorithm("Mean and Deviation")
 {
    mean = 0.0;
    populationSampleDeviation = 0.0;

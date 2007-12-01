@@ -25,25 +25,25 @@
 
 #include <QApplication>
 #include <QCheckBox>
-#include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "CoordinateFile.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiAverageCoordinateDialog.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFileDialogWithInstructions.h"
-#include "GuiMessageBox.h"
 #include "QtUtilities.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
 #include "SurfaceShapeFile.h"
+#include "WuQFileDialog.h"
 
 /**
  * Constructor.
@@ -218,12 +218,12 @@ GuiAverageCoordinateDialog::~GuiAverageCoordinateDialog()
 void
 GuiAverageCoordinateDialog::slotOutputCoordinateButton()
 {
-   QFileDialog outputCoordinateFileDialog(this);
+   WuQFileDialog outputCoordinateFileDialog(this);
    outputCoordinateFileDialog.setDirectory(QDir::currentPath());
    outputCoordinateFileDialog.setModal(true);
    outputCoordinateFileDialog.setWindowTitle("Choose Coordinate File");
-   outputCoordinateFileDialog.setFileMode(QFileDialog::AnyFile);
-   outputCoordinateFileDialog.setFilter(GuiDataFileDialog::coordinateGenericFileFilter);
+   outputCoordinateFileDialog.setFileMode(WuQFileDialog::AnyFile);
+   outputCoordinateFileDialog.setFilter(FileFilters::getCoordinateGenericFileFilter());
    if (outputCoordinateFileDialog.exec() == QDialog::Accepted) {
       outputCoordinateFileLineEdit->setText(outputCoordinateFileDialog.selectedFiles().at(0));
    }
@@ -240,8 +240,9 @@ GuiAverageCoordinateDialog::slotAddButton()
                           "the Apple key).";
    GuiFileDialogWithInstructions openCoordinateFileDialog(this, instructions, "chooseCoordinateFile", true);
    openCoordinateFileDialog.setWindowTitle("Choose Coordinate File");
-   openCoordinateFileDialog.setMode(GuiFileDialogWithInstructions::ExistingFiles);
-   openCoordinateFileDialog.setFilter(GuiDataFileDialog::coordinateGenericFileFilter);
+   openCoordinateFileDialog.setFileMode(GuiFileDialogWithInstructions::ExistingFiles);
+   openCoordinateFileDialog.setFilters(QStringList(FileFilters::getCoordinateGenericFileFilter()));
+   openCoordinateFileDialog.selectFilter(FileFilters::getCoordinateGenericFileFilter());
    if (openCoordinateFileDialog.exec() == QDialog::Accepted) {
       QStringList list = openCoordinateFileDialog.selectedFiles();
       QStringList::Iterator it = list.begin();
@@ -292,18 +293,16 @@ GuiAverageCoordinateDialog::slotRemoveButton()
 void 
 GuiAverageCoordinateDialog::slotApplyButton()
 {
-   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-   
    //
    // Verify valid data entered
    //
    if (coordinateFileNames.empty()) {
-      GuiMessageBox::critical(this, "ERROR", "No input coordinate file are selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "No input coordinate file are selected.");
       return;
    }
    QString outputFileName(outputCoordinateFileLineEdit->text());
    if (outputFileName.length() <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "No output coordinate file specified.", "OK");
+      QMessageBox::critical(this, "ERROR", "No output coordinate file specified.");
       return;      
    }
    
@@ -315,15 +314,17 @@ GuiAverageCoordinateDialog::slotApplyButton()
    const QString shapeColumnName(shapeColumnNameLineEdit->text());
    if (createShapeCheckBox->isChecked()) {
       if (shapeFileName.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "No surface shape file specified.", "OK");
+         QMessageBox::critical(this, "ERROR", "No surface shape file specified.");
          return;      
       }
       if (shapeColumnName.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "No surface shape column name specified.", "OK");
+         QMessageBox::critical(this, "ERROR", "No surface shape column name specified.");
          return;      
       }
       ssf = new SurfaceShapeFile;
    }
+   
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    
    //
    // Read the coordinate files
@@ -339,7 +340,8 @@ GuiAverageCoordinateDialog::slotApplyButton()
          for (int i = 0; i < static_cast<int>(coordinateFiles.size()); i++) {
             delete coordinateFiles[i];
          }
-         GuiMessageBox::critical(this, "File Read Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "File Read Error", e.whatQString());
          return;
       }
    }
@@ -354,7 +356,8 @@ GuiAverageCoordinateDialog::slotApplyButton()
                                               ssf);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    
@@ -372,7 +375,8 @@ GuiAverageCoordinateDialog::slotApplyButton()
       averageCoordinateFile.writeFile(outputFileName);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       if (ssf != NULL) {
          delete ssf;
          ssf = NULL;
@@ -393,7 +397,8 @@ GuiAverageCoordinateDialog::slotApplyButton()
          ssf->writeFile(shapeFileName);
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;         
       }
       delete ssf;
@@ -412,5 +417,5 @@ GuiAverageCoordinateDialog::slotApplyButton()
    //
    // Let the user know the file was created.
    //
-   GuiMessageBox::information(this, "Success", "Average Coordinate File Created", "OK");
+   QMessageBox::information(this, "Success", "Average Coordinate File Created");
 }

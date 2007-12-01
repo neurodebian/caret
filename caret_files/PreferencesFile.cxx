@@ -63,6 +63,8 @@ PreferencesFile::clear()
 {
    clearAbstractFile();
    
+   fmriParametersString = "";
+   
    surfaceBackgroundColor[0] = 0;
    surfaceBackgroundColor[1] = 0;
    surfaceBackgroundColor[2] = 0;
@@ -101,6 +103,7 @@ PreferencesFile::clear()
    
    //maximumNumberOfThreads = SystemUtilities::getNumberOfProcessors();
    maximumNumberOfThreads = 0;
+   numberOfFileReadingThreads = 1;
    
 #ifdef Q_OS_WIN32
    maximumNumberOfThreads = 1;
@@ -120,11 +123,15 @@ PreferencesFile::clear()
    imageCaptureType = IMAGE_CAPTURE_PIXMAP;
 #endif // Q_OS_MACX
 
-   speechType = SPEECH_TYPE_OFF;
-   
    textFileDigitsRightOfDecimal = 6;
    
-   preferredWriteDataType = AbstractFile::FILE_FORMAT_BINARY;
+   std::vector<AbstractFile::FILE_FORMAT> fileFormats;
+   std::vector<QString> fileFormatNames;
+   AbstractFile::getFileFormatTypesAndNames(fileFormats, fileFormatNames);
+   preferredWriteDataType.resize(fileFormats.size());
+   std::fill(preferredWriteDataType.begin(),
+             preferredWriteDataType.end(),
+             AbstractFile::FILE_FORMAT_BINARY);
    
    //
    // Default display lists off since they blow away the X-server on Linux with 
@@ -421,6 +428,63 @@ PreferencesFile::setRecentCopiedSpecFiles(const std::vector<QString>& files)
 }
 
 /**
+ * get the test flag 1 default value
+ */
+bool 
+PreferencesFile::getTestFlag1() const
+{
+   return DebugControl::getTestFlag1();
+}
+
+/**
+ * set the test flag 1 value
+ */
+void 
+PreferencesFile::setTestFlag1(const bool val)
+{
+   DebugControl::setTestFlag1(val);
+   setModified();
+}
+
+/**
+ * get the test flag 2 default value
+ */
+bool 
+PreferencesFile::getTestFlag2() const
+{
+   return DebugControl::getTestFlag2();
+}
+
+/**
+ * set the test flag 2 value
+ */
+void 
+PreferencesFile::setTestFlag2(const bool val)
+{
+   DebugControl::setTestFlag2(val);
+   setModified();
+}
+
+/**
+ * get the OpenGL debug.
+ */
+bool 
+PreferencesFile::getOpenGLDebug() const
+{
+   return DebugControl::getOpenGLDebugOn();
+}
+
+/**
+ * set the OpenGL debug.
+ */
+void 
+PreferencesFile::setOpenGLDebug(const bool val)
+{
+   DebugControl::setOpenGLDebugOn(val);
+   setModified();
+}
+      
+/**
  * get the debug default value
  */
 bool 
@@ -606,6 +670,15 @@ PreferencesFile::getCaretTips(int& tipIndex, bool& showTips) const
 }
       
 /**
+ * set the fmri algorithm parameters.
+ */
+void 
+PreferencesFile::setFmriAlgorithmParameters(const QString& s)
+{
+   fmriParametersString = s;
+}
+      
+/**
  * Read the preferences file's data.
  */
 void
@@ -692,6 +765,30 @@ PreferencesFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream&
          else if (tag == tagDisplayListsEnabled) {
             setDisplayListsEnabled(value == "true");
          }
+         else if (tag == tagTestFlag1) {
+            if (value == "true") {
+               setTestFlag1(true);
+            }
+            else if (value == "false") {
+               setTestFlag1(false);
+            }
+         }
+         else if (tag == tagTestFlag2) {
+            if (value == "true") {
+               setTestFlag2(true);
+            }
+            else if (value == "false") {
+               setTestFlag2(false);
+            }
+         }
+         else if (tag == tagOpenGLDebugOn) {
+            if (value == "true") {
+               setOpenGLDebug(true);
+            }
+            else if (value == "false") {
+               setOpenGLDebug(false);
+            }
+         }
          else if (tag == tagIterativeUpdate) {
             setIterativeUpdate(value.toInt());
          }
@@ -767,16 +864,11 @@ PreferencesFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream&
             setMaximumNumberOfThreads(StringUtilities::toInt(value));
             setMaximumNumberOfThreads(1);
          }
+         else if (tag == tagNumberOfFileReadingThreads) {
+            setNumberOfFileReadingThreads(value.toInt());
+         }
          else if (tag == tagSpeechEnabled) {
-            if (value == "true") {
-               speechType = SPEECH_TYPE_NORMAL;
-            }
-            else if (value == "false") {
-               speechType = SPEECH_TYPE_OFF;
-            }
-            else {
-               speechType = static_cast<SPEECH_TYPE>(StringUtilities::toInt(value));
-            }
+            // obsolete tag so ignore it
          }
          else if (tag == tagSumsLoginData) {
             std::vector<QString> tokens;
@@ -853,58 +945,63 @@ PreferencesFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream&
                preferredVolumeWriteType = VolumeFile::FILE_READ_WRITE_TYPE_WUNIL;
             }
          }
-   
+         else if (tag == tagFmriParameters) {
+            fmriParametersString = value;
+         }
          else if (tag == tagFmriAlgorithm) {
-            fmriParameters.algorithmName = value;
+            fmriParametersString.append("algorithmName=" + value + ";");
          }
          else if (tag == tagFmriAvgVoxelNeighbors) {
-            fmriParameters.averageVoxelNeighbors = StringUtilities::toFloat(value);
+            fmriParametersString.append("averageVoxelNeighbors=" + value + ";");
          }
          else if (tag == tagFmriMaxVoxelNeighbors) {
-            fmriParameters.maximumVoxelNeighbors = StringUtilities::toFloat(value);
+            fmriParametersString.append("maximumVoxelNeighbors=" + value + ";");
+         }
+         else if (tag == tagFmriStrongestVoxelNeighbors) {
+            fmriParametersString.append("strongestVoxelNeighbors=" + value + ";");
          }
          else if (tag == tagFmriGaussNeighbors) {
-            fmriParameters.gaussianNeighbors = StringUtilities::toFloat(value);
+            fmriParametersString.append("gaussianNeighbors=" + value + ";");
          }
          else if (tag == tagFmriGaussSigmaNorm) {
-            fmriParameters.gaussianSigmaNorm = StringUtilities::toFloat(value);
+            fmriParametersString.append("gaussianSigmaNorm=" + value + ";");
          }
          else if (tag == tagFmriGaussSigmaTang) {
-            fmriParameters.gaussianSigmaTang = StringUtilities::toFloat(value);
+            fmriParametersString.append("gaussianSigmaTang=" + value + ";");
          }
          else if (tag == tagFmriGaussNormBelow) {
-            fmriParameters.gaussianNormBelow = StringUtilities::toFloat(value);
+            fmriParametersString.append("gaussianNormBelow=" + value + ";");
          }
          else if (tag == tagFmriGaussNormAbove) {
-            fmriParameters.gaussianNormAbove = StringUtilities::toFloat(value);
+            fmriParametersString.append("gaussianNormAbove=" + value + ";");
          }
          else if (tag == tagFmriGaussTang) {
-            fmriParameters.gaussianTang = StringUtilities::toFloat(value);
+            fmriParametersString.append("gaussianTang=" + value + ";");
          }
          else if (tag == tagFmriBfMaxDist) {
-            fmriParameters.brainFishMaxDistance = StringUtilities::toFloat(value);
+            fmriParametersString.append("brainFishMaxDistance=" + value + ";");
          }
          else if (tag == tagFmriBfSplat) {
-            fmriParameters.brainFishSplatFactor = StringUtilities::toInt(value);
+            fmriParametersString.append("brainFishSplatFactor=" + value + ";");
          }
          else if (tag == tagPreferredWriteDataType) {
-            if (value == AbstractFile::headerTagEncodingValueAscii) {
-               preferredWriteDataType = AbstractFile::FILE_FORMAT_ASCII;
-            }
-            else if (value == AbstractFile::headerTagEncodingValueBinary) {
-               preferredWriteDataType = AbstractFile::FILE_FORMAT_BINARY;
-            }
-            else if (value == AbstractFile::headerTagEncodingValueXML) {
-               preferredWriteDataType = AbstractFile::FILE_FORMAT_XML;
-            }
-            else if (value == AbstractFile::headerTagEncodingValueOther) {
-               preferredWriteDataType = AbstractFile::FILE_FORMAT_OTHER;
-            }
-            else if (value == AbstractFile::headerTagEncodingValueCommaSeparatedValueFile) {
-               preferredWriteDataType = AbstractFile::FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE;
-            }
-            else {
-               std::cerr << "Unrecognized preferences data type " << value.toAscii().constData() << std::endl;
+            const QStringList sl = value.split(':', QString::SkipEmptyParts);
+            for (int i = 0; i < sl.count(); i++) {
+               bool validFlag = false;
+               const AbstractFile::FILE_FORMAT formatType =
+                  AbstractFile::convertFormatNameToType(sl.at(i), &validFlag);
+               if (validFlag) {
+                  if (i < static_cast<int>(preferredWriteDataType.size())) {
+                     preferredWriteDataType[i] = formatType;
+                  }
+                  else {
+                     preferredWriteDataType.push_back(formatType);
+                  }
+               }
+               else {
+                  std::cout << "Unrecognized preferences data type " 
+                            << sl.at(i).toAscii().constData() << std::endl;
+               }
             }
          }
          else {
@@ -970,6 +1067,20 @@ PreferencesFile::writeFileData(QTextStream& stream, QDataStream&,
       stream << tagDisplayListsEnabled << " false" << "\n";
    }
 
+   stream << "\n";
+   stream << tagTestFlag1 << " ";
+   if (getTestFlag1()) stream << "true" << "\n";
+   else              stream << "false" << "\n";
+   stream << tagTestFlag2 << " ";
+   if (getTestFlag2()) stream << "true" << "\n";
+   else              stream << "false" << "\n";
+   stream << "\n";
+
+   stream << tagOpenGLDebugOn << " ";
+   if (getOpenGLDebug()) stream << "true" << "\n";
+   else                  stream << "false" << "\n";
+   stream << "\n";
+   
    stream << tagIterativeUpdate << " "
           << getIterativeUpdate() << "\n";
           
@@ -987,36 +1098,19 @@ PreferencesFile::writeFileData(QTextStream& stream, QDataStream&,
           << maximumNumberOfThreads << "\n";   
    stream << "\n";
    
-   stream << tagSpeechEnabled << " "  << speechType << "\n";   
+   stream << tagNumberOfFileReadingThreads << " "
+          << numberOfFileReadingThreads << "\n";
    stream << "\n";
-
+   
    stream << tagFloatDigitsRightOfDecimal << " " << textFileDigitsRightOfDecimal << "\n";
    stream << "\n";
   
-   QString writeStr(AbstractFile::headerTagEncodingValueOther); 
-   switch(preferredWriteDataType) {
-      case FILE_FORMAT_ASCII:
-         writeStr = AbstractFile::headerTagEncodingValueAscii;
-         break;
-      case FILE_FORMAT_BINARY:
-         writeStr = AbstractFile::headerTagEncodingValueBinary;
-         break;
-      case FILE_FORMAT_XML:
-         writeStr = AbstractFile::headerTagEncodingValueXML;
-         break;
-      case FILE_FORMAT_XML_BASE64:
-         writeStr = AbstractFile::headerTagEncodingValueXMLBase64;
-         break;
-      case FILE_FORMAT_XML_GZIP_BASE64:
-         writeStr = AbstractFile::headerTagEncodingValueXMLGZipBase64;
-         break;
-      case FILE_FORMAT_OTHER:
-         writeStr = AbstractFile::headerTagEncodingValueOther;
-         break;
-      case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-         writeStr = AbstractFile::headerTagEncodingValueCommaSeparatedValueFile;
-         break;
+   QStringList formatNames;
+   for (unsigned int i = 0; i < preferredWriteDataType.size(); i++) {
+      formatNames.push_back(
+         AbstractFile::convertFormatTypeToName(preferredWriteDataType[i]));
    }
+   const QString writeStr(formatNames.join(":")); 
    stream << tagPreferredWriteDataType << " " << writeStr << "\n";
    stream << "\n";
    
@@ -1088,38 +1182,8 @@ PreferencesFile::writeFileData(QTextStream& stream, QDataStream&,
       stream << "\n";
    }
    
-   stream <<  tagFmriAlgorithm << " "
-          << fmriParameters.algorithmName << "\n";
-          
-   stream <<  tagFmriAvgVoxelNeighbors << " "
-          << fmriParameters.averageVoxelNeighbors << "\n";
-          
-   stream <<  tagFmriMaxVoxelNeighbors << " "
-          << fmriParameters.maximumVoxelNeighbors << "\n";
-          
-   stream <<  tagFmriGaussNeighbors << " "
-          << fmriParameters.gaussianNeighbors << "\n";
-          
-   stream <<  tagFmriGaussSigmaTang << " "
-          << fmriParameters.gaussianSigmaTang << "\n";
-          
-   stream <<  tagFmriGaussSigmaNorm << " "
-          << fmriParameters.gaussianSigmaNorm << "\n";
-          
-   stream <<  tagFmriGaussNormBelow << " "
-          << fmriParameters.gaussianNormBelow << "\n";
-          
-   stream <<  tagFmriGaussNormAbove << " "
-          << fmriParameters.gaussianNormAbove << "\n";
-          
-   stream <<  tagFmriGaussTang << " "
-          << fmriParameters.gaussianTang << "\n";
-          
-   stream <<  tagFmriBfMaxDist << " "
-          << fmriParameters.brainFishMaxDistance << "\n";
-          
-   stream <<  tagFmriBfSplat << " "
-          << fmriParameters.brainFishSplatFactor << "\n";
+   stream <<  tagFmriParameters << " "
+          << fmriParametersString << "\n";
           
    stream << "\n";
    for (int i = 0; i < getNumberOfUserViews(); i++) {
@@ -1199,172 +1263,4 @@ PreferencesFile::UserView::getViewInfo(QString& nameOut,
    translationValidOut = translationValid;
    scalingValidOut = scalingValid;
 }
-
-//------------------------------------------------------------------------------
-
-/**
- * constructor.
- */
-PreferencesFile::FmriAlgorithm::FmriAlgorithm()
-{
-   resetParametersToDefault();
-}                            
-
-
-/**
- * destructor.
- */
-PreferencesFile::FmriAlgorithm::~FmriAlgorithm()
-{
-}                            
-
-
-/**
- * reset parameters to their default values.
- */
-void 
-PreferencesFile::FmriAlgorithm::resetParametersToDefault()
-{
-   algorithmName = "";
-   averageVoxelNeighbors = 0.0;
-   maximumVoxelNeighbors = 6.0;
-   gaussianNeighbors = 6.0;
-   gaussianSigmaTang = 1.0;
-   gaussianSigmaNorm = 2.0;
-   gaussianNormBelow = 2.0;
-   gaussianNormAbove = 2.0;
-   gaussianTang      = 3.0;
-   brainFishMaxDistance = 3.0;
-   brainFishSplatFactor = 3;
-   
-   GaussianComputation::getDefaultParameters(gaussianNormBelow,
-                                             gaussianNormAbove,
-                                             gaussianSigmaNorm,
-                                             gaussianSigmaTang,
-                                             gaussianTang);
-}                            
-
-
-/**
- * get algorithm name.
- */
-QString 
-PreferencesFile::FmriAlgorithm::getAlgorithmName() const 
-{ 
-   return algorithmName; 
-}
-
-
-/**
- * set algorithm name.
- */
-void 
-PreferencesFile::FmriAlgorithm::setAlgorithmName(const QString& name) 
-{
-   algorithmName = name; 
-}
-
-
-/**
- * get averge voxel parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::getAverageVoxelParameters(float& neighborsOut) const
-{
-   neighborsOut = averageVoxelNeighbors;
-}                            
-
-
-/**
- * set averge voxel parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::setAverageVoxelParameters(const float neighborsIn)
-{
-   averageVoxelNeighbors = neighborsIn;
-}                            
-
-
-/**
- * get maximum voxel parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::getMaximumVoxelParameters(float& neighborsOut) const
-{
-   neighborsOut = maximumVoxelNeighbors;
-}                            
-
-
-/**
- * set maximum voxel parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::setMaximumVoxelParameters(const float neighborsIn)
-{
-   maximumVoxelNeighbors = neighborsIn;
-}                            
-
-
-/**
- * get gaussian algorithm parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::getGaussianParameters(float& neighborsOut,
-                          float& sigmaTangOut,
-                          float& sigmaNormOut,
-                          float& normBelowOut,
-                          float& normAboveOut,
-                          float& tangOut) const
-{
-   neighborsOut = gaussianNeighbors;
-   sigmaTangOut = gaussianSigmaTang;
-   sigmaNormOut = gaussianSigmaNorm;
-   normBelowOut = gaussianNormBelow;
-   normAboveOut = gaussianNormAbove;
-   tangOut      = gaussianTang;
-}                            
-
-                              
-/**
- * set gaussian algorithm parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::setGaussianParameters(const float neighborsIn,
-                          const float sigmaTangIn,
-                          const float sigmaNormIn,
-                          const float normBelowIn,
-                          const float normAboveIn,
-                          const float tangIn)
-{
-   gaussianNeighbors = neighborsIn;
-   gaussianSigmaTang = sigmaTangIn;
-   gaussianSigmaNorm = sigmaNormIn;
-   gaussianNormBelow = normBelowIn;
-   gaussianNormAbove = normAboveIn;
-   gaussianTang      = tangIn;
-}                            
-
-                              
-/** 
- * get brain fish algorithm parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::getBrainFishParameters(float& maxDistanceOut,
-                            int& splatFactorOut) const
-{
-   maxDistanceOut = brainFishMaxDistance;
-   splatFactorOut = brainFishSplatFactor;
-}                            
-
-
-/**
- * set brain fish algorithm parameters.
- */
-void 
-PreferencesFile::FmriAlgorithm::setBrainFishParameters(const float maxDistanceIn,
-                            const int splatFactorIn)
-{
-   brainFishMaxDistance = maxDistanceIn;
-   brainFishSplatFactor = splatFactorIn;
-}                            
 

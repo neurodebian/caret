@@ -34,14 +34,16 @@
 GuiFileDialogWithInstructions::GuiFileDialogWithInstructions(QWidget* parent,
                                      const QString& instructions,
                                      const char* name,
-                                     bool modal)
-   : Q3FileDialog(parent, name, modal)
+                                     bool modalIn)
+   : WuQFileDialog(parent)
 {
+   setObjectName(name);
+   setModal(modalIn);
    QTextEdit* textEdit = new QTextEdit;
    textEdit->setLineWrapMode(QTextEdit::WidgetWidth);
    textEdit->setReadOnly(true);
    textEdit->setPlainText(instructions);
-   addWidgets(NULL, textEdit, NULL); 
+   addWidgets(textEdit, textEdit, textEdit); 
    QtUtilities::setMaximumHeightToNinetyPercentOfScreenHeight(this);
 }
 

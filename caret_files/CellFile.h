@@ -77,9 +77,24 @@ class CellData : public CellBase {
       /// Cell File this cell belongs to
       CellFile* cellFile;
       
+      /// tag for reading and writing cells
+      static const QString tagCellData;
+      
+      /// tag for reading and writing cells
+      static const QString tagCellNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagClassName;
+      
       friend class CellFile;
       friend class CellFileProjector;
 };
+
+#ifdef __CELL_DATA_MAIN__
+      const QString CellData::tagCellData = "CellData";
+      const QString CellData::tagCellNumber = "cellNumber";
+      const QString CellData::tagClassName = "className";
+#endif // __CELL_DATA_MAIN__
 
 /// Class for stroring cells
 class CellFile : public AbstractFile {
@@ -257,8 +272,7 @@ class CellFile : public AbstractFile {
    friend class CellData;
 };
 
-#ifdef CELL_MAIN
-
+#ifdef __CELL_FILE_MAIN__
    const QString CellFile::tagFileVersion = "tag-version";
    const QString CellFile::tagNumberOfCells = 
                                          "tag-number-of-cells";
@@ -269,6 +283,6 @@ class CellFile : public AbstractFile {
    const QString CellFile::tagCommentAuthors = "tag-authors";
    const QString CellFile::tagCommentCitation = "tag-citation";
    const QString CellFile::tagCommentStereotaxicSpace = "tag-space";
-#endif // CELL_MAIN
+#endif // __CELL_FILE_MAIN__
 
 #endif // __CELL_FILE_H__

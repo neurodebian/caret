@@ -1,18 +1,31 @@
 
-###CONFIG	+= release
 #
-# To compile optimized, uncomment the above line and comment out
-# the two CONFIG lines below.  But, the fact is optimizers suck,
-# that is, they only work 99.9% of the time and the other .1% of 
-# the time they screw up and the program will crash.
+#  Compile debug on mac since that is where development is done
+#  Compile optimized on Linux and Windows
 #
-CONFIG      -= release
-CONFIG      += warn_on debug
+macx {
+   #
+   # Debug
+   #
+   CONFIG      -= release
+   CONFIG      += warn_on debug
+   
+   #
+   # Release
+   #
+   #CONFIG	+= release
+   #CONFIG	-= debug
+}
+!macx {
+   CONFIG	+= release
+   CONFIG	-= debug
+}
 
 CONFIG	+= qt thread
 
-QT 	+= network opengl xml qt3support
-#QT 	+= network opengl xml
+QT 	+= network opengl xml
+#QT	+= qt3support
+QT	-= qt3support
 
 #
 # when missing, it must be the GIFTI API library
@@ -59,6 +72,7 @@ INCLUDEPATH	+= $(QWT_INC_DIR)
 
 INCLUDEPATH += \
    ../caret_brain_set \
+   ../caret_command_operations \
    ../caret_common \
    ../caret_statistics \
    ../caret_files \
@@ -67,6 +81,7 @@ INCLUDEPATH += \
 
 DEPENDPATH += \
    ../caret_brain_set \
+   ../caret_command_operations \
    ../caret_common \
    ../caret_statistics \
    ../caret_files \
@@ -131,7 +146,7 @@ exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
    # VTK Libraries for VTK 5.x
    #
    win32 {
-      VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
+      #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
    }
    !win32 {
       VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
@@ -288,7 +303,7 @@ win32 {
 #
 macx {
    #
-   # Universal binaries
+   # Build objects for Universal binaries
    #
    #CONFIG += ppc x86
    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
@@ -297,16 +312,39 @@ macx {
       -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
 
    #
+   # Link  for OSX 10.4
+   #
+   QMAKE_LFLAGS_DEBUG += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk
+   QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk
+
+   # Link for Intel
+   QMAKE_LFLAGS_DEBUG += -arch i386
+   QMAKE_LFLAGS_RELEASE += -arch i386
+
+   #
+   # Add Link PPC for universal binaries
+   #
+   #QMAKE_LFLAGS_DEBUG += -arch ppc 
+   #QMAKE_LFLAGS_RELEASE += -arch ppc  
+
+   #
    # Universal binaries
    # Note: universal binaries are very slow to link, 
    # so disable except when needed.
    #
-   QMAKE_LFLAGS_DEBUG += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
-   QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+   #QMAKE_LFLAGS_DEBUG += -arch i386 -arch ppc
+   #QMAKE_LFLAGS_RELEASE += -arch i386 -arch ppc
 
-   # Intel only
-   #QMAKE_LFLAGS_DEBUG += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch i386
-   #QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch i386
+
+   #
+   # 64 bit support
+   # Note that these flags are not sufficient to link
+   # May need to recompile VTK, QT, etc
+   #
+   #QMAKE_CXXFLAGS_RELEASE += -m64
+   #QMAKE_CXXFLAGS_DEBUG += -m64
+   #QMAKE_LFLAGS_DEBUG += -m64
+   #QMAKE_LFLAGS_RELEASE += -m64
 
 #   CONFIG      -= release
 #   CONFIG      += warn_on debug

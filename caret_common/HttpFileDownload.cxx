@@ -513,6 +513,15 @@ HttpFileDownload::getContent(QString& content) const
 }
 
 /**
+ * Get the content of the downloaded data as UTF-8 string.
+ */
+void 
+HttpFileDownload::getContentUTF8(QString& content) const
+{
+   content = QString::fromUtf8(http->readAll().data());
+}
+
+/**
  * Called when the download completes.
  */
 void 
