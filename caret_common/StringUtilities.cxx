@@ -30,6 +30,9 @@
 #include <ctype.h>
 
 #include <QString>
+#include <QStringList>
+
+#include "DebugControl.h"
 
 #define __STRING_UTILITIES_MAIN_H__
 #include "StringUtilities.h"
@@ -68,6 +71,85 @@ StringUtilities::replace(const QString& s, const char findThis,
    return str;
 }
 
+/**
+ * split "s" into tokens breaking at whitespace but maintaining string in double quotes.
+ */
+void 
+StringUtilities::tokenStringsWithQuotes(const QString& s,
+                                        QStringList& stringsOut)
+{
+   stringsOut.clear();
+   
+   bool done = false;
+   int pos = 0;
+   while (done == false) {
+      const int quoteIndex = s.indexOf('\"', pos);
+      if (quoteIndex >= 0) {
+         //
+         // Get stuff before double quote
+         //
+         const int startIndex = pos;
+         const int endIndex = quoteIndex - 1;
+         if (endIndex > startIndex) {
+            const QString str = s.mid(startIndex, endIndex - startIndex + 1);
+            stringsOut << str.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+         }
+         
+         //
+         // Find next double quote
+         //
+         const int nextQuoteIndex = s.indexOf('\"', quoteIndex + 1);
+         if (nextQuoteIndex >= 0) {
+            //
+            // Include doubled quotes
+            //
+            const int startIndex = quoteIndex;
+            const int endIndex = nextQuoteIndex;
+            if (endIndex > startIndex) {
+               const QString str = s.mid(startIndex, endIndex - startIndex + 1);
+               stringsOut << str;  // DO NOT SPLIT ON WHITESPACE
+            }
+            //
+            // Next character to search
+            //
+            pos = nextQuoteIndex + 1;
+         }
+         else {
+            //
+            // Did not find second double quote so gobble rest of string
+            // and add double quote
+            //
+            const int startIndex = quoteIndex;
+            QString str = s.mid(startIndex);
+            if (str.isEmpty() == false) {
+               str += '\"';
+               stringsOut << str;
+            }
+            done = true;
+         }
+         
+      }
+      else {
+         //
+         // Get rest of string split at white space
+         //
+         const QString str = s.mid(pos);
+         if (str.isEmpty() == false) {
+            stringsOut << str.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+         }
+         done = true;
+      }
+   }
+
+   if (DebugControl::getDebugOn()) {
+      std::cout << "STRING IN: " << s.toAscii().constData() << std::endl;
+      std::cout << "STRING SPLIT: " << std::endl;
+      for (int i = 0; i < stringsOut.count(); i++) {
+         std::cout << "   [" << stringsOut.at(i).toAscii().constData() << "]" << std::endl;
+      }
+   }
+}
+                                         
 /**
  * like strtok() function.
  * Split string "s" at any of the characters in "separators" and place each

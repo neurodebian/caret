@@ -29,6 +29,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -40,7 +41,6 @@
 #include "GuiColorSelectionDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "global_variables.h"
 
 /**
@@ -199,7 +199,7 @@ GuiBordersCreateInterpolatedDialog::slotApplyPushButton()
                                    samplingDoubleSpinBox->value(),
                                    errorMessage);
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }      
    
@@ -225,8 +225,11 @@ GuiBordersCreateInterpolatedDialog::slotApplyPushButton()
       msg.append(" ?");
       QString noButton("No, define color ");
       noButton.append(borderName);
-      if (GuiMessageBox::information(this, "Use Partially Matching Color",
-                                   msg, "Yes", noButton, QString::null, 0) != 0) {
+      if (QMessageBox::information(this, 
+                                   "Use Partially Matching Color",
+                                   msg, 
+                                   (QMessageBox::Yes | QMessageBox::No),
+                                        QMessageBox::No) == QMessageBox::No) {
          createBorderColor = true;      
       }
    }   

@@ -89,6 +89,9 @@ class HttpFileDownload : public QObject  {
       /// Get the content of the downloaded data.
       void getContent(QString& content) const;
       
+      /// Get the content of the downloaded data as UTF-8 string.
+      void getContentUTF8(QString& content) const;
+      
       /// get the response code
       int getResponseCode() const { return responseCode; }
       

@@ -54,7 +54,9 @@ GuiMapFmriMappingSet::GuiMapFmriMappingSet(const QString& outputSpecFileNameIn,
                      const bool doStdErrorOfAllCoordFileFlagIn,
                      const bool doMinOfAllCoordFileFlagIn,
                      const bool doMaxOfAllCoordFileFlagIn,
-                     const bool doAllCasesCoordFileFlagIn)
+                     const bool doAllCasesCoordFileFlagIn,
+                     const bool doMostCommonOfAllCasesFlagIn,
+                     const bool doMostCommonExcludeUnidentifiedOfAllCasesFlagIn)
 {
    mappingType = MAPPING_TYPE_WITH_SPEC_FILES;
    mappingFilesPath = mappingFilesPathIn;
@@ -76,6 +78,8 @@ GuiMapFmriMappingSet::GuiMapFmriMappingSet(const QString& outputSpecFileNameIn,
    doMinOfAllCoordFileFlag = doMinOfAllCoordFileFlagIn;
    doMaxOfAllCoordFileFlag = doMaxOfAllCoordFileFlagIn;
    doAllCasesCoordFileFlag = doAllCasesCoordFileFlagIn;
+   doMostCommonOfAllCasesFlag = doMostCommonOfAllCasesFlagIn;
+   doMostCommonExcludeUnidentifiedOfAllCasesFlag = doMostCommonExcludeUnidentifiedOfAllCasesFlagIn;
    
    initializeMetricFile(volumes);
 }
@@ -106,7 +110,7 @@ GuiMapFmriMappingSet::GuiMapFmriMappingSet(
    doMinOfAllCoordFileFlag = false;
    doMaxOfAllCoordFileFlag = false;
    doAllCasesCoordFileFlag = true;
-   
+   doMostCommonOfAllCasesFlag = false;
 }
 
 /**
@@ -126,7 +130,9 @@ GuiMapFmriMappingSet::GuiMapFmriMappingSet(const QString& mappingFilesPathIn,
                      const bool doStdErrorOfAllCoordFileFlagIn,
                      const bool doMinOfAllCoordFileFlagIn,
                      const bool doMaxOfAllCoordFileFlagIn,
-                     const bool doAllCasesCoordFileFlagIn)
+                     const bool doAllCasesCoordFileFlagIn,
+                     const bool doMostCommonOfAllCasesFlagIn,
+                     const bool doMostCommonExcludeUnidentifiedOfAllCasesFlagIn)
 {
    mappingType = MAPPING_TYPE_WITH_SPEC_FILES;
    mappingFilesPath = mappingFilesPathIn;
@@ -147,6 +153,8 @@ GuiMapFmriMappingSet::GuiMapFmriMappingSet(const QString& mappingFilesPathIn,
    doMinOfAllCoordFileFlag = doMinOfAllCoordFileFlagIn;
    doMaxOfAllCoordFileFlag = doMaxOfAllCoordFileFlagIn;
    doAllCasesCoordFileFlag = doAllCasesCoordFileFlagIn;
+   doMostCommonOfAllCasesFlag = doMostCommonOfAllCasesFlagIn;
+   doMostCommonExcludeUnidentifiedOfAllCasesFlag = doMostCommonExcludeUnidentifiedOfAllCasesFlagIn;
    
    initializeMetricFile(volumes);
 }                            

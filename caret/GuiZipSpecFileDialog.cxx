@@ -26,16 +26,16 @@
 #include <sstream>
 
 #include <QFile>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QToolTip>
 
 #include "GuiChooseSpecFileDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiZipSpecFileDialog.h"
 #include "SpecFileUtilities.h"
 #include "StringUtilities.h"
@@ -138,22 +138,22 @@ GuiZipSpecFileDialog::slotApplyButton()
    //
    const QString specFileName(specFileLineEdit->text());
    if (specFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Spec File name is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Spec File name is empty.");
       return;
    }
    QString zipFileName(zipFileLineEdit->text());
    if (zipFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Zip File name is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Zip File name is empty.");
       return;
    }
    const QString unzipDirName(unzipDirLineEdit->text());
    if (unzipDirName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Unzip directory name is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Unzip directory name is empty.");
       return;
    }
    
    if (QFile::exists(specFileName) == false) {
-      GuiMessageBox::critical(this, "ERROR", "Spec File does not exist.", "OK");
+      QMessageBox::critical(this, "ERROR", "Spec File does not exist.");
       return;
    }
    
@@ -176,8 +176,10 @@ GuiZipSpecFileDialog::slotApplyButton()
           << "\n"
           << " already exists.\n"
           << "Do you want to overwrite it?";
-      if (GuiMessageBox::question(this, "Overwrite", str.str().c_str(), 
-                                  "Yes, Overwrite", "No, Cancel") != 0) {
+      if (QMessageBox::question(this, "Overwrite", str.str().c_str(), 
+                                (QMessageBox::Yes | QMessageBox::No),
+                                QMessageBox::No)
+                                   == QMessageBox::No) {
          return;
       }  
       QFile::remove(zipFileName);       
@@ -197,10 +199,10 @@ GuiZipSpecFileDialog::slotApplyButton()
    showNormalCursor();
    
    if (errorFlag) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }
-   GuiMessageBox::information(this, "Success", "ZIP file has been created.", "OK");
+   QMessageBox::information(this, "Success", "ZIP file has been created.");
 }
 
 /**
@@ -229,14 +231,14 @@ GuiZipSpecFileDialog::slotZipFileButton()
    //
    // Create a zip file dialog to select the zip file. 
    //
-   QFileDialog zipFileDialog(this);
+   WuQFileDialog zipFileDialog(this);
    zipFileDialog.setModal(true);
    zipFileDialog.setDirectory(QDir::currentPath());
-   zipFileDialog.setAcceptMode(QFileDialog::AcceptSave);
+   zipFileDialog.setAcceptMode(WuQFileDialog::AcceptSave);
    zipFileDialog.setWindowTitle("Choose Zip File");
-   zipFileDialog.setFileMode(QFileDialog::AnyFile);
+   zipFileDialog.setFileMode(WuQFileDialog::AnyFile);
    zipFileDialog.setFilters(QStringList("Zip File (*.zip)"));
-   if (zipFileDialog.exec() == QFileDialog::Accepted) {
+   if (zipFileDialog.exec() == WuQFileDialog::Accepted) {
       if (zipFileDialog.selectedFiles().count() > 0) {
          zipFileLineEdit->setText(zipFileDialog.selectedFiles().at(0));
       }

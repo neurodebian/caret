@@ -28,12 +28,12 @@
 #include <QCheckBox>
 #include <QClipboard>
 #include <QDir>
-#include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPrintDialog>
 #include <QPrinter>
@@ -45,14 +45,15 @@
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
+#include "DebugControl.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiCaptureMainWindowImageDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiImageFormatComboBox.h"
-#include "GuiMessageBox.h"
 #include "ImageFile.h"
+#include "WuQFileDialog.h"
 #include "global_variables.h"
 
 /**
@@ -322,13 +323,13 @@ GuiCaptureMainWindowImageDialog::captureNormalImage()
    
    if ((allCaptureRadioButton->isChecked() == false) &&
        (selectionImageRadioButton->isChecked() == false)) {
-      GuiMessageBox::critical(this, "ERROR", "No Capture Type is selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "No Capture Type is selected.");
       return;
    }
    
    if (selectionImageRadioButton->isChecked()) {
       if (openGL->getCaptureImageSubRegionValid() == false) {
-         GuiMessageBox::critical(this, "ERROR", "No image subregion has been selected.", "OK");
+         QMessageBox::critical(this, "ERROR", "No image subregion has been selected.");
          return;
       }
    }
@@ -337,19 +338,18 @@ GuiCaptureMainWindowImageDialog::captureNormalImage()
        (addToLoadedImagesCheckBox->isChecked() == false) &&
        (printImageCheckBox->isChecked() == false) &&
        (saveToFileCheckBox->isChecked() == false)) {
-      GuiMessageBox::critical(this, "ERROR", "No Image Destination is selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "No Image Destination is selected.");
       return;
    }
    
    if (selectionImageRadioButton->isChecked()) {
       if (openGL->getCaptureImageSubRegionValid() == false) {
-         GuiMessageBox::critical(this, "ERROR", "No image region is selected.\n"
+         QMessageBox::critical(this, "ERROR", "No image region is selected.\n"
                                                "To select, move the mouse to one corner\n"
                                                "of the desired selection, hold down the left\n"
                                                "mouse button, drag the mouse to the opposite\n"
                                                "corner of the desired selection, and release\n"
-                                               "the left mouse button.",
-                                             "OK");
+                                               "the left mouse button.");
          return;
       }
    }
@@ -362,7 +362,7 @@ GuiCaptureMainWindowImageDialog::captureNormalImage()
    QString name = saveFileNameLineEdit->text();
    if (name.isEmpty()) {
        if (saveToFileCheckBox->isChecked()) {
-          GuiMessageBox::critical(this, "ERROR", "Image name is empty.", "OK");
+          QMessageBox::critical(this, "ERROR", "Image name is empty.");
        }
    }
    
@@ -452,7 +452,7 @@ GuiCaptureMainWindowImageDialog::captureNormalImage()
                        "will not work on your computer.  This is a problem\n"
                        "seen on Windows versions of Caret5 and there is no\n"
                        "solution to this problem.";
-         GuiMessageBox::critical(theMainWindow, "ERROR", msg, "OK");
+         QMessageBox::critical(theMainWindow, "ERROR", msg);
       }
 #endif // Q_OS_WIN32
    }
@@ -464,11 +464,20 @@ GuiCaptureMainWindowImageDialog::captureNormalImage()
       //
       // Save the image
       //
+      QTime timer;
+      timer.start();
       if (image.save(name, format.toAscii().constData(), imageQuality) == false) {
          QString msg("Unable to save: ");
          msg.append(name);
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
+      }
+      const float timeToWriteFileInSeconds = static_cast<float>(timer.elapsed()) / 1000.0;
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Time to write " << FileUtilities::basename(name).toAscii().constData()
+                   << " was "
+                   << timeToWriteFileInSeconds
+                   << " seconds." << std::endl;
       }
 
       //
@@ -497,7 +506,7 @@ GuiCaptureMainWindowImageDialog::captureStandardViewImages()
 {
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "You must have a surface in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "You must have a surface in the Main Window.");
       return;
    }
    const int imageQuality = 100;
@@ -575,7 +584,7 @@ GuiCaptureMainWindowImageDialog::captureStandardViewImages()
    if (msg.isEmpty() == false) {
       QString msg2("Unable to save images: \n");
       msg2.append(msg);
-      GuiMessageBox::critical(this, "ERROR", msg2, "OK");
+      QMessageBox::critical(this, "ERROR", msg2);
       return;
    }
 }
@@ -586,16 +595,16 @@ GuiCaptureMainWindowImageDialog::captureStandardViewImages()
 void 
 GuiCaptureMainWindowImageDialog::slotImageFileNameDialog()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setWindowTitle("Image File Name");
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptSave);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
    fd.setFilters(imageFormatComboBox->getAllFileFilters());
    fd.setDirectory(QDir::currentPath());
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    fd.selectFilter(imageFormatComboBox->getSelectedImageFormatFilter());
    fd.selectFilter("(*.jpg)");
-   if (fd.exec() == QFileDialog::Accepted) {
+   if (fd.exec() == WuQFileDialog::Accepted) {
       QString fn(fd.selectedFiles().at(0));
       if (FileUtilities::dirname(fn) == QDir::currentPath()) {
          saveFileNameLineEdit->setText(FileUtilities::basename(fn));

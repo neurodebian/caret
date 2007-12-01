@@ -482,7 +482,7 @@ BrainModelSurfaceMetricAnovaOneWay::performFTest(const std::vector<MetricFile*>&
          //
          const int numData = metricFiles[j]->getNumberOfColumns();
          float* data = new float[numData];
-         metricFiles[j]->getValue(i, data);
+         metricFiles[j]->getAllColumnValuesForNode(i, data);
          StatisticDataGroup* sdg = new StatisticDataGroup(data, 
                                           numData, 
                                           StatisticDataGroup::DATA_STORAGE_MODE_TAKE_OWNERSHIP);

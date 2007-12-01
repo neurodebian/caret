@@ -35,7 +35,8 @@
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceMetricClustering.h"
 #include "BrainModelSurfaceMetricFindClustersBase.h"
-#include "BrainModelSurfaceRegionOfInterest.h"
+#include "BrainModelSurfaceROINodeSelection.h"
+#include "BrainModelSurfaceROITextReport.h"
 #include "BrainSet.h"
 #include "CoordinateFile.h"
 #include "DebugControl.h"
@@ -325,7 +326,8 @@ BrainModelSurfaceMetricFindClustersBase::findClustersSingleThread(MetricFile* mf
                                               negMin,
                                               negMax,
                                               posMin,
-                                              posMax);
+                                              posMax,
+                                              true);
       try {
          bmsmc.execute();
       }
@@ -338,6 +340,12 @@ BrainModelSurfaceMetricFindClustersBase::findClustersSingleThread(MetricFile* mf
       // Storage for the clusters
       //
       std::vector<Cluster> clusters;
+      
+      //
+      // Node areas
+      //
+      std::vector<float> nodeAreas;
+      bms->getAreaOfAllNodes(nodeAreas);
       
       //
       // Process the clusters
@@ -356,7 +364,7 @@ BrainModelSurfaceMetricFindClustersBase::findClustersSingleThread(MetricFile* mf
              (areaCorrectionShapeFileColumn >= 0)) {
             for (int k = 0; k < numNodesInCluster; k++) {
                const int nodeNum = cluster->getNodeInCluster(k);
-               float nodeArea = bmsmc.getNodeArea(nodeNum);
+               float nodeArea = nodeAreas[nodeNum];
                const double metric = areaCorrectionShapeFile->getValue(nodeNum, areaCorrectionShapeFileColumn);
                correctedArea += (nodeArea * std::pow(2.0, metric));
             }
@@ -420,6 +428,12 @@ BrainModelSurfaceMetricFindClustersBase::saveClusters(BrainModelSurfaceMetricClu
    std::vector<Cluster> clusters;
    
    //
+   // Node areas
+   //
+   std::vector<float> nodeAreas;
+   bms->getAreaOfAllNodes(nodeAreas);
+
+   //
    // Process the clusters
    //
    const int numClusters = bmsmc->getNumberOfClusters();
@@ -436,7 +450,7 @@ BrainModelSurfaceMetricFindClustersBase::saveClusters(BrainModelSurfaceMetricClu
           (areaCorrectionShapeFileColumn >= 0)) {
          for (int k = 0; k < numNodesInCluster; k++) {
             const int nodeNum = cluster->getNodeInCluster(k);
-            float nodeArea = bmsmc->getNodeArea(nodeNum);
+            float nodeArea = nodeAreas[nodeNum];
             const double metric = areaCorrectionShapeFile->getValue(nodeNum, areaCorrectionShapeFileColumn);
             correctedArea += (nodeArea * std::pow(2.0, metric));
          }
@@ -643,7 +657,8 @@ BrainModelSurfaceMetricFindClustersBase::findClustersMultiThread(MetricFile* mf,
                                                     negMin,
                                                     negMax,
                                                     posMin,
-                                                    posMax);
+                                                    posMax,
+                                                    true);
                
                //
                // Create a new thread to run the algorithm and take ownership of cluster algorithm
@@ -1087,14 +1102,14 @@ BrainModelSurfaceMetricFindClustersBase::createMetricShapeClustersReportFile(
    for (std::vector<Cluster>::const_iterator it = clusters.begin();
         it != clusters.end(); it++) {
       const Cluster& c = *it;
-      const int numNodes = bms->getNumberOfNodes();
       
       //
       // Set nodes in ROI to nodes in cluster
       //
-      std::vector<bool> nodeInROI(numNodes, false);
+      BrainModelSurfaceROINodeSelection surfaceROI(brain);
+      surfaceROI.deselectAllNodes();
       for (int i = 0; i < c.numberOfNodes; i++) {
-         nodeInROI[c.nodes[i]] = true;
+         surfaceROI.setNodeSelected(c.nodes[i], 1);
       }
       
       //
@@ -1123,11 +1138,10 @@ BrainModelSurfaceMetricFindClustersBase::createMetricShapeClustersReportFile(
       //
       // Perform the ROI operation
       //
-      BrainModelSurfaceRegionOfInterest bmsri(brain,
+      BrainModelSurfaceROITextReport bmsri(brain,
                                               bms,
-                                              BrainModelSurfaceRegionOfInterest::OPERATION_TEXT_REPORT,
-                                              nodeInROI);
-      bmsri.setTextReportControlsAndOptions(mf,
+                                              &surfaceROI,
+                                            mf,
                                             selectedMetricColumns,
                                             ssf,
                                             selectedShapeColumns,
@@ -1161,18 +1175,6 @@ BrainModelSurfaceMetricFindClustersBase::createMetricShapeClustersReportFile(
    catch (FileException& e) {
       std::cout << e.whatQString().toAscii().constData() << std::endl;
    }
-/*
-   BrainModelSurfaceRegionOfInterest bmsri(brain,
-                                           bms,
-                                           BrainModelSurfaceRegionOfInterest::OPERATION_TEXT_REPORT,
-                                           selectedNodes);
-   bmsri.setTextReportControlsAndOptions(selectedMetricColumns,
-                                         selectedShapeColumns,
-                                         selectedPaintColumns,
-                                         c.name,
-                                         ""
-*/
-   
 }
                                     
 /**

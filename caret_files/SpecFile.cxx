@@ -110,6 +110,7 @@ SpecFile::SpecFile()
    sceneFile.initialize("Scene File", sceneFileTag, Entry::FILE_TYPE_OTHER);
    
    imageFile.initialize("Image File", imageFileTag, Entry::FILE_TYPE_OTHER);
+   scriptFile.initialize("Script File", scriptFileTag, Entry::FILE_TYPE_OTHER);
    
    transformationMatrixFile.initialize("Transformation Matrix File", transformationMatrixFileTag, Entry::FILE_TYPE_SURFACE);
    
@@ -272,6 +273,7 @@ SpecFile::updateAllEntries()
    allEntries.push_back(&sceneFile);
    
    allEntries.push_back(&imageFile);
+   allEntries.push_back(&scriptFile);
    
    allEntries.push_back(&transformationMatrixFile);
    
@@ -437,6 +439,7 @@ SpecFile::copyHelperSpecFile(const SpecFile& sf)
    sceneFile = sf.sceneFile;
    
    imageFile = sf.imageFile;
+   scriptFile = sf.scriptFile;
    
    transformationMatrixFile = sf.transformationMatrixFile;
    
@@ -697,7 +700,7 @@ SpecFile::setCategory(const QString& cat)
  * convert all data files to the specified data type.
  */
 void 
-SpecFile::convertAllDataFilesToType(const AbstractFile::FILE_FORMAT ft,
+SpecFile::convertAllDataFilesToType(const std::vector<AbstractFile::FILE_FORMAT> requestedFormats,
                                     const bool printInfoToStdout)
 {
    //
@@ -729,7 +732,9 @@ SpecFile::convertAllDataFilesToType(const AbstractFile::FILE_FORMAT ft,
       }
       if (af == NULL) {
          if (printInfoToStdout) {
-            std::cout << "unable to read file or not a caret data file.";
+            std::cout << "unable to read file or not a caret data file.\n"
+                      << "error: " 
+                      << errorMessage.toAscii().constData();
          }
       }
       else if (af->getFileHasHeader() == false) {
@@ -742,21 +747,31 @@ SpecFile::convertAllDataFilesToType(const AbstractFile::FILE_FORMAT ft,
          // Get files current encoding
          // 
          const QString formatString(af->getHeaderTag(AbstractFile::headerTagEncoding));
-
-         switch (ft) {
-            case FILE_FORMAT_BINARY:
-               if (formatString == AbstractFile::headerTagEncodingValueBinary) {
+         bool validFormatNameFlag = false;
+         const AbstractFile::FILE_FORMAT currentFormat = convertFormatNameToType(formatString,
+                                                               &validFormatNameFlag);
+         if (validFormatNameFlag) {
+            bool doneFlag = false;
+            for (unsigned int j = 0; j < requestedFormats.size(); j++) {
+               const AbstractFile::FILE_FORMAT newFormat = requestedFormats[j];
+               const QString newFormatName(AbstractFile::convertFormatTypeToName(newFormat));
+               if (currentFormat == newFormat) {
                   if (printInfoToStdout) {
-                     std::cout << "already in binary format";
+                     std::cout << "already in "
+                               << newFormatName.toAscii().constData()
+                               << " file format.";
                   }
+                  doneFlag = true;
                }
-               else if (af->getCanWrite(FILE_FORMAT_BINARY)) {
+               else if (af->getCanWrite(newFormat)) {
                   try {
                      af->readFile(filename);
-                     af->setFileWriteType(AbstractFile::FILE_FORMAT_BINARY);
+                     af->setFileWriteType(newFormat);
                      af->writeFile(filename);
                      if (printInfoToStdout) {
-                        std::cout << "converted to binary.";
+                        std::cout << "converted to "
+                                  << newFormatName.toAscii().constData()
+                                  << ".";
                      }
                   }
                   catch (FileException& e) {
@@ -764,79 +779,25 @@ SpecFile::convertAllDataFilesToType(const AbstractFile::FILE_FORMAT ft,
                         std::cout << "error converting or writing.";
                      }
                   }
+                  doneFlag = true;
                }
-               else {
-                  if (printInfoToStdout) {
-                     std::cout << "does not support binary format.";
-                  }
+               
+               if (doneFlag) {
+                  break;
                }
-               break;
-            case FILE_FORMAT_ASCII:
-               if (formatString == AbstractFile::headerTagEncodingValueAscii) {
-                  if (printInfoToStdout) {
-                     std::cout << "already in text format";
-                  }
+            }
+            
+            if (doneFlag == false) {
+               if (printInfoToStdout) {
+                  std::cout << "does not support the requested format(s).";
                }
-               else if (af->getCanWrite(FILE_FORMAT_ASCII)) {
-                  try {
-                     af->readFile(filename);
-                     af->setFileWriteType(AbstractFile::FILE_FORMAT_XML);
-                     af->writeFile(filename);
-                     if (printInfoToStdout) {
-                        std::cout << "converted to text.";
-                     }
-                  }
-                  catch (FileException& e) {
-                     if (printInfoToStdout) {
-                        std::cout << "error converting or writing.";
-                     }
-                  }
-               }
-               else {
-                  if (printInfoToStdout) {
-                     std::cout << "does not support text format.";
-                  }
-               }
-               break;
-            case FILE_FORMAT_XML:
-               if (formatString == AbstractFile::headerTagEncodingValueXML) {
-                  if (printInfoToStdout) {
-                     std::cout << "already in xml format.";
-                  }
-               }
-               else if (af->getCanWrite(FILE_FORMAT_XML)) {
-                  try {
-                     af->readFile(filename);
-                     af->setFileWriteType(AbstractFile::FILE_FORMAT_XML);
-                     af->writeFile(filename);
-                     if (printInfoToStdout) {
-                        std::cout << "converted to xml.";
-                     }
-                  }
-                  catch (FileException& e) {
-                     if (printInfoToStdout) {
-                        std::cout << "error converting or writing.";
-                     }
-                  }
-               }
-               else {
-                  if (printInfoToStdout) {
-                     std::cout << "does not support xml format.";
-                  }
-               }
-               break;
-            case FILE_FORMAT_XML_BASE64:
-               throw FileException(filename, "XML Base64 not supported.");
-               break;
-            case FILE_FORMAT_XML_GZIP_BASE64:
-               throw FileException(filename, "XML GZip Base64 not supported.");
-               break;
-            case FILE_FORMAT_OTHER:
-               throw FileException(filename, "Other not suppported");
-               break;
-            case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-               throw FileException(filename, "Comma Separated Value File Format not supported.");
-               break;
+            }
+         }
+         else {
+            if (printInfoToStdout) {
+               std::cout << "unrecognized format: "
+                         << formatString.toAscii().constData(); 
+            }
          }
          if (printInfoToStdout) {
             std::cout << std::endl;
@@ -975,6 +936,26 @@ SpecFile::setTopoAndCoordSelected(const QString& topoName,
    unknownCoordFile.setSelected(coordName,
                                 true,
                                 structureIn);                         
+}
+
+/**
+ * Set the specified topology and coordinate files as selected.
+ */
+void 
+SpecFile::setTopoAndCoordSelected(const QString& topoName,
+                                  const std::vector<QString>& coordNames,
+                                  const Structure structureIn)
+{
+   unknownTopoFile.setSelected(topoName,
+                               true,
+                               structureIn);
+   for (unsigned int i = 0; i < coordNames.size(); i++) {
+      if (coordNames[i].isEmpty() == false) {
+         unknownCoordFile.setSelected(coordNames[i],
+                                      true,
+                                      structureIn);
+      }
+   }
 }
 
 /**
@@ -1961,6 +1942,18 @@ SpecFile::isSubsetOfOtherSpecFile(const SpecFile& otherSpecFile,
    return (msg.isEmpty());
 }
 
+/**
+ * get all entries.
+ */
+void 
+SpecFile::getAllEntries(std::vector<Entry>& allEntriesOut) 
+{ 
+   allEntriesOut.clear();
+   for (unsigned int i = 0; i < allEntries.size(); i++) {
+      allEntriesOut.push_back(*(allEntries[i]));
+   }
+   std::sort(allEntriesOut.begin(), allEntriesOut.end());
+}            
 
 //!!***********************************************************************************
 //!!***********************************************************************************

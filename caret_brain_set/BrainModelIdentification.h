@@ -37,6 +37,7 @@ class BrainModelSurface;
 class BrainModelVolume;
 class BrainSet;
 class StudyMetaDataLink;
+class StudyMetaDataLinkSet;
 class VolumeFile;
 
 /// class for providing identification information
@@ -79,13 +80,22 @@ class BrainModelIdentification : public QObject {
       QString getIdentificationTextForBorder(BrainModelOpenGL* openGL,
                                            const bool enableHtml,
                                            const bool enableVocabularyLinksIn);
-                                    
+
+      // get the identification text for studies
+      QString getIdentificationTextForStudies(const bool enableHtml,
+                                            const StudyMetaDataFile* smdf,
+                                            const StudyMetaDataLinkSet& smdls);
+      
       // get the identification text for a study
       QString getIdentificationTextForStudy(const bool enableHtml,
                                             const StudyMetaData* smd,
                                             const int studyIndex,
                                             const StudyMetaDataLink* smdl = NULL);
-            
+      
+      // get the identification text for vocabulary
+      QString getIdentificationTextForVocabulary(const bool enableHtml,
+                                                 const QString& vocabularyName);
+                                                 
       /// find out if border information should be displayed
       bool getDisplayBorderInformation() const { return idFilter.displayBorderInformation; }
       
@@ -175,6 +185,12 @@ class BrainModelIdentification : public QObject {
       
       /// study comment information should be displayed
       bool getDisplayStudyCommentInformation() const { return idFilter.displayStudyCommentInformation; }
+      
+      /// study data format information should be displayed
+      bool getDisplayStudyDataFormatInformation() const { return idFilter.displayStudyDataFormatInformation; }
+      
+      /// study data type information should be displayed
+      bool getDisplayStudyDataTypeInformation() const { return idFilter.displayStudyDataTypeInformation; }
       
       /// study DOI information should be displayed
       bool getDisplayStudyDOIInformation() const { return idFilter.displayStudyDOIInformation; }
@@ -415,6 +431,12 @@ class BrainModelIdentification : public QObject {
       /// study comment information should be displayed
       void setDisplayStudyCommentInformation(const bool displayIt) { idFilter.displayStudyCommentInformation = displayIt; }
       
+      /// study data format information should be displayed
+      void setDisplayStudyDataFormatInformation(const bool displayIt) { idFilter.displayStudyDataFormatInformation = displayIt; }
+      
+      /// study data type information should be displayed
+      void setDisplayStudyDataTypeInformation(const bool displayIt) { idFilter.displayStudyDataTypeInformation = displayIt; }
+      
       /// study DOI information should be displayed
       void setDisplayStudyDOIInformation(const bool displayIt) { idFilter.displayStudyDOIInformation = displayIt; }
       
@@ -641,6 +663,12 @@ class BrainModelIdentification : public QObject {
             /// study comment information should be displayed
             bool displayStudyCommentInformation;
             
+            /// study data format information should be displayed
+            bool displayStudyDataFormatInformation;
+            
+            /// study data type information should be displayed
+            bool displayStudyDataTypeInformation;
+            
             /// study DOI information should be displayed
             bool displayStudyDOIInformation;
             
@@ -847,6 +875,11 @@ class BrainModelIdentification : public QObject {
       // get the identification text for a meta-analysis study
       QString getIdentificationTextForMetaAnalysisStudy(const QString& pubMedID);
       
+      // get the identification text for studies
+      QString getIdentificationTextForStudies(const StudyMetaDataFile* smdf,
+                                              const StudyMetaDataLinkSet& smdls,
+                                              const bool showMetaAnalysisFlag);
+                                              
       // get the identification text for a study
       QString getIdentificationTextForStudy(const StudyMetaData* smd,
                                             const int studyIndex,

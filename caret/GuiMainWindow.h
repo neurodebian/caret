@@ -48,6 +48,8 @@ class GuiAddCellsDialog;
 class GuiAlignSurfaceToStandardOrientationDialog;
 class GuiAutomaticRotationDialog;
 class GuiBordersCreateInterpolatedDialog;
+class GuiCaretCommandDialog;
+class GuiCaretCommandScriptBuilderDialog;
 class GuiContourAlignmentDialog;
 class GuiContourDrawDialog;
 class GuiContourSectionControlDialog;
@@ -86,16 +88,16 @@ class GuiMetricModificationDialog;
 class GuiMetricsToRgbPaintDialog;
 class GuiModelsEditorDialog;
 class GuiMorphingDialog;
+class GuiPaintNameEditorDialog;
 class GuiPaletteEditorDialog;
 class GuiParamsFileEditorDialog;
-class GuiScriptDialog;
 class GuiSectionControlDialog;
 class GuiSurfaceRegionOfInterestDialog;
 class GuiPreferencesDialog;
 class GuiRecordingDialog;
 class GuiSetTopologyDialog;
 class GuiSmoothingDialog;
-class GuiSpeechGenerator;
+//class GuiSpeechGenerator;
 class GuiStudyMetaDataFileEditorDialog;
 class GuiTransformationMatrixDialog;
 class GuiVocabularyFileEditorDialog;
@@ -107,7 +109,6 @@ class GuiVolumeAttributesDialog;
 class GuiVolumePaintEditorDialog;
 class GuiVolumeSegmentationEditorDialog;
 class GuiVolumeRegionOfInterestDialog;
-class GuiVolumeRegionOfInterestDialogOld;
 class GuiHelpViewerWindow;
 class TransformationMatrix;
 
@@ -243,9 +244,6 @@ class GuiMainWindow : public QtMainWindow {
       /// create, (possibly show), and return the volume region of interest dialog
       GuiVolumeRegionOfInterestDialog* getVolumeRegionOfInterestDialog(const bool showIt);
       
-      /// create, (possibly show), and return the volume region of interest dialog
-      GuiVolumeRegionOfInterestDialogOld* getVolumeRegionOfInterestDialogOld(const bool showIt);
-      
       /// create, (possibly show), and return the SureFit Multi Hem segmentation dialog
       GuiVolumeMultiHemSureFitSegmentationDialog* getVolumeSureFitMultiHemSegmentationDialog(const bool showIt);
       
@@ -284,7 +282,9 @@ class GuiMainWindow : public QtMainWindow {
       }
       
       ///  load the spec file's data files
-      void loadSpecFilesDataFiles(SpecFile sf, const TransformationMatrix* tm);
+      void loadSpecFilesDataFiles(SpecFile sf, 
+                                  const TransformationMatrix* tm,
+                                  const bool appendToExistingLoadedSpecFiles = false);
             
       /// read the spec file with the specified name and place in spec file dialog
       void readSpecFile(const QString& filename);
@@ -412,6 +412,9 @@ class GuiMainWindow : public QtMainWindow {
       /// display the paint color key
       void displayPaintColorKey();
       
+      /// display the foci attribute assignment dialog
+      void displayFociAttributeAssignmentDialog();
+      
       /// display the probabilistic atlas color key
       void displayProbabilisticAtlasColorKey();
       
@@ -426,15 +429,15 @@ class GuiMainWindow : public QtMainWindow {
       
       /// create (if necessary) and show the automatic rotation dialog
       void displayAutomaticRotationDialog();
-      
-      /// display the brain model in the main window (negative displays newest)
-      void displayBrainModelInMainWindow(int modelNumberIn);
-      
+
       /// create (if necessary) and show the draw border dialog
       void displayDrawBorderDialog();
       
-      /// create (if necessary) and show the script builder dialog
-      void displayScriptBuilderDialog();
+      /// create (if necessary) and show the caret command executor dialog
+      void displayCaretCommandExecutorDialog();
+      
+      /// create (if necessary) and show the caret command script builder dialog
+      void displayCaretCommandScriptBuilderDialog();
       
       /// create (if necessary) and show the section control dialog
       void displaySectionControlDialog();
@@ -457,21 +460,14 @@ class GuiMainWindow : public QtMainWindow {
       /// display the set topology dialog
       void displaySetTopologyDialog();
       
-      /// update the transformation matrix Editor 
-      void updateTransformationMatrixEditor(const TransformationMatrix* tm = NULL);
-         
+      /// display the paint editor dialog
+      void displayPaintEditorDialog();
+      
       /// display the tranformation editor dialog
       void displayTransformMatrixEditor();
       
-      /// get the transformation matrix editor dialog
-      GuiTransformationMatrixDialog* getTransformMatrixEditor()
-         { return transformMatrixEditorDialog; }
-      
       /// display the params file editor dialog
       void displayParamsFileEditorDialog();
-      
-      /// Called when an item is selected from the recent spec file menu
-      void recentSpecFileMenuSelection(int menuItem);
       
       /// Display the fast open data file dialog
       void displayFastOpenDataFileDialog();
@@ -488,8 +484,43 @@ class GuiMainWindow : public QtMainWindow {
       /// display volume bias correction dialog
       void displayVolumeBiasCorrectionDialog();
       
+      /// Close the current spec file.
+      void slotCloseSpecFile();
+      
+      /// Close the current spec file but keep the scene and spec file.
+      void slotCloseSpecFileKeepSceneAndSpec();
+      
+      /// display the image editor window
+      void displayImageEditorWindow();
+       
+      /// show the flat morphing dialog
+      void showFlatMorphingDialog();
+      
+      /// show the sphere morphing dialog
+      void showSphereMorphingDialog();
+      
+      /// update the displayed menus based upon loaded contours/surface/volume in main window
+      void updateDisplayedMenus();
+            
+      /// display the brain model in the main window (negative displays newest)
+      void displayBrainModelInMainWindow(int modelNumberIn);
+      
       /// Makes updates when the spec file is changed.
       void postSpecFileReadInitializations();
+      
+      /// redraw all windows using the brain set
+      void slotRedrawWindowsUsingBrainSet(BrainSet* bs);
+
+   public:      
+      /// update the transformation matrix Editor 
+      void updateTransformationMatrixEditor(const TransformationMatrix* tm = NULL);
+         
+      /// get the transformation matrix editor dialog
+      GuiTransformationMatrixDialog* getTransformMatrixEditor()
+         { return transformMatrixEditorDialog; }
+      
+      /// Called when an item is selected from the recent spec file menu
+      void recentSpecFileMenuSelection(int menuItem);
       
       /// save a color key dialog to a scene
       void saveSceneColorKeyDialog(std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
@@ -504,33 +535,12 @@ class GuiMainWindow : public QtMainWindow {
                                    const int mainWindowX,
                                    const int mainWindowY);
       
-      /// update the displayed menus based upon loaded contours/surface/volume in main window
-      void updateDisplayedMenus();
-            
       /// Called to pop up viewing window
       void showViewingWindow(const BrainModel::BRAIN_MODEL_VIEW_NUMBER item);
 
       /// Remove a viewing window
       void removeViewingWindow(const BrainModel::BRAIN_MODEL_VIEW_NUMBER item);
       
-      /// show the flat morphing dialog
-      void showFlatMorphingDialog();
-      
-      /// show the sphere morphing dialog
-      void showSphereMorphingDialog();
-      
-      /// Close the current spec file.
-      void slotCloseSpecFile();
-      
-      /// Close the current spec file but keep the scene and spec file.
-      void slotCloseSpecFileKeepSceneAndSpec();
-      
-      /// display the image editor window
-      void displayImageEditorWindow();
-       
-      /// redraw all windows using the brain set
-      void slotRedrawWindowsUsingBrainSet(BrainSet* bs);
-
    private:
       /// the available brain set
       std::vector<BrainSet*> loadedBrainSets;
@@ -646,9 +656,6 @@ class GuiMainWindow : public QtMainWindow {
       /// volume region of interest dialog
       GuiVolumeRegionOfInterestDialog* volumeRegionOfInterestDialog;
       
-      /// volume region of interest dialog
-      GuiVolumeRegionOfInterestDialogOld* volumeRegionOfInterestDialogOld;
-      
       /// volume SureFit multi-hem segmentation dialog
       GuiVolumeMultiHemSureFitSegmentationDialog* volumeSureFitMultiHemSegmentationDialog;
       
@@ -663,6 +670,9 @@ class GuiMainWindow : public QtMainWindow {
       
       /// shape modification dialog
       GuiMetricModificationDialog* shapeModificationDialog;
+      
+      /// paint name and attributes dialog
+      GuiPaintNameEditorDialog* paintNameEditorDialog;
       
       /// metric math dialog
       GuiDataFileMathDialog* metricMathDialog;
@@ -697,8 +707,11 @@ class GuiMainWindow : public QtMainWindow {
       /// preferences dialog
       GuiPreferencesDialog* preferencesDialog;
       
-      /// script builder dialog
-      GuiScriptDialog* scriptBuilderDialog;
+      /// caret command executor dialog
+      GuiCaretCommandDialog* caretCommandExecutorDialog;
+      
+      /// caret command script builder dialog
+      GuiCaretCommandScriptBuilderDialog* caretCommandScriptBuilderDialog;
       
       /// section control dialog
       GuiSectionControlDialog* sectionControlDialog;
@@ -779,7 +792,7 @@ class GuiMainWindow : public QtMainWindow {
       CommunicatorClientFIV* fivClientCommunicator;
 
       /// the speech generator
-      GuiSpeechGenerator *speechGenerator;
+      //GuiSpeechGenerator *speechGenerator;
       
       /// the image editing window
       GuiImageEditorWindow* imageEditorWindow;

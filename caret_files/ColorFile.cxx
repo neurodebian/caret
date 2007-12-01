@@ -32,8 +32,13 @@
 #include <QDomText>
 #include <QTextStream>
 
+#include "AreaColorFile.h"
+#include "BorderColorFile.h"
+#include "CellColorFile.h"
 #include "ColorFile.h"
 #include "CommaSeparatedValueFile.h"
+#include "ContourCellColorFile.h"
+#include "FociColorFile.h"
 #include "StringTable.h"
 
 /**
@@ -65,6 +70,46 @@ ColorFile::~ColorFile()
 }
 
 /**
+ * get a "new" color file from the file name's extension
+ * Note: file is not read, just a new file is returned.
+ */
+ColorFile* 
+ColorFile::getColorFileFromFileNameExtension(const QString& fileNameIn)
+                                                      throw (FileException)
+{
+   ColorFile* colorFile = NULL;
+   
+   if (fileNameIn.endsWith(SpecFile::getAreaColorFileExtension())) {
+      colorFile = new AreaColorFile;
+   }
+   else if (fileNameIn.endsWith(SpecFile::getBorderColorFileExtension())) {
+      colorFile = new BorderColorFile;
+   }
+   else if (fileNameIn.endsWith(SpecFile::getCellColorFileExtension())) {
+      colorFile = new CellColorFile;
+   }
+   else if (fileNameIn.endsWith(SpecFile::getContourCellColorFileExtension())) {
+      colorFile = new ContourCellColorFile;
+   }
+   else if (fileNameIn.endsWith(SpecFile::getFociColorFileExtension())) {
+      colorFile = new FociColorFile;
+   }
+   else {
+      const QString errorMessageOut = 
+         ("ERROR: Unrecognized color file name extension.  "
+          "The input color file name must end with one of: "
+          "(Area Color File, \"" + SpecFile::getAreaColorFileExtension() + "\")  "
+           + "(Border Color File, \"" + SpecFile::getBorderColorFileExtension() + "\")  "
+           + "(Cell Color File, \"" + SpecFile::getCellColorFileExtension() + "\")  "
+           + "(Contour Cell Color File, \"" + SpecFile::getContourCellColorFileExtension() + "\")  "
+           + "(Foci Color File, \"" + SpecFile::getFociColorFileExtension() + "\")");
+      throw FileException(errorMessageOut);
+   }
+
+   return colorFile;
+}      
+
+/**
  * Clear the file's contents.
  */
 void
@@ -91,15 +136,18 @@ ColorFile::append(const ColorFile& cf)
       float pointSize, lineSize;
       cf.getPointLineSizeByIndex(i, pointSize, lineSize);
       
+      const ColorStorage::SYMBOL symbol = cf.getSymbolByIndex(i);
+      
       /// if color already exists, replace its color components
       bool match;
       const int indx = getColorIndexByName(name, match);
       if ((indx >= 0) && match) {
          setColorByIndex(indx, name, r, g, b, a);
          setPointLineSizeByIndex(indx, pointSize, lineSize);
+         setSymbolByIndex(indx, symbol);
       }
       else {
-         addColor(name, r, g, b, a, pointSize, lineSize); 
+         addColor(name, r, g, b, a, pointSize, lineSize, symbol); 
       }
    }
    
@@ -424,6 +472,100 @@ ColorFile::getCommaSeparatedFileSupport(bool& readFromCSV,
    writeToCSV  = true;
 }
 
+/**
+ * Generate random colors for any name that does not match an area color name. 
+ * if "requireExactMatchFlag" is true, a new color is created in there is not 
+ * a color that exactly matches name.  If "requireExactMatchFlag" is false
+ * and the "name" begins with the color name, a new color is not created.
+ * so, for example, if "name" is "SUL.CeS" and there is a color named "SUL",
+ * a new color is not created.
+ */
+void 
+ColorFile::generateColorsForNamesWithoutColors(const std::vector<QString>& names,
+                                               const bool requireExactMatchFlag)
+{
+   int ctr = 0;
+   const int numNames = static_cast<int>(names.size());
+   for (int i = 0; i < numNames; i++) {
+      const QString name(names[i]);
+      bool exactlyMatchingColorFoundFlag = false;
+      const int colorIndex = getColorIndexByName(name, exactlyMatchingColorFoundFlag);
+      
+      bool createColorFlag = false;
+      if (colorIndex < 0) {
+         createColorFlag = true;
+      }
+      else if (requireExactMatchFlag) {
+         if (exactlyMatchingColorFoundFlag == false) {
+            createColorFlag = true;
+         }
+      }
+      
+      if (createColorFlag) {
+         if (name == "???") {
+            addColor(name, 170, 170, 170);
+         }
+         else {
+            switch (ctr) {
+               case 0:
+                  addColor(name, 255, 0, 0);
+                  break;
+               case 1:
+                  addColor(name, 255, 0, 127);
+                  break;
+               case 2:
+                  addColor(name, 255, 0, 255);
+                  break;
+               case 3:
+                  addColor(name, 255, 127, 0);
+                  break;
+               case 4:
+                  addColor(name, 255, 127, 127);
+                  break;
+               case 5:
+                  addColor(name, 255, 127, 255);
+                  break;
+               case 6:
+                  addColor(name, 0, 0, 127);
+                  break;
+               case 7:
+                  addColor(name, 0, 0, 255);
+                  break;
+               case 8:
+                  addColor(name, 127, 0, 0);
+                  break;
+               case 9:
+                  addColor(name, 127, 0, 127);
+                  break;
+               case 10:
+                  addColor(name, 127, 0, 255);
+                  break;
+               case 11:
+                  addColor(name, 127, 127, 0);
+                  break;
+               case 12:
+                  addColor(name, 127, 127, 127);
+                  break;
+               case 13:
+                  addColor(name, 127, 127, 255);
+                  break;
+               case 14:
+                  addColor(name, 127, 255, 0);
+                  break;
+               case 15:
+                  addColor(name, 127, 255, 127);
+                  break;
+               case 16:
+                  addColor(name, 127, 255, 255);
+                  ctr = -1;  // start over
+                  break;
+            }
+            ctr++;
+         }
+      }
+   }
+}
+      
 /**
  * write the file's data into a comma separated values file (throws exception if not supported).
  */
@@ -1055,9 +1197,11 @@ ColorFile::ColorStorage::symbolToText(const SYMBOL symbol)
  * text to symbol enum.
  */
 ColorFile::ColorStorage::SYMBOL 
-ColorFile::ColorStorage::textToSymbol(const QString& symbolStr)
+ColorFile::ColorStorage::textToSymbol(const QString& symbolStrIn)
 {
    SYMBOL symbol = SYMBOL_OPENGL_POINT;
+   
+   const QString symbolStr(symbolStrIn.toUpper());
    
    if (symbolStr == "BOX") {
       symbol = SYMBOL_BOX;

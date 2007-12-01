@@ -28,12 +28,12 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiUserViewSaveDialog.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -124,7 +124,7 @@ GuiUserViewSaveDialog::done(int r)
          //
          const QString viewName(viewNameLineEdit->text());
          if (viewName.isEmpty()) {
-            GuiMessageBox::critical(this, "ERROR", "Name of view is missing.", "OK");
+            QMessageBox::critical(this, "ERROR", "Name of view is missing.");
             return;
          }
          

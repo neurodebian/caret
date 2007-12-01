@@ -119,6 +119,10 @@ class StudyMetaDataLink {
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement) const throw (FileException);
    
+      /// set element from text (used by SAX XML parser)
+      void setElementFromText(const QString& elementName,
+                              const QString& textValue);
+                              
    protected:
       /// copy helper
       void copyHelper(const StudyMetaDataLink& smdl);
@@ -148,7 +152,54 @@ class StudyMetaDataLink {
       QString pageReferenceSubHeaderNumber;
       
       // NOTE: IF MEMBERS ADDED UPDATE THE COPY HELPER
+      
+      
+      //
+      //----- tags for reading and writing 
+      //
+      /// tag for reading and writing study metadata
+      static const QString tagStudyMetaDataLink;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagPubMedID;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagTableNumber;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagTableSubHeaderNumber;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagFigureNumber;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagPanelNumberOrLetter;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagPageNumber;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagPageReferencePageNumber;
+      
+      /// tag for reading and writing study metadata
+      static const QString tagPageReferenceSubHeaderNumber;
+      
+   friend class CellBase;
+   friend class CellProjectionFileSaxReader;
+   friend class StudyMetaDataLinkSet;
 };
+
+#ifdef __STUDY_META_DATA_LINK_MAIN__
+      const QString StudyMetaDataLink::tagStudyMetaDataLink = "StudyMetaDataLink";
+      const QString StudyMetaDataLink::tagPubMedID = "pubMedID";
+      const QString StudyMetaDataLink::tagTableNumber = "tableNumber";
+      const QString StudyMetaDataLink::tagTableSubHeaderNumber = "tableSubHeaderNumber";
+      const QString StudyMetaDataLink::tagFigureNumber = "figureNumber";
+      const QString StudyMetaDataLink::tagPanelNumberOrLetter = "panelNumberOrLetter";
+      const QString StudyMetaDataLink::tagPageNumber = "pageNumber";
+      const QString StudyMetaDataLink::tagPageReferencePageNumber = "pageReferencePageNumber";
+      const QString StudyMetaDataLink::tagPageReferenceSubHeaderNumber = "pageReferenceSubHeaderNumber";
+#endif // __STUDY_META_DATA_LINK_MAIN__
 
 #endif // __STUDY_META_DATA_LINK_H__
 

@@ -32,6 +32,7 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QRadioButton>
 #include <QTabWidget>
 #include <QToolTip>
@@ -49,7 +50,6 @@
 #include "GuiNameSelectionDialog.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiVolumeSelectionControl.h"
 #include "QtUtilities.h"
 #include "PaintFile.h"
@@ -634,9 +634,9 @@ GuiDrawBorderDialog::slotApplyButton()
    else if (theMainWindow->getBrainModelVolume() != NULL) {
       BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
       if (bmv->getMasterVolumeFile() == NULL) {
-         GuiMessageBox::critical(this, "ERROR",
+         QMessageBox::critical(this, "ERROR",
              "At least one volume must be displayed as\n"
-             "an overlay or underlay to draw a border.", "OK");
+             "an overlay or underlay to draw a border.");
          return;
       }
       assignTabWidget->setCurrentIndex(assignTabWidget->indexOf(assignVoxelsVBox));
@@ -683,7 +683,7 @@ GuiDrawBorderDialog::slotApplyButton()
       }
    }
    if (errorFlag) {
-      GuiMessageBox::critical(this, "Error", errorMessage, "OK");
+      QMessageBox::critical(this, "Error", errorMessage);
       return;
    }
    
@@ -709,8 +709,24 @@ GuiDrawBorderDialog::slotApplyButton()
       msg.append(" ?");
       QString noButton("No, define color ");
       noButton.append(borderName);
+      /*
       if (GuiMessageBox::information(this, "Use Partially Matching Color",
                                    msg, "Yes", noButton, QString::null, 0) != 0) {
+         createBorderColor = true;
+      }
+      */
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle("Use Partially Matching Color");
+      msgBox.setText(msg);
+      QPushButton* yesPushButton = msgBox.addButton("Yes", 
+                                                    QMessageBox::ActionRole);
+      QPushButton* noPushButton = msgBox.addButton(noButton, 
+                                                    QMessageBox::ActionRole);
+      msgBox.exec();
+      if (msgBox.clickedButton() == yesPushButton) {
+         createBorderColor = false;
+      }
+      else if (msgBox.clickedButton() == noPushButton) {
          createBorderColor = true;
       }
    }
@@ -773,17 +789,55 @@ GuiDrawBorderDialog::slotApplyButton()
          if (areaColorIndex >= 0) {
             QString partialMatchButton("Use ");
             partialMatchButton.append(areaColorFile->getColorNameByIndex(areaColorIndex));
-            result = GuiMessageBox::information(this, "Set Area Color",
+            
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Set Area Color");
+            msgBox.setText(msg);
+            QPushButton* useColorPushButton = msgBox.addButton(borderButton, 
+                                                          QMessageBox::ActionRole);
+            QPushButton* defineColorPushButton = msgBox.addButton(defineButton, 
+                                                          QMessageBox::ActionRole);
+            QPushButton* usePartialColorPushButton = msgBox.addButton(partialMatchButton, 
+                                                          QMessageBox::ActionRole);
+            msgBox.exec();
+            if (msgBox.clickedButton() == useColorPushButton) {
+               result = 0;
+            }
+            else if (msgBox.clickedButton() == defineColorPushButton) {
+               result = 1;
+            }
+            else if (msgBox.clickedButton() == usePartialColorPushButton) {
+               result = 2;
+            }
+            /*
+            result = QMessageBox::information(this, "Set Area Color",
                                     msg, 
                                     borderButton,
                                     defineButton,
                                     partialMatchButton);
+            */
          }
          else {
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Set Area Color");
+            msgBox.setText(msg);
+            QPushButton* useColorPushButton = msgBox.addButton(borderButton, 
+                                                          QMessageBox::ActionRole);
+            QPushButton* defineColorPushButton = msgBox.addButton(defineButton, 
+                                                          QMessageBox::ActionRole);
+            msgBox.exec();
+            if (msgBox.clickedButton() == useColorPushButton) {
+               result = 0;
+            }
+            else if (msgBox.clickedButton() == defineColorPushButton) {
+               result = 1;
+            }
+            /*
             result = GuiMessageBox::information(this, "Set Area Color",
                                     msg, 
                                     borderButton,
                                     defineButton);
+            */
          }
          
          if (result == 0) {
@@ -872,10 +926,13 @@ GuiDrawBorderDialog::slotApplyButton()
                bms->getRotationMatrix(0, matrix);
                
                if ((matrix[0] != 1.0) || (matrix[5] != 1.0) || (matrix[10] != 1.0)) {
-                  if (GuiMessageBox::warning(this, "WARNING",
+                  if (QMessageBox::warning(this, "WARNING",
                           "The flat surface appears to be rotated which will\n"
-                          "prevent the border from being drawn correctly.",
-                          "Remove Rotation", "Ignore") == 0) {
+                          "prevent the border from being drawn correctly.\n"
+                          "Would you like to remove the rotation?",
+                          (QMessageBox::Yes | QMessageBox::No),
+                          QMessageBox::Yes)
+                             == QMessageBox::Yes) {
                      //
                      // Setting the view to dorsal resets the rotation matrix without
                      // affecting the translate and scaling.

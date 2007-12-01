@@ -24,18 +24,22 @@
 /*LICENSE_END*/
 
 #include <QCheckBox>
+#include <QGridLayout>
 #include <QGroupBox>
+#include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 
 #include "BrainModelSurfacePointLocator.h"
 #include "BrainSet.h"
 #include "CellProjectionFile.h"
+#include "FileUtilities.h"
 #include "FociProjectionFile.h"
+#include "GuiBrainModelSelectionComboBox.h"
 #include "GuiCellAndFociReportDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "PaintFile.h"
 #include "StringTable.h"
 #include "QtTableDialog.h"
@@ -49,6 +53,8 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
                                                        const bool fociFlagIn)
    : QtDialog(parent, true)
 {
+   resultsTableDialog = NULL;
+   
    fociFlag = fociFlagIn;
    typeString = "Cell";
    if (fociFlag) {
@@ -63,6 +69,11 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
    QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->setSpacing(5);
    dialogLayout->setMargin(5);
+   
+   //
+   // Create surface section
+   //
+   dialogLayout->addWidget(createSurfaceSection());
    
    //
    // Create cell/foci section
@@ -110,6 +121,71 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
  */
 GuiCellAndFociReportDialog::~GuiCellAndFociReportDialog()
 {
+}
+
+// create the surface section
+QWidget* 
+GuiCellAndFociReportDialog::createSurfaceSection()
+{
+   //
+   // left hem selection combo box
+   //
+   QLabel* leftLabel = new QLabel("Left");
+   leftHemSelectionComboBox = new GuiBrainModelSelectionComboBox(false,
+                                                                 true,
+                                                                 false,
+                                                                 "",
+                                                                 0,
+                                                                 "left-hem",
+                                                                 false,
+                                                                 true,
+                                                                 false);
+                                                                 
+   //
+   // right hem selection combo box
+   //
+   QLabel* rightLabel = new QLabel("Right");
+   rightHemSelectionComboBox = new GuiBrainModelSelectionComboBox(false,
+                                                                 true,
+                                                                 false,
+                                                                 "",
+                                                                 0,
+                                                                 "left-hem",
+                                                                 false,
+                                                                 true,
+                                                                 false);
+                                                                 
+   BrainModelSurface* leftBMS  = NULL;
+   BrainModelSurface* rightBMS = NULL;
+   const int numModels = theMainWindow->getBrainSet()->getNumberOfBrainModels();
+   for (int i = 0; i < numModels; i++) {
+      BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(i);
+      if (bms != NULL) {
+         if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+            if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
+               leftBMS = bms;
+            }
+            if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
+               rightBMS = bms;
+            }
+         }
+      }
+   }
+   if (leftBMS != NULL) {
+      leftHemSelectionComboBox->setSelectedBrainModel(leftBMS);
+   }
+   if (rightBMS != NULL) {
+      rightHemSelectionComboBox->setSelectedBrainModel(rightBMS);
+   }
+
+   QGroupBox* gb = new QGroupBox("Surface Selection");
+   QGridLayout* gridLayout = new QGridLayout(gb);
+   gridLayout->addWidget(leftLabel, 0, 0);
+   gridLayout->addWidget(leftHemSelectionComboBox, 0, 1);
+   gridLayout->addWidget(rightLabel, 1, 0);
+   gridLayout->addWidget(rightHemSelectionComboBox, 1, 1);
+
+   return gb;
 }
 
 /**
@@ -265,6 +341,17 @@ void
 GuiCellAndFociReportDialog::done(int r)
 {
    if (r == QDialog::Accepted) {
+      const BrainModelSurface* leftBMS = leftHemSelectionComboBox->getSelectedBrainModelSurface();
+      if (leftBMS == NULL) {
+         QMessageBox::critical(this, "ERROR", 
+                                 "No left surface is selected.");
+      }
+      const BrainModelSurface* rightBMS = rightHemSelectionComboBox->getSelectedBrainModelSurface();
+      if (rightBMS == NULL) {
+         QMessageBox::critical(this, "ERROR", 
+                                 "No right surface is selected.");
+      }
+
       //
       // Get the fiducial foci file
       //
@@ -371,12 +458,38 @@ GuiCellAndFociReportDialog::done(int r)
             //
             // Determine node nearest to each cell
             //
-            std::vector<int> cellsNearestNode(numCells, -1);
+            std::vector<int> cellsNearestLeftNode(numCells, -1);
+            std::vector<int> cellsNearestRightNode(numCells, -1);
             if (havePaints) {
-               BrainModelSurfacePointLocator bmspl(theMainWindow->getBrainSet()->getActiveFiducialSurface(),
-                                                   true);
+               BrainModelSurfacePointLocator leftPointLocator(leftBMS,
+                                                               true);
+               BrainModelSurfacePointLocator rightPointLocator(rightBMS,
+                                                               true);
+               
                for (int i = 0; i < numCells; i++) {
-                  cellsNearestNode[i] = bmspl.getNearestPoint(cf->getCellProjection(i)->getXYZ());
+                  const CellProjection* cp = cf->getCellProjection(i);
+                  float xyz[3];
+                  cp->getXYZ(xyz);
+                  if (xyz[0] >= 0) {
+                     if (cp->getProjectedPosition(rightBMS->getCoordinateFile(),
+                                                  rightBMS->getTopologyFile(),
+                                                  rightBMS->getIsFiducialSurface(),
+                                                  rightBMS->getIsFlatSurface(),
+                                                  false,
+                                                  xyz)) {
+                        cellsNearestRightNode[i] = rightPointLocator.getNearestPoint(xyz);
+                     }
+                  }
+                  else {
+                     if (cp->getProjectedPosition(leftBMS->getCoordinateFile(),
+                                                  leftBMS->getTopologyFile(),
+                                                  leftBMS->getIsFiducialSurface(),
+                                                  leftBMS->getIsFlatSurface(),
+                                                  false,
+                                                  xyz)) {
+                        cellsNearestLeftNode[i] = leftPointLocator.getNearestPoint(xyz);
+                     }
+                  }
                }
             }
             
@@ -426,6 +539,10 @@ GuiCellAndFociReportDialog::done(int r)
                   cellTable.setElement(i, classColumn, cd->getClassName());
                }
 
+               if (areaColumn >= 0) {
+                  cellTable.setElement(i, areaColumn, cd->getArea());
+               }
+               
                if (geographyColumn >= 0) {
                   cellTable.setElement(i, geographyColumn, cd->getGeography());
                }
@@ -460,7 +577,13 @@ GuiCellAndFociReportDialog::done(int r)
                // Load paint into the table
                //
                if (havePaints) {
-                  const int node = cellsNearestNode[i];
+                  int node = -1;
+                  if (cellsNearestLeftNode[i] >= 0) {
+                     node = cellsNearestLeftNode[i];
+                  }
+                  else if (cellsNearestRightNode[i] >= 0) {
+                     node = cellsNearestRightNode[i];
+                  }
                   if (node >= 0) {
                      for (int j = 0; j < numPaintCols; j++) {
                         if (paintNameCheckBoxes[j]->isChecked()) {
@@ -476,23 +599,25 @@ GuiCellAndFociReportDialog::done(int r)
             //
             // Create and display the table dialog
             //
-            QtTableDialog* td = new QtTableDialog(theMainWindow,
-                                                  typeString + " Report",
-                                                  cellTable);
-            td->show();
+            const QString titleString(typeString
+                                      + " Report ");
+            resultsTableDialog = new QtTableDialog(theMainWindow,
+                                                   titleString,
+                                                   cellTable,
+                                                   true);
          }  // if (numCells > 0)
          else {
             QString msg("There are no ");
             msg.append(typeString);
             msg.append(".");
-            GuiMessageBox::critical(this, "ERROR", msg, "OK");
+            QMessageBox::critical(this, "ERROR", msg);
          }
       }  // if (cf != NULL)
       else {
          QString msg("There are no ");
          msg.append(typeString);
          msg.append(".");
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
       }
    }  // if (r == QDialog::done)
    

@@ -259,8 +259,7 @@ DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyI
       }
       
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_SURFACE_SHAPE,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) == false) {
+      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) == false) {
 //         return;
       }
    }

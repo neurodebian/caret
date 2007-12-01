@@ -34,6 +34,7 @@
  * constructor.
  */
 StatisticLeveneVarianceEquality::StatisticLeveneVarianceEquality()
+   : StatisticAlgorithm("Levene Variance Equality")
 {
    leveneF = 0.0;
    dof1    = 0.0;

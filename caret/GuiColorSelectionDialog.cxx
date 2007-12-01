@@ -257,6 +257,7 @@ GuiColorSelectionDialog::GuiColorSelectionDialog(QWidget* parent,
    
    float minPointSize, maxPointSize;
    GuiBrainModelOpenGL::getPointSizeRange(minPointSize, maxPointSize);
+   maxPointSize = 100000.0;
    QLabel* pointSizeLabel = new QLabel("Point Size");
    linePointSizeGrid->addWidget(pointSizeLabel, 1, 0, Qt::AlignLeft);
    pointSizeDoubleSpinBox = new QDoubleSpinBox;
@@ -315,6 +316,19 @@ GuiColorSelectionDialog::~GuiColorSelectionDialog()
 {
 }
 
+/**
+ * set the color.
+ */
+void 
+GuiColorSelectionDialog::setColor(const unsigned char r,
+                                  const unsigned char g,
+                                  const unsigned char b,
+                                  const unsigned char a)
+{
+   color.setRgb(r, g, b, a);
+   initializeControls();
+}
+                    
 /**
  * called when color chooser button is pressed.
  */

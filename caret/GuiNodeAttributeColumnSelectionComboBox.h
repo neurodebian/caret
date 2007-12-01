@@ -72,6 +72,15 @@ class GuiNodeAttributeColumnSelectionComboBox : public QComboBox {
       /// Destructor
       ~GuiNodeAttributeColumnSelectionComboBox();
       
+      // get all selected
+      bool getAllSelected() const;
+      
+      // get none selected
+      bool getNoneSelected() const;
+      
+      // get new selected
+      bool getNewSelected() const;
+      
       /// get the current label
       QString getCurrentLabel() const;
       

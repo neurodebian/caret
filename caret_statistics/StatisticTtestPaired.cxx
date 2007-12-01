@@ -32,6 +32,7 @@
  * constructor.
  */
 StatisticTtestPaired::StatisticTtestPaired()
+   : StatisticAlgorithm("T-Test Paired")
 {
    varianceOverride = 0.0;
    varianceOverrideFlag = false;

@@ -24,13 +24,13 @@
 /*LICENSE_END*/
 
 #include <QAction>
+#include <QMessageBox>
 
 #include "BrainSet.h"
 #include "CommunicatorClientAFNI.h"
 #include "CommunicatorClientFIV.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowCommActions.h"
-#include "GuiMessageBox.h"
 #include "GuiSumsDialog.h"
 
 #include "global_variables.h"
@@ -48,31 +48,31 @@ GuiMainWindowCommActions::GuiMainWindowCommActions(GuiMainWindow* parent) :
    afniConnectAction = new QAction(parent);
    afniConnectAction->setText("Connect to AFNI...");
    afniConnectAction->setObjectName("afniConnectAction");
-   QObject::connect(afniConnectAction, SIGNAL(activated()),
+   QObject::connect(afniConnectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotAfniConnect()));
 
    afniDisconnectAction = new QAction(parent);
    afniDisconnectAction->setText("Close AFNI Connection");
    afniDisconnectAction->setObjectName("afniDisconnectAction");
-   QObject::connect(afniDisconnectAction, SIGNAL(activated()),
+   QObject::connect(afniDisconnectAction, SIGNAL(triggered(bool)),
                     parent->getAfniClientCommunicator(), SLOT(closeConnection()));
 
    fivConnectAction = new QAction(parent);
    fivConnectAction->setText("Connect to FIV...");
    fivConnectAction->setObjectName("fivConnectAction");
-   QObject::connect(fivConnectAction, SIGNAL(activated()),
+   QObject::connect(fivConnectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFivConnect()));
 
    fivDisconnectAction = new QAction(parent);
    fivDisconnectAction->setText("Close FIV Connection");
    fivDisconnectAction->setObjectName("fivDisconnectAction");
-   QObject::connect(fivDisconnectAction, SIGNAL(activated()),
+   QObject::connect(fivDisconnectAction, SIGNAL(triggered(bool)),
                     parent->getFivClientCommunicator(), SLOT(closeConnection()));
 
    sumsDatabaseAction = new QAction(parent);
    sumsDatabaseAction->setText("Connect to SumsDB Database...");
    sumsDatabaseAction->setObjectName("sumsDatabaseAction");
-   QObject::connect(sumsDatabaseAction, SIGNAL(activated()),
+   QObject::connect(sumsDatabaseAction, SIGNAL(triggered(bool)),
                     this, SLOT(sumsDatabaseSlot()));
 }
 
@@ -91,10 +91,9 @@ GuiMainWindowCommActions::slotAfniConnect()
 {
    TransformationMatrixFile* tmf = theMainWindow->getBrainSet()->getTransformationMatrixFile();
    if (tmf->getNumberOfMatrices() == 0) {
-      GuiMessageBox::critical(theMainWindow, "Communication Error", 
+      QMessageBox::critical(theMainWindow, "Communication Error", 
                             "There are no transformation matrix files loaded which \n"
-                            "are necessary for successful communication with AFNI.",
-                            "OK");
+                            "are necessary for successful communication with AFNI.");
       return;
    }
    

@@ -25,7 +25,7 @@
 /*LICENSE_END*/
 
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QLayout>
 #include <QListWidget>
 #include <QPushButton>
@@ -106,10 +106,10 @@ GuiFileSelectionListWidget::setFileSelectionFilters(const QStringList& fileSelec
 void 
 GuiFileSelectionListWidget::slotAddFilesPushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
-   fd.setFileMode(QFileDialog::ExistingFiles);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
+   fd.setFileMode(WuQFileDialog::ExistingFiles);
    fd.setDirectory(QDir::currentPath());
    if (fileSelectionFilters.count() <= 0) {
       fd.setFilters(QStringList("All Files (*)"));
@@ -117,7 +117,7 @@ GuiFileSelectionListWidget::slotAddFilesPushButton()
    else {
       fd.setFilters(fileSelectionFilters);
    }
-   if (fd.exec() == QFileDialog::Accepted) {
+   if (fd.exec() == WuQFileDialog::Accepted) {
       const QStringList& files = fd.selectedFiles();
       for (int i = 0; i < files.size(); i++) {
          listWidget->addItem(files.at(i));

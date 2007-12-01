@@ -31,6 +31,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalMapper>
@@ -45,7 +46,6 @@
 #include "GuiColorFileEditorDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiPaletteColorSelectionDialog.h"
 #include "GuiPaletteEditorDialog.h"
 #include "PaletteFile.h"
@@ -484,7 +484,7 @@ GuiPaletteEditorDialog::slotCreateNewPaletteButton()
                                      QString::null, &ok);
    if (ok) {
       if (name.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "Palette name blank.   No palette created.", "OK");
+         QMessageBox::critical(this, "ERROR", "Palette name blank.   No palette created.");
          return;
       }
       
@@ -596,7 +596,12 @@ GuiPaletteEditorDialog::slotDeletePaletteButton()
       const Palette* pal = pf->getPalette(palIndex);
       msg.append(pal->getName());
       msg.append(" ?");
-      if (GuiMessageBox::question(this, "Are You Sure", msg, "Yes", "No") == 0) {
+      if (QMessageBox::question(this, 
+                                "Are You Sure", 
+                                msg, 
+                                (QMessageBox::Yes | QMessageBox::No),
+                                QMessageBox::Yes)
+                                   == QMessageBox::Yes) {
           pf->removePalette(palIndex);
         
           //

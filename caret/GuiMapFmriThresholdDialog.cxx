@@ -30,12 +30,12 @@
 #include <QLabel>
 #include <QLayout>
 #include <QDoubleSpinBox>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QString>
 #include <QTextEdit>
 
 #include "GuiMapFmriThresholdDialog.h"
-#include "GuiMessageBox.h"
 #include "FileUtilities.h"
 #include "StringUtilities.h"
 
@@ -159,7 +159,12 @@ GuiMapFmriThresholdDialog::done(int r)
    }
    if (msg.isEmpty() == false) {
       msg.append("\nDo you want to continue ?");
-      if (GuiMessageBox::warning(this, "WARNING", msg, "Continue", "Change Values") != 0) {
+      if (QMessageBox::warning(this, 
+                               "WARNING", 
+                               msg, 
+                               (QMessageBox::Ok | QMessageBox::Cancel),
+                               QMessageBox::Cancel)
+                                  == QMessageBox::Cancel) {
          return;
       }
    }

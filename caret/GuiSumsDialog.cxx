@@ -34,13 +34,14 @@
 #include <QDateTimeEdit>
 #include <QDateTime>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QRadioButton>
@@ -54,7 +55,6 @@
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "GuiFileDialogWithInstructions.h"
-#include "GuiMessageBox.h"
 #include "GuiSumsDialog.h"
 #include "HttpFileDownload.h"
 #include "PreferencesFile.h"
@@ -895,11 +895,14 @@ GuiSumsDialog::slotUploadAddPushButton()
                           "border file names with the mouse (Macintosh users should "
                           "hold downthe Apple key).";
    GuiFileDialogWithInstructions addUploadFileDialog(this, instructions, "chooseUploadFile", true);
+   addUploadFileDialog.setDirectory(QDir::currentPath());
    addUploadFileDialog.setWindowTitle("Choose Files For Uploading");
-   addUploadFileDialog.setMode(GuiFileDialogWithInstructions::ExistingFiles);
-   addUploadFileDialog.setFilter(specFilesFilter);
-   addUploadFileDialog.addFilter(allFilesFilter);
-   addUploadFileDialog.setSelectedFilter(specFilesFilter);
+   addUploadFileDialog.setFileMode(GuiFileDialogWithInstructions::ExistingFiles);
+   QStringList filterList;
+   filterList.append(specFilesFilter);
+   filterList.append(allFilesFilter);
+   addUploadFileDialog.setFilters(filterList);
+   addUploadFileDialog.selectFilter(specFilesFilter);
    if (addUploadFileDialog.exec() == QDialog::Accepted) {
       QStringList list = addUploadFileDialog.selectedFiles();
       QStringList::Iterator it = list.begin();
@@ -1545,11 +1548,11 @@ GuiSumsDialog::slotDirectoryPushButton()
    //
    // Pop up a file dialog for selecting a directory
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::current());
    fd.setWindowTitle("Select Directory");
-   fd.setFileMode(QFileDialog::Directory);
+   fd.setFileMode(WuQFileDialog::Directory);
   
    //
    // Popup the dialog
@@ -1687,11 +1690,17 @@ GuiSumsDialog::uploadDataFiles()
           //
           // See if the user also wants to upload the spec file' data files
           //
+          QApplication::restoreOverrideCursor();
           QString msg(FileUtilities::basename(name));
           msg.append(" is a spec file.\n"
                      "Do you also want to upload its associated data files ?");
           const bool uploadDataFilesFlag =
-              (GuiMessageBox::question(this, "Question", msg, "Yes", "No") == 0);
+              (QMessageBox::question(this, 
+                                     "Question", 
+                                     msg,
+                                     (QMessageBox::Yes | QMessageBox::No),
+                                     QMessageBox::Yes)
+                                        == QMessageBox::Yes);
           
           QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
           
@@ -1929,7 +1938,8 @@ GuiSumsDialog::uploadDataFiles()
       //
       // display error messages
       //
-      GuiMessageBox::critical(this, "ERROR", missingMessage, "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", missingMessage);
       return;
    }
    
@@ -2141,7 +2151,7 @@ GuiSumsDialog::uploadDataFiles()
    if (errorMessages.isEmpty()) {
       timeMsg.append("All files were successfully uploaded.\n");
       timeMsg.append(successMessages);
-      GuiMessageBox::information(this, "SUCCESS", timeMsg, "OK");
+      QMessageBox::information(this, "SUCCESS", timeMsg);
    }
    else {
       QString msg(errorMessages);
@@ -2151,7 +2161,7 @@ GuiSumsDialog::uploadDataFiles()
          successMessages.append("(does not include data files in a spec file):\n");
          successMessages.append(successMessages);
       }
-      GuiMessageBox::critical(this, "ERROR", errorMessages, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessages);
    }
    
    //
@@ -2180,9 +2190,9 @@ GuiSumsDialog::downloadDataFiles()
    //
    const int numFiles = sumsDataFileList.getNumberOfSumsFiles();
    if (numFiles != dataFileTable->rowCount()) {
-      GuiMessageBox::critical(this, "ERROR", 
-         "PROGRAM ERROR: number of rows in table does not match number in sums list file",
-         "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", 
+         "PROGRAM ERROR: number of rows in table does not match number in sums list file");
       return;
    }
    
@@ -2209,13 +2219,21 @@ GuiSumsDialog::downloadDataFiles()
    if (QFile::exists(outputDirectoryName) == false) {
       QString msg("Create Directory ");
       msg.append(outputDirectoryName);
-      if (GuiMessageBox::question(this, "Create Directory", msg, "Yes", "Cancel") != 0) {
+      QApplication::restoreOverrideCursor();
+      if (QMessageBox::question(this, 
+                                "Create Directory", 
+                                msg, 
+                                     (QMessageBox::Yes | QMessageBox::No),
+                                     QMessageBox::Yes)
+                                        == QMessageBox::No) { 
          return;
       }
+      
       if (FileUtilities::createDirectory(outputDirectoryName) == false) {
          QString msg("Unable to create directory: \n");
          msg.append(outputDirectoryName);
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
    }
@@ -2310,7 +2328,8 @@ GuiSumsDialog::downloadDataFiles()
                   if (FileUtilities::createDirectory(subDirPath) == false) {
                      QString msg("Unable to create directory: \n");
                      msg.append(subDirPath);
-                     GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                     QApplication::restoreOverrideCursor();
+                     QMessageBox::critical(this, "ERROR", msg);
                      show();
                      return;
                   }
@@ -2449,11 +2468,13 @@ GuiSumsDialog::downloadDataFiles()
    
    if (errorMessages.isEmpty()) {
       timeMsg.append("All files were successfully downloaded.");
-      GuiMessageBox::information(this, "SUCCESS", timeMsg, "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::information(this, "SUCCESS", timeMsg);
    }
    else {
       timeMsg.append(errorMessages);
-      GuiMessageBox::critical(this, "ERROR", timeMsg, "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", timeMsg);
    }
 }
 
@@ -2545,7 +2566,7 @@ GuiSumsDialog::getSumsSpecFileListing()
    }
 
    if (url.isEmpty()) {
-      GuiMessageBox::critical(this, "Program Error", "Spec File Listing URL is empty.", "OK");     
+      QMessageBox::critical(this, "Program Error", "Spec File Listing URL is empty.");     
       return false;
    }     
    
@@ -2561,7 +2582,7 @@ GuiSumsDialog::getSumsSpecFileListing()
    std::map<QString,QString> headerTags;
    if (FileUtilities::downloadFileWithHttpGet(url, searchTimeoutSpinBox->value(), 
                                    contents, errorMessage, &headerTags) == false) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return false;
    }
    
@@ -2573,12 +2594,12 @@ GuiSumsDialog::getSumsSpecFileListing()
                                          "sums_file_list.dat");
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return false;
    }
 
    if (sumsSpecFileList.getNumberOfSumsFiles() <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "No matches found.", "OK");
+      QMessageBox::critical(this, "ERROR", "No matches found.");
       return false;
    }
    
@@ -3024,7 +3045,7 @@ GuiSumsDialog::getSumsDataFileListing(const QString& specFileID)
    }
    
    if (archiveURL.isEmpty()) {
-      GuiMessageBox::critical(this, "Program Error", "Archive URL is empty.", "OK");
+      QMessageBox::critical(this, "Program Error", "Archive URL is empty.");
       return false;
    }
    
@@ -3040,7 +3061,7 @@ GuiSumsDialog::getSumsDataFileListing(const QString& specFileID)
    std::map<QString,QString> headerTags;
    if (FileUtilities::downloadFileWithHttpGet(archiveURL, searchTimeoutSpinBox->value(), 
                                    contents, errorMessage, &headerTags) == false) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return false;
    }
    
@@ -3073,12 +3094,12 @@ GuiSumsDialog::getSumsDataFileListing(const QString& specFileID)
       }
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return false;
    }
    
    if (sumsDataFileList.getNumberOfSumsFiles() <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "File does not exist in SumsDB", "OK");
+      QMessageBox::critical(this, "ERROR", "File does not exist in SumsDB");
       return false;
    }
 
@@ -3256,7 +3277,7 @@ GuiSumsDialog::slotNextPushButton()
          databaseHostName = availableDatabaseHostNames[hostIndex];
       }
       if (databaseHostName.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "No Hostname is selected.", "OK");
+         QMessageBox::critical(this, "ERROR", "No Hostname is selected.");
          return;
       }
 
@@ -3419,7 +3440,7 @@ GuiSumsDialog::loginToSums()
    if (responseCode != 302) {
       QString msg("Initial login attemp failed (login.do).  Try again.\n");
       msg.append(errorMessage);
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
+      QMessageBox::critical(this, "ERROR", msg);
       return false;
    }
    else {
@@ -3519,7 +3540,7 @@ GuiSumsDialog::loginToSums()
       if (responseCode != 302) {
          QString msg("Second phase of login attempt failed (j_security_check).  Try again.\n");
          msg.append(errorMessage);
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return false;
       }
       else {
@@ -3549,7 +3570,7 @@ GuiSumsDialog::loginToSums()
             QString msg("Third phase of login attempt failed (login.do).\n"
                             "Check username and password.\n");
             msg.append(errorMessage);
-            GuiMessageBox::critical(this, "ERROR", msg, "OK");
+            QMessageBox::critical(this, "ERROR", msg);
             return false;
          }
          
@@ -3565,8 +3586,8 @@ GuiSumsDialog::loginToSums()
             QString msg("Login successful, however, unable to parse\n"
                                     "user information.\n");
             msg.append(e.whatQString());
-            GuiMessageBox::information(this, "INFO", 
-                                       msg, "OK");
+            QMessageBox::information(this, "INFO", 
+                                       msg);
             return true;  // login successful
          }
          

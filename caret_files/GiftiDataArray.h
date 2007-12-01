@@ -56,12 +56,14 @@ class GiftiDataArray {
       
       /// encoding
       enum ENCODING {
-         /// ascii
-         ENCODING_ASCII,
-         /// Base 64 Binary
-         ENCODING_BASE64_BINARY,
-         /// Compressed Base 64 Binary
-         ENCODING_COMPRESSED_BASE64_BINARY
+         /// internal ascii
+         ENCODING_INTERNAL_ASCII,
+         /// internal Base 64 Binary
+         ENCODING_INTERNAL_BASE64_BINARY,
+         /// internal Compressed Base 64 Binary
+         ENCODING_INTERNAL_COMPRESSED_BASE64_BINARY,
+         /// external file binary
+         ENCODING_EXTERNAL_FILE_BINARY
       };
       
       /// array subscripting order
@@ -72,24 +74,34 @@ class GiftiDataArray {
          ARRAY_SUBSCRIPTING_ORDER_LOWEST_FIRST
       };
       
+      /// data endian
+      enum ENDIAN {
+         /// little endian
+         ENDIAN_LITTLE,
+         /// big endian
+         ENDIAN_BIG
+      };
+      
       /// data location
+      /*
       enum DATA_LOCATION {
          /// location of data inside file
          DATA_LOCATION_INTERNAL,
          /// location of data external file
          DATA_LOCATION_EXTERNAL
       };
+      */
       
       // constructor
       GiftiDataArray(GiftiDataArrayFile* parentGiftiDataArrayFileIn,
-                     const QString& categoryIn,
+                     const QString& intentIn,
                      const DATA_TYPE dataTypeIn,
                      const std::vector<int> dimensionsIn,
-                     const ENCODING encodingIn = ENCODING_ASCII);
+                     const ENCODING encodingIn = ENCODING_INTERNAL_ASCII);
       
       // constructor used when reading data
       GiftiDataArray(GiftiDataArrayFile* parentGiftiDataArrayFileIn,
-                     const QString& categoryIn);
+                     const QString& intentIn);
       
       // copy constructor
       GiftiDataArray(const GiftiDataArray& nda);
@@ -144,47 +156,79 @@ class GiftiDataArray {
                     const int componentNum) const;
                     
       // read a data array from text
-      void readAsXML(QString& text,
-                     const QString& dataEndian,
-                     const ARRAY_SUBSCRIPTING_ORDER arraySubscriptingOrderForReading,
-                     const DATA_TYPE dataTypeForReading,
-                     const std::vector<int>& dimensionsForReading,
-                     const ENCODING encodingForReading) throw (FileException);
+      void readFromText(QString& text,
+                        const QString& dataEndianForReading,
+                        const ARRAY_SUBSCRIPTING_ORDER arraySubscriptingOrderForReading,
+                        const DATA_TYPE dataTypeForReading,
+                        const std::vector<int>& dimensionsForReading,
+                        const ENCODING encodingForReading,
+                        const QString& externalFileNameForReading,
+                        const int externalFileOffsetForReading) throw (FileException);
                                                
       // write the data as XML
       void writeAsXML(QTextStream& stream, 
-                      const int indentOffset) const
-                                             throw (FileException);
+                      const int indentOffset) throw (FileException);
                
       // get the data type name
       static QString getDataTypeName(const DATA_TYPE dataType);
 
       // convert a data type name to data type
-      static DATA_TYPE getDataTypeFromName(const QString& name);
+      static DATA_TYPE getDataTypeFromName(const QString& name,
+                                           bool* validDataTypeOut = NULL);
       
       // get encoding type name
       static QString getEncodingName(const ENCODING encoding);
       
       /// convert encoding name to encoding type
-      static ENCODING getEncodingFromName(const QString& name);
+      static ENCODING getEncodingFromName(const QString& name,
+                                          bool* validEncodingOut = NULL);
+      
+      /// get endian
+      ENDIAN getEndian() const { return endian; }
+      
+      // set endian
+      void setEndian(const ENDIAN e) { endian = e; }
+      
+      /// convert endian name to endian
+      static ENDIAN getEndianFromName(const QString& name,
+                                      bool* validEndianOut = NULL);
+                                      
+      /// get endian name
+      static QString getEndianName(const ENDIAN e);
+      
+      /// get the system's endian
+      static ENDIAN getSystemEndian();
       
       /// get the data location type name
-      static QString getDataLocationName(const DATA_LOCATION& location);
+      //static QString getDataLocationName(const DATA_LOCATION& location);
       
       /// convert data location name to type
-      static DATA_LOCATION getDataLocationFromName(const QString& name);
+      //static DATA_LOCATION getDataLocationFromName(const QString& name,
+      //                                    bool* validDataLocationOut = NULL);
       
       /// get array subscripting order name
       static QString getArraySubscriptingOrderName(const ARRAY_SUBSCRIPTING_ORDER aso);
       
       /// convert array subscripting name to type
-      static ARRAY_SUBSCRIPTING_ORDER getArraySubscriptingOrderFromName(const QString& name);
+      static ARRAY_SUBSCRIPTING_ORDER getArraySubscriptingOrderFromName(const QString& name,
+                                          bool* validArraySubscriptingOrderOut = NULL);
       
+      // get external file information
+      void getExternalFileInformation(QString& nameOut,
+                                      int& offsetOut) const;
+                                      
+      // set external file information
+      void setExternalFileInformation(const QString& nameIn,
+                                      const int offsetIn);
+                                      
       /// get the metadata
       GiftiMetaData* getMetaData() { return &metaData; }
       
       /// get the metadata (const method)
       const GiftiMetaData* getMetaData() const { return &metaData; }
+      
+      /// set the metadata
+      void setMetaData(const GiftiMetaData* gmd) { metaData = *gmd; setModified(); }
       
       /// get the matrix
       GiftiMatrix* getMatrix() { return &matrix; }
@@ -210,11 +254,14 @@ class GiftiDataArray {
       /// set the encoding
       void setEncoding(const ENCODING e) { encoding = e; setModified(); }
       
-      /// get the data category
-      QString getCategory() const { return category; }
+      /// get the data intent
+      QString getIntent() const { return intentName; }
       
-      /// set the data category
-      void setCategory(const QString& cat) { category = cat; setModified(); }
+      /// set the data intent
+      void setIntent(const QString& cat) { intentName = cat; setModified(); }
+      
+      /// valid intent name
+      static bool intentNameValid(const QString& intentNameIn);
       
       /// get array subscripting order
       ARRAY_SUBSCRIPTING_ORDER getArraySubscriptingOrder() const { return arraySubscriptingOrder; }
@@ -255,8 +302,8 @@ class GiftiDataArray {
       // remap integer values that are indices to a table
       void remapIntValues(const std::vector<int>& remappingTable);
       
-      // get the data type appropriate for the category (returns true if valid category)
-      static bool getDataTypeAppropriateForCategory(const QString& categoryIn,
+      // get the data type appropriate for the intent (returns true if valid intent)
+      static bool getDataTypeAppropriateForIntent(const QString& intentIn,
                                                     DATA_TYPE& dataTypeOut);
       
       // get an offset for indices into data (dimensionality of indices must be same as data)
@@ -300,8 +347,17 @@ class GiftiDataArray {
       void updateDataPointers();
       
       // byte swap the data (data read is different endian than this system)
-      void byteSwapData();
+      void byteSwapData(const ENDIAN newEndian);
       
+      /// update the array's metadata after reading the array
+      void updateMetaDataAfterReading();
+      
+      /// update the array's metadata before writing the array
+      void updateMetaDataBeforeWriting();
+      
+      /// convert array indexing order of data
+      void convertArrayIndexingOrder() throw (FileException);
+
       /// the data
       std::vector<uint8_t> data;
       
@@ -338,14 +394,23 @@ class GiftiDataArray {
       /// encoding of data
       ENCODING encoding;
       
-      /// location of data
-      DATA_LOCATION dataLocation;
+      // endian of data
+      ENDIAN endian;
       
-      /// category name
-      QString category;
+      /// location of data
+      //DATA_LOCATION dataLocation;
+      
+      /// intent name
+      QString intentName;
       
       /// array subscripting order
       ARRAY_SUBSCRIPTING_ORDER arraySubscriptingOrder;
+      
+      /// external file name
+      QString externalFileName;
+      
+      /// external file offset
+      int externalFileOffset;
       
       /// minimum float value
       mutable float minValueFloat;

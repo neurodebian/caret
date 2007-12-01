@@ -41,7 +41,7 @@ class StatisticAnovaTwoWay : public StatisticAlgorithm {
          /// random effect
          ANOVA_MODEL_TYPE_RANDOM_EFFECT,
          /// mixed effect (A=fixed, B=random)
-         ANOVE_MODEL_TYPE_MIXED_EFFECT
+         ANOVA_MODEL_TYPE_MIXED_EFFECT
       };
       
       // constructor
@@ -64,6 +64,13 @@ class StatisticAnovaTwoWay : public StatisticAlgorithm {
       void setDataGroup(const int factorLevelA,
                         const int factorLevelB,
                         StatisticDataGroup* dataGroup,
+                        const bool takeOwnershipOfThisDataGroup = false);
+       
+      // set a data array (call after "setNumberOfFactorLevels()")
+      void setDataArray(const int factorLevelA,
+                        const int factorLevelB,
+                        const float* array,
+                        const int numItemsInArray,
                         const bool takeOwnershipOfThisDataGroup = false);
        
       /// get treatment sum of squares

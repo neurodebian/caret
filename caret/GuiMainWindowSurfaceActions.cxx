@@ -31,6 +31,7 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QInputDialog>
+#include <QMessageBox>
 
 #include "BorderFile.h"
 #include "BrainModelBorderSet.h"
@@ -69,7 +70,6 @@
 #include "GuiMainWindow.h"
 #include "GuiMainWindowSurfaceActions.h"
 #include "GuiMainWindowSurfaceMenu.h"
-#include "GuiMessageBox.h"
 #include "GuiMorphingDialog.h" 
 #include "GuiMultiresolutionMorphingDialog.h"
 #include "GuiNodeAttributeFileClearResetDialog.h"
@@ -118,476 +118,476 @@ GuiMainWindowSurfaceActions::GuiMainWindowSurfaceActions(GuiMainWindow* parent) 
    alignSurfacesToStandardOrientationAction = new QAction(parent);
    alignSurfacesToStandardOrientationAction->setObjectName("alignSurfacesToStandardOrientationAction");
    alignSurfacesToStandardOrientationAction->setText("Align Surface(s) to Standard Orientation...");
-   QObject::connect(alignSurfacesToStandardOrientationAction, SIGNAL(activated()),
+   QObject::connect(alignSurfacesToStandardOrientationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotAlignSurfacesToStandardOrientation()));
    
    averageCoordinateFileAction = new QAction(parent);
    averageCoordinateFileAction->setObjectName("averageCoordinateFileAction");
    averageCoordinateFileAction->setText("Create Average Coordinate File...");
-   QObject::connect(averageCoordinateFileAction, SIGNAL(activated()),
+   QObject::connect(averageCoordinateFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotAverageCoordinateFile()));
    
    automaticRotationAction = new QAction(parent);
    automaticRotationAction->setObjectName("automaticRotationAction");
    automaticRotationAction->setText("Automatic Rotation...");
-   QObject::connect(automaticRotationAction, SIGNAL(activated()),
+   QObject::connect(automaticRotationAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayAutomaticRotationDialog()));
    
    interpolateSurfacesAction = new QAction(parent);
    interpolateSurfacesAction->setObjectName("interpolateSurfacesAction");
    interpolateSurfacesAction->setText("Interpolate Surfaces...");
-   QObject::connect(interpolateSurfacesAction, SIGNAL(activated()),
+   QObject::connect(interpolateSurfacesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotInterpolateSurfaces()));
    
    copyMainWindowSurfaceAction = new QAction(parent);
    copyMainWindowSurfaceAction->setObjectName("copyMainWindowSurfaceAction");
    copyMainWindowSurfaceAction->setText("Copy Main Window Surface to New Surface");
-   QObject::connect(copyMainWindowSurfaceAction, SIGNAL(activated()),
+   QObject::connect(copyMainWindowSurfaceAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCopyMainWindowSurface()));
    
    simplifySurfaceAction = new QAction(parent);
    simplifySurfaceAction->setObjectName("simplifySurfaceAction");
    simplifySurfaceAction->setText("Simplify Surface (Fewer Polygons)...");
-   QObject::connect(simplifySurfaceAction, SIGNAL(activated()),
+   QObject::connect(simplifySurfaceAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSimplifySurface()));
    
    cutsShowAction = new QAction(parent);
    cutsShowAction->setObjectName("cutsShowAction");
    cutsShowAction->setText("Show Cuts");
-   QObject::connect(cutsShowAction, SIGNAL(activated()),
+   QObject::connect(cutsShowAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCutsShow()));
    
    cutsApplyAction = new QAction(parent);
    cutsApplyAction->setObjectName("cutsApplyAction");
    cutsApplyAction->setText("Apply All Cuts");
-   QObject::connect(cutsApplyAction, SIGNAL(activated()),
+   QObject::connect(cutsApplyAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCutsApply()));
    
    cutsDeleteWithMouseAction = new QAction(parent);
    cutsDeleteWithMouseAction->setObjectName("cutsDeleteWithMouseAction");
    cutsDeleteWithMouseAction->setText("Delete Cut With Mouse");
-   QObject::connect(cutsDeleteWithMouseAction, SIGNAL(activated()),
+   QObject::connect(cutsDeleteWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCutsDeleteWithMouse()));
    
    cutsDeleteAllAction = new QAction(parent);
    cutsDeleteAllAction->setObjectName("cutsDeleteAllAction");
    cutsDeleteAllAction->setText("Delete All Cuts");
-   QObject::connect(cutsDeleteAllAction, SIGNAL(activated()),
+   QObject::connect(cutsDeleteAllAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCutsDeleteAll()));
    
    cutsDrawAction = new QAction(parent);
    cutsDrawAction->setObjectName("cutsDrawAction");
    cutsDrawAction->setText("Draw Cuts");
-   QObject::connect(cutsDrawAction, SIGNAL(activated()),
+   QObject::connect(cutsDrawAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCutsDraw()));
    
    deformationRunFlatDialogAction = new QAction(parent);
    deformationRunFlatDialogAction->setObjectName("deformationRunFlatDialogAction");
    deformationRunFlatDialogAction->setText("Run Flat Surface Deformation...");
-   QObject::connect(deformationRunFlatDialogAction, SIGNAL(activated()),
+   QObject::connect(deformationRunFlatDialogAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotDeformationRunFlatDialog()));
    
    deformationRunSphericalDialogAction = new QAction(parent);
    deformationRunSphericalDialogAction->setObjectName("deformationRunSphericalDialogAction");
    deformationRunSphericalDialogAction->setText("Run Spherical Surface Deformation...");
-   QObject::connect(deformationRunSphericalDialogAction, SIGNAL(activated()),
+   QObject::connect(deformationRunSphericalDialogAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotDeformationRunSphericalDialog()));
    
    deformationApplyDialogAction = new QAction(parent);
    deformationApplyDialogAction->setObjectName("deformationApplyDialogAction");
    deformationApplyDialogAction->setText("Apply Deformation Map...");
-   QObject::connect(deformationApplyDialogAction, SIGNAL(activated()),
+   QObject::connect(deformationApplyDialogAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotDeformationApplyDialog()));
    
    flattenHemisphereAction = new QAction(parent);
    flattenHemisphereAction->setObjectName("flattenHemisphereAction");
    flattenHemisphereAction->setText("Flatten Full or Partial Hemisphere...");
-   QObject::connect(flattenHemisphereAction, SIGNAL(activated()),
+   QObject::connect(flattenHemisphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFlattenHemisphere()));
    
    measurementsCrossoverCheckAction = new QAction(parent);
    measurementsCrossoverCheckAction->setObjectName("measurementsCrossoverCheckAction");
    measurementsCrossoverCheckAction->setText("Crossover Check");
-   QObject::connect(measurementsCrossoverCheckAction, SIGNAL(activated()),
+   QObject::connect(measurementsCrossoverCheckAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMeasurementsCrossoverCheck()));
    
    measurementsCurvatureAction = new QAction(parent);
    measurementsCurvatureAction->setObjectName("measurementsCurvatureAction");
    measurementsCurvatureAction->setText("Generate Curvature...");
-   QObject::connect(measurementsCurvatureAction, SIGNAL(activated()),
+   QObject::connect(measurementsCurvatureAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMeasurementsCurvature()));
    
    measurementsDistortionAction = new QAction(parent);
    measurementsDistortionAction->setObjectName("measurementsDistortionAction");
    measurementsDistortionAction->setText("Generate Distortion...");
-   QObject::connect(measurementsDistortionAction, SIGNAL(activated()),
+   QObject::connect(measurementsDistortionAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMeasurementsDistortion()));
    
    measurementsSulcalDepthAction = new QAction(parent);
    measurementsSulcalDepthAction->setObjectName("measurementsSulcalDepthAction");
    measurementsSulcalDepthAction->setText("Generate Sulcal Depth...");
-   QObject::connect(measurementsSulcalDepthAction, SIGNAL(activated()),
+   QObject::connect(measurementsSulcalDepthAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMeasurementsSulcalDepth()));
    
    measurementsShapeFromCoordinateSubtraction = new QAction(parent);
    measurementsShapeFromCoordinateSubtraction->setObjectName("measurementsShapeFromCoordinateSubtraction");
    measurementsShapeFromCoordinateSubtraction->setText("Generate Distance: Surface A to Surface B...");
-   QObject::connect(measurementsShapeFromCoordinateSubtraction, SIGNAL(activated()),
+   QObject::connect(measurementsShapeFromCoordinateSubtraction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMeasurementsShapeFromCoordinateSubtraction()));
 
    normalsGenerateAction = new QAction(parent);
    normalsGenerateAction->setObjectName("normalsGenerateAction");
    normalsGenerateAction->setText("Generate Normals");
-   QObject::connect(normalsGenerateAction, SIGNAL(activated()),
+   QObject::connect(normalsGenerateAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotNormalsGenerate()));
    
    normalsFlipAction = new QAction(parent);
    normalsFlipAction->setObjectName("normalsFlipAction");
    normalsFlipAction->setText("Flip Normals");
-   QObject::connect(normalsFlipAction, SIGNAL(activated()),
+   QObject::connect(normalsFlipAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotNormalsFlip()));
    
    regionOfInterestAction = new QAction(parent);
    regionOfInterestAction->setObjectName("regionOfInterestAction");
    regionOfInterestAction->setText("Region Of Interest Operations...");
-   QObject::connect(regionOfInterestAction, SIGNAL(activated()),
+   QObject::connect(regionOfInterestAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotRegionOfInterest()));
    
    surfaceInformationAction = new QAction(parent);
    surfaceInformationAction->setObjectName("surfaceInformationAction");
    surfaceInformationAction->setText("Information...");
-   QObject::connect(surfaceInformationAction, SIGNAL(activated()),
+   QObject::connect(surfaceInformationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSurfaceInformation()));
    
    transformSpmAction = new QAction(parent);
    transformSpmAction->setObjectName("transformSpmAction");
    transformSpmAction->setText("Apply SPM Inverse Transform...");
-   QObject::connect(transformSpmAction, SIGNAL(activated()),
+   QObject::connect(transformSpmAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformSpm()));
    
    transformCenterOfMassAction = new QAction(parent);
    transformCenterOfMassAction->setObjectName("transformCenterOfMassAction");
    transformCenterOfMassAction->setText("Translate to Center of Mass");
-   QObject::connect(transformCenterOfMassAction, SIGNAL(activated()),
+   QObject::connect(transformCenterOfMassAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformCenterOfMass()));
    
    transformSubtractACAction = new QAction(parent);
    transformSubtractACAction->setObjectName("transformSubtractACAction");
    transformSubtractACAction->setText("Translate - Subtract Params File AC");
-   QObject::connect(transformSubtractACAction, SIGNAL(activated()),
+   QObject::connect(transformSubtractACAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformSubtractAC()));
    
    transformDisconnectedNodesToOriginAction = new QAction(parent);
    transformDisconnectedNodesToOriginAction->setObjectName("transformDisconnectedNodesToOriginAction");
    transformDisconnectedNodesToOriginAction->setText("Move Disconnected Nodes to Origin");
-   QObject::connect(transformDisconnectedNodesToOriginAction, SIGNAL(activated()),
+   QObject::connect(transformDisconnectedNodesToOriginAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformDisconnectedNodesToOrigin()));
    
    transformApplyCurrentViewAction = new QAction(parent);
    transformApplyCurrentViewAction->setObjectName("transformApplyCurrentViewAction");
    transformApplyCurrentViewAction->setText("Apply Current View...");
-   QObject::connect(transformApplyCurrentViewAction, SIGNAL(activated()),
+   QObject::connect(transformApplyCurrentViewAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformApplyCurrentView()));
    
    transformTranslateAction = new QAction(parent);
    transformTranslateAction->setObjectName("transformTranslateAction");
    transformTranslateAction->setText("Translate...");
-   QObject::connect(transformTranslateAction, SIGNAL(activated()),
+   QObject::connect(transformTranslateAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformTranslate()));
    
    transformScaleAction = new QAction(parent);
    transformScaleAction->setObjectName("transformScaleAction");
    transformScaleAction->setText("Scale...");
-   QObject::connect(transformScaleAction, SIGNAL(activated()),
+   QObject::connect(transformScaleAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformScale()));
    
    morphFlatAction = new QAction(parent);
    morphFlatAction->setObjectName("morphFlatAction");
    morphFlatAction->setText("Morph Flat Surface...");
-   QObject::connect(morphFlatAction, SIGNAL(activated()),
+   QObject::connect(morphFlatAction, SIGNAL(triggered(bool)),
                     parent, SLOT(showFlatMorphingDialog()));
    
    morphSphereAction = new QAction(parent);
    morphSphereAction->setObjectName("morphSphereAction");
    morphSphereAction->setText("Morph Spherical Surface...");
-   QObject::connect(morphSphereAction, SIGNAL(activated()),
+   QObject::connect(morphSphereAction, SIGNAL(triggered(bool)),
                     parent, SLOT(showSphereMorphingDialog()));
    
    multiresolutionMorphFlatAction = new QAction(parent);
    multiresolutionMorphFlatAction->setObjectName("multiresolutionMorphFlatAction");
    multiresolutionMorphFlatAction->setText("Multiresolution Morphing Flat Surface...");
-   QObject::connect(multiresolutionMorphFlatAction, SIGNAL(activated()),
+   QObject::connect(multiresolutionMorphFlatAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMultiresolutionMorphFlat()));
    
    multiresolutionMorphSphereAction = new QAction(parent);
    multiresolutionMorphSphereAction->setObjectName("multiresolutionMorphSphereAction");
    multiresolutionMorphSphereAction->setText("Multiresolution Morphing Spherical Surface...");
-   QObject::connect(multiresolutionMorphSphereAction, SIGNAL(activated()),
+   QObject::connect(multiresolutionMorphSphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMultiresolutionMorphSphere()));
    
    topologyDeleteCornersAction = new QAction(parent);
    topologyDeleteCornersAction->setObjectName("topologyDeleteCornersAction");
    topologyDeleteCornersAction->setText("Remove Corner and Straggler Tiles...");
-   QObject::connect(topologyDeleteCornersAction, SIGNAL(activated()),
+   QObject::connect(topologyDeleteCornersAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyDeleteCorners()));
    
    topologySetAction = new QAction(parent);
    topologySetAction->setObjectName("topologySetAction");
    topologySetAction->setText("Set Topology Assigned to Surfaces...");
-   QObject::connect(topologySetAction, SIGNAL(activated()),
+   QObject::connect(topologySetAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displaySetTopologyDialog()));
    
    topologyCheckForIslandsAction = new QAction(parent);
    topologyCheckForIslandsAction->setObjectName("topologyCheckForIslandsAction");
    topologyCheckForIslandsAction->setText("Check For Islands");
-   QObject::connect(topologyCheckForIslandsAction, SIGNAL(activated()),
+   QObject::connect(topologyCheckForIslandsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyCheckForIslands()));
    
    topologyDisconnectIslandsAction = new QAction(parent);
    topologyDisconnectIslandsAction->setObjectName("topologyDisconnectIslandsAction");
    topologyDisconnectIslandsAction->setText("Remove Islands");
-   QObject::connect(topologyDisconnectIslandsAction, SIGNAL(activated()),
+   QObject::connect(topologyDisconnectIslandsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyDisconnectIslands()));
    
    topologyClassifyEdgesAction = new QAction(parent);
    topologyClassifyEdgesAction->setObjectName("topologyClassifyEdgesAction");
    topologyClassifyEdgesAction->setText("Classify Nodes");
-   QObject::connect(topologyClassifyEdgesAction, SIGNAL(activated()),
+   QObject::connect(topologyClassifyEdgesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyClassifyEdges()));
    
    topologyOrientTilesConsistentlyAction = new QAction(parent);
    topologyOrientTilesConsistentlyAction->setObjectName("topologyOrientTilesConsistentlyAction");
    topologyOrientTilesConsistentlyAction->setText("Orient Tiles Consistently");
-   QObject::connect(topologyOrientTilesConsistentlyAction, SIGNAL(activated()),
+   QObject::connect(topologyOrientTilesConsistentlyAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyOrientTilesConsistently()));
    
    topologyReplaceWithStandardSurfaceAction = new QAction(parent);
    topologyReplaceWithStandardSurfaceAction->setObjectName("topologyReplaceWithStandardSurfaceAction");
    topologyReplaceWithStandardSurfaceAction->setText("Replace Surfaces With Standard Surface");
-   QObject::connect(topologyReplaceWithStandardSurfaceAction, SIGNAL(activated()),
+   QObject::connect(topologyReplaceWithStandardSurfaceAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyReplaceWithStandardSurface()));
    
    topologyCorrectFiducialAction = new QAction(parent);
    topologyCorrectFiducialAction->setObjectName("topologyCorrectFiducialAction");
    topologyCorrectFiducialAction->setText("Correct Fiducial Surface Topology (Remove Handles)");
-   QObject::connect(topologyCorrectFiducialAction, SIGNAL(activated()),
+   QObject::connect(topologyCorrectFiducialAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyCorrectFiducial()));
    
    topologyRetessellateSphereAction = new QAction(parent);
    topologyRetessellateSphereAction->setObjectName("topologyRetessellateSphereAction");
    topologyRetessellateSphereAction->setText("Retessellate Sphere");
-   QObject::connect(topologyRetessellateSphereAction, SIGNAL(activated()),
+   QObject::connect(topologyRetessellateSphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyRetessellateSphere()));
    
    topologyReportAction = new QAction(parent);
    topologyReportAction->setObjectName("topologyReportAction");
    topologyReportAction->setText("Topology Error Report...");
-   QObject::connect(topologyReportAction, SIGNAL(activated()),
+   QObject::connect(topologyReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTopologyReport()));
    
    identifyHighlightTileAction = new QAction(parent);
    identifyHighlightTileAction->setObjectName("identifyHighlightTileAction");
    identifyHighlightTileAction->setText("Identify Tile By Number...");
-   QObject::connect(identifyHighlightTileAction, SIGNAL(activated()),
+   QObject::connect(identifyHighlightTileAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotIdentifyHighlightTile()));
    
    identifyHighlightNodeAction = new QAction(parent);
    identifyHighlightNodeAction->setObjectName("identifyHighlightNodeAction");
    identifyHighlightNodeAction->setText("Identify Node By Number...");
-   QObject::connect(identifyHighlightNodeAction, SIGNAL(activated()),
+   QObject::connect(identifyHighlightNodeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotIdentifyHighlightNode()));
    
    identifyClearSymbolsAction = new QAction(parent);
    identifyClearSymbolsAction->setObjectName("identifyClearSymbolsAction");
    identifyClearSymbolsAction->setText("Clear Node Identify Symbols");
-   QObject::connect(identifyClearSymbolsAction, SIGNAL(activated()),
+   QObject::connect(identifyClearSymbolsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotIdentifyClearSymbols()));
    
    sectionControlAction = new QAction(parent);
    sectionControlAction->setObjectName("sectionControlAction");
    sectionControlAction->setText("Section Control...");
-   QObject::connect(sectionControlAction, SIGNAL(activated()),
+   QObject::connect(sectionControlAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displaySectionControlDialog()));
    
    
    sectionClearAllOrPartAction = new QAction(parent);
    sectionClearAllOrPartAction->setObjectName("sectionClearAllOrPartAction");
    sectionClearAllOrPartAction->setText("Clear All or Part of Section File...");
-   QObject::connect(sectionClearAllOrPartAction, SIGNAL(activated()),
+   QObject::connect(sectionClearAllOrPartAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSectionClearAllOrPart()));
    
    sectionResectionAction = new QAction(parent);
    sectionResectionAction->setObjectName("sectionResectionAction");
    sectionResectionAction->setText("Resection...");
-   QObject::connect(sectionResectionAction, SIGNAL(activated()),
+   QObject::connect(sectionResectionAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSectionResection()));
    
    geometrySphereBorderDistanceAction = new QAction(parent);
    geometrySphereBorderDistanceAction->setObjectName("geometrySphereBorderDistanceAction");
    geometrySphereBorderDistanceAction->setText("Nearest Spherical Border Distance");
-   QObject::connect(geometrySphereBorderDistanceAction, SIGNAL(activated()),
+   QObject::connect(geometrySphereBorderDistanceAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometrySphereBorderDistance()));
    
    geometryReliefAction = new QAction(parent);
    geometryReliefAction->setObjectName("geometryReliefAction");
    geometryReliefAction->setText("Add Relief to Sphere/Flat");
-   QObject::connect(geometryReliefAction, SIGNAL(activated()),
+   QObject::connect(geometryReliefAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryRelief()));
    
    geometryCompressMedialWallAction = new QAction(parent);
    geometryCompressMedialWallAction->setObjectName("geometryCompressMedialWallAction");
    geometryCompressMedialWallAction->setText("Compress Sphere Medial Wall...");
-   QObject::connect(geometryCompressMedialWallAction, SIGNAL(activated()),
+   QObject::connect(geometryCompressMedialWallAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryCompressMedialWall()));
    
    geometryCompressFrontFaceAction = new QAction(parent);
    geometryCompressFrontFaceAction->setObjectName("geometryCompressFrontFaceAction");
    geometryCompressFrontFaceAction->setText("Compress Front Face...");
-   QObject::connect(geometryCompressFrontFaceAction, SIGNAL(activated()),
+   QObject::connect(geometryCompressFrontFaceAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryCompressFrontFace()));
    
    geometryToSphereAction = new QAction(parent);
    geometryToSphereAction->setObjectName("geometryToSphereAction");
    geometryToSphereAction->setText("Convert to Sphere");
-   QObject::connect(geometryToSphereAction, SIGNAL(activated()),
+   QObject::connect(geometryToSphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryToSphere()));
    
    geometryToEllipsoidAction = new QAction(parent);
    geometryToEllipsoidAction->setObjectName("geometryToEllipsoidAction");
    geometryToEllipsoidAction->setText("Convert to Ellipsoid");
-   QObject::connect(geometryToEllipsoidAction, SIGNAL(activated()),
+   QObject::connect(geometryToEllipsoidAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryToEllipsoid()));
    
    geometryEllipseToSphereAction = new QAction(parent);
    geometryEllipseToSphereAction->setObjectName("geometryEllipseToSphereAction");
    geometryEllipseToSphereAction->setText("Convert Ellipsoid to Sphere");
-   QObject::connect(geometryEllipseToSphereAction, SIGNAL(activated()),
+   QObject::connect(geometryEllipseToSphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryEllipseToSphere()));
    
    geometryInflateAction = new QAction(parent);
    geometryInflateAction->setObjectName("geometryInflateAction");
    geometryInflateAction->setText("Inflate Surface...");
-   QObject::connect(geometryInflateAction, SIGNAL(activated()),
+   QObject::connect(geometryInflateAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryInflate()));
    
    geometryExpandAction = new QAction(parent);
    geometryExpandAction->setObjectName("geometryExpandAction");
    geometryExpandAction->setText("Expand or Shrink Surface...");
-   QObject::connect(geometryExpandAction, SIGNAL(activated()),
+   QObject::connect(geometryExpandAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryExpand()));
    
    geometryInflateAndSmoothFingersAction = new QAction(parent);
    geometryInflateAndSmoothFingersAction->setObjectName("geometryInflateAndSmoothFingersAction");
    geometryInflateAndSmoothFingersAction->setText("Inflate Surface And Smooth Fingers...");
-   QObject::connect(geometryInflateAndSmoothFingersAction, SIGNAL(activated()),
+   QObject::connect(geometryInflateAndSmoothFingersAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryInflateAndSmoothFingers()));
    
    geometrySphereToFlatAction = new QAction(parent);
    geometrySphereToFlatAction->setObjectName("geometrySphereToFlatAction");
    geometrySphereToFlatAction->setText("Project Sphere to Flat");
-   QObject::connect(geometrySphereToFlatAction, SIGNAL(activated()),
+   QObject::connect(geometrySphereToFlatAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometrySphereToFlat()));
    
    geometrySphereToFlatThroughHoleAction = new QAction(parent);
    geometrySphereToFlatThroughHoleAction->setObjectName("geometrySphereToFlatThroughHoleAction");
    geometrySphereToFlatThroughHoleAction->setText("Project Sphere to Flat Through Hole...");
-   QObject::connect(geometrySphereToFlatThroughHoleAction, SIGNAL(activated()),
+   QObject::connect(geometrySphereToFlatThroughHoleAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometrySphereToFlatThroughHole()));
    
    geometryScaleSphereToFiducialAreaAction = new QAction(parent);
    geometryScaleSphereToFiducialAreaAction->setObjectName("geometryScaleSphereToFiducialAreaAction");
    geometryScaleSphereToFiducialAreaAction->setText("Scale Sphere to Fiducial Surface Area");
-   QObject::connect(geometryScaleSphereToFiducialAreaAction, SIGNAL(activated()),
+   QObject::connect(geometryScaleSphereToFiducialAreaAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryScaleSphereToFiducialArea()));
    
    geometrySmoothingAction = new QAction(parent);
    geometrySmoothingAction->setObjectName("geometrySmoothingAction");
    geometrySmoothingAction->setText("Smoothing...");
-   QObject::connect(geometrySmoothingAction, SIGNAL(activated()),
+   QObject::connect(geometrySmoothingAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometrySmoothing()));
    
    geometryInflatedAndEllipsoidFromFiducialAction = new QAction(parent);
    geometryInflatedAndEllipsoidFromFiducialAction->setObjectName("geometryInflatedAndEllipsoidFromFiducialAction");
    geometryInflatedAndEllipsoidFromFiducialAction->setText("Generate Inflated and Ellipsoid From Fiducial...");
-   QObject::connect(geometryInflatedAndEllipsoidFromFiducialAction, SIGNAL(activated()),
+   QObject::connect(geometryInflatedAndEllipsoidFromFiducialAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryInflatedAndEllipsoidFromFiducial()));
    
    projectToPlanePositiveZAction = new QAction(parent);
    projectToPlanePositiveZAction->setObjectName("projectToPlanePositiveZAction");
    projectToPlanePositiveZAction->setText("Positive Z");
-   QObject::connect(projectToPlanePositiveZAction, SIGNAL(activated()),
+   QObject::connect(projectToPlanePositiveZAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotProjectToPlanePositiveZ()));
    
    projectToPlaneNegativeZAction = new QAction(parent);
    projectToPlaneNegativeZAction->setObjectName("projectToPlaneNegativeZAction");
    projectToPlaneNegativeZAction->setText("Negative Z");
-   QObject::connect(projectToPlaneNegativeZAction, SIGNAL(activated()),
+   QObject::connect(projectToPlaneNegativeZAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotProjectToPlaneNegativeZ()));
    
    projectToPlaneRestoreAction = new QAction(parent);
    projectToPlaneRestoreAction->setObjectName("projectToPlaneRestoreAction");
    projectToPlaneRestoreAction->setText("Restore");
-   QObject::connect(projectToPlaneRestoreAction, SIGNAL(activated()),
+   QObject::connect(projectToPlaneRestoreAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotProjectToPlaneRestore()));
    
    editAddNodeAction = new QAction(parent);
    editAddNodeAction->setObjectName("editAddNodeAction");
    editAddNodeAction->setText("Add Node");
-   QObject::connect(editAddNodeAction, SIGNAL(activated()),
+   QObject::connect(editAddNodeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotEditAddNode()));
    
    editAddTileAction = new QAction(parent);
    editAddTileAction->setObjectName("editAddTileAction");
    editAddTileAction->setText("Add Tile");
-   QObject::connect(editAddTileAction, SIGNAL(activated()),
+   QObject::connect(editAddTileAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotEditAddTile()));
    
    editDeleteTileByLinkAction = new QAction(parent);
    editDeleteTileByLinkAction->setObjectName("editDeleteTileByLinkAction");
    editDeleteTileByLinkAction->setText("Delete Link");
-   QObject::connect(editDeleteTileByLinkAction, SIGNAL(activated()),
+   QObject::connect(editDeleteTileByLinkAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotEditDeleteTileByLink()));
    
    editDisconnectNodeAction = new QAction(parent);
    editDisconnectNodeAction->setObjectName("editDisconnectNodeAction");
    editDisconnectNodeAction->setText("Disconnect Node");
-   QObject::connect(editDisconnectNodeAction, SIGNAL(activated()),
+   QObject::connect(editDisconnectNodeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotEditDisconnectNode()));
    
    editMoveNodeAction = new QAction(parent);
    editMoveNodeAction->setObjectName("editMoveNodeAction");
    editMoveNodeAction->setText("Move Node");
-   QObject::connect(editMoveNodeAction, SIGNAL(activated()),
+   QObject::connect(editMoveNodeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotEditMoveNode()));
                     
    viewAdjustAction = new QAction(parent);
    viewAdjustAction->setObjectName("viewAdjustAction");
    viewAdjustAction->setText("Adjust View...");
-   QObject::connect(viewAdjustAction, SIGNAL(activated()),
+   QObject::connect(viewAdjustAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotViewAdjust()));
                     
    viewPlaceNodeAtCenterOfScreenAction = new QAction(parent);
    viewPlaceNodeAtCenterOfScreenAction->setObjectName("viewPlaceNodeAtCenterOfScreenAction");
    viewPlaceNodeAtCenterOfScreenAction->setText("Place Node at Center of Screen...");
-   QObject::connect(viewPlaceNodeAtCenterOfScreenAction, SIGNAL(activated()),
+   QObject::connect(viewPlaceNodeAtCenterOfScreenAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotViewPlaceNodeAtCenterOfScreen()));
                     
    viewScaleSurfaceToFitWindowAction = new QAction(parent);
    viewScaleSurfaceToFitWindowAction->setObjectName("viewScaleSurfaceToFitWindowAction");
    viewScaleSurfaceToFitWindowAction->setText("Scale Surface to Fit Window");
-   QObject::connect(viewScaleSurfaceToFitWindowAction, SIGNAL(activated()),
+   QObject::connect(viewScaleSurfaceToFitWindowAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotViewScaleSurfaceToFitWindow()));
                     
    viewUserSaveViewAction = new QAction(parent);
    viewUserSaveViewAction->setObjectName("viewUserSaveViewAction");
    viewUserSaveViewAction->setText("Save User View...");
-   QObject::connect(viewUserSaveViewAction, SIGNAL(activated()),
+   QObject::connect(viewUserSaveViewAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotUserViewSaveView()));
                     
    surfaceToSegmentationVolumeAction = new QAction(parent);
    surfaceToSegmentationVolumeAction->setObjectName("surfaceToSegmentationVolumeAction");
    surfaceToSegmentationVolumeAction->setText("Convert Main Window Surface To Segmentation Volume...");
-   QObject::connect(surfaceToSegmentationVolumeAction, SIGNAL(activated()),
+   QObject::connect(surfaceToSegmentationVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSurfaceToSegmentationVolume()));                    
 }
 
@@ -637,7 +637,8 @@ GuiMainWindowSurfaceActions::slotSurfaceToSegmentationVolume()
          stv.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "Error", e.whatQString());
          return;
       }
 
@@ -661,15 +662,17 @@ GuiMainWindowSurfaceActions::slotSimplifySurface()
 {
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(theMainWindow, "ERROR", "There is no surface in the main window.", "OK");
+      QMessageBox::critical(theMainWindow, "ERROR", "There is no surface in the main window.");
       return;
    }
    
    if (theMainWindow->getBrainSet()->getNumberOfBrainModels() > 1) {
-      if (GuiMessageBox::question(theMainWindow, "Continue",
+      if (QMessageBox::question(theMainWindow, "Continue",
               "Contours/surfaces/volumes other than the surface in the main\n"
               "window are loaded.  They will be discarded if you continue.", 
-              "Continue", "Cancel") != 0) {
+              (QMessageBox::Ok | QMessageBox::Cancel),
+              QMessageBox::Ok)
+                 == QMessageBox::Ok) {
          return;
       }
    }
@@ -691,11 +694,12 @@ GuiMainWindowSurfaceActions::slotSimplifySurface()
       try {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          theMainWindow->getBrainSet()->simplifySurface(bms, maxPolygons);
-	 QApplication::beep();
+         QApplication::beep();
          QApplication::restoreOverrideCursor();
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
       }
    }
 }      
@@ -857,7 +861,7 @@ GuiMainWindowSurfaceActions::slotMeasurementsCrossoverCheck()
       labels.push_back("Flat Surface");
       labels.push_back("Spherical Surface");
       labels.push_back("Other Type of Surface");
-      if (DebugControl::getTestFlag()) {
+      if (DebugControl::getTestFlag1()) {
          labels.push_back("SureFit Ellipsoid Crossover Check");
       }
       QApplication::beep();
@@ -918,7 +922,8 @@ GuiMainWindowSurfaceActions::slotMeasurementsCrossoverCheck()
          str << "There are " << numNodeCrossovers << " node crossovers.\n" 
              << "There are " << numTileCrossovers << " tile crossovers." 
              << std::ends;
-         GuiMessageBox::information(theMainWindow, "Crossover Check Results", str.str().c_str(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::information(theMainWindow, "Crossover Check Results", str.str().c_str());
       }
    }
 }
@@ -1032,7 +1037,7 @@ GuiMainWindowSurfaceActions::slotCutsApply()
       CutsFile* cutsFile = theMainWindow->getBrainSet()->getCutsFile();
       if (cutsFile != NULL) {
          if (cutsFile->getNumberOfBorders() <= 0) {
-            GuiMessageBox::warning(theMainWindow, "No Cuts", "There are no cuts.", "OK");
+            QMessageBox::warning(theMainWindow, "No Cuts", "There are no cuts.");
             return;
          }
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
@@ -1043,7 +1048,8 @@ GuiMainWindowSurfaceActions::slotCutsApply()
             bsc.execute();
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(theMainWindow, "Apply Cuts Error", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(theMainWindow, "Apply Cuts Error", e.whatQString());
          }
          GuiFilesModified fm;
          fm.setTopologyModified();
@@ -1071,9 +1077,11 @@ GuiMainWindowSurfaceActions::slotCutsDeleteWithMouse()
 void
 GuiMainWindowSurfaceActions::slotCutsDeleteAll()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete All Cuts", 
+   if (QMessageBox::warning(theMainWindow, "Delete All Cuts", 
                             "Are you sure you want to delete all cuts?",
-                            "Yes", "No", QString::null, 1) == 0) {
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes)
+                               == QMessageBox::Yes) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       theMainWindow->getBrainSet()->clearCutsFile();
       GuiFilesModified fm;
@@ -1129,9 +1137,8 @@ void
 GuiMainWindowSurfaceActions::slotDeformationRunFlatDialog()
 {
 #ifdef Q_OS_WIN32
-   GuiMessageBox::information(theMainWindow, "Not Available",
-                            "Flat registration is not availble for the Windows version of Caret.",
-                            "OK");
+   QMessageBox::information(theMainWindow, "Not Available",
+                            "Flat registration is not availble for the Windows version of Caret.");
    return;
 #endif
    GuiSurfaceDeformationDialog sdd(theMainWindow, DeformationMapFile::DEFORMATION_TYPE_FLAT);
@@ -1425,7 +1432,9 @@ GuiMainWindowSurfaceActions::slotTopologyReplaceWithStandardSurface()
          bmssr.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
+         return;
       }
       
       GuiFilesModified fm;
@@ -1450,18 +1459,19 @@ GuiMainWindowSurfaceActions::slotTopologyCorrectFiducial()
    }
    
    if (bms->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
-      if (GuiMessageBox::question(theMainWindow, "ERROR", 
+      if (QMessageBox::question(theMainWindow, "ERROR", 
                                   "Surface in the main window does not appear to be a fiducial.",
-                                  "Continue", "Cancel") != 0) {
+                                  (QMessageBox::Ok | QMessageBox::Cancel),
+                                  QMessageBox::Cancel)
+                                     == QMessageBox::Cancel) {
          return;
       }
    }
    
    if (bms->isTopologicallyCorrect()) {
-      GuiMessageBox::information(theMainWindow,
+      QMessageBox::information(theMainWindow,
                                  "INFO",
-                                 "Surface is already topologically correct.",
-                                 "OK");
+                                 "Surface is already topologically correct.");
       return;
    }
    
@@ -1473,7 +1483,8 @@ GuiMainWindowSurfaceActions::slotTopologyCorrectFiducial()
       bmstc.execute();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
    }
    
    theMainWindow->postSpecFileReadInitializations();
@@ -1498,9 +1509,11 @@ GuiMainWindowSurfaceActions::slotTopologyRetessellateSphere()
    
    if (bms != NULL) {
       if (bms->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
-         if (GuiMessageBox::question(theMainWindow, "ERROR", 
+         if (QMessageBox::question(theMainWindow, "ERROR", 
                                      "Surface in the main window does not appear to be a sphere.",
-                                     "Continue", "Cancel") != 0) {
+                                     (QMessageBox::Ok | QMessageBox::Cancel),
+                                     QMessageBox::Cancel)
+                                        == QMessageBox::Cancel) {
             return;
          }
       }
@@ -1521,7 +1534,8 @@ GuiMainWindowSurfaceActions::slotTopologyRetessellateSphere()
          bmsst.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
       }
       
       theMainWindow->postSpecFileReadInitializations();
@@ -1588,7 +1602,8 @@ GuiMainWindowSurfaceActions::slotTopologyCheckForIslands()
          }
          QString msg(StringUtilities::fromNumber(numIslands));
          msg.append(" islands were found.");
-         GuiMessageBox::information(theMainWindow, "Islands", msg, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::information(theMainWindow, "Islands", msg);
       }
    }
    QApplication::restoreOverrideCursor();
@@ -1637,9 +1652,9 @@ GuiMainWindowSurfaceActions::slotTopologyDeleteCorners()
             }
             QString msg(StringUtilities::fromNumber(numCorners));
             msg.append(" corner tiles were deleted.");
-            GuiMessageBox::information(theMainWindow, "Corners Info", msg, "OK");
             GuiBrainModelOpenGL::updateAllGL(NULL);
             QApplication::restoreOverrideCursor();
+            QMessageBox::information(theMainWindow, "Corners Info", msg);
          }
       }
    }
@@ -1673,7 +1688,8 @@ GuiMainWindowSurfaceActions::slotTopologyDisconnectIslands()
          }
          QString msg(StringUtilities::fromNumber(numIslands));
          msg.append(" islands were removed.");
-         GuiMessageBox::information(theMainWindow, "Islands", msg, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::information(theMainWindow, "Islands", msg);
       }
    }
    QApplication::restoreOverrideCursor();
@@ -1722,7 +1738,8 @@ GuiMainWindowSurfaceActions::slotGeometrySphereBorderDistance()
          QApplication::beep();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
       }
 /*
    }
@@ -1737,12 +1754,12 @@ GuiMainWindowSurfaceActions::slotGeometryScaleSphereToFiducialArea()
 {   
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(theMainWindow, "ERROR", "There is no surface in the main window.", "OK");
+      QMessageBox::critical(theMainWindow, "ERROR", "There is no surface in the main window.");
    }   
    
    const BrainModelSurface* fiducial = theMainWindow->getBrainSet()->getActiveFiducialSurface();
    if (fiducial == NULL) {
-      GuiMessageBox::critical(theMainWindow, "ERROR", "There is no active fiducial surface.", "OK");
+      QMessageBox::critical(theMainWindow, "ERROR", "There is no active fiducial surface.");
    }
    
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
@@ -1844,7 +1861,8 @@ GuiMainWindowSurfaceActions::slotGeometryInflatedAndEllipsoidFromFiducial()
       }
    }
    else {
-      GuiMessageBox::critical(theMainWindow, "ERROR", "There is no fiducial surface.", "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(theMainWindow, "ERROR", "There is no fiducial surface.");
    }
 }    
 
@@ -2034,7 +2052,8 @@ GuiMainWindowSurfaceActions::slotGeometrySphereToFlatThroughHole()
          }
       }
       else {
-         GuiMessageBox::critical(theMainWindow, "ERROR", "There is no geography column in the paint file.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", "There is no geography column in the paint file.");
          return;
       }
    }

@@ -29,6 +29,8 @@
 
 #include "StatisticAlgorithm.h" 
 
+class StatisticMatrix;
+
 /// class that performs unit testing of the statistical routines
 class StatisticUnitTesting : public StatisticAlgorithm {
    public:
@@ -51,6 +53,18 @@ class StatisticUnitTesting : public StatisticAlgorithm {
                   const float correctValue,
                   const float acceptableDifference = 0.001);
                   
+      // verify that two matrices numbers are nearly identical (false if ok)
+      bool verify(const std::string& testName,
+                  const StatisticMatrix& computedMatrix,
+                  const StatisticMatrix& correctMatrix,
+                  const float acceptableDifference = 0.001);
+           
+      // verify that a group of coefficients are nearly identical (false if ok)
+      bool verifyCoefficients(const std::string& testName,
+                   const std::vector<float>& computedCoefficients,
+                   const std::vector<float>& correctCoefficients,
+                   const float acceptableDifference = 0.001);
+                   
       // test mean, variance, deviation
       bool testStatisticMeanAndDeviation();
       
@@ -96,8 +110,20 @@ class StatisticUnitTesting : public StatisticAlgorithm {
       // test histogram
       bool testHistogram();
       
+      // test kruskal-wallis non-parameteric anova
+      bool testKruskalWallis();
+      
       // test levene's test
       bool testLevenesTest();
+      
+      // test linear regression
+      bool testLinearRegression();
+      
+      // test matrix operations
+      bool testMatrixOperations();
+      
+      // test multiple linear regression
+      bool testMultipleLinearRegression();
       
       // test normalization of a distribution of sorted values
       bool testNormalizeDistributionSorted();

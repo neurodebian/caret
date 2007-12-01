@@ -45,6 +45,7 @@
 #include <QFont>
 #include <QFontMetrics>
 #include <QInputDialog>
+#include <QMessageBox>
 #include <QMutex>
 
 #include "vtkMath.h"
@@ -89,7 +90,6 @@
 #include "GuiMainWindow.h"
 #include "GuiMainWindowVolumeActions.h"
 #include "BrainModelIdentification.h"
-#include "GuiMessageBox.h"
 #include "GuiRecordingDialog.h"
 #include "GuiSurfaceRegionOfInterestDialog.h"
 #include "GuiToolBar.h"
@@ -655,7 +655,7 @@ GuiBrainModelOpenGL::selectBrainModelItem(const int selectionX,
                BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet(getModelViewNumber())->getNodeColoring();
                if ((bsnc->getPrimaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
                    (bsnc->getSecondaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-                   (bsnc->getUnderlay(modelIndex) == BrainModelSurfaceNodeColoring::UNDERLAY_METRIC)) {
+                   (bsnc->getUnderlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC)) {
                   const MetricFile* mf = theMainWindow->getBrainSet(getModelViewNumber())->getMetricFile();
                   const int col = dsm->getSelectedDisplayColumn(modelIndex);
                   const int numCols = mf->getNumberOfColumns();
@@ -666,7 +666,7 @@ GuiBrainModelOpenGL::selectBrainModelItem(const int selectionX,
                      GuiGraphWidget* graphWidget = graphDialog->getGraphWidget();
                      graphWidget->setLegends("Timepoints", "", "", "Functional Data");
                      std::vector<float> dataYFloat(numCols);
-                     mf->getValue(selectedNode.getItemIndex1(), &dataYFloat[0]);
+                     mf->getAllColumnValuesForNode(selectedNode.getItemIndex1(), &dataYFloat[0]);
                      std::vector<double> dataX(numCols);
                      std::vector<double> dataY(numCols);
                      for (int i = 0; i < numCols; i++) {
@@ -684,7 +684,7 @@ GuiBrainModelOpenGL::selectBrainModelItem(const int selectionX,
                                                                        numNeighbors);
                            for (int i = 0; i < numNeighbors; i++) {
                               std::vector<float> dataYFloat(numCols);
-                              mf->getValue(neighbors[i], &dataYFloat[0]);
+                              mf->getAllColumnValuesForNode(neighbors[i], &dataYFloat[0]);
                               std::vector<double> dataY(numCols);
                               for (int i = 0; i < numCols; i++) {
                                  dataY[i] = dataYFloat[i];
@@ -2317,6 +2317,7 @@ GuiBrainModelOpenGL::setMouseMode(const GuiBrainModelOpenGL::MOUSE_MODES mm)
    }
    mouseMode = mm;
    resetLinearObjectBeingDrawn();
+   theMainWindow->getToolBar()->updateMouseModeComboBox();
    theMainWindow->updateStatusBarLabel();
 
    if (mouseMode == MOUSE_MODE_TRANSFORMATION_MATRIX_AXES) {
@@ -3712,9 +3713,9 @@ GuiBrainModelOpenGL::mouseBorderDraw(const GuiBrainModelOpenGLMouseEvent& me)
                      }
                   }
                   else {
-                     GuiMessageBox::critical(this, "ERROR",
+                     QMessageBox::critical(this, "ERROR",
                          "At least one volume must be displayed as\n"
-                         "an overlay or underlay to draw a border.", "OK");
+                         "an overlay or underlay to draw a border.");
                      resetLinearObjectBeingDrawn();
                      updateGL();
                      return;
@@ -3751,10 +3752,9 @@ GuiBrainModelOpenGL::mouseBorderDraw(const GuiBrainModelOpenGLMouseEvent& me)
                   const int borderNum = linearObjectAugmentBorder1.getItemIndex1();
                   
                   if (borderNum != linearObjectAugmentBorder1.getItemIndex1()) {
-                     GuiMessageBox::warning(this, "Border Selection Error",
+                     QMessageBox::warning(this, "Border Selection Error",
                                           "You have tried to augment with two different "
-                                          "borders!  Reselect both links.",
-                                          "OK");
+                                          "borders!  Reselect both links.");
                   }
                   else {
                      const int linkStart = linearObjectAugmentBorder1.getItemIndex2();
@@ -3805,10 +3805,9 @@ GuiBrainModelOpenGL::mouseBorderDraw(const GuiBrainModelOpenGLMouseEvent& me)
                   const int borderNum = linearObjectAugmentBorder1.getItemIndex2();
                   
                   if (borderNum != linearObjectAugmentBorder1.getItemIndex2()) {
-                     GuiMessageBox::warning(this, "Border Selection Error",
+                     QMessageBox::warning(this, "Border Selection Error",
                                           "You have tried to augment with two different "
-                                          "borders!  Reselect both links.",
-                                          "OK");
+                                          "borders!  Reselect both links.");
                   }
                   else {
                      const int linkStart = linearObjectAugmentBorder1.getItemIndex3();

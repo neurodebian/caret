@@ -759,6 +759,11 @@ ArealEstimationFile::readTags(QTextStream& stream, const int fileVersion) throw 
       else if (tag == tagFileTitle) {
          setFileTitle(tagValue);
       }
+      else if (tag == tagColumnStudyMetaData) {
+         QString name;
+         const int index = splitTagIntoColumnAndValue(tagValue, name);
+         studyMetaDataLinkSet[index].setLinkSetFromCodedText(name);
+      }
       else {
          std::cerr << "WARNING: Unknown Areal Estimation File Tag: " << tag.toAscii().constData() << std::endl;
       }
@@ -820,6 +825,7 @@ ArealEstimationFile::writeFileData(QTextStream& stream,
              << " " << StringUtilities::setupCommentForStorage(columnComments[k]) << "\n";
       stream << tagLongName << " "  << k << " " << longName[k] << "\n";
       stream << tagColumnName << " "  << k << " "<< columnNames[k] << "\n";
+      stream << tagColumnStudyMetaData << " " << k << " " << studyMetaDataLinkSet[k].getLinkSetAsCodedText() << "\n";
    }
       
    stream << tagBeginData << "\n";

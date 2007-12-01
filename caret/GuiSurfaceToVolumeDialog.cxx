@@ -29,12 +29,13 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
-#include <QFileDialog>>
+#include "WuQFileDialog.h">
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QToolTip>
@@ -50,7 +51,6 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "MetricFile.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
@@ -710,12 +710,12 @@ GuiSurfaceToVolumeDialog::slotParamtersFromVolumePushButton()
    //
    // Create a spec file dialog to select the spec file.
    //
-   QFileDialog openVolumeFileDialog(this);
+   WuQFileDialog openVolumeFileDialog(this);
    openVolumeFileDialog.setDirectory(QDir::currentPath());
    openVolumeFileDialog.setModal(true);
-   openVolumeFileDialog.setAcceptMode(QFileDialog::AcceptOpen);
+   openVolumeFileDialog.setAcceptMode(WuQFileDialog::AcceptOpen);
    openVolumeFileDialog.setWindowTitle("Choose Volume File");
-   openVolumeFileDialog.setFileMode(QFileDialog::ExistingFile);
+   openVolumeFileDialog.setFileMode(WuQFileDialog::ExistingFile);
    openVolumeFileDialog.setFilter( "Volume File (*.HEAD *.hdr *.ifh)");
    if (openVolumeFileDialog.exec() == QDialog::Accepted) {
       if (openVolumeFileDialog.selectedFiles().count() > 0) {
@@ -742,7 +742,7 @@ GuiSurfaceToVolumeDialog::slotParamtersFromVolumePushButton()
                setVolumeOrigin(origin);
             }
             catch (FileException& e) {
-               GuiMessageBox::critical(this, "Error Reading Volume", e.whatQString(), "OK");
+               QMessageBox::critical(this, "Error Reading Volume", e.whatQString());
             }
          }
       }

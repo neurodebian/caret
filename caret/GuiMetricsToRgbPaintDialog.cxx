@@ -29,13 +29,13 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BrainSet.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiMetricsToRgbPaintDialog.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "MetricFile.h"
@@ -505,7 +505,8 @@ GuiMetricsToRgbPaintDialog::slotApplyButton()
    QString errorMessage;
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    if (converter.convert(theMainWindow->getBrainSet()->getMetricFile(), theMainWindow->getBrainSet()->getRgbPaintFile(), errorMessage)) {
-      GuiMessageBox::critical(this, "Error", errorMessage, "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "Error", errorMessage);
       return;
    }
    

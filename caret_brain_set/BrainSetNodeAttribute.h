@@ -97,12 +97,6 @@ class BrainSetNodeAttribute {
       /// set crossover status
       void setCrossover(const CROSSOVER_STATUS status) { crossover = status; }
       
-      /// get node in ROI
-      bool getNodeInROI() const { return nodeInROI; }
-      
-      /// set node in ROI flag
-      void setNodeInROI(const bool inROI) { nodeInROI = inROI; }
-      
       /// get visited flag
       bool getVisited() const { return visited; }
       
@@ -157,9 +151,6 @@ class BrainSetNodeAttribute {
       
       /// crossover status
       CROSSOVER_STATUS crossover;
-      
-      /// node in ROI flag
-      bool nodeInROI;
       
       /// visited flag
       bool visited;

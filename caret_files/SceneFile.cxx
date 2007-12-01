@@ -167,6 +167,34 @@ SceneFile::getScene(const int indx) const
 }
 
 /**
+ * get a scene from the scene name (NULL if not found).
+ */
+SceneFile::Scene* 
+SceneFile::getSceneFromName(const QString& sceneName)
+{
+  for (int i = 0; i < getNumberOfScenes(); i++) {
+     if (scenes[i].getName() == sceneName) {
+        return &scenes[i];
+     }
+  }
+  return NULL;
+}
+
+/**
+ * get a scene from the scene name (NULL if not found).
+ */
+const SceneFile::Scene* 
+SceneFile::getSceneFromName(const QString& sceneName) const
+{
+  for (int i = 0; i < getNumberOfScenes(); i++) {
+     if (scenes[i].getName() == sceneName) {
+        return &scenes[i];
+     }
+  }
+  return NULL;
+}
+
+/**
  * Read the scene file data.  May throw FileException.
  */
 void

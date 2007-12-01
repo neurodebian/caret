@@ -39,6 +39,7 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPixmap>
 #include <QPrintDialog>
@@ -48,7 +49,10 @@
 #include <QToolButton>
 #include <QToolTip>
 
+#include "FileFilters.h"
 #include "GuiBrainModelOpenGL.h"
+#include "GuiDataFileOpenDialog.h"
+#include "GuiDataFileSaveDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 
@@ -59,8 +63,6 @@
 #include "BrainSet.h"
 #include "FileUtilities.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
-#include "GuiImageFileOpenSaveDialog.h"
 #include "ImageFile.h"
 #include "StringUtilities.h"
 #include "global_variables.h"
@@ -268,6 +270,19 @@ GuiImageEditorWindow::~GuiImageEditorWindow()
 void 
 GuiImageEditorWindow::slotOpenImageFile()
 {
+   GuiDataFileOpenDialog dfod(this);
+   dfod.setFilters(QStringList(FileFilters::getImageOpenFileFilter()));
+   dfod.selectFilter(FileFilters::getImageOpenFileFilter());
+   if (dfod.exec() == GuiDataFileOpenDialog::Accepted) {
+      const int numImages = theMainWindow->getBrainSet()->getNumberOfImageFiles();
+      if (numImages > 0) {
+         imageSelectionComboBox->blockSignals(true);
+         imageSelectionComboBox->setCurrentIndex(numImages - 1);
+         imageSelectionComboBox->blockSignals(false);
+         slotImageSelectionComboBox(numImages - 1);
+      }
+   }
+/*
    static GuiImageFileOpenSaveDialog* sd = NULL;
    if (sd == NULL) {
       sd = new GuiImageFileOpenSaveDialog(this, GuiImageFileOpenSaveDialog::DIALOG_MODE_OPEN_FILES);
@@ -276,6 +291,7 @@ GuiImageEditorWindow::slotOpenImageFile()
    }
    sd->show();
    sd->activateWindow();
+*/
 }
 
 /**
@@ -301,6 +317,14 @@ GuiImageEditorWindow::slotSaveImageFile()
 {
    ImageFile* imageFile = imageViewer->getImageFile();
    if (imageFile != NULL) {
+      GuiDataFileSaveDialog dfsd(this);
+      dfsd.selectFileType(FileFilters::getImageSaveFileFilter());
+      dfsd.selectImageFile(imageFile);
+      dfsd.exec();
+   }
+/*
+   ImageFile* imageFile = imageViewer->getImageFile();
+   if (imageFile != NULL) {
       static GuiImageFileOpenSaveDialog* sd = NULL;
       if (sd == NULL) {
          sd = new GuiImageFileOpenSaveDialog(this, 
@@ -310,6 +334,7 @@ GuiImageEditorWindow::slotSaveImageFile()
       sd->show();
       sd->activateWindow();
    }
+*/
 }
       
 /**
@@ -901,9 +926,9 @@ GuiImageEditorWidget::addText(const int x, const int y)
    }
    if (viewingImageSize != VIEWING_IMAGE_SIZE_100) {
       QApplication::beep();
-      GuiMessageBox::critical(this, "ERROR", 
+      QMessageBox::critical(this, "ERROR", 
                             "The image must be at 100% viewing\n"
-                            "scale for adding text.", "OK");
+                            "scale for adding text.");
       return;
    }
    
@@ -991,9 +1016,9 @@ GuiImageEditorWidget::slotCropImage()
    }
    if (viewingImageSize != VIEWING_IMAGE_SIZE_100) {
       QApplication::beep();
-      GuiMessageBox::critical(this, "ERROR", 
+      QMessageBox::critical(this, "ERROR", 
                             "The image must be at 100% viewing\n"
-                            "scale for cropping.", "OK");
+                            "scale for cropping.");
       return;
    }
    
@@ -1003,7 +1028,7 @@ GuiImageEditorWidget::slotCropImage()
    if ((croppingLinesValid == false) ||
        (minX == maxX) ||
        (minY == maxY)) {
-      GuiMessageBox::critical(this, "ERROR", 
+      QMessageBox::critical(this, "ERROR", 
                             "No part of the image is selected.\n"
                             "\n"
                             "After closing this dialog, move the mouse to\n"
@@ -1012,7 +1037,7 @@ GuiImageEditorWidget::slotCropImage()
                             "drag the mouse to the opposite corner of the\n"
                             "image subregion and release the mouse.  Next,\n"
                             "press the crop button \"C\" in the toolbar to\n"
-                            "crop the image.", "OK");
+                            "crop the image.");
       return;
    }
 
@@ -1038,11 +1063,11 @@ void
 GuiImageEditorWidget::slotLoadImage()
 {
 /*
-   QFileDialog fd(this, "fd" , true);
+   WuQFileDialog fd(this, "fd" , true);
    fd.setWindowTitle("Save Image File");
-   fd.setFileMode(QFileDialog::ExistingFile);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
    fd.setFilter("JPEG FILES (*.jpg *.jpeg)");
-   if (fd.exec() == QFileDialog::Accepted) {
+   if (fd.exec() == WuQFileDialog::Accepted) {
       image->load(fd.selectedFiles().at(0));
    }
    windowSizeChanged();
@@ -1074,11 +1099,11 @@ void
 GuiImageEditorWidget::slotSaveImage()
 {
 /*
-   QFileDialog fd(this, "fd" , true);
+   WuQFileDialog fd(this, "fd" , true);
    fd.setWindowTitle("Save Image File");
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    fd.setFilter("JPEG FILES (*.jpg *.jpeg)");
-   if (fd.exec() == QFileDialog::Accepted) {
+   if (fd.exec() == WuQFileDialog::Accepted) {
       image->save(fd.selectedFiles().at(0), "JPEG");
    }
    

@@ -50,7 +50,7 @@ class GiftiDataArrayFile : public AbstractFile {
       
       /// constructor
       GiftiDataArrayFile(const QString& descriptiveName,
-                   const QString& defaultDataArrayCategoryIn,
+                   const QString& defaultDataArrayIntentIn,
                    const GiftiDataArray::DATA_TYPE defaultDataTypeIn,
                    const QString& defaultExt,
                    const FILE_FORMAT defaultWriteTypeIn,
@@ -128,14 +128,14 @@ class GiftiDataArrayFile : public AbstractFile {
       // get the data array with the specified name 
       const GiftiDataArray* getDataArrayWithName(const QString& n) const;
  
-      // get the index of the data array of the specified category
-      int getDataArrayWithCategoryIndex(const QString& catName) const;
+      // get the index of the data array of the specified intent
+      int getDataArrayWithIntentIndex(const QString& catName) const;
       
-      // get the data array of the specified category
-      GiftiDataArray* getDataArrayWithCategory(const QString& catName);
+      // get the data array of the specified intent
+      GiftiDataArray* getDataArrayWithIntent(const QString& catName);
       
-      // get the data array of the specified category (const method)
-      const GiftiDataArray* getDataArrayWithCategory(const QString& catName) const;
+      // get the data array of the specified intent (const method)
+      const GiftiDataArray* getDataArrayWithIntent(const QString& catName) const;
       
       // get the comment for a data array
       QString getDataArrayComment(const int arrayIndex) const;
@@ -174,10 +174,13 @@ class GiftiDataArrayFile : public AbstractFile {
       static void setGiftiXMLEnabled(const bool b) { giftiXMLFilesEnabled = b; }
       
       /// get the current version for GiftiDataArrayFiles
-      static int getCurrentFileVersion() { return currentFileVersion; }
+      static float getCurrentFileVersion() { return 1.0; }
       
-      /// get the default data array category
-      QString getDefaultDataArrayCategory() const { return defaultDataArrayCategory; }
+      /// get the default data array intent
+      QString getDefaultDataArrayIntent() const { return defaultDataArrayIntent; }
+      
+      /// get the default data array intent
+      void setDefaultDataArrayIntent(const QString& newIntentName);
       
    protected:
       // append helper for files where data are label indices
@@ -214,7 +217,7 @@ class GiftiDataArrayFile : public AbstractFile {
                                  QDataStream& binStream,
                                  QDomDocument& xmlDoc,
                                  QDomElement& rootElement) throw (FileException);
-                                 
+      
       /// the data arrays
       std::vector<GiftiDataArray*> dataArrays;
       
@@ -227,17 +230,14 @@ class GiftiDataArrayFile : public AbstractFile {
       /// the default data type
       GiftiDataArray::DATA_TYPE defaultDataType;
       
-      /// default data array category for this file
-      QString defaultDataArrayCategory;
+      /// default data array intent for this file
+      QString defaultDataArrayIntent;
       
       /// data arrays contain indices into label table
       bool dataAreIndicesIntoLabelTable;
       
       /// gifti XML files enabled
       static bool giftiXMLFilesEnabled;
-      
-      /// current version of the this file
-      static int currentFileVersion;
       
       /*!!!! be sure to update copyHelperGiftiDataArrayFile if new member added !!!!*/
    
@@ -247,8 +247,7 @@ class GiftiDataArrayFile : public AbstractFile {
 };
 
 #ifdef __GIFTI_DATA_ARRAY_FILE_MAIN__
-   bool GiftiDataArrayFile::giftiXMLFilesEnabled = false;
-   int GiftiDataArrayFile::currentFileVersion = -1;
+   bool GiftiDataArrayFile::giftiXMLFilesEnabled = true;
 #endif // __GIFTI_DATA_ARRAY_FILE_MAIN__
 
 #endif // __GIFTI_DATA_ARRAY_FILE_H__

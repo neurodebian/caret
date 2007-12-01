@@ -300,7 +300,7 @@ class BrainModelOpenGL {
       
       /// voxel coordinate is center of voxel (else left, bottom corner)
       static bool getVoxelCoordinateIsCenterOfVoxel() { return voxelCoordinateIsCenterOfVoxel; }
-
+      
    protected:
       /// Draw a brain model
       void drawBrainModelPrivate(BrainModel* bm,
@@ -484,6 +484,9 @@ class BrainModelOpenGL {
       /// Draw node highlighting.
       void drawNodeHighlighting(const BrainModelSurface* bms, const int numCoords);
       
+      /// Draw Surface ROI members.
+      void drawSurfaceROIMembers(const BrainModelSurface* bms, const int numCoords);
+      
       /// Draw a transformation cell or foci file
       void drawTransformationCellOrFociFile(BrainModel* bm,
                               CellFile* cellFile, 
@@ -618,6 +621,12 @@ class BrainModelOpenGL {
 
       /// check for an OpenGL Error
       void checkForOpenGLError(const BrainModel* bm, const QString& msg = "");
+      
+      /// get valid line width
+      GLfloat getValidLineWidth(const GLfloat widthIn) const;
+      
+      /// get valid point size
+      GLfloat getValidPointSize(const GLfloat pointSizeIn) const;
       
       /// linear (border, cut, contour) being drawn
       Border linearObjectBeingDrawn;
@@ -858,6 +867,18 @@ class BrainModelOpenGL {
       
       /// voxel coordinate is center of voxel (else left, bottom corner)
       static bool voxelCoordinateIsCenterOfVoxel;
+      
+      /// maximum point size
+      float maximumPointSize;
+      
+      /// minimum point size
+      float minimumPointSize;
+      
+      /// maximum line width
+      float maximumLineWidth;
+      
+      /// minimum line width
+      float minimumLineWidth;
 };
 
 #ifdef __BRAIN_MODEL_OPENGL_MAIN__
@@ -867,6 +888,7 @@ unsigned char BrainModelOpenGL::surfaceEditDrawColor[3] = { 0, 0, 255 };
 GLubyte BrainModelOpenGL::polygonStipple[128];
 bool BrainModelOpenGL::openGLTextEnabledFlag = true;
 bool BrainModelOpenGL::voxelCoordinateIsCenterOfVoxel = true;
+
 #endif // __BRAIN_MODEL_OPENGL_MAIN__
 
 #endif // __BRAIN_MODEL_OPENGL_H__

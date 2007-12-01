@@ -96,14 +96,15 @@ class MetricMappingInfo {
 /// MetricFile - a class that associates one or more floating point values with each surface node
 class MetricFile : public GiftiNodeDataFile {
    public:
+/*
       /// smoothing algorithms
       enum SMOOTH_ALGORITHM {
          SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
-         SMOOTH_ALGORITHM_GAUSSIAN,
+         SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN,
          SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS,
          SMOOTH_ALGORITHM_NONE
       };
-      
+*/      
       /// concatenate columns mode
       enum CONCATENATE_COLUMNS_MODE {
          /// concatenate all columns from all files
@@ -114,14 +115,14 @@ class MetricFile : public GiftiNodeDataFile {
       
       // constructor
       MetricFile(const QString& descriptiveName = "MetricFile",
-                 const QString& defaultDataArrayCategoryIn = GiftiCommon::categoryFunctional,
+                 const QString& defaultDataArrayCategoryIn = GiftiCommon::intentUnknown,
                  const QString& defaultExt = SpecFile::getMetricFileExtension());
 
       // constructor
       MetricFile(const int initialNumberNodes,
                  const int initialNumberOfColumns,
                  const QString& descriptiveName = "MetricFile",
-                 const QString& defaultDataArrayCategoryIn = GiftiCommon::categoryFunctional,
+                 const QString& defaultDataArrayCategoryIn = GiftiCommon::intentUnknown,
                  const QString& defaultExt = SpecFile::getMetricFileExtension());
                  
       // copy constructor
@@ -288,7 +289,11 @@ class MetricFile : public GiftiNodeDataFile {
       // compute correlation coefficient map
       static MetricFile* computeCorrelationCoefficientMap(const MetricFile* m1,
                                                           const MetricFile* m2) throw (FileException);
-                                                   
+       
+      // compute correlation coefficient map.
+      static MetricFile* computeMultipleCorrelationCoefficientMap(const MetricFile* dependentMetricFile,
+                                                                  const std::vector<MetricFile*>& independentMetricFiles) throw (FileException);
+
       // remap values in a column so that they fit a normal distribution
       // with the media at the normal distribution's mean
       void remapColumnToNormalDistribution(const int inputColumnNumber,
@@ -355,18 +360,19 @@ class MetricFile : public GiftiNodeDataFile {
       /// get a metric for specifed node and column
       float getValue(const int nodeNumber, const int columnNumber) const; 
 
-      /// get metrics for a specified node
-      void getValue(const int nodeNumber, float* metrics) const;
+      /// get metrics for all columns of a specified node
+      /// "metrics" must be allocated by user to contain getNumberOfColumns() elements
+      void getAllColumnValuesForNode(const int nodeNumber, float* metrics) const;
       
-      /// get metrics for a specified node
-      void getValue(const int nodeNumber, std::vector<float>& metrics) const;
+      /// get metrics for all columns of a specified node
+      void getAllColumnValuesForNode(const int nodeNumber, std::vector<float>& metrics) const;
       
       /// set a metric for specified node and column                         
       void setValue(const int nodeNumber, const int columnNumber,
                      const float metric);
 
-      /// set a metrics for a specified node
-      void setValue(const int nodeNumber, const float* metrics);
+      /// set all columns metrics for a specified node
+      void setAllColumnValuesForNode(const int nodeNumber, const float* metrics);
                           
       /// Get a column of values for all nodes
       void getColumnForAllNodes(const int columnNumber,
@@ -417,21 +423,13 @@ class MetricFile : public GiftiNodeDataFile {
                                  const float scalar)
                                                     throw (FileException);
                                   
-      /// smooth a metric column (if output column is negative a new column is created)
-      void smooth(const SMOOTH_ALGORITHM algorithm,
-                  const int column, 
-                  const int outputColumnIn,
-                  const QString& outputColumnName,
-                  const float strength,
-                  const int iterations,
-                  const TopologyFile* topologyFile,
-                  const CoordinateFile* coordinateFile,
-                  const CoordinateFile* nodeNormalVectors,
-                  const float gaussNormBelowCutoff = 2.0,
-                  const float gaussNormAboveCutoff = 2.0,
-                  const float gaussSigmaNorm = 2.0,
-                  const float gaussSigmaTang = 1.0,
-                  const float gaussTangentCutoff = 3.0);
+      /// average neighbor smooth a metric column (if output column is negative a new column is created)
+      void smoothAverageNeighbors(const int column, 
+                                  const int outputColumnIn,
+                                  const QString& outputColumnName,
+                                  const float strength,
+                                  const int iterations,
+                                  const TopologyFile* topologyFile);
                         
       /// neighbor value smoothing
       void smoothNeighbors(const TopologyFile* tf, const int column);

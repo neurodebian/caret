@@ -92,8 +92,11 @@ class GuiMainWindowWindowActions : public QObject {
       /// transformation matrix editor action
       QAction* getTransformationMatrixEditorAction() { return transformationMatrixEditorAction; }
 
-      /// script builder action
-      QAction* getScriptBuilderAction() { return scriptBuilderAction; }
+      /// caret command executor action
+      QAction* getCaretCommandExecutorAction() { return caretCommandExecutorAction; }
+      
+      /// caret command script builder action
+      QAction* getCaretCommandScriptBuilderAction() { return caretCommandScriptBuilderAction; }
       
       /// get stack windows action
       QAction* getStackWindowsAction() { return stackWindowsAction; }
@@ -203,8 +206,11 @@ class GuiMainWindowWindowActions : public QObject {
       /// transformation matrix editor action
       QAction* transformationMatrixEditorAction;
       
-      /// script builder action
-      QAction* scriptBuilderAction;
+      /// caret command builder action
+      QAction* caretCommandExecutorAction;
+      
+      /// caret command script builder action
+      QAction* caretCommandScriptBuilderAction;
       
       /// stack windows action
       QAction* stackWindowsAction;

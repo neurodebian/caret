@@ -29,7 +29,6 @@
 #include <QApplication>
 #include <QContextMenuEvent>
 #include <QFile>
-#include <QFileDialog>
 #include <QLabel>
 #include <QLayout>
 #include <QMessageBox>
@@ -42,16 +41,20 @@
 #include "QtRadioButtonSelectionDialog.h"
 #include "QtTableDialog.h"
 #include "QtUtilities.h"
+#include "WuQFileDialog.h"
 
 /**
  * constructor.
  */
 QtTableDialog::QtTableDialog(QWidget* parent, 
                              const QString& title,
-                             const StringTable& dataTable)
+                             const StringTable& dataTable,
+                             const bool deleteMeWhenClosed)
    : QtDialog(parent, false)  
 {
-   setAttribute(Qt::WA_DeleteOnClose);
+   if (deleteMeWhenClosed) {
+      setAttribute(Qt::WA_DeleteOnClose);
+   }
    setWindowTitle(title);
    
    //
@@ -149,12 +152,12 @@ QtTableDialog::slotSaveAsTextButton()
    //
    // Use file dialog to get name of file
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setWindowTitle("Choose File for Export");
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    fd.setDirectory(".");
-   fd.setAcceptMode(QFileDialog::AcceptSave);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
    const QString textFilter("Text Files (*.txt *.text)");
    QStringList filters;
    filters << textFilter << "All Files (*)";

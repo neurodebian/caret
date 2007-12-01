@@ -24,6 +24,7 @@
 
 #include <QTextStream>
 
+#include "AbstractFile.h"
 #include "GiftiCommon.h"
 #include "GiftiMetaData.h"
 #include "StringTable.h"
@@ -90,11 +91,24 @@ bool
 GiftiMetaData::get(const QString& name,
                             QString& value) const
 {
+   const QString nameLower(name.toLower());
+   
+   for (ConstMetaDataIterator iter = metaData.begin();
+        iter != metaData.end();
+        iter++) {
+      if (nameLower == iter->first.toLower()) {
+         value = iter->second;
+         return true;
+      }
+   }
+   
+/*
    ConstMetaDataIterator iter = metaData.find(name);
    if (iter != metaData.end()) { 
       value = iter->second;
       return true;
    }
+*/
    return false;
 }
 
@@ -104,6 +118,22 @@ GiftiMetaData::get(const QString& name,
 void 
 GiftiMetaData::set(const QString& name, const QString& value)
 {
+   const QString nameLower(name.toLower());
+   
+   //
+   // Since case may vary, remove matching item
+   //
+   for (MetaDataIterator iter = metaData.begin();
+        iter != metaData.end();
+        iter++) {
+      const QString tagName(iter->first);
+      const QString tagNameLower(tagName.toLower());
+      if (nameLower == tagNameLower) {
+         metaData.erase(iter);
+         break;
+      }
+   }
+   
    metaData[name] = value;
 }
 
@@ -155,6 +185,15 @@ GiftiMetaData::set(const QString& name, const std::vector<int32_t>& values)
    metaData[name] = StringUtilities::combine(values, " ");
 }
 
+/**
+ * remove a metadata element.
+ */
+void 
+GiftiMetaData::remove(const QString& name)
+{
+   metaData.erase(name);
+}
+      
 /**
  * get metadata as float (returns true if found).
  */
@@ -312,6 +351,38 @@ GiftiMetaData::readDataFromStringTable(const StringTable& st) throw (FileExcepti
          value = st.getElement(i, valueCol);
       }
       set(name, value);
+   }
+}
+      
+/**
+ * copy the metadata from a caret file.
+ */
+void 
+GiftiMetaData::copyMetaDataFromCaretFile(const AbstractFile* af)
+{
+   if (af != NULL) {
+      AbstractFile::AbstractFileHeaderContainer header = af->getHeader();
+      std::map<QString, QString>::iterator iter;
+      for (iter = header.begin(); iter != header.end(); iter++) {
+         const QString tag(iter->first);
+         const QString value(iter->second);
+         set(tag, value);
+      }
+   }
+}
+
+/**
+ * copy the metadata into a caret file.
+ */
+void 
+GiftiMetaData::copyMetaDataToCaretFile(AbstractFile* af) const
+{
+   if (af != NULL) {
+      for (ConstMetaDataIterator iter = metaData.begin(); iter != metaData.end(); iter++) {
+         const QString tag(iter->first);
+         const QString value(iter->second);
+         af->setHeaderTag(tag, value);
+      }
    }
 }
       

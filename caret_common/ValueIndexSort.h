@@ -50,11 +50,16 @@ class ValueIndexSort {
       
    public:
       /// Constructor
-      ValueIndexSort(const std::vector<int>& indicesIn,
-                     const std::vector<float>& valuesIn);
+      ValueIndexSort();
                     
       /// Constructor
       ~ValueIndexSort();
+      
+      /// add an index value pair (must call sort() after all are added)
+      void addValueIndexPair(const int indx, const float value);
+      
+      /// sort the items by value
+      void sort();
       
       /// get number of value index pairs
       int getNumberOfItems() const;

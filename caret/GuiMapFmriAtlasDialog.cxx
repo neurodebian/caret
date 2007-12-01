@@ -33,13 +33,13 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextEdit>
 
 #include "FileUtilities.h"
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiMapFmriAtlasDialog.h"
-#include "GuiMessageBox.h"
 #include "PreferencesFile.h"
 #include "QtUtilities.h"
 #include "StringUtilities.h"
@@ -54,7 +54,8 @@ GuiMapFmriAtlasDialog::GuiMapFmriAtlasDialog(QWidget* parent,
                                   const QString& speciesIn,
                                   const QString& structureNameIn,
                                   const bool showOutputSpecFileSelection,
-                                  const bool enableFiducialOptionsIn)
+                                  const bool enableMetricFiducialOptionsIn,
+                                  const bool enablePaintFiducialOptionsIn)
    : QtDialog(parent, true)
 {
    preferencesFile = pf;
@@ -116,31 +117,53 @@ GuiMapFmriAtlasDialog::GuiMapFmriAtlasDialog(QWidget* parent,
    atlasGridLayout->setColumnStretch(1, 100);
    
    //
-   // multi-fid option check boxes
+   // metric multi-fid option check boxes
    //
-   multiFidAvgFidCheckBox = new QCheckBox("Show Mapping to Averaged Fiducial Surface");
-   multiFidAvgFidCheckBox->setChecked(true);
-   multiFidAvgAllCasesCheckBox = new QCheckBox("Show Average of Mapping to All Multi-Fiducial Cases");
-   multiFidAvgAllCasesCheckBox->setChecked(true);
-   multiFidStdDevAllCheckBox = new QCheckBox("Show Sample Standard Deviation of Mapping to All Multi-Fiducial Cases");
-   multiFidStdErrorAllCheckBox = new QCheckBox("Show Standard Error of Mapping to All Multi-Fiducial Cases");
-   multiFidMinAllCheckBox = new QCheckBox("Show Minimum of Mapping to All Multi-Fiducial Cases");
-   multiFidMaxAllCheckBox = new QCheckBox("Show Maximum of Mapping to All Multi-Fiducial Cases");
-   multiFidAllCasesCheckBox = new QCheckBox("Show Mapping to Each Multi-Fiducial Case");
+   metricMultiFidAvgFidCheckBox = new QCheckBox("Show Mapping to Average Fiducial Surface");
+   metricMultiFidAvgFidCheckBox->setChecked(true);
+   metricMultiFidAvgAllCasesCheckBox = new QCheckBox("Show Average of Mapping to All Multi-Fiducial Cases");
+   metricMultiFidAvgAllCasesCheckBox->setChecked(true);
+   metricMultiFidStdDevAllCheckBox = new QCheckBox("Show Sample Standard Deviation of Mapping to All Multi-Fiducial Cases");
+   metricMultiFidStdErrorAllCheckBox = new QCheckBox("Show Standard Error of Mapping to All Multi-Fiducial Cases");
+   metricMultiFidMinAllCheckBox = new QCheckBox("Show Minimum of Mapping to All Multi-Fiducial Cases");
+   metricMultiFidMaxAllCheckBox = new QCheckBox("Show Maximum of Mapping to All Multi-Fiducial Cases");
+   metricMultiFidAllCasesCheckBox = new QCheckBox("Show Mapping to Each Multi-Fiducial Case");
       
    //
-   // Group box and layout for multi-fiducial options
+   // Group box and layout for metric multi-fiducial options
    //
-   multiFiducialGroupBox = new QGroupBox("Multi-Fiducial Mapping Metric Output");
-   multiFiducialGroupBox->setEnabled(false);
-   QVBoxLayout* multiFiducialLayout = new QVBoxLayout(multiFiducialGroupBox);
-   multiFiducialLayout->addWidget(multiFidAvgFidCheckBox);
-   multiFiducialLayout->addWidget(multiFidAvgAllCasesCheckBox);
-   multiFiducialLayout->addWidget(multiFidStdDevAllCheckBox);
-   multiFiducialLayout->addWidget(multiFidStdErrorAllCheckBox);
-   multiFiducialLayout->addWidget(multiFidMinAllCheckBox);
-   multiFiducialLayout->addWidget(multiFidMaxAllCheckBox);
-   multiFiducialLayout->addWidget(multiFidAllCasesCheckBox);
+   metricMultiFiducialGroupBox = new QGroupBox("Multi-Fiducial Mapping Metric Output");
+   metricMultiFiducialGroupBox->setEnabled(false);
+   QVBoxLayout* metricMultiFiducialLayout = new QVBoxLayout(metricMultiFiducialGroupBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidAvgFidCheckBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidAvgAllCasesCheckBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidStdDevAllCheckBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidStdErrorAllCheckBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidMinAllCheckBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidMaxAllCheckBox);
+   metricMultiFiducialLayout->addWidget(metricMultiFidAllCasesCheckBox);
+   
+   //
+   // paint multi-fid option check boxes
+   //
+   paintMultiFidAvgFidCheckBox = new QCheckBox("Show Mapping to Average Fiducial Surface");
+   paintMultiFidAvgFidCheckBox->setChecked(true);
+   paintMultiFidMostCommonCheckBox = new QCheckBox("Show Most Common of Mapping to All Multi-Fiducial Cases");
+   paintMultiFidMostCommonCheckBox->setChecked(true);
+   paintMultiFidMostCommonExcludeUnidentifiedCheckBox = new QCheckBox("Show Most Common (Exclude Unidentified) of Mapping to All Multi-Fiducial Cases");
+   paintMultiFidMostCommonExcludeUnidentifiedCheckBox->setChecked(true);
+   paintMultiFidAllCasesCheckBox = new QCheckBox("Show Mapping to Each Multi-Fiducial Case");
+   
+   //
+   // Group box and layout for paint multi-fiducial options
+   //
+   paintMultiFiducialGroupBox = new QGroupBox("Multi-Fiducial Mapping Paint Output");
+   paintMultiFiducialGroupBox->setEnabled(false);
+   QVBoxLayout* paintMultiFiducialLayout = new QVBoxLayout(paintMultiFiducialGroupBox);
+   paintMultiFiducialLayout->addWidget(paintMultiFidAvgFidCheckBox);
+   paintMultiFiducialLayout->addWidget(paintMultiFidMostCommonCheckBox);
+   paintMultiFiducialLayout->addWidget(paintMultiFidMostCommonExcludeUnidentifiedCheckBox);
+   paintMultiFiducialLayout->addWidget(paintMultiFidAllCasesCheckBox);
    
    //
    // User instructions shown in text editor
@@ -148,10 +171,10 @@ GuiMapFmriAtlasDialog::GuiMapFmriAtlasDialog(QWidget* parent,
    QString instructions = 
                    "First, choose the Spec File in which the generated metric files "
                    "should be placed.  Second, choose the appropriate stereotaxic "
-                   "space.  Third, choose one atlas.";                   
-   if (enableFiducialOptionsIn) {
+                   "space.  Third, choose one atlas.  ";                   
+   if (enableMetricFiducialOptionsIn || enablePaintFiducialOptionsIn) {
       instructions +=
-                   "If the atlas contains more than one fiducial coordinate \n"
+                   "If the atlas contains more than one fiducial coordinate "
                    "file, the multi-fiducial mapping options will be displayed.";
    }   
    QTextEdit* textEditor = new QTextEdit;
@@ -184,7 +207,8 @@ GuiMapFmriAtlasDialog::GuiMapFmriAtlasDialog(QWidget* parent,
    QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(specGroupBox);
    dialogLayout->addWidget(atlasGroupBox);
-   dialogLayout->addWidget(multiFiducialGroupBox);
+   dialogLayout->addWidget(metricMultiFiducialGroupBox);
+   dialogLayout->addWidget(paintMultiFiducialGroupBox);
    dialogLayout->addWidget(textEditor);
    dialogLayout->addLayout(buttonsLayout);
 
@@ -193,8 +217,11 @@ GuiMapFmriAtlasDialog::GuiMapFmriAtlasDialog(QWidget* parent,
       slotAtlasSpaceComboBox(0);
    }
    
-   if (enableFiducialOptionsIn == false) {
-      multiFiducialGroupBox->hide();
+   if (enableMetricFiducialOptionsIn == false) {
+      metricMultiFiducialGroupBox->hide();
+   }
+   if (enablePaintFiducialOptionsIn == false) {
+      paintMultiFiducialGroupBox->hide();
    }
 }
 
@@ -266,26 +293,48 @@ GuiMapFmriAtlasDialog::slotAtlasSpaceComboBox(int item)
 void 
 GuiMapFmriAtlasDialog::slotAtlasComboBox(int item)
 {
-   multiFiducialGroupBox->setEnabled(false);
-   multiFidAvgFidCheckBox->setEnabled(false);
-   multiFidAvgAllCasesCheckBox->setEnabled(false);
-   multiFidStdDevAllCheckBox->setEnabled(false);
-   multiFidStdErrorAllCheckBox->setEnabled(false);
-   multiFidMinAllCheckBox->setEnabled(false);
-   multiFidMaxAllCheckBox->setEnabled(false);
-   multiFidAllCasesCheckBox->setEnabled(false);
-   if ((item >= 0) && (item < static_cast<int>(matchingAtlases.size()))) {
-      const MapFmriAtlasSpecFileInfo& asfi = matchingAtlases[item];
-      if (asfi.getCoordinateFiles().size() > 1) {
-         multiFiducialGroupBox->setEnabled(true);
-         multiFidAvgAllCasesCheckBox->setEnabled(true);
-         multiFidStdDevAllCheckBox->setEnabled(true);
-         multiFidStdErrorAllCheckBox->setEnabled(true);
-         multiFidMinAllCheckBox->setEnabled(true);
-         multiFidMaxAllCheckBox->setEnabled(true);
-         multiFidAllCasesCheckBox->setEnabled(true);
-         if (asfi.getAverageCoordinateFile().isEmpty() == false) {
-            multiFidAvgFidCheckBox->setEnabled(true);
+   if (metricMultiFiducialGroupBox->isVisible()) {
+      metricMultiFiducialGroupBox->setEnabled(false);
+      metricMultiFidAvgFidCheckBox->setEnabled(false);
+      metricMultiFidAvgAllCasesCheckBox->setEnabled(false);
+      metricMultiFidStdDevAllCheckBox->setEnabled(false);
+      metricMultiFidStdErrorAllCheckBox->setEnabled(false);
+      metricMultiFidMinAllCheckBox->setEnabled(false);
+      metricMultiFidMaxAllCheckBox->setEnabled(false);
+      metricMultiFidAllCasesCheckBox->setEnabled(false);
+      if ((item >= 0) && (item < static_cast<int>(matchingAtlases.size()))) {
+         const MapFmriAtlasSpecFileInfo& asfi = matchingAtlases[item];
+         if (asfi.getCoordinateFiles().size() > 1) {
+            metricMultiFiducialGroupBox->setEnabled(true);
+            metricMultiFidAvgAllCasesCheckBox->setEnabled(true);
+            metricMultiFidStdDevAllCheckBox->setEnabled(true);
+            metricMultiFidStdErrorAllCheckBox->setEnabled(true);
+            metricMultiFidMinAllCheckBox->setEnabled(true);
+            metricMultiFidMaxAllCheckBox->setEnabled(true);
+            metricMultiFidAllCasesCheckBox->setEnabled(true);
+            if (asfi.getAverageCoordinateFile().isEmpty() == false) {
+               metricMultiFidAvgFidCheckBox->setEnabled(true);
+            }
+         }
+      }
+   }
+   
+   if (paintMultiFiducialGroupBox->isVisible()) {
+      paintMultiFiducialGroupBox->setEnabled(false);
+      paintMultiFidAvgFidCheckBox->setEnabled(false);
+      paintMultiFidAllCasesCheckBox->setEnabled(false);
+      paintMultiFidMostCommonCheckBox->setEnabled(false);
+      paintMultiFidMostCommonExcludeUnidentifiedCheckBox->setEnabled(false);
+      if ((item >= 0) && (item < static_cast<int>(matchingAtlases.size()))) {
+         const MapFmriAtlasSpecFileInfo& asfi = matchingAtlases[item];
+         if (asfi.getCoordinateFiles().size() > 1) {
+            paintMultiFiducialGroupBox->setEnabled(true);
+            paintMultiFidAllCasesCheckBox->setEnabled(true);
+            paintMultiFidMostCommonCheckBox->setEnabled(true);
+            paintMultiFidMostCommonExcludeUnidentifiedCheckBox->setEnabled(true);
+            if (asfi.getAverageCoordinateFile().isEmpty() == false) {
+               paintMultiFidAvgFidCheckBox->setEnabled(true);
+            }
          }
       }
    }
@@ -379,7 +428,7 @@ GuiMapFmriAtlasDialog::done(int r)
 {
    if (r == QDialog::Accepted) {
       if (atlasComboBox->currentIndex() == 0) {
-         GuiMessageBox::critical(this, "ERROR", "You must choose an atlas.", "OK");
+         QMessageBox::critical(this, "ERROR", "You must choose an atlas.");
          return;
       }
       
@@ -389,11 +438,11 @@ GuiMapFmriAtlasDialog::done(int r)
       QString atlasPath, topoFileName, description, metricNameHint, avgCoord, structureName;
       std::vector<QString>coordNames;
       bool b1, b2, b3, b4, b5, b6, b7;
-      getSelectedAtlasData(atlasPath, topoFileName, description, 
-                           coordNames, avgCoord, metricNameHint, structureName,
-                           b1, b2, b3, b4, b5, b6, b7);
+      getSelectedMetricAtlasData(atlasPath, topoFileName, description, 
+                                 coordNames, avgCoord, metricNameHint, structureName,
+                                 b1, b2, b3, b4, b5, b6, b7);
       if (coordNames.empty() && avgCoord.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "No atlas is selected.", "OK");
+         QMessageBox::critical(this, "ERROR", "No atlas is selected.");
          return;
       }
    }
@@ -402,23 +451,23 @@ GuiMapFmriAtlasDialog::done(int r)
 }
 
 /**
- * get the selected atlas information.
+ * get the metric selected atlas information.
  */
 void 
-GuiMapFmriAtlasDialog::getSelectedAtlasData(QString& atlasPath,
-                                            QString& topoFileName,
-                                            QString& description,
-                                            std::vector<QString>& coordFileNames,
-                                            QString& averageCoordFile,
-                                            QString& metricNameHint,
-                                            QString& structureName,
-                                            bool& mapToAvgCoordFileFlag,
-                                            bool& mapToAvgOfAllFlag,
-                                            bool& mapToStdDevOfAllFlag,
-                                            bool& mapToStdErrorOfAllFlag,
-                                            bool& mapToMinOfAllFlag,
-                                            bool& mapToMaxOfAllFlag,
-                                            bool& mapToAllCasesFlag) const
+GuiMapFmriAtlasDialog::getSelectedMetricAtlasData(QString& atlasPath,
+                                                  QString& topoFileName,
+                                                  QString& description,
+                                                  std::vector<QString>& coordFileNames,
+                                                  QString& averageCoordFile,
+                                                  QString& metricNameHint,
+                                                  QString& structureName,
+                                                  bool& mapToAvgCoordFileFlag,
+                                                  bool& mapToAvgOfAllFlag,
+                                                  bool& mapToStdDevOfAllFlag,
+                                                  bool& mapToStdErrorOfAllFlag,
+                                                  bool& mapToMinOfAllFlag,
+                                                  bool& mapToMaxOfAllFlag,
+                                                  bool& mapToAllCasesFlag) const
 {
    atlasPath = "";
    description = "";
@@ -483,16 +532,16 @@ GuiMapFmriAtlasDialog::getSelectedAtlasData(QString& atlasPath,
       //
       // Set multi-fiducial selections
       //
-      if (multiFiducialGroupBox->isEnabled()) {
-         if (multiFidAvgFidCheckBox->isEnabled()) {
-            mapToAvgCoordFileFlag = multiFidAvgFidCheckBox->isChecked();
+      if (metricMultiFiducialGroupBox->isEnabled()) {
+         if (metricMultiFidAvgFidCheckBox->isEnabled()) {
+            mapToAvgCoordFileFlag = metricMultiFidAvgFidCheckBox->isChecked();
          }
-         mapToAvgOfAllFlag = multiFidAvgAllCasesCheckBox->isChecked();
-         mapToStdDevOfAllFlag = multiFidStdDevAllCheckBox->isChecked();
-         mapToStdErrorOfAllFlag = multiFidStdErrorAllCheckBox->isChecked();
-         mapToMinOfAllFlag = multiFidMinAllCheckBox->isChecked();
-         mapToMaxOfAllFlag = multiFidMaxAllCheckBox->isChecked();
-         mapToAllCasesFlag = multiFidAllCasesCheckBox->isChecked();
+         mapToAvgOfAllFlag = metricMultiFidAvgAllCasesCheckBox->isChecked();
+         mapToStdDevOfAllFlag = metricMultiFidStdDevAllCheckBox->isChecked();
+         mapToStdErrorOfAllFlag = metricMultiFidStdErrorAllCheckBox->isChecked();
+         mapToMinOfAllFlag = metricMultiFidMinAllCheckBox->isChecked();
+         mapToMaxOfAllFlag = metricMultiFidMaxAllCheckBox->isChecked();
+         mapToAllCasesFlag = metricMultiFidAllCasesCheckBox->isChecked();
          
          //
          // If the individual case coord files are not needed
@@ -512,4 +561,101 @@ GuiMapFmriAtlasDialog::getSelectedAtlasData(QString& atlasPath,
    }
 }
 
+/**
+ * get the paint selected atlas information.
+ */
+void 
+GuiMapFmriAtlasDialog::getSelectedPaintAtlasData(QString& atlasPath,
+                                                  QString& topoFileName,
+                                                  QString& description,
+                                                  std::vector<QString>& coordFileNames,
+                                                  QString& averageCoordFile,
+                                                  QString& paintNameHint,
+                                                  QString& structureName,
+                                                  bool& mapToAvgCoordFileFlag,
+                                                  bool& mapToMostCommonOfAllFlag,
+                                                  bool& mapToMostCommonExcludeUnidentifiedOfAllFlag,
+                                                  bool& mapToAllCasesFlag) const
+{
+   atlasPath = "";
+   description = "";
+   topoFileName = "";
+   coordFileNames.clear();
+   averageCoordFile = "";
+   paintNameHint = "";
+   structureName = "";
+   mapToAvgCoordFileFlag = false;
+   mapToMostCommonOfAllFlag = false;
+   mapToMostCommonExcludeUnidentifiedOfAllFlag = false;
+   mapToAllCasesFlag = false;
+
+   //
+   // Get the selected atlas
+   //   
+   const int num = static_cast<int>(matchingAtlases.size());
+   const int atlasNum = atlasComboBox->currentIndex();
+   if ((atlasNum > 0) && (atlasNum < num)) {
+      //
+      // get selected atlas
+      //
+      const MapFmriAtlasSpecFileInfo& asfi = matchingAtlases[atlasNum];
+      
+      //
+      // Get atlas path and topo file
+      //
+      atlasPath = asfi.getSpecFilePath();
+      topoFileName = asfi.getTopologyFile();
+      
+      //
+      // Get allcoordinate files
+      //
+      coordFileNames = asfi.getCoordinateFiles();
+      
+      //
+      // Get avg fiducial coord file
+      //
+      averageCoordFile = asfi.getAverageCoordinateFile();
+      
+      //
+      // Get paint name hint
+      //
+      paintNameHint = asfi.getMetricNameHint();
+      
+      //
+      // Add description of atlas
+      //
+      QString s(asfi.getStructure());
+      s.append(" ");
+      s.append(asfi.getSpace());
+      description = s;
+      
+      //
+      // name of structure
+      //
+      structureName = asfi.getStructure();
+      
+      //
+      // Set multi-fiducial selections
+      //
+      if (paintMultiFiducialGroupBox->isEnabled()) {
+         if (paintMultiFidAvgFidCheckBox->isEnabled()) {
+            mapToAvgCoordFileFlag = paintMultiFidAvgFidCheckBox->isChecked();
+         }
+         mapToMostCommonOfAllFlag = paintMultiFidMostCommonCheckBox->isChecked();
+         mapToMostCommonExcludeUnidentifiedOfAllFlag = paintMultiFidMostCommonExcludeUnidentifiedCheckBox->isChecked();
+         mapToAllCasesFlag = paintMultiFidAllCasesCheckBox->isChecked();
+         
+         //
+         // If the individual case coord files are not needed
+         //
+         if ((mapToMostCommonOfAllFlag == false) &&
+             (mapToAllCasesFlag == false)) {
+            coordFileNames.clear();
+         }
+      }
+      else {
+         mapToAllCasesFlag = true;
+      }
+   }
+}
 

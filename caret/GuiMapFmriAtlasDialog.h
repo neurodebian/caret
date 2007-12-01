@@ -50,7 +50,8 @@ class GuiMapFmriAtlasDialog : public QtDialog {
                             const QString& speciesIn,
                             const QString& structureNameIn,
                             const bool showOutputSpecFileSelectionIn,
-                            const bool enableFiducialOptionsIn);
+                            const bool enableMetricFiducialOptionsIn,
+                            const bool enablePaintFiducialOptionsIn);
                                  
       /// Destructor
       ~GuiMapFmriAtlasDialog();
@@ -59,20 +60,33 @@ class GuiMapFmriAtlasDialog : public QtDialog {
       QString getOutputSpecFileName() const;
       
       /// get the selected atlas information.
-      void getSelectedAtlasData(QString& atlasPath,
-                                QString& topoFileName,
-                                QString& description,
-                                std::vector<QString>& coordFileNames,
-                                QString& averageCoordFile,
-                                QString& metricNameHint,
-                                QString& structureName,
-                                bool& mapToAvgCoordFileFlag,
-                                bool& mapToAvgOfAllFlag,
-                                bool& mapToStdDevOfAllFlag,
-                                bool& mapToStdErrorOfAllFlag,
-                                bool& mapToMinOfAllFlag,
-                                bool& mapToMaxOfAllFlag,
-                                bool& mapToAllCasesFlag) const;
+      void getSelectedMetricAtlasData(QString& atlasPath,
+                                      QString& topoFileName,
+                                      QString& description,
+                                      std::vector<QString>& coordFileNames,
+                                      QString& averageCoordFile,
+                                      QString& metricNameHint,
+                                      QString& structureName,
+                                      bool& mapToAvgCoordFileFlag,
+                                      bool& mapToAvgOfAllFlag,
+                                      bool& mapToStdDevOfAllFlag,
+                                      bool& mapToStdErrorOfAllFlag,
+                                      bool& mapToMinOfAllFlag,
+                                      bool& mapToMaxOfAllFlag,
+                                      bool& mapToAllCasesFlag) const;
+      
+      /// get the selected paint atlas information.
+      void getSelectedPaintAtlasData(QString& atlasPath,
+                                      QString& topoFileName,
+                                      QString& description,
+                                      std::vector<QString>& coordFileNames,
+                                      QString& averageCoordFile,
+                                      QString& paintNameHint,
+                                      QString& structureName,
+                                      bool& mapToAvgCoordFileFlag,
+                                      bool& mapToMostCommonOfAllFlag,
+                                      bool& mapToMostCommonExcludeUnidentifiedOfAllFlag,
+                                      bool& mapToAllCasesFlag) const;
       
    protected slots:
       /// called when select spec file pushbutton pressed.
@@ -100,29 +114,44 @@ class GuiMapFmriAtlasDialog : public QtDialog {
       /// atlas combo box
       QComboBox* atlasComboBox;
       
-      /// the multi-fiducial group box
-      QGroupBox* multiFiducialGroupBox;
+      /// the metric multi-fiducial group box
+      QGroupBox* metricMultiFiducialGroupBox;
       
-      /// multi-fid show map to average fiducial check box
-      QCheckBox* multiFidAvgFidCheckBox;
+      /// metric multi-fid show map to average fiducial check box
+      QCheckBox* metricMultiFidAvgFidCheckBox;
       
-      /// multi-fid show average of all cases check box
-      QCheckBox* multiFidAvgAllCasesCheckBox;
+      /// metric multi-fid show average of all cases check box
+      QCheckBox* metricMultiFidAvgAllCasesCheckBox;
       
-      /// multi-fid show std dev of all cases check box
-      QCheckBox* multiFidStdDevAllCheckBox;
+      /// metric multi-fid show std dev of all cases check box
+      QCheckBox* metricMultiFidStdDevAllCheckBox;
       
-      /// multi-fid show std error of all cases check box
-      QCheckBox* multiFidStdErrorAllCheckBox;
+      /// metric multi-fid show std error of all cases check box
+      QCheckBox* metricMultiFidStdErrorAllCheckBox;
       
-      /// multi-fid show minimum of all cases check box
-      QCheckBox* multiFidMinAllCheckBox;
+      /// metric multi-fid show minimum of all cases check box
+      QCheckBox* metricMultiFidMinAllCheckBox;
       
-      /// multi-fid show maximum of all cases check box
-      QCheckBox* multiFidMaxAllCheckBox;
+      /// metric multi-fid show maximum of all cases check box
+      QCheckBox* metricMultiFidMaxAllCheckBox;
       
-      /// multi-fid show all indiv cases check box
-      QCheckBox* multiFidAllCasesCheckBox;
+      /// metric multi-fid show all indiv cases check box
+      QCheckBox* metricMultiFidAllCasesCheckBox;
+      
+      /// the paint multi-fiducial group box
+      QGroupBox* paintMultiFiducialGroupBox;
+      
+      /// paint multi-fid show map to average fiducial check box
+      QCheckBox* paintMultiFidAvgFidCheckBox;
+      
+      /// paint multi-fid show all indiv cases check box
+      QCheckBox* paintMultiFidAllCasesCheckBox;
+      
+      /// paint multi-fid most common of all cases check box
+      QCheckBox* paintMultiFidMostCommonCheckBox;
+      
+      /// paint multi-fid most common exclude unidentified of all cases check box
+      QCheckBox* paintMultiFidMostCommonExcludeUnidentifiedCheckBox;
       
       /// the atlases that match species/hem
       std::vector<MapFmriAtlasSpecFileInfo> matchingAtlases;

@@ -94,6 +94,7 @@ GuiMainWindowLayersMenu::createFociSubMenu(GuiMainWindowLayersActions* layersAct
    fociSubMenu = addMenu("Foci");
    
    fociSubMenu->addAction(layersActions->getFociAssignClassToDisplayedFoci());
+   fociSubMenu->addAction(layersActions->getFociAttributeAssignmentAction());
    fociSubMenu->addSeparator();
    
    fociSubMenu->addAction(layersActions->getFociUncertaintyLimitsAction());
@@ -208,6 +209,9 @@ GuiMainWindowLayersMenu::createContoursSubMenu(GuiMainWindowLayersActions* layer
    contoursSubMenu->addAction(layersActions->getContourNewSetAction());
    contoursSubMenu->addSeparator();
 
+   contoursSubMenu->addAction(layersActions->getContourInformationAction());
+   contoursSubMenu->addSeparator();
+   
    contoursSubMenu->addAction(layersActions->getContourSetScaleAction());
    contoursSubMenu->addAction(layersActions->getContourSectionsAction());
    contoursSubMenu->addAction(layersActions->getContourSpacingAction());

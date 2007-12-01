@@ -35,7 +35,7 @@ class TopologyFile;
 class GuiTopologyFileComboBox : public QComboBox {
    public:
       /// Constructor
-      GuiTopologyFileComboBox(QWidget* parent,
+      GuiTopologyFileComboBox(QWidget* parent = 0,
                               const char* name = 0);
                               
       /// Destructor

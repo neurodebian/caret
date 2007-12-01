@@ -67,6 +67,9 @@ class GuiToolBar : public QToolBar {
       /// called when a standard view is selected
       void setViewSelection(const BrainModel::STANDARD_VIEWS standardView);      
       
+      /// update mouse mode combo box
+      void updateMouseModeComboBox();
+      
    signals:
       /// Signal emitted when the model selection combo box is changed.  Normally,
       /// this signal does not need to be used by the parent of the toolbar.  The
@@ -101,6 +104,12 @@ class GuiToolBar : public QToolBar {
       
       /// called when volume stereotaxic coordinates is toggled
       void volumeStereotaxicCoordinatesSlot(bool b);
+      
+      /// called when a mouse mode is selected
+      void slotMouseModeComboBoxActivated(int item);
+      
+      /// view mode button clicked
+      void slotViewModeButtonClicked();
       
    protected:
       /// called when toolbar is resized
@@ -172,6 +181,9 @@ class GuiToolBar : public QToolBar {
       /// Keeps track of toolbars so that they can be updated when
       /// the models change.
       static std::vector<GuiToolBar*> allToolBars;
+      
+      /// mouse mode combo box
+      QComboBox* mouseModeComboBox;
       
 };
 

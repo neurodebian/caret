@@ -44,7 +44,7 @@ class GuiColorSelectionDialog : public QtDialog {
    Q_OBJECT
    
    public:
-      /// Constructor
+      // Constructor
       GuiColorSelectionDialog(QWidget* parent,
                               const QString& title,
                               const bool showAlpha,
@@ -52,15 +52,21 @@ class GuiColorSelectionDialog : public QtDialog {
                               const bool showLineSize,
                               const bool showSymbol);
       
-      /// Destructor
+      // Destructor
       ~GuiColorSelectionDialog();
       
-      /// get the color information
+      // get the color information
       void getColorInformation(unsigned char& r, unsigned char& g, unsigned char& b,
                                unsigned char& a,
                                float& pointSize, float& lineSize,
                                ColorFile::ColorStorage::SYMBOL& symbol);
-                               
+      
+      // set the color 
+      void setColor(const unsigned char r,
+                    const unsigned char g,
+                    const unsigned char b,
+                    const unsigned char a);
+                    
    private slots:
       /// called when the red slider is moved
       void redSliderMovedSlot(int value);

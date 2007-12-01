@@ -29,7 +29,7 @@
 #define __VE_NODE_ATTRIBUTE_FILE_H__
 
 #include "AbstractFile.h"
-#include "FileException.h"
+#include "StudyMetaDataLinkSet.h"
 
 class DeformationMapFile;
 
@@ -114,6 +114,12 @@ class NodeAttributeFile : public AbstractFile {
       /// get the index of the column with the specified name 
       int getColumnWithName(const QString& n) const;
  
+      // get a node attribute file column number where input may be a column 
+      // name or number.  Input numbers range 1..N and output column 
+      // numbers range 0..(N-1)
+      int getColumnFromNameOrNumber(const QString& columnNameOrNumber,
+                                    const bool addColumnIfNotFoundAndNotNumber)  throw (FileException);
+      
       /// get the comment for a column
       QString getColumnComment(const int col) const;
       
@@ -128,6 +134,13 @@ class NodeAttributeFile : public AbstractFile {
       
       /// prepend to the comment for a column
       void prependToColumnComment(const int col, const QString& comm);
+      
+      // get the study metadata link for a column
+      StudyMetaDataLinkSet getColumnStudyMetaDataLinkSet(const int col) const;
+      
+      // set the study metadata link for a column
+      void setColumnStudyMetaDataLinkSet(const int col,
+                                         const StudyMetaDataLinkSet smdls);
       
       /// transfer file data for deformation
       void transferFileDataForDeformation(const DeformationMapFile& dmf,
@@ -165,10 +178,14 @@ class NodeAttributeFile : public AbstractFile {
       /// coments for data columns
       std::vector<QString> columnComments;
       
+      /// study metadata link sets
+      std::vector<StudyMetaDataLinkSet> studyMetaDataLinkSet;
+      
       static const QString tagColumnName;
       static const QString tagColumnComment;
       static const QString tagNumberOfNodes;
       static const QString tagNumberOfColumns;
+      static const QString tagColumnStudyMetaData;      
 };
 
 #ifdef _NODE_ATTRIBUTE_MAIN_
@@ -177,6 +194,7 @@ class NodeAttributeFile : public AbstractFile {
    const QString NodeAttributeFile::tagColumnComment = "tag-column-comment";
    const QString NodeAttributeFile::tagNumberOfNodes = "tag-number-of-nodes";
    const QString NodeAttributeFile::tagNumberOfColumns = "tag-number-of-columns";
+   const QString NodeAttributeFile::tagColumnStudyMetaData = "tag-column-study-meta-data";
 
 #endif // _NODE_ATTRIBUTE_MAIN_
 

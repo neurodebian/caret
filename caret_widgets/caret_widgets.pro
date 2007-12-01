@@ -30,7 +30,7 @@ HEADERS += \
       QtDialogModal.h \
       QtDialogNonModal.h \
       QtDialogWizard.h \
-      QtFileDialog.h \
+      QtInputDialog.h \
 	   QtListBoxSelectionDialog.h \
       QtMainWindow.h \
       QtMessageBox.h \
@@ -41,7 +41,9 @@ HEADERS += \
 	   QtTextEditDialog.h \
       QtTextFileEditorDialog.h \
 	   QtUtilities.h \
-      QtWidgetGroup.h
+      WuQDataEntryDialog.h \
+      WuQFileDialog.h \
+      WuQWidgetGroup.h
 
 SOURCES += \
       QtCheckBoxSelectionDialog.cxx \
@@ -51,7 +53,7 @@ SOURCES += \
       QtDialogModal.cxx \
       QtDialogNonModal.cxx \
       QtDialogWizard.cxx \
-      QtFileDialog.cxx \
+      QtInputDialog.cxx \
 	   QtListBoxSelectionDialog.cxx \
       QtMainWindow.cxx \
       QtMessageBox.cxx \
@@ -62,5 +64,7 @@ SOURCES += \
 	   QtTextEditDialog.cxx \
       QtTextFileEditorDialog.cxx \
 	   QtUtilities.cxx \
-      QtWidgetGroup.cxx
+      WuQDataEntryDialog.cxx \
+      WuQFileDialog.cxx \
+      WuQWidgetGroup.cxx
 

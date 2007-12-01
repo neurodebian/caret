@@ -71,7 +71,9 @@ class GuiMapFmriMappingSet {
                            const bool doStdErrorOfAllCoordFileFlagIn,
                            const bool doMinOfAllCoordFileFlagIn,
                            const bool doMaxOfAllCoordFileFlagIn,
-                           const bool doAllCasesCoordFileFlagIn);
+                           const bool doAllCasesCoordFileFlagIn,
+                           const bool doMostCommonOfAllCasesFlagIn,
+                           const bool doMostCommonExcludeUnidentifiedOfAllCasesFlagIn);
       
       /// Constructor for mapping to caret surfaces
       GuiMapFmriMappingSet(std::vector<BrainModelSurface*> caretSurfacesIn,
@@ -94,7 +96,9 @@ class GuiMapFmriMappingSet {
                            const bool doStdErrorOfAllCoordFileFlagIn,
                            const bool doMinOfAllCoordFileFlagIn,
                            const bool doMaxOfAllCoordFileFlagIn,
-                           const bool doAllCasesCoordFileFlagIn);
+                           const bool doAllCasesCoordFileFlagIn,
+                           const bool doMostCommonOfAllCasesFlagIn,
+                           const bool doMostCommonExcludeUnidentifiedOfAllCasesFlagIn);
                             
       /// Destructor
       ~GuiMapFmriMappingSet();
@@ -169,6 +173,12 @@ class GuiMapFmriMappingSet {
       /// flag for do all indiv case files
       bool getDoAllCasesCoordFileFlag() const { return doAllCasesCoordFileFlag; }
       
+      /// flag for most common of all indiv case files (paint)
+      bool getDoMostCommonOfAllCasesFlag() const { return doMostCommonOfAllCasesFlag; }
+
+      /// flag for most common exclude unidentified of all indiv case files (paint)
+      bool getDoMostCommonExcludeUnidentifiedOfAllCasesFlag() const { return doMostCommonExcludeUnidentifiedOfAllCasesFlag; }
+
       /// get the name for a structure for column naming
       QString getStructureForColumnNaming() const;
       
@@ -245,6 +255,11 @@ class GuiMapFmriMappingSet {
       /// flag for do all indiv case files
       bool doAllCasesCoordFileFlag;
       
+      /// flag for most common of all indiv case files
+      bool doMostCommonOfAllCasesFlag;
+      
+      /// flag for most common of all indiv case files
+      bool doMostCommonExcludeUnidentifiedOfAllCasesFlag;
 };
 
 #ifdef __GUI_MAP_FMRI_MAPPING_SET_MAIN__

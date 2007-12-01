@@ -102,6 +102,9 @@ class StereotaxicSpace {
       /// constructor
       StereotaxicSpace(const SPACE spaceIn);
       
+      /// constructor space name
+      StereotaxicSpace(const QString& nameIn);
+      
       /// constructor
       StereotaxicSpace(const QString& nameIn,
                        const int dimensionsIn[3],
@@ -141,10 +144,19 @@ class StereotaxicSpace {
       /// get all stereotaxic spaces
       static void getAllStereotaxicSpaces(std::vector<StereotaxicSpace>& allSpacesOut);
       
+      /// get teh space from the name
+      static QString cleanupSpaceName(const QString& name);
+      
+      /// get a space from its name
+      static SPACE getSpaceFromName(const QString& name);
+      
       /// is the name that of a valid stereotaxic space
       static bool validStereotaxicSpaceName(const QString& name);
       
    protected:
+      /// set data from space
+      void setDataFromSpace(const SPACE spaceIn);
+      
       /// set the space data
       void setData(const QString& nameIn,
                   const int dimX, const int dimY, const int dimZ,

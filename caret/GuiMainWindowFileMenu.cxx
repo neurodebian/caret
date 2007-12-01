@@ -28,39 +28,14 @@
 #include <iostream>
 
 #include <QApplication>
-#include <QClipboard>
-#include <QDateTime>
 #include <QDir>
-#include <QImage>
-#include <QPainter>
-#include <QPrinter>
 
 #include "BrainSet.h"
-#include "BrainModelSurface.h"
-#include "DebugControl.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
-#include "GuiBrainModelViewingWindow.h"
-#include "GuiChooseSpecFileDialog.h"
-#include "GuiConvertDataFileDialog.h"
-#include "GuiCopySpecFileDialog.h"
-#include "GuiExportDataFileDialog.h"
-#include "GuiFilesModified.h"
-#include "GiftiDataArrayFile.h"
-#include "GuiImageFileOpenSaveDialog.h"
-#include "GuiImportDataFileDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
 #include "GuiMainWindowFileMenu.h"
-#include "GuiMessageBox.h"
-#include "GuiOpenDataFileDialog.h"
-#include "GuiSaveDataFileDialog.h"
-#include "GuiPreferencesDialog.h"
-#include "GuiSpecFileDialog.h"
-#include "QtTextFileEditorDialog.h"
-#include "GuiViewCurrentFilesDialog.h"
-#include "GuiZipSpecFileDialog.h"
-#include "StringUtilities.h"
 
 #include "global_variables.h"
 
@@ -113,39 +88,14 @@ GuiMainWindowFileMenu::GuiMainWindowFileMenu(GuiMainWindow* parent,
    addAction(fileActions->getCloseSpecFileAction());
               
    addSeparator();
-   
    addAction(fileActions->getFastOpenDataFileAction());
-   addAction(fileActions->getOpenDataFileAction());
-   addAction(fileActions->getSaveDataFileAction());
-              
-   if (GiftiDataArrayFile::getGiftiXMLEnabled()) {
-      addSeparator();
-      addAction(fileActions->getOpenGiftiFileDialogAction());
-      addAction(fileActions->getSaveGiftiFileDialogAction());
-   }
+   addAction(fileActions->getDataFileOpenAction());
+   addAction(fileActions->getDataFileSaveAction());
 
    addSeparator();
    
-   addAction(fileActions->getImportFileAction());
-              
-   addAction(fileActions->getExportFileAction());
-              
-   addSeparator();
-   
-   //addAction(fileActions->getCopyMainWindowToClipboardAction());
-              
-   addAction(fileActions->getOpenImageFileAction());
-   
-   //addAction(fileActions->getPrintMainWindowAction());
-              
-   addAction(fileActions->getSaveImageFileAction());
-   
-   //addAction(fileActions->getSaveWindowAsImageAction());
-                    
-   addSeparator();
-   
    addAction(fileActions->getCaptureMainWindowImageAction());
-   
+
    addAction(fileActions->getRecordAsMpegAction());
               
 #ifndef Q_OS_MACX

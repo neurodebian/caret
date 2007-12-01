@@ -35,6 +35,7 @@
 #include "MathUtilities.h"
 #include "MetricFile.h"
 #include "TopologyFile.h"
+#include "ValueIndexSort.h"
 
 /**
  * Constructor.
@@ -51,7 +52,8 @@ BrainModelSurfaceMetricClustering::BrainModelSurfaceMetricClustering(BrainSet* b
                                     const float clusterNegativeMinimumThresholdIn,
                                     const float clusterNegativeMaximumThresholdIn,
                                     const float clusterPositiveMinimumThresholdIn,
-                                    const float clusterPositiveMaximumThresholdIn)
+                                    const float clusterPositiveMaximumThresholdIn,
+                                    const bool outputAllClustersFlagIn)
    : BrainModelAlgorithm(bs)
 {
    bms = bmsIn;
@@ -66,6 +68,7 @@ BrainModelSurfaceMetricClustering::BrainModelSurfaceMetricClustering(BrainSet* b
    clusterNegativeMaximumThreshold = clusterNegativeMaximumThresholdIn;
    clusterPositiveMinimumThreshold = clusterPositiveMinimumThresholdIn;
    clusterPositiveMaximumThreshold = clusterPositiveMaximumThresholdIn;
+   outputAllClustersFlag = outputAllClustersFlagIn;
 }
 
 /**
@@ -74,7 +77,6 @@ BrainModelSurfaceMetricClustering::BrainModelSurfaceMetricClustering(BrainSet* b
 BrainModelSurfaceMetricClustering::~BrainModelSurfaceMetricClustering()
 {
    clusters.clear();
-   nodeAreas.clear();
 }
 
 /**
@@ -150,6 +152,7 @@ BrainModelSurfaceMetricClustering::execute() throw (BrainModelAlgorithmException
          // or just negative nodes.
          //
          findClusters();
+         setClustersCenterOfGravityAndArea();
          break;
    }
    
@@ -157,6 +160,8 @@ BrainModelSurfaceMetricClustering::execute() throw (BrainModelAlgorithmException
    // Nodes that are to remain after clustering
    //
    std::vector<bool> validClusterNodes(numNodes, false);
+   
+   std::vector<Cluster> clustersOut;
    
    const int numClusters = static_cast<int>(clusters.size());
    
@@ -179,97 +184,49 @@ BrainModelSurfaceMetricClustering::execute() throw (BrainModelAlgorithmException
          // Keep nodes that are in clusters with sufficient number of nodes
          //
          for (int i = 0; i < numClusters; i++) {
-            const Cluster& c = clusters[i];
-            const int num = c.getNumberOfNodesInCluster();
-            if (num >= minimumNumberOfNodes) {
-               for (int j = 0; j < num; j++) {
+            Cluster& c = clusters[i];
+            const int numNodesInCluster = c.getNumberOfNodesInCluster();
+            if (numNodesInCluster >= minimumNumberOfNodes) {
+               for (int j = 0; j < numNodesInCluster; j++) {
                   validClusterNodes[c.nodeIndices[j]] = true;
+               }
+               
+               clustersOut.push_back(c);
+            }
+            else {
+               if (outputAllClustersFlag) {
+                  clustersOut.push_back(c);
                }
             }
          }
          break;
       case CLUSTER_ALGORITHM_MINIMUM_SURFACE_AREA:
-         {
-            const TopologyFile* tf = bms->getTopologyFile();
-            if (tf != NULL) {
-               const int numTiles = tf->getNumberOfTiles();
-               if (numTiles > 0) {
-                  //
-                  // area used by each node
-                  //
-                  nodeAreas.resize(numNodes);
-                  for (int i = 0; i < numNodes; i++) {
-                     nodeAreas[i] = 0.0;
-                  }
-                  
-                  //
-                  // Compute 1/3 area of each tile
-                  //
-                  const float* coords = bms->getCoordinateFile()->getCoordinate(0);
-                  for (int i = 0; i < numTiles; i++) {
-                    int v1, v2, v3;
-                    tf->getTile(i, v1, v2, v3);
-                    const float tileArea = MathUtilities::triangleArea(
-                                                   (float*)&coords[v1*3],
-                                                   (float*)&coords[v2*3],
-                                                   (float*)&coords[v3*3]) * 0.33;
-                        
-                     //
-                     // Assign 1/3 of tile area to each node that is part of the tile
-                     //
-                     nodeAreas[v1] += tileArea;
-                     nodeAreas[v2] += tileArea;
-                     nodeAreas[v3] += tileArea;
-                  }
-                  
-                  
-                  //
-                  // Check each cluster
-                  //
-                  for (int i = 0; i < numClusters; i++) {
-                     //
-                     // Center of gravity of cluster
-                     //
-                     float cog[3] = { 0.0, 0.0, 0.0 };
-                     
-                     //
-                     // Area of cluster
-                     //
-                     Cluster& c = clusters[i];
-                     float clusterArea = 0.0;
-                     const int num = c.getNumberOfNodesInCluster();
-                     for (int j = 0; j < num; j++) {
-                        const int nodeNum = c.nodeIndices[j];
-                        clusterArea += nodeAreas[nodeNum];
-                        
-                        cog[0] += coords[nodeNum*3];
-                        cog[1] += coords[nodeNum*3+1];
-                        cog[2] += coords[nodeNum*3+2];
-                     }
-                     
-                     c.setArea(clusterArea);
-                     
-                     if (num > 0) {
-                        cog[0] /= static_cast<float>(num);
-                        cog[1] /= static_cast<float>(num);
-                        cog[2] /= static_cast<float>(num);
-                     }
-                     c.setCenterOfGravity(cog);
-                     
-                     //
-                     // Is this cluster big enough
-                     //
-                     if (clusterArea >= minimumSurfaceArea) {
-                        for (int j = 0; j < num; j++) {
-                           validClusterNodes[c.nodeIndices[j]] = true;
-                        }
-                     }
-                  }
+         //
+         // Keep nodes that are in clusters with minimum area
+         //
+         for (int i = 0; i < numClusters; i++) {
+            Cluster& c = clusters[i];
+            if (c.getArea() >= minimumSurfaceArea) {
+               const int numNodesInCluster = c.getNumberOfNodesInCluster();
+               for (int j = 0; j < numNodesInCluster; j++) {
+                  validClusterNodes[c.nodeIndices[j]] = true;
+               }
+               
+               clustersOut.push_back(c);
+            }
+            else {
+               if (outputAllClustersFlag) {
+                  clustersOut.push_back(c);
                }
             }
          }
          break;
    }
+   
+   //
+   // output the clusters
+   //
+   clusters = clustersOut;
    
    //
    // Any nodes within the thresholds are in the cluster
@@ -386,16 +343,83 @@ BrainModelSurfaceMetricClustering::findClusters() throw (BrainModelAlgorithmExce
 }
 
 /**
- * get the area for a node (only valid if cluster by area).
+ * set clusters center of gravity and area.
  */
-float 
-BrainModelSurfaceMetricClustering::getNodeArea(const int nodeNum)
+void 
+BrainModelSurfaceMetricClustering::setClustersCenterOfGravityAndArea() throw (BrainModelAlgorithmException)
 {
-   if (nodeNum < static_cast<int>(nodeAreas.size())) {
-      return nodeAreas[nodeNum];
+   const int numClusters = static_cast<int>(clusters.size());
+   if (numClusters > 0) {
+      //
+      // Get the area of all nodes
+      //
+      std::vector<float> nodeAreas;
+      bms->getAreaOfAllNodes(nodeAreas);
+      const CoordinateFile* cf = bms->getCoordinateFile();
+      //
+      // process each cluster
+      //
+      for (int i = 0; i < numClusters; i++) {
+         Cluster& c = clusters[i];
+         const int numNodesInCluster = c.getNumberOfNodesInCluster();
+         if (numNodesInCluster > 0) {
+            double area = 0.0;
+            double cogSum[3] = { 0.0, 0.0, 0.0 };
+            for (int j = 0; j < numNodesInCluster; j++) {
+               const int nodeNumber = c.nodeIndices[j];
+               area += nodeAreas[nodeNumber];
+               const float* xyz = cf->getCoordinate(nodeNumber);
+               cogSum[0] += xyz[0];
+               cogSum[1] += xyz[1];
+               cogSum[2] += xyz[2];
+            }
+            
+            //
+            // Note: Area of nodes is just summed, no need to divide by zero
+            //
+            c.setArea(area);
+            
+            const float cog[3] = {
+               cogSum[0] / static_cast<double>(numNodesInCluster),
+               cogSum[1] / static_cast<double>(numNodesInCluster),
+               cogSum[2] / static_cast<double>(numNodesInCluster)
+            };
+            c.setCenterOfGravity(cog);
+         }
+      }
    }
-   return 0.0;
-}      
+}
+      
+/**
+ * get clusters indices sorted by number of nodes in cluster.
+ */
+void 
+BrainModelSurfaceMetricClustering::getClusterIndicesSortedByNumberOfNodesInCluster(std::vector<int>& indices) const
+{
+   indices.clear();
+   
+   //
+   // Sort the indices by number of nodes in clusters
+   //
+   ValueIndexSort vis;
+   const int num = getNumberOfClusters();
+   for (int i = 0; i < num; i++) {
+      const Cluster* c = getCluster(i);
+      vis.addValueIndexPair(i, c->getNumberOfNodesInCluster());
+   }
+   vis.sort();
+   
+   //
+   // Set output indices
+   //
+   const int numItems = vis.getNumberOfItems();
+   for (int i = 0; i < numItems; i++) {
+      int indx;
+      float value;
+      vis.getValueAndIndex(i, indx, value);
+      indices.push_back(indx);
+   }
+}
 
 //*****************************************************************************************
 //
@@ -447,4 +471,34 @@ BrainModelSurfaceMetricClustering::Cluster::setCenterOfGravity(const float cog[3
    centerOfGravity[1] = cog[1];
    centerOfGravity[2] = cog[2];
 }            
+
+/**
+ * get the center of gravity using the surface (does not overwrite cluster's cog).
+ */
+void 
+BrainModelSurfaceMetricClustering::Cluster::getCenterOfGravityForSurface(const BrainModelSurface* bms,
+                                                                         float cog[3]) const
+{
+   double cogSum[3] = { 0.0, 0.0, 0.0 };
+   
+   const int numClusterNodes = getNumberOfNodesInCluster();
+   if (numClusterNodes > 0) {
+      const CoordinateFile* cf = bms->getCoordinateFile();
+   
+      for (int i = 0; i < numClusterNodes; i++) {
+         const float* xyz = cf->getCoordinate(nodeIndices[i]);
+         cogSum[0] += xyz[0];
+         cogSum[1] += xyz[1];
+         cogSum[2] += xyz[2];
+      }
+      
+      cogSum[0] /= static_cast<double>(numClusterNodes);
+      cogSum[1] /= static_cast<double>(numClusterNodes);
+      cogSum[2] /= static_cast<double>(numClusterNodes);
+   }
+
+   cog[0] = cogSum[0];
+   cog[1] = cogSum[1];
+   cog[2] = cogSum[2];
+}                                              
 
