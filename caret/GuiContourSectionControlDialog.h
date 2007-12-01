@@ -32,7 +32,7 @@
 class QRadioButton;
 class QSpinBox;
 class QSlider;
-class QtWidgetGroup;
+class WuQWidgetGroup;
 
 /// Dialog for controlling selected sections.
 class GuiContourSectionControlDialog : public QtDialog {
@@ -81,7 +81,7 @@ class GuiContourSectionControlDialog : public QtDialog {
       QRadioButton* hideSectionRadioButton;
       
       /// widget group for slider and spin box widgets
-      QtWidgetGroup* adjustSectionsWidgetGroup;
+      WuQWidgetGroup* adjustSectionsWidgetGroup;
       
       /// minimum section slider
       QSlider* minimumSlider;

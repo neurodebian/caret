@@ -53,6 +53,7 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
             /// get a node that is in the cluster
             int getNodeInCluster(const int indx) const { return nodeIndices[indx]; }
             
+            /// get all nodes in the cluster
             std::vector<int> getNodesInCluster() const { return nodeIndices; }
             
             /// add a node to the cluster
@@ -73,6 +74,10 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
             /// get thresholds
             void getThresholds(float& threshMinOut, float& threshMaxOut) const;
             
+            /// get the center of gravity using the surface (does not overwrite cluster's cog)
+            void getCenterOfGravityForSurface(const BrainModelSurface* bms,
+                                              float cog[3]) const;
+                                              
          protected:
             /// nodes in the cluster
             std::vector<int> nodeIndices;
@@ -113,7 +118,8 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
                                         const float clusterNegativeMinimumThresholdIn,
                                         const float clusterNegativeMaximumThresholdIn,
                                         const float clusterPositiveMinimumThresholdIn,
-                                        const float clusterPositiveMaximumThresholdIn);
+                                        const float clusterPositiveMaximumThresholdIn,
+                                        const bool outputAllClustersFlagIn);
 
       /// Destructor
       ~BrainModelSurfaceMetricClustering();
@@ -125,14 +131,20 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
       int getNumberOfClusters() const { return clusters.size(); }
       
       /// get a cluster
+      Cluster* getCluster(const int indx) { return &clusters[indx]; }
+      
+      /// get a cluster (const method)
       const Cluster* getCluster(const int indx) const { return &clusters[indx]; }
       
-      /// get the area for a node (only valid if cluster by area)
-      float getNodeArea(const int nodeNum);
+      /// get clusters indices sorted by number of nodes in cluster
+      void getClusterIndicesSortedByNumberOfNodesInCluster(std::vector<int>& indices) const;
       
    protected:
       /// find the clusters
       void findClusters() throw (BrainModelAlgorithmException);
+      
+      /// set clusters center of gravity and area
+      void setClustersCenterOfGravityAndArea() throw (BrainModelAlgorithmException);
       
       /// surface for clustering
       BrainModelSurface* bms;
@@ -176,8 +188,8 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
       /// the clusters
       std::vector<Cluster> clusters;
       
-      /// node areas
-      std::vector<float> nodeAreas;
+      /// output all clusters including those that do not meet cluster area/number of nodes
+      bool outputAllClustersFlag;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_METRIC_CLUSTERING_H__

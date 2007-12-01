@@ -34,7 +34,7 @@
  */
 SurfaceFile::SurfaceFile()
    : GiftiDataArrayFile("Surface File",
-                        GiftiCommon::categoryCoordinates,
+                        GiftiCommon::intentCoordinates,
                         GiftiDataArray::DATA_TYPE_FLOAT32,
                         SpecFile::getGiftiFileExtension(),
                         FILE_FORMAT_XML,
@@ -116,7 +116,7 @@ SurfaceFile::clear()
 int 
 SurfaceFile::getNumberOfCoordinates() const
 {
-   const GiftiDataArray* gda = getDataArrayWithCategory(GiftiCommon::categoryCoordinates);
+   const GiftiDataArray* gda = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
    if (gda != NULL) {
       if (gda->getNumberOfDimensions() > 0) {
          return gda->getDimension(0);
@@ -141,7 +141,7 @@ SurfaceFile::setNumberOfCoordinates(const int num)
    //
    // Find the coordinates category
    //
-   GiftiDataArray* coordsArray = getDataArrayWithCategory(GiftiCommon::categoryCoordinates);
+   GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
    if (coordsArray != NULL) {
       coordsArray->setDimensions(dim);
    }
@@ -150,7 +150,7 @@ SurfaceFile::setNumberOfCoordinates(const int num)
       // Create coordinates category
       //
       coordsArray = new GiftiDataArray(this,
-                                 GiftiCommon::categoryCoordinates,
+                                 GiftiCommon::intentCoordinates,
                                  GiftiDataArray::DATA_TYPE_FLOAT32,
                                  dim);
       addDataArray(coordsArray);
@@ -159,7 +159,7 @@ SurfaceFile::setNumberOfCoordinates(const int num)
    //
    // Find the normals category
    //
-   GiftiDataArray* normalsArray = getDataArrayWithCategory(GiftiCommon::categoryNormals);
+   GiftiDataArray* normalsArray = getDataArrayWithIntent(GiftiCommon::intentNormals);
    if (normalsArray != NULL) {
       normalsArray->setDimensions(dim);
    }
@@ -168,7 +168,7 @@ SurfaceFile::setNumberOfCoordinates(const int num)
       // Create coordinates category
       //
       normalsArray = new GiftiDataArray(this,
-                                 GiftiCommon::categoryNormals,
+                                 GiftiCommon::intentNormals,
                                  GiftiDataArray::DATA_TYPE_FLOAT32,
                                  dim);
       addDataArray(normalsArray);
@@ -182,7 +182,7 @@ SurfaceFile::setNumberOfCoordinates(const int num)
 int 
 SurfaceFile::getNumberOfTriangles() const
 {
-   const GiftiDataArray* gda = getDataArrayWithCategory(GiftiCommon::categoryTopologyTriangles);
+   const GiftiDataArray* gda = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
    if (gda != NULL) {
       if (gda->getNumberOfDimensions() > 0) {
          return gda->getDimension(0);
@@ -207,7 +207,7 @@ SurfaceFile::setNumberOfTriangles(const int num)
    //
    // Find the triangles category
    //
-   GiftiDataArray* trianglesArray =getDataArrayWithCategory(GiftiCommon::categoryTopologyTriangles);
+   GiftiDataArray* trianglesArray =getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
    if (trianglesArray != NULL) {
       trianglesArray->setDimensions(dim);
    }
@@ -216,7 +216,7 @@ SurfaceFile::setNumberOfTriangles(const int num)
       // Create coordinates category
       //
       trianglesArray = new GiftiDataArray(this,
-                                 GiftiCommon::categoryTopologyTriangles,
+                                 GiftiCommon::intentTopologyTriangles,
                                  GiftiDataArray::DATA_TYPE_INT32,
                                  dim);
       addDataArray(trianglesArray);
@@ -230,7 +230,7 @@ SurfaceFile::setNumberOfTriangles(const int num)
 const float* 
 SurfaceFile::getCoordinate(const int indx) const
 {
-   const GiftiDataArray* coordsArray = getDataArrayWithCategory(GiftiCommon::categoryCoordinates);
+   const GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
    if (coordsArray != NULL) {
       const int indices[2] = { indx, 0 };
       return coordsArray->getDataFloat32Pointer(indices);
@@ -245,7 +245,7 @@ SurfaceFile::getCoordinate(const int indx) const
 void
 SurfaceFile::setCoordinate(const int indx, const float xyz[3])
 {
-   const GiftiDataArray* coordsArray = getDataArrayWithCategory(GiftiCommon::categoryCoordinates);
+   const GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
    if (coordsArray != NULL) {
       for (int i = 0; i < 3; i++) {
          const int indices[2] = { indx, i };
@@ -271,7 +271,7 @@ SurfaceFile::setCoordinate(const int indx, const float x, const float y, const f
 const int32_t* 
 SurfaceFile::getTriangle(const int indx) const
 {
-   const GiftiDataArray* coordsArray = getDataArrayWithCategory(GiftiCommon::categoryTopologyTriangles);
+   const GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
    if (coordsArray != NULL) {
       const int indices[2] = { indx, 0 };
       return  coordsArray->getDataInt32Pointer(indices);
@@ -285,7 +285,7 @@ SurfaceFile::getTriangle(const int indx) const
 void 
 SurfaceFile::setTriangle(const int indx, const int vertices[3])
 {
-   const GiftiDataArray* topoArray = getDataArrayWithCategory(GiftiCommon::categoryTopologyTriangles);
+   const GiftiDataArray* topoArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
    if (topoArray != NULL) {
       for (int i = 0; i < 3; i++) {
          const int32_t indices[2] = { indx, i };
@@ -311,7 +311,7 @@ SurfaceFile::setTriangle(const int indx, const int v1, const int v2, const int v
 const float* 
 SurfaceFile::getNormal(const int indx) const
 {
-   const GiftiDataArray* normalsArray = getDataArrayWithCategory(GiftiCommon::categoryNormals);
+   const GiftiDataArray* normalsArray = getDataArrayWithIntent(GiftiCommon::intentNormals);
    if (normalsArray != NULL) {
       const int indices[2] = { indx, 0 };
       return normalsArray->getDataFloat32Pointer(indices);
@@ -326,7 +326,7 @@ SurfaceFile::getNormal(const int indx) const
 void 
 SurfaceFile::setNormal(const int indx, const float xyz[3])
 {
-   const GiftiDataArray* normalsArray = getDataArrayWithCategory(GiftiCommon::categoryNormals);
+   const GiftiDataArray* normalsArray = getDataArrayWithIntent(GiftiCommon::intentNormals);
    if (normalsArray != NULL) {
       for (int i = 0; i < 3; i++) {
          const int indices[2] = { indx, i };
@@ -361,7 +361,7 @@ SurfaceFile::generateNormals()
 QString 
 SurfaceFile::getTopologyType() const 
 { 
-   const GiftiDataArray* topoArray = getDataArrayWithCategory(GiftiCommon::categoryTopologyTriangles);
+   const GiftiDataArray* topoArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
    if (topoArray != NULL) {
       const GiftiMetaData* md = topoArray->getMetaData();
       QString topoTypeString;
@@ -378,7 +378,7 @@ SurfaceFile::getTopologyType() const
 void 
 SurfaceFile::setTopologyType(const QString& t)
 {
-   GiftiDataArray* topoArray = getDataArrayWithCategory(GiftiCommon::categoryTopologyTriangles);
+   GiftiDataArray* topoArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
    if (topoArray != NULL) {
       GiftiMetaData* md = topoArray->getMetaData();
       QString topoTypeString;
@@ -393,7 +393,7 @@ SurfaceFile::setTopologyType(const QString& t)
 QString 
 SurfaceFile::getCoordinateType() const 
 { 
-   const GiftiDataArray* coordsArray = getDataArrayWithCategory(GiftiCommon::categoryCoordinates);
+   const GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
    if (coordsArray != NULL) {
       const GiftiMetaData* md = coordsArray->getMetaData();
       QString coordTypeString;
@@ -411,7 +411,7 @@ SurfaceFile::getCoordinateType() const
 void 
 SurfaceFile::setCoordinateType(const QString& t)
 {
-   GiftiDataArray* coordsArray = getDataArrayWithCategory(GiftiCommon::categoryCoordinates);
+   GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
    if (coordsArray != NULL) {
       GiftiMetaData* md = coordsArray->getMetaData();
       md->set(AbstractFile::headerTagConfigurationID, t);
@@ -438,4 +438,62 @@ SurfaceFile::writeLegacyFileData(QTextStream& /*stream*/,
                                  QDataStream& /*binStream*/) throw (FileException)
 {
    throw FileException("Legacy files not supported for SurfaceFile.");
-}      
+}  
+
+/**
+ * get the coordinate metadata (NULL If invalid) const method.
+ */
+const GiftiMetaData* 
+SurfaceFile::getCoordinateMetaData() const
+{
+   const GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
+   if (coordsArray != NULL) {
+      return coordsArray->getMetaData();
+   }
+   
+   return NULL;
+}
+
+/**
+ * get the topology metadata (NULL If invalid) const method.
+ */
+const GiftiMetaData* 
+SurfaceFile::getTopologyMetaData() const
+{
+   const GiftiDataArray* topoArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
+   if (topoArray != NULL) {
+      return topoArray->getMetaData();
+   }
+   
+   return NULL;
+}
+      
+/**
+ * get the coordinate metadata (NULL If invalid).
+ */
+GiftiMetaData* 
+SurfaceFile::getCoordinateMetaData() 
+{
+   GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
+   if (coordsArray != NULL) {
+      return coordsArray->getMetaData();
+   }
+   
+   return NULL;
+}
+
+/**
+ * get the topology metadata (NULL If invalid).
+ */
+GiftiMetaData* 
+SurfaceFile::getTopologyMetaData() 
+{
+   GiftiDataArray* topoArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
+   if (topoArray != NULL) {
+      return topoArray->getMetaData();
+   }
+   
+   return NULL;
+}
+      
+    

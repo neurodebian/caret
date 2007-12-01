@@ -38,6 +38,7 @@
 #include <iostream>
 #include <set>
 
+#include <QDate>
 #include <QDomDocument>
 #include <QDomElement>
 #include <QDomNode>
@@ -48,11 +49,13 @@
 #include "CellProjectionFile.h"
 #include "CellStudyInfo.h"
 #include "CommaSeparatedValueFile.h"
+#include "FileUtilities.h"
 #include "PubMedArticleFile.h"
 #include "SpecFile.h"
 #include "StudyMetaAnalysisFile.h"
 #include "StudyMetaDataFile.h"
 #include "StringTable.h"
+#include "SystemUtilities.h"
 #include "VocabularyFile.h"
 
 static const QString boldStart("<B>");
@@ -149,8 +152,11 @@ StudyMetaData::copyHelper(const StudyMetaData& smd)
    partitioningSchemeFullName = smd.partitioningSchemeFullName;
    projectID = smd.projectID;
    pubMedID = smd.pubMedID;
+   quality = smd.quality;
    stereotaxicSpace = smd.stereotaxicSpace;
    stereotaxicSpaceDetails = smd.stereotaxicSpaceDetails;
+   studyDataFormat = smd.studyDataFormat;
+   studyDataType = smd.studyDataType;
    title = smd.title;
    metaAnalysisFlag = smd.metaAnalysisFlag;
    
@@ -158,7 +164,7 @@ StudyMetaData::copyHelper(const StudyMetaData& smd)
    // DO NOT COPY THESE MEMBERS !!!
    //
    // 
-   provenanceDateAndTimeStamps = "";
+   dateAndTimeStamps = "";
    studyDataModifiedFlag = false;
    
    //
@@ -177,6 +183,11 @@ StudyMetaData::copyHelper(const StudyMetaData& smd)
    const int numPageRefs = smd.getNumberOfPageReferences();
    for (int i = 0; i < numPageRefs; i++) {
       addPageReference(new PageReference(*(smd.getPageReference(i))));
+   }
+   
+   const int numProv = smd.getNumberOfProvenances();
+   for (int i = 0; i < numProv; i++) {
+      addProvenance(new Provenance(*(smd.getProvenance(i))));
    }
    
    metaAnalysisStudies = smd.metaAnalysisStudies;
@@ -203,10 +214,13 @@ StudyMetaData::clear()
    partitioningSchemeFullName = "";
    projectID = getProjectIDInPubMedIDPrefix()
                + AbstractFile::generateUniqueNumericTimeStampAsString();
-   provenanceDateAndTimeStamps = "";
+   dateAndTimeStamps = "";
    pubMedID = projectID;  // user can override later
+   quality = "";
    stereotaxicSpace = "";
    stereotaxicSpaceDetails = "";
+   studyDataFormat = "";
+   studyDataType = "";
    studyDataModifiedFlag = false;
    title = "";
    metaAnalysisFlag = false;
@@ -215,14 +229,22 @@ StudyMetaData::clear()
       delete tables[i];
    }
    tables.clear();
+   
    for (unsigned int i = 0; i < figures.size(); i++) {
       delete figures[i];
    }
    figures.clear();
+   
    for (unsigned int i = 0; i < pageReferences.size(); i++) {
       delete pageReferences[i];
    }
    pageReferences.clear();
+   
+   for (unsigned int i = 0; i < provenances.size(); i++) {
+      delete provenances[i];
+   }
+   provenances.clear();
+   
    metaAnalysisStudies.clear();
 }
 
@@ -359,20 +381,56 @@ StudyMetaData::getTableByTableNumber(const QString& tableNumber) const
 }
 
 /**
- * get the last provenance save date.
+ * get the most recent save date.
  */
 QString 
-StudyMetaData::getLastProvenanceSaveDate() const
+StudyMetaData::getMostRecentDateAndTimeStamp() const
 {
    QString s;
    
-   const QStringList sl = provenanceDateAndTimeStamps.split(";", QString::SkipEmptyParts);
+   const QStringList sl = dateAndTimeStamps.split(";", QString::SkipEmptyParts);
    if (sl.count() > 0) {
       s = sl.at(0);
    }
    
    return s;
 }      
+      
+/**
+ * add a provenance.
+ */
+void 
+StudyMetaData::addProvenance(Provenance* p)
+{
+   p->setParent(this);
+   provenances.push_back(p);
+   setModified();
+}
+
+/**
+ * delete a provenance.
+ */
+void 
+StudyMetaData::deleteProvenance(const int indx)
+{
+   delete provenances[indx];
+   provenances.erase(provenances.begin() + indx);
+   setModified();
+}
+
+/**
+ * delete a provenance.
+ */
+void 
+StudyMetaData::deleteProvenance(const Provenance* p)
+{
+   for (int i = 0; i < getNumberOfProvenances(); i++) {
+      if (getProvenance(i) == p) {
+         deleteProvenance(i);
+         break;
+      }
+   }
+}
       
 /**
  * add a page reference.
@@ -459,8 +517,11 @@ StudyMetaData::operator==(const StudyMetaData& cci) const
            (name == cci.name) &&
            (partitioningSchemeAbbreviation == cci.partitioningSchemeAbbreviation) &&
            (partitioningSchemeFullName == cci.partitioningSchemeFullName) &&
+           (quality == cci.quality) &&
            (stereotaxicSpace == cci.stereotaxicSpace) &&
            (stereotaxicSpaceDetails == cci.stereotaxicSpaceDetails) &&
+           (studyDataFormat == cci.studyDataFormat) &&
+           (studyDataType == cci.studyDataType) &&
            (title == cci.title));
 
    return theSame;
@@ -521,17 +582,27 @@ StudyMetaData::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == "projectID") {
             projectID = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "provenanceDateAndTimeStamps") {
-            provenanceDateAndTimeStamps = AbstractFile::getXmlElementFirstChildAsString(elem);
+         else if ((elem.tagName() == "provenanceDateAndTimeStamps") ||
+                  (elem.tagName() == "dateAndTimeStamps")) {
+            dateAndTimeStamps = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == "pubMedID") {
             pubMedID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "quality") {
+            quality = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == "stereotaxicSpace") {
             stereotaxicSpace = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == "stereotaxicSpaceDetails") {
             stereotaxicSpaceDetails = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "studyDataFormat") {
+            studyDataFormat = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "studyDataType") {
+            studyDataType = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == "title") {
             title = AbstractFile::getXmlElementFirstChildAsString(elem);
@@ -547,6 +618,11 @@ StudyMetaData::readXML(QDomNode& nodeIn) throw (FileException)
                metaAnalysisFlag = false;
             }
          }
+         else if (elem.tagName() == "provenance") {
+            //
+            // Obsolete element, ignore it
+            //
+         }
          else if (elem.tagName() == "StudyMetaDataTable") {
             Table* t = new Table;
             t->readXML(node);
@@ -561,6 +637,11 @@ StudyMetaData::readXML(QDomNode& nodeIn) throw (FileException)
             PageReference* pr = new PageReference;
             pr->readXML(node);
             addPageReference(pr);
+         }
+         else if (elem.tagName() == "StudyMetaDataProvenance") {
+            Provenance* p = new Provenance;
+            p->readXML(node);
+            addProvenance(p);
          }
          else if ((elem.tagName() == "AssociatedStudies") ||
                   (elem.tagName() == "StudyNamePubMedID")) {
@@ -591,12 +672,12 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
                    QDomElement&  parentElement) const throw (FileException)
 {
    //
-   // Update provenance if modified flag is set
+   // Update data and time stamp if modified flag is set
    //
    if (studyDataModifiedFlag) {
-      provenanceDateAndTimeStamps = AbstractFile::generateDateAndTimeStamp()
+      dateAndTimeStamps = AbstractFile::generateDateAndTimeStamp()
                                   + ";"
-                                  + provenanceDateAndTimeStamps;
+                                  + dateAndTimeStamps;
       studyDataModifiedFlag = false;
    }
    
@@ -611,6 +692,7 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "authors", authors);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "citation", citation);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "comment", comment);
+   AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "dateAndTimeStamps", dateAndTimeStamps);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "documentObjectIdentifier", documentObjectIdentifier);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "keywords", keywords);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "mesh", medicalSubjectHeadings);
@@ -618,10 +700,12 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "partitioningSchemeAbbreviation", partitioningSchemeAbbreviation);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "partitioningSchemeFullName", partitioningSchemeFullName);
    AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "projectID", projectID);
-   AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "provenanceDateAndTimeStamps", provenanceDateAndTimeStamps);
    AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "pubMedID", pubMedID);
+   AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "quality", quality);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "stereotaxicSpace", stereotaxicSpace);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "stereotaxicSpaceDetails", stereotaxicSpaceDetails);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "studyDataFormat", studyDataFormat);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "studyDataType", studyDataType);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "title", title);
    if (metaAnalysisFlag) {
       AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "metaAnalysisFlag", "true");
@@ -649,6 +733,13 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
    //
    for (int i = 0; i < getNumberOfPageReferences(); i++) {
       pageReferences[i]->writeXML(xmlDoc, studyElement);
+   }
+   
+   //
+   // Add provenances
+   //
+   for (int i = 0; i < getNumberOfProvenances(); i++) {
+      provenances[i]->writeXML(xmlDoc, studyElement);
    }
    
    //
@@ -688,10 +779,13 @@ StudyMetaData::writeDataIntoCommaSeparatedValueFile(const std::vector<StudyMetaD
    const int partSchemeAbbrevCol = numCols++;
    const int partSchemeFullNameCol = numCols++;
    const int projectIDCol = numCols++;
-   const int provenanceCol = numCols++;
    const int pubMedCol = numCols++;
+   const int qualityCol = numCols++;
    const int spaceCol = numCols++;
    const int spaceDetailsCol = numCols++;
+   const int studyDataFormatCol = numCols++;
+   const int studyDataTypeCol = numCols++;
+   const int timeStampCol = numCols++;
    const int titleCol = numCols++;
    
    //
@@ -708,21 +802,24 @@ StudyMetaData::writeDataIntoCommaSeparatedValueFile(const std::vector<StudyMetaD
    st->setColumnTitle(partSchemeAbbrevCol, "Partitioning Scheme Abbreviation");
    st->setColumnTitle(partSchemeFullNameCol, "Partitioning Scheme Full Name");
    st->setColumnTitle(projectIDCol, "Project ID");
-   st->setColumnTitle(provenanceCol, "Provenance");
    st->setColumnTitle(pubMedCol, "PubMed ID");
+   st->setColumnTitle(qualityCol, "Quality");
    st->setColumnTitle(spaceCol, "Stereotaxic Space");
    st->setColumnTitle(spaceDetailsCol, "Stereotaxic Space Details");
+   st->setColumnTitle(studyDataFormatCol, "Study Data Format");
+   st->setColumnTitle(studyDataTypeCol, "Study Data Type");
+   st->setColumnTitle(timeStampCol, "TimeStamp");
    st->setColumnTitle(titleCol, "Title");
    
    for (int i = 0; i < numInfo; i++) {
       const StudyMetaData& smd = *(studyInfo[i]);
       //
-      // Update provenance if modified flag is set
+      // Update data and time stamp if modified flag is set
       //
       if (smd.studyDataModifiedFlag) {
-         smd.provenanceDateAndTimeStamps = AbstractFile::generateDateAndTimeStamp()
+         smd.dateAndTimeStamps = AbstractFile::generateDateAndTimeStamp()
                                      + ";"
-                                     + smd.provenanceDateAndTimeStamps;
+                                     + smd.dateAndTimeStamps;
          smd.studyDataModifiedFlag = false;
       }
 
@@ -736,10 +833,13 @@ StudyMetaData::writeDataIntoCommaSeparatedValueFile(const std::vector<StudyMetaD
       st->setElement(i, partSchemeAbbrevCol, smd.getPartitioningSchemeAbbreviation());
       st->setElement(i, partSchemeFullNameCol, smd.getPartitioningSchemeFullName());
       st->setElement(i, projectIDCol, smd.getProjectID());
-      st->setElement(i, provenanceCol, smd.getProvenance());
+      st->setElement(i, qualityCol, smd.getQuality());
+      st->setElement(i, timeStampCol, smd.getDateAndTimeStamps());
       st->setElement(i, pubMedCol, smd.getPubMedID());
       st->setElement(i, spaceCol, smd.getStereotaxicSpace());
       st->setElement(i, spaceDetailsCol, smd.getStereotaxicSpaceDetails());
+      st->setElement(i, studyDataFormatCol, smd.getStudyDataFormat());
+      st->setElement(i, studyDataTypeCol, smd.getStudyDataType());
       st->setElement(i, titleCol, smd.getTitle());
    }
    
@@ -769,10 +869,13 @@ StudyMetaData::readDataFromStringTable(std::vector<StudyMetaData*>& studyMetaDat
    int partitioningSchemeAbbrevCol = -1;
    int partitioningSchemeFullNameCol = -1;
    int projectIDCol = -1;
-   int provenanceCol = -1;
+   int qualityCol = -1;
+   int timeStampCol = -1;
    int pubMedCol = -1;
    int spaceCol = -1;
    int spaceDetailsCol = -1;
+   int studyDataFormatCol = -1;
+   int studyDataTypeCol = -1;
    int titleCol = -1;
    int urlCol = -1;
    
@@ -809,17 +912,27 @@ StudyMetaData::readDataFromStringTable(std::vector<StudyMetaData*>& studyMetaDat
       else if (name == "project id") {
          projectIDCol = i;
       }
-      else if (name == "provenance") {
-         provenanceCol = i;
+      else if ((name == "provenance-time-stamp") ||
+               (name == "time stamp")) {
+         timeStampCol = i;
       }
       else if (name == "pubmed id") {
          pubMedCol = i;
+      }
+      else if (name == "quality") {
+         qualityCol = i;
       }
       else if (name == "stereotaxic space") {
          spaceCol = i;
       }
       else if (name == "stereotaxic space details") {
          spaceDetailsCol = i;
+      }
+      else if (name == "study data format") {
+         studyDataFormatCol = i;
+      }
+      else if (name == "study data type") {
+         studyDataTypeCol = i;
       }
       else if (name == "title") {
          titleCol = i;
@@ -868,17 +981,26 @@ StudyMetaData::readDataFromStringTable(std::vector<StudyMetaData*>& studyMetaDat
       if (projectIDCol >= 0) {
          smd->setProjectID(st.getElement(i, projectIDCol));
       }
-      if (provenanceCol >= 0) {
-         smd->setProvenance(st.getElement(i, projectIDCol));
+      if (timeStampCol >= 0) {
+         smd->setDateAndTimeStamps(st.getElement(i, projectIDCol));
       }
       if (pubMedCol >= 0) {
          smd->setPubMedID(st.getElement(i, pubMedCol));
+      }
+      if (qualityCol >= 0) {
+         smd->setQuality(st.getElement(i, qualityCol));
       }
       if (spaceCol >= 0) {
          smd->setStereotaxicSpace(st.getElement(i, spaceCol));
       }
       if (spaceDetailsCol >= 0) {
          smd->setStereotaxicSpaceDetails(st.getElement(i, spaceDetailsCol));
+      }
+      if (studyDataFormatCol >= 0) {
+         smd->setStudyDataFormat(st.getElement(i, studyDataFormatCol));
+      }
+      if (studyDataTypeCol >= 0) {
+         smd->setStudyDataType(st.getElement(i, studyDataTypeCol));
       }
       if (titleCol >= 0) {
          smd->setTitle(st.getElement(i, titleCol));
@@ -891,13 +1013,56 @@ StudyMetaData::readDataFromStringTable(std::vector<StudyMetaData*>& studyMetaDat
          if (smd->getDocumentObjectIdentifier().isEmpty()) {
             smd->setDocumentObjectIdentifier(oldURL);
          }
-      }
-      
+      }      
       
       studyMetaData.push_back(smd);
    }
 }      
 
+/**
+ * get the study data format entries.
+ */
+void 
+StudyMetaData::getStudyDataFormatEntries(std::vector<QString>& entries)
+{
+   entries.clear();
+   entries.push_back("Stereotaxic Foci");
+   entries.push_back("Metric");
+   entries.push_back("Surface Shape");
+   entries.push_back("Paint");
+   entries.push_back("Volume");
+   entries.push_back("Surface");
+   std::sort(entries.begin(), entries.end());
+}
+
+/**
+ * get the study data type entries.
+ */
+void 
+StudyMetaData::getStudyDataTypeEntries(std::vector<QString>& entries)
+{
+   entries.clear();
+   entries.push_back("fMRI");
+   entries.push_back("PET");
+   entries.push_back("Morphometry");
+   entries.push_back("Connectivity");
+   entries.push_back("Partitioning Scheme");
+   entries.push_back("ERP");
+   entries.push_back("VEP");
+   entries.push_back("Lesion");
+   entries.push_back("EEG");
+   entries.push_back("TMS");
+   entries.push_back("DTI");
+   entries.push_back("MEG");
+   entries.push_back("human");
+   entries.push_back("macaque");
+   entries.push_back("rat");
+   entries.push_back("mouse");
+   entries.push_back("ape");
+   std::sort(entries.begin(), entries.end());
+   entries.push_back("Other");
+}
+      
 /**
  * retrieve data from PubMed using PubMed ID.
  */
@@ -1008,6 +1173,42 @@ StudyMetaData::setName(const QString& s)
 }
       
 /**
+ * set the quality.
+ */
+void 
+StudyMetaData::setQuality(const QString& s)
+{
+   if (quality != s) {
+      quality = s;
+      setModified();
+   }
+}
+      
+/**
+ * set the study data format.
+ */
+void 
+StudyMetaData::setStudyDataFormat(const QString& s)
+{
+   if (studyDataFormat != s) {
+      studyDataFormat = s;
+      setModified();
+   }
+}
+
+/**
+ * set the study data type.
+ */
+void 
+StudyMetaData::setStudyDataType(const QString& s)
+{
+   if (studyDataType != s) {
+      studyDataType = s;
+      setModified();
+   }
+}
+      
+/**
  * set title.
  */
 void 
@@ -1104,12 +1305,12 @@ StudyMetaData::setPartitioningSchemeAbbreviation(const QString& s)
 }
 
 /**
- * set the provenance.
+ * set the date and time stamps.
  */
 void 
-StudyMetaData::setProvenance(const QString& p)
+StudyMetaData::setDateAndTimeStamps(const QString& p)
 {
-   provenanceDateAndTimeStamps = p;
+   dateAndTimeStamps = p;
    
    //
    // NOTE: DO NOT SET MODIFIED STATUS
@@ -3060,8 +3261,7 @@ StudyMetaData::PageReference::readXML(QDomNode& nodeIn) throw (FileException)
          }
       }
       node = node.nextSibling();
-   }
-         
+   }         
 }
 
 /**
@@ -3120,6 +3320,204 @@ StudyMetaData::PageReference::setModified()
    }
 }
 
+//====================================================================================
+//
+// Provenance class
+//
+//====================================================================================
+
+/**
+ * constructor.
+ */
+StudyMetaData::Provenance::Provenance()
+{
+   parentStudyMetaData = NULL;
+   clear();
+}
+
+/**
+ * destructor.
+ */
+StudyMetaData::Provenance::~Provenance()
+{
+   clear();
+}
+
+/**
+ * copy constructor.
+ */
+StudyMetaData::Provenance::Provenance(const Provenance& p)
+{
+   parentStudyMetaData = NULL;
+   copyHelper(p);
+}
+
+/**
+ * assignment operator.
+ */
+StudyMetaData::Provenance& 
+StudyMetaData::Provenance::operator=(const Provenance& p)
+{
+   if (this != &p) {
+      copyHelper(p);
+   }
+   return *this;
+}
+
+/**
+ * clear the page link.
+ */
+void 
+StudyMetaData::Provenance::clear()
+{
+   name = SystemUtilities::getUserName();
+   date = QDate::currentDate().toString("dd MMM yyyy");
+   comment = "";
+}
+
+/**
+ * set the name.
+ */
+void 
+StudyMetaData::Provenance::setName(const QString& s)
+{
+   if (name != s) {
+      name = s;
+      setModified();
+   }
+}
+
+/**
+ * set the date.
+ */
+void 
+StudyMetaData::Provenance::setDate(const QString& s)
+{
+   if (date != s) {
+      date = s;
+      setModified();
+   }
+}
+
+/**
+ * set the comment.
+ */
+void 
+StudyMetaData::Provenance::setComment(const QString& s)
+{
+   if (comment != s) {
+      comment = s;
+      setModified();
+   }
+}
+
+/**
+ * called to read from XML.
+ */
+void 
+StudyMetaData::Provenance::readXML(QDomNode& nodeIn) throw (FileException)
+{
+   name = "";
+   date = "";
+   comment = "";
+   
+   if (nodeIn.isNull()) {      
+      return;   
+   }   
+   QDomElement elem = nodeIn.toElement();   
+   if (elem.isNull()) {      
+      return;   
+   }   
+   if (elem.tagName() != "StudyMetaDataProvenance") {      
+      QString msg("Incorrect element type passed to StudyMetaData::Provenance::readXML() ");
+      msg.append(elem.tagName());      
+      throw FileException(msg);   
+   } 
+   QDomNode node = nodeIn.firstChild();   
+   while (node.isNull() == false) {
+      QDomElement elem = node.toElement();      
+      if (elem.isNull() == false) {         
+         if (elem.tagName() == "name") {            
+            name = AbstractFile::getXmlElementFirstChildAsString(elem);         
+         }         
+         else if (elem.tagName() == "date") {            
+            date = AbstractFile::getXmlElementFirstChildAsString(elem);         
+         }
+         else if (elem.tagName() == "comment") {            
+            comment = AbstractFile::getXmlElementFirstChildAsString(elem);         
+         }
+         else {
+            std::cout << "WARNING: unrecognized StudyMetaData::Provenance element ignored: "
+                      << elem.tagName().toAscii().constData()
+                      << std::endl;
+         }
+      }
+      node = node.nextSibling();
+   }
+}
+
+/**
+ * called to write to an XML structure.
+ */
+void 
+StudyMetaData::Provenance::writeXML(QDomDocument& xmlDoc,
+                                    QDomElement&  parentElement) const throw (FileException)
+{
+   //
+   // Create the element for this class instance's data
+   //
+   QDomElement element = xmlDoc.createElement("StudyMetaDataProvenance");
+
+   //
+   // write data
+   //
+   AbstractFile::addXmlCdataElement(xmlDoc, element, "name", name);
+   AbstractFile::addXmlCdataElement(xmlDoc, element, "date", date);
+   AbstractFile::addXmlCdataElement(xmlDoc, element, "comment", comment);
+   
+   //
+   // Add to parent
+   //
+   parentElement.appendChild(element);
+}
+
+
+/**
+ * set parent.
+ */
+void 
+StudyMetaData::Provenance::setParent(StudyMetaData* parentStudyMetaDataIn)
+{
+   parentStudyMetaData = parentStudyMetaDataIn;
+}
+
+/**
+ * set modified.
+ */
+void 
+StudyMetaData::Provenance::setModified()
+{
+   if (parentStudyMetaData != NULL) {
+      parentStudyMetaData->setModified();
+   }
+}
+
+/**
+ * copy helper.
+ */
+void 
+StudyMetaData::Provenance::copyHelper(const Provenance& p)
+{
+   StudyMetaData* savedParentStudyMetaData = parentStudyMetaData;
+   
+   clear();
+   name    = p.name;
+   date    = p.date;
+   comment = p.comment;
+   
+   parentStudyMetaData = savedParentStudyMetaData;
+   setModified();
+}
 
 //====================================================================================
 //
@@ -3168,7 +3566,7 @@ StudyMetaDataFile::StudyMetaDataFile(const StudyMetaDataFile& smdf)
                   FILE_IO_NONE,     // XML base64
                   FILE_IO_NONE,     // XML gzip base64 
                   FILE_IO_NONE,     // other format
-                  FILE_IO_READ_AND_WRITE)     // csvf
+                  FILE_IO_READ_ONLY)     // csvf
 {
    copyHelper(smdf);
 }
@@ -3240,11 +3638,13 @@ StudyMetaDataFile::append(CellFile& cf)
       //
       StudyMetaDataLink smdl;
       smdl.setPubMedID(smd->getPubMedID());
+      StudyMetaDataLinkSet smdls;
+      smdls.addStudyMetaDataLink(smdl);
       const int numCells = cf.getNumberOfCells();
       for (int j = 0; j < numCells; j++) {
          CellData* cd = cf.getCell(j);
          if (cd->getStudyNumber() == i) {
-            cd->setStudyMetaDataLink(smdl);
+            cd->setStudyMetaDataLinkSet(smdls);
          }
       }
    }
@@ -3275,11 +3675,13 @@ StudyMetaDataFile::append(CellProjectionFile& cpf)
       //
       StudyMetaDataLink smdl;
       smdl.setPubMedID(smd->getPubMedID());
+      StudyMetaDataLinkSet smdls;
+      smdls.addStudyMetaDataLink(smdl);
       const int numCellProjections = cpf.getNumberOfCellProjections();
       for (int j = 0; j < numCellProjections; j++) {
          CellProjection* cp = cpf.getCellProjection(j);
          if (cp->getStudyNumber() == i) {
-            cp->setStudyMetaDataLink(smdl);
+            cp->setStudyMetaDataLinkSet(smdls);
          }
       }
    }
@@ -3310,11 +3712,13 @@ StudyMetaDataFile::append(VocabularyFile& vf)
       //
       StudyMetaDataLink smdl;
       smdl.setPubMedID(smd->getPubMedID());
+      StudyMetaDataLinkSet smdls;
+      smdls.addStudyMetaDataLink(smdl);
       const int numVocabularyEntries = vf.getNumberOfVocabularyEntries();
       for (int j = 0; j < numVocabularyEntries; j++) {
          VocabularyFile::VocabularyEntry* ve = vf.getVocabularyEntry(j);
          if (ve->getStudyNumber() == i) {
-            ve->setStudyMetaDataLink(smdl);
+            ve->setStudyMetaDataLinkSet(smdls);
          }
       }
    }
@@ -3475,7 +3879,7 @@ StudyMetaDataFile::getStudyIndexFromPubMedID(const QString& pubMedID) const
  * get the index of study meta data matching the study metadata link (-1 if no match found)
  */
 int 
-StudyMetaDataFile::getStudyIndexFromLink(const StudyMetaDataLink smdl) const
+StudyMetaDataFile::getStudyIndexFromLink(const StudyMetaDataLink& smdl) const
 {
    const int num = getNumberOfStudyMetaData();
    for (int i = 0; i < num; i++) {
@@ -3579,7 +3983,7 @@ StudyMetaDataFile::getAllTableSubHeaderShortNames(std::vector<QString>& allShort
 }
 
 /**
- * clear study meta data modified (prevents provenance updates).
+ * clear study meta data modified (prevents date and time stamp updates).
  */
 void 
 StudyMetaDataFile::clearAllStudyMetaDataElementsModified()
@@ -3760,6 +4164,44 @@ StudyMetaDataFile::updateAllStudiesWithDataFromPubMedDotCom() throw (FileExcepti
 }
       
 /**
+ * count the number of studies without at least one provenance entry.
+ */
+int 
+StudyMetaDataFile::getNumberOfStudyMetaDatWithoutProvenceEntries() const
+{
+   int count = 0;
+   const int num = getNumberOfStudyMetaData();
+   for (int i = 0; i < num; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      if (smd->getNumberOfProvenances() <= 0) {
+         count++;
+      }
+   }
+   return count;
+}
+
+/**
+ * update all studies without a provenance entry.
+ */
+void 
+StudyMetaDataFile::addProvenanceToStudiesWithoutProvenanceEntries(const QString& name,
+                                                                  const QString& date,
+                                                                  const QString& comment)
+{
+   const int num = getNumberOfStudyMetaData();
+   for (int i = 0; i < num; i++) {
+      StudyMetaData* smd = getStudyMetaData(i);
+      if (smd->getNumberOfProvenances() <= 0) {
+         StudyMetaData::Provenance* p = new StudyMetaData::Provenance;
+         p->setName(name);
+         p->setDate(date);
+         p->setComment(comment);
+         smd->addProvenance(p);
+      }
+   }
+}
+                                                          
+/**
  * write the file's data into a comma separated values file (throws exception if not supported).
  */
 void 
@@ -3849,7 +4291,7 @@ StudyMetaDataFile::readFileData(QFile& file,
    }
    
    //
-   // Prevent provenance updates if file is saved
+   // Prevent data and time stamp updates if file is saved
    //
    clearAllStudyMetaDataElementsModified();
 }
@@ -3903,4 +4345,83 @@ StudyMetaDataFile::writeFileData(QTextStream& stream,
    }
 }
 
+/**
+ * find duplicate studies (map key is PubMedID, value is filename).
+ */
+void 
+StudyMetaDataFile::findDuplicateStudies(const std::vector<QString>& studyFileNames,
+                                        std::multimap<QString,QString>& duplicatesStudiesOut)
+                                                             throw (FileException)
+{
+   duplicatesStudiesOut.clear();
+   
+   const int numFiles = static_cast<int>(studyFileNames.size());
+   if (numFiles <= 0) {
+      throw FileException("No filenames provided.");
+   }
+   
+   //
+   // keep track of PubMedIDs and files
+   //
+   std::set<QString> pubMedIDs;
+   std::multimap<QString,QString> pubMedIDsAndFiles;
+   
+   //
+   // Loop through the study files
+   //
+   for (int i = 0; i < numFiles; i++) {
+      //
+      // Read the study file
+      //
+      StudyMetaDataFile studyFile;
+      studyFile.readFile(studyFileNames[i]);
+      const QString fileNameNoPath(FileUtilities::basename(studyFileNames[i]));
+      //
+      // loop through the studies
+      //
+      const int numStudies = studyFile.getNumberOfStudyMetaData();
+      for (int j = 0; j < numStudies; j++) {
+         //
+         // Get the studies PubMedID
+         //
+         const StudyMetaData* smd = studyFile.getStudyMetaData(j);
+         const QString pubMedID = smd->getPubMedID();
+         pubMedIDs.insert(pubMedID);
+
+         //
+         // file name and study name
+         //
+         QString name = (fileNameNoPath + "    " + smd->getName());
+         
+         //
+         // Insert into map
+         //
+         pubMedIDsAndFiles.insert(std::make_pair(pubMedID, name));         
+      }
+   }
+   
+   //
+   // Look for Duplicates
+   //
+   for (std::set<QString>::iterator iter = pubMedIDs.begin();
+        iter != pubMedIDs.end();
+        iter++) {
+      //
+      // Is PubMedID used more than once
+      //
+      const QString pubMedID = *iter;
+      if (pubMedIDsAndFiles.count(pubMedID) > 1) {
+         for (std::multimap<QString,QString>::iterator pos = 
+                 pubMedIDsAndFiles.lower_bound(pubMedID);
+              pos != pubMedIDsAndFiles.upper_bound(pubMedID);
+              pos++) {
+            //
+            // Add to output
+            //
+            duplicatesStudiesOut.insert(std::make_pair(pubMedID, pos->second));
+         }
+      }
+   }
+}
+         
 

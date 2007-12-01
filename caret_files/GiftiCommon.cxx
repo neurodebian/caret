@@ -26,7 +26,7 @@
 #include <QTextStream>
 
 #define __GIFTI_COMMON_MAIN__
-#include "GiftiCommon.h"
+#include "GiftiCommon.h" 
 #undef __GIFTI_COMMON_MAIN__
 
 /**

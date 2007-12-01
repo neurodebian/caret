@@ -29,7 +29,7 @@
 
 #include "AbstractFile.h"
 #include "CellStudyInfo.h"
-#include "StudyMetaDataLink.h"
+#include "StudyMetaDataLinkSet.h"
 
 class QDomNode;
 
@@ -98,11 +98,11 @@ class VocabularyFile : public AbstractFile {
             // set the study number
             void setStudyNumber(const int sn);
                        
-            /// get the study metadata link
-            StudyMetaDataLink getStudyMetaDataLink() const { return studyMetaDataLink; }
+            /// get the study metadata link set
+            StudyMetaDataLinkSet getStudyMetaDataLinkSet() const { return studyMetaDataLinkSet; }
             
-            /// set the study metadata link
-            void setStudyMetaDataLink(const StudyMetaDataLink smdl);
+            /// set the study metadata link set
+            void setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls);
             
             /// write the data into a StringTable
             static void writeDataIntoStringTable(const std::vector<VocabularyEntry>& data,
@@ -151,7 +151,7 @@ class VocabularyFile : public AbstractFile {
             int studyNumber;
             
             /// the study metadata link
-            StudyMetaDataLink studyMetaDataLink;
+            StudyMetaDataLinkSet studyMetaDataLinkSet;
             
             // ***** IF ADDITIONAL MEMBERS ADDED, UPDATE copyHelper() **********
             

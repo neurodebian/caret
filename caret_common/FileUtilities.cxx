@@ -437,7 +437,8 @@ FileUtilities::parseCaretDataFileName(const QString& filenameIn,
    //
    // hemisphere is L, R, or LR followed by a period.
    //
-   const QString hemisphereRE("([L|R|LR|BOTH]\\.)");
+   const QString hemisphereRE("(LR|L|R|BOTH)\\.");
+   //const QString hemisphereRE("([LR|L|R|BOTH]\\.)");
    
    //
    // description is a anything ending with a period.  OPTIONAL.
@@ -716,6 +717,11 @@ FileUtilities::parseCaretDataFileName(const QString& filenameIn,
       }
    }
    
+   //
+   // Date no longer used
+   //
+   theDate = "";
+   
    return validName;
 }
 
@@ -729,10 +735,16 @@ FileUtilities::reassembleCaretDataFileName(const QString& directory,
                                            const QString& anatomy,
                                            const QString& hemisphere,
                                            const QString& description,
-                                           const QString& theDate,
+                                           const QString& theDateIn,
                                            const QString& numNodes,
                                            const QString& extension)
 {
+   //
+   // Date is no longer used
+   //
+   QString theDate = theDateIn;
+   theDate = "";
+   
    std::vector<QString> components;
    
    if (species.isEmpty() == false) {
@@ -1161,7 +1173,7 @@ FileUtilities::isAbsolutePath(const QString& name)
       return false;
    }
 #ifdef Q_OS_WIN32
-   if (name.find(":") != -1) {
+   if (name.indexOf(":") != -1) {
       return true;
    }
 #else

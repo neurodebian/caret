@@ -37,6 +37,7 @@ class CellFile;
 class CellProjectionFile;
 class ColorFile;
 class CoordinateFile;
+class Structure;
 class StudyMetaDataFile;
 class TopologyFile;
 
@@ -51,14 +52,20 @@ class CellProjection : public CellBase {
       };
       
       /// Constructor
-      CellProjection();
+      CellProjection(const QString& fileNameIn = "");
       
+      /// Constructor for placing cell projection at a node (no need to project)
+      CellProjection(const QString& nameIn,
+                     const CoordinateFile* fiducialCoordinateFile,
+                     const int nodeNumber,
+                     const Structure& structureIn);
+                                      
       /// Destructor
       ~CellProjection();
-      
+
       // initialize the cell projection
-      void initialize();
-      
+      void initialize(const QString& fileNameIn = "");
+
       /// Get the projected position of this cell (returns true if valid projection)
       bool getProjectedPosition(const CoordinateFile* cf,
                                 const TopologyFile* tf,
@@ -84,6 +91,10 @@ class CellProjection : public CellBase {
       /// Get the index of the unique name
       int getUniqueNameIndex() const { return uniqueNameIndex; }
       
+      /// set element from text (used by SAX XML parser)
+      void setElementFromText(const QString& elementName,
+                              const QString& textValue);
+                              
    protected:
       /// called when data modified
       void setModified();
@@ -109,12 +120,17 @@ class CellProjection : public CellBase {
       /// The cell classes
       //std::vector<CellClass> cellClasses;
       
+      /// projection is inside triangle
       static const QString tagInsideTriangle;
+      
+      /// projection is outside triangle
       static const QString tagOutsideTriangle;
+      
+      /// projection is unknown
       static const QString tagUnknownTriangle;
       
       /// set when reading a cell projection file for throwing exceptions
-      static QString filename;
+      QString filename;
       
       /// the unique name index
       int uniqueNameIndex;
@@ -173,11 +189,83 @@ class CellProjection : public CellBase {
       /// Write this cell projection
       void writeFileData(QTextStream& stream, const int cellNumber) throw (FileException);
       
+      /// tag for reading and writing cells
+      static const QString tagCellProjection;
+      
+      /// tag for reading and writing cells
+      static const QString tagCellProjNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagProjectionType;
+      
+      /// tag for reading and writing cells
+      static const QString tagClosestTileVertices;
+      
+      /// tag for reading and writing cells
+      static const QString tagClosestTileAreas;
+      
+      /// tag for reading and writing cells
+      static const QString tagCDistance;
+      
+      /// tag for reading and writing cells
+      static const QString tagDR;
+      
+      /// tag for reading and writing cells
+      static const QString tagTriFiducial;
+      
+      /// tag for reading and writing cells
+      static const QString tagThetaR;
+      
+      /// tag for reading and writing cells
+      static const QString tagPhiR;
+      
+      /// tag for reading and writing cells
+      static const QString tagTriVertices;
+      
+      /// tag for reading and writing cells
+      static const QString tagVertex;
+      
+      /// tag for reading and writing cells
+      static const QString tagVertexFiducial;
+      
+      /// tag for reading and writing cells
+      static const QString tagPosFiducial;
+      
+      /// tag for reading and writing cells
+      static const QString tagFracRI;
+      
+      /// tag for reading and writing cells
+      static const QString tagFracRJ;
+      
    friend class CellFileProjector; 
    friend class CellProjectionFile;
+   friend class CellProjectionFileSaxReader;
    friend class CellProjectionUnprojector;
    friend class FociFileToPalsProjector;
 };
+
+#ifdef __CELL_PROJECTION_MAIN__
+      const QString CellProjection::tagCellProjection = "CellProjection";
+      const QString CellProjection::tagCellProjNumber = "cellProjNumber";
+      const QString CellProjection::tagProjectionType = "projectionType";
+      const QString CellProjection::tagClosestTileVertices = "closestTileVertices";
+      const QString CellProjection::tagClosestTileAreas = "closestTileAreas";
+      const QString CellProjection::tagCDistance = "cdistance";
+      const QString CellProjection::tagDR = "dR";
+      const QString CellProjection::tagTriFiducial = "triFiducial";
+      const QString CellProjection::tagThetaR = "thetaR";
+      const QString CellProjection::tagPhiR = "phiR";
+      const QString CellProjection::tagTriVertices = "triVertices";
+      const QString CellProjection::tagVertex = "vertex";
+      const QString CellProjection::tagVertexFiducial = "vertexFiducial";
+      const QString CellProjection::tagPosFiducial = "posFiducial";
+      const QString CellProjection::tagFracRI = "fracRI";
+      const QString CellProjection::tagFracRJ = "fracRJ";
+
+      const QString CellProjection::tagInsideTriangle = "INSIDE";
+      const QString CellProjection::tagOutsideTriangle = "OUTSIDE";
+      const QString CellProjection::tagUnknownTriangle = "UNKNOWN";
+#endif // __CELL_PROJECTION_MAIN__
 
 /// class for storing cell projections
 class CellProjectionFile : public AbstractFile {
@@ -210,6 +298,9 @@ class CellProjectionFile : public AbstractFile {
       /// version number of this file
       int versionNumber;
       
+      // read the file with a SAX parser
+      void readFileWithSaxParser(QFile& file) throw (FileException);
+                                 
       /// read file version 1 data
       void readFileVersion1(QTextStream&, const int numProjections,
                            const int numStudyInfo) throw (FileException);
@@ -343,6 +434,18 @@ class CellProjectionFile : public AbstractFile {
          return &cellProjections[i];
       }
       
+      /// get first cell projection with specified name
+      CellProjection* getFirstCellProjectionWithName(const QString& name);
+      
+      /// get last cell projection with specified name
+      CellProjection* getLastCellProjectionWithName(const QString& name);
+      
+      /// get first cell projection with specified name (const method)
+      const CellProjection* getFirstCellProjectionWithName(const QString& name) const;
+      
+      /// get last cell projection with specified name (const method)
+      const CellProjection* getLastCellProjectionWithName(const QString& name) const;
+      
       /// get number of cell projections
       int getNumberOfCellProjections() const { return cellProjections.size(); }
       
@@ -368,6 +471,13 @@ class CellProjectionFile : public AbstractFile {
       /// delete cell projection at specified index
       void deleteCellProjection(const int index);
       
+      /// delete cell projections with name
+      void deleteCellProjectionsWithName(const QString& name);
+      
+      /// delete cell projections whose indices are not specified
+      void deleteAllButTheseCellProjections(const int* indices,
+                                            const int numIndices);
+                                            
       /// delete all cell projections whose display flag is false
       void deleteAllNonDisplayedCellProjections(const Structure& keepThisStructureOnly);
       
@@ -427,7 +537,7 @@ class CellProjectionFile : public AbstractFile {
       
 };
 
-#ifdef CELL_PROJECTION_MAIN
+#ifdef __CELL_PROJECTION_FILE_MAIN__
 
    const QString CellProjectionFile::tagFileVersion = "tag-version";
    const QString CellProjectionFile::tagNumberOfCellProjections = 
@@ -440,12 +550,6 @@ class CellProjectionFile : public AbstractFile {
    const QString CellProjectionFile::tagCommentCitation = "tag-citation";
    const QString CellProjectionFile::tagCommentStereotaxicSpace = "tag-space";
    
-   const QString CellProjection::tagInsideTriangle = "INSIDE";
-   const QString CellProjection::tagOutsideTriangle = "OUTSIDE";
-   const QString CellProjection::tagUnknownTriangle = "UNKNOWN";
-
-   QString CellProjection::filename = "";
-
-#endif // CELL_PROJECTION_MAIN
+#endif // __CELL_PROJECTION_FILE_MAIN__
 
 #endif // __CELL_PROJECTION_FILE_H__

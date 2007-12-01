@@ -161,4 +161,13 @@ BrainModelAlgorithm::allowEventsToProcess()
       qApp->processEvents();
    }
 }
-      
+
+/**
+ * get a text description of algorithm.
+ */
+QString 
+BrainModelAlgorithm::getTextDescription() const
+{
+   return "";
+}
+

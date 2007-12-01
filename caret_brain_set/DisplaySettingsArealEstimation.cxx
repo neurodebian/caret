@@ -133,8 +133,7 @@ DisplaySettingsArealEstimation::saveScene(SceneFile::Scene& scene, const bool on
       }
       
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_AREAL_ESTIMATION,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION) == false) {
+      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION) == false) {
          return;
       }
    }

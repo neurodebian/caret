@@ -86,10 +86,7 @@ QtDialogNonModal::QtDialogNonModal(QWidget* parent,
                     this, SIGNAL(signalHelpButtonPressed()));
    helpButton->hide();
    
-   //
-   // Make buttons same size
-   //
-   QtUtilities::makeButtonsSameSize(applyButton, closeButton, helpButton);
+   resizeButtons();
 }
               
 /**
@@ -99,6 +96,18 @@ QtDialogNonModal::~QtDialogNonModal()
 {
 }
 
+/**
+ * resize the buttons.
+ */
+void 
+QtDialogNonModal::resizeButtons()
+{
+   //
+   // Make buttons same size
+   //
+   QtUtilities::makeButtonsSameSize(applyButton, closeButton, helpButton);
+}
+      
 /**
  * show the help button.
  */

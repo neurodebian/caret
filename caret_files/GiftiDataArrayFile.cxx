@@ -35,6 +35,7 @@
 #define __GIFTI_DATA_ARRAY_FILE_MAIN__
 #include "GiftiDataArrayFile.h"
 #undef __GIFTI_DATA_ARRAY_FILE_MAIN__
+#include "GiftiDataArrayFileStreamReader.h"
 #include "GiftiDataArrayFileSaxReader.h"
 
 #include "StringUtilities.h"
@@ -43,7 +44,7 @@
  * Constructor
  */
 GiftiDataArrayFile::GiftiDataArrayFile(const QString& descriptiveName,
-                           const QString& defaultDataArrayCategoryIn,
+                           const QString& defaultDataArrayIntentIn,
                            const GiftiDataArray::DATA_TYPE defaultDataTypeIn,
                            const QString& defaultExt,
                            const FILE_FORMAT defaultWriteTypeIn,
@@ -64,10 +65,10 @@ GiftiDataArrayFile::GiftiDataArrayFile(const QString& descriptiveName,
                   supportsOtherFormat,
                   supportsCSVfFormat)
 {
-   defaultDataArrayCategory = defaultDataArrayCategoryIn;
+   defaultDataArrayIntent = defaultDataArrayIntentIn;
    defaultDataType = defaultDataTypeIn;
    dataAreIndicesIntoLabelTable = dataAreIndicesIntoLabelTableIn;
-   
+
    if (giftiXMLFilesEnabled) {
       setFileReadWriteType(FILE_FORMAT_XML, FILE_IO_READ_AND_WRITE);
       setFileReadWriteType(FILE_FORMAT_XML_BASE64, FILE_IO_READ_AND_WRITE);
@@ -77,6 +78,20 @@ GiftiDataArrayFile::GiftiDataArrayFile(const QString& descriptiveName,
       setFileReadWriteType(FILE_FORMAT_XML, FILE_IO_READ_ONLY);
       setFileReadWriteType(FILE_FORMAT_XML_BASE64, FILE_IO_READ_ONLY);
       setFileReadWriteType(FILE_FORMAT_XML_GZIP_BASE64, FILE_IO_READ_ONLY);
+   }
+   //
+   
+   // Set write type and possibly override with the preferred write type
+   //
+   // NOTE: This code is also in the AbstractFile constructor
+   // but is needed here since supported write types are altered above
+   //
+   const std::vector<FILE_FORMAT> availableWriteTypes = getPreferredWriteType();
+   for (unsigned int i = 0; i < availableWriteTypes.size(); i++) {
+      if (getCanWrite(availableWriteTypes[i])) {
+         setFileWriteType(availableWriteTypes[i]);
+         break;
+      }
    }
 }
 
@@ -101,7 +116,7 @@ GiftiDataArrayFile::GiftiDataArrayFile()
                   FILE_IO_NONE,            // does not support "other" format
                   FILE_IO_NONE)            // does not support "csvf" format
 {
-   defaultDataArrayCategory = "Generic";
+   defaultDataArrayIntent = "NIFTI_INTENT_UNKNOWN";
    defaultDataType = GiftiDataArray::DATA_TYPE_FLOAT32;
    dataAreIndicesIntoLabelTable = false;
    
@@ -147,7 +162,7 @@ GiftiDataArrayFile::copyHelperGiftiDataArrayFile(const GiftiDataArrayFile& nndf)
    labelTable = nndf.labelTable;
    metaData = nndf.metaData;
    defaultDataType = nndf.defaultDataType;
-   defaultDataArrayCategory = nndf.defaultDataArrayCategory;
+   defaultDataArrayIntent = nndf.defaultDataArrayIntent;
    dataAreIndicesIntoLabelTable = nndf.dataAreIndicesIntoLabelTable;
    
    for (unsigned int i = 0; i < nndf.dataArrays.size(); i++) {
@@ -353,14 +368,14 @@ GiftiDataArrayFile::getDataArrayWithNameIndex(const QString& n) const
 }
 
 /**
- * get the data array of the specified category.
+ * get the data array of the specified intent.
  */
 GiftiDataArray* 
-GiftiDataArrayFile::getDataArrayWithCategory(const QString& catName) 
+GiftiDataArrayFile::getDataArrayWithIntent(const QString& catName) 
 {
    for (int i = 0; i < getNumberOfDataArrays(); i++) {
       GiftiDataArray* gda = getDataArray(i);
-      if (gda->getCategory() == catName) {
+      if (gda->getIntent() == catName) {
          return gda;
       }
    }
@@ -368,14 +383,14 @@ GiftiDataArrayFile::getDataArrayWithCategory(const QString& catName)
 }
 
 /**
- * get the data array of the specified category (const method).
+ * get the data array of the specified intent (const method).
  */
 const GiftiDataArray* 
-GiftiDataArrayFile::getDataArrayWithCategory(const QString& catName) const
+GiftiDataArrayFile::getDataArrayWithIntent(const QString& catName) const
 {
    for (int i = 0; i < getNumberOfDataArrays(); i++) {
       const GiftiDataArray* gda = getDataArray(i);
-      if (gda->getCategory() == catName) {
+      if (gda->getIntent() == catName) {
          return gda;
       }
    }
@@ -383,14 +398,14 @@ GiftiDataArrayFile::getDataArrayWithCategory(const QString& catName) const
 }
 
 /**
- * get the index of the data array of the specified category.
+ * get the index of the data array of the specified intent.
  */
 int 
-GiftiDataArrayFile::getDataArrayWithCategoryIndex(const QString& catName) const
+GiftiDataArrayFile::getDataArrayWithIntentIndex(const QString& catName) const
 {
    for (int i = 0; i < getNumberOfDataArrays(); i++) {
       const GiftiDataArray* gda = getDataArray(i);
-      if (gda->getCategory() == catName) {
+      if (gda->getIntent() == catName) {
          return i;
       }
    }
@@ -458,6 +473,16 @@ GiftiDataArrayFile::getDataArrayComment(const int arrayIndex) const
 }
 
 /**
+ * get the default data array intent.
+ */
+void 
+GiftiDataArrayFile::setDefaultDataArrayIntent(const QString& newIntentName) 
+{ 
+   defaultDataArrayIntent = newIntentName; 
+   setModified();
+}
+      
+/**
  *
  */
 void
@@ -475,7 +500,7 @@ GiftiDataArrayFile::clear()
    
    labelTable.clear();
    metaData.clear();
-
+   
    // do not clear
    // giftiElementName
    // requiredArrayTypeDataTypes
@@ -833,6 +858,14 @@ GiftiDataArrayFile::writeFileData(QTextStream& stream,
 void
 GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
 {
+   const bool readWithStreamReader = true;
+   
+   if (readWithStreamReader) {
+      GiftiDataArrayFileStreamReader streamReader(&file, this);
+      streamReader.readData();
+      return;
+   }
+   
    QXmlSimpleReader reader;
    GiftiDataArrayFileSaxReader saxReader(this);
    reader.setContentHandler(&saxReader);
@@ -927,6 +960,103 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
    }   
 }
 
+/*
+{
+   QXmlSimpleReader reader;
+   GiftiDataArrayFileSaxReader saxReader(this);
+   reader.setContentHandler(&saxReader);
+   reader.setErrorHandler(&saxReader);
+ 
+   //
+   // Some constant to determine how to read a file based upon the file's size
+   //
+   const int oneMegaByte = 1048576;
+   const qint64 bigFileSize = 25 * oneMegaByte;
+   
+   if (file.size() < bigFileSize) {
+      //
+      // This call reads the entire file at once but this is a problem
+      // since the XML files can be very large and will cause the 
+      // QT XML parsing to crash
+      //
+      if (reader.parse(&file) == false) {
+         throw FileException(filename, saxReader.getErrorMessage());
+      }
+   }
+   else {
+      //
+      // The following code reads the XML file in pieces
+      // and hopefully will prevent QT from crashing when
+      // reading large files
+      //
+      
+      //
+      // Create a data stream
+      //   
+      QDataStream stream(&file);
+      
+      //
+      // buffer for data read
+      //
+      const int bufferSize = oneMegaByte;
+      char buffer[bufferSize];
+      
+      //
+      // the XML input source
+      //
+      QXmlInputSource xmlInput;
+
+      int totalRead = 0;
+      
+      bool firstTime = true;
+      while (stream.atEnd() == false) {
+         int numRead = stream.readRawData(buffer, bufferSize);
+         totalRead += numRead;
+         if (DebugControl::getDebugOn()) {
+            std::cout << "GIFTI large file read, total: " << numRead << ", " << totalRead << std::endl;
+         }
+         
+         //
+         // Place the input data into the XML input
+         //
+         xmlInput.setData(QByteArray(buffer, numRead));
+         
+         //
+         // Process the data that was just read
+         //
+         if (firstTime) {
+            if (reader.parse(&xmlInput, true) == false) {
+               throw FileException(filename, saxReader.getErrorMessage());            
+            }
+         }
+         else {
+            if (reader.parseContinue() == false) {
+               throw FileException(filename, saxReader.getErrorMessage());
+            }
+         }
+         
+         firstTime = false;
+      }
+      
+      //
+      // Tells parser that there is no more data
+      //
+      xmlInput.setData(QByteArray());
+      if (reader.parseContinue() == false) {
+         throw FileException(filename, saxReader.getErrorMessage());
+      }
+   }
+    
+   //
+   // Transfer MetaData
+   //
+   const GiftiMetaData::MetaDataContainer* data = metaData.getMetaData();
+   for (GiftiMetaData::ConstMetaDataIterator iter = data->begin(); iter != data->end(); iter++) {
+      setHeaderTag(iter->first, iter->second);
+   }   
+}
+*/
+
 /**
  * write the XML file.
  */
@@ -936,20 +1066,20 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
    //
    // Get how the array data should be encoded
    //
-   GiftiDataArray::ENCODING encoding = GiftiDataArray::ENCODING_ASCII;
+   GiftiDataArray::ENCODING encoding = GiftiDataArray::ENCODING_INTERNAL_ASCII;
    switch (getFileWriteType()) {
       case FILE_FORMAT_ASCII:
          break;
       case FILE_FORMAT_BINARY:
          break;
       case FILE_FORMAT_XML:
-         encoding = GiftiDataArray::ENCODING_ASCII;
+         encoding = GiftiDataArray::ENCODING_INTERNAL_ASCII;
          break;
       case FILE_FORMAT_XML_BASE64:
-         encoding = GiftiDataArray::ENCODING_BASE64_BINARY;
+         encoding = GiftiDataArray::ENCODING_INTERNAL_BASE64_BINARY;
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
-         encoding = GiftiDataArray::ENCODING_COMPRESSED_BASE64_BINARY;
+         encoding = GiftiDataArray::ENCODING_INTERNAL_COMPRESSED_BASE64_BINARY;
          break;
       case FILE_FORMAT_OTHER:
          break;
@@ -957,14 +1087,25 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
          break;
    }
    
-   const int fileVersion = GiftiDataArrayFile::getCurrentFileVersion();
+   QString giftiFileVersionString = 
+      QString::number(GiftiDataArrayFile::getCurrentFileVersion(), 'f', 6);
+   while (giftiFileVersionString.endsWith("00")) {
+      giftiFileVersionString.resize(giftiFileVersionString.size() - 1);
+   }
    
    stream << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << "\n";
 
-   stream << "<!DOCTYPE GIFTI SYSTEM \"http://brainmap.wustl.edu/gifti/gifti.dtd\">" << "\n";
+   stream << "<!DOCTYPE GIFTI SYSTEM \"http://www.nitrc.org/frs/download.php/115/gifti.dtd\">" << "\n";
    
-   stream << "<" << GiftiCommon::tagGIFTI << " " 
-          << GiftiCommon::attVersion << "=\"" << fileVersion << "\">" << "\n";
+   stream << "<" 
+          << GiftiCommon::tagGIFTI << " " 
+          << GiftiCommon::attVersion << "=\"" 
+          << giftiFileVersionString 
+          << "\"  "
+          << GiftiCommon::attNumberOfDataArrays << "=\""
+          << getNumberOfDataArrays()
+          << "\""
+          << ">" << "\n";
    int indent = 0;
 
 #ifdef CARET_FLAG
@@ -1009,9 +1150,9 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
 /**
  * read legacy file format data.
  */
-void 
-GiftiDataArrayFile::readLegacyFileData(QFile& /*file*/, 
-                                       QTextStream& /* stream */, 
+void
+GiftiDataArrayFile::readLegacyFileData(QFile& /*file*/,
+                                       QTextStream& /* stream */,
                                        QDataStream& /* binStream */) throw (FileException)
 {
    throw FileException(filename, "GiftiDataArrayFile does not support reading legacy files.");
@@ -1020,10 +1161,10 @@ GiftiDataArrayFile::readLegacyFileData(QFile& /*file*/,
 /**
  * write legacy file format data.
  */
-void 
-GiftiDataArrayFile::writeLegacyFileData(QTextStream& /* stream */, 
+void
+GiftiDataArrayFile::writeLegacyFileData(QTextStream& /* stream */,
                                         QDataStream& /* binStream */) throw (FileException)
 {
    throw FileException(filename, "GiftiDataArrayFile does not support writing legacy files.");
 }
-      
+

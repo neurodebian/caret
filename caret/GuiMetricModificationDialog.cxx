@@ -31,6 +31,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -47,11 +48,11 @@
 #include "GuiMetricModificationDialog.h"
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "MetricFile.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
+#include "WuQWidgetGroup.h"
 #include "SurfaceShapeFile.h"
 #include "global_variables.h"
 
@@ -170,21 +171,21 @@ GuiMetricModificationDialog::slotApplyButton()
 {
    MetricFile* mf = getNodeDataFile();
    if (mf == NULL) {
-      GuiMessageBox::critical(this, "ERROR",
-                            "PROGRAM ERROR: metric/shape file invalid (NULL).", "OK");
+      QMessageBox::critical(this, "ERROR",
+                            "PROGRAM ERROR: metric/shape file invalid (NULL).");
       return;
    }
    
    if (mf->getNumberOfColumns() <= 0) {
-      GuiMessageBox::critical(this, "ERROR",
-                            "The file is empty.", "OK");
+      QMessageBox::critical(this, "ERROR",
+                            "The file is empty.");
       return;
    }
    
    BrainModelSurface* bms = surfaceSelectionComboBox->getSelectedBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(this, "ERROR",
-                            "No surface is selected.", "OK");
+      QMessageBox::critical(this, "ERROR",
+                            "No surface is selected.");
       return;
    }
    
@@ -198,8 +199,8 @@ GuiMetricModificationDialog::slotApplyButton()
    if (outputColumn < 0) {
       if (columnName.isEmpty()) {
          if (inputColumn != GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_ALL) {
-            GuiMessageBox::critical(this, "ERROR",
-                                 "Enter an output column name.", "OK");
+            QMessageBox::critical(this, "ERROR",
+                                 "Enter an output column name.");
             return;
          }
       }
@@ -220,6 +221,9 @@ GuiMetricModificationDialog::slotApplyButton()
    }
          
    if (modificationTypeTab->currentWidget() == smoothingWidget) {
+      const BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM algorithm =
+         static_cast<BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM>(
+                                       smoothingAlgorithmComboBox->currentIndex());
       if (inputColumn == GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_ALL) {
          //
          //
@@ -232,13 +236,13 @@ GuiMetricModificationDialog::slotApplyButton()
                   bms,
                   gaussSphericalSurfaceComboBox->getSelectedBrainModelSurface(),
                   mf,
-                  static_cast<BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM>(
-                                       smoothingAlgorithmComboBox->currentIndex()),
+                  algorithm,
                   i,
                   i,
                   mf->getColumnName(i),
                   strengthDoubleSpinBox->value(),
                   iterationsSpinBox->value(),
+                  fullWidthHalfMaximumDoubleSpinBox->value(),
                   gaussSmoothNormBelowDoubleSpinBox->value(),
                   gaussSmoothNormAboveDoubleSpinBox->value(),
                   gaussSmoothSigmaNormDoubleSpinBox->value(),
@@ -248,7 +252,8 @@ GuiMetricModificationDialog::slotApplyButton()
                bmsms.execute();
             }
             catch (BrainModelAlgorithmException& e) {
-               GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", e.whatQString());
                return;
             }   
          }
@@ -259,13 +264,13 @@ GuiMetricModificationDialog::slotApplyButton()
                bms,
                gaussSphericalSurfaceComboBox->getSelectedBrainModelSurface(),
                mf,
-               static_cast<BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM>(
-                                    smoothingAlgorithmComboBox->currentIndex()),
+               algorithm,
                inputColumn,
                outputColumn,
                columnName,
                strengthDoubleSpinBox->value(),
                iterationsSpinBox->value(),
+               fullWidthHalfMaximumDoubleSpinBox->value(),
                gaussSmoothNormBelowDoubleSpinBox->value(),
                gaussSmoothNormAboveDoubleSpinBox->value(),
                gaussSmoothSigmaNormDoubleSpinBox->value(),
@@ -273,9 +278,27 @@ GuiMetricModificationDialog::slotApplyButton()
                gaussSmoothTangentDoubleSpinBox->value()); 
          try {
             bmsms.execute();
+               
+            switch (algorithm) {
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+                  break;
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::information(this, 
+                                             "INFO", 
+                                             bmsms.getFullWidthHalfMaximumSmoothingResultsDescription());
+                  break;
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+                  break;
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
+                  break;
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_NONE:
+                  break;
+            }                  
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "ERROR", e.whatQString());
             return;
          }   
       }
@@ -283,8 +306,9 @@ GuiMetricModificationDialog::slotApplyButton()
    }
    else {
       if (inputColumn == GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_ALL) {
-         GuiMessageBox::warning(this, "Error", 
-            "Clustering on all metric columns not supported at this time.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::warning(this, "Error", 
+            "Clustering on all metric columns not supported at this time.");
          return;
       }
       
@@ -303,8 +327,9 @@ GuiMetricModificationDialog::slotApplyButton()
          algorithm = BrainModelSurfaceMetricClustering::CLUSTER_ALGORITHM_MINIMUM_SURFACE_AREA;
       }
       else {
-         GuiMessageBox::critical(this, "Clustering Error", 
-                                 "A clustering minimum size algorithm must be selected.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Clustering Error", 
+                                 "A clustering minimum size algorithm must be selected.");
       }
       
       //
@@ -338,12 +363,14 @@ GuiMetricModificationDialog::slotApplyButton()
                                                    clusterNegMinThresh,
                                                    clusterNegMaxThresh,
                                                    clusterPosMinThresh,
-                                                   clusterPosMaxThresh);
+                                                   clusterPosMaxThresh,
+                                                   true);
             try {
                bmsmc.execute();
             }
             catch (BrainModelAlgorithmException& e) {
-               GuiMessageBox::critical(this, "Clustering Error", e.whatQString(), "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "Clustering Error", e.whatQString());
                return;
             }
          }
@@ -364,12 +391,14 @@ GuiMetricModificationDialog::slotApplyButton()
                                                 clusterNegMinThresh,
                                                 clusterNegMaxThresh,
                                                 clusterPosMinThresh,
-                                                clusterPosMaxThresh);
+                                                clusterPosMaxThresh,
+                                                true);
          try {
             bmsmc.execute();
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(this, "Clustering Error", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "Clustering Error", e.whatQString());
             return;
          }
       }
@@ -622,22 +651,30 @@ GuiMetricModificationDialog::createClusteringPartOfDialog()
 void
 GuiMetricModificationDialog::slotSmoothingAlgorithmComboBox(int item)
 {
+   bool enableFwhmParams = false;
    bool enableGaussParams = false;
+   bool enableStrengthParams = true;
    
-   switch (static_cast<MetricFile::SMOOTH_ALGORITHM>(item)) {
-      case MetricFile::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+   switch (static_cast<BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM>(item)) {
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
          break;
-      case MetricFile::SMOOTH_ALGORITHM_GAUSSIAN:
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+         enableFwhmParams = true;
+         enableStrengthParams = false;
+         break;
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
          enableGaussParams = true;
          break;
-      case MetricFile::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
          break;
-      case MetricFile::SMOOTH_ALGORITHM_NONE:
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_NONE:
          break;
    }   
 
+   fullWidthHalfMaximumGroupBox->setEnabled(enableFwhmParams);
    gaussSmoothParametersGroupBox->setEnabled(enableGaussParams);
    gaussSurfaceGroupBox->setEnabled(enableGaussParams);
+   strengthWidgetGroup->setEnabled(enableStrengthParams);
 }
 
 /**
@@ -679,11 +716,13 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
    //
    QLabel* algorithmLabel = new QLabel("Algorithm");
    smoothingAlgorithmComboBox = new QComboBox;
-   smoothingAlgorithmComboBox->insertItem(MetricFile::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
+   smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
                                           "Average Neighbors");
-   smoothingAlgorithmComboBox->insertItem(MetricFile::SMOOTH_ALGORITHM_GAUSSIAN,
+   smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM,
+                                          "Full Width Half Maximum");
+   smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN,
                                           "Gaussian");
-   smoothingAlgorithmComboBox->insertItem(MetricFile::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS,
+   smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS,
                                           "Weighted Average Neighbors");
    QObject::connect(smoothingAlgorithmComboBox, SIGNAL(activated(int)),
                     this, SLOT(slotSmoothingAlgorithmComboBox(int)));
@@ -709,6 +748,12 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
    strengthDoubleSpinBox->setDecimals(2);
    strengthDoubleSpinBox->setValue(1.0);
    
+   //
+   // Widget group for strength
+   //
+   strengthWidgetGroup = new WuQWidgetGroup(this);
+   strengthWidgetGroup->addWidget(strengthLabel);
+   strengthWidgetGroup->addWidget(strengthDoubleSpinBox);
    
    //
    // Widget/Layout for Smoothing Parameters
@@ -816,16 +861,33 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
    gaussSmoothParametersGroupBox->setFixedSize(gaussSmoothParametersGroupBox->sizeHint());
    
    //
+   // Full Width Half Maximum Parameters and GroupBox
+   //
+   QLabel* fullWidthHalfMaximumLabel = new QLabel("Desired FWHM");
+   fullWidthHalfMaximumDoubleSpinBox = new QDoubleSpinBox;
+   fullWidthHalfMaximumDoubleSpinBox->setValue(8.0);
+   fullWidthHalfMaximumGroupBox = new QGroupBox("Full Width Half Maximum Parameter");
+   QGridLayout* fullWidthHalfMaximumGroupLayout = new QGridLayout(fullWidthHalfMaximumGroupBox);
+   fullWidthHalfMaximumGroupLayout->addWidget(fullWidthHalfMaximumLabel, 0, 0);
+   fullWidthHalfMaximumGroupLayout->addWidget(fullWidthHalfMaximumDoubleSpinBox, 0, 1);
+   fullWidthHalfMaximumGroupBox->setFixedSize(fullWidthHalfMaximumGroupBox->sizeHint());
+   
+   //
    // Enable/disable gaussian parameters
    //
    slotSmoothingAlgorithmComboBox(smoothingAlgorithmComboBox->currentIndex());
    
    //
-   // Holds parameters and gaussian parameters
+   // Holds parameters
    //
+   QVBoxLayout* leftColumnLayout = new QVBoxLayout;
+   leftColumnLayout->addWidget(smoothingGroupBox);
+   leftColumnLayout->addWidget(fullWidthHalfMaximumGroupBox);
+   QVBoxLayout* rightColumnLayout = new QVBoxLayout;
+   rightColumnLayout->addWidget(gaussSmoothParametersGroupBox);
    QHBoxLayout* smoothParamsLayout = new QHBoxLayout;
-   smoothParamsLayout->addWidget(smoothingGroupBox);
-   smoothParamsLayout->addWidget(gaussSmoothParametersGroupBox);
+   smoothParamsLayout->addLayout(leftColumnLayout);
+   smoothParamsLayout->addLayout(rightColumnLayout);
    
    //
    // Widget/Layout for this section

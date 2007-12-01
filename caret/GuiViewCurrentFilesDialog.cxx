@@ -30,6 +30,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QToolTip>
@@ -62,7 +63,6 @@
 #include "GuiCommaSeparatedValueFileEditor.h"
 #include "GuiDataFileCommentDialog.h"
 #include "GuiFilesModified.h"
-#include "GuiMessageBox.h"
 #include "GuiViewCurrentFilesDialog.h"
 #include "ImageFile.h"
 #include "LatLonFile.h"
@@ -682,7 +682,8 @@ GuiViewCurrentFilesDialog::slotClearButtonGroup(int item)
          std::ostringstream str;
          str << "PROGRAM ERROR: Unrecognized file type for deleting: "
              << af->getDescriptiveName().toAscii().constData();
-         GuiMessageBox::critical(this, "PROGRAM ERROR", str.str().c_str(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "PROGRAM ERROR", str.str().c_str());
             //af->clear();
       }
       dataFiles[item] = NULL;

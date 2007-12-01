@@ -144,8 +144,7 @@ DisplaySettingsTopography::saveScene(SceneFile::Scene& scene, const bool onlyIfS
       }
       
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_TOPOGRAPHY,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY) == false) {
+      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY) == false) {
          return;
       }
    }

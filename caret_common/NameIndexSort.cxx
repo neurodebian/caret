@@ -109,5 +109,8 @@ NameIndexSort::NameIndexPair::NameIndexPair(const int indexIn, const QString& na
 bool 
 NameIndexSort::NameIndexPair::operator<(const NameIndexPair& nip) const
 {
+   if (name == nip.name) {
+      return (indx < nip.indx);
+   }
    return (name < nip.name);
 }

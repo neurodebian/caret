@@ -48,23 +48,38 @@ class DebugControl {
       // turn debugging on/off with an environment variable
       static void setDebugOnWithEnvironmentVariable(const QString& envVarName);
      
+      // set debug flags using environment variables
+      static void setDebugFlagsFromEnvironmentVariables();
+      
       // set the iterative update
       static void setIterativeUpdate(const int iter) { iterativeUpdate = iter; }
 
       // get the iterative update
       static int getIterativeUpdate() { return iterativeUpdate; }
  
-      // get the test flag
-      static bool getTestFlag() { return testFlag; }
+      // get the test flag 1
+      static bool getTestFlag1() { return testFlag1; }
 
-      // set the test flag
-      static void setTestFlag(const bool tf) { testFlag = tf; }
+      // set the test flag 1
+      static void setTestFlag1(const bool tf) { testFlag1 = tf; }
+
+      // get the test flag 2
+      static bool getTestFlag2() { return testFlag2; }
+
+      // set the test flag 2
+      static void setTestFlag2(const bool tf) { testFlag2 = tf; }
 
       // get the file read timing flag
       static bool getFileReadTimingFlag() { return fileReadTimingFlag; }
       
       // set the file read timing flag
       static void setFileReadTimingFlag(const bool f) { fileReadTimingFlag = f; }
+      
+      // see if OpenGL debugging is on
+      static bool getOpenGLDebugOn() { return openGLDebugFlag; }
+
+      // set OpenGL debugging on/off
+      static void setOpenGLDebugOn(const bool b) { openGLDebugFlag = b; }
       
    private:
       /// debugging on/off flag
@@ -76,8 +91,14 @@ class DebugControl {
       /// iterative update
       static int iterativeUpdate;
 
-      /// the test flag
-      static bool testFlag;
+      /// the test flag 1
+      static bool testFlag1;
+      
+      /// the test flag 2
+      static bool testFlag2;
+      
+      /// OpenGL debug on/off flag
+      static bool openGLDebugFlag;
       
       /// the file read timing flag
       static bool fileReadTimingFlag;
@@ -87,8 +108,10 @@ class DebugControl {
 bool DebugControl::debugOn = false;
 int  DebugControl::debugNodeNumber = -1;
 int  DebugControl::iterativeUpdate = 10;
-bool DebugControl::testFlag = false;
+bool DebugControl::testFlag1 = false;
+bool DebugControl::testFlag2 = false;
 bool DebugControl::fileReadTimingFlag = false;
+bool DebugControl::openGLDebugFlag = false;
 #endif
 
 #endif // __DEBUG_CONTROL_H__

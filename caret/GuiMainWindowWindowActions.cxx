@@ -32,8 +32,8 @@
 
 #include "BrainSet.h"
 #include "DebugControl.h"
+#include "FileFilters.h"
 #include "GuiBrainModelOpenGL.h"
-#include "GuiDataFileDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowWindowActions.h"
 #include "GuiShellCommandWindow.h"
@@ -52,95 +52,95 @@ GuiMainWindowWindowActions::GuiMainWindowWindowActions(GuiMainWindow* mainWindow
    window2Action->setText("Viewing Window 2...");
    window2Action->setObjectName("window2Action");
    window2Action->setShortcut( Qt::CTRL+Qt::Key_2);
-   QObject::connect(window2Action, SIGNAL(activated()),
+   QObject::connect(window2Action, SIGNAL(triggered(bool)),
                     this, SLOT(window2Popup()));
 
    window3Action = new QAction(mainWindowParent);
    window3Action->setText("Viewing Window 3...");
    window3Action->setObjectName("window3Action");
    window3Action->setShortcut( Qt::CTRL+Qt::Key_3);
-   QObject::connect(window3Action, SIGNAL(activated()),
+   QObject::connect(window3Action, SIGNAL(triggered(bool)),
                     this, SLOT(window3Popup()));
 
    window4Action = new QAction(mainWindowParent);
    window4Action->setText("Viewing Window 4...");
    window4Action->setObjectName("window4Action");
    window4Action->setShortcut( Qt::CTRL+Qt::Key_4);
-   QObject::connect(window4Action, SIGNAL(activated()),
+   QObject::connect(window4Action, SIGNAL(triggered(bool)),
                     this, SLOT(window4Popup()));
 
    window5Action = new QAction(mainWindowParent);
    window5Action->setText("Viewing Window 5...");
    window5Action->setObjectName("window5Action");
    window5Action->setShortcut( Qt::CTRL+Qt::Key_5);
-   QObject::connect(window5Action, SIGNAL(activated()),
+   QObject::connect(window5Action, SIGNAL(triggered(bool)),
                     this, SLOT(window5Popup()));
 
    window6Action = new QAction(mainWindowParent);
    window6Action->setText("Viewing Window 6...");
    window6Action->setObjectName("window6Action");
    window6Action->setShortcut( Qt::CTRL+Qt::Key_6);
-   QObject::connect(window6Action, SIGNAL(activated()),
+   QObject::connect(window6Action, SIGNAL(triggered(bool)),
                     this, SLOT(window6Popup()));
 
    window7Action = new QAction(mainWindowParent);
    window7Action->setText("Viewing Window 7...");
    window7Action->setObjectName("window7Action");
    window7Action->setShortcut( Qt::CTRL+Qt::Key_7);
-   QObject::connect(window7Action, SIGNAL(activated()),
+   QObject::connect(window7Action, SIGNAL(triggered(bool)),
                     this, SLOT(window7Popup()));
 
    window8Action = new QAction(mainWindowParent);
    window8Action->setText("Viewing Window 8...");
    window8Action->setObjectName("window8Action");
    window8Action->setShortcut( Qt::CTRL+Qt::Key_8);
-   QObject::connect(window8Action, SIGNAL(activated()),
+   QObject::connect(window8Action, SIGNAL(triggered(bool)),
                     this, SLOT(window8Popup()));
 
    window9Action = new QAction(mainWindowParent);
    window9Action->setText("Viewing Window 9...");
    window9Action->setObjectName("window9Action");
    window9Action->setShortcut( Qt::CTRL+Qt::Key_9);
-   QObject::connect(window9Action, SIGNAL(activated()),
+   QObject::connect(window9Action, SIGNAL(triggered(bool)),
                     this, SLOT(window9Popup()));
 
    window10Action = new QAction(mainWindowParent);
    window10Action->setText("Viewing Window 10...");
    window10Action->setObjectName("window10Action");
    window10Action->setShortcut( Qt::CTRL+Qt::Key_0);
-   QObject::connect(window10Action, SIGNAL(activated()),
+   QObject::connect(window10Action, SIGNAL(triggered(bool)),
                     this, SLOT(window10Popup()));
 
    displayControlAction = new QAction(mainWindowParent);
    displayControlAction->setText("Display Control Window...");
    displayControlAction->setObjectName("displayControlAction");
    displayControlAction->setShortcut(Qt::CTRL+Qt::Key_D);
-   QObject::connect(displayControlAction, SIGNAL(activated()),
+   QObject::connect(displayControlAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayDisplayControlDialog()));
 
    idWindowAction = new QAction(mainWindowParent);
    idWindowAction->setText("Identify Window...");
    idWindowAction->setObjectName("idWindowAction");
    idWindowAction->setShortcut(Qt::CTRL+Qt::Key_I);
-   QObject::connect(idWindowAction, SIGNAL(activated()),
+   QObject::connect(idWindowAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayIdentifyDialog()));
 
    imageViewingWindowAction = new QAction(mainWindowParent);
    imageViewingWindowAction->setText("New Image Viewing Window");
    imageViewingWindowAction->setObjectName("imageViewingWindowAction");
-   QObject::connect(imageViewingWindowAction, SIGNAL(activated()),
+   QObject::connect(imageViewingWindowAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayImageViewingWindow()));
 
    displayImageEditorAction = new QAction(mainWindowParent);
    displayImageEditorAction->setText("Image Editor...");
    displayImageEditorAction->setObjectName("displayImageEditorAction");
-   QObject::connect(displayImageEditorAction, SIGNAL(activated()),
+   QObject::connect(displayImageEditorAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayImageEditorWindow()));
 
    textFileEditorAction = new QAction(mainWindowParent);
    textFileEditorAction->setText("Text File Editor...");
    textFileEditorAction->setObjectName("textFileEditorAction");
-   QObject::connect(textFileEditorAction, SIGNAL(activated()),
+   QObject::connect(textFileEditorAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTextFileEditor()));
 
 
@@ -148,25 +148,31 @@ GuiMainWindowWindowActions::GuiMainWindowWindowActions(GuiMainWindow* mainWindow
    transformationMatrixEditorAction->setText("Transformation Matrix Editor...");
    transformationMatrixEditorAction->setObjectName("transformationMatrixEditorAction");
    transformationMatrixEditorAction->setShortcut(Qt::CTRL+Qt::Key_T);
-   QObject::connect(transformationMatrixEditorAction, SIGNAL(activated()),
+   QObject::connect(transformationMatrixEditorAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayTransformMatrixEditor()));
 
-   scriptBuilderAction = new QAction(mainWindowParent);
-   scriptBuilderAction->setText("Script Builder...");
-   scriptBuilderAction->setObjectName("scriptBuilderAction");
-   QObject::connect(scriptBuilderAction, SIGNAL(activated()),
-                    mainWindowParent, SLOT(displayScriptBuilderDialog()));
+   caretCommandExecutorAction = new QAction(mainWindowParent);
+   caretCommandExecutorAction->setText("Caret Command Executor...");
+   caretCommandExecutorAction->setObjectName("caretCommandExecutorAction");
+   QObject::connect(caretCommandExecutorAction, SIGNAL(triggered(bool)),
+                    mainWindowParent, SLOT(displayCaretCommandExecutorDialog()));
+
+   caretCommandScriptBuilderAction = new QAction(mainWindowParent);
+   caretCommandScriptBuilderAction->setText("Caret Command Script Builder...");
+   caretCommandScriptBuilderAction->setObjectName("caretCommandScriptBuilderAction");
+   QObject::connect(caretCommandScriptBuilderAction, SIGNAL(triggered(bool)),
+                    mainWindowParent, SLOT(displayCaretCommandScriptBuilderDialog()));
 
    shellCommandWindowAction = new QAction(mainWindowParent);
    shellCommandWindowAction->setText("Shell Command Window...");
    shellCommandWindowAction->setObjectName("shellCommandWindowAction");
-   QObject::connect(shellCommandWindowAction, SIGNAL(activated()),
+   QObject::connect(shellCommandWindowAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotShellCommandWindow()));
    
    stackWindowsAction = new QAction(mainWindowParent);
    stackWindowsAction->setText("Stack Windows");
    stackWindowsAction->setObjectName("stackWindowsAction");
-   QObject::connect(stackWindowsAction, SIGNAL(activated()),
+   QObject::connect(stackWindowsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotStackWindowsAction()));
                     
    lastWindowFromPreviousNextAction = NULL;
@@ -174,13 +180,13 @@ GuiMainWindowWindowActions::GuiMainWindowWindowActions(GuiMainWindow* mainWindow
    nextWindowAction->setText("Next Window");
    nextWindowAction->setShortcut(Qt::CTRL+Qt::Key_F12);
    nextWindowAction->setObjectName("nextWindowAction");
-   QObject::connect(nextWindowAction, SIGNAL(activated()),
+   QObject::connect(nextWindowAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotNextWindowAction()));
                     
    bringAllToFrontAction = new QAction(mainWindowParent);
    bringAllToFrontAction->setText("Bring All to Front");
    bringAllToFrontAction->setObjectName("bringAllToFrontAction");
-   QObject::connect(bringAllToFrontAction, SIGNAL(activated()),
+   QObject::connect(bringAllToFrontAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBringAllToFrontAction()));
 }
 
@@ -280,7 +286,7 @@ GuiMainWindowWindowActions::slotTextFileEditor()
 {
    QtTextFileEditorDialog* tfed = new QtTextFileEditorDialog(theMainWindow);
    QStringList caretFileFilters;
-   GuiDataFileDialog::getCaretFileFilters(caretFileFilters);
+   FileFilters::getAllCaretFileFilters(caretFileFilters);
    tfed->addAdditionalFileFilters(caretFileFilters);
    tfed->show();
 }      

@@ -51,9 +51,9 @@
 #include <QDateTime>
 
 #include "BrainSet.h"
+#include "CaretVersion.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
-#include "GuiDataFileDialog.h"
 #include "GuiMacOSXApplication.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
@@ -63,6 +63,7 @@
 #include "SpecFile.h"
 #include "SpecFileUtilities.h"
 #include "StringUtilities.h"
+#include "WuQFileDialog.h"
 
 #define CARET_MAIN_FLAG
 #include "global_variables.h"
@@ -75,7 +76,7 @@ enum INITIAL_SPEC_MODE {
 };
 
 static bool debugFlag = false;
-static QString initialSpecFile;
+static std::vector<QString> initialSpecFiles;
 static INITIAL_SPEC_MODE initialSpecMode = INITIAL_SPEC_MODE_NONE;
 static bool glTimingFlag = false;
 
@@ -133,9 +134,9 @@ printHelp(const QString& programNameIn)
    << "      -h  or  -help" << std::endl
    << "         Displays this help information." << std::endl
    << "" << std::endl
-   << "      -loadspec  <spec-file-name>" << std::endl
-   << "         Automatically loads all of the data files in \"spec-file-name\" at" << std::endl
-   << "         startup." << std::endl
+   << "      -loadspec  <spec-file-name-1> ... <spec-file-name-N>" << std::endl
+   << "         Automatically loads all of the data files in each of the spec" << std::endl
+   << "         files at startup." << std::endl
    << "" << std::endl
    << "      -giftiXML" << std::endl
    << "         Enable prototype GIFTI Node Attribute files." << std::endl
@@ -157,6 +158,9 @@ printHelp(const QString& programNameIn)
    listGuiStyles();
 
    std::cout
+   << "      -v" << std::endl
+   << "         Print the version number." << std::endl
+   << std::endl
    << "      -xy  X  Y" << std::endl
    << "         Set the main window graphics to be \"X by Y\" size." << std::endl
    << "         This is typically used when recording to MPEG so that" << std::endl
@@ -172,7 +176,10 @@ printHelp(const QString& programNameIn)
 static void
 processCommandLineOptions(int argc, char* argv[])
 {
+   const QString programName(FileUtilities::basename(QString(argv[0])));
+   
    GiftiDataArrayFile::setGiftiXMLEnabled(false);
+   
    for (int i = 1; i < argc; i++) {
       const QString arg(argv[i]);
       if (arg == "-debug") {
@@ -182,13 +189,26 @@ processCommandLineOptions(int argc, char* argv[])
          printHelp(argv[0]);
       }
       else if (arg == "-loadspec") {
+         for (i = i + 1; i < argc; i++) {
+            QString argValue = argv[i];
+            if (argValue.startsWith("-")) {
+               i--;
+               break;
+            }
+            else {
+               initialSpecFiles.push_back(argv[i]);
+               initialSpecMode = INITIAL_SPEC_MODE_LOAD;
+            }
+         }
+/*
          i++;
          if (i >= argc) {
             std::cerr << "ERROR: missing name of spec file on \"-loadspec\" option." << std::endl;
             exit(-1);
          }
-         initialSpecFile = argv[i];
+         initialSpecFiles.push_back(argv[i]);
          initialSpecMode = INITIAL_SPEC_MODE_LOAD;
+*/
       }
       else if (arg == "-spec") {
          i++;
@@ -196,14 +216,17 @@ processCommandLineOptions(int argc, char* argv[])
             std::cerr << "ERROR: missing name of spec file on \"-spec\" option." << std::endl;
             exit(-1);
          }
-         initialSpecFile = argv[i];
+         initialSpecFiles.push_back(argv[i]);
          initialSpecMode = INITIAL_SPEC_MODE_DIALOG;
       }
       else if (arg == "-style") {
          i++;  // -style is used by QApplication
       }
-      else if (arg == "-test") {
-         DebugControl::setTestFlag(true);
+      else if (arg == "-test1") {
+         DebugControl::setTestFlag1(true);
+      }
+      else if (arg == "-test2") {
+         DebugControl::setTestFlag2(true);
       }
       else if (arg == "-gl-timing") {
          glTimingFlag = true;
@@ -216,6 +239,14 @@ processCommandLineOptions(int argc, char* argv[])
       }
       else if (arg == "-read-time") {
          DebugControl::setFileReadTimingFlag(true);
+      }
+      else if ((arg == "-v") ||
+               (arg == "-version")) {
+         std::cout << programName.toAscii().constData()
+                   << " version "
+                   << CaretVersion::getCaretVersionAsString().toAscii().constData()
+                   << std::endl;
+         std::exit(0);
       }
       else if (arg == "-xy") {
          i++;
@@ -236,7 +267,7 @@ processCommandLineOptions(int argc, char* argv[])
       }
       else {
          if (StringUtilities::endsWith(arg, SpecFile::getSpecFileExtension())) {
-            initialSpecFile = arg;
+            initialSpecFiles.push_back(arg);
             initialSpecMode = INITIAL_SPEC_MODE_DIALOG;
          }
          else {
@@ -311,6 +342,86 @@ testRegularExpressions()
 */
 
 /**
+ * Initialize the File Dialog
+ */
+void
+initializeFileDialog()
+{
+   WuQFileDialog::TypeExtensionToTypeNameMap typeMap;
+   
+   typeMap[SpecFile::getTopoFileExtension()] = "Topology";
+   typeMap[SpecFile::getCoordinateFileExtension()] = "Coordinate";
+   typeMap[SpecFile::getTransformationMatrixFileExtension()] = "Transformation Matrix";
+   typeMap[SpecFile::getLatLonFileExtension()] = "Latitude/Longitude";
+   typeMap[SpecFile::getSectionFileExtension()] = "Section";
+   typeMap[SpecFile::getPaintFileExtension()] = "Paint";
+   typeMap[SpecFile::getRegionOfInterestFileExtension()] = "Region of Interest";
+   typeMap[SpecFile::getProbabilisticAtlasFileExtension()] = "Probabilistic Atlas";
+   typeMap[SpecFile::getAreaColorFileExtension()] = "Area Color";
+   typeMap[SpecFile::getRgbPaintFileExtension()] = "RGB Paint";
+   typeMap[SpecFile::getBorderFileExtension()] = "Border";
+   typeMap[SpecFile::getBorderColorFileExtension()] = "Border Color";
+   typeMap[SpecFile::getBorderProjectionFileExtension()] = "Border Projection";
+   typeMap[SpecFile::getPaletteFileExtension()] = "Palette";
+   typeMap[SpecFile::getTopographyFileExtension()] = "Topography";
+   typeMap[SpecFile::getCellFileExtension()] = "Cell";
+   typeMap[SpecFile::getCellColorFileExtension()] = "Cell Color";
+   typeMap[SpecFile::getCellProjectionFileExtension()] = "Cell Projection";
+   typeMap[SpecFile::getContourFileExtension()] = "Contour";
+   typeMap[SpecFile::getContourCellColorFileExtension()] = "Contour Cell Color";
+   typeMap[SpecFile::getContourCellFileExtension()] = "Contour Cell";
+   typeMap[SpecFile::getMetricFileExtension()] = "Metric";
+   typeMap[SpecFile::getSurfaceShapeFileExtension()] = "Surface Shape";
+   typeMap[SpecFile::getCocomacConnectivityFileExtension()] = "Cocomac Connectivity";
+   typeMap[SpecFile::getArealEstimationFileExtension()] = "Areal Estimation";
+   typeMap[SpecFile::getCutsFileExtension()] = "Cuts";
+   typeMap[SpecFile::getFociFileExtension()] = "Foci";
+   typeMap[SpecFile::getFociColorFileExtension()] = "Foci Color";
+   typeMap[SpecFile::getFociProjectionFileExtension()] = "Foci Projection";
+   typeMap[SpecFile::getParamsFileExtension()] = "Params File";
+   typeMap[SpecFile::getDeformationMapFileExtension()] = "Deformation Map";
+   typeMap[SpecFile::getDeformationFieldFileExtension()] = "Deformation Field";
+   typeMap[SpecFile::getVtkModelFileExtension()] = "VTK Model";
+   typeMap[SpecFile::getGeodesicDistanceFileExtension()] = "Geodesic Distance";
+   typeMap[SpecFile::getAtlasSurfaceDirectoryFileExtension()] = "Atlas Surface Directory";
+   typeMap[SpecFile::getBrainVoyagerFileExtension()] = "Brain Voyager";
+   typeMap[SpecFile::getAtlasSpaceFileExtension()] = "Atlas Space";
+   typeMap[SpecFile::getFreeSurferAsciiCurvatureFileExtension()] = "Free Surfer Curvature (ASCII)";
+   typeMap[SpecFile::getFreeSurferBinaryCurvatureFileExtension()] = "Free Surfer Curvature (Binary)";
+   typeMap[SpecFile::getFreeSurferAsciiFunctionalFileExtension()] = "Free Surfer Functional (ASCII)";
+   typeMap[SpecFile::getFreeSurferBinaryFunctionalFileExtension()] = "Free Surfer Functional (Binary)";
+   typeMap[SpecFile::getFreeSurferLabelFileExtension()] = "Free Surfer Label";
+   typeMap[SpecFile::getFreeSurferAsciiSurfaceFileExtension()] = "Free Surfer Surface (ASCII)";
+   typeMap[SpecFile::getFreeSurferBinarySurfaceFileExtension()] = "Free Surfer Surface (Binary)";
+   typeMap[SpecFile::getSumaRgbFileExtension()] = "SUMA RGB";
+   typeMap[SpecFile::getPreferencesFileExtension()] = "Preferences";
+   typeMap[SpecFile::getSpecFileExtension()] = "Specification";
+   typeMap[SpecFile::getAnalyzeVolumeFileExtension()] = "Volume - Analyze or SPM";
+   typeMap[SpecFile::getAfniVolumeFileExtension().toLower()] = "Volume - AFNI";
+   typeMap[SpecFile::getWustlVolumeFileExtension()] = "Volume - WUSTL";
+   typeMap[SpecFile::getMincVolumeFileExtension()] = "Volume - MINC";
+   typeMap[SpecFile::getNiftiVolumeFileExtension()] = "NIFTI";
+   typeMap[SpecFile::getNiftiGzipVolumeFileExtension()] = "NIFTI - Compressed";
+   typeMap[SpecFile::getSceneFileExtension()] = "Scene";
+   typeMap[SpecFile::getVectorFileExtension()] = "Vector";
+   typeMap[SpecFile::getSurfaceVectorFileExtension()] = "Surface Vector";
+   typeMap[SpecFile::getWustlRegionFileExtension()] = "WUSTL Region";
+   typeMap[SpecFile::getLimitsFileExtension()] = "Limits";
+   typeMap[SpecFile::getMDPlotFileExtension()] = "MD Plot";
+   typeMap[SpecFile::getGiftiFileExtension()] = "GIFTI";
+   typeMap[SpecFile::getCommaSeparatedValueFileExtension()] = "Comma Separated Value";
+   typeMap[SpecFile::getVocabularyFileExtension()] = "Vocabulary";
+   typeMap[SpecFile::getStudyMetaDataFileExtension()] = "Study Metadata";
+   typeMap[SpecFile::getStudyMetaAnalysisFileExtension()] = "Study Meta-analysis";
+   typeMap[SpecFile::getXmlFileExtension()] = "XML";
+   typeMap[SpecFile::getTextFileExtension()] = "Text";
+   typeMap[SpecFile::getNeurolucidaFileExtension()] = "Neurolucida";
+   typeMap[SpecFile::getCaretScriptFileExtension()] = "Caret Script";
+   
+   WuQFileDialog::setFileExtensionToTypeNameMap(typeMap);
+}
+
+/**
  * Unexpected handler
  */
 void unexpectedHandler()
@@ -319,7 +430,7 @@ void unexpectedHandler()
   if (theMainWindow != NULL) {
      const QString msg("Caret will be terminating due to an unexpected exception.\n"
                        "abort() will be called and a core file may be created.");
-     GuiMessageBox::critical(theMainWindow, "ERROR", msg, "OK");
+     QMessageBox::critical(theMainWindow, "ERROR", msg);
   }
   
   abort();
@@ -342,12 +453,9 @@ void newHandler()
    std::cout << str.str().c_str() << std::endl;
    
    if (theMainWindow != NULL) {
-      QString msg(str.str().c_str());
-      msg.append("\nIf you choose to continue, Caret may crash.\n");
-      if (GuiMessageBox::critical(theMainWindow, "OUT OF MEMORY", msg, 
-                                  "Continue", "Exit Caret") == 1) {
-         exit(0);
-      }
+      QMessageBox::critical(theMainWindow, "OUT OF MEMORY", 
+                                "Out of memory, Caret terminating");
+      std::exit(-1);
    }
 }
 
@@ -427,8 +535,11 @@ main(int argc, char* argv[])
       DebugControl::setDebugOn(true);
    }
 
-   if (getenv("CARET_TEST") != NULL) {
-      DebugControl::setTestFlag(true);
+   if (getenv("CARET_TEST1") != NULL) {
+      DebugControl::setTestFlag1(true);
+   }
+   if (getenv("CARET_TEST2") != NULL) {
+      DebugControl::setTestFlag2(true);
    }
    
    //
@@ -482,18 +593,18 @@ main(int argc, char* argv[])
    app.setGuiMainWindow(theMainWindow);
 #endif
 
-   if (initialSpecFile.isEmpty() == false) {
-      if (QFile::exists(initialSpecFile) == false) {
-         std::cerr << "The spec file " << initialSpecFile.toAscii().constData() 
+   if (initialSpecFiles.empty() == false) {
+      if (QFile::exists(initialSpecFiles[0]) == false) {
+         std::cerr << "The spec file " << initialSpecFiles[0].toAscii().constData() 
                    << " specified on the command line not found." << std::endl;
-         initialSpecFile = "";
+         initialSpecFiles.clear();
       }
    }
-   else if (initialSpecFile.isEmpty()) {
+   else if (initialSpecFiles.empty()) {
       std::vector<QString> specFiles;
       SpecFileUtilities::findSpecFilesInDirectory(QDir::currentPath(), specFiles);
       if (specFiles.size() == 1) {
-         initialSpecFile = specFiles[0];
+         initialSpecFiles.push_back(specFiles[0]);
          initialSpecMode = INITIAL_SPEC_MODE_DIALOG;
       }
       else if (specFiles.size() > 1) {
@@ -523,34 +634,28 @@ main(int argc, char* argv[])
    welcomeMessage.append("  Welcome to carrot.");
    theMainWindow->speakText(welcomeMessage, false);
    
-   //
-   // Will initialize some file filters needed by GUI components
-   //
-   GuiDataFileDialog* dfd = new GuiDataFileDialog;
-   delete dfd;
-
-   if (initialSpecFile.isEmpty() == false) {
-      QFileInfo fileInfo(initialSpecFile);
+   if (initialSpecFiles.empty() == false) {
+      QFileInfo fileInfo(initialSpecFiles[0]);
       switch (initialSpecMode) {
          case INITIAL_SPEC_MODE_NONE:
             break;
          case INITIAL_SPEC_MODE_LOAD:
-            {
+            for (unsigned int i = 0; i < initialSpecFiles.size(); i++) {
                SpecFile sf;
                try {
-                  QString path(FileUtilities::dirname(initialSpecFile));
+                  QString path(FileUtilities::dirname(initialSpecFiles[i]));
                   if (QDir::isRelativePath(path)) {
                      path = QDir::currentPath();
                      path.append("/");
-                     path.append(initialSpecFile);
-                     initialSpecFile = QDir::cleanPath(path);
+                     path.append(initialSpecFiles[i]);
+                     initialSpecFiles[i] = QDir::cleanPath(path);
                   }
-                  sf.readFile(initialSpecFile);
+                  sf.readFile(initialSpecFiles[i]);
                   sf.setAllFileSelections(SpecFile::SPEC_TRUE);
-                  theMainWindow->loadSpecFilesDataFiles(sf, NULL);
+                  theMainWindow->loadSpecFilesDataFiles(sf, NULL, true);
                }
                catch (FileException& e) {
-                  GuiMessageBox::warning(theMainWindow, "ERROR", e.whatQString(), "OK");
+                  QMessageBox::warning(theMainWindow, "ERROR", e.whatQString());
                }
             }
             break;
@@ -566,13 +671,18 @@ main(int argc, char* argv[])
                       "variable CARET5_HOME to the Caret installation\n"
                       "directory.  Until this is corrected, some Caret features\n"
                       "may not operate properly.");                      
-       GuiMessageBox::warning(theMainWindow, "Install Warning", msg, "OK");
+       QMessageBox::warning(theMainWindow, "Install Warning", msg);
    }
+   
+   //
+   // Initialize the file selection dialog
+   //
+   initializeFileDialog();
    
    //
    // Show command line arguments in an information dialog
    //
-   //GuiMessageBox::information(theMainWindow, "args", allArgs, "OK");
+   //QMessageBox::information(theMainWindow, "args", allArgs);
    
    int result = -1;
    try {

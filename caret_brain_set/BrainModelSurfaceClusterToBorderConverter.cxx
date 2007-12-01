@@ -29,6 +29,7 @@
 #include "BrainModelBorderSet.h"
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceClusterToBorderConverter.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainSet.h"
 #include "BrainSetNodeAttribute.h"
 #include "DebugControl.h"
@@ -43,7 +44,7 @@ BrainModelSurfaceClusterToBorderConverter::BrainModelSurfaceClusterToBorderConve
                                                             BrainModelSurface* bmsIn,
                                                             TopologyFile* tfIn,
                                                             const QString& borderNameIn,
-                                                            const std::vector<bool>& inputNodeClusterFlagIn,
+                                                            BrainModelSurfaceROINodeSelection* surfaceROIIn,
                                                             const bool projectTheBordersFlagIn)
    : BrainModelAlgorithm(bs)
 {
@@ -52,7 +53,7 @@ BrainModelSurfaceClusterToBorderConverter::BrainModelSurfaceClusterToBorderConve
    borderName = borderNameIn;
    numberOfBordersCreated = 0;
    
-   inputNodeClusterFlag = inputNodeClusterFlagIn;
+   surfaceROI = surfaceROIIn;
    projectTheBordersFlag = projectTheBordersFlagIn;
 }
 
@@ -83,9 +84,10 @@ BrainModelSurfaceClusterToBorderConverter::executeOriginal() throw (BrainModelAl
    //
    // Make sure nodes are selected
    //
-   if (std::count(inputNodeClusterFlag.begin(), inputNodeClusterFlag.end(), true) <= 0) {
+   if (surfaceROI->getNumberOfNodesSelected() <= 0) {
       throw BrainModelAlgorithmException("No nodes are selected.h");
    }
+   surfaceROI->update();
    
    //
    // Check inputs
@@ -100,9 +102,6 @@ BrainModelSurfaceClusterToBorderConverter::executeOriginal() throw (BrainModelAl
    const int numNodes = bms->getNumberOfNodes();
    if (numNodes <= 0) {
       throw BrainModelAlgorithmException("Surface has no nodes.");
-   }
-   if (static_cast<int>(inputNodeClusterFlag.size()) != numNodes) {
-      throw BrainModelAlgorithmException("Cluster node flags size is not equal to number of nodes.");
    }
    
    //
@@ -141,8 +140,7 @@ BrainModelSurfaceClusterToBorderConverter::executeOriginal() throw (BrainModelAl
       //
       // Is node potentially in a cluster
       //
-      if (inputNodeClusterFlag[i]) {
-      //if (bsnc->getNodeColorSource(modelIndex, i) == colorSource) {
+      if (surfaceROI->getNodeSelected(i)) {
          //
          // Flag as inside the cluster
          //
@@ -157,8 +155,7 @@ BrainModelSurfaceClusterToBorderConverter::executeOriginal() throw (BrainModelAl
             //
             // Is it on the boundary of a cluster
             //
-            if (inputNodeClusterFlag[neighbors[j]] == false) {
-            //if (bsnc->getNodeColorSource(modelIndex, neighbors[j]) != colorSource) {
+            if (surfaceROI->getNodeSelected(neighbors[j]) == false) {
                nodeStatus[i] = STATUS_BOUNDARY;
                break;
             }
@@ -464,9 +461,10 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
    //
    // Make sure nodes are selected
    //
-   if (std::count(inputNodeClusterFlag.begin(), inputNodeClusterFlag.end(), true) <= 0) {
+   if (surfaceROI->anyNodesSelected() == false) {
       throw BrainModelAlgorithmException("No nodes are selected.h");
    }
+   surfaceROI->update();
    
    //
    // Check inputs
@@ -481,9 +479,6 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
    const int numNodes = bms->getNumberOfNodes();
    if (numNodes <= 0) {
       throw BrainModelAlgorithmException("Surface has no nodes.");
-   }
-   if (static_cast<int>(inputNodeClusterFlag.size()) != numNodes) {
-      throw BrainModelAlgorithmException("Cluster node flags size is not equal to number of nodes.");
    }
    
    //
@@ -522,7 +517,7 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
       //
       // Is node potentially in a cluster
       //
-      if (inputNodeClusterFlag[i]) {
+      if (surfaceROI->getNodeSelected(i)) {
       //if (bsnc->getNodeColorSource(modelIndex, i) == colorSource) {
          //
          // Flag as inside the cluster
@@ -538,7 +533,7 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
             //
             // Is it on the boundary of a cluster
             //
-            if (inputNodeClusterFlag[neighbors[j]] == false) {
+            if (surfaceROI->getNodeSelected(neighbors[j]) == false) {
             //if (bsnc->getNodeColorSource(modelIndex, neighbors[j]) != colorSource) {
                nodeStatus[i] = STATUS_BOUNDARY;
                break;

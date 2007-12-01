@@ -114,7 +114,7 @@ GuiBorderProjectionDialog::done(int r)
          // Project borders used by this surface
          //
          BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
-         bmbs->projectBorders(bms, true);
+         bmbs->projectBorders(bms, nearestTileButton->isChecked());
          
          //
          // Notify that borders have been changed.

@@ -34,8 +34,9 @@
 /**
  * constructor.
  */
-StatisticAlgorithm::StatisticAlgorithm()
+StatisticAlgorithm::StatisticAlgorithm(const std::string& algorithmNameIn)
 {
+   algorithmName = algorithmNameIn;
 }
 
 /**
@@ -56,6 +57,29 @@ StatisticAlgorithm::~StatisticAlgorithm()
    ownDataGroup.clear();
 }
 
+/**
+ * add a data array group to this algorithm.
+ * If "takeOwnershipOfTheData" is set, the array must have been allocated with new[].
+ */
+int 
+StatisticAlgorithm::addDataArray(const float* array,
+                                 const int numItemsInArray,
+                                 const bool takeOwnershipOfTheData)
+{
+   StatisticDataGroup::DATA_STORAGE_MODE storageMode = StatisticDataGroup::DATA_STORAGE_MODE_POINT;
+   if (takeOwnershipOfTheData) {
+      storageMode = StatisticDataGroup::DATA_STORAGE_MODE_TAKE_OWNERSHIP;
+   }
+   StatisticDataGroup* sdg = new StatisticDataGroup(array,
+                                                    numItemsInArray,
+                                                    storageMode);
+
+   dataGroups.push_back(sdg);
+   ownDataGroup.push_back(true); // created data group here so it must be deleted
+   
+   return (getNumberOfDataGroups() - 1);
+}
+                       
 /**
  * add a data group to this algorithm.
  */

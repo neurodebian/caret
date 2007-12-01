@@ -31,11 +31,12 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QRegExpValidator>
@@ -50,11 +51,10 @@
 #include "BrainSet.h"
 #include "DisplaySettingsStudyMetaData.h"
 #include "DisplaySettingsFoci.h"
+#include "FileFilters.h"
 #include "FociProjectionFile.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #define __GUI_STUDY_META_DATA_FILE_EDITOR_DIALOG_MAIN_
 #include "GuiStudyMetaDataFileEditorDialog.h"
@@ -64,7 +64,7 @@
 #include "PubMedArticleFile.h"
 #include "QtListBoxSelectionDialog.h"
 #include "QtUtilities.h"
-#include "QtWidgetGroup.h"
+#include "WuQWidgetGroup.h"
 #include "StudyMetaAnalysisFile.h"
 #include "StudyMetaDataFile.h"
 #include "global_variables.h"
@@ -460,13 +460,13 @@ GuiStudyMetaDataFileEditorDialog::slotLastStudyPushButton()
 void 
 GuiStudyMetaDataFileEditorDialog::slotImportMetaAnalysisFilePushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setWindowTitle("Choose Meta-Analysis File");
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
-   fd.setFilter(GuiDataFileDialog::metaAnalysisFileFilter);
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
+   fd.setFilter(FileFilters::getMetaAnalysisFileFilter());
+   fd.setFileMode(WuQFileDialog::AnyFile);
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          const QString fileName = fd.selectedFiles().at(0);
@@ -480,18 +480,22 @@ GuiStudyMetaDataFileEditorDialog::slotImportMetaAnalysisFilePushButton()
             //
             // Allow user to append or replace existing studies
             //
-            const int appendReplaceChoice = GuiMessageBox::question(this, "Append/Replace",
-                                        "Append to currently loaded Study Metadata?",
-                                        "Append", "Replace", "Cancel");
-            switch (appendReplaceChoice) {
-               case 0:
-                  break;
-               case 1:
-                  smdf->clear();
-                  break;
-               case 2:
-                  return;
-                  break;
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Append or Replace");
+            msgBox.setText("Append to currently loaded Study Metadata?");
+            QPushButton* appendPushButton = msgBox.addButton("Append",
+                                                           QMessageBox::AcceptRole);
+            QPushButton* replacePushButton = msgBox.addButton("Replace",
+                                                           QMessageBox::AcceptRole);
+            msgBox.addButton("Cancel", QMessageBox::RejectRole);
+            msgBox.exec();
+            if (msgBox.clickedButton() == appendPushButton) {
+            }
+            else if (msgBox.clickedButton() == replacePushButton) {
+               smdf->clear();
+            }
+            else {
+               return;
             }
          }
          
@@ -514,10 +518,12 @@ GuiStudyMetaDataFileEditorDialog::slotImportMetaAnalysisFilePushButton()
                                     " study ("
                                     + smaf.getName()
                                     + ") already exists.");
-                  if (GuiMessageBox::question(this,
+                  if (QMessageBox::question(this,
                                               "Confirm",
                                               msg,
-                                              "Continue", "Cancel") == 1) {
+                                              (QMessageBox::Ok | QMessageBox::Cancel),
+                                              QMessageBox::Cancel)
+                                                 == QMessageBox::Cancel) {
                      return;
                   }
                }
@@ -547,45 +553,49 @@ GuiStudyMetaDataFileEditorDialog::slotImportMetaAnalysisFilePushButton()
                   }
                }
                
-               const int matchAnswer = GuiMessageBox::question(this, "Matching Studies",
-                                                               msg, 
-                                                               "Exclude Matching Studies",
-                                                               "Import All Studies",
-                                                               "Cancel");
-               switch (matchAnswer) {
-                  case 0:
-                     {
-                        //
-                        // Remove the duplicate studies
-                        //
-                        StudyNamePubMedID* metaStudies = smaf.getMetaAnalysisStudies();
-                        metaStudies->removeStudiesByIndex(matchingMetaAnalysisNumbers);
-                     }
-                     break;
-                  case 1:
-                     break;
-                  case 2:
-                     return;
-                     break;
+               QMessageBox msgBox(this);
+               msgBox.setWindowTitle("Matching Studies");
+               msgBox.setText(msg);
+               QPushButton* excludePushButton = msgBox.addButton("Exclude Matching Studies",
+                                                              QMessageBox::AcceptRole);
+               QPushButton* importPushButton = msgBox.addButton("Import All Studies",
+                                                              QMessageBox::AcceptRole);
+               msgBox.addButton("Cancel", QMessageBox::RejectRole);
+               msgBox.exec();
+               if (msgBox.clickedButton() == excludePushButton) {
+                  //
+                  // Remove the duplicate studies
+                  //
+                  StudyNamePubMedID* metaStudies = smaf.getMetaAnalysisStudies();
+                  metaStudies->removeStudiesByIndex(matchingMetaAnalysisNumbers);
+               }
+               else if (msgBox.clickedButton() == importPushButton) {
+               }
+               else {
+                  return;
                }
             }                             
             
-            const int answer = GuiMessageBox::question(this, "Confirm",
-                                        "Create new studies from the meta-analysis' studies?",
-                                        "Yes and fetch from PubMed", "Yes", "No");
-            
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Confirm");
+            msgBox.setText("Create new studies from the meta-analysis' studies?");
+            QPushButton* yesFetchPushButton = msgBox.addButton("Yes and fetch from PubMed",
+                                                           QMessageBox::YesRole);
+            QPushButton* yesPushButton = msgBox.addButton("Yes",
+                                                           QMessageBox::YesRole);
+            msgBox.addButton("No", QMessageBox::NoRole);
+            msgBox.exec();
             bool createStudiesFlag = false;
             bool fetchDataFromPubMedFlag = false;
-            switch (answer) {
-               case 0:
-                  createStudiesFlag = true;
-                  fetchDataFromPubMedFlag = true;
-                  break;
-               case 1:
-                  createStudiesFlag = true;
-                  break;
-               case 2:
-                  break;
+            if (msgBox.clickedButton() == yesFetchPushButton) {
+               createStudiesFlag = true;
+               fetchDataFromPubMedFlag = true;
+            }
+            else if (msgBox.clickedButton() == yesPushButton) {
+               createStudiesFlag = true;
+            }
+            else {
+               return;
             }
                                         
             QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
@@ -605,7 +615,8 @@ GuiStudyMetaDataFileEditorDialog::slotImportMetaAnalysisFilePushButton()
             QApplication::restoreOverrideCursor();   
          }
          catch (FileException& e) {
-            GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "ERROR", e.whatQString());
             return;
          }
       }
@@ -655,9 +666,11 @@ GuiStudyMetaDataFileEditorDialog::slotDeleteStudyPushButton()
    StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
    if ((currentStudyMetaDataFileIndex >= 0) &&
        (currentStudyMetaDataFileIndex < smdf->getNumberOfStudyMetaData())) {
-      if (GuiMessageBox::question(this, "Confirm",
+      if (QMessageBox::question(this, "Confirm",
                                   "Delete the current study metadata?",
-                                  "Yes", "No") == 0) {
+                                  (QMessageBox::Yes | QMessageBox::No),
+                                  QMessageBox::Yes)
+                                     == QMessageBox::Yes) {
          smdf->deleteStudyMetaData(currentStudyMetaDataFileIndex);
          if (currentStudyMetaDataFileIndex >= smdf->getNumberOfStudyMetaData()) {
             currentStudyMetaDataFileIndex--;
@@ -735,6 +748,18 @@ GuiStudyMetaDataFileEditorDialog::slotPageReferenceAddPushButton()
 }
 
 /**
+ * called to add provenance button pressed.
+ */
+void 
+GuiStudyMetaDataFileEditorDialog::slotProvenanceAddPushButton()
+{
+   StudyWidget* sw = getCurrentStudyWidget();
+   if (sw != NULL) {
+      sw->addProvenance(NULL);
+   }
+}
+
+/**
  * called to enable/disable selection push buttons.
  */
 void 
@@ -755,6 +780,7 @@ GuiStudyMetaDataFileEditorDialog::slotEnableDisablePushButtons()
    figureAddPushButton->setEnabled(false);
    tableAddPushButton->setEnabled(false);
    pageReferenceAddPushButton->setEnabled(false);
+   provenanceAddPushButton->setEnabled(false);
    showMetaAnalysisCheckBox->setEnabled(false);
    
    StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
@@ -774,6 +800,7 @@ GuiStudyMetaDataFileEditorDialog::slotEnableDisablePushButtons()
       figureAddPushButton->setEnabled(true);
       tableAddPushButton->setEnabled(true);
       pageReferenceAddPushButton->setEnabled(true);
+      provenanceAddPushButton->setEnabled(true);
       showMetaAnalysisCheckBox->setEnabled(true);
    }
 }
@@ -784,9 +811,26 @@ GuiStudyMetaDataFileEditorDialog::slotEnableDisablePushButtons()
 void 
 GuiStudyMetaDataFileEditorDialog::slotCreateStudiesFromMetaAnalysisStudies()
 {
-   const int answer = GuiMessageBox::question(this, "Confirm",
-                               "Create new studies from the meta-analysis' studies?",
-                               "Yes and fetch from PubMed", "Yes", "No");
+   int answer = 0;
+   QMessageBox msgBox(this);
+   msgBox.setWindowTitle("Confirm");
+   msgBox.setText("Create new studies from the meta-analysis' studies?");
+   QPushButton* yesFetchPushButton = msgBox.addButton("Yes and fetch from PubMed",
+                                                  QMessageBox::YesRole);
+   QPushButton* yesPushButton = msgBox.addButton("Yes",
+                                                  QMessageBox::YesRole);
+   msgBox.addButton("No", QMessageBox::NoRole);
+   msgBox.exec();
+   if (msgBox.clickedButton() == yesFetchPushButton) {
+      answer = 0;
+   }
+   else if (msgBox.clickedButton() == yesPushButton) {
+      answer = 1;
+   }
+   else {
+      answer = 2;
+   }
+
    if (answer != 2) {
       const bool fetchFromPubMedFlag = (answer == 0);
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
@@ -808,7 +852,8 @@ GuiStudyMetaDataFileEditorDialog::slotCreateStudiesFromMetaAnalysisStudies()
             updateStudySelectionSpinBox();
             sw->loadData();
          }
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
       QApplication::restoreOverrideCursor();   
    }
@@ -857,9 +902,11 @@ GuiStudyMetaDataFileEditorDialog::slotDeleteStudiesByNamePushButton()
 void 
 GuiStudyMetaDataFileEditorDialog::slotFetchAllStudiesPushButton()
 {
-   if (GuiMessageBox::question(this, "Confirm",
+   if (QMessageBox::question(this, "Confirm",
                                "Update all studies with valid PubMed IDs?",
-                               "Yes", "No") == 0) {
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
       StudyWidget* sw = getCurrentStudyWidget();
@@ -873,7 +920,8 @@ GuiStudyMetaDataFileEditorDialog::slotFetchAllStudiesPushButton()
          if (sw != NULL) {
             sw->loadData();
          }
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
       QApplication::restoreOverrideCursor();   
    }
@@ -981,6 +1029,13 @@ GuiStudyMetaDataFileEditorDialog::createStudySelectionButtons()
                                           "reference to the current study.");
    QObject::connect(pageReferenceAddPushButton, SIGNAL(clicked()), 
                     this, SLOT(slotPageReferenceAddPushButton()));
+   
+   provenanceAddPushButton = new QPushButton("Add Provenance");
+   provenanceAddPushButton->setAutoDefault(false);
+   provenanceAddPushButton->setToolTip("Press this button to add a provenance\n"
+                                       "to the current study.");
+   QObject::connect(provenanceAddPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotProvenanceAddPushButton()));
                     
    tableAddPushButton = new QPushButton("Add Table");
    tableAddPushButton->setAutoDefault(false);
@@ -1008,6 +1063,7 @@ GuiStudyMetaDataFileEditorDialog::createStudySelectionButtons()
    QVBoxLayout* sol = new QVBoxLayout(sog);
    sol->addWidget(figureAddPushButton);
    sol->addWidget(pageReferenceAddPushButton);
+   sol->addWidget(provenanceAddPushButton);
    sol->addWidget(tableAddPushButton);
    sol->addWidget(studyDeletePushButton);
    sol->addWidget(studyPubMedIDFetchPushButton);
@@ -1023,6 +1079,7 @@ GuiStudyMetaDataFileEditorDialog::createStudySelectionButtons()
    buttons.push_back(studyDeletePushButton);
    buttons.push_back(figureAddPushButton);
    buttons.push_back(pageReferenceAddPushButton);
+   buttons.push_back(provenanceAddPushButton);
    buttons.push_back(tableAddPushButton);
    buttons.push_back(fetchAllStudiesPushButton);
    buttons.push_back(deleteStudiesByNamePushButton);
@@ -1059,7 +1116,12 @@ GuiStudyMetaDataFileEditorDialog::slotStudyFetchPubMedIDPushButton()
    const QString msg("Retrieve data for article with PubMed ID = " 
                      + studyMetaData->getPubMedID()
                      +"?");
-   if (GuiMessageBox::question(this, "Confirm", msg, "Continue", "Cancel") != 0) {
+   if (QMessageBox::question(this, 
+                             "Confirm", 
+                             msg,
+                             (QMessageBox::Ok | QMessageBox::Cancel),
+                             QMessageBox::Ok)
+                                == QMessageBox::Cancel) {
       return;
    }
 
@@ -1073,7 +1135,7 @@ GuiStudyMetaDataFileEditorDialog::slotStudyFetchPubMedIDPushButton()
       }
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
    }
 /*
    //
@@ -1081,7 +1143,7 @@ GuiStudyMetaDataFileEditorDialog::slotStudyFetchPubMedIDPushButton()
    //
    const QString pubMedID = studyPubMedIDLineEdit->text();
    if (pubMedID.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "The PubMed ID has not been entered.", "OK");
+      QMessageBox::critical(this, "ERROR", "The PubMed ID has not been entered.", "OK");
       return;
    }
    
@@ -1091,7 +1153,7 @@ GuiStudyMetaDataFileEditorDialog::slotStudyFetchPubMedIDPushButton()
    const QString msg("Retrieve data for article with PubMed ID = " 
                      + pubMedID
                      +"?");
-   if (GuiMessageBox::question(this, "Confirm", msg, "Continue", "Cancel") != 0) {
+   if (QMessageBox::question(this, "Confirm", msg, "Continue", "Cancel") != 0) {
       return;
    }
    
@@ -1132,7 +1194,7 @@ GuiStudyMetaDataFileEditorDialog::slotStudyFetchPubMedIDPushButton()
       }
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
       return;
    }
 */
@@ -1231,6 +1293,32 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    QObject::connect(studyStereotaxicSpaceDetailsLineEdit, SIGNAL(textEdited(const QString&)),
                    this, SLOT(slotStudyStereotaxicSpaceDetailsLineEditChanged()));
     
+   QLabel* studyDataFormatLabel = new QLabel("Data Format");
+   QPushButton* studyDataFormatAddPushButton = new QPushButton("Add");
+   studyDataFormatAddPushButton->setAutoDefault(false);
+   QObject::connect(studyDataFormatAddPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotStudyDataFormatAddPushButton()));
+   QHBoxLayout* studyDataFormatLabelAndButtonLayout = new QHBoxLayout;
+   studyDataFormatLabelAndButtonLayout->addWidget(studyDataFormatLabel);
+   studyDataFormatLabelAndButtonLayout->addWidget(studyDataFormatAddPushButton);
+   studyDataFormatLineEdit = new QLineEdit;
+   studyDataFormatLineEdit->setToolTip("Format of study data (Metric, Paint, etc.)");
+   QObject::connect(studyDataFormatLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotStudyDataFormatLineEditChanged()));
+                    
+   QLabel* studyDataTypeLabel = new QLabel("Data Type");
+   QPushButton* studyDataTypeAddPushButton = new QPushButton("Add");
+   studyDataTypeAddPushButton->setAutoDefault(false);
+   QObject::connect(studyDataTypeAddPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotStudyDataTypeAddPushButton()));
+   QHBoxLayout* studyDataTypeLabelAndButtonLayout = new QHBoxLayout;
+   studyDataTypeLabelAndButtonLayout->addWidget(studyDataTypeLabel);
+   studyDataTypeLabelAndButtonLayout->addWidget(studyDataTypeAddPushButton);
+   studyDataTypeLineEdit = new QLineEdit;
+   studyDataTypeLineEdit->setToolTip("Type of study data (fMRI, PET, etc.)");
+   QObject::connect(studyDataTypeLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotStudyDataTypeLineEditChanged()));
+                    
    QLabel* studyPubMedIDLabel = new QLabel("PubMed ID");
    QPushButton* studyPubMedIDPushButton = new QPushButton("Link");
    studyPubMedIDPushButton->setAutoDefault(false);
@@ -1287,6 +1375,12 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    QObject::connect(studyPartitioningSchemeFullNameLineEdit, SIGNAL(textEdited(const QString&)),
                    this, SLOT(slotStudyPartitioningSchemeFullNameLineEditChanged()));
    
+   QLabel* studyQualityLabel = new QLabel("Quality");
+   studyQualityLineEdit = new QLineEdit;
+   studyQualityLineEdit->setToolTip("Trustworthiness of data.");
+   QObject::connect(studyQualityLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotStudyQualityLineEditChanged()));
+   
    QLabel* studyLastSaveLabel = new QLabel("Last Saved");
    studyLastSaveLineEdit = new QLineEdit;
    studyLastSaveLineEdit->setToolTip("Contains last date and time this\n"
@@ -1304,10 +1398,13 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    const int studyDocumentObjectIdentifierRow = rowCounter++;
    const int studyStereotaxicSpaceRow = rowCounter++;
    const int studyStereotaxicSpaceDetailsRow = rowCounter++;
+   const int studyDataFormatRow = rowCounter++;
+   const int studyDataTypeRow = rowCounter++;
    const int studyKeywordsRow = rowCounter++;
    const int studyMeshRow = rowCounter++;
    const int studyPartitioningSchemeAbbreviationRow = rowCounter++;
    const int studyPartitioningSchemeFullNameRow = rowCounter++;
+   const int studyQualityRow = rowCounter++;
    const int studyCommentRow = rowCounter++;
    const int studyLastSaveRow = rowCounter++;
    
@@ -1332,6 +1429,10 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    grid->addWidget(studyStereotaxicSpaceLineEdit, studyStereotaxicSpaceRow, 1);
    grid->addWidget(studyStereotaxicSpaceDetailsLabel, studyStereotaxicSpaceDetailsRow, 0);
    grid->addWidget(studyStereotaxicSpaceDetailsLineEdit, studyStereotaxicSpaceDetailsRow, 1);
+   grid->addLayout(studyDataFormatLabelAndButtonLayout, studyDataFormatRow, 0);
+   grid->addWidget(studyDataFormatLineEdit, studyDataFormatRow, 1);
+   grid->addLayout(studyDataTypeLabelAndButtonLayout, studyDataTypeRow, 0);
+   grid->addWidget(studyDataTypeLineEdit, studyDataTypeRow, 1);
    grid->addWidget(studyKeywordsLabel, studyKeywordsRow, 0);
    grid->addWidget(studyKeywordsLineEdit, studyKeywordsRow, 1);
    grid->addWidget(studyMeshLabel, studyMeshRow, 0);
@@ -1340,6 +1441,8 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    grid->addWidget(studyPartitioningSchemeAbbreviationLineEdit, studyPartitioningSchemeAbbreviationRow, 1);
    grid->addWidget(studyPartitioningSchemeFullNameLabel, studyPartitioningSchemeFullNameRow, 0);
    grid->addWidget(studyPartitioningSchemeFullNameLineEdit, studyPartitioningSchemeFullNameRow, 1);
+   grid->addWidget(studyQualityLabel, studyQualityRow, 0);
+   grid->addWidget(studyQualityLineEdit, studyQualityRow, 1);
    grid->addWidget(studyCommentLabel, studyCommentRow, 0);
    grid->addWidget(studyCommentTextEdit, studyCommentRow, 1);
    grid->addWidget(studyLastSaveLabel, studyLastSaveRow, 0);
@@ -1350,6 +1453,7 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    //
    figuresLayout = new QVBoxLayout;
    pageReferenceLayout = new QVBoxLayout;
+   provenanceLayout = new QVBoxLayout;
    tablesLayout  = new QVBoxLayout;
    
    //
@@ -1368,13 +1472,14 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    layout->addLayout(grid);
    layout->addLayout(figuresLayout);
    layout->addLayout(pageReferenceLayout);
+   layout->addLayout(provenanceLayout);
    layout->addLayout(tablesLayout);
    layout->addWidget(metaAnalysisWidget);
    
    //
    // Place the study data widgets into a widgets group for blocking signals
    //
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(studyFileIndexDetailsLabel);
    allWidgetsGroup->addWidget(studyProjectIDLineEdit);
    allWidgetsGroup->addWidget(studyNameLineEdit);
@@ -1385,11 +1490,14 @@ StudyWidget::StudyWidget(GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFi
    allWidgetsGroup->addWidget(studyMeshLineEdit);
    allWidgetsGroup->addWidget(studyStereotaxicSpaceLineEdit);
    allWidgetsGroup->addWidget(studyStereotaxicSpaceDetailsLineEdit);
+   allWidgetsGroup->addWidget(studyDataFormatLineEdit);
+   allWidgetsGroup->addWidget(studyDataTypeLineEdit);
    allWidgetsGroup->addWidget(studyPubMedIDLineEdit);
    allWidgetsGroup->addWidget(studyDocumentObjectIdentifierLineEdit);
    allWidgetsGroup->addWidget(studyCommentTextEdit);
    allWidgetsGroup->addWidget(studyPartitioningSchemeAbbreviationLineEdit);
    allWidgetsGroup->addWidget(studyPartitioningSchemeFullNameLineEdit);
+   allWidgetsGroup->addWidget(studyQualityLineEdit);
    allWidgetsGroup->addWidget(studyLastSaveLineEdit);
    
    loadData();
@@ -1412,7 +1520,7 @@ StudyWidget::slotStudyPubMedIDPushButton()
    if (theURL.startsWith(StudyMetaData::getProjectIDInPubMedIDPrefix())) {
       const QString msg("The contents of the PubMed ID edit box\n"
                         "must be a PubMed ID, not a Project ID");
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
+      QMessageBox::critical(this, "ERROR", msg);
       return;
    }
    if (theURL.startsWith("http:")) {
@@ -1425,6 +1533,64 @@ StudyWidget::slotStudyPubMedIDPushButton()
    theMainWindow->displayWebPage(theURL);
 }
       
+/**
+ * called when study data format ADD button is pressed.
+ */
+void 
+StudyWidget::slotStudyDataFormatAddPushButton()
+{
+   std::vector<QString> dataFormats;
+   StudyMetaData::getStudyDataFormatEntries(dataFormats);
+   QtListBoxSelectionDialog lb(this,
+                               "Data Formats",
+                               "",
+                               dataFormats);
+   lb.setAllowMultipleItemSelection(true);
+   if (lb.exec() == QtListBoxSelectionDialog::Accepted) {
+      std::vector<QString> items;
+      lb.getSelectedItems(items);
+      
+      QString s = studyDataFormatLineEdit->text();
+      for (unsigned int i = 0; i < items.size(); i++) {
+         if (s.isEmpty() == false) {
+            s += "; ";
+         }
+         s += items[i];
+      }
+      studyDataFormatLineEdit->setText(s);
+      slotStudyDataFormatLineEditChanged();
+   }
+}
+
+/**
+ * called when study data type ADD button is pressed.
+ */
+void 
+StudyWidget::slotStudyDataTypeAddPushButton()
+{
+   std::vector<QString> dataTypes;
+   StudyMetaData::getStudyDataTypeEntries(dataTypes);
+   QtListBoxSelectionDialog lb(this,
+                               "Data Types",
+                               "",
+                               dataTypes);
+   lb.setAllowMultipleItemSelection(true);
+   if (lb.exec() == QtListBoxSelectionDialog::Accepted) {
+      std::vector<QString> items;
+      lb.getSelectedItems(items);
+      
+      QString s = studyDataTypeLineEdit->text();
+      for (unsigned int i = 0; i < items.size(); i++) {
+         if (s.isEmpty() == false) {
+            s += "; ";
+         }
+         s += items[i];
+      }
+      studyDataTypeLineEdit->setText(s);
+      slotStudyDataTypeLineEditChanged();
+   }
+}
+
 /**
  * called when DOI/URL "LINK" button is pressed.
  */
@@ -1472,6 +1638,10 @@ StudyWidget::loadData()
    studyStereotaxicSpaceLineEdit->home(false);
    studyStereotaxicSpaceDetailsLineEdit->setText(studyMetaData->getStereotaxicSpaceDetails());
    studyStereotaxicSpaceDetailsLineEdit->home(false);
+   studyDataFormatLineEdit->setText(studyMetaData->getStudyDataFormat());
+   studyDataFormatLineEdit->home(false);
+   studyDataTypeLineEdit->setText(studyMetaData->getStudyDataType());
+   studyDataTypeLineEdit->home(false);
    studyKeywordsLineEdit->setText(studyMetaData->getKeywords());
    studyKeywordsLineEdit->home(false);
    keywordsModifiedFlag = false;
@@ -1481,8 +1651,10 @@ StudyWidget::loadData()
    studyPartitioningSchemeAbbreviationLineEdit->home(false);
    studyPartitioningSchemeFullNameLineEdit->setText(studyMetaData->getPartitioningSchemeFullName());
    studyPartitioningSchemeFullNameLineEdit->home(false);
+   studyQualityLineEdit->setText(studyMetaData->getQuality());
+   studyQualityLineEdit->home(false);
    studyCommentTextEdit->setPlainText(studyMetaData->getComment());
-   studyLastSaveLineEdit->setText(studyMetaData->getLastProvenanceSaveDate());
+   studyLastSaveLineEdit->setText(studyMetaData->getMostRecentDateAndTimeStamp());
    
    //QTextCursor tc;
    //tc.movePosition(QTextCursor::Start);
@@ -1500,6 +1672,10 @@ StudyWidget::loadData()
       addPageReference(studyMetaData->getPageReference(i));
    }
    
+   const int numProvenance = studyMetaData->getNumberOfProvenances();
+   for (int i = 0; i < numProvenance; i++) {
+      addProvenance(studyMetaData->getProvenance(i));
+   }
    const int numTables = studyMetaData->getNumberOfTables();
    for (int i = 0; i < numTables; i++) {
       addTable(studyMetaData->getTable(i));
@@ -1609,6 +1785,21 @@ StudyWidget::addPageReference(StudyMetaData::PageReference* pageReference)
    pageReferenceLayout->addWidget(pageReferenceWidget);
 }
 
+/** 
+ * add a provenance to the study (if NULL add new, empty provenance)
+ */
+void
+StudyWidget::addProvenance(StudyMetaData::Provenance* provenance)
+{
+   if (provenance == NULL) {
+      provenance = new StudyMetaData::Provenance;
+      studyMetaData->addProvenance(provenance);
+   }
+   StudyProvenanceWidget* provenanceWidget = new StudyProvenanceWidget(provenance,
+                                                                       this);
+   provenanceLayout->addWidget(provenanceWidget);
+}
+
 /**
  * remove a page reference widget from its layout (does not delete the widget).
  */
@@ -1619,7 +1810,18 @@ StudyWidget::removePageReferenceWidget(StudyPageReferenceWidget* pageReferenceWi
    StudyMetaData::PageReference* pageRef = pageReferenceWidget->getPageReferenceInThisWidget();
    studyMetaData->deletePageReference(pageRef);
 }
-      
+
+/**
+ * remove a provenance widget from its layout (does not delete the widget).
+ */
+void
+StudyWidget::removeProvenanceWidget(StudyProvenanceWidget* provenanceWidget)
+{
+   provenanceLayout->removeWidget(provenanceWidget);
+   StudyMetaData::Provenance* provenance = provenanceWidget->getProvenanceInThisWidget();
+   studyMetaData->deleteProvenance(provenance);
+}
+
 /**
  * save all data including figures and tables.
  */
@@ -1749,6 +1951,24 @@ StudyWidget::slotStudyStereotaxicSpaceDetailsLineEditChanged()
 }
 
 /**
+ * called when data format details changed.
+ */
+void 
+StudyWidget::slotStudyDataFormatLineEditChanged()
+{
+   studyMetaData->setStudyDataFormat(studyDataFormatLineEdit->text());
+}
+
+/**
+ * called when data type details changed.
+ */
+void 
+StudyWidget::slotStudyDataTypeLineEditChanged()
+{
+   studyMetaData->setStudyDataType(studyDataTypeLineEdit->text());
+}
+
+/**
  * called when keywords changed.
  */
 void 
@@ -1811,6 +2031,15 @@ void
 StudyWidget::slotStudyPartitioningSchemeFullNameLineEditChanged()
 {
    studyMetaData->setPartitioningSchemeFullName(studyPartitioningSchemeFullNameLineEdit->text());
+}
+
+/**
+ * called when quality changed.
+ */
+void 
+StudyWidget::slotStudyQualityLineEditChanged()
+{
+   studyMetaData->setQuality(studyQualityLineEdit->text());
 }
 
 /**
@@ -1948,7 +2177,7 @@ StudyTableWidget::StudyTableWidget(StudyMetaData::Table* tableIn,
    layout->addLayout(subHeadersLayout);
    layout->addLayout(buttonsLayout);
 
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(tableNumberLineEdit);
    allWidgetsGroup->addWidget(tableHeaderLineEdit);
    allWidgetsGroup->addWidget(tableFooterTextEdit);
@@ -1996,8 +2225,11 @@ StudyTableWidget::slotAddSubHeaderPushButton()
 void 
 StudyTableWidget::slotDeleteThisTablePushButton()
 {
-   if (GuiMessageBox::question(this, "Confirm",
-                               "Delete this table", "YES", "NO") == 0) {
+   if (QMessageBox::question(this, "Confirm",
+                               "Delete this table",
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes) ==
+                                  QMessageBox::Yes) {
       //
       // Remove this widget from its parent layout
       //
@@ -2231,7 +2463,7 @@ StudySubHeaderWidget::StudySubHeaderWidget(StudyMetaData::SubHeader* subHeaderIn
    layout->addLayout(grid);
    layout->addLayout(buttonsLayout);
 
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(subHeaderNumberLineEdit);
    allWidgetsGroup->addWidget(subHeaderNameLineEdit);
    allWidgetsGroup->addWidget(subHeaderShortNameLineEdit);
@@ -2256,8 +2488,11 @@ StudySubHeaderWidget::~StudySubHeaderWidget()
 void 
 StudySubHeaderWidget::slotDeleteThisSubHeader()
 {
-   if (GuiMessageBox::question(this, "Confirm",
-                               "Delete this sub header", "YES", "NO") == 0) {
+   if (QMessageBox::question(this, "Confirm",
+                               "Delete this sub header", 
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       //
       // Remove this widget from its parent layout
       //
@@ -2459,7 +2694,7 @@ StudyFigureWidget::StudyFigureWidget(StudyMetaData::Figure* figureIn,
    layout->addLayout(panelsLayout);
    layout->addLayout(buttonsLayout);
 
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(figureNumberLineEdit);
    allWidgetsGroup->addWidget(figureLegendLineEdit);
    
@@ -2488,8 +2723,11 @@ StudyFigureWidget::slotAddPanelPushButton()
 void 
 StudyFigureWidget::slotDeleteThisFigurePushButton()
 {
-   if (GuiMessageBox::question(this, "Confirm",
-                               "Delete this figure", "YES", "NO") == 0) {
+   if (QMessageBox::question(this, "Confirm",
+                               "Delete this figure", 
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       //
       // Remove this widget from its parent layout
       //
@@ -2651,7 +2889,7 @@ StudyFigurePanelWidget::StudyFigurePanelWidget(StudyMetaData::Figure::Panel* fig
    layout->addLayout(grid);
    layout->addLayout(buttonsLayout);
 
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(figurePanelIdentifierLineEdit);
    allWidgetsGroup->addWidget(figurePanelDescriptionLineEdit);
    allWidgetsGroup->addWidget(figurePanelTaskDescriptionLineEdit);
@@ -2674,8 +2912,11 @@ StudyFigurePanelWidget::~StudyFigurePanelWidget()
 void 
 StudyFigurePanelWidget::slotDeleteThisPanelPushButton()
 {
-   if (GuiMessageBox::question(this, "Confirm",
-                               "Delete this panel", "YES", "NO") == 0) {
+   if (QMessageBox::question(this, "Confirm",
+                               "Delete this panel", 
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       //
       // Remove this widget from its parent layout
       //
@@ -2874,7 +3115,7 @@ StudyPageReferenceWidget::StudyPageReferenceWidget(StudyMetaData::PageReference*
    layout->addLayout(subHeadersLayout);
    layout->addLayout(buttonsLayout);
 
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(pageReferenceNumberLineEdit);
    allWidgetsGroup->addWidget(pageReferenceHeaderLineEdit);
    allWidgetsGroup->addWidget(pageReferenceCommentTextEdit);
@@ -2922,8 +3163,11 @@ StudyPageReferenceWidget::slotAddSubHeaderPushButton()
 void 
 StudyPageReferenceWidget::slotDeleteThisPageReferencePushButton()
 {
-   if (GuiMessageBox::question(this, "Confirm",
-                               "Delete this pageReference", "YES", "NO") == 0) {
+   if (QMessageBox::question(this, "Confirm",
+                               "Delete this pageReference", 
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       //
       // Remove this widget from its parent layout
       //
@@ -3066,6 +3310,158 @@ StudyPageReferenceWidget::slotSaveData()
 
 //=====================================================================================
 //
+// Widget for displaying provenance
+//
+//=====================================================================================
+
+/**
+ * constructor.
+ */
+StudyProvenanceWidget::StudyProvenanceWidget(StudyMetaData::Provenance* provenanceIn,
+                                             StudyWidget* parentStudyWidgetIn,
+                                             QWidget* parentIn)
+   : QGroupBox("Provenance", parentIn)
+{
+   provenance = provenanceIn;
+   parentStudyWidget = parentStudyWidgetIn;
+   
+   QLabel* provenanceNameLabel = new QLabel("Name");
+   provenanceNameLineEdit = new QLineEdit;
+   provenanceNameLineEdit->setToolTip("Enter your name here.");
+   QObject::connect(provenanceNameLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotNameLineEditChanged()));
+                    
+   QLabel* provenanceDateLabel = new QLabel("Date");
+   provenanceDateLineEdit = new QLineEdit;
+   provenanceDateLineEdit->setToolTip("Enter today's date here.");
+   QObject::connect(provenanceDateLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotDateLineEditChanged()));
+                    
+   QLabel* provenanceCommentLabel = new QLabel("Comment");
+   provenanceCommentLineEdit = new QLineEdit;
+   provenanceCommentLineEdit->setToolTip("Enter comment here.");
+   QObject::connect(provenanceCommentLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotCommentLineEditChanged()));
+                    
+   int rowCounter = 0;
+   const int nameRow = rowCounter++;
+   const int dateRow = rowCounter++;
+   const int commentRow = rowCounter++;
+
+   QGridLayout* grid = new QGridLayout;
+   grid->addWidget(provenanceNameLabel, nameRow, 0);
+   grid->addWidget(provenanceNameLineEdit, nameRow, 1);
+   grid->addWidget(provenanceDateLabel, dateRow, 0);
+   grid->addWidget(provenanceDateLineEdit, dateRow, 1);
+   grid->addWidget(provenanceCommentLabel, commentRow, 0);
+   grid->addWidget(provenanceCommentLineEdit, commentRow, 1);
+
+   QPushButton* deleteThisProvenancePushButton = new QPushButton("Delete This Provenance");
+   deleteThisProvenancePushButton->setAutoDefault(false);
+   QObject::connect(deleteThisProvenancePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotDeleteThisProvenancePushButton()));
+   
+   QHBoxLayout* buttonsLayout = new QHBoxLayout;
+   buttonsLayout->addWidget(deleteThisProvenancePushButton);
+   buttonsLayout->addStretch();
+   
+   layout = new QVBoxLayout(this);
+   layout->addLayout(grid);
+   layout->addLayout(buttonsLayout);
+
+   allWidgetsGroup = new WuQWidgetGroup(this);
+   allWidgetsGroup->addWidget(provenanceNameLineEdit);
+   allWidgetsGroup->addWidget(provenanceDateLineEdit);
+   allWidgetsGroup->addWidget(provenanceCommentLineEdit);
+   
+   loadData();
+}
+
+/**
+ * destructor.
+ */
+StudyProvenanceWidget::~StudyProvenanceWidget()
+{
+}
+
+/**
+ * load data into the widget.
+ */
+void 
+StudyProvenanceWidget::loadData()
+{
+   allWidgetsGroup->blockSignals(true);
+
+   provenanceNameLineEdit->setText(provenance->getName());
+   provenanceNameLineEdit->home(false);
+   provenanceDateLineEdit->setText(provenance->getDate());
+   provenanceDateLineEdit->home(false);
+   provenanceCommentLineEdit->setText(provenance->getComment());
+   provenanceCommentLineEdit->home(false);
+
+   allWidgetsGroup->blockSignals(false);
+}
+
+/**
+ * save the data into the study meta data provenance.
+ */
+void 
+StudyProvenanceWidget::slotSaveData()
+{
+}
+
+/**
+ * called when delete this provenance widget button is pressed.
+ */
+void 
+StudyProvenanceWidget::slotDeleteThisProvenancePushButton()
+{
+   if (QMessageBox::question(this, "Confirm",
+                               "Delete this Provenance", 
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
+      //
+      // Remove this widget from its parent layout
+      //
+      parentStudyWidget->removeProvenanceWidget(this);
+      
+      //
+      // Tell QT to delete this widget when it gets pack to its event loop
+      //
+      this->deleteLater();
+   }
+}
+      
+/**
+ * called when name changed.
+ */
+void 
+StudyProvenanceWidget::slotNameLineEditChanged()
+{
+   provenance->setName(provenanceNameLineEdit->text());
+}
+
+/**
+ * called when date changed.
+ */
+void 
+StudyProvenanceWidget::slotDateLineEditChanged()
+{
+   provenance->setDate(provenanceDateLineEdit->text());
+}
+
+/**
+ * called when comment changed.
+ */
+void 
+StudyProvenanceWidget::slotCommentLineEditChanged()
+{
+   provenance->setComment(provenanceCommentLineEdit->text());
+}
+
+//=====================================================================================
+//
 // Widget for displaying a new study
 //
 //=====================================================================================
@@ -3077,7 +3473,30 @@ GuiStudyMetaDataNewDialog::GuiStudyMetaDataNewDialog(StudyMetaData* currentStudy
                                                      QWidget* parent)
    : QtDialogModal(parent)
 {
+   setWindowTitle("New Study");
+   
    currentStudyMetaData = currentStudyMetaDataIn;
+   
+   //
+   // Validator for PubMed ID which is an optional minus sign followed by digits
+   // Also allow it to be a project ID which begins with "ProjID"
+   //
+   QRegExpValidator* pubMedIDValidator = new QRegExpValidator(
+                        QRegExp("[P|0-9][r|0-9][o|0-9][j|0-9][I|0-9][D|0-9]\\d*"),
+                                                              this);
+                                                              
+   QLabel* idMessageLabel = new QLabel("If you have a PubMed ID for the new study, "
+                                       "enter it in the box below.  Otherwise, leave "
+                                       "the box empty.");
+   idMessageLabel->setWordWrap(true);
+   
+   newStudyPubMedIDLineEdit = new QLineEdit;
+   newStudyPubMedIDLineEdit->setValidator(pubMedIDValidator);
+   
+   QGroupBox* studyGroupBox = new QGroupBox("PubMed ID");
+   QVBoxLayout* studyGroupLayout = new QVBoxLayout(studyGroupBox);
+   studyGroupLayout->addWidget(idMessageLabel);
+   studyGroupLayout->addWidget(newStudyPubMedIDLineEdit);
    
    newEmptyStudyRadioButton = new QRadioButton("New Study (empty)");
    newCopyStudyRadioButton  = new QRadioButton("New Study (copy current study)");
@@ -3089,12 +3508,17 @@ GuiStudyMetaDataNewDialog::GuiStudyMetaDataNewDialog(StudyMetaData* currentStudy
    newStudyButtonGroup->addButton(newEmptyStudyRadioButton, 0);
    newStudyButtonGroup->addButton(newCopyStudyRadioButton, 1);
    
-   QGridLayout* grid = new QGridLayout;
-   grid->addWidget(newEmptyStudyRadioButton, 0, 0);
-   grid->addWidget(newCopyStudyRadioButton, 1, 0);
+   QWidget* newButtonWidget = new QWidget;
+   QVBoxLayout* newButtonLayout = new QVBoxLayout(newButtonWidget);
+   newButtonLayout->addWidget(newEmptyStudyRadioButton);
+   newButtonLayout->addWidget(newCopyStudyRadioButton);
+   
+   // hide new/copy radio buttons
+   newButtonWidget->hide();
    
    QVBoxLayout* layout = getDialogLayout();
-   layout->addLayout(grid);
+   layout->addWidget(studyGroupBox);
+   layout->addWidget(newButtonWidget);
    
    newEmptyStudyRadioButton->setChecked(true);
    if (lastCheckedID == 0) {
@@ -3106,6 +3530,7 @@ GuiStudyMetaDataNewDialog::GuiStudyMetaDataNewDialog(StudyMetaData* currentStudy
       }
    }
 }
+      
 
 /**
  * destructor.
@@ -3115,12 +3540,37 @@ GuiStudyMetaDataNewDialog::~GuiStudyMetaDataNewDialog()
 }
 
 /**
+ * get the PubMed ID.
+ */
+QString 
+GuiStudyMetaDataNewDialog::getPubMedID() const 
+{ 
+   return newStudyPubMedIDLineEdit->text(); 
+}
+
+/**
  * called when OK/Cancel button pressed.
  */
 void 
 GuiStudyMetaDataNewDialog::done(int r)
 {
    if (r == QtDialogModal::Accepted) {
+      const QString pmid = getPubMedID();
+      if (pmid.isEmpty() == false) {
+         const StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+         const int studyIndex = smdf->getStudyIndexFromPubMedID(pmid);
+         if (studyIndex >= 0) {
+            const QString msg("ERROR: The PubMed ID you entered ("
+                              + pmid
+                              + ") is in use by study " 
+                              + QString::number(studyIndex + 1)
+                              + ".  Each study must have "
+                              + "a unique PubMed ID.");
+            QMessageBox::critical(this, "ERROR", msg);
+            return;
+         }
+      }
+      
       lastCheckedID = newStudyButtonGroup->checkedId();
       
       const bool anyButtonChecked = 
@@ -3129,7 +3579,7 @@ GuiStudyMetaDataNewDialog::done(int r)
           newCopyStudyRadioButton->isEnabled());
          
       if (anyButtonChecked == false) {
-         GuiMessageBox::critical(this, "ERROR", "No study type selected.", "OK");
+         QMessageBox::critical(this, "ERROR", "No study type selected.");
          return;
       }
    }
@@ -3157,6 +3607,11 @@ GuiStudyMetaDataNewDialog::getNewStudy() const
          smd->setProjectID(projID);
          smd->setPubMedID(pubMedID);
       }
+   }
+   
+   const QString pmid = getPubMedID();
+   if (pmid.isEmpty() == false) {
+      smd->setPubMedID(pmid);
    }
    
    return smd;
@@ -3198,7 +3653,7 @@ StudyMetaAnalysisWidget::StudyMetaAnalysisWidget(StudyNamePubMedID* metaAnalysis
    layout->addWidget(createStudiesPushButton);
    layout->addWidget(new QLabel(usageMessage));
    
-   allWidgetsGroup = new QtWidgetGroup(this);
+   allWidgetsGroup = new WuQWidgetGroup(this);
    allWidgetsGroup->addWidget(metaAnalysisStudiesTextEdit);
 }
 /**

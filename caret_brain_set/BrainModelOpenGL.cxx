@@ -45,6 +45,7 @@
 #include "BrainModelSurfaceAndVolume.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainModelSurfacePointProjector.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainModelVolume.h"
 #include "BrainModelVolumeRegionOfInterest.h"
 #include "BrainModelVolumeVoxelColoring.h"
@@ -90,13 +91,6 @@
 #include "vtkMath.h"
 #include "vtkTransform.h"
 #include "vtkTriangle.h"
-
-//#define DEBUG_OPENGL_FLAG 1
-#ifdef DEBUG_OPENGL_FLAG 
-#define DebugOpenGLMacro(bm, msg)   checkForOpenGLError(bm, msg);
-#else 
-#define DebugOpenGLMacro(bm, msg)
-#endif
 
 /**
  * Constructor.
@@ -390,7 +384,9 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
                                  const int viewportIn[4],
                                  QGLWidget* glWidgetIn)
 {
-   DebugOpenGLMacro(bm, "At beginning of drawBrainModelPrivate()")
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bm, "At beginning of drawBrainModelPrivate()");
+   }
    
    brainModel = bm;
    mainWindowFlag = (viewingWindowNumberIn == 0);
@@ -408,11 +404,19 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       glWidget = NULL; 
    }
    
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bm, "In drawBrainModelPrivate() before viewport set");
+   }
+   
    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
    selectionViewport[viewingWindowNumber][0] = viewport[0];
    selectionViewport[viewingWindowNumber][1] = viewport[1];
    selectionViewport[viewingWindowNumber][2] = viewport[2];
    selectionViewport[viewingWindowNumber][3] = viewport[3];
+   
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bm, "In drawBrainModelPrivate() after viewport set");
+   }
    
    if (mainWindowFlag) {
       brainSet->updateNodeDisplayFlags();
@@ -435,6 +439,10 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       glClearColor(bg[0], bg[1], bg[2], 0.0);
    }
    
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bm, "In drawBrainModelPrivate() after glClear()");
+   }
+   
    glPushMatrix();
       glLoadIdentity();
       float lightPosition[4];
@@ -452,6 +460,10 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       glLightfv(GL_LIGHT1, GL_POSITION, lightPosition);      
       glEnable(GL_LIGHT1);
    glPopMatrix();
+   
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bm, "In drawBrainModelPrivate() after lighting");
+   }
    
    //
    // if this flag is set, we are only drawing the linear object and leaving
@@ -475,6 +487,10 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
    
    if (mainWindowFlag) {
       displayImages();
+   }
+   
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bm, "In drawBrainModelPrivate() after image display");
    }
    
    if (bm != NULL) {
@@ -513,7 +529,7 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       GLboolean depthBufferOn = glIsEnabled(GL_DEPTH_TEST);
       glDisable(GL_DEPTH_TEST);
       
-      glLineWidth(1.0);
+      glLineWidth(getValidLineWidth(1.0));
       glBegin(GL_LINE_LOOP);
          glVertex2i(x1, y1);
          glVertex2i(x2, y1);
@@ -554,7 +570,6 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
    paintMutex.unlock();   
 
    checkForOpenGLError(bm, "At end of drawBrainModelPrivate().");
-   DebugOpenGLMacro(bm, "TESTING")
 }
 
 /**
@@ -652,6 +667,15 @@ BrainModelOpenGL::initializeOpenGL(const bool offScreenRenderingFlagIn)
    createSphereQuadricAndDisplayList();
    createSquareDisplayList();
    
+   float sizes[2];
+   glGetFloatv(GL_POINT_SIZE_RANGE, sizes);
+   minimumPointSize = sizes[0];
+   maximumPointSize = sizes[1];
+
+   glGetFloatv(GL_LINE_WIDTH_RANGE, sizes);
+   minimumLineWidth = sizes[0];
+   maximumLineWidth = sizes[1];
+
    initializationCompletedFlag = true;
 }
 
@@ -730,7 +754,7 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
    if (drawLinearObjectOnly) {
       glDisable(GL_DEPTH_TEST);
       const int num = linearObjectBeingDrawn.getNumberOfLinks();
-      glPointSize(2.0);
+      glPointSize(getValidPointSize(2.0));
       glColor3f(1.0, 0.0, 0.0);
       glBegin(GL_POINTS);
          for (int i = 0; i < num; i++) {
@@ -766,8 +790,8 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
    
    const float cellSize = dsc->getContourCellSize();
    
-   glPointSize(dsc->getPointSize());
-   glLineWidth(dsc->getLineThickness());
+   glPointSize(getValidPointSize(dsc->getPointSize()));
+   glLineWidth(getValidLineWidth(dsc->getLineThickness()));
    
    if (hideContours == false) {
       if (selectionMask & SELECTION_MASK_CONTOUR) {
@@ -823,7 +847,7 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
                   xyz[2] = sectionNumber * spacing;
                   
                   glPushName(i);
-                  glPointSize(size);
+                  glPointSize(getValidPointSize(size));
                   glBegin(GL_POINTS);
                      glVertex3fv(xyz);
                   glEnd();
@@ -896,7 +920,7 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
                   
                   const int numPoints = contour->getNumberOfPoints();
                   if (numPoints > 0) {
-                     glPointSize(dsc->getPointSize());
+                     glPointSize(getValidPointSize(dsc->getPointSize()));
                      glColor3ub(0, 175, 0);
                      glBegin(GL_POINTS);
                         for (int j = 0; j < numPoints; j++) {
@@ -914,7 +938,7 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
                      //
                      // Draw highlighted contours
                      //
-                     glPointSize(dsc->getPointSize() * 2.0);
+                     glPointSize(getValidPointSize(dsc->getPointSize() * 2.0));
                      glColor3ub(0, 255, 0);
                      glBegin(GL_POINTS);
                         for (int j = 0; j < numPoints; j++) {
@@ -933,7 +957,7 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
                      // Draw end points in red
                      //
                      if (dsc->getShowEndPoints()) {
-                        glPointSize(dsc->getPointSize() * 2.0);
+                        glPointSize(getValidPointSize(dsc->getPointSize() * 2.0));
                         glColor3ub(255, 0, 0);
                         float x, y;
                         contour->getPointXY(0, x, y);
@@ -987,7 +1011,7 @@ BrainModelOpenGL::drawBrainModelContours(BrainModelContours* bmc)
                   xyz[2] = sectionNumber * spacing;
                   
                   glColor3ub(r, g, b);
-                  glPointSize(size);
+                  glPointSize(getValidPointSize(size));
                   glBegin(GL_POINTS);
                      glVertex3fv(xyz);
                   glEnd();
@@ -1095,8 +1119,8 @@ BrainModelOpenGL::drawModelContoursAlignment(BrainModelContours* bmc,
    
    const DisplaySettingsContours* dsc = brainSet->getDisplaySettingsContours();
    
-   glPointSize(dsc->getPointSize());
-   glLineWidth(dsc->getLineThickness());
+   glPointSize(getValidPointSize(dsc->getPointSize()));
+   glLineWidth(getValidLineWidth(dsc->getLineThickness()));
    
    //
    // First iteration draw region being aligned
@@ -1198,7 +1222,7 @@ BrainModelOpenGL::drawModelContoursAlignment(BrainModelContours* bmc,
                }
                
                if (drawIt) {
-                  glPointSize(size);
+                  glPointSize(getValidPointSize(size));
                   glBegin(GL_POINTS);
                      glVertex3fv(xyz);
                   glEnd();
@@ -1236,6 +1260,10 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
                                         const bool drawTheSurface,
                                         const bool surfaceInVolumeAllViewFlag)
 {
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bms, "At beginning of drawBrainModelSurface()");
+   }
+   
    const DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
 
    //
@@ -1479,6 +1507,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
                   (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
                   glTranslatef(0.0, 0.0, 0.5);
                }
+               drawSurfaceROIMembers(bms, numCoords);
                drawNodeHighlighting(bms, numCoords);
             glPopMatrix();
             
@@ -1556,7 +1585,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
       const int num = linearObjectBeingDrawn.getNumberOfLinks();
       if (num > 0) {
          glDisable(GL_DEPTH_TEST);
-         glPointSize(2.0);
+         glPointSize(getValidPointSize(2.0));
          glColor3f(1.0, 0.0, 0.0);
          glBegin(GL_POINTS);
             for (int i = 0; i < num; i++) {
@@ -1568,6 +1597,10 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
    }
 
    glDisable(partialViewClippingPlane);
+
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bms, "At end of drawBrainModelSurface()");
+   }
 }
 
 /**
@@ -1594,7 +1627,7 @@ BrainModelOpenGL::drawSurfaceAxes(const BrainModelSurface* bms)
       unsigned char r, g, b;
       pref->getSurfaceForegroundColor(r, g, b);
       glColor3ub(r, g, b);
-      glLineWidth(2.0);
+      glLineWidth(getValidLineWidth(2.0));
       
       //
       // See if flat surface
@@ -1819,7 +1852,7 @@ BrainModelOpenGL::drawTransformationMatrixAxes(const BrainModel* bm)
                   const float axisEnd = tm->getAxesLength();
                   const float axisStart = -axisEnd * 0.10;
                   const float axesLength = tm->getAxesLength();
-                  glLineWidth(thickness);
+                  glLineWidth(getValidLineWidth(thickness));
                   glBegin(GL_LINES);
                      glColor3ubv(xColor);
                      glVertex3f(axisStart, 0.0, 0.0);
@@ -4096,7 +4129,7 @@ BrainModelOpenGL::drawVolumeCrosshairs(BrainModelVolume* bmv,
                break;
          }
          const float bigNumber = 10000;
-         glLineWidth(1.0);
+         glLineWidth(getValidLineWidth(1.0));
          glColor3ubv(yColor);
          glBegin(GL_LINES);
             glVertex3f(crosshairX, -bigNumber, 0.0);
@@ -4167,7 +4200,7 @@ BrainModelOpenGL::drawVolumeCroppingLines(BrainModelVolume* bmv,
                   break;
             }
             const float bigNumber = 10000;
-            glLineWidth(1.0);
+            glLineWidth(getValidLineWidth(1.0));
             glBegin(GL_LINES);
                glColor3ub(0, 150, 150);
                glVertex3f(crosshairX1, -bigNumber, 0.0);
@@ -4238,9 +4271,13 @@ BrainModelOpenGL::drawVolumeCrosshairCoordinates(BrainModelVolume* bmv,
       QString s;
       s.sprintf("(%0.2f, %0.2f, %0.2f)", xyz[0], xyz[1], xyz[2]); 
       if (glWidget != NULL) {
-         DebugOpenGLMacro(bmv, "Before renderText() in drawVolumeCrosshairCoordinates")
+         if (DebugControl::getOpenGLDebugOn()) {
+            checkForOpenGLError(bmv, "Before renderText() in drawVolumeCrosshairCoordinates");
+         }
          glWidget->renderText(10, viewportHeight - 15, s, font);
-         DebugOpenGLMacro(bmv, "After renderText() in drawVolumeCrosshairCoordinates")
+         if (DebugControl::getOpenGLDebugOn()) {
+            checkForOpenGLError(bmv, "After renderText() in drawVolumeCrosshairCoordinates");
+         }
       }
    }
 }
@@ -4387,7 +4424,9 @@ BrainModelOpenGL::drawBrainModelVolumeMontage(BrainModelVolume* bmv)
 void 
 BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
 {
-   DebugOpenGLMacro(bmv, "Beginning of drawBrainModelVolume()")
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bmv, "Beginning of drawBrainModelVolume()");
+   }
 
    const DisplaySettingsVolume* dsv = brainSet->getDisplaySettingsVolume();
    switch (bmv->getSelectedAxis(viewingWindowNumber)) {
@@ -4485,16 +4524,22 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
          return;
    }
    
-   DebugOpenGLMacro(bmv, "Before drawVolumeSliceOverlayAndUnderlay")
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bmv, "Before drawVolumeSliceOverlayAndUnderlay");
+   }
    VolumeFile* firstVolume = NULL;
    drawVolumeSliceOverlayAndUnderlay(bmv, volumeSliceAxis, currentSlice, firstVolume);
-   DebugOpenGLMacro(bmv, "After drawVolumeSliceOverlayAndUnderlay")
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bmv, "After drawVolumeSliceOverlayAndUnderlay");
+   }
    
    //
    // Draw the palette
    //
    drawMetricPalette(0, false);
-   DebugOpenGLMacro(bmv, "After drawing palette")
+   if (DebugControl::getOpenGLDebugOn()) {
+      checkForOpenGLError(bmv, "After drawing palette");
+   }
    
    //
    // Draw the cropping volume is cropping dialog valid and this is the underlay volume
@@ -4517,9 +4562,13 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
       // Draw the crosshairs and coordinates
       //
       drawVolumeCrosshairs(bmv, firstVolume, volumeSliceAxis);
-      DebugOpenGLMacro(bmv, "After drawVolumeCrosshairs")
+      if (DebugControl::getOpenGLDebugOn()) {
+         checkForOpenGLError(bmv, "After drawVolumeCrosshairs");
+      }
       drawVolumeCrosshairCoordinates(bmv, firstVolume, viewport[3]);
-      DebugOpenGLMacro(bmv, "After drawVolumeCrosshairCoordinates")
+      if (DebugControl::getOpenGLDebugOn()) {
+         checkForOpenGLError(bmv, "After drawVolumeCrosshairCoordinates");
+      }
    }
      
    if ((selectionMask == SELECTION_MASK_OFF) && (glWidget != NULL)) {
@@ -4585,7 +4634,9 @@ BrainModelOpenGL::drawBrainModelVolume(BrainModelVolume* bmv)
                        orientBottomSideLabel, font);
             glWidget->renderText(halfX - (fontWidth / 2), static_cast<int>(fontHeight * 1.5),
                        orientTopSideLabel, font);
-            DebugOpenGLMacro(bmv, "After drawing orientation labels")
+            if (DebugControl::getOpenGLDebugOn()) {
+               checkForOpenGLError(bmv, "After drawing orientation labels");
+            }
          }
       }
    }
@@ -4721,7 +4772,7 @@ BrainModelOpenGL::drawVolumeSurfaceOutlineAndTransformationMatrixAxes(
          
    //#define DRAW_AS_LINKS
    #ifdef DRAW_AS_LINKS
-         glLineWidth(1.0);
+         glLineWidth(getValidLineWidth(1.0));
          glBegin(GL_LINES);
             for (int i = 0; i < numTiles; i++) {
                int v1, v2, v3;
@@ -5038,7 +5089,7 @@ BrainModelOpenGL::drawObliqueVolumeCellOrFociFile(const VolumeFile::VOLUME_AXIS 
                   // Points must be at least 1.0 for OpenGL to draw something
                   //
                   size = std::max(size, 1.0f);
-                  glPointSize(size);
+                  glPointSize(getValidPointSize(size));
                   glBegin(GL_POINTS);
                      glVertex3f(xyz[0], xyz[1], xyz[2]);
                   glEnd();
@@ -5259,8 +5310,8 @@ BrainModelOpenGL::drawVolumeContourFile(const VolumeFile::VOLUME_AXIS axis,
       if (bmc != NULL) {
          const ContourFile* cf = bmc->getContourFile();
          const int numContours = cf->getNumberOfContours();
-         glPointSize(dsc->getPointSize());
-         glLineWidth(dsc->getLineThickness());
+         glPointSize(getValidPointSize(dsc->getPointSize()));
+         glLineWidth(getValidLineWidth(dsc->getLineThickness()));
          glColor3f(0.0, 1.0, 0.0);
          
          for (int i = 0; i < numContours; i++) {
@@ -5338,7 +5389,7 @@ BrainModelOpenGL::drawVolumeContourFile(const VolumeFile::VOLUME_AXIS axis,
                      // Points must be at least 1.0 for OpenGL to draw something
                      //
                      size = std::max(size, 1.0f);
-                     glPointSize(size);
+                     glPointSize(getValidPointSize(size));
                      glBegin(GL_POINTS);
                         glVertex3f(xyz[0], xyz[1], xyz[2]);
                      glEnd();
@@ -5567,7 +5618,7 @@ BrainModelOpenGL::drawVolumeBorderFile(const VolumeFile::VOLUME_AXIS axis,
          
          if (selectFlag) {
             glPushName(i);
-               glPointSize(pointSize * drawSize);
+               glPointSize(getValidPointSize(pointSize * drawSize));
                for (int j = 0; j < numLinks; j++) {
                   glPushName(j);
                      glBegin(GL_POINTS);
@@ -5585,7 +5636,7 @@ BrainModelOpenGL::drawVolumeBorderFile(const VolumeFile::VOLUME_AXIS axis,
          else {
             if ((dsb->getDrawMode() == DisplaySettingsBorders::BORDER_DRAW_AS_SYMBOLS) ||
                 (dsb->getDrawMode() == DisplaySettingsBorders::BORDER_DRAW_AS_SYMBOLS_AND_LINES)) {
-               glPointSize(pointSize * drawSize);
+               glPointSize(getValidPointSize(pointSize * drawSize));
                int startLink = 0;
                glBegin(GL_POINTS);
                   if (dsb->getDisplayFirstLinkRed()) {
@@ -5612,7 +5663,7 @@ BrainModelOpenGL::drawVolumeBorderFile(const VolumeFile::VOLUME_AXIS axis,
             if ((dsb->getDrawMode() == DisplaySettingsBorders::BORDER_DRAW_AS_LINES) ||
                 (dsb->getDrawMode() == DisplaySettingsBorders::BORDER_DRAW_AS_UNSTRETCHED_LINES) || 
                 (dsb->getDrawMode() == DisplaySettingsBorders::BORDER_DRAW_AS_SYMBOLS_AND_LINES)) {
-               glLineWidth(lineSize * drawSize);
+               glLineWidth(getValidLineWidth(lineSize * drawSize));
                glBegin(GL_LINES);
                   int startLink = 0;
                   if (dsb->getDisplayFirstLinkRed()) {
@@ -6913,7 +6964,7 @@ BrainModelOpenGL::drawSurfaceForces(const CoordinateFile* cf,
    DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
    const float length = dsn->getForceVectorDisplayLength();
    
-   glLineWidth(1.0);
+   glLineWidth(getValidLineWidth(1.0));
    
    glBegin(GL_LINES);
    for (int i = 0; i < numCoords; i++) {
@@ -6968,7 +7019,7 @@ BrainModelOpenGL::drawSurfaceNodes(const BrainModelSurfaceNodeColoring* bs,
    const BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
    const DisplaySettingsSurface::DRAW_MODE surfaceDrawingMode = dsn->getDrawMode();
 
-   glPointSize(dsn->getNodeSize());
+   glPointSize(getValidPointSize(dsn->getNodeSize()));
    
    if (drawInSurfaceEditColor) {
       glColor3ubv(surfaceEditDrawColor);
@@ -6981,7 +7032,7 @@ BrainModelOpenGL::drawSurfaceNodes(const BrainModelSurfaceNodeColoring* bs,
       glEnd();
       
       if (nodeSpecialHighlighting.empty() == false) {
-         glPointSize(dsn->getNodeSize() * 2.0);
+         glPointSize(getValidPointSize(dsn->getNodeSize() * 2.0));
          glColor3ub(255, 0, 0);
          glBegin(GL_POINTS);
          for (int i = 0; i < static_cast<int>(nodeSpecialHighlighting.size()); i++) {
@@ -7021,7 +7072,7 @@ BrainModelOpenGL::drawSurfaceNodes(const BrainModelSurfaceNodeColoring* bs,
       glEnd();
 #endif  // GL_VERSION_1_1
       if (nodeSpecialHighlighting.empty() == false) {
-         glPointSize(dsn->getNodeSize() * 2.0);
+         glPointSize(getValidPointSize(dsn->getNodeSize() * 2.0));
          glColor3ub(255, 0, 0);
          glBegin(GL_POINTS);
          for (int i = 0; i < static_cast<int>(nodeSpecialHighlighting.size()); i++) {
@@ -7066,11 +7117,11 @@ BrainModelOpenGL::drawSurfaceLinks(const BrainModelSurfaceNodeColoring* bs,
    DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
    const BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
    
-   glLineWidth(dsn->getLinkSize());
+   glLineWidth(getValidLineWidth(dsn->getLinkSize()));
    
    const bool idLinkMode = (selectionMask & SELECTION_MASK_LINK);
    if (idLinkMode) {
-      glLineWidth(5.0);
+      glLineWidth(getValidLineWidth(5.0));
    }
    
    if (idLinkMode == false) {
@@ -7204,7 +7255,7 @@ BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring
    BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
    DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
    
-   glLineWidth(dsn->getLinkSize());
+   glLineWidth(getValidLineWidth(dsn->getLinkSize()));
    
    //
    // First, draw as wireframe
@@ -7462,6 +7513,34 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
 }
 
 /**
+ * Draw Surface ROI members.
+ */
+void 
+BrainModelOpenGL::drawSurfaceROIMembers(const BrainModelSurface* bms, const int numCoords)
+{
+   const CoordinateFile* cf = bms->getCoordinateFile();
+   BrainModelSurfaceROINodeSelection* 
+                   surfaceROI = brainSet->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   const DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
+                   
+   surfaceROI->update();
+   if (surfaceROI->getDisplaySelectedNodes()) {
+      glPointSize(getValidPointSize(dsn->getNodeSize()));
+      glColor3ub(0, 200, 0);  // darker green
+      glBegin(GL_POINTS);
+         for (int i = 0; i < numCoords; i++) {
+            const BrainSetNodeAttribute* bna = brainSet->getNodeAttributes(i);
+            if (bna->getDisplayFlag()) { // node displayed check
+               if (surfaceROI->getNodeSelected(i)) {
+                  glVertex3fv(cf->getCoordinate(i));
+               }
+            }
+         }
+      glEnd();
+   }
+}
+      
+/**
  * Draw node highlighting.
  */
 void 
@@ -7470,24 +7549,6 @@ BrainModelOpenGL::drawNodeHighlighting(const BrainModelSurface* bms, const int n
    const CoordinateFile* cf = bms->getCoordinateFile();
    DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
    BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
-   
-   //
-   // show region of interest nodes
-   //
-   if (dsn->getDisplayRoiNodeHighlights()) {
-      glPointSize(dsn->getNodeSize());
-      glBegin(GL_POINTS);
-         for (int i = 0; i < numCoords; i++) {
-            BrainSetNodeAttribute* bna = brainSet->getNodeAttributes(i);
-            if (bna->getDisplayFlag()) {
-               if (bna->getNodeInROI()) {
-                  glColor3ub(0, 200, 0);
-                  glVertex3fv(cf->getCoordinate(i));
-               }
-            }
-         }
-      glEnd();
-   }
    
    //
    // See if node uncertainty should be displayed
@@ -7510,12 +7571,13 @@ BrainModelOpenGL::drawNodeHighlighting(const BrainModelSurface* bms, const int n
    //
    // Show node highlighting
    //
-   glPointSize(3.0 * dsn->getNodeSize());
+   glPointSize(getValidPointSize(3.0 * dsn->getNodeSize()));
    for (int i = 0; i < numCoords; i++) {
       if (attributes[i].getDisplayFlag()) {
          BrainSetNodeAttribute* bna = brainSet->getNodeAttributes(i);
          const float* xyz = cf->getCoordinate(i);
          bool drawIt = false;
+         
          if (bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_LOCAL) {
             glColor3ub(0, 255, 0);
             drawIt = true;
@@ -7617,7 +7679,7 @@ BrainModelOpenGL::drawSurfaceNormals(const BrainModelSurface* bms,
    
    const float length = 10.0;
    
-   glLineWidth(1.0);
+   glLineWidth(getValidLineWidth(1.0));
    
    glBegin(GL_LINES);
    glColor3ub(255, 0, 0);
@@ -7766,7 +7828,7 @@ BrainModelOpenGL::drawSymbol(const ColorFile::ColorStorage::SYMBOL symbol,
          // Points must be at least 1.0 for OpenGL to draw something
          //
          size = std::max(size, 1.0f);
-         glPointSize(size);
+         glPointSize(getValidPointSize(size));
          glBegin(GL_POINTS);
             glVertex3f(x, y, z);
          glEnd();
@@ -8075,7 +8137,7 @@ BrainModelOpenGL::drawGeodesicPath(const CoordinateFile* cf)
       const int numCoord = cf->getNumberOfCoordinates();
       if ((node >= 0) && (node < numCoord)) {
          const float* coords = cf->getCoordinate(0);
-         glLineWidth(dsgd->getPathLineWidth());
+         glLineWidth(getValidLineWidth(dsgd->getPathLineWidth()));
          unsigned char r = 0, g = 255, b = 255;
          bool match;
          colorFile->getColorByName("GEODESIC_PATH", match, r, g, b);
@@ -8142,7 +8204,7 @@ BrainModelOpenGL::drawCuts()
             const float pointSize = 2;
             if (selectFlag) {
                glPushName(i);
-                  glPointSize(pointSize);
+                  glPointSize(getValidPointSize(pointSize));
                   for (int j = 0; j < numLinks; j++) {
                      glPushName(j);
                         glBegin(GL_POINTS);
@@ -8156,7 +8218,7 @@ BrainModelOpenGL::drawCuts()
                glPopName();
             }
             else {
-               glPointSize(pointSize);
+               glPointSize(getValidPointSize(pointSize));
                glBegin(GL_POINTS);
                   float xyz[3];
                   for (int j = 0; j < numLinks; j++) {
@@ -8396,7 +8458,7 @@ BrainModelOpenGL::drawBorders(BrainModelSurface* s)
                      DisplaySettingsBorders::BORDER_DRAW_AS_UNSTRETCHED_LINES)) {
                      unstretched = true;
                   }
-                  glLineWidth(lineSize * drawSize);
+                  glLineWidth(getValidLineWidth(lineSize * drawSize));
                   glBegin(GL_LINES);
                      glColor4ub(red, green, blue, alpha);
                      float pos1[3];
@@ -8485,7 +8547,7 @@ BrainModelOpenGL::drawShapePalette(const int modelNumber)
    BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
    if ((bsnc->getPrimaryOverlay(modelNumber)   != BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) &&
        (bsnc->getSecondaryOverlay(modelNumber) != BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) &&
-       (bsnc->getUnderlay(modelNumber)         != BrainModelSurfaceNodeColoring::UNDERLAY_SURFACE_SHAPE)) {
+       (bsnc->getUnderlay(modelNumber)         != BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE)) {
       return;
    }
 
@@ -8798,7 +8860,7 @@ BrainModelOpenGL::drawMetricPalette(const int modelNumber,
    if (surfaceFlag) {
       if ((bsnc->getPrimaryOverlay(modelNumber)   == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
           (bsnc->getSecondaryOverlay(modelNumber) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-          (bsnc->getUnderlay(modelNumber)         == BrainModelSurfaceNodeColoring::UNDERLAY_METRIC)) {
+          (bsnc->getUnderlay(modelNumber)         == BrainModelSurfaceNodeColoring::OVERLAY_METRIC)) {
          displayIt = true;
       }
    }
@@ -9337,7 +9399,7 @@ BrainModelOpenGL::drawLinearObject()
 {
    glDisable(GL_DEPTH_TEST);
    const int num = linearObjectBeingDrawn.getNumberOfLinks();
-   glPointSize(2.0);
+   glPointSize(getValidPointSize(2.0));
    glColor3f(1.0, 0.0, 0.0);
    glBegin(GL_POINTS);
       for (int i = 0; i < num; i++) {
@@ -9501,7 +9563,7 @@ BrainModelOpenGL::drawVtkModelFile(VtkModelFile* vmf, const int modelNum)
                glDisable(GL_COLOR_MATERIAL);
             }
             const int numLines = vmf->getNumberOfLines();
-            glLineWidth(dsm->getLineWidth());
+            glLineWidth(getValidLineWidth(dsm->getLineWidth()));
             for (int i = 0; i < numLines; i++) {
                const VtkModelFile::VtkModelObject* line = vmf->getLine(i);
                glBegin(GL_LINE_STRIP);
@@ -10570,7 +10632,7 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
          DisplaySettingsCoCoMac* dsc = brainSet->getDisplaySettingsCoCoMac();
          if ((bsnc->getPrimaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
              (bsnc->getSecondaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
-             (bsnc->getUnderlay(modelIndex) == BrainModelSurfaceNodeColoring::UNDERLAY_COCOMAC)) {
+             (bsnc->getUnderlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC)) {
             if (selectedNode.getItemIndex1() >= 0) {
                dsc->setSelectedNode(selectedNode.getItemIndex1());
             }
@@ -11383,3 +11445,39 @@ BrainModelOpenGL::setImageSubRegion(const int box[4], const bool showFlag)
    drawImageSubRegionBoxFlag = showFlag;
 }
 
+/**
+ * get valid line width.
+ */
+GLfloat 
+BrainModelOpenGL::getValidLineWidth(const float widthIn) const
+{
+   GLfloat width = widthIn;
+
+   if (width > maximumLineWidth) {
+      width = maximumLineWidth;
+   }
+   else if (width < minimumLineWidth) {
+      width = minimumLineWidth;
+   }
+   
+   return width;
+}
+
+/**
+ * get valid point size.
+ */
+GLfloat 
+BrainModelOpenGL::getValidPointSize(const float pointSizeIn) const
+{
+   GLfloat pointSize = pointSizeIn;
+
+   if (pointSize > maximumPointSize) {
+      pointSize = maximumPointSize;
+   }
+   else if (pointSize < minimumPointSize) {
+      pointSize = minimumPointSize;
+   }
+   
+   return pointSize;
+}
+      

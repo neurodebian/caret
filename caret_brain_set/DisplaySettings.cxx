@@ -69,8 +69,15 @@ DisplaySettings::updateSelectedColumnIndices(const NodeAttributeFile* naf,
       }
    }
    
-   if (defValue >= naf->getNumberOfColumns()) {
+   const int numCols = naf->getNumberOfColumns(); 
+
+   if (defValue >= numCols) {
       defValue = 0;
+   }
+   else if (defValue < 0) {
+      if (numCols > 0) {
+         defValue = 0;
+      }
    }
    
    //
@@ -81,9 +88,11 @@ DisplaySettings::updateSelectedColumnIndices(const NodeAttributeFile* naf,
    //
    // Reset column indices for any surfaces that may have been deleted
    //
-   const int numCols = naf->getNumberOfColumns(); 
    for (int i = 0; i < numModels; i++) {
       if (selCol[i] >= numCols) {
+         selCol[i] = defValue;
+      }
+      else if (selCol[i] < 0) {
          selCol[i] = defValue;
       }
    }
@@ -110,8 +119,15 @@ DisplaySettings::updateSelectedColumnIndices(const GiftiNodeDataFile* naf,
       }
    }
    
-   if (defValue >= naf->getNumberOfColumns()) {
+   const int numCols = naf->getNumberOfColumns(); 
+
+   if (defValue >= numCols) {
       defValue = 0;
+   }
+   else if (defValue < 0) {
+      if (numCols > 0) {
+         defValue = 0;
+      }
    }
    
    //
@@ -122,9 +138,11 @@ DisplaySettings::updateSelectedColumnIndices(const GiftiNodeDataFile* naf,
    //
    // Reset column indices for any surfaces that may have been deleted
    //
-   const int numCols = naf->getNumberOfColumns(); 
    for (int i = 0; i < numModels; i++) {
       if (selCol[i] >= numCols) {
+         selCol[i] = defValue;
+      }
+      else if (selCol[i] < 0) {
          selCol[i] = defValue;
       }
    }

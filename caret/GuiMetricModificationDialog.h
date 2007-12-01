@@ -34,6 +34,7 @@ class QLineEdit;
 class QRadioButton;
 class QSpinBox;
 class QTabWidget;
+class WuQWidgetGroup;
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -111,6 +112,9 @@ class GuiMetricModificationDialog : public QtDialog {
       /// smoothing strength float spin box
       QDoubleSpinBox* strengthDoubleSpinBox;
       
+      /// strength widget groupt
+      WuQWidgetGroup* strengthWidgetGroup;
+      
       /// output metric column name
       QLineEdit* outputMetricNameLineEdit;
       
@@ -176,6 +180,12 @@ class GuiMetricModificationDialog : public QtDialog {
       
       /// gaussian spherical surface combo box
       GuiBrainModelSelectionComboBox* gaussSphericalSurfaceComboBox;
+      
+      /// full width half maximum group box
+      QGroupBox* fullWidthHalfMaximumGroupBox;
+      
+      /// full width half maximum double spin box
+      QDoubleSpinBox* fullWidthHalfMaximumDoubleSpinBox;
 };
 
 #endif // __GUI_METRIC_MODIFICATION_DIALOG_H__

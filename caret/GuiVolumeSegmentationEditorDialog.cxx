@@ -30,6 +30,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextBrowser>
 
@@ -38,7 +39,6 @@
 #include "BrainSet.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiVolumeSegmentationEditorDialog.h"
 #include "GuiVolumeSelectionControl.h"
 #include "QtUtilities.h"
@@ -388,8 +388,9 @@ GuiVolumeSegmentationEditorDialog::processVoxel(const int ii, const int jj, cons
       case VolumeFile::VOLUME_AXIS_OBLIQUE_Y:
       case VolumeFile::VOLUME_AXIS_OBLIQUE_Z:
       case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
-         GuiMessageBox::critical(this, "ERROR", 
-                                 "Editing of oblique slices is not allowed.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", 
+                                 "Editing of oblique slices is not allowed.");
          return;
       case VolumeFile::VOLUME_AXIS_UNKNOWN:
          return;
@@ -580,12 +581,14 @@ GuiVolumeSegmentationEditorDialog::processVoxel(const int ii, const int jj, cons
             {
                const VolumeFile* otherVolume = otherVolumeComboBox->getSelectedVolumeFile();
                if (otherVolume == NULL) {
-                  GuiMessageBox::critical(this, "ERROR", 
-                     "There is no \"Other Volume\" from which to copy voxels.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", 
+                     "There is no \"Other Volume\" from which to copy voxels.");
                }
                else if (otherVolume == vf) {
-                  GuiMessageBox::critical(this, "ERROR", 
-                     "The \"Other Volume\" is the same as the volume being edited.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", 
+                     "The \"Other Volume\" is the same as the volume being edited.");
                }
                try {
                   const int extent[6] = {
@@ -600,7 +603,8 @@ GuiVolumeSegmentationEditorDialog::processVoxel(const int ii, const int jj, cons
                                     &modifiedVoxels);
                }
                catch (FileException& e) {
-                  GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", e.whatQString());
                }
             }
             break;

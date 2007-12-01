@@ -65,9 +65,20 @@ class DisplaySettingsScene : public DisplaySettings {
       /// set the window position preference
       void setWindowPositionPreference(const WINDOW_POSITIONS wpp) { windowPositions = wpp; }
       
+      /// preserve foci, foci colors, and study metadata
+      bool getPreserveFociAndFociColorsAndStudyMetaDataFlag() const 
+         { return preserveFociAndFociColorsAndStudyMetaDataFlag; }
+      
+      /// preserve foci, foci colors, and study metadata
+      void setPreserveFociAndFociColorsAndStudyMetaDataFlag(const bool b)
+          { preserveFociAndFociColorsAndStudyMetaDataFlag = b; }
+      
    private:
       /// window positions (DO NOT SAVE TO SCENE)
       WINDOW_POSITIONS windowPositions;
+      
+      /// preserve foci, foci colors, and study metadata (DO NOT SAVE TO SCENE)
+      bool preserveFociAndFociColorsAndStudyMetaDataFlag;
 };
 
 #endif // __DISPLAY_SETTINGS_IMAGES_H__

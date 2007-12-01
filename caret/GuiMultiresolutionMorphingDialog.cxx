@@ -36,6 +36,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QToolTip>
@@ -48,7 +49,6 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiMorphingMeasurementsDialog.h"
 #include "GuiMultiresolutionMorphingDialog.h"
 #include <QDoubleSpinBox>
@@ -291,7 +291,7 @@ GuiMultiresolutionMorphingDialog::slotBatchButton()
    // Are there any problems
    //
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "Error", errorMessage, "OK");
+      QMessageBox::critical(this, "Error", errorMessage);
       return;
    }
    
@@ -317,8 +317,10 @@ GuiMultiresolutionMorphingDialog::slotBatchButton()
    // Are there potential problems
    //
    if (warningMessage.isEmpty() == false) {
-      if (GuiMessageBox::warning(this, "Warning", warningMessage, 
-                               "Continue", "Cancel") != 0) {
+      if (QMessageBox::warning(this, "Warning", warningMessage, 
+                               (QMessageBox::Ok | QMessageBox::Cancel),
+                               QMessageBox::Cancel)
+                                  == QMessageBox::Cancel) {
          return;
       }
    }
@@ -758,9 +760,12 @@ GuiMultiresolutionMorphingDialog::done(int r)
            BrainModelSurface::SURFACE_TYPE_FLAT) &
           (morphingSurface->getSurfaceType() !=
            BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         if (GuiMessageBox::warning(this, "Warning",
+         QApplication::restoreOverrideCursor();
+         if (QMessageBox::warning(this, "Warning",
                                   "Surface for morphing is not a flat surface.", 
-                                  "Continue", "Cancel") != 0) {
+                               (QMessageBox::Ok | QMessageBox::Cancel),
+                               QMessageBox::Cancel)
+                                  == QMessageBox::Cancel) {
             return;
          }
       }
@@ -768,9 +773,12 @@ GuiMultiresolutionMorphingDialog::done(int r)
    else {
       if (morphingSurface->getSurfaceType() !=
            BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
-         if (GuiMessageBox::warning(this, "Warning",
+         QApplication::restoreOverrideCursor();
+         if (QMessageBox::warning(this, "Warning",
                                   "Surface for morphing is not a spherical surface.", 
-                                  "Continue", "Cancel") != 0) {
+                               (QMessageBox::Ok | QMessageBox::Cancel),
+                               QMessageBox::Cancel)
+                                  == QMessageBox::Cancel) {
             return;
          }
       }
@@ -804,7 +812,8 @@ GuiMultiresolutionMorphingDialog::done(int r)
       bsmm.execute();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(theMainWindow, "Error", e.whatQString());
       return;
    }
    const float elapsedTime = timer.elapsed() * 0.001;

@@ -37,7 +37,7 @@ class QSpinBox;
 class QTabWidget;
 class QTextEdit;
 
-class QtWidgetGroup;
+class WuQWidgetGroup;
 
 /// dialog for editing a vocabulary file
 class GuiVocabularyFileEditorDialog : public QtDialogNonModal {
@@ -122,7 +122,7 @@ class GuiVocabularyFileEditorDialog : public QtDialogNonModal {
       QSpinBox* entryEditSpinBox;
       
       /// widget group for edit spin box and delete button
-      QtWidgetGroup* entryEditWidgetGroup;
+      WuQWidgetGroup* entryEditWidgetGroup;
       
 };
 

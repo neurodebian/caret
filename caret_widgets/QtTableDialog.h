@@ -43,7 +43,8 @@ class QtTableDialog : public QtDialog {
       // constructor
       QtTableDialog(QWidget* parent, 
                     const QString& title,
-                    const StringTable& dataTable);
+                    const StringTable& dataTable,
+                    const bool deleteMeWhenClosed);
                     
       // destructor
       ~QtTableDialog();

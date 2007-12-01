@@ -28,12 +28,12 @@
 #include <QAction>
 #include <QApplication>
 #include <QDateTime>
+#include <QMessageBox>
 
 #include "BrainModelSurface.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowTimingActions.h"
-#include "GuiMessageBox.h"
 #include "TopologyFile.h"
 #include "global_variables.h"
 
@@ -46,7 +46,7 @@ GuiMainWindowTimingActions::GuiMainWindowTimingActions(GuiMainWindow* parent) :
    viewTimingTestAction = new QAction(parent);
    viewTimingTestAction->setObjectName("viewTimingTestAction");
    viewTimingTestAction->setText("Timing Test");
-   QObject::connect(viewTimingTestAction, SIGNAL(activated()),
+   QObject::connect(viewTimingTestAction, SIGNAL(triggered(bool)),
                     this, SLOT(viewMenuTimingTest()));
 }
 
@@ -87,7 +87,8 @@ GuiMainWindowTimingActions::viewMenuTimingTest()
    }
    
    str << std::ends;
-   GuiMessageBox::information(theMainWindow, "Timing", str.str().c_str(), "OK");
+   QApplication::restoreOverrideCursor();
+   QMessageBox::information(theMainWindow, "Timing", str.str().c_str());
 }
 
 /**

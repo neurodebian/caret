@@ -32,6 +32,7 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QToolTip>
@@ -41,7 +42,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiDataFileMathDialog.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiVolumeSelectionControl.h"
@@ -180,7 +180,8 @@ GuiDataFileMathDialog::slotApplyButton()
    }
 
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }
    
@@ -329,6 +330,13 @@ GuiDataFileMathDialog::performMetricMathOperations(QString& errorMessage)
                                                    outputColumnName,
                                                    normalizeMeanDoubleSpinBox->value(),
                                                    normalizeDeviationDoubleSpinBox->value());
+      }
+      else if (oneMinusValueRadioButton->isChecked()) {
+         getNodeDataFile()->performUnaryOperation(MetricFile::UNARY_OPERATION_SUBTRACT_FROM_ONE,
+                                         columnA,
+                                         outputColumn,
+                                         outputColumnName,
+                                         0.0);
       }
       else {
          errorMessage = "No Operation Selected.";
@@ -543,6 +551,12 @@ GuiDataFileMathDialog::performVolumeMathOperations(QString& errorMessage)
                                            volumeA,
                                            volumeOutput,
                                            logBaseLineEdit->text().toDouble());
+      }
+      else if (oneMinusValueRadioButton->isChecked()) {
+         VolumeFile::performUnaryOperation(VolumeFile::UNARY_OPERATION_SUBTRACT_FROM_ONE,
+                                           volumeA,
+                                           volumeOutput,
+                                           0.0);
       }
       else {
          errorMessage = "No Operation Selected.";
@@ -934,6 +948,14 @@ GuiDataFileMathDialog::createOperationsPartOfDialog()
       operationsGridLayout->addWidget(normalizeDeviationDoubleSpinBox, rowCount, 2);
       rowCount++;
    }
+   
+   //
+   // 1.0 - value
+   //
+   oneMinusValueRadioButton = new QRadioButton("1.0 - value in " + idName + " A");
+   operationsButtonGroup->addButton(oneMinusValueRadioButton, opNum++);
+   operationsGridLayout->addWidget(oneMinusValueRadioButton, rowCount, 0);
+   rowCount++;
    
    operationsWidget->setFixedSize(operationsWidget->sizeHint());
    

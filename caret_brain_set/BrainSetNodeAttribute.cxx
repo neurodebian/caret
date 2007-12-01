@@ -75,7 +75,6 @@ BrainSetNodeAttribute::reset()
    highlight      = HIGHLIGHT_NODE_NONE;
    classification = CLASSIFICATION_TYPE_INTERIOR;
    crossover      = CROSSOVER_NO;
-   nodeInROI      = false;
    visited        = false;
    for (int i = 0; i < 3; i++) {
       linearForce[i]  = 0.0;

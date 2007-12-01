@@ -222,7 +222,7 @@ GuiMainWindowSurfaceMenu::createTopologySubMenu(GuiMainWindowSurfaceActions* sur
 {
    topologySubMenu = addMenu("Topology");
    
-   if (DebugControl::getTestFlag()) {
+   if (DebugControl::getTestFlag1()) {
       createTopologyCorrectionSubMenu(surfaceActions, topologySubMenu);
       topologySubMenu->addSeparator();
    }
@@ -309,7 +309,7 @@ GuiMainWindowSurfaceMenu::createGeometrySubMenu(GuiMainWindowSurfaceActions* sur
    
    geometrySubMenu->addAction(surfaceActions->getGeometrySmoothingAction());
 
-   if (DebugControl::getTestFlag()) {
+   if (DebugControl::getTestFlag1()) {
       geometrySubMenu->addAction(surfaceActions->getGeometryReliefAction());
    }
 
@@ -360,7 +360,7 @@ GuiMainWindowSurfaceMenu::createUserViewSubMenu(GuiMainWindowSurfaceActions* sur
    userViewSubMenu->addAction(surfaceActions->getViewAdjustAction());
    userViewSubMenu->addSeparator();
    
-   if (DebugControl::getTestFlag()) {
+   if (DebugControl::getTestFlag1()) {
       userViewSubMenu->addAction(surfaceActions->getViewPlaceNodeAtCenterOfScreenAction());
    }
                                
@@ -393,6 +393,7 @@ GuiMainWindowSurfaceMenu::slotUserViewSelected(QAction* action)
 void
 GuiMainWindowSurfaceMenu::slotUserViewMenuAboutToShow()
 {
+   loadUserViewSwitchViewSubMenu();
    PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
    userViewSwitchViewSubMenu->setEnabled(pf->getNumberOfUserViews() > 0);
 }

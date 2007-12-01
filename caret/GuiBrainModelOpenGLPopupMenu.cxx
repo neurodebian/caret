@@ -50,6 +50,7 @@
 #include "GuiMainWindowLayersMenu.h"
 #include "GuiMainWindowSurfaceActions.h"
 #include "GuiMapStereotaxicFocusDialog.h"
+#include "GuiMouseModePopupMenu.h"
 #include "GuiToolBar.h"
 #include "GuiSetViewDialog.h"
 #include "PaintFile.h"
@@ -353,7 +354,12 @@ GuiBrainModelOpenGLPopupMenu::slotAboutToShow()
    // Only main window gets mouse modes
    //
    if (brainModelOpenGL->isMainWindowOpenGL()) {
-      createMouseModeSubMenu();
+      //createMouseModeSubMenu();
+      QMenu* mouseMenu = new GuiMouseModePopupMenu(brainModelOpenGL,
+                                                   true,
+                                                   brainModelOpenGL);
+      mouseMenu->setTitle("Mouse Mode");
+      addMenu(mouseMenu);
    }
    
    //
@@ -649,7 +655,7 @@ GuiBrainModelOpenGLPopupMenu::slotShowBorders()
    dsb->setDisplayBorders(! dsb->getDisplayBorders());
    dsb->determineDisplayedBorders();
    theMainWindow->updateDisplayControlDialog();  
-   //GuiBrainModelOpenGL::updateAllGL();
+   GuiBrainModelOpenGL::updateAllGL();
 }
 
 /**
@@ -661,6 +667,7 @@ GuiBrainModelOpenGLPopupMenu::slotShowCells()
    DisplaySettingsCells* dsc = brainModelOpenGL->getBrainSet()->getDisplaySettingsCells();
    dsc->setDisplayCells(! dsc->getDisplayCells());
    theMainWindow->updateDisplayControlDialog();
+   GuiBrainModelOpenGL::updateAllGL();
 }
 
 /**
@@ -672,6 +679,7 @@ GuiBrainModelOpenGLPopupMenu::slotShowFoci()
    DisplaySettingsCells* dsc = brainModelOpenGL->getBrainSet()->getDisplaySettingsFoci();
    dsc->setDisplayCells(! dsc->getDisplayCells());
    theMainWindow->updateDisplayControlDialog();
+   GuiBrainModelOpenGL::updateAllGL();
 }
 
 /**

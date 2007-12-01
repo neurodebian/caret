@@ -58,11 +58,11 @@ class DisplaySettingsVolume : public DisplaySettings {
          SURFACE_OUTLINE_COLOR_RED,
          SURFACE_OUTLINE_COLOR_WHITE
       };
-      
+
       /// misc values
       enum {
          /// maximum number of overlay surfaces
-         MAXIMUM_OVERLAY_SURFACES = 3
+         MAXIMUM_OVERLAY_SURFACES = 9
       };
       
       /// Constructor

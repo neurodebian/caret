@@ -30,8 +30,10 @@
 #include <QDomNode>
 #include <QStringList>
 
-#include "AbstractFile.h"
+#define __STUDY_META_DATA_LINK_MAIN__
 #include "StudyMetaDataLink.h"
+#undef __STUDY_META_DATA_LINK_MAIN__
+#include "AbstractFile.h"
 
 //====================================================================================
 //
@@ -223,6 +225,43 @@ StudyMetaDataLink::setPageNumber(const QString& pn)
    }
 }
 
+/**
+ * set element from text (used by SAX XML parser).
+ */
+void 
+StudyMetaDataLink::setElementFromText(const QString& elementName,
+                                      const QString& textValue)
+{
+   if (elementName == tagPubMedID) {
+      setPubMedID(textValue);
+   }
+   else if (elementName == tagTableNumber) {
+      setTableNumber(textValue);
+   }
+   else if (elementName == tagTableSubHeaderNumber) {
+      setTableSubHeaderNumber(textValue);
+   }
+   else if (elementName == tagFigureNumber) {
+      setFigureNumber(textValue);
+   }
+   else if (elementName == tagPanelNumberOrLetter) {
+      setFigurePanelNumberOrLetter(textValue);
+   }
+   else if (elementName == tagPageNumber) {
+      setPageNumber(textValue);
+   }
+   else if (elementName == tagPageReferencePageNumber) {
+      setPageReferencePageNumber(textValue);
+   }
+   else if (elementName == tagPageReferenceSubHeaderNumber) {
+      setPageReferenceSubHeaderNumber(textValue);
+   }
+   else {
+      std::cout << "WARNING: unrecognized StudyMetaDataLink element ignored: "
+                << elementName.toAscii().constData()
+                << std::endl;
+   }
+}
       
 /**
  * called to read from an XML structure.
@@ -237,7 +276,7 @@ StudyMetaDataLink::readXML(QDomNode& nodeIn) throw (FileException)
    if (elem.isNull()) {
       return;
    }
-   if (elem.tagName() != "StudyMetaDataLink") {
+   if (elem.tagName() != tagStudyMetaDataLink) {
       QString msg("Incorrect element type passed to StudyMetaDataLink::readXML() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
@@ -247,28 +286,28 @@ StudyMetaDataLink::readXML(QDomNode& nodeIn) throw (FileException)
    while (node.isNull() == false) {
       QDomElement elem = node.toElement();
       if (elem.isNull() == false) {
-         if (elem.tagName() == "pubMedID") {
+         if (elem.tagName() == tagPubMedID) {
             setPubMedID(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "tableNumber") {
+         else if (elem.tagName() == tagTableNumber) {
             setTableNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "tableSubHeaderNumber") {
+         else if (elem.tagName() == tagTableSubHeaderNumber) {
             setTableSubHeaderNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "figureNumber") {
+         else if (elem.tagName() == tagFigureNumber) {
             setFigureNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "panelNumberOrLetter") {
+         else if (elem.tagName() == tagPanelNumberOrLetter) {
             setFigurePanelNumberOrLetter(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "pageNumber") {
+         else if (elem.tagName() == tagPageNumber) {
             setPageNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "pageReferencePageNumber") {
+         else if (elem.tagName() == tagPageReferencePageNumber) {
             setPageReferencePageNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "pageReferenceSubHeaderNumber") {
+         else if (elem.tagName() == tagPageReferenceSubHeaderNumber) {
             setPageReferenceSubHeaderNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
          else {
@@ -291,19 +330,19 @@ StudyMetaDataLink::writeXML(QDomDocument& xmlDoc,
    //
    // Create the element for this class instance's data
    //
-   QDomElement linkElement = xmlDoc.createElement("StudyMetaDataLink");
+   QDomElement linkElement = xmlDoc.createElement(tagStudyMetaDataLink);
 
    //
    // Add the study metadata
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "pubMedID", pubMedID);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "tableNumber", tableNumber);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "tableSubHeaderNumber", tableSubHeaderNumber);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "figureNumber", figureNumber);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "panelNumberOrLetter", panelNumberOrLetter);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "pageNumber", pageNumber);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "pageReferencePageNumber", pageReferencePageNumber);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, "pageReferenceSubHeaderNumber", pageReferenceSubHeaderNumber);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPubMedID, pubMedID);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagTableNumber, tableNumber);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagTableSubHeaderNumber, tableSubHeaderNumber);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagFigureNumber, figureNumber);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPanelNumberOrLetter, panelNumberOrLetter);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageNumber, pageNumber);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageReferencePageNumber, pageReferencePageNumber);
+   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageReferenceSubHeaderNumber, pageReferenceSubHeaderNumber);
    
    //
    // Add to parent

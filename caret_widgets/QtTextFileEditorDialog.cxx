@@ -26,7 +26,6 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QFile>
-#include <QFileDialog>
 #include <QFontDialog>
 #include <QGridLayout>
 #include <QInputDialog>
@@ -45,6 +44,7 @@
 #include "QtMultipleInputDialog.h"
 #include "QtTextFileEditorDialog.h"
 #include "QtUtilities.h"
+#include "WuQFileDialog.h"
 
 /**
  * The constructor.
@@ -385,12 +385,12 @@ QtTextFileEditorDialog::slotEnableSaveButton()
 void 
 QtTextFileEditorDialog::slotFileOpen()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
    fd.setWindowTitle("Choose File");
-   fd.setFileMode(QFileDialog::ExistingFile); 
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setFileMode(WuQFileDialog::ExistingFile); 
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    QStringList filters;
    filters << "Any File (*)";
    filters << "Comma Separated Value File (*.csv)";
@@ -458,11 +458,11 @@ QtTextFileEditorDialog::loadFile(const QString& fileNameIn,
 void 
 QtTextFileEditorDialog::slotFileSaveAs()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptSave);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
    fd.setWindowTitle("Choose File");
-   fd.setFileMode(QFileDialog::AnyFile); 
+   fd.setFileMode(WuQFileDialog::AnyFile); 
    QStringList filters;
    filters << "Any File (*)";
    filters << "Comma Separated Value File (*.csv)";

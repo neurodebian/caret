@@ -43,7 +43,6 @@
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowVolumeActions.h"
-#include "GuiMessageBox.h"
 #include "QtMultipleInputDialog.h"
 #include "GuiVolumeCreateDialog.h"
 #include "GuiVolumeHandleFinderDialog.h"
@@ -70,134 +69,134 @@ GuiMainWindowVolumeActions::GuiMainWindowVolumeActions(GuiMainWindow* mainWindow
    createEmptyVolumeAction = new QAction(mainWindowParent);
    createEmptyVolumeAction->setText("Create New Volume...");
    createEmptyVolumeAction->setObjectName("createEmptyVolumeAction");
-   QObject::connect(createEmptyVolumeAction, SIGNAL(activated()),
+   QObject::connect(createEmptyVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCreateNewEmptyVolume()));
 
    resizeUnderlayVolumeAction = new QAction(mainWindowParent);
    resizeUnderlayVolumeAction->setText("Resize Underlay Volume...");
    resizeUnderlayVolumeAction->setObjectName("resizeUnderlayVolumeAction");
-   QObject::connect(resizeUnderlayVolumeAction, SIGNAL(activated()),
+   QObject::connect(resizeUnderlayVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotResizeUnderlayVolume()));
 
    showVoxelExtentAction = new QAction(mainWindowParent);
    showVoxelExtentAction->setText("Show Voxel Dimensional Extent...");
    showVoxelExtentAction->setObjectName("showVoxelExtentAction");
-   QObject::connect(showVoxelExtentAction, SIGNAL(activated()),
+   QObject::connect(showVoxelExtentAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotShowVoxelDimensionExtent()));
 
    editVolumeAttributesAction = new QAction(mainWindowParent);
    editVolumeAttributesAction->setText("Edit Volume Attributes...");
    editVolumeAttributesAction->setObjectName("editVolumeAttributesAction");
-   QObject::connect(editVolumeAttributesAction, SIGNAL(activated()),
+   QObject::connect(editVolumeAttributesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotEditAttributes()));
 
    findHandlesAction = new QAction(mainWindowParent);
    findHandlesAction->setText("Find Handles...");
    findHandlesAction->setObjectName("findHandlesAction");
-   QObject::connect(findHandlesAction, SIGNAL(activated()),
+   QObject::connect(findHandlesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationFindHandles()));
 
    reconstructAction = new QAction(mainWindowParent);
    reconstructAction->setText("Reconstruct Into Surface...");
    reconstructAction->setObjectName("reconstructAction");
-   QObject::connect(reconstructAction, SIGNAL(activated()),
+   QObject::connect(reconstructAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationReconstruct()));
 
    editSegmentationAction = new QAction(mainWindowParent);
    editSegmentationAction->setText("Edit Voxels...");
    editSegmentationAction->setObjectName("editSegmentationAction");
-   QObject::connect(editSegmentationAction, SIGNAL(activated()),
+   QObject::connect(editSegmentationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationEditVoxels()));
 
    surefitSegmentationAction = new QAction(mainWindowParent);
    surefitSegmentationAction->setText("SureFit Operations (Segmentation)...");
    surefitSegmentationAction->setObjectName("surefitSegmentationAction");
-   QObject::connect(surefitSegmentationAction, SIGNAL(activated()),
+   QObject::connect(surefitSegmentationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSureFitSegmentation()));
 
    surefitMultiHemSegmentationAction = new QAction(mainWindowParent);
    surefitMultiHemSegmentationAction->setText("SureFit Operations (Multi-Hem Segmentation IN DEVELOPMENT)");
    surefitMultiHemSegmentationAction->setObjectName("surefitMultiHemSegmentationAction");
-   QObject::connect(surefitMultiHemSegmentationAction, SIGNAL(activated()),
+   QObject::connect(surefitMultiHemSegmentationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSureFitMultiHemSegmentation()));
 
    padSegmentationAction = new QAction(mainWindowParent);
    padSegmentationAction->setText("Pad Volume...");
    padSegmentationAction->setObjectName("padSegmentationAction");
-   QObject::connect(padSegmentationAction, SIGNAL(activated()),
+   QObject::connect(padSegmentationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentPad()));
 
    removeIslandsAction = new QAction(mainWindowParent);
    removeIslandsAction->setText("Remove Islands");
    removeIslandsAction->setObjectName("removeIslandsAction");
-   QObject::connect(removeIslandsAction, SIGNAL(activated()),
+   QObject::connect(removeIslandsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentRemoveIslands()));
 
    topologyReportAction = new QAction(mainWindowParent);
    topologyReportAction->setText("Topoogy Error Report...");
    topologyReportAction->setObjectName("topologyReportAction");
-   QObject::connect(topologyReportAction, SIGNAL(activated()),
+   QObject::connect(topologyReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationTopologyReport()));
 
    cerebralHullAction = new QAction(mainWindowParent);
    cerebralHullAction->setText("Generate Cerebral Hull Volume");
    cerebralHullAction->setObjectName("cerebralHullAction");
-   QObject::connect(cerebralHullAction, SIGNAL(activated()),
+   QObject::connect(cerebralHullAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationCerebralHull()));
 
    fillCavitiesAction = new QAction(mainWindowParent);
    fillCavitiesAction->setText("Fill Cavities");
    fillCavitiesAction->setObjectName("fillCavitiesAction");
-   QObject::connect(fillCavitiesAction, SIGNAL(activated()),
+   QObject::connect(fillCavitiesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationFillCavities()));
 
    applyRotationAction = new QAction(mainWindowParent);
    applyRotationAction->setText("Apply Rotation...");
    applyRotationAction->setObjectName("applyRotationAction");
-   QObject::connect(applyRotationAction, SIGNAL(activated()),
+   QObject::connect(applyRotationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformApplyRotation()));
 
    enableRotationAction = new QAction(mainWindowParent);
    enableRotationAction->setText("Enable Rotation");
    enableRotationAction->setObjectName("enableRotationAction");
    enableRotationAction->setCheckable(true);
-   QObject::connect(enableRotationAction, SIGNAL(activated()),
+   QObject::connect(enableRotationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotTransformEnableRotation()));
 
    regionOfInterestAction = new QAction(mainWindowParent);
    regionOfInterestAction->setText("Region of Interest Operations...");
    regionOfInterestAction->setObjectName("regionOfInterestAction");
-   QObject::connect(regionOfInterestAction, SIGNAL(activated()),
+   QObject::connect(regionOfInterestAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotRegionOfInterestDialog()));
 
    probAtlasToVolumeAction = new QAction(mainWindowParent);
    probAtlasToVolumeAction->setText("Convert Probabilistic Atlas to Functional Volume...");
    probAtlasToVolumeAction->setObjectName("probAtlasToVolumeAction");
-   QObject::connect(probAtlasToVolumeAction, SIGNAL(activated()),
+   QObject::connect(probAtlasToVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotProbAtlasConvertToFunctional()));
 
    anatomyBiasCorrectionAction = new QAction(mainWindowParent);
    anatomyBiasCorrectionAction->setText("Bias Correction...");
    anatomyBiasCorrectionAction->setObjectName("anatomyBiasCorrectionAction");
-   QObject::connect(anatomyBiasCorrectionAction, SIGNAL(activated()),
+   QObject::connect(anatomyBiasCorrectionAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayVolumeBiasCorrectionDialog()));
                     
    anatomyThresholdAction = new QAction(mainWindowParent);
    anatomyThresholdAction->setText("Threshold Into Segmentation...");
    anatomyThresholdAction->setObjectName("anatomyThresholdAction");
-   QObject::connect(anatomyThresholdAction, SIGNAL(activated()),
+   QObject::connect(anatomyThresholdAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotAnatomyThreshold()));
 
    editPaintVolumeAction = new QAction(mainWindowParent);
    editPaintVolumeAction->setText("Edit Voxels...");
    editPaintVolumeAction->setObjectName("editPaintVolumeAction");
-   QObject::connect(editPaintVolumeAction, SIGNAL(activated()),
+   QObject::connect(editPaintVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintEditVoxels()));
 
    mathOperationsVolumeAction = new QAction(mainWindowParent);
    mathOperationsVolumeAction->setText("Mathematical Operations...");
    mathOperationsVolumeAction->setObjectName("mathOperationsVolumeAction");
-   QObject::connect(mathOperationsVolumeAction, SIGNAL(activated()),
+   QObject::connect(mathOperationsVolumeAction, SIGNAL(triggered(bool)),
                     mainWindowParent, SLOT(displayVolumeMathDialog()));
 }
 
@@ -225,17 +224,6 @@ void
 GuiMainWindowVolumeActions::slotRegionOfInterestDialog()
 {
    theMainWindow->getVolumeRegionOfInterestDialog(true);
-/*
-   if (GuiMessageBox::question(theMainWindow,
-                               "Choose",
-                               "New or Old ROI Dialog?",
-                               "New", "Old") == 0) {
-      theMainWindow->getVolumeRegionOfInterestDialog(true);
-   }
-   else {
-      theMainWindow->getVolumeRegionOfInterestDialogOld(true);
-   }
-*/
 }
       
 /**
@@ -498,7 +486,8 @@ GuiMainWindowVolumeActions::slotProbAtlasConvertToFunctional()
          bmvpatf.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
          return;
       }
       GuiFilesModified fm;
@@ -548,7 +537,8 @@ GuiMainWindowVolumeActions::slotSegmentationCerebralHull()
             theMainWindow->getBrainSet()->generateCerebralHullVtkFile(vf, true);
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
             return;
          }
          DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();

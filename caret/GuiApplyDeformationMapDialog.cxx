@@ -27,27 +27,27 @@
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 
 #include "BrainModelSurfaceDeformDataFile.h"
 #include "BrainSet.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiApplyDeformationMapDialog.h"
-#include "GuiDataFileDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "DeformationMapFile.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
+#include "WuQFileDialog.h"
 #include "global_variables.h"
 
 /**
@@ -404,12 +404,12 @@ GuiApplyDeformationMapDialog::slotFileTypeComboBox(int item)
 void 
 GuiApplyDeformationMapDialog::slotSourceDirectoryButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setDirectory(QDir::currentPath());
    fd.setWindowTitle("Select Source Directory");
-   fd.setFileMode(QFileDialog::DirectoryOnly);
+   fd.setFileMode(WuQFileDialog::DirectoryOnly);
    
    //
    // Popup the dialog
@@ -428,12 +428,12 @@ GuiApplyDeformationMapDialog::slotSourceDirectoryButton()
 void 
 GuiApplyDeformationMapDialog::slotTargetDirectoryButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setDirectory(QDir::currentPath());
    fd.setWindowTitle("Select Target Directory");
-   fd.setFileMode(QFileDialog::DirectoryOnly);
+   fd.setFileMode(WuQFileDialog::DirectoryOnly);
    
    //
    // Popup the dialog
@@ -515,7 +515,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
    }
    
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "Deform Error", errorMessage, "OK");
+      QMessageBox::critical(this, "Deform Error", errorMessage);
       return;
    }
 
@@ -531,9 +531,10 @@ GuiApplyDeformationMapDialog::slotApplyButton()
             deformationMapFile.writeFile(deformationMapFile.getFileName());
          }
          catch (FileException& e) {
-            GuiMessageBox::critical(this, "ERROR",
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "ERROR",
                               "Unable to update deformation map file with\n"
-                              "individual and/or atlas directory changes.", "OK");
+                              "individual and/or atlas directory changes.");
             return;
          }
       }
@@ -550,7 +551,8 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                     "the atlas spec file.");
       }
       if (msg.isEmpty() == false) {
-         GuiMessageBox::critical(this, "Directory Error", msg, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Directory Error", msg);
          return;
       }
    }
@@ -580,7 +582,8 @@ GuiApplyDeformationMapDialog::slotApplyButton()
          {
             if (readBrains(errorMessage)) {
                QDir::setCurrent(savedDirectory);
-               GuiMessageBox::critical(this, "Deform Error", errorMessage, "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "Deform Error", errorMessage);
                return;
             }
          }
@@ -699,7 +702,8 @@ GuiApplyDeformationMapDialog::slotApplyButton()
    }
    catch (BrainModelAlgorithmException& e) {
       QDir::setCurrent(savedDirectory);
-      GuiMessageBox::critical(this, "Deform Error", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "Deform Error", e.whatQString());
       //
       // Restore output spec file name
       //   
@@ -720,8 +724,8 @@ GuiApplyDeformationMapDialog::slotApplyButton()
    QDir::setCurrent(savedDirectory);
    QApplication::restoreOverrideCursor();
    
-   GuiMessageBox::information(this, "Deform Successful",
-                            "File successfully deformed.", "OK");
+   QMessageBox::information(this, "Deform Successful",
+                            "File successfully deformed.");
 }
 
 /**
@@ -733,17 +737,17 @@ GuiApplyDeformationMapDialog::slotDeformationMapButton()
    //
    // Create the file dialog
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setDirectory(QDir::currentPath());
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setWindowTitle("Select Deformation Map File");
-   fd.setFileMode(QFileDialog::ExistingFile);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
    //QString fileFilter("Deformation Map File (*");
    //fileFilter.append(SpecFile::getDeformationMapFileExtension());
    //fileFilter.append(")");
-   fd.setFilter(GuiDataFileDialog::deformationMapFileFilter);
-   fd.selectFilter(GuiDataFileDialog::deformationMapFileFilter);
+   fd.setFilter(FileFilters::getDeformationMapFileFilter());
+   fd.selectFilter(FileFilters::getDeformationMapFileFilter());
    
    //
    // Popup the dialog
@@ -782,7 +786,7 @@ GuiApplyDeformationMapDialog::slotDeformationMapButton()
          deformationMapFile.readFile(fd.selectedFiles().at(0));
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "Deformation Map File Read Error", e.whatQString(), "OK");
+         QMessageBox::critical(this, "Deformation Map File Read Error", e.whatQString());
          return;
       }
       QApplication::restoreOverrideCursor();
@@ -857,7 +861,7 @@ GuiApplyDeformationMapDialog::slotDeformationMapButton()
                         "containing the atlas spec file.");
       }
       if (message.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", message, "OK");
+         QMessageBox::critical(this, "ERROR", message);
       }
       
       slotFileTypeComboBox(fileTypeComboBox->currentIndex());
@@ -1008,36 +1012,36 @@ GuiApplyDeformationMapDialog::dataFileDialog(const FILE_DIALOG_TYPE fdt)
    //
    // Create the file dialog and override file type/ext in some cases
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    switch(fdt) {
       case FILE_DIALOG_ATLAS_TOPO_FILE:
          fileType = "Topology File";
          fileExtension = SpecFile::getTopoFileExtension();
          fd.setWindowTitle("Select Target Topo File For Deformation");
-         fd.setFileMode(QFileDialog::ExistingFile);
+         fd.setFileMode(WuQFileDialog::ExistingFile);
          break;
       case FILE_DIALOG_DATA_FILE:
          fd.setWindowTitle("Select Data File For Deformation");
-         fd.setFileMode(QFileDialog::ExistingFile);
+         fd.setFileMode(WuQFileDialog::ExistingFile);
          break;
       case FILE_DIALOG_DEFORMED_FILE:
          fd.setWindowTitle("Select Deformed Data File (Output File)");
-         fd.setFileMode(QFileDialog::AnyFile);
+         fd.setFileMode(WuQFileDialog::AnyFile);
          break;
       case FILE_DIALOG_INDIV_TOPO_FILE:
          fileType = "Topology File";
          fileExtension = SpecFile::getTopoFileExtension();
          fd.setWindowTitle("Select Source Topo File For Deformation");
-         fd.setFileMode(QFileDialog::ExistingFile);
+         fd.setFileMode(WuQFileDialog::ExistingFile);
          break;
       case FILE_DIALOG_DEFORMED_TOPO_FILE:
          fileType = "Topology File";
          fileExtension = SpecFile::getTopoFileExtension();
          fd.setWindowTitle("Select Deformed Topology File (Output File)");
-         fd.setFileMode(QFileDialog::AnyFile);
+         fd.setFileMode(WuQFileDialog::AnyFile);
          break;
    }
    
@@ -1143,7 +1147,7 @@ GuiApplyDeformationMapDialog::setDeformedFileName(const FILE_DIALOG_TYPE fdt)
             msg.append(fileDir);
             msg.append("\n");
             msg.append("Output file location defaults to current directory.");
-            GuiMessageBox::information(this, "File Info", msg, "OK");
+            QMessageBox::information(this, "File Info", msg);
          }
       }
    }

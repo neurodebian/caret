@@ -31,6 +31,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QTabWidget>
 #include <QTextEdit>
 
@@ -48,7 +49,6 @@
 #include "GuiFilesModified.h"
 #include "GuiHyperLinkTextBrowser.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "NodeAttributeFile.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
@@ -580,8 +580,8 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
    //
    tabWidget = new QTabWidget;
    rows->addWidget(tabWidget);
-   QObject::connect(tabWidget, SIGNAL(currentChanged(QWidget*)),
-                    this, SLOT(slotTabWidgetPageChanged(QWidget*)));
+   QObject::connect(tabWidget, SIGNAL(currentChanged(int)),
+                    this, SLOT(slotTabWidgetPageChanged(int)));
    
    //
    // Create the text browser that allows hyperlinks (read only)
@@ -760,7 +760,7 @@ GuiDataFileCommentDialog::slotCloseDialog()
                   else {
                      QString msg("No volume data read from ");
                      msg.append(FileUtilities::basename(volumeFileOnDisk->getFileName()));
-                     GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                     QMessageBox::critical(this, "ERROR", msg);
                   }
                }
                catch (FileException& e) {
@@ -768,7 +768,7 @@ GuiDataFileCommentDialog::slotCloseDialog()
                   msg.append(FileUtilities::basename(volumeFileOnDisk->getFileName()));
                   msg.append("\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QMessageBox::critical(this, "ERROR", msg);
                }
                for (unsigned int i = 0; i < volumes.size(); i++) {
                   delete volumes[i];
@@ -833,8 +833,9 @@ GuiDataFileCommentDialog::slotCloseDialog()
  * Called when edit button pressed.
  */
 void
-GuiDataFileCommentDialog::slotTabWidgetPageChanged(QWidget* page)
+GuiDataFileCommentDialog::slotTabWidgetPageChanged(int indx)
 {
+   QWidget* page = tabWidget->widget(indx);
    if (page == textBrowser) {
       if (textEditor->document()->isModified()) {
          textBrowser->clear();
@@ -849,7 +850,7 @@ GuiDataFileCommentDialog::slotTabWidgetPageChanged(QWidget* page)
 void
 GuiDataFileCommentDialog::slotTextBrowserKeyPress()
 {
-   GuiMessageBox::information(this, "Information", 
-                            "Press the \"Edit Comment\" tab to edit the comment.", "OK");
+   QMessageBox::information(this, "Information", 
+                            "Press the \"Edit Comment\" tab to edit the comment.");
 }
 

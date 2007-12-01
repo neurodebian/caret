@@ -35,6 +35,7 @@
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "GiftiCommon.h"
+#include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
 #include "SpecFile.h"
 #include "TopologyFile.h"
@@ -48,7 +49,7 @@
  */
 TopologyFile::TopologyFile()
    : GiftiDataArrayFile("Topology File",
-                        GiftiCommon::categoryTopologyTriangles,
+                        GiftiCommon::intentTopologyTriangles,
                         GiftiDataArray::DATA_TYPE_INT32, 
                         SpecFile::getTopoFileExtension(), 
                         FILE_FORMAT_ASCII, 
@@ -131,7 +132,7 @@ TopologyFile::addTile(const int v1, const int v2, const int v3)
       dim.push_back(1);
       dim.push_back(3);
       GiftiDataArray* nda = new GiftiDataArray(this,
-                                               "TopologyTriangles",
+                                               GiftiCommon::intentTopologyTriangles,
                                                GiftiDataArray::DATA_TYPE_INT32,
                                                dim);
       addDataArray(nda);
@@ -687,6 +688,29 @@ TopologyFile::findIslands(std::vector<int>& islandRootNode,
    }   
    
    return static_cast<int>(islandRootNode.size());
+}
+
+/**
+ * disconnect nodes that are in the region of interest.
+ */
+void 
+TopologyFile::disconnectNodesInRegionOfInterest(const NodeRegionOfInterestFile& roiFile) throw (FileException)
+{
+   //
+   // Determine nodes that should be disconnected
+   //
+   const int numNodes = roiFile.getNumberOfNodes();
+   std::vector<bool> disconnectNodeFlags(numNodes, false);
+   for (int i = 0; i < numNodes; i++) {
+      if (roiFile.getNodeSelected(i)) {
+         disconnectNodeFlags[i] = true;
+      }
+   }
+   
+   //
+   // Disonnect the nodes by removing tiles
+   //
+   deleteTilesWithMarkedNodes(disconnectNodeFlags);
 }
 
 /**
@@ -1276,7 +1300,7 @@ TopologyFile::setNumberOfTiles(const int numTiles)
    dim.push_back(3);
    if (dataArrays.empty()) {
       GiftiDataArray* nda = new GiftiDataArray(this,
-                                               "TopologyTriangles",
+                                               GiftiCommon::intentTopologyTriangles,
                                                GiftiDataArray::DATA_TYPE_INT32,
                                                dim);
       addDataArray(nda);

@@ -8,6 +8,7 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 
 #include "BrainSet.h"
 #include "GuiBrainModelOpenGL.h"
@@ -16,15 +17,15 @@
 #include "BrainModelSurfaceFlattenFullHemisphere.h"
 #include "BrainModelSurfaceFlattenPartialHemisphere.h"
 #include "BrainModelSurfaceNodeColoring.h"
+#include "FileUtilities.h"
 #include "GuiFilesModified.h"
 #include "GuiFlattenHemisphereDialog.h"
 #include "GuiFlattenHemisphereInstructionsDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
 #include "QtUtilities.h"
-#include "FileUtilities.h"
+#include "TopologyFile.h"
 #include "global_variables.h"
 
 /**
@@ -373,8 +374,9 @@ GuiFlattenHemisphereDialog::done(int r)
       switch(flattenType) {
          case FLATTEN_TYPE_NONE:
             {
-               GuiMessageBox::critical(this, "Flatten Error",
-                                    "You must select a flattening type.", "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "Flatten Error",
+                                    "You must select a flattening type.");
                return;
             }
             break;
@@ -395,11 +397,13 @@ GuiFlattenHemisphereDialog::done(int r)
             {
                PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
                if (pf->getNumberOfColumns() <= 0) {
-                  if (GuiMessageBox::question(this, "Paint File Query",
-                     "There is no paint file loaded.  The paint file may assist\n"
-                     "you in identifying cortical areas.  Do you want to continue\n"
+                  QApplication::restoreOverrideCursor();
+                  if (QMessageBox::question(this, "Paint File Query",
+                     "There is no paint file loaded.  The paint file may assist "
+                     "you in identifying cortical areas.  Do you want to continue "
                      "or do you want to cancel and load a paint file ?",
-                     "Continue", "Cancel") != 0) {
+                     (QMessageBox::Ok | QMessageBox::Cancel),
+                        QMessageBox::Ok) == QMessageBox::Cancel) {
                      return;
                   }
                   
@@ -407,8 +411,9 @@ GuiFlattenHemisphereDialog::done(int r)
                }
                const int templateBorderIndex = templateBorderComboBox->currentIndex();
                if (templateBorderIndex <= 0) {
-                  GuiMessageBox::critical(this, "Missing Borders",
-                      "You must selecte template borders.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "Missing Borders",
+                      "You must selecte template borders.");
                   return;
                }
                else if (templateBorderIndex == 1) {
@@ -416,8 +421,9 @@ GuiFlattenHemisphereDialog::done(int r)
                   flattenBorderFile = 
                      bmbs->copyBordersOfSpecifiedType(BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL);
                   if (flattenBorderFile == NULL) {
-                     GuiMessageBox::critical(this, "Missing Borders",
-                        "There are no ellipsoidal borders loaded.", "OK");
+                     QApplication::restoreOverrideCursor();
+                     QMessageBox::critical(this, "Missing Borders",
+                        "There are no ellipsoidal borders loaded.");
                      return;
                   }
                }
@@ -428,8 +434,9 @@ GuiFlattenHemisphereDialog::done(int r)
                      flattenBordersUseTemplateFile = true;
                   }
                   catch (FileException& e) {
-                     GuiMessageBox::critical(this, "Missing Borders",
-                                           e.whatQString(), "OK");
+                     QApplication::restoreOverrideCursor();
+                     QMessageBox::critical(this, "Missing Borders",
+                                           e.whatQString());
                      return;
                   }
                   
@@ -439,6 +446,41 @@ GuiFlattenHemisphereDialog::done(int r)
                                                 false);
                   }
                   catch (FileException& /*e*/) {
+                  }
+               }
+               
+               //
+               // Check for topological errors
+               //
+               if (flattenSurface != NULL) {
+                  const TopologyFile* tf = flattenSurface->getTopologyFile();
+                  if (tf != NULL) {
+                     int faces, vertices, edges, eulerCount, numberOfHoles, numberOfObjects;
+                     tf->getEulerCount(false,
+                                       faces,
+                                       vertices,
+                                       edges,
+                                       eulerCount,
+                                       numberOfHoles,
+                                       numberOfObjects);
+                     if (numberOfHoles > 0) {
+                        const QString msg = (QString("There appear to be ") + 
+                                             QString::number(numberOfHoles) +
+                                             " handles (topological errors) in the surface."
+                                             "  These handles may cause problems "
+                                             " during surface flattening.\n\n"
+                                             "Do you want to continue?");
+                        QApplication::restoreOverrideCursor();
+                        if (QMessageBox::warning(this, 
+                                                   "Toplogical Errors",
+                                                   msg,
+                                                   (QMessageBox::Yes | QMessageBox::No),
+                                                   QMessageBox::No)
+                                                      == QMessageBox::No) {
+                           return;
+                        }
+                        QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+                     }
                   }
                }
                
@@ -456,10 +498,13 @@ GuiFlattenHemisphereDialog::done(int r)
                if ((acPosition[0] == 0.0) &&
                    (acPosition[1] == 0.0) &&
                    (acPosition[2] == 0.0)) {
-                  if (GuiMessageBox::warning(this, "Missing AC",
+                  QApplication::restoreOverrideCursor();
+                  if (QMessageBox::warning(this, "Missing AC",
                       "The Anterior Commissure position is (0.0, 0.0, 0.0).\n"
                       "Is this correct?",
-                      "Yes, continue flattening", "No, Let me set the AC Position") == 1) {
+                      (QMessageBox::Yes | QMessageBox::No),
+                      QMessageBox::No) 
+                         == QMessageBox::No) {
                      return;
                   }
                   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
@@ -544,7 +589,8 @@ GuiFlattenHemisphereDialog::done(int r)
       }
       catch (BrainModelAlgorithmException& e) {
          delete bma;
-         GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error", e.whatQString());
          return;
       }
       

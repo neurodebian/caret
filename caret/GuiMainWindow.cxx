@@ -42,9 +42,11 @@
 #include <QDir>
 #include <QInputDialog>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QLabel>
 #include <QLayout>
 #include <QProgressDialog>
+#include <QPushButton>
 #include <QStatusBar>
 #include <QToolTip>
 
@@ -60,7 +62,10 @@
 #include "BrainModelSurfaceAndVolume.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainSet.h"
+#include "GuiCaretCommandDialog.h"
+#include "GuiCaretCommandScriptBuilderDialog.h"
 #include "CaretVersion.h"
+#include "GuiCellAndFociAttributeAssignmentDialog.h"
 #include "CellColorFile.h"
 #include "CellProjectionFile.h"
 #include "CocomacConnectivityFile.h"
@@ -125,16 +130,16 @@
 #include "GuiMorphingDialog.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiDisplayControlDialog.h"
+#include "GuiPaintNameEditorDialog.h"
 #include "GuiPaletteEditorDialog.h"
 #include "GuiParamsFileEditorDialog.h"
 #include "GuiPreferencesDialog.h"
 #include "GuiRecordingDialog.h"
-#include "GuiScriptDialog.h"
 #include "GuiSectionControlDialog.h"
 #include "GuiSetTopologyDialog.h"
 #include "GuiSmoothingDialog.h"
 #include "GuiSpecFileDialog.h"
-#include "GuiSpeechGenerator.h"
+//#include "GuiSpeechGenerator.h"
 #include "GuiStudyMetaDataFileEditorDialog.h"
 #include "GuiSurfaceRegionOfInterestDialog.h"
 #include "GuiTransformationMatrixDialog.h"
@@ -145,7 +150,6 @@
 #include "GuiVolumeThresholdSegmentationDialog.h"
 #include "GuiVolumeAttributesDialog.h"
 #include "GuiVolumeRegionOfInterestDialog.h"
-#include "GuiVolumeRegionOfInterestDialogOld.h"
 #include "GuiVolumeSegmentationEditorDialog.h"
 #include "GuiVolumePaintEditorDialog.h"
 #include "GuiToolBar.h"
@@ -209,7 +213,7 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    //
    // Create the speech generator
    //
-   speechGenerator = new GuiSpeechGenerator(getBrainSet()->getPreferencesFile());
+   //speechGenerator = new GuiSpeechGenerator(getBrainSet()->getPreferencesFile());
 
    sizePolicyFixed = new QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
    
@@ -338,6 +342,8 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    alignSurfaceToStandardOrientationDialog = NULL;
    automaticRotationDialog = NULL;
    bordersCreateInterpolatedDialog = NULL;
+   caretCommandExecutorDialog = NULL;
+   caretCommandScriptBuilderDialog = NULL;
    contourAlignmentDialog  = NULL;
    contourDrawDialog       = NULL;
    contourSectionControlDialog = NULL;
@@ -354,12 +360,12 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    metricsToRgbPaintDialog = NULL;
    modelsEditorDialog      = NULL;
    paletteEditorDialog     = NULL;
+   paintNameEditorDialog = NULL;
    paramsFileEditorDialog  = NULL;
    preferencesDialog       = NULL;
    recordingDialog         = NULL;
    sectionControlDialog    = NULL;
    setTopologyDialog       = NULL;
-   scriptBuilderDialog     = NULL;
    smoothingDialog         = NULL;
    shapeModificationDialog = NULL;
    shapeMathDialog         = NULL;
@@ -374,7 +380,6 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    volumeBiasCorrectionDialog = NULL;
    volumeMathDialog        = NULL;
    volumeRegionOfInterestDialog = NULL;
-   volumeRegionOfInterestDialogOld = NULL;
    volumePaintEditorDialog = NULL;
    volumeSegmentationEditorDialog = NULL;
    
@@ -420,7 +425,7 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    QString iconFileName(getBrainSet()->getCaretHomeDirectory());
    iconFileName.append("/data_files/icons/message_box_icon.jpg");
    GuiMessageBox::loadIcon(iconFileName);
-   GuiMessageBox::setSpeechGenerator(speechGenerator);
+   //GuiMessageBox::setSpeechGenerator(speechGenerator);
 }
 
 /**
@@ -436,10 +441,10 @@ GuiMainWindow::~GuiMainWindow()
       delete fivClientCommunicator;
       fivClientCommunicator = NULL;
    }
-   if (speechGenerator != NULL) {
-      delete speechGenerator;
-      speechGenerator = NULL;
-   }
+   //if (speechGenerator != NULL) {
+   //   delete speechGenerator;
+   //   speechGenerator = NULL;
+   //}
    for (unsigned int i = 0; i < loadedBrainSets.size(); i++) {
       delete loadedBrainSets[i];
    }
@@ -506,11 +511,11 @@ GuiMainWindow::setBrainSet(const BrainModel::BRAIN_MODEL_VIEW_NUMBER windowNumbe
  * speak some text.
  */
 void 
-GuiMainWindow::speakText(const QString& text, const bool verboseSpeech)
+GuiMainWindow::speakText(const QString& /*text*/, const bool /*verboseSpeech*/)
 {
-   if (speechGenerator != NULL) {
-      speechGenerator->speakText(text, verboseSpeech);
-   }
+   //if (speechGenerator != NULL) {
+   //   speechGenerator->speakText(text, verboseSpeech);
+   //}
 }      
 
 /**
@@ -1008,22 +1013,6 @@ GuiMainWindow::getVolumeRegionOfInterestDialog(const bool showIt)
 }
 
 /**
- * Create, possibly show and return the volume region of interest dialog.
- */
-GuiVolumeRegionOfInterestDialogOld*
-GuiMainWindow::getVolumeRegionOfInterestDialogOld(const bool showIt)
-{
-   if (volumeRegionOfInterestDialogOld == NULL) {
-      volumeRegionOfInterestDialogOld = new GuiVolumeRegionOfInterestDialogOld(this);
-   }
-   if (showIt) {
-      volumeRegionOfInterestDialogOld->show();
-      volumeRegionOfInterestDialogOld->activateWindow();
-   }
-   return volumeRegionOfInterestDialogOld;
-}
-
-/**
  * Create, possibly show and return the volume SureFit multi-hem segmentation dialog.
  */
 GuiVolumeMultiHemSureFitSegmentationDialog*
@@ -1309,6 +1298,20 @@ GuiMainWindow::displayPreferencesDialog()
 }
 
 /**
+ * display the paint editor dialog.
+ */
+void 
+GuiMainWindow::displayPaintEditorDialog()
+{
+   if (paintNameEditorDialog == NULL) {
+      paintNameEditorDialog = new GuiPaintNameEditorDialog(this);
+   }
+   paintNameEditorDialog->show();
+   paintNameEditorDialog->raise();
+   paintNameEditorDialog->activateWindow();
+}
+      
+/**
  * Called when Toolbar "Spec" button is pressed.
  */
 void
@@ -1316,7 +1319,7 @@ GuiMainWindow::displayFastOpenDataFileDialog()
 {
    const QString specFileName(getBrainSet()->getSpecFileName());
    if (specFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "No Spec File", "There is no spec file loaded.", "OK");
+      QMessageBox::critical(this, "No Spec File", "There is no spec file loaded.");
       return;
    }
    
@@ -1329,10 +1332,9 @@ GuiMainWindow::displayFastOpenDataFileDialog()
       sf.setDefaultFilesFiducialAndFlat();
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, 
+      QMessageBox::critical(this, 
                             "Error reading spec file",
-                            e.whatQString(),
-                            "OK");
+                            e.whatQString());
       return;
    }
 
@@ -1374,16 +1376,32 @@ GuiMainWindow::updateDisplayControlDialog()
 }
 
 /**
- * Create (if necessary) and display the script builder dialog.
+ * Create (if necessary) and display the caret command executor dialog.
  */
 void
-GuiMainWindow::displayScriptBuilderDialog()
+GuiMainWindow::displayCaretCommandExecutorDialog()
 {
-   if (scriptBuilderDialog == NULL) {
-      scriptBuilderDialog = new GuiScriptDialog(this, getBrainSet()->getCaretHomeDirectory());
+   if (caretCommandExecutorDialog == NULL) {
+      caretCommandExecutorDialog = new GuiCaretCommandDialog(this,
+                                          getBrainSet()->getCaretHomeDirectory(),
+                                          GuiCaretCommandDialog::DIALOG_MODE_EXECUTOR_NON_MODAL);
    }
-   scriptBuilderDialog->show();
-   scriptBuilderDialog->activateWindow();
+   caretCommandExecutorDialog->show();
+   caretCommandExecutorDialog->activateWindow();
+}
+
+/**
+ * Create (if necessary) and display the caret command script builder dialog.
+ */
+void
+GuiMainWindow::displayCaretCommandScriptBuilderDialog()
+{
+   if (caretCommandScriptBuilderDialog == NULL) {
+      caretCommandScriptBuilderDialog = new GuiCaretCommandScriptBuilderDialog(this,
+                                          getBrainSet()->getCaretHomeDirectory());
+   }
+   caretCommandScriptBuilderDialog->show();
+   caretCommandScriptBuilderDialog->activateWindow();
 }
 
 /**
@@ -1647,11 +1665,12 @@ GuiMainWindow::closeSpecFile(const bool keepSceneAndSpec,
          }
          msg2.append(msg);
          
-         if (GuiMessageBox::warning(this, 
+         if (QMessageBox::warning(this, 
                                  "WARNING",
                                  msg2, 
-                                 "Yes",
-                                 "No") == 0) {
+                                 (QMessageBox::Yes | QMessageBox::No),
+                                 QMessageBox::Yes)
+                                    == QMessageBox::Yes) {
             closeSpecFileFlag = true;
          }
       }
@@ -1668,11 +1687,12 @@ GuiMainWindow::closeSpecFile(const bool keepSceneAndSpec,
          //
          // Return value of zero is YES button.
          //
-         if (GuiMessageBox::warning(this, 
+         if (QMessageBox::warning(this, 
                                  "WARNING",
                                  msg2, 
-                                 "Yes",
-                                 "No") == 0) {
+                                 (QMessageBox::Yes | QMessageBox::No),
+                                 QMessageBox::Yes)
+                                    == QMessageBox::Yes) {
             closeSpecFileFlag = true;
          }
       }
@@ -1810,11 +1830,12 @@ GuiMainWindow::slotCloseProgram()
                    "Changes to these files will be lost:\n\n");
       msg2.append(msg);
       
-      if (GuiMessageBox::warning(this, 
+      if (QMessageBox::warning(this, 
                               "Caret 5",
                               msg2, 
-                              "Quit Anyway",
-                              "Do Not Quit") == 0) {
+                              (QMessageBox::Ok | QMessageBox::Cancel),
+                              QMessageBox::Cancel)
+                                  == QMessageBox::Ok) {
          //speakText("Goodbye carrot user.");
          qApp->quit();
       }
@@ -1823,11 +1844,12 @@ GuiMainWindow::slotCloseProgram()
       //
       // Return value of zero is YES button.
       //
-      if (GuiMessageBox::warning(this, 
+      if (QMessageBox::warning(this, 
                               "Caret 5",
                               "Are you sure you want to quit ?", 
-                              "Yes",
-                              "No") == 0) {
+                              (QMessageBox::Yes | QMessageBox::No),
+                              QMessageBox::Yes)
+                                 == QMessageBox::Yes) {
          //speakText("Goodbye carrot user.");
          qApp->quit();
       }
@@ -1902,10 +1924,10 @@ GuiMainWindow::readSpecFile(const QString& filename)
       sf.setDefaultFilesFiducialAndFlat();
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, 
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, 
                             "Error reading spec file",
-                            e.whatQString(),
-                            "OK");
+                            e.whatQString());
       return;
    }
 
@@ -1913,33 +1935,56 @@ GuiMainWindow::readSpecFile(const QString& filename)
                                         GuiSpecFileDialog::SPEC_DIALOG_MODE_OPEN_SPEC_FILE);
    specDialog->show();
    specDialog->raise();
-   //specDialog->activateWindow();
+   specDialog->activateWindow();
 }
 
 /**
  * Load the specified spec file's data files.
  */
 void
-GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf, const TransformationMatrix* tm)
+GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf, 
+                                      const TransformationMatrix* tm,
+                                      const bool appendToExistingLoadedSpecFiles)
 {
    if (getBrainSet()->getNumberOfBrainModels() > 0) {
-      QString msg("Caret is now able to load and view multiple spec files.\n"
-                  "\n"
-                  "If you are not sure which button to push, use \"New Spec Only\".\n"
-                  "\n"
-                  "The model selection control in the main window's toolbar and in\n"
-                  "the viewing window's toolbar will list the brain models (contours,\n"
-                  "surfaces, and volumes) for all loaded spec files.  The display \n"
-                  "control dialog and all other dialogs operate on the model (and\n"
-                  "its associated data files) in the main window.\n"
-                  "\n"
-                  "Choose \"New Spec Only\" if you only want to view the new\n"
-                  "spec file that you are loading.\n"
-                  "\n"
-                  "Choose \"Keep Loaded Spec\" if you want to view both the new\n"
-                  "spec file and the files already loaded into Caret.\n");
-      const int result = GuiMessageBox::question(this, "New Spec?", msg, 
-                                                 "Keep Loaded Spec", "New Spec Only", "Cancel", 1, 2);
+      int result = 0;
+      if (appendToExistingLoadedSpecFiles == false) {
+         QString msg("Caret is now able to load and view multiple spec files.\n"
+                     "\n"
+                     "If you are not sure which button to push, use \"New Spec Only\".\n"
+                     "\n"
+                     "The model selection control in the main window's toolbar and in"
+                     "the viewing window's toolbar will list the brain models (contours,"
+                     "surfaces, and volumes) for all loaded spec files.  The display "
+                     "control dialog and all other dialogs operate on the model (and"
+                     "its associated data files) in the main window.\n"
+                     "\n"
+                     "Choose \"New Spec Only\" if you only want to view the new"
+                     "spec file that you are loading.\n"
+                     "\n"
+                     "Choose \"Keep Loaded Spec\" if you want to view both the new"
+                     "spec file and the files already loaded into Caret.\n");
+         QMessageBox msgBox(this);
+         msgBox.setText(msg);
+         msgBox.setWindowTitle("New Spec?");
+         QPushButton* keepLoadedSpecPushButton = msgBox.addButton("Keep Loaded Spec",
+                                                                   QMessageBox::ActionRole);
+         QPushButton* newSpecOnlyPushButton = msgBox.addButton("New Spec Only",
+                                                                   QMessageBox::ActionRole);
+         QPushButton* cancelPushButton = msgBox.addButton("Cancel",
+                                                                   QMessageBox::ActionRole);
+         msgBox.exec();
+         if (msgBox.clickedButton() == keepLoadedSpecPushButton) {
+            result = 0;
+         }
+         else if (msgBox.clickedButton() == newSpecOnlyPushButton) {
+            result = 1;
+         }
+         else if (msgBox.clickedButton() == cancelPushButton) {
+            result = 2;
+         }
+      }
+      
       switch (result) {
          case 0:
             {
@@ -1966,11 +2011,12 @@ GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf, const TransformationMatrix* t
                   QString msg2("If you choose \"Yes\" changes to these files will be lost:\n\n");
                   msg2.append(msg);
                   
-                  if (GuiMessageBox::warning(this, 
+                  if (QMessageBox::warning(this, 
                                           "WARNING",
                                           msg2, 
-                                          "Yes",
-                                          "No") != 0) {
+                                          (QMessageBox::Yes | QMessageBox::No),
+                                          QMessageBox::No)
+                                             == QMessageBox::No) {
                      return;
                   }
                }
@@ -2041,11 +2087,11 @@ GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf, const TransformationMatrix* t
       messages.clear();
       getBrainSet()->reset();
    }
-   if (DebugControl::getDebugOn()) {
+   //if (DebugControl::getDebugOn()) {
       std::cout << "Time to read all files was "
                 << (static_cast<float>(timer.elapsed()) / 1000.0)
                 << " seconds." << std::endl;
-   }
+  // }
    
    if ((getBrainSet()->getNumberOfNodes() > 0) ||
        (messages.size() == 0)) {
@@ -2076,10 +2122,10 @@ GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf, const TransformationMatrix* t
          qs.append("\n");
          qs.append(messages[j]);
       }
-      GuiMessageBox::critical(this, 
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, 
                             "Error loading files from spec file",
-                            qs,
-                            "OK");
+                            qs);
       return;
    }
    
@@ -2817,7 +2863,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
          setTopologyDialog->updateDialog();
       }
    }
-   
+
    if (updateFoci) {
       if (mapStereotaxicFocusDialog != NULL) {
          mapStereotaxicFocusDialog->updateDialog();
@@ -2836,6 +2882,11 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    }
    if (updateNodeColoring) {
       getBrainSet()->getNodeColoring()->assignColors();
+   }
+   if (updateNodeColoring) {
+      if (paintNameEditorDialog != NULL) {
+         paintNameEditorDialog->updateDialog();
+      }
    }
    if (updatePaint || updateVolume) {
       if (drawBorderDialog != NULL) {
@@ -2948,9 +2999,6 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    }
    
    if (updateVolume) {
-      if (volumeRegionOfInterestDialogOld != NULL) {
-         volumeRegionOfInterestDialogOld->updateDialog();
-      }
       if (volumeRegionOfInterestDialog != NULL) {
          volumeRegionOfInterestDialog->updateDialog();
       }
@@ -2992,7 +3040,8 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    else {
       if (displayControlDialog != NULL) {
          if (updateArealEstimation) {
-            displayControlDialog->updateArealEstimationItems();
+            // "updateOverlayUnderlayItems()" called below calls this
+            //displayControlDialog->updateArealEstimationItems();
          }
          if (updateBorderColors) {
             displayControlDialog->updateBorderItems(true);
@@ -3025,13 +3074,15 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
             displayControlDialog->updateLatLonItems();
          }
          if (updateMetrics || updateVolume) {
-            displayControlDialog->updateMetricItems();
+            // "updateOverlayUnderlayItems()" called below calls this
+            //displayControlDialog->updateMetricItems();
          }
          if (updateModels || updateTransformMatrices) {
             displayControlDialog->updateModelItems();
          }
          if (updatePaint) {
-            displayControlDialog->updatePaintItems();
+            // "updateOverlayUnderlayItems()" called below calls this
+            //displayControlDialog->updatePaintItems();
          }
          if (updateProbAtlas) {
             displayControlDialog->updateProbAtlasSurfaceItems(true);
@@ -3046,13 +3097,15 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
             displayControlDialog->updateRgbPaintItems();
          }
          if (updateSurfaceShape) {
-            displayControlDialog->updateShapeItems();
+            // "updateOverlayUnderlayItems()" called below calls this
+            //displayControlDialog->updateShapeItems();
          }
          if (updateSurfaceVector) {
             displayControlDialog->updateSurfaceVectorItems();
          }
          if (updateTopography) {
-            displayControlDialog->updateTopographyItems();
+            // "updateOverlayUnderlayItems()" called below calls this
+            //displayControlDialog->updateTopographyItems();
          }
          if (updateVolume || updateCoordinates) {
             displayControlDialog->updateSurfaceAndVolumeItems();
@@ -3083,7 +3136,7 @@ GuiMainWindow::displayWebPage(const QString& webPage)
       QString msg("Loading the web page appears to have failed.  Unix users may \n"
                       "need to set the environment variable CARET_WEB_BROWSER to the\n"
                       "desired web browser.");
-      GuiMessageBox::warning(this, "Web Browser Error", msg, "OK");
+      QMessageBox::warning(this, "Web Browser Error", msg);
    }
 }
 
@@ -3712,6 +3765,16 @@ GuiMainWindow::displayPaintColorKey()
    paintColorKeyDialog->activateWindow();
 }
 
+/**
+ * display the foci attribute assignment dialog.
+ */
+void 
+GuiMainWindow::displayFociAttributeAssignmentDialog()
+{
+   GuiCellAndFociAttributeAssignmentDialog faad(this, true);
+   faad.exec();
+}
+      
 /**
  * display the probabilistic atlas color key.
  */

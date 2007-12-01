@@ -38,6 +38,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -47,7 +48,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiStructureComboBox.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -183,8 +183,9 @@ GuiContourReconstructionDialog::done(int r)
       
       BrainModelContours* bmc = theMainWindow->getBrainSet()->getBrainModelContours(-1);
       if (bmc == NULL) {
-         GuiMessageBox::critical(this, "Convert to Surface Error", 
-                               "There are no contours in the main window.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Convert to Surface Error", 
+                               "There are no contours in the main window.");
          return;
       }
       BrainModelContourToSurfaceConverter c2s(theMainWindow->getBrainSet(),
@@ -197,7 +198,8 @@ GuiContourReconstructionDialog::done(int r)
          c2s.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Convert to Surface Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Convert to Surface Error", e.whatQString());
          return;
       }
       

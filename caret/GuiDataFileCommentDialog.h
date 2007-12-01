@@ -83,7 +83,7 @@ class GuiDataFileCommentDialog : public QtDialog {
       void slotCloseDialog();
       
       /// called to edit comment
-      void slotTabWidgetPageChanged(QWidget* page);
+      void slotTabWidgetPageChanged(int indx);
       
       /// called if a key is pressed in the text browser
       void slotTextBrowserKeyPress();

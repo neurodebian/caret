@@ -52,8 +52,9 @@ GuiMainWindowWindowMenu::GuiMainWindowWindowMenu(GuiMainWindow* parent) :
    addAction(windowActions->getTransformationMatrixEditorAction());
 
    addSeparator();
+   addAction(windowActions->getCaretCommandExecutorAction());
+   addAction(windowActions->getCaretCommandScriptBuilderAction());
    addAction(windowActions->getDisplayImageEditorAction());
-   addAction(windowActions->getScriptBuilderAction());   
    addAction(windowActions->getShellCommandWindowAction());
    addAction(windowActions->getTextFileEditorAction());
    addSeparator();

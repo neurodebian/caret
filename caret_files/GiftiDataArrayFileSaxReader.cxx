@@ -79,7 +79,7 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
             //
             // Check version of file being read
             //
-            const int version = attributes.value(GiftiCommon::attVersion).toInt();
+            const float version = attributes.value(GiftiCommon::attVersion).toFloat();
             if (version > GiftiDataArrayFile::getCurrentFileVersion()) {
                std::ostringstream str;
                str << "File version is " << version << " but this Caret"
@@ -87,6 +87,11 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
                    << GiftiDataArrayFile::getCurrentFileVersion() << ".\n"
                    << "You may need a newer version of Caret.";
                errorMessage = str.str().c_str();
+               return false;
+            }
+            else if (version < 1.0) {
+               errorMessage = "File version is " + QString::number(version, 'f', 3) + " but this Caret"
+                    " does not support versions before 1.0";
                return false;
             }
          }
@@ -298,31 +303,6 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
    return true;
 }
 
-/*
-   switch (state) {
-      case STATE_NONE:
-         break;
-      case STATE_GIFTI:
-         break;
-      case STATE_METADATA:
-         break;
-      case STATE_METADATA_MD:
-         break;
-      case STATE_METADATA_MD_NAME:
-         break;
-      case STATE_METADATA_MD_VALUE:
-         break;
-      case STATE_NAME_TABLE:
-         break;
-      case STATE_NAME_TABLE_LABEL:
-         break;
-      case STATE_DATA_ARRAY:
-         break;
-      case STATE_DATA_ARRAY_DATA:
-         break;
-   }
-*/
-                  
 /**
  * end an element.
  */
@@ -432,35 +412,181 @@ GiftiDataArrayFileSaxReader::endElement(const QString& /* namspaceURI */,
 bool 
 GiftiDataArrayFileSaxReader::createDataArray(const QXmlAttributes& attributes)
 {
-   const QString category = attributes.value(GiftiCommon::attCategory);
+   //
+   // Intent
+   //
+   QString intentName = attributes.value(GiftiCommon::attIntent);
+   if (intentName.isEmpty()) {
+      intentName = attributes.value("Intent");
+   }
+   if (intentName.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attIntent
+                     + " not found for DataArray"; 
+      return false;
+   }
+   if (GiftiDataArray::intentNameValid(intentName) == false) {
+      errorMessage = "Intent name invalid: "
+                     + intentName; 
+      return false;
+   }
    
-   dataTypeForReadingArrayData = 
-           GiftiDataArray::getDataTypeFromName(attributes.value(GiftiCommon::attDataType));
-              
-   encodingForReadingArrayData = GiftiDataArray::getEncodingFromName(
-                               attributes.value(GiftiCommon::attEncoding));
-                               
+   //
+   // Data type name
+   //
+   const QString dataTypeName = attributes.value(GiftiCommon::attDataType);
+   if (dataTypeName.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attDataType
+                     + " not found for DataArray"; 
+      return false;
+   }
+   bool dataTypeNameValid = false;
+   dataTypeForReadingArrayData = GiftiDataArray::getDataTypeFromName(dataTypeName,
+                                                                     &dataTypeNameValid);
+   if (dataTypeNameValid == false) {
+      errorMessage = "Attribute "
+                     + GiftiCommon::attDataType
+                     + "is invalid: "
+                     + dataTypeName;
+      return false;
+   }
+      
+   //
+   // Encoding
+   //
+   const QString encodingName = attributes.value(GiftiCommon::attEncoding);
+   if (encodingName.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attEncoding
+                     + " not found for DataArray"; 
+      return false;
+   }
+   bool validEncoding = false;
+   encodingForReadingArrayData = GiftiDataArray::getEncodingFromName(encodingName,
+                                                                     &validEncoding);
+   if (validEncoding == false) {
+      errorMessage = "Attribute "
+                     + GiftiCommon::attEncoding
+                     + "is invalid: "
+                     + encodingName;
+      return false;
+   }
+    
+   //
+   // External File Name
+   //
+   externalFileNameForReadingData = attributes.value(GiftiCommon::attExternalFileName);
+   
+   //
+   // External File Offset
+   //
+   externalFileOffsetForReadingData = 0;
+   const QString offsetString = attributes.value(GiftiCommon::attExternalFileOffset);
+   if (offsetString.isEmpty() == false) {
+      bool validOffsetFlag = false;
+      externalFileOffsetForReadingData = offsetString.toInt(&validOffsetFlag);
+      if (validOffsetFlag == false) {
+         throw FileException("File Offset is not an integer ("
+                             + offsetString
+                             + ")");
+      }
+   }
+   
+   //
+   // Endian
+   //
    endianAttributeNameForReadingArrayData = attributes.value(GiftiCommon::attEndian);
+   if (endianAttributeNameForReadingArrayData.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attEndian
+                     + " not found for DataArray"; 
+      return false;
+   }
+   if ((endianAttributeNameForReadingArrayData != GiftiCommon::endianBig) &&
+       (endianAttributeNameForReadingArrayData != GiftiCommon::endianLittle)) {
+      errorMessage = "Attribute "
+                     + GiftiCommon::attEndian
+                     + "is invalid: "
+                     + endianAttributeNameForReadingArrayData;
+      return false;
+   }
    
-   const int numDimensions = attributes.value(GiftiCommon::attDimensionality).toInt();
+   //
+   // Dimensions
+   // 
+   const QString dimString = attributes.value(GiftiCommon::attDimensionality);
+   if (dimString.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attDimensionality
+                     + " not found for DataArray"; 
+      return false;
+   }
+   const int numDimensions = dimString.toInt();
    dimensionsForReadingArrayData.clear();
    for (int i = 0; i < numDimensions; i++) {
-      const int dim = attributes.value(GiftiCommon::getAttDim(i)).toInt();
+      const QString dimNumString = attributes.value(GiftiCommon::getAttDim(i));
+      if (dimNumString.isEmpty()) {
+         errorMessage = "Required dimension "
+                        + GiftiCommon::GiftiCommon::getAttDim(i)
+                        + " not found for DataArray"; 
+         return false;
+      }
+      
+      const int dim = dimNumString.toInt();
       dimensionsForReadingArrayData.push_back(dim);
    }
    
-   dataLocationForReadingArrayData = GiftiDataArray::getDataLocationFromName(
-                                        attributes.value(GiftiCommon::attDataLocation));
+   //
+   // Data Location
+   //
+/*
+   const QString dataLocationString = attributes.value(GiftiCommon::attDataLocation);
+   if (dataLocationString.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attDataLocation
+                     + " not found for DataArray"; 
+      return false;
+   }
+   bool validDataLocation = false;
+   dataLocationForReadingArrayData = GiftiDataArray::getDataLocationFromName(dataLocationString,
+                                                                             &validDataLocation);
+   if (validDataLocation == false) {
+      errorMessage = "Attribute "
+                     + GiftiCommon::attDataLocation
+                     + "is invalid: "
+                     + dataLocationString;
+      return false;
+   }
    if (dataLocationForReadingArrayData == GiftiDataArray::DATA_LOCATION_EXTERNAL) {
       errorMessage = "External data storage not supported.";
       return false;
    }
-
+*/
+   //
+   // Subscript order
+   //
+   const QString subscriptOrderString = attributes.value(GiftiCommon::attArraySubscriptingOrder);
+   if (subscriptOrderString.isEmpty()) {
+      errorMessage = "Required attribute "
+                     + GiftiCommon::attArraySubscriptingOrder
+                     + " not found for DataArray"; 
+      return false;
+   }
+   bool validArraySubscriptingOrder = false;
    arraySubscriptingOrderForReadingArrayData = GiftiDataArray::getArraySubscriptingOrderFromName(
-                                        attributes.value(GiftiCommon::attArraySubscriptingOrder));   
+                                                     subscriptOrderString,
+                                                     &validArraySubscriptingOrder);   
+   if (validArraySubscriptingOrder == false) {
+      errorMessage = "Attribute "
+                     + GiftiCommon::attArraySubscriptingOrder
+                     + "is invalid: "
+                     + subscriptOrderString;
+      return false;
+   }
          
    dataArray = new GiftiDataArray(giftiFile,
-                                  category);
+                                  intentName);
    return true;
 }
 
@@ -473,17 +599,19 @@ GiftiDataArrayFileSaxReader::processArrayData()
    //
    // Should the data arrays be read ?
    //
-   if (giftiFile->getReadMetaDataOnlyFlag()) {
-      return true;
-   }
+   //if (giftiFile->getReadMetaDataOnlyFlag()) {
+   //   return true;
+   //}
    
    try {
-      dataArray->readAsXML(elementText, 
+      dataArray->readFromText(elementText, 
                            endianAttributeNameForReadingArrayData,
                            arraySubscriptingOrderForReadingArrayData,
                            dataTypeForReadingArrayData,
                            dimensionsForReadingArrayData,
-                           encodingForReadingArrayData);
+                           encodingForReadingArrayData,
+                           externalFileNameForReadingData,
+                           externalFileOffsetForReadingData);
    }
    catch (FileException& e) {
       errorMessage = e.whatQString();

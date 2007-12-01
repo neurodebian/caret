@@ -55,7 +55,7 @@ ByteSwapping::swapBytes(unsigned int* n, int numToSwap)
  * Swap bytes for the specified type.
  */
 void 
-ByteSwapping::swapBytes(long* n, int numToSwap)
+ByteSwapping::swapBytes(long long* n, int numToSwap)
 {
    for (int i = 0; i < numToSwap; i++) {
       char* bytes = (char*)&n[i];
@@ -81,9 +81,9 @@ ByteSwapping::swapBytes(long* n, int numToSwap)
  * Swap bytes for the specified type.
  */
 void 
-ByteSwapping::swapBytes(unsigned long* n, int numToSwap)
+ByteSwapping::swapBytes(unsigned long long* n, int numToSwap)
 {
-   swapBytes((long*)n, numToSwap);
+   swapBytes((long long*)n, numToSwap);
 }
 
 /**
@@ -101,6 +101,6 @@ ByteSwapping::swapBytes(float* n, int numToSwap)
 void 
 ByteSwapping::swapBytes(double* n, int numToSwap)
 {
-   swapBytes((long*)n, numToSwap);
+   swapBytes((long long*)n, numToSwap);
 }
 

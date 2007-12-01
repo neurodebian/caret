@@ -253,8 +253,7 @@ DisplaySettingsRgbPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSel
       }
       
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_RGB_PAINT,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT) == false) {
+      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT) == false) {
          return;
       }
    }

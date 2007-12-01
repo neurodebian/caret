@@ -32,6 +32,8 @@
 
 #include "QtDialog.h"
 
+#include "BrainModelSurfaceROINodeSelection.h"
+
 class BrainModelSurface;
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -90,6 +92,10 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// set open border end node
       void setCreateBorderOpenEndNode(const int nodeNumber);
       
+   public slots:
+      // show the dialog
+      void show();
+      
    private slots:
       /// called when dialog closed
       void close();
@@ -108,6 +114,9 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       
       /// called when select nodes button pressed
       void slotSelectNodesButton();
+      
+      /// call when invert nodes button pressed
+      void slotInvertNodeSelectionPushButton();
       
       /// called when deselect nodes button pressed
       void slotDeselectNodesButton();
@@ -153,9 +162,6 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       
       /// called when an operation mode is selected
       void slotOperationMode(int item);
-      
-      /// called when the selection logic is changed
-      void slotSelectionLogic(int item);
       
       /// called when one of the query mode radio buttons is selected
       void slotSelectionMode(int);
@@ -229,6 +235,18 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// called to select start node for border from ROI
       void slotCreateBorderFromROIEndNodePushButton();
       
+      /// called when load ROI button is pressed
+      void slotLoadROIPushButton();
+      
+      /// called when save ROI button is pressed
+      void slotSaveROIPushButton();
+      
+      /// called when dilate button is pressed
+      void slotDilatePushButton();
+      
+      /// called when erode button is pressed
+      void slotErodePushButton();
+      
    private:
    
       /// operation mode
@@ -250,32 +268,24 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
          OPERATION_MODE_SHAPE_CLUSTER_ANALYSIS
       };
       
-      /// logical selection (and, or, etc)
-      enum SELECTION_LOGIC {
-         SELECTION_LOGIC_NORMAL,
-         SELECTION_LOGIC_AND,
-         SELECTION_LOGIC_OR,
-         SELECTION_LOGIC_NOT,
-         SELECTION_LOGIC_AND_NOT
-      };
-      
       /// selction mode (type of attribute used to select)
       enum SELECTION_MODE {
          SELECTION_MODE_ENTIRE_SURFACE,
          SELECTION_MODE_NODES_WITH_PAINT,
          SELECTION_MODE_NODES_WITHIN_BORDER,
+         SELECTION_MODE_NODES_WITHIN_LATLON,
          SELECTION_MODE_NODES_WITH_METRIC,
          SELECTION_MODE_NODES_WITH_SHAPE,
          SELECTION_MODE_NODES_WITH_CROSSOVERS,
          SELECTION_MODE_NONE
       };
       
-      /// the selection logic
-      SELECTION_LOGIC selectionLogic;
-      
-      /// the query mode
+      /// get the query mode
       SELECTION_MODE selectionMode;
       
+      /// get the selection logic
+      BrainModelSurfaceROINodeSelection::SELECTION_LOGIC
+                                                     getSelectionLogic() const;
       /// create the node selection section
       QWidget* createNodeSelectionSection();
 
@@ -284,6 +294,9 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       
       /// create the node selection with border section
       void createNodeSelectionBorder();
+      
+      /// create the node selection with latlon
+      void createNodeSelectionLatLon();
       
       /// create the node selection with metric
       void createNodeSelectionMetric();
@@ -355,11 +368,8 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
                         const bool tabSeparateFlag,
                         const bool doConclusion);
       
-      /// see if there are any nodes in the ROI
-      bool haveNodesInROI() const;
-      
       /// reset the marked nodes and update/clear the report header
-      void resetMarkedNodesAndReportHeader();
+      void resetMarkedNodesAndReportHeader(const bool deselectNodesInROI);
       
       /// update a node attribute file's categories
       void updateNodeAttributeGroupBox(
@@ -379,14 +389,14 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       // /// perform ROI
       //void paintROI(const BrainModelSurface* bms, const double roiArea);
       
-      /// remove nodes without neighbors from the ROI
-      void removeNodesWithoutNeighborsFromROI();
-      
       /// select all nodes
       void selectNodesAll();
       
       /// select nodes by border
       void selectNodesBorder();
+      
+      /// select nodes by lat/lon
+      void selectNodesLatLon();
       
       /// select nodes by metric
       void selectNodesMetric();
@@ -420,6 +430,9 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       
       /// entire surface empty widget
       QWidget* queryEntireSurfaceWidget;
+      
+      /// widget containing nodes within lat/lon items
+      QWidget* nodesWithinLatLonQVBox;
       
       /// widget containing nodes with metric items
       QWidget* nodesWithMetricQVBox;
@@ -484,8 +497,17 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       /// name of the selected border
       QString selectedBorderName;
       
-      /// if true, indicates node is in ROI
-      std::vector<bool> nodeInROI;
+      /// lat min double spin box
+      QDoubleSpinBox* latLowerRangeDoubleSpinBox;
+      
+      /// lat max double spin box
+      QDoubleSpinBox* latUpperRangeDoubleSpinBox;
+      
+      /// lon min double spin box
+      QDoubleSpinBox* lonLowerRangeDoubleSpinBox;
+      
+      /// lon min double spin box
+      QDoubleSpinBox* lonUpperRangeDoubleSpinBox;
       
       /// if true, indicates tile is in ROI
       std::vector<bool> tileInROI;
@@ -693,6 +715,9 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
       
       /// create border from roi sampling density
       QDoubleSpinBox* createBorderFromROISamplingDensityDoubleSpinBox;
+      
+      /// value of show selected nodes when dialog was closed
+      bool showSelectedNodesCheckBoxValueWhenDialogClosed;
 };
 
 #endif // __VE_GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__

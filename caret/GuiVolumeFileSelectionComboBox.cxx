@@ -29,16 +29,20 @@
 #include "GuiVolumeFileSelectionComboBox.h"
 #include "global_variables.h"
 
+static const qlonglong ALL_VOLUMES_VALUE = 1;
+
 /**
  * Constructor.
  */
 GuiVolumeFileSelectionComboBox::GuiVolumeFileSelectionComboBox(
                                              const VolumeFile::VOLUME_TYPE volumeTypeIn,
+                                             const bool addAllSelectionFlag,
                                              QWidget* parent,
                                              const char* /* name */)
    : QComboBox(parent)
 {
    volumeType = volumeTypeIn;
+   allSelectionEnabled = addAllSelectionFlag;
    updateComboBox();
 }
                                  
@@ -50,15 +54,36 @@ GuiVolumeFileSelectionComboBox::~GuiVolumeFileSelectionComboBox()
 }
 
 /**
+ * get all volumes selected.
+ */
+bool 
+GuiVolumeFileSelectionComboBox::getAllVolumesSelected() const
+{
+   const int indx = currentIndex();
+   if ((indx >= 0) &&
+       (indx < count())) {
+      if (itemData(indx).toLongLong() == ALL_VOLUMES_VALUE) {
+         return true;
+      }
+   }
+   
+   return false;
+}
+      
+/**
  * Get the selected volume file.
  */
 VolumeFile* 
 GuiVolumeFileSelectionComboBox::getSelectedVolumeFile()
 {
-   const int index = getSelectedVolumeFileIndex();
-   if (index >= 0) {
-      return volumeFilePointers[index];
+   const int indx = currentIndex();
+   if ((indx >= 0) &&
+       (indx < count())) {
+      if (itemData(indx).toLongLong() != ALL_VOLUMES_VALUE) {
+         return (VolumeFile*)(itemData(indx).toLongLong());
+      }
    }
+
    return NULL;
 }
 
@@ -68,10 +93,14 @@ GuiVolumeFileSelectionComboBox::getSelectedVolumeFile()
 int 
 GuiVolumeFileSelectionComboBox::getSelectedVolumeFileIndex() const
 {
-   const int index = currentIndex();
-   if ((index >= 0) && (index < static_cast<int>(volumeFilePointers.size()))) {
-      return index;
+   const int indx = currentIndex();
+   if ((indx >= 0) &&
+       (indx < count())) {
+      if (itemData(indx).toLongLong() != ALL_VOLUMES_VALUE) {
+         return indx;
+      }
    }
+
    return -1;
 }
 
@@ -79,10 +108,10 @@ GuiVolumeFileSelectionComboBox::getSelectedVolumeFileIndex() const
  * Set the selected volume file index.
  */
 void 
-GuiVolumeFileSelectionComboBox::setSelectedVolumeFileWithIndex(const int index)
+GuiVolumeFileSelectionComboBox::setSelectedVolumeFileWithIndex(const int indx)
 {
-   if ((index >= 0) && (index < static_cast<int>(volumeFilePointers.size()))) {
-      setCurrentIndex(index);
+   if ((indx >= 0) && (indx < count())) {
+      setCurrentIndex(indx);
    }
 }
 
@@ -92,8 +121,8 @@ GuiVolumeFileSelectionComboBox::setSelectedVolumeFileWithIndex(const int index)
 void 
 GuiVolumeFileSelectionComboBox::setSelectedVolumeFile(const VolumeFile* vf)
 {
-   for (int i = 0; i < static_cast<int>(volumeFilePointers.size()); i++) {
-      if (volumeFilePointers[i] == vf) {
+   for (int i = 0; i < count(); i++) {
+      if (itemData(i).toLongLong() == qlonglong(vf)) {
          setCurrentIndex(i);
          break;
       }
@@ -106,27 +135,20 @@ GuiVolumeFileSelectionComboBox::setSelectedVolumeFile(const VolumeFile* vf)
 void 
 GuiVolumeFileSelectionComboBox::updateComboBox()
 {
+   
    //
    // Find currently selected volume file
    //
    VolumeFile* defaultVolumeFile = NULL;
    const int currentIndexVal = currentIndex();
    if ((currentIndexVal >= 0) && (currentIndexVal < count())) {
-      if ((currentIndexVal >= 0) && (currentIndexVal < static_cast<int>(volumeFilePointers.size()))) {
-         defaultVolumeFile = volumeFilePointers[currentIndexVal];
-      }
+      defaultVolumeFile = (VolumeFile*)(itemData(currentIndexVal).toLongLong());
    }
    
    //
    // Remove everything from the combo box
    //
    clear();
-   volumeFilePointers.clear();
-   
-   //
-   // Default selected item
-   //
-   int defaultIndex = -1;
    
    //
    // Load the combo box
@@ -135,51 +157,36 @@ GuiVolumeFileSelectionComboBox::updateComboBox()
       case VolumeFile::VOLUME_TYPE_ANATOMY:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumeAnatomyFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break;   
       case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeFunctionalFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumeFunctionalFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break;   
       case VolumeFile::VOLUME_TYPE_PAINT:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumePaintFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumePaintFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break;   
       case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeProbAtlasFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumeProbAtlasFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break;   
       case VolumeFile::VOLUME_TYPE_RGB:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeRgbFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumeRgbFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break; 
       case VolumeFile::VOLUME_TYPE_ROI:
@@ -187,21 +194,15 @@ GuiVolumeFileSelectionComboBox::updateComboBox()
       case VolumeFile::VOLUME_TYPE_SEGMENTATION:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumeSegmentationFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break;   
       case VolumeFile::VOLUME_TYPE_VECTOR:
          for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeVectorFiles(); i++) {
             VolumeFile* vf = theMainWindow->getBrainSet()->getVolumeVectorFile(i);
-            volumeFilePointers.push_back(vf);
-            if (vf == defaultVolumeFile) {
-               defaultIndex = i;
-            }
-            addItem(FileUtilities::basename(vf->getFileName()));
+            addItem(FileUtilities::basename(vf->getFileName()),
+                    qlonglong(vf));
          }
          break;   
       case VolumeFile::VOLUME_TYPE_UNKNOWN:
@@ -209,11 +210,28 @@ GuiVolumeFileSelectionComboBox::updateComboBox()
    }
    
    //
+   // Add all
+   //
+   if (allSelectionEnabled) {
+      if (count() > 0) {
+         addItem("ALL VOLUMES", qlonglong(ALL_VOLUMES_VALUE));
+      }
+   }
+   
+   //
    // Initialize default item
    //
-   if (defaultIndex >= 0) {
-      setCurrentIndex(defaultIndex);
+   int defaultIndex = 0;
+   for (int i = 0; i < count(); i++) {
+      if (itemData(i).toLongLong() == qlonglong(defaultVolumeFile)) {
+         defaultIndex = i;
+         break;
+      }
    }
+   
+   if ((defaultIndex >= 0) && (defaultIndex < count())) {
+      setCurrentIndex(defaultIndex);
+   }   
 }
 
       

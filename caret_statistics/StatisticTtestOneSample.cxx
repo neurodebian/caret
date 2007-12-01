@@ -34,6 +34,7 @@
  * constructor.
  */
 StatisticTtestOneSample::StatisticTtestOneSample(const float testMeanValueIn)
+   : StatisticAlgorithm("T-Test One-Sample")
 {
    varianceOverride = 0.0;
    varianceOverrideFlag = false;

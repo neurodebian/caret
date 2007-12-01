@@ -58,6 +58,7 @@
 #include "SectionFile.h"
 #include "StereotaxicSpace.h"
 #include "StringUtilities.h"
+#include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "TopographyFile.h"
 #include "TransformationMatrixFile.h"
@@ -534,7 +535,19 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                   idString += tagBoldEnd;
                }
                idString += tagNewLine;
-            }      
+            }
+
+            if ((selectedColumn >= 0) &&
+                (selectedColumn < aef->getNumberOfColumns())) {
+               //
+               // Study Meta Data from Study Metadata File
+               //
+               const StudyMetaDataLinkSet smdls = aef->getColumnStudyMetaDataLinkSet(selectedColumn);
+               StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+               idString += getIdentificationTextForStudies(smdf,
+                                                           smdls,
+                                                           true);
+            }
          }
       }
 
@@ -544,7 +557,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
       if ((bsnc->getPrimaryOverlay(brainModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
           (bsnc->getSecondaryOverlay(brainModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
-          (bsnc->getUnderlay(brainModelIndex) == BrainModelSurfaceNodeColoring::UNDERLAY_COCOMAC)) {
+          (bsnc->getUnderlay(brainModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC)) {
          DisplaySettingsCoCoMac* dsc = brainSet->getDisplaySettingsCoCoMac();
          dsc->setSelectedNode(nodeNumber);
          idString += htmlTranslate(dsc->getIDInfo());
@@ -628,12 +641,17 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
             idString += tagNewLine;
             
             if ((selectedColumn >= 0) &&
-                (selectedColumn < mf->getNumberOfColumns())) {
+                (selectedColumn < mf->getNumberOfColumns()) &&
+                (mf->getValue(nodeNumber, selectedColumn) != 0.0)) {
                //
                // Study Meta Data from Study Metadata File
                //
-               const StudyMetaDataLink smdl = mf->getColumnStudyMetaDataLink(selectedColumn);
+               const StudyMetaDataLinkSet smdls = mf->getColumnStudyMetaDataLinkSet(selectedColumn);
                StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+               idString += getIdentificationTextForStudies(smdf,
+                                                           smdls,
+                                                           true);
+/*
                const int smdIndex = smdf->getStudyIndexFromLink(smdl);
                if ((smdIndex >= 0) &&
                    (smdIndex < smdf->getNumberOfStudyMetaData())) {
@@ -643,6 +661,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                      idString += getIdentificationTextForMetaAnalysisStudies(smd);
                   }
                }
+*/
             }
          }
       }
@@ -675,10 +694,29 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
             if ((selectedPaintColumn >= 0) &&
                 (selectedPaintColumn < pf->getNumberOfColumns())) {
                //
+               // Is this an "unassigned" paint
+               //
+               bool showMetaDataFlag = true;
+               const int paintIndex = pf->getPaint(nodeNumber, selectedPaintColumn);
+               if ((paintIndex >= 0) &&
+                   (paintIndex < pf->getNumberOfPaintNames())) {
+                  const QString paintName = pf->getPaintNameFromIndex(paintIndex);
+                  if (paintName.startsWith("?")) {
+                     showMetaDataFlag = false;
+                  }
+               }
+               
+               //
                // Study Meta Data from Study Metadata File
                //
-               const StudyMetaDataLink smdl = pf->getColumnStudyMetaDataLink(selectedPaintColumn);
-               StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+               if (showMetaDataFlag) {
+                  const StudyMetaDataLinkSet smdls = pf->getColumnStudyMetaDataLinkSet(selectedPaintColumn);
+                  StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+                  idString += getIdentificationTextForStudies(smdf,
+                                                              smdls,
+                                                              true);
+               }
+/*
                const int smdIndex = smdf->getStudyIndexFromLink(smdl);
                if ((smdIndex >= 0) &&
                    (smdIndex < smdf->getNumberOfStudyMetaData())) {
@@ -688,6 +726,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                      idString += getIdentificationTextForMetaAnalysisStudies(smd);
                   }
                }
+*/
             }
          }
       }
@@ -708,6 +747,15 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                             + " ");
             }
             idString += tagNewLine;
+            
+            //
+            // Study Meta Data from Study Metadata File
+            //
+            const StudyMetaDataLinkSet smdls = pf->getStudyMetaDataLinkSet();
+            StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+            idString += getIdentificationTextForStudies(smdf,
+                                                        smdls,
+                                                        true);
          }
       }
 
@@ -787,8 +835,12 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                //
                // Study Meta Data from Study Metadata File
                //
-               const StudyMetaDataLink smdl = ssf->getColumnStudyMetaDataLink(selectedColumn);
+               const StudyMetaDataLinkSet smdls = ssf->getColumnStudyMetaDataLinkSet(selectedColumn);
                StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+               idString += getIdentificationTextForStudies(smdf,
+                                                           smdls,
+                                                           true);
+/*
                const int smdIndex = smdf->getStudyIndexFromLink(smdl);
                if ((smdIndex >= 0) &&
                    (smdIndex < smdf->getNumberOfStudyMetaData())) {
@@ -798,6 +850,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                      idString += getIdentificationTextForMetaAnalysisStudies(smd);
                   }
                }
+*/
             }
          }
       }
@@ -1117,7 +1170,7 @@ BrainModelIdentification::getIdentificationTextForFoci()
       }
       
       if (getDisplayFociGeographyInformation()) {
-         if (focus->getArea().isEmpty() == false) {
+         if (focus->getGeography().isEmpty() == false) {
             idString += (tagIndentation
                          + tagBoldStart
                          + "Geography: "
@@ -1239,8 +1292,12 @@ BrainModelIdentification::getIdentificationTextForFoci()
       //
       // Study Meta Data from Study Metadata File
       //
-      const StudyMetaDataLink smdl = focus->getStudyMetaDataLink();
+      const StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
       StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+      idString += getIdentificationTextForStudies(smdf,
+                                                  smdls,
+                                                  true);
+/*
       const int smdIndex = smdf->getStudyIndexFromLink(smdl);
       if ((smdIndex >= 0) &&
           (smdIndex < smdf->getNumberOfStudyMetaData())) {
@@ -1250,6 +1307,7 @@ BrainModelIdentification::getIdentificationTextForFoci()
             idString += getIdentificationTextForMetaAnalysisStudies(smd);
          }
       }
+*/
       
       //
       // Old Study Info
@@ -1258,43 +1316,57 @@ BrainModelIdentification::getIdentificationTextForFoci()
          const CellStudyInfo* csi = ff->getStudyInfo(studyNumber);
          if (csi->getTitle().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study Title: "
+                         + tagBoldEnd
                          + csi->getTitle()
                          + tagNewLine);
          }
          if (csi->getAuthors().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study Authors: "
+                         + tagBoldEnd
                          + csi->getAuthors()
                          + tagNewLine);
          }
          if (csi->getCitation().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study Citation: "
+                         + tagBoldEnd
                          + csi->getCitation()
                          + tagNewLine);
          }
          if (csi->getURL().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study URL: "
+                         + tagBoldEnd
                          + StringUtilities::convertURLsToHyperlinks(csi->getURL())
                          + tagNewLine);
          }
          if (csi->getKeywords().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study Keywords:  "
+                         + tagBoldEnd
                          + csi->getKeywords()
                          + tagNewLine);
          }
          if (csi->getStereotaxicSpace().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study Stereotaxic Space: "
+                         + tagBoldEnd
                          + csi->getStereotaxicSpace()
                          + tagNewLine);
          }
          if (csi->getComment().isEmpty() == false) {
             idString += (tagIndentation
+                         + tagBoldStart
                          + "Study Comment: "
+                         + tagBoldEnd
                          + StringUtilities::convertURLsToHyperlinks(htmlTranslate(csi->getComment()))
                          + tagNewLine);
          }
@@ -1632,6 +1704,22 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
          }  // for
          
          idString += tagNewLine;
+         
+         for (unsigned int n = 0; n < files.size(); n++) {
+            const StudyMetaDataLinkSet smdls = files[n]->getStudyMetaDataLinkSet();
+            const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
+            idString += getIdentificationTextForStudies(smdf,
+                                                        smdls,
+                                                        true);
+                                                        
+            //
+            // Only show 1st prob atlas
+            // 
+            if (volumeType == VolumeFile::VOLUME_TYPE_PROB_ATLAS) {
+               break;
+            }
+         }
+         
       } // if (files.empty()
    } // for (m...
 
@@ -1640,14 +1728,19 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
    //
    // Add linked study meta data
    //
-   const StudyMetaDataLink smdl = selectionVolume->getStudyMetaDataLink();
-   const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
+   //const StudyMetaDataLinkSet smdls = selectionVolume->getStudyMetaDataLinkSet();
+   //const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
+   //idString += getIdentificationTextForStudies(smdf,
+   //                                            smdls,
+   //                                            true);
+/*
    const int studyNumber = smdf->getStudyIndexFromLink(smdl);
    if ((studyNumber >= 0) && (studyNumber < smdf->getNumberOfStudyMetaData())) {
       const StudyMetaData* smd = smdf->getStudyMetaData(studyNumber);
       idString += getIdentificationTextForStudy(smd, studyNumber, &smdl);
       idString += getIdentificationTextForMetaAnalysisStudies(smd);
    }
+*/
    return idString;
 }
       
@@ -2186,6 +2279,112 @@ BrainModelIdentification::getIdentificationTextForContourCell()
 }
       
 /**
+ * get the identification text for vocabulary.
+ */
+QString 
+BrainModelIdentification::getIdentificationTextForVocabulary(const bool enableHtml,
+                                                             const QString& vocabularyName)
+{
+   setupHtmlOrTextTags(enableHtml);
+
+   const VocabularyFile* vf = brainSetParent->getVocabularyFile();
+   const bool caseSensitiveFlag = false;
+   const VocabularyFile::VocabularyEntry* ve = vf->getBestMatchingVocabularyEntry(vocabularyName,
+                                                                                  caseSensitiveFlag);
+   if (ve == NULL) {
+      return "";
+   }
+   
+   QString idString;
+   
+   idString += tagBoldStart;
+   idString += "Abbreviation";
+   idString += tagBoldEnd;
+   idString += ": ";
+   idString += ve->getAbbreviation();
+   idString += tagNewLine;
+   
+   if (ve->getFullName().isEmpty() == false) {
+      idString += tagBoldStart;
+      idString += "Full Name";
+      idString += tagBoldEnd;
+      idString += ": ";
+      idString += ve->getFullName();
+      idString += tagNewLine;
+   } 
+   
+   if (ve->getClassName().isEmpty() == false) {
+      idString += tagBoldStart;
+      idString += "Class Name";
+      idString += tagBoldEnd;
+      idString += ": ";
+      idString += ve->getClassName();
+      idString += tagNewLine;
+   } 
+   
+   if (ve->getVocabularyID().isEmpty() == false) {
+      idString += tagBoldStart;
+      idString += "Vocabulary ID";
+      idString += tagBoldEnd;
+      idString += ": ";
+      idString += ve->getVocabularyID();
+      idString += tagNewLine;
+   } 
+   
+   if (ve->getDescription().isEmpty() == false) {
+      idString += tagBoldStart;
+      idString += "Description";
+      idString += tagBoldEnd;
+      idString += ": ";
+      idString += ve->getDescription();
+      idString += tagNewLine;
+   } 
+   
+   const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
+   idString += getIdentificationTextForStudies(enableHtml,
+                                               smdf,
+                                               ve->getStudyMetaDataLinkSet());
+/*
+   const int studyIndex = smdf->getStudyIndexFromLink(ve->getStudyMetaDataLink());
+   if (studyIndex >= 0) {
+      const StudyMetaDataLink smdl = ve->getStudyMetaDataLink();
+      idString += getIdentificationTextForStudy(enableHtml,
+                                                smdf->getStudyMetaData(studyIndex),
+                                                studyIndex,
+                                                &smdl);
+   }
+*/
+
+   if (vf != NULL) {
+      const int studyNumber = ve->getStudyNumber();
+      if ((studyNumber >= 0) && (studyNumber < vf->getNumberOfStudyInfo())) {
+         const CellStudyInfo* csi = vf->getStudyInfo(studyNumber);
+         const QString s2 = csi->getFullDescriptionForDisplayToUser(true);
+         if (s2.isEmpty() == false) {
+            idString += s2;
+         }
+      }
+   }
+   
+   return idString;
+}
+                                                 
+/**
+ * get the identification text for studies.
+ */
+QString 
+BrainModelIdentification::getIdentificationTextForStudies(const bool enableHtml,
+                                                          const StudyMetaDataFile* smdf,
+                                                          const StudyMetaDataLinkSet& smdls)
+{
+   setupHtmlOrTextTags(enableHtml);
+   
+   return getIdentificationTextForStudies(smdf,
+                                          smdls,
+                                          false);
+}
+      
+/**
  * get the identification text for a study.
  */
 QString 
@@ -2322,6 +2521,35 @@ BrainModelIdentification::getIdentificationTextForMetaAnalysisStudies(const Stud
 }   
 
 /**
+ * get the identification text for studies.
+ */
+QString 
+BrainModelIdentification::getIdentificationTextForStudies(const StudyMetaDataFile* smdf,
+                                                          const StudyMetaDataLinkSet& smdls,
+                                                          const bool showMetaAnalysisFlag)
+{
+   QString idString;
+   
+   const int num = smdls.getNumberOfStudyMetaDataLinks();
+   for (int i = 0; i < num; i++) {
+      const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(i);
+      const int smdIndex = smdf->getStudyIndexFromLink(smdl);
+      if ((smdIndex >= 0) &&
+          (smdIndex < smdf->getNumberOfStudyMetaData())) {
+         const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
+         if (smd != NULL) {
+            idString += getIdentificationTextForStudy(smd, smdIndex, &smdl);
+            if (showMetaAnalysisFlag) {
+               idString += getIdentificationTextForMetaAnalysisStudies(smd);
+            }
+         }
+      }
+   }
+   
+   return idString;
+}
+                                              
+/**
  * get the identification text for a study.
  */
 QString 
@@ -2409,6 +2637,30 @@ BrainModelIdentification::getIdentificationTextForStudy(const StudyMetaData* smd
          idString += tagNewLine;
       }
    } 
+   
+   if (smd->getStudyDataFormat().isEmpty() == false) {
+      if (getDisplayStudyDataFormatInformation()) {
+         idString += tagIndentation;
+         idString += tagBoldStart;
+         idString += "Study Data Format";
+         idString += tagBoldEnd;
+         idString += ": ";
+         idString += htmlTranslate(smd->getStudyDataFormat());
+         idString += tagNewLine;
+      }
+   }
+   
+   if (smd->getStudyDataType().isEmpty() == false) {
+      if (getDisplayStudyDataTypeInformation()) {
+         idString += tagIndentation;
+         idString += tagBoldStart;
+         idString += "Study Data Type";
+         idString += tagBoldEnd;
+         idString += ": ";
+         idString += htmlTranslate(smd->getStudyDataType());
+         idString += tagNewLine;
+      }
+   }
    
    if (smd->getDocumentObjectIdentifier().isEmpty() == false) {
       if (getDisplayStudyDOIInformation()) {
@@ -3049,6 +3301,12 @@ BrainModelIdentification::showScene(const SceneFile::Scene& scene,
             else if (infoName == "displayStudyCommentInformation") {
                setDisplayStudyCommentInformation(si->getValueAsBool());
             }
+            else if (infoName == "displayStudyDataFormatInformation") {
+               setDisplayStudyDataFormatInformation(si->getValueAsBool());
+            }
+            else if (infoName == "displayStudyDataTypeInformation") {
+               setDisplayStudyDataTypeInformation(si->getValueAsBool());
+            }
             else if (infoName == "displayStudyDOIInformation") {
                setDisplayStudyDOIInformation(si->getValueAsBool());
             }
@@ -3300,6 +3558,8 @@ BrainModelIdentification::saveScene(SceneFile::Scene& scene)
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyAuthorsInformation", getDisplayStudyAuthorsInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyCitationInformation", getDisplayStudyCitationInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyCommentInformation", getDisplayStudyCommentInformation()));
+   sc.addSceneInfo(SceneFile::SceneInfo("displayStudyDataFormatInformation", getDisplayStudyDataFormatInformation()));
+   sc.addSceneInfo(SceneFile::SceneInfo("displayStudyDataTypeInformation", getDisplayStudyDataTypeInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyDOIInformation", getDisplayStudyDOIInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyKeywordsInformation", getDisplayStudyKeywordsInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyMedicalSubjectHeadingsInformation", getDisplayStudyMedicalSubjectHeadingsInformation()));
@@ -3428,6 +3688,8 @@ BrainModelIdentification::IdFilter::allOff()
    displayStudyAuthorsInformation = false;
    displayStudyCitationInformation = false;
    displayStudyCommentInformation = false;
+   displayStudyDataFormatInformation = false;
+   displayStudyDataTypeInformation = false;
    displayStudyDOIInformation = false;
    displayStudyKeywordsInformation = false;
    displayStudyMedicalSubjectHeadingsInformation = false;
@@ -3511,6 +3773,8 @@ BrainModelIdentification::IdFilter::allOn()
    displayStudyAuthorsInformation = true;
    displayStudyCitationInformation = true;
    displayStudyCommentInformation = true;
+   displayStudyDataFormatInformation = true;
+   displayStudyDataTypeInformation = true;
    displayStudyDOIInformation = true;
    displayStudyKeywordsInformation = true;
    displayStudyMedicalSubjectHeadingsInformation = true;
@@ -3672,6 +3936,8 @@ BrainModelIdentification::IdFilter::anyStudyDataOn() const
       displayStudyAuthorsInformation ||
       displayStudyCitationInformation ||
       displayStudyCommentInformation ||
+      displayStudyDataFormatInformation ||
+      displayStudyDataTypeInformation ||
       displayStudyDOIInformation ||
       displayStudyKeywordsInformation ||
       displayStudyMedicalSubjectHeadingsInformation ||

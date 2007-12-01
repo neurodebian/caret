@@ -174,7 +174,7 @@ VocabularyFile::readFileData(QFile& file,
                      ve.readXML(node);
                      addVocabularyEntry(ve);
                   }
-                  else if (elem.tagName() == "CellStudyInfo") {
+                  else if (elem.tagName() == CellStudyInfo::tagCellStudyInfo) {
                      CellStudyInfo csi;
                      csi.readXML(node);
                      addStudyInfo(csi);
@@ -641,7 +641,7 @@ VocabularyFile::VocabularyEntry::copyHelper(const VocabularyEntry& ve)
    vocabularyID = ve.vocabularyID;
    description  = ve.description;
    studyNumber  = ve.studyNumber;
-   studyMetaDataLink = ve.studyMetaDataLink;
+   studyMetaDataLinkSet = ve.studyMetaDataLinkSet;
 }
             
 /**
@@ -652,7 +652,7 @@ VocabularyFile::VocabularyEntry::clear()
 {
    vocabularyFile = NULL;
    studyNumber = -1;
-   studyMetaDataLink.clear();
+   studyMetaDataLinkSet.clear();
 }
             
 /**
@@ -719,9 +719,9 @@ VocabularyFile::VocabularyEntry::setStudyNumber(const int sn)
  * set the study metadata link.
  */
 void 
-VocabularyFile::VocabularyEntry::setStudyMetaDataLink(const StudyMetaDataLink smdl)
+VocabularyFile::VocabularyEntry::setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls)
 {
-   studyMetaDataLink = smdl;
+   studyMetaDataLinkSet = smdls;
    setModified();
 }
             
@@ -778,8 +778,13 @@ VocabularyFile::VocabularyEntry::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == "studyNumber") {
             studyNumber = AbstractFile::getXmlElementFirstChildAsInt(elem);
          }
-         else if (elem.tagName() == "studyMetaDataLink") {
-            studyMetaDataLink.readXML(node);
+         else if (elem.tagName() == "StudyMetaDataLink") {
+            StudyMetaDataLink smdl;
+            smdl.readXML(node);
+            studyMetaDataLinkSet.addStudyMetaDataLink(smdl);
+         }
+         else if (elem.tagName() == "StudyMetaDataLinkSet") {
+            studyMetaDataLinkSet.readXML(node);
          }
          else {
             std::cout << "WARNING: unrecognized VocabularyEntry element: "
@@ -812,7 +817,7 @@ VocabularyFile::VocabularyEntry::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "vocabularyID", vocabularyID);
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "description", description);
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "studyNumber", QString::number(studyNumber));
-   studyMetaDataLink.writeXML(xmlDoc, vocabularyDataElement);
+   studyMetaDataLinkSet.writeXML(xmlDoc, vocabularyDataElement);
    //
    // Add class instance's data to the parent
    //
@@ -839,6 +844,7 @@ VocabularyFile::VocabularyEntry::writeDataIntoStringTable(const std::vector<Voca
    const int classNameCol = numCols++;
    const int vocabularyIDCol = numCols++;
    const int descriptionCol = numCols++;
+   const int studyPubMedIDCol = numCols++;
    const int studyNumberCol = numCols++;
    
    //
@@ -851,7 +857,7 @@ VocabularyFile::VocabularyEntry::writeDataIntoStringTable(const std::vector<Voca
    table.setColumnTitle(vocabularyIDCol, "Vocabulary ID");
    table.setColumnTitle(descriptionCol, "Description");
    table.setColumnTitle(studyNumberCol, "Study Number");
-   
+   table.setColumnTitle(studyPubMedIDCol, "StudyMetaDataLink");
    for (int i = 0; i < num; i++) {
       const VocabularyEntry& ve = data[i];
       table.setElement(i, abbreviationCol, ve.getAbbreviation());
@@ -860,6 +866,17 @@ VocabularyFile::VocabularyEntry::writeDataIntoStringTable(const std::vector<Voca
       table.setElement(i, vocabularyIDCol, ve.getVocabularyID());
       table.setElement(i, descriptionCol, ve.getDescription());
       table.setElement(i, studyNumberCol, ve.getStudyNumber());
+      const int numLinks = ve.getStudyMetaDataLinkSet().getNumberOfStudyMetaDataLinks();
+      if (numLinks > 1) {
+         throw FileException("Vocabulary Entry \""
+                             + ve.getFullName() 
+                             + "\" has more than one Study Metadata Link.  "
+                               "Cannot write to Table");
+      }
+      else if (numLinks == 1) {
+         table.setElement(i, studyPubMedIDCol, 
+                          ve.getStudyMetaDataLinkSet().getStudyMetaDataLink(0).getLinkAsCodedText());
+      }
    }
 }
 
@@ -882,6 +899,7 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
    int vocabularyIDCol = -1;
    int descriptionCol = -1;
    int studyNumberCol = -1;
+   int studyPubMedIDCol = -1;
 
    const int numCols = table.getNumberOfColumns();
    for (int i = 0; i < numCols; i++) {
@@ -904,6 +922,10 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
       else if (name == "study number") {
          studyNumberCol = i;
       }
+      else if ((name == "study pubmed id") ||
+               (name == "studymetadatalink")) {
+         studyPubMedIDCol = i;
+      }
    }
    
    const int numItems = table.getNumberOfRows();
@@ -924,6 +946,15 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
       }
       if (descriptionCol >= 0) {
         ve.setDescription(table.getElement(i, descriptionCol));
+      }
+      if (studyPubMedIDCol >= 0) {
+         StudyMetaDataLink smdl;
+         smdl.setLinkFromCodedText(table.getElement(i, studyPubMedIDCol));
+         if (smdl.getPubMedID().isEmpty() == false) {
+            StudyMetaDataLinkSet smdls;
+            smdls.addStudyMetaDataLink(smdl);
+            ve.setStudyMetaDataLinkSet(smdls);
+         }
       }
       if (studyNumberCol >= 0) {
         ve.setStudyNumber(table.getElementAsInt(i, studyNumberCol));

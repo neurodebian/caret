@@ -79,7 +79,6 @@ DisplaySettingsSurface::~DisplaySettingsSurface()
 void
 DisplaySettingsSurface::reset()
 {
-   displayRoiNodeHighlights = false;
 }   
 
 /**

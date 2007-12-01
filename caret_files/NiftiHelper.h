@@ -83,7 +83,9 @@ class NiftiHelper {
       static VolumeFile::ORIENTATION niftiOrientationToCaretOrientation(const int niftiOrientation);  
       
       // get the NIFTI intention (such as statistical parameters) information
-      static QString getNiftiIntentionInformation(const nifti_1_header& hdr);
+      static void getNiftiIntentionInformation(const nifti_1_header& hdr,
+                                               QString& niftiIntentCodeAndParam,
+                                               QString& niftiIntentName);
       
       // analyze HDR file is actually a NIFTI HDR file
       static bool hdrIsNiftiFile(const QString& hdrFileName);

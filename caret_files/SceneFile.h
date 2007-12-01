@@ -255,6 +255,12 @@ class SceneFile : public AbstractFile {
       /// get a scene 
       const Scene* getScene(const int indx) const;
       
+      /// get a scene from the scene name (NULL if not found)
+      Scene* getSceneFromName(const QString& sceneName);
+      
+      /// get a scene from the scene name (NULL if not found)
+      const Scene* getSceneFromName(const QString& sceneName) const;
+      
       /// append a scene file to this one
       void append(SceneFile& sf) throw (FileException);
       

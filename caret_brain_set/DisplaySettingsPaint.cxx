@@ -216,8 +216,7 @@ DisplaySettingsPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelect
       }
       
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_PAINT,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_PAINT) == false) {
+      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_PAINT) == false) {
          return;
       }
    }

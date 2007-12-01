@@ -559,56 +559,56 @@ BrainModelVolumeHandleFinder::findHandles(const VolumeFile::VOLUME_AXIS searchAx
                case VolumeFile::VOLUME_AXIS_UNKNOWN:
                   break;
             }
-	    int ijk[3] = { x, y, z };
+            int ijk[3] = { x, y, z };
             
             //
             // Get the value at the voxel indices
             //
-	    int voxelID = segmentationVolume->getVoxelNumber((int*)ijk);
-	    const int voxel = voxels[voxelID];
+            int voxelID = segmentationVolume->getVoxelNumber((int*)ijk);
+            const int voxel = voxels[voxelID];
             
             //
             // Is this a potential handle voxel ?
             //
-	    if (voxel == VOXEL_UNSET) {
-	       clearVisitedVoxels();
+            if (voxel == VOXEL_UNSET) {
+	            clearVisitedVoxels();
                
                //
                // Search VOXEL_UNSET voxels finding any that are adjacent in the 
                // search axis to VOXEL_EXTERIOR voxels.
                //
-	       findHandleSearch(searchAxis, x, y, z);
-	       int status = VOXEL_NOT_HANDLE;
+               findHandleSearch(searchAxis, x, y, z);
+               int status = VOXEL_NOT_HANDLE;
                
                //
                // If two or VOXEL_EXTERIOR voxels with different slices along
                // the search axis were found, then these voxels are part of a handle
                //
-	       if (externalVoxelSlice.size() > 1) {
-	          status = VOXEL_HANDLE;
-	       }
+               if (externalVoxelSlice.size() > 1) {
+                  status = VOXEL_HANDLE;
+               }
                //
                // Voxels are full enclosed by VOXEL_SEGMENTATION voxels
                //
-	       else if (externalVoxelSlice.size() == 0) {
-	          status = VOXEL_CAVITY;
-	       }
+               else if (externalVoxelSlice.size() == 0) {
+                  status = VOXEL_CAVITY;
+               }
                
                //
                // Make the voxels as not a handle, in a handle, or in a cavity
                //
-	       int numVoxelsInHandle = 0;
-	       for (int m = 0; m < numVoxels; m++) {
-	          if (visitedVoxels[m]) {
-               voxels[m] = status;
-               numVoxelsInHandle++;
-             }
-	       }
+               int numVoxelsInHandle = 0;
+               for (int m = 0; m < numVoxels; m++) {
+                  if (visitedVoxels[m]) {
+                    voxels[m] = status;
+                    numVoxelsInHandle++;
+                  }
+               }
                
-          //
-          // Are the voxels in a handle
-          //
-	       if (externalVoxelSlice.size() > 1) {
+               //
+               // Are the voxels in a handle
+               //
+               if (externalVoxelSlice.size() > 1) {
                   //
                   // Get the range of the slices along the search axis
                   //
@@ -639,15 +639,18 @@ BrainModelVolumeHandleFinder::findHandles(const VolumeFile::VOLUME_AXIS searchAx
                         handleVoxels.push_back(m);
                      }
                   }
+                  float voxelXYZ[3];
+                  segmentationVolume->getVoxelCoordinate(ijk, true, voxelXYZ);
                   handlesFound.push_back(BrainModelVolumeTopologicalError(ijk,
+                                                voxelXYZ,
                                                 slices,
                                                 handleVoxels,
                                                 numVoxelsInHandle,
                                                 searchAxis));
-	       }
-	       externalVoxelSlice.clear();
-	    }
-	 }
+               }
+	            externalVoxelSlice.clear();
+	         }
+	      }
       }
    }
 }

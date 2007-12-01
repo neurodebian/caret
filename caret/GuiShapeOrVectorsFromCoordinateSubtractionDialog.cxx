@@ -27,6 +27,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
@@ -35,7 +36,6 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiShapeOrVectorsFromCoordinateSubtractionDialog.h"
 #include "SurfaceShapeFile.h"
@@ -188,32 +188,32 @@ void
 GuiShapeOrVectorsFromCoordinateSubtractionDialog::done(int r)
 {
    if (r == QDialog::Accepted) {
-      showWaitCursor();
-      
       const BrainModelSurface* bmsA = surfaceAComboBox->getSelectedBrainModelSurface();
       if (bmsA == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "Surface A is invalid.", "OK");
+         QMessageBox::critical(this, "ERROR", "Surface A is invalid.");
          return;
       }
       
       const BrainModelSurface* bmsB = surfaceBComboBox->getSelectedBrainModelSurface();
       if (bmsB == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "Surface B is invalid.", "OK");
+         QMessageBox::critical(this, "ERROR", "Surface B is invalid.");
          return;
       }
       
       if (bmsA->getNumberOfNodes() <= 0) {
-         GuiMessageBox::critical(this, "ERROR", "Surface A has no nodes.", "OK");
+         QMessageBox::critical(this, "ERROR", "Surface A has no nodes.");
          return;
       }
       if (bmsA->getNumberOfNodes() != bmsB->getNumberOfNodes()) {
-         GuiMessageBox::critical(this, "ERROR", "Surface A and B have a different number of nodes.", "OK");
+         QMessageBox::critical(this, "ERROR", "Surface A and B have a different number of nodes.");
          return;
       }
       if (bmsA == bmsB) {
-         GuiMessageBox::critical(this, "ERROR", "Surface A and B are the same.", "OK");
+         QMessageBox::critical(this, "ERROR", "Surface A and B are the same.");
          return;
       }
+      
+      showWaitCursor();
       
       const int column = columnComboBox->currentIndex();
       const QString columnName = columnNameLineEdit->text();
@@ -232,7 +232,8 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::done(int r)
                                        columnComment);
                }
                catch (FileException& e) {
-                  GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+                  showNormalCursor();
+                  QMessageBox::critical(this, "ERROR", e.whatQString());
                   return;
                }
                               
@@ -253,7 +254,8 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::done(int r)
                                        columnComment);
                }
                catch (FileException& e) {
-                  GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+                  showNormalCursor();
+                  QMessageBox::critical(this, "ERROR", e.whatQString());
                   return;
                }
                               

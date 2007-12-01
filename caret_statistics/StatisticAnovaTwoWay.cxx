@@ -32,6 +32,7 @@
  * Note: Factor A is in the rows, Factor B is in the columns
  */
 StatisticAnovaTwoWay::StatisticAnovaTwoWay()
+   : StatisticAlgorithm("ANOVA Two-Way")
 {
    cellMeans_Yij = NULL;
    meanOfFactorLevelsGroupA_Yi = NULL;
@@ -86,7 +87,7 @@ StatisticAnovaTwoWay::execute() throw (StatisticException)
          break;
       case ANOVA_MODEL_TYPE_RANDOM_EFFECT:
          break;
-      case ANOVE_MODEL_TYPE_MIXED_EFFECT:
+      case ANOVA_MODEL_TYPE_MIXED_EFFECT:
          break;
    }
    
@@ -307,7 +308,7 @@ StatisticAnovaTwoWay::execute() throw (StatisticException)
          fStatisticFactorB = meanSquareFactorB_MSB / meanSquareInteractionMSAB;
          fStatisticInteraction = meanSquareInteractionMSAB / meanSquareErrorMSE;
          break;
-      case ANOVE_MODEL_TYPE_MIXED_EFFECT:
+      case ANOVA_MODEL_TYPE_MIXED_EFFECT:
          fStatisticFactorA = meanSquareFactorA_MSA / meanSquareInteractionMSAB;
          fStatisticFactorB = meanSquareFactorB_MSB / meanSquareErrorMSE;
          fStatisticInteraction = meanSquareInteractionMSAB / meanSquareErrorMSE;
@@ -431,6 +432,31 @@ StatisticAnovaTwoWay::setDataGroup(const int factorLevelA,
    } 
 }
 
+/**
+ * set a data array (call after "setNumberOfFactorLevels()").
+ */
+void 
+StatisticAnovaTwoWay::setDataArray(const int factorLevelA,
+                                   const int factorLevelB,
+                                   const float* array,
+                                   const int numItemsInArray,
+                                   const bool takeOwnershipOfThisDataArray)
+{
+   const int indx = getDataGroupIndex(factorLevelA, factorLevelB);
+   if (indx >= 0) {
+      StatisticDataGroup::DATA_STORAGE_MODE storageMode = StatisticDataGroup::DATA_STORAGE_MODE_POINT;
+      if (takeOwnershipOfThisDataArray) {
+         storageMode = StatisticDataGroup::DATA_STORAGE_MODE_TAKE_OWNERSHIP;
+      }
+      StatisticDataGroup* sdg = new StatisticDataGroup(array,
+                                                    numItemsInArray,
+                                                    storageMode);
+      StatisticAlgorithm::setDataGroup(indx, 
+                                       sdg,
+                                       true);
+   } 
+}
+       
 /**
  * get a data group.
  */

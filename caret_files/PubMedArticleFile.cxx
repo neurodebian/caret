@@ -112,7 +112,7 @@ PubMedArticleFile::retrieveArticleWithPubMedID(const QString& pubMedIDIn) throw 
    http.download();
    if (http.getDownloadSuccessful()) {
       QString pubMedString;
-      http.getContent(pubMedString);
+      http.getContentUTF8(pubMedString);
       if (DebugControl::getDebugOn()) {
          std::cout << "Retrieved from PubMed: "
                    << std::endl

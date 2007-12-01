@@ -25,11 +25,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
+#include "BorderFile.h"
 #define __BORDER_PROJECTION_MAIN__
 #include "BorderProjectionFile.h"
 #undef __BORDER_PROJECTION_MAIN__
 #include "ColorFile.h"
+#include "CoordinateFile.h"
 #include "MathUtilities.h"
 #include "SpecFile.h"
 
@@ -110,6 +113,285 @@ BorderProjectionLink::getData(int& sectionOut,
 }
 
 /**
+ * unproject a border link.
+ */
+void 
+BorderProjectionLink::unprojectLink(const CoordinateFile* unprojectCoordFile,
+                                  float xyzOut[3]) const
+{
+   const float totalArea = areas[0] + areas[1] + areas[2];
+   if (totalArea > 0.0) {
+      const float* v1 = unprojectCoordFile->getCoordinate(vertices[0]);
+      const float* v2 = unprojectCoordFile->getCoordinate(vertices[1]);
+      const float* v3 = unprojectCoordFile->getCoordinate(vertices[2]);
+      xyzOut[0] = (v1[0] * areas[1] + v2[0] * areas[2] + v3[0] * areas[0])
+                     / totalArea;
+      xyzOut[1] = (v1[1] * areas[1] + v2[1] * areas[2] + v3[1] * areas[0])
+                     / totalArea;
+      xyzOut[2] = (v1[2] * areas[1] + v2[2] * areas[2] + v3[2] * areas[0])
+                     / totalArea;
+   }
+}
+
+/**
+ * remove links from border that are not within the specified extent.
+ */
+void 
+BorderProjection::removeLinksOutsideExtent(const CoordinateFile* unprojectCoordFile,
+                                           const float extent[6])
+{
+   //
+   // Keeps track of links that are NOT nibbled
+   //
+   std::vector<BorderProjectionLink> linkTemp;
+   
+   //
+   // Loop through links
+   //
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      //
+      // Get link XYZ
+      //
+      float linkXYZ[3];
+      links[i].unprojectLink(unprojectCoordFile,
+                             linkXYZ);
+                             
+      //
+      // Keep link if it is within extent
+      //
+      if ((linkXYZ[0] >= extent[0]) &&
+          (linkXYZ[0] <= extent[1]) &&
+          (linkXYZ[1] >= extent[2]) &&
+          (linkXYZ[1] <= extent[3]) &&
+          (linkXYZ[2] >= extent[4]) &&
+          (linkXYZ[2] <= extent[5])) {
+         linkTemp.push_back(links[i]);
+      }
+   }   
+
+   //
+   // were links removed
+   //
+   if (links.size() != linkTemp.size()) {
+      links = linkTemp;
+      if (borderProjectionFile != NULL) {
+         borderProjectionFile->setModified();
+      }
+   }
+}
+
+/**
+ * unproject a border.
+ */
+void 
+BorderProjection::unprojectBorderProjection(const CoordinateFile* cf,
+                                            Border& borderOut)
+{
+   borderOut.clearLinks();
+   borderOut.setName(getName());
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      const BorderProjectionLink* bpl = getBorderProjectionLink(i);
+      float xyz[3];
+      bpl->unprojectLink(cf, xyz);
+      borderOut.addBorderLink(xyz);
+   }
+}
+                           
+/**
+ * change the starting link of a closed border so it is close to a point.
+ */
+void 
+BorderProjection::changeStartingLinkOfClosedBorderToBeNearPoint(const CoordinateFile* cf,
+                                                                const float pointXYZ[3])
+{
+   //
+   // Unproject to a border
+   //
+   Border border;
+   unprojectBorderProjection(cf, border);
+   
+   //
+   // Find link nearest point
+   //
+   int closestLinkNumber = -1;
+   float closestLinkDistance = std::numeric_limits<float>::max();
+   const int numLinks = border.getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      float xyz[3];
+      border.getLinkXYZ(i, xyz);
+      const float dist = MathUtilities::distanceSquared3D(xyz, pointXYZ);
+      if (dist < closestLinkDistance) {
+         closestLinkDistance = dist;
+         closestLinkNumber = i;
+      }
+   }
+   
+   //
+   // If no links or closest link is first link
+   //
+   if (closestLinkNumber <= 0) {
+      return;
+   }
+   
+   //
+   // Reorganize the links
+   //
+   const std::vector<BorderProjectionLink> linksCopy = links;
+   links.clear();
+   for (int i = closestLinkNumber; i < numLinks; i++) {
+      addBorderProjectionLink(linksCopy[i]);
+   }
+   for (int i = 0; i < closestLinkNumber; i++) {
+      addBorderProjectionLink(linksCopy[i]);
+   }
+}
+      
+/**
+ * remove links in border before/after link nearest to point.
+ */
+void 
+BorderProjection::removeLinksBeforeAfterLinkNearestPoint(const CoordinateFile* cf,
+                                                         const float pointXYZ[3],
+                                                         const bool removeAfterFlag,
+                                                         const bool removeBeforeFlag)
+{
+   //
+   // Unproject to a border
+   //
+   Border border;
+   unprojectBorderProjection(cf, border);
+   
+   //
+   // Find link nearest point
+   //
+   int closestLinkNumber = -1;
+   float closestLinkDistance = std::numeric_limits<float>::max();
+   const int numLinks = border.getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      float xyz[3];
+      border.getLinkXYZ(i, xyz);
+      const float dist = MathUtilities::distanceSquared3D(xyz, pointXYZ);
+      if (dist < closestLinkDistance) {
+         closestLinkDistance = dist;
+         closestLinkNumber = i;
+      }
+   }
+   
+   //
+   // If no links or closest link is first link
+   //
+   if (closestLinkNumber <= 0) {
+      return;
+   }
+   
+   //
+   // keep needed the links
+   //
+   const std::vector<BorderProjectionLink> linksCopy = links;
+   links.clear();
+   if (removeBeforeFlag == false) {
+      for (int i = 0; i < closestLinkNumber; i++) {
+         addBorderProjectionLink(linksCopy[i]);
+      }
+   }
+   if (removeAfterFlag == false) {
+      for (int i = closestLinkNumber + 1; i < numLinks; i++) {
+         addBorderProjectionLink(linksCopy[i]);
+      }
+   }
+}
+      
+/**
+ * remove links from border within specified distance of point.
+ * if a specified distance is zero or less it is ignored
+ */
+void 
+BorderProjection::removeLinksNearPoint(const CoordinateFile* unprojectCoordFile,
+                                       const float pointXYZ[3],
+                                       const float xDistance,
+                                       const float yDistance,
+                                       const float zDistance,
+                                       const float straightLineDistance)
+{
+   //
+   // Squared nibble distance
+   //
+   float squaredStraightLineDistance = straightLineDistance * straightLineDistance;
+   
+   //
+   // Keeps track of links that are NOT nibbled
+   //
+   std::vector<BorderProjectionLink> linkTemp;
+   
+   //
+   // Loop through links
+   //
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      //
+      // Get link XYZ
+      //
+      float linkXYZ[3];
+      links[i].unprojectLink(unprojectCoordFile,
+                                            linkXYZ);
+                                            
+      //
+      // intially keep the link
+      //
+      bool keepLinkFlag = true;
+      
+      //
+      // Get distance components
+      //
+      const float dx = std::fabs(pointXYZ[0] - linkXYZ[0]);
+      const float dy = std::fabs(pointXYZ[1] - linkXYZ[1]);
+      const float dz = std::fabs(pointXYZ[2] - linkXYZ[2]);
+      
+      //
+      // Check distances
+      //
+      if (dx < xDistance) {
+         keepLinkFlag = false;
+      }
+      else if (dy < yDistance) {
+         keepLinkFlag = false;
+      }
+      else if (dz < zDistance) {
+         keepLinkFlag = false;
+      }
+      else {
+         //
+         // Distance Squared from point to link 
+         //
+         const float distanceSquared = dx*dx + dy*dy + dz*dz;
+         if (distanceSquared < squaredStraightLineDistance) {
+            keepLinkFlag = false;
+         }
+      }
+                                                          
+      //
+      // Should this link be kept
+      //
+      if (keepLinkFlag) {
+         linkTemp.push_back(links[i]);
+      }
+   }
+   
+   //
+   // were links removed
+   //
+   if (links.size() != linkTemp.size()) {
+      links = linkTemp;
+      if (borderProjectionFile != NULL) {
+         borderProjectionFile->setModified();
+      }
+   }
+}
+                                
+/**
  * Remove the border projection link at the specified index
  */
 void
@@ -126,14 +408,20 @@ BorderProjection::removeBorderProjectionLink(const int linkNumber)
 /** 
  * Constructor.
  */
-BorderProjection::BorderProjection(const QString& nameIn, const float centerIn[3], 
+BorderProjection::BorderProjection(const QString& nameIn, const float* centerIn3, 
                const float samplingDensityIn, const float varianceIn,
                const float topographyIn, const float arealUncertaintyIn)
 {
    uniqueID = uniqueIDSource++;
    borderProjectionFile = NULL;
    borderColorIndex = 0;
-   setData(nameIn, centerIn, samplingDensityIn,
+   float center[3] = { 0.0, 0.0, 0.0 };
+   if (centerIn3 != NULL) {
+      center[0] = centerIn3[0];
+      center[1] = centerIn3[1];
+      center[2] = centerIn3[2];
+   }
+   setData(nameIn, center, samplingDensityIn,
            varianceIn, topographyIn, arealUncertaintyIn);
 }
 
@@ -210,6 +498,33 @@ BorderProjection::setData(const QString& nameIn, const float centerIn[3],
    }
 }
 
+/**
+ * append a border projection to this border projection.
+ */
+void 
+BorderProjection::append(const BorderProjection& bp)
+{
+   const int num = bp.getNumberOfLinks();
+   for (int i = 0; i < num; i++) {
+      addBorderProjectionLink(*(bp.getBorderProjectionLink(i)));
+   }
+}
+      
+/**
+ * add border projection link directly on node.
+ */
+void 
+BorderProjection::addBorderProjectionLinkOnNode(const int nodeNumber)
+{
+   const int nodes[3] = { nodeNumber, nodeNumber, nodeNumber };
+   const float areas[3] = { 0.333, 0.333, 0.334 };
+   BorderProjectionLink bpl(0,
+                            nodes,
+                            areas,
+                            1.0);
+   addBorderProjectionLink(bpl);
+}
+      
 /** 
  * Add a link to the border.
  */
@@ -221,8 +536,8 @@ BorderProjection::addBorderProjectionLink(const BorderProjectionLink& bl)
    //
    if ((bl.vertices[0] >= 0) || (bl.vertices[1] >= 0) || (bl.vertices[2] >= 0.0)) {
       links.push_back(bl);
-      const int index = static_cast<int>(links.size()) - 1;
-      links[index].borderProjectionFile = borderProjectionFile;
+      const int indx = static_cast<int>(links.size()) - 1;
+      links[indx].borderProjectionFile = borderProjectionFile;
    }
 }
 
@@ -335,10 +650,10 @@ void
 BorderProjectionFile::addBorderProjection(const BorderProjection& b)
 {
    links.push_back(b);
-   const int index = static_cast<int>(links.size()) - 1;
-   links[index].borderProjectionFile = this;
-   for (int i = 0; i < links[index].getNumberOfLinks(); i++) {
-      BorderProjectionLink* bpl = links[index].getBorderProjectionLink(i);
+   const int indx = static_cast<int>(links.size()) - 1;
+   links[indx].borderProjectionFile = this;
+   for (int i = 0; i < links[indx].getNumberOfLinks(); i++) {
+      BorderProjectionLink* bpl = links[indx].getBorderProjectionLink(i);
       bpl->borderProjectionFile = this;
    }
    setModified();
@@ -367,14 +682,82 @@ BorderProjectionFile::getDuplicateBorderProjectionIndices(
 }
       
 /**
+ * get first specified border by name.
+ */
+BorderProjection* 
+BorderProjectionFile::getFirstBorderProjectionByName(const QString& name)
+{
+   const int numBorders = getNumberOfBorderProjections();
+   for (int i = 0; i < numBorders; i++) {
+      BorderProjection* b = getBorderProjection(i);
+      if (b->getName() == name) {
+         return b;
+      }
+   }
+   
+   return NULL;
+}
+
+/**
+ * get first specified border by name.
+ */
+const BorderProjection* 
+BorderProjectionFile::getFirstBorderProjectionByName(const QString& name) const
+{
+   const int numBorders = getNumberOfBorderProjections();
+   for (int i = 0; i < numBorders; i++) {
+      const BorderProjection* b = getBorderProjection(i);
+      if (b->getName() == name) {
+         return b;
+      }
+   }
+   
+   return NULL;
+}
+
+/**
+ * get last specified border by name.
+ */
+BorderProjection* 
+BorderProjectionFile::getLastBorderProjectionByName(const QString& name)
+{
+   const int numBorders = getNumberOfBorderProjections();
+   for (int i = (numBorders - 1); i >= 0; i--) {
+      BorderProjection* b = getBorderProjection(i);
+      if (b->getName() == name) {
+         return b;
+      }
+   }
+   
+   return NULL;
+}
+
+/**
+ * get last specified border by name.
+ */
+const BorderProjection* 
+BorderProjectionFile::getLastBorderProjectionByName(const QString& name) const
+{
+   const int numBorders = getNumberOfBorderProjections();
+   for (int i = (numBorders - 1); i >= 0; i--) {
+      const BorderProjection* b = getBorderProjection(i);
+      if (b->getName() == name) {
+         return b;
+      }
+   }
+   
+   return NULL;
+}
+
+/**
  * Get the border projection with the unique ID
  */
 BorderProjection*
 BorderProjectionFile::getBorderProjectionWithUniqueID(const int uniqueID)
 {
-   const int index = getBorderProjectionIndexWithUniqueID(uniqueID);
-   if (index >= 0) {
-      return getBorderProjection(index);
+   const int indx = getBorderProjectionIndexWithUniqueID(uniqueID);
+   if (indx >= 0) {
+      return getBorderProjection(indx);
    }
    return NULL;
 }
@@ -401,9 +784,9 @@ BorderProjectionFile::getBorderProjectionIndexWithUniqueID(const int uniqueID) c
 void
 BorderProjectionFile::removeBorderProjectionWithUniqueID(const int uniqueID)
 {
-   const int index = getBorderProjectionIndexWithUniqueID(uniqueID);
-   if (index >= 0) {
-      removeBorderProjection(index);
+   const int indx = getBorderProjectionIndexWithUniqueID(uniqueID);
+   if (indx >= 0) {
+      removeBorderProjection(indx);
       setModified();
    }
 }
@@ -412,12 +795,67 @@ BorderProjectionFile::removeBorderProjectionWithUniqueID(const int uniqueID)
  * Remove the border projection at the specified index
  */
 void
-BorderProjectionFile::removeBorderProjection(const int index)
+BorderProjectionFile::removeBorderProjection(const int indx)
 {
-   if (index < getNumberOfBorderProjections()) {
-      links.erase(links.begin() + index);
+   if (indx < getNumberOfBorderProjections()) {
+      links.erase(links.begin() + indx);
       setModified();
    }
+}
+
+/**
+ * get the index of a border projection.
+ */
+int 
+BorderProjectionFile::getBorderProjectionIndex(const BorderProjection* bp) const
+{
+   const int num = getNumberOfBorderProjections();
+   for (int i = 0; i < num; i++) {
+      if (bp == getBorderProjection(i)) {
+         return i;
+      }
+   }
+   return -1;
+}
+      
+/**
+ * get the border projection with the largest number of links.
+ */
+BorderProjection* 
+BorderProjectionFile::getBorderProjectionWithLargestNumberOfLinks()      
+{
+   const int num = getNumberOfBorderProjections();
+   int mostLinks = -1;
+   BorderProjection* mostLinksBJ = NULL;
+   for (int i = 0; i < num; i++) {
+      BorderProjection* bj = getBorderProjection(i);
+      if (bj->getNumberOfLinks() > mostLinks) {
+         mostLinks = bj->getNumberOfLinks();
+         mostLinksBJ = bj;
+      }
+   }
+   
+   return mostLinksBJ;
+}
+   
+/**
+ * remove borders with the specified name.
+ */
+void 
+BorderProjectionFile::removeBordersWithName(const QString& nameIn)
+{
+   std::vector<int> indicesOfBorderToDelete;
+   
+   const int num = getNumberOfBorderProjections();
+   for (int i = 0; i < num; i++) {
+      BorderProjection* bp = getBorderProjection(i);
+      const QString s = bp->getName();
+      if (s == nameIn) {
+         indicesOfBorderToDelete.push_back(i);
+      }
+   }
+   
+   removeBordersWithIndices(indicesOfBorderToDelete);
 }
 
 /** 

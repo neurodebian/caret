@@ -30,11 +30,11 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 
 #include "GuiLoadNodeAttributeFileColumnSelectionDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GiftiNodeDataFile.h"
 #include "NodeAttributeFile.h"
@@ -416,10 +416,10 @@ GuiLoadNodeAttributeFileColumnSelectionDialog::done(int r)
          std::vector<int> selections = getDestinationColumns();
          for (unsigned int i = 0; i < selections.size(); i++) {
             if (selections[i] >= 0) {
-               GuiMessageBox::critical(this, "ERROR",
+               QMessageBox::critical(this, "ERROR",
                                      "Since \"Erase All Existing Columns\" is selected,\n"
                                      "columns from new file must be loaded into new\n"
-                                     "columns or not loaded.", "OK");
+                                     "columns or not loaded.");
                return;
             }
          }

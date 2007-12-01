@@ -19,10 +19,10 @@ class ByteSwapping {
       static void swapBytes(unsigned int* n, int numToSwap);
       
       /// byte swap the data
-      static void swapBytes(long* n, int numToSwap);
+      static void swapBytes(long long* n, int numToSwap);
       
       /// byte swap the data
-      static void swapBytes(unsigned long* n, int numToSwap);
+      static void swapBytes(unsigned long long* n, int numToSwap);
       
       /// byte swap the data
       static void swapBytes(float* n, int numToSwap);

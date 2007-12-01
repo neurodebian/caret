@@ -30,6 +30,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "AreaColorFile.h"
@@ -40,7 +41,6 @@
 #include "GuiColorSelectionDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #include "GuiVolumePaintEditorDialog.h"
 #include "QtUtilities.h"
@@ -197,15 +197,23 @@ GuiVolumePaintEditorDialog::slotApplyButton()
       QString msg("Matching area color \"");
       msg.append(paintName);
       msg.append("\" not found");
-      QString defineButton("Define Area Color ");
+      QString defineButtonText("Define Area Color ");
       int result = 0;
       if (areaColorIndex >= 0) {
-         QString partialMatchButton("Use ");
-         partialMatchButton.append(areaColorFile->getColorNameByIndex(areaColorIndex));
-         result = GuiMessageBox::information(this, "Set Area Color",
-                                 msg, 
-                                 defineButton,
-                                 partialMatchButton);
+         QString partialMatchButtonText("Use ");
+         partialMatchButtonText.append(areaColorFile->getColorNameByIndex(areaColorIndex));
+         QMessageBox msgBox(this);
+         msgBox.setWindowTitle("Set Area Color");
+         msgBox.setText(msg);
+         msgBox.addButton(defineButtonText, QMessageBox::ActionRole);
+         QPushButton* partialMatchPushButton = msgBox.addButton(partialMatchButtonText,
+                                                                QMessageBox::ActionRole);
+         if (msgBox.clickedButton() == partialMatchPushButton) {
+            result = 1;
+         }
+         else {
+            result = 0;
+         }
       }
       
       if (result == 0) {
@@ -346,8 +354,9 @@ GuiVolumePaintEditorDialog::processVoxel(const int ii, const int jj, const int k
       case VolumeFile::VOLUME_AXIS_OBLIQUE_Y:
       case VolumeFile::VOLUME_AXIS_OBLIQUE_Z:
       case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
-         GuiMessageBox::critical(this, "ERROR", 
-                                 "Editing of oblique slices is not allowed.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", 
+                                 "Editing of oblique slices is not allowed.");
          return;
       case VolumeFile::VOLUME_AXIS_UNKNOWN:
          return;

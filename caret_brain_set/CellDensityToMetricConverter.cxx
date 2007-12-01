@@ -161,9 +161,9 @@ CellDensityToMetricConverter::convert(BrainSet* brain, const float gridSpacing,
    //
    // Find/Add columns to metric file
    //
-   int allColumn = 0;
-   int deepColumn = 1;
-   int superficialColumn = 2;
+   int allColumn = -1;
+   int deepColumn = -1;
+   int superficialColumn = -1;
    
    const QString allColumnName("All Cells");
    const QString deepColumnName("Deep Layers");
@@ -173,6 +173,9 @@ CellDensityToMetricConverter::convert(BrainSet* brain, const float gridSpacing,
    if (mf->getNumberOfColumns() == 0) {
       mf->setNumberOfNodesAndColumns(brain->getNumberOfNodes(), 3);
       mf->setFileTitle("Cell Density");
+      allColumn = 0;
+      deepColumn = 1;
+      superficialColumn = 2;
    }
    else {
       allColumn = mf->getColumnWithName(allColumnName);
@@ -180,16 +183,16 @@ CellDensityToMetricConverter::convert(BrainSet* brain, const float gridSpacing,
          allColumn = mf->getNumberOfColumns();
          mf->addColumns(1);
       }
+      deepColumn = mf->getColumnWithName(deepColumnName);
       if (deepColumn < 0) {
          deepColumn = mf->getNumberOfColumns();
          mf->addColumns(1);
       }
+      superficialColumn = mf->getColumnWithName(superficialColumnName);
       if (superficialColumn < 0) {
          superficialColumn = mf->getNumberOfColumns();
          mf->addColumns(1);
       }
-      deepColumn = mf->getColumnWithName(deepColumnName);
-      superficialColumn = mf->getColumnWithName(superficialColumnName);
    }
    mf->setColumnName(allColumn, allColumnName);
    mf->setColumnName(deepColumn, deepColumnName);

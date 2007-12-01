@@ -202,6 +202,9 @@ class GuiDataFileMathDialog : public QtDialog {
       /// normalize deviation float spin box
       QDoubleSpinBox* normalizeDeviationDoubleSpinBox;
       
+      /// 1.0 - value check box
+      QRadioButton* oneMinusValueRadioButton;
+      
       /// the dialog's mode
       DIALOG_MODE dialogMode;
       

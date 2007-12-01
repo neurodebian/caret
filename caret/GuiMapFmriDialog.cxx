@@ -32,13 +32,14 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QLabel>
 #include <QLayout>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QRadioButton>
@@ -50,21 +51,19 @@
 #include <QTextEdit>
 #include <QToolTip>
 
-#include "BrainModelVolumeToSurfaceMetricMapper.h"
-#include "BrainModelVolumeToSurfacePaintMapper.h"
+#include "BrainModelVolumeToSurfaceMapper.h"
 #include "BrainSet.h"
 #include "DebugControl.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GaussianComputation.h"
 #include "GuiCopySpecFileDialog.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFileDialogWithInstructions.h"
 #include "GuiMainWindow.h"
 #include "GuiMapFmriAtlasDialog.h"
 #include "GuiMapFmriDialog.h"
 #include "GuiMapFmriSpecFileTopoCoordDialog.h"
 #include "GuiMapFmriThresholdDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiSumsDialog.h"
 #include "MetricFile.h"
 #include "PaintFile.h"
@@ -206,8 +205,12 @@ void
 GuiMapFmriDialog::slotCloseOrCancelButton()
 {
    if (runningAsPartOfCaret == false) {
-      if (GuiMessageBox::warning(this, "Confirm", 
-              "Are you sure you want to quit ?", "Yes", "No") != 0) {
+      if (QMessageBox::warning(this, 
+              "Confirm", 
+              "Are you sure you want to quit ?", 
+              (QMessageBox::Yes | QMessageBox::No),
+              QMessageBox::Yes)
+                 == QMessageBox::No) {
          return;
       }
    }
@@ -282,10 +285,6 @@ GuiMapFmriDialog::slotNext()
    // If the current page is the algorithm page
    //
    if (pagesStackedWidget->currentWidget() == pageAlgorithm) {
-      //
-      // Read the algorithm parameters
-      //
-      loadSaveAlgorithmParametersFromPreferences(false);
    }
    
    //
@@ -333,10 +332,6 @@ GuiMapFmriDialog::slotBack()
    // If the current page is the algorithm page
    //
    if (pagesStackedWidget->currentWidget() == pageAlgorithm) {
-      //
-      // Read the algorithm parameters
-      //
-      loadSaveAlgorithmParametersFromPreferences(false);
    }
    
    //
@@ -422,7 +417,7 @@ GuiMapFmriDialog::showPage(QWidget* page)
       //
       // Load the algorithm parameters into the widgets
       //
-      loadSaveAlgorithmParametersFromPreferences(true);
+      loadAlgorithmParametersFromPreferences();
    }
    
    //
@@ -556,6 +551,8 @@ GuiMapFmriDialog::mapVolumesToSurfaces()
          progressSteps++;
       }
       if (mappingSets[i].getDoAvgOfAllCoordFileFlag() ||
+          mappingSets[i].getDoMostCommonOfAllCasesFlag() ||
+          mappingSets[i].getDoMostCommonExcludeUnidentifiedOfAllCasesFlag() ||
           mappingSets[i].getDoStdDevOfAllCoordFileFlag() ||
           mappingSets[i].getDoStdErrorOfAllCoordFileFlag() ||
           mappingSets[i].getDoMinOfAllCoordFileFlag() ||
@@ -636,7 +633,7 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
       const int numMappingInfo = mms.getNumberOfMetricMappingInfo();
       
       //
-      // Create the output metric file
+      // Create the output paint file
       //
       PaintFile outputPaintFile;
       
@@ -754,7 +751,8 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                         progressDialog.cancel();
                         QString msg("Error creating BrainSet for mapping data.\n");
                         msg.append(StringUtilities::combine(errorMessages, "\n"));
-                        GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                        QApplication::restoreOverrideCursor();
+                        QMessageBox::critical(this, "ERROR", msg, "OK");
                         return;
                      }
                      
@@ -776,7 +774,8 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                            msg.append(mappingTopoFileName);
                            msg.append(" and ");
                            msg.append(mappingCoordFileNames[surfaceIndex]);
-                           GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                           QApplication::restoreOverrideCursor();
+                           QMessageBox::critical(this, "ERROR", msg);
                            delete bs;
                            return;
                         }
@@ -787,7 +786,8 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                         msg.append(mappingTopoFileName);
                         msg.append(" and ");
                         msg.append(mappingCoordFileNames[surfaceIndex]);
-                        GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                        QApplication::restoreOverrideCursor();
+                        QMessageBox::critical(this, "ERROR", msg);
                         delete bs;
                         return;
                      }
@@ -834,11 +834,14 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
             //
             // Create the mapper class
             //
-            BrainModelVolumeToSurfacePaintMapper bmvsmm(
+            mappingParameters.setAlgorithm(
+               BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_PAINT_ENCLOSING_VOXEL);
+            BrainModelVolumeToSurfaceMapper bmvsmm(
                bs,
                bms,
                vf,
                &mappingPaintFile,
+               mappingParameters,
                metricColumn,
                metricInfo->getMetricColumnName(metricColumn));
          
@@ -850,7 +853,8 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
             }
             catch (BrainModelAlgorithmException& e) {
                progressDialog.cancel();
-               GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", e.whatQString());
                if (createdBrainSet) {
                   delete bs;
                }
@@ -884,18 +888,287 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
          }  // for (int metricColumn
       
          //
-         // Determine which metric columns should be retained.
+         // Do most common if needed
          //
-         std::vector<int> metricColumnDestination(mappingPaintFile.getNumberOfColumns(),
-                                                  MetricFile::APPEND_COLUMN_NEW);
-      
-         //
-         // Add onto the the metric file
-         //
-         outputPaintFile.append(mappingPaintFile, metricColumnDestination,
-                                 MetricFile::FILE_COMMENT_MODE_APPEND);
+         if (mms.getDoMostCommonOfAllCasesFlag() ||
+             mms.getDoMostCommonExcludeUnidentifiedOfAllCasesFlag()) {
+            
+            //
+            // Update progress dialog
+            //
+            QString progressMessage("Generating ");
+            QString mostCommonName;
+            if (mms.getDoMostCommonOfAllCasesFlag()) {
+               mostCommonName = metricInfo->getMetricMostCommonValueColumnName();
+               progressMessage.append("\nMost Common ");
+            }
+            progressDialog.setLabelText(progressMessage);
+            progressDialog.show();
+            
+            QString mostCommonExcludeUnidentifiedName;
+            if (mms.getDoMostCommonExcludeUnidentifiedOfAllCasesFlag()) {
+               mostCommonExcludeUnidentifiedName = metricInfo->getMetricMostCommonExcludeUnidentifiedValueColumnName();
+               progressMessage.append("\nMost Common Exclude No ID");
+            }
+            progressDialog.setLabelText(progressMessage);
+            progressDialog.show();
+            
+            //
+            // Find most common
+            //
+            mappingPaintFile.appendMostCommon(mostCommonName,
+                                              mostCommonExcludeUnidentifiedName);
+                                              
+            //
+            // Add comments
+            //
+            if (mostCommonName.isEmpty() == false) {
+               const int mostCommonColumn = mappingPaintFile.getColumnWithName(mostCommonName);
+               if (mostCommonColumn >= 0) {
+                  mappingPaintFile.prependToColumnComment(mostCommonColumn,
+                                                          metricInfo->getMetricMostCommonValueComment());
+               }
+            }
+            if (mostCommonExcludeUnidentifiedName.isEmpty() == false) {
+               const int mostCommonExcludeUnidentifiedColumn = mappingPaintFile.getColumnWithName(mostCommonExcludeUnidentifiedName);
+               if (mostCommonExcludeUnidentifiedColumn >= 0) {
+                  mappingPaintFile.prependToColumnComment(mostCommonExcludeUnidentifiedColumn,
+                                                          metricInfo->getMetricMostCommonExcludeUnidentifiedValueComment());
+               }
+            }
+         }  // map most common
          
-   
+         //
+         // Map to Average Fiducial Surface
+         //
+         PaintFile averageFiducialPaintFile;
+         if (mms.getDoAverageFiducialFileFlag()) {
+            //
+            // Get volume information
+            //
+            const int volumeIndex = metricInfo->getVolumeIndex();
+            const int subVolumeIndex = metricInfo->getSubVolumeIndex();
+            
+            //
+            // Update the progress dialog
+            //
+            qApp->processEvents();  // note: qApp is global in QApplication
+            if (progressDialog.wasCanceled()) {
+               return;
+            }
+            QString progressMessage("Mapping Volume: ");
+            progressMessage.append(volumesToBeMapped[volumeIndex]->getDescriptiveName());
+            progressMessage.append("\nSub-Volume: ");
+            progressMessage.append(volumesToBeMapped[volumeIndex]->getSubVolumeName(subVolumeIndex));
+            progressMessage.append(" to \n");
+            progressMessage.append(metricInfo->getMetricAverageFiducialCoordColumnName());
+            progressMessage.append(".");
+            progressDialog.setLabelText(progressMessage);
+            progressDialog.setValue(progressDialog.value() + 1);
+            progressDialog.show();
+            
+            //
+            // Set to the spec file directory
+            //
+            const QString directory(mms.getMappingFilesPath());
+            if (directory.isEmpty() == false) {
+               QDir::setCurrent(directory);
+            }
+            
+            // 
+            // Create a spec file and initialize it for mapping files
+            //
+            SpecFile sf;
+            sf.setTopoAndCoordSelected(mappingTopoFileName, 
+                                       mms.getAverageFiducialCoordFileName(),
+                                       sf.getStructure());
+            
+            //
+            // Create the brain set
+            //
+            BrainSet* bs = new BrainSet;
+            BrainModelSurface* bms = NULL;
+
+            //
+            // Load the brain set
+            //
+            std::vector<QString> errorMessages;
+            bs->readSpecFile(BrainSet::SPEC_FILE_READ_MODE_NORMAL,
+                             sf, "mapping_spec", errorMessages, NULL, NULL);
+            if (errorMessages.empty() == false) {
+               progressDialog.cancel();
+               QString msg("Error creating BrainSet for mapping data.\n");
+               msg.append(StringUtilities::combine(errorMessages, "\n"));
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", msg);
+               return;
+            }
+            
+            //
+            // If spec file read correctly, there is one brain model
+            //
+            if (bs->getNumberOfBrainModels() == 1) {
+               //
+               // Get the surface
+               //
+               bms = bs->getBrainModelSurface(0);
+               
+               //
+               // Make sure valid
+               //
+               if (bms == NULL) {
+                  progressDialog.cancel();
+                  QString msg("No brain model surface after reading ");
+                  msg.append(mappingTopoFileName);
+                  msg.append(" and ");
+                  msg.append(mms.getAverageFiducialCoordFileName());
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
+                  delete bs;
+                  return;
+               }
+            }
+            else {
+               progressDialog.cancel();
+               QString msg("No brain model after reading ");
+               msg.append(mappingTopoFileName);
+               msg.append(" and ");
+               msg.append(mms.getAverageFiducialCoordFileName());
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", msg);
+               delete bs;
+               return;
+            }
+      
+            //
+            // Allocate number of nodes and columns for paint file
+            //
+            averageFiducialPaintFile.setNumberOfNodesAndColumns(bs->getNumberOfNodes(), 1);
+            
+            //
+            // Volume data that is to be mapped
+            //
+            VolumeFile* vf = NULL;
+            bool createdVolumeFile = false;
+            
+            //
+            // Get info about volume that is to be mapped
+            //
+            GuiMapFmriVolume* fmriVolume = volumesToBeMapped[volumeIndex];
+            switch(fmriVolume->getFmriVolumeType()) {
+               case GuiMapFmriVolume::FMRI_VOLUME_TYPE_FILE_ON_DISK:
+                  //
+                  // Read in the volume data
+                  //
+                  vf = new VolumeFile;
+                  createdVolumeFile = true;
+                  try {
+                     vf->readFile(fmriVolume->getVolumeFileName(),
+                                  subVolumeIndex);
+                  }
+                  catch (FileException& e) {
+                  }
+                  break;
+               case GuiMapFmriVolume::FMRI_VOLUME_TYPE_FILE_IN_MEMORY:
+                  vf = fmriVolume->getInMemoryVolumeFile();
+                  break;
+            }
+         
+            //
+            // Create the mapper class
+            //
+            mappingParameters.setAlgorithm(
+               BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_PAINT_ENCLOSING_VOXEL);
+            BrainModelVolumeToSurfaceMapper bmvsmm(
+               bs,
+               bms,
+               vf,
+               &averageFiducialPaintFile,
+               mappingParameters,
+               0,
+               metricInfo->getMetricAverageFiducialCoordColumnName());
+         
+            //
+            // Run the mapper
+            //
+            try {
+               bmvsmm.execute();
+            }
+            catch (BrainModelAlgorithmException& e) {
+               progressDialog.cancel();
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", e.whatQString());
+               delete bs;
+               return;
+            }
+         
+            //
+            // Prepend user's column comment since mapper overwrites with mapping parameters
+            //
+            QString columnComment(metricInfo->getMetricAverageFiducialCoordComment());
+            if (columnComment.isEmpty() == false) {
+               columnComment.append("\n");
+               averageFiducialPaintFile.prependToColumnComment(0, columnComment);
+            }
+            
+            //
+            // Free up the volume file if needed
+            //
+            if (createdVolumeFile) {
+               delete vf;
+               vf = NULL;
+            }
+            
+            //
+            // Free up the brain set
+            //
+            delete bs;
+            bs = NULL;
+            
+            //
+            // Add onto output paint file
+            //
+            outputPaintFile.append(averageFiducialPaintFile);
+         }
+         
+         //
+         // Append most common columns first so that they are before indiv cases
+         //
+         bool haveMostCommonCases = false;
+         std::vector<int> paintColumnDestination(mappingPaintFile.getNumberOfColumns(),
+                                                  MetricFile::APPEND_COLUMN_NEW);
+         for (int n = 0; n < mappingPaintFile.getNumberOfColumns(); n++) {
+            if (n >= metricInfo->getNumberOfMetricColumns()) {
+               paintColumnDestination[n] = PaintFile::APPEND_COLUMN_NEW;
+               haveMostCommonCases = true;
+            }
+            else {
+               paintColumnDestination[n] = PaintFile::APPEND_COLUMN_DO_NOT_LOAD;
+            }
+         }
+         if (haveMostCommonCases) {
+            outputPaintFile.append(mappingPaintFile, paintColumnDestination,
+                                    PaintFile::FILE_COMMENT_MODE_APPEND);
+         }
+         
+         //
+         // Append indiv cases.
+         //
+         if (mms.getDoAllCasesCoordFileFlag()) {
+            for (int n = 0; n < mappingPaintFile.getNumberOfColumns(); n++) {
+               if (n < metricInfo->getNumberOfMetricColumns()) {
+                  paintColumnDestination[n] = PaintFile::APPEND_COLUMN_NEW;
+               }
+               else {
+                  paintColumnDestination[n] = PaintFile::APPEND_COLUMN_DO_NOT_LOAD;
+               }
+            }
+            NodeAttributeFile::FILE_COMMENT_MODE fcm = PaintFile::FILE_COMMENT_MODE_APPEND;
+            if (haveMostCommonCases) {
+               fcm = MetricFile::FILE_COMMENT_MODE_LEAVE_AS_IS;
+            }
+            outputPaintFile.append(mappingPaintFile, paintColumnDestination, fcm);
+         }
       } // number of metric mapping info
    
       //
@@ -917,7 +1190,7 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                   progressDialog.cancel();
                   QString msg("Data mapped but unable to append to current paint file.\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QMessageBox::critical(this, "ERROR", msg);
                   return;
                }
             }
@@ -950,7 +1223,8 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                   msg.append(metricName);
                   msg.append("\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                   return;
                }    
                
@@ -986,7 +1260,8 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                   msg.append(mms.getOutputSpecFileName());
                   msg.append("\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                   return;
                }
             }
@@ -997,7 +1272,7 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
       // Restore directory
       //
       QDir::setCurrent(savedDirectory);
-   }
+   }  // for each mapping set
 }      
    
 /**
@@ -1141,7 +1416,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                         progressDialog.cancel();
                         QString msg("Error creating BrainSet for mapping data.\n");
                         msg.append(StringUtilities::combine(errorMessages, "\n"));
-                        GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                        QApplication::restoreOverrideCursor();
+                        QMessageBox::critical(this, "ERROR", msg);
                         return;
                      }
                      
@@ -1163,7 +1439,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                            msg.append(mappingTopoFileName);
                            msg.append(" and ");
                            msg.append(mappingCoordFileNames[surfaceIndex]);
-                           GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                           QApplication::restoreOverrideCursor();
+                           QMessageBox::critical(this, "ERROR", msg);
                            delete bs;
                            return;
                         }
@@ -1174,7 +1451,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                         msg.append(mappingTopoFileName);
                         msg.append(" and ");
                         msg.append(mappingCoordFileNames[surfaceIndex]);
-                        GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                        QApplication::restoreOverrideCursor();
+                        QMessageBox::critical(this, "ERROR", msg);
                         delete bs;
                         return;
                      }
@@ -1219,31 +1497,35 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
             }
          
             //
-            // Create the mapper class
-            //
-            BrainModelVolumeToSurfaceMetricMapper bmvsmm(
-               bs,
-               static_cast<BrainModelVolumeToSurfaceMetricMapper::ALGORITHM>(algorithmComboBox->currentIndex()),
-               bms,
-               vf,
-               &mappingMetricFile,
-               metricColumn,
-               metricInfo->getMetricColumnName(metricColumn));
-         
-            //
             // Update mapping algorithm parameters
             //
-            bmvsmm.setAlgorithmAverageVoxelParameters(algorithmAverageVoxelNeighborDoubleSpinBox->value());
-            bmvsmm.setAlgorithmMaximumVoxelParameters(algorithmMaximumVoxelNeighborDoubleSpinBox->value());
-            bmvsmm.setAlgorithmGaussianParameters(algorithmGaussianNeighborDoubleSpinBox->value(),
+            mappingParameters.setAlgorithm(
+               static_cast<BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM>(
+                  algorithmComboBox->currentIndex()));
+            mappingParameters.setAlgorithmMetricAverageVoxelParameters(algorithmAverageVoxelNeighborDoubleSpinBox->value());
+            mappingParameters.setAlgorithmMetricMaximumVoxelParameters(algorithmMaximumVoxelNeighborDoubleSpinBox->value());
+            mappingParameters.setAlgorithmMetricStrongestVoxelParameters(algorithmStrongestVoxelNeighborDoubleSpinBox->value());
+            mappingParameters.setAlgorithmMetricGaussianParameters(algorithmGaussianNeighborDoubleSpinBox->value(),
                                                   algorithmGaussianSigmaNormDoubleSpinBox->value(),
                                                   algorithmGaussianSigmaTangDoubleSpinBox->value(),
                                                   algorithmGaussianNormBelowDoubleSpinBox->value(),
                                                   algorithmGaussianNormAboveDoubleSpinBox->value(),
                                                   algorithmGaussianTangCutoffDoubleSpinBox->value());
-            bmvsmm.setAlgorithmMcwBrainFishParameters(algorithmBrainFishMaxDistanceDoubleSpinBox->value(),
+            mappingParameters.setAlgorithmMetricMcwBrainFishParameters(algorithmBrainFishMaxDistanceDoubleSpinBox->value(),
                                                       algorithmBrainFishSplatFactorSpinBox->value());
             
+            //
+            // Create the mapper class
+            //
+            BrainModelVolumeToSurfaceMapper bmvsmm(
+               bs,
+               bms,
+               vf,
+               &mappingMetricFile,
+               mappingParameters,
+               metricColumn,
+               metricInfo->getMetricColumnName(metricColumn));
+         
             //
             // Run the mapper
             //
@@ -1252,7 +1534,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
             }
             catch (BrainModelAlgorithmException& e) {
                progressDialog.cancel();
-               GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", e.whatQString());
                if (createdBrainSet) {
                   delete bs;
                }
@@ -1511,7 +1794,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                progressDialog.cancel();
                QString msg("Error creating BrainSet for mapping average fiducial data.\n");
                msg.append(StringUtilities::combine(errorMessages, "\n"));
-               GuiMessageBox::critical(this, "ERROR", msg, "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", msg);
                return;
             }
             
@@ -1533,7 +1817,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                   msg.append(mappingTopoFileName);
                   msg.append(" and ");
                   msg.append(mms.getAverageFiducialCoordFileName());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                   delete bs;
                   return;
                }
@@ -1544,7 +1829,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                msg.append(mappingTopoFileName);
                msg.append(" and ");
                msg.append(mms.getAverageFiducialCoordFileName());
-               GuiMessageBox::critical(this, "ERROR", msg, "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", msg);
                delete bs;
                return;
             }
@@ -1584,31 +1870,35 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
             }
          
             //
-            // Create the mapper class
-            //
-            BrainModelVolumeToSurfaceMetricMapper bmvsmm(
-               bs,
-               static_cast<BrainModelVolumeToSurfaceMetricMapper::ALGORITHM>(algorithmComboBox->currentIndex()),
-               bms,
-               vf,
-               &averageFiducialMetricFile,
-               0,
-               metricInfo->getMetricAverageFiducialCoordColumnName());
-         
-            //
             // Update mapping algorithm parameters
             //
-            bmvsmm.setAlgorithmAverageVoxelParameters(algorithmAverageVoxelNeighborDoubleSpinBox->value());
-            bmvsmm.setAlgorithmMaximumVoxelParameters(algorithmMaximumVoxelNeighborDoubleSpinBox->value());
-            bmvsmm.setAlgorithmGaussianParameters(algorithmGaussianNeighborDoubleSpinBox->value(),
+            mappingParameters.setAlgorithm(
+               static_cast<BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM>(
+                  algorithmComboBox->currentIndex()));
+            mappingParameters.setAlgorithmMetricAverageVoxelParameters(algorithmAverageVoxelNeighborDoubleSpinBox->value());
+            mappingParameters.setAlgorithmMetricMaximumVoxelParameters(algorithmMaximumVoxelNeighborDoubleSpinBox->value());
+            mappingParameters.setAlgorithmMetricStrongestVoxelParameters(algorithmStrongestVoxelNeighborDoubleSpinBox->value());
+            mappingParameters.setAlgorithmMetricGaussianParameters(algorithmGaussianNeighborDoubleSpinBox->value(),
                                                   algorithmGaussianSigmaNormDoubleSpinBox->value(),
                                                   algorithmGaussianSigmaTangDoubleSpinBox->value(),
                                                   algorithmGaussianNormBelowDoubleSpinBox->value(),
                                                   algorithmGaussianNormAboveDoubleSpinBox->value(),
                                                   algorithmGaussianTangCutoffDoubleSpinBox->value());
-            bmvsmm.setAlgorithmMcwBrainFishParameters(algorithmBrainFishMaxDistanceDoubleSpinBox->value(),
+            mappingParameters.setAlgorithmMetricMcwBrainFishParameters(algorithmBrainFishMaxDistanceDoubleSpinBox->value(),
                                                       algorithmBrainFishSplatFactorSpinBox->value());
             
+            //
+            // Create the mapper class
+            //
+            BrainModelVolumeToSurfaceMapper bmvsmm(
+               bs,
+               bms,
+               vf,
+               &averageFiducialMetricFile,
+               mappingParameters,
+               0,
+               metricInfo->getMetricAverageFiducialCoordColumnName());
+         
             //
             // Run the mapper
             //
@@ -1617,7 +1907,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
             }
             catch (BrainModelAlgorithmException& e) {
                progressDialog.cancel();
-               GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+               QApplication::restoreOverrideCursor();
+               QMessageBox::critical(this, "ERROR", e.whatQString());
                delete bs;
                bs = NULL;
                return;
@@ -1721,7 +2012,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                   progressDialog.cancel();
                   QString msg("Data mapped but unable to append to current metric file.\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                   return;
                }
             }
@@ -1754,7 +2046,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                   msg.append(metricName);
                   msg.append("\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                   return;
                }    
                
@@ -1790,7 +2083,8 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                   msg.append(mms.getOutputSpecFileName());
                   msg.append("\n");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                   return;
                }
             }
@@ -2029,7 +2323,7 @@ GuiMapFmriDialog::slotLoadedVolumesPushButton()
       case DATA_MAPPING_TYPE_METRIC:
          num = theMainWindow->getBrainSet()->getNumberOfVolumeFunctionalFiles();
          if (num == 0) {
-            GuiMessageBox::warning(this, "Warning", "There are no loaded functional volumes", "OK");
+            QMessageBox::warning(this, "Warning", "There are no loaded functional volumes");
             return;
          }
          typeName = "func";
@@ -2037,7 +2331,7 @@ GuiMapFmriDialog::slotLoadedVolumesPushButton()
       case DATA_MAPPING_TYPE_PAINT:
          num = theMainWindow->getBrainSet()->getNumberOfVolumePaintFiles();
          if (num == 0) {
-            GuiMessageBox::warning(this, "Warning", "There are no loaded paint volumes", "OK");
+            QMessageBox::warning(this, "Warning", "There are no loaded paint volumes");
             return;
          }
          typeName = "paint";
@@ -2134,8 +2428,9 @@ GuiMapFmriDialog::slotDiskVolumesPushButton()
    QString instructions = "To select multiple volumes, hold down the CTRL key while selecting "
                           "volume file names with the mouse (Macintosh users should hold down "
                           "the Apple key).";
+/*
    std::ostringstream str;
-   str << "AFNI " 
+       << "AFNI " 
        << "NIFTI "
        << "SPM "
        << "WuNIL ("
@@ -2144,13 +2439,16 @@ GuiMapFmriDialog::slotDiskVolumesPushButton()
        << "*" << SpecFile::getAnalyzeVolumeFileExtension().toAscii().constData() << " "
        << "*" << SpecFile::getWustlVolumeFileExtension().toAscii().constData()
        << ")";
+*/
    GuiFileDialogWithInstructions openVolumeFileDialog(this, instructions, "openVolSpec", true);
    openVolumeFileDialog.setWindowTitle("Choose Volume File");
-   openVolumeFileDialog.setMode(GuiFileDialogWithInstructions::ExistingFiles);
-   openVolumeFileDialog.setFilter(str.str().c_str());
+   openVolumeFileDialog.setFileMode(GuiFileDialogWithInstructions::ExistingFiles);
+   openVolumeFileDialog.setFilters(QStringList(FileFilters::getVolumeGenericFileFilter()));
+   openVolumeFileDialog.selectFilter(FileFilters::getVolumeGenericFileFilter());
    if (lastVolumeDirectory.isEmpty() == false) {
-      openVolumeFileDialog.setDir(lastVolumeDirectory);
+      openVolumeFileDialog.setDirectory(lastVolumeDirectory);
    }
+   openVolumeFileDialog.rereadDir();
    if (openVolumeFileDialog.exec() == QDialog::Accepted) {
       //
       // Check for HDR files
@@ -2171,7 +2469,12 @@ GuiMapFmriDialog::slotDiskVolumesPushButton()
             const QString msg("You have selected a \".hdr\" file.  If this \".hdr\" file does\n"
                               "not contain an SPM originator, it is unlikely that it will get\n"
                               "mapped to the surface correctly.");
-            if (GuiMessageBox::warning(this, "WARNING", msg, "Continue", "Cancel") != 0) {
+            if (QMessageBox::warning(this, 
+                                     "WARNING", 
+                                     msg, 
+                                     (QMessageBox::Ok | QMessageBox::Cancel),
+                                     QMessageBox::Cancel)
+                                        == QMessageBox::Cancel) {
                return;
             }
          }
@@ -2374,14 +2677,16 @@ GuiMapFmriDialog::createSpecFileAndSurfaceSelectionPage()
 void 
 GuiMapFmriDialog::slotAddSpecAtlasPushButton()
 {
-   bool enableMultiFidOptions = false;   
+   bool enableMetricMultiFidOptions = false;   
+   bool enablePaintMultiFidOptions = false;   
    switch (dataMappingType) {
       case DATA_MAPPING_TYPE_NONE:
          break;
       case DATA_MAPPING_TYPE_METRIC:
-         enableMultiFidOptions = true;
+         enableMetricMultiFidOptions = true;
          break;
       case DATA_MAPPING_TYPE_PAINT:
+         enablePaintMultiFidOptions = true;
          break;
    }
 
@@ -2389,25 +2694,51 @@ GuiMapFmriDialog::slotAddSpecAtlasPushButton()
    // Choose output spec file and atlas files
    //
    GuiMapFmriAtlasDialog fad(this, &atlasSpecFileInfo, theMainWindow->getBrainSet()->getPreferencesFile(),
-                             "", "", true, enableMultiFidOptions);
+                             "", "", true, enableMetricMultiFidOptions, enablePaintMultiFidOptions);
    if (fad.exec() == QDialog::Accepted) {
       QString atlasPath, atlasTopoFileName, description, metricNameHint, atlasAvgCoordFileName;
       QString structureName;
       std::vector<QString> atlasCoordFileNames;
-      bool mapToAvgCoordFileFlag,
-           mapToAvgOfAllFlag,
-           mapToStdDevOfAllFlag,
-           mapToStdErrorOfAllFlag,
-           mapToMinOfAllFlag,
-           mapToMaxOfAllFlag,
-           mapToAllCasesFlag;
-           
-      fad.getSelectedAtlasData(atlasPath, atlasTopoFileName, description,
-                               atlasCoordFileNames, atlasAvgCoordFileName, metricNameHint,
-                               structureName,
-                               mapToAvgCoordFileFlag, mapToAvgOfAllFlag, mapToStdDevOfAllFlag,
-                               mapToStdErrorOfAllFlag, mapToMinOfAllFlag, mapToMaxOfAllFlag,
-                               mapToAllCasesFlag);
+      bool mapToAvgCoordFileFlag = false,
+           mapToAvgOfAllFlag = false,
+           mapToStdDevOfAllFlag = false,
+           mapToStdErrorOfAllFlag = false,
+           mapToMinOfAllFlag = false,
+           mapToMaxOfAllFlag = false,
+           mapToAllCasesFlag = false,
+           mapToMostCommonOfAllFlag = false,
+           mapToMostCommonExcludeUnidentifiedOfAllFlag = false;
+      
+      if (enableMetricMultiFidOptions) {
+         fad.getSelectedMetricAtlasData(atlasPath, 
+                                        atlasTopoFileName, 
+                                        description,
+                                        atlasCoordFileNames, 
+                                        atlasAvgCoordFileName, 
+                                        metricNameHint,
+                                        structureName,
+                                        mapToAvgCoordFileFlag, 
+                                        mapToAvgOfAllFlag, 
+                                        mapToStdDevOfAllFlag,
+                                        mapToStdErrorOfAllFlag, 
+                                        mapToMinOfAllFlag, 
+                                        mapToMaxOfAllFlag,
+                                        mapToAllCasesFlag);
+      }
+      else if (enablePaintMultiFidOptions) {
+         fad.getSelectedPaintAtlasData(atlasPath, 
+                                        atlasTopoFileName, 
+                                        description,
+                                        atlasCoordFileNames, 
+                                        atlasAvgCoordFileName, 
+                                        metricNameHint,
+                                        structureName,
+                                        mapToAvgCoordFileFlag, 
+                                        mapToMostCommonOfAllFlag, 
+                                        mapToMostCommonExcludeUnidentifiedOfAllFlag,
+                                        mapToAllCasesFlag);
+      }
+      
       const QString outputSpecFileName(fad.getOutputSpecFileName());
       
       if ((atlasCoordFileNames.empty() == false) ||
@@ -2432,7 +2763,9 @@ GuiMapFmriDialog::slotAddSpecAtlasPushButton()
                                                     mapToStdErrorOfAllFlag,
                                                     mapToMinOfAllFlag,
                                                     mapToMaxOfAllFlag,
-                                                    mapToAllCasesFlag));
+                                                    mapToAllCasesFlag,
+                                                    mapToMostCommonOfAllFlag,
+                                                    mapToMostCommonExcludeUnidentifiedOfAllFlag));
       }
    }
 
@@ -2445,14 +2778,16 @@ GuiMapFmriDialog::slotAddSpecAtlasPushButton()
 void 
 GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
 {
-   bool enableMultiFidOptions = false;   
+   bool enableMetricMultiFidOptions = false;  
+   bool enablePaintMultiFidOptions = true; 
    switch (dataMappingType) {
       case DATA_MAPPING_TYPE_NONE:
          break;
       case DATA_MAPPING_TYPE_METRIC:
-         enableMultiFidOptions = true;
+         enableMetricMultiFidOptions = true;
          break;
       case DATA_MAPPING_TYPE_PAINT:
+         enablePaintMultiFidOptions = true;
          break;
    }
 
@@ -2464,25 +2799,51 @@ GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
                              theMainWindow->getBrainSet()->getSpecies(),
                              theMainWindow->getBrainSet()->getStructure().getTypeAsString(),
                              false,
-                             enableMultiFidOptions);
+                             enableMetricMultiFidOptions, enablePaintMultiFidOptions);
    if (fad.exec() == QDialog::Accepted) {
       QString atlasPath, atlasTopoFileName, description, metricNameHint, atlasAvgCoordFileName;
       QString structureName;
       std::vector<QString> atlasCoordFileNames;
-      bool mapToAvgCoordFileFlag,
-           mapToAvgOfAllFlag,
-           mapToStdDevOfAllFlag,
-           mapToStdErrorOfAllFlag,
-           mapToMinOfAllFlag,
-           mapToMaxOfAllFlag,
-           mapToAllCasesFlag;
+      bool mapToAvgCoordFileFlag = false,
+           mapToAvgOfAllFlag = false,
+           mapToStdDevOfAllFlag = false,
+           mapToStdErrorOfAllFlag = false,
+           mapToMinOfAllFlag = false,
+           mapToMaxOfAllFlag = false,
+           mapToAllCasesFlag = false,
+           mapToMostCommonOfAllFlag = false,
+           mapToMostCommonExcludeUnidentifiedOfAllFlag = false;
            
-      fad.getSelectedAtlasData(atlasPath, atlasTopoFileName, description,
-                               atlasCoordFileNames, atlasAvgCoordFileName, metricNameHint,
-                               structureName,
-                               mapToAvgCoordFileFlag, mapToAvgOfAllFlag, mapToStdDevOfAllFlag,
-                               mapToStdErrorOfAllFlag, mapToMinOfAllFlag, mapToMaxOfAllFlag,
-                               mapToAllCasesFlag);
+      if (enableMetricMultiFidOptions) {
+         fad.getSelectedMetricAtlasData(atlasPath, 
+                                        atlasTopoFileName, 
+                                        description,
+                                        atlasCoordFileNames, 
+                                        atlasAvgCoordFileName, 
+                                        metricNameHint,
+                                        structureName,
+                                        mapToAvgCoordFileFlag, 
+                                        mapToAvgOfAllFlag, 
+                                        mapToStdDevOfAllFlag,
+                                        mapToStdErrorOfAllFlag, 
+                                        mapToMinOfAllFlag, 
+                                        mapToMaxOfAllFlag,
+                                        mapToAllCasesFlag);
+      
+      }
+      else if (enablePaintMultiFidOptions) {
+         fad.getSelectedPaintAtlasData(atlasPath, 
+                                        atlasTopoFileName, 
+                                        description,
+                                        atlasCoordFileNames, 
+                                        atlasAvgCoordFileName, 
+                                        metricNameHint,
+                                        structureName,
+                                        mapToAvgCoordFileFlag, 
+                                        mapToMostCommonOfAllFlag, 
+                                        mapToMostCommonExcludeUnidentifiedOfAllFlag,
+                                        mapToAllCasesFlag);
+      }
       
       if (atlasCoordFileNames.empty() == false) {
          //
@@ -2502,7 +2863,9 @@ GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
                                                     mapToStdErrorOfAllFlag,
                                                     mapToMinOfAllFlag,
                                                     mapToMaxOfAllFlag,
-                                                    mapToAllCasesFlag));
+                                                    mapToAllCasesFlag,
+                                                    mapToMostCommonOfAllFlag,
+                                                    mapToMostCommonExcludeUnidentifiedOfAllFlag));
       }
    }
    
@@ -2637,7 +3000,9 @@ GuiMapFmriDialog::slotAddSpecFilesPushButton()
                                                  false,
                                                  false,
                                                  false,
-                                                 true));
+                                                 true,
+                                                 false,
+                                                 false));
    }
    
    loadMappingSetsListBox();
@@ -2794,24 +3159,24 @@ GuiMapFmriDialog::slotMetricNamingTableCellDoubleClicked(int row, int col)
 void 
 GuiMapFmriDialog::slotMetricFilePushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptSave);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
    fd.setWindowTitle("Choose Data File");
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    
    QStringList fileFilters;
    switch (dataMappingType) {
       case DATA_MAPPING_TYPE_NONE:
          break;
       case DATA_MAPPING_TYPE_METRIC:
-         fileFilters << GuiDataFileDialog::metricFileFilter;
-         fileFilters << GuiDataFileDialog::surfaceShapeFileFilter;
+         fileFilters << FileFilters::getMetricFileFilter();
+         fileFilters << FileFilters::getSurfaceShapeFileFilter();
          break;
       case DATA_MAPPING_TYPE_PAINT:
-         fileFilters << GuiDataFileDialog::paintFileFilter;
-         fileFilters << GuiDataFileDialog::probAtlasFileFilter;
+         fileFilters << FileFilters::getPaintFileFilter();
+         fileFilters << FileFilters::getProbAtlasFileFilter();
          break;
    }
    fd.setFilters(fileFilters);
@@ -2950,6 +3315,44 @@ GuiMapFmriDialog::slotReadMetricNamingPage()
                        metricNamingTable->item(avgRowNumber, 
                                                METRIC_NAMING_COLUMN_NEG_THRESH)->text().toFloat(),
                        metricNamingTable->item(avgRowNumber,
+                                               METRIC_NAMING_COLUMN_POS_THRESH)->text().toFloat());
+            }
+            
+            //
+            // Add a row for most common if needed
+            //
+            const int mostCommonRowNumber = metricInfo->getMetricMostCommonValueColumnNameRowNumber();
+            if (mostCommonRowNumber >= 0) {
+               //
+               // Set the table data
+               //
+               metricInfo->setMetricMostCommonValueColumnName(
+                       metricNamingTable->item(mostCommonRowNumber, METRIC_NAMING_COLUMN_NAME)->text());
+               metricInfo->setMetricMostCommonValueComment(
+                       metricNamingTable->item(mostCommonRowNumber, METRIC_NAMING_COLUMN_COMMENT)->text());
+               metricInfo->setMetricMostCommonValueThresholds(
+                       metricNamingTable->item(mostCommonRowNumber, 
+                                               METRIC_NAMING_COLUMN_NEG_THRESH)->text().toFloat(),
+                       metricNamingTable->item(mostCommonRowNumber,
+                                               METRIC_NAMING_COLUMN_POS_THRESH)->text().toFloat());
+            }
+            
+            //
+            // Add a row for most common exclude unidentified if needed
+            //
+            const int mostCommonExcludeUnidentifiedRowNumber = metricInfo->getMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber();
+            if (mostCommonExcludeUnidentifiedRowNumber >= 0) {
+               //
+               // Set the table data
+               //
+               metricInfo->setMetricMostCommonExcludeUnidentifiedValueColumnName(
+                       metricNamingTable->item(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_NAME)->text());
+               metricInfo->setMetricMostCommonExcludeUnidentifiedValueComment(
+                       metricNamingTable->item(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_COMMENT)->text());
+               metricInfo->setMetricMostCommonExcludeUnidentifiedValueThresholds(
+                       metricNamingTable->item(mostCommonExcludeUnidentifiedRowNumber, 
+                                               METRIC_NAMING_COLUMN_NEG_THRESH)->text().toFloat(),
+                       metricNamingTable->item(mostCommonRowNumber,
                                                METRIC_NAMING_COLUMN_POS_THRESH)->text().toFloat());
             }
             
@@ -3109,6 +3512,28 @@ GuiMapFmriDialog::slotLoadMetricNamingPage()
          }
          else {
             metricInfo->setMetricAverageOfAllColumnNameRowNumber(-1);
+         }
+         
+         //
+         // Add a row for most common if needed
+         //
+         if (ms.getDoMostCommonOfAllCasesFlag() && (numColumnsBeingMapped > 1)) {
+            metricInfo->setMetricMostCommonValueColumnNameRowNumber(totalRows);
+            totalRows++;
+         }
+         else {
+            metricInfo->setMetricMostCommonValueColumnNameRowNumber(-1);
+         }
+         
+         //
+         // Add a row for most common exclude unidentified if needed
+         //
+         if (ms.getDoMostCommonExcludeUnidentifiedOfAllCasesFlag() && (numColumnsBeingMapped > 1)) {
+            metricInfo->setMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber(totalRows);
+            totalRows++;
+         }
+         else {
+            metricInfo->setMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber(-1);
          }
          
          //
@@ -3302,6 +3727,58 @@ GuiMapFmriDialog::slotLoadMetricNamingPage()
          }
          
          //
+         // Add a row for most common if needed
+         //
+         const int mostCommonRowNumber = metricInfo->getMetricMostCommonValueColumnNameRowNumber();
+         if (mostCommonRowNumber >= 0) {
+            //
+            // Set the table data
+            //
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_NAME, 
+                                       new QTableWidgetItem(metricInfo->getMetricMostCommonValueColumnName()));
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_COMMENT, 
+                                       new QTableWidgetItem(metricInfo->getMetricMostCommonValueComment()));
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_SURFACE, 
+                                       new QTableWidgetItem("All Surfaces"));
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_VOLUME, 
+                                       new QTableWidgetItem(volumeName));
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_SUB_VOLUME, 
+                                       new QTableWidgetItem(subVolumeName));
+            float negThresh, posThresh;
+            metricInfo->getMetricMostCommonValueThresholds(negThresh, posThresh);
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_NEG_THRESH,
+                                       new QTableWidgetItem(QString::number(negThresh, 'f', 3)));
+            metricNamingTable->setItem(mostCommonRowNumber, METRIC_NAMING_COLUMN_POS_THRESH,
+                                       new QTableWidgetItem(QString::number(posThresh, 'f', 3)));
+         }
+         
+         //
+         // Add a row for most common exclude unidentified if needed
+         //
+         const int mostCommonExcludeUnidentifiedRowNumber = metricInfo->getMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber();
+         if (mostCommonExcludeUnidentifiedRowNumber >= 0) {
+            //
+            // Set the table data
+            //
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_NAME, 
+                                       new QTableWidgetItem(metricInfo->getMetricMostCommonExcludeUnidentifiedValueColumnName()));
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_COMMENT, 
+                                       new QTableWidgetItem(metricInfo->getMetricMostCommonExcludeUnidentifiedValueComment()));
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_SURFACE, 
+                                       new QTableWidgetItem("All Surfaces"));
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_VOLUME, 
+                                       new QTableWidgetItem(volumeName));
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_SUB_VOLUME, 
+                                       new QTableWidgetItem(subVolumeName));
+            float negThresh, posThresh;
+            metricInfo->getMetricMostCommonExcludeUnidentifiedValueThresholds(negThresh, posThresh);
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_NEG_THRESH,
+                                       new QTableWidgetItem(QString::number(negThresh, 'f', 3)));
+            metricNamingTable->setItem(mostCommonExcludeUnidentifiedRowNumber, METRIC_NAMING_COLUMN_POS_THRESH,
+                                       new QTableWidgetItem(QString::number(posThresh, 'f', 3)));
+         }
+         
+         //
          // Add a row for deviation if needed
          //
          const int stdDevRowNumber = metricInfo->getMetricStdDevColumnNameRowNumber();
@@ -3436,21 +3913,15 @@ GuiMapFmriDialog::slotLoadMetricNamingPage()
 QWidget* 
 GuiMapFmriDialog::createAlgorithmPage()
 {
+   std::vector<QString> algNames;
+   std::vector<BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM> algValues;   
+   BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmNamesAndValues(
+                                                                        algNames,
+                                                                        algValues);
    algorithmComboBox = new QComboBox;
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_NODES,
-                                 "Average Nodes");
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_VOXEL,
-                                 "Average Voxel");
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_ENCLOSING_VOXEL,
-                                 "Enclosing Voxel");
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_GAUSSIAN,
-                                 "Gaussian");
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_INTERPOLATED_VOXEL,
-                                 "Interpolated Voxel");
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MAXIMUM_VOXEL,
-                                 "Maximum Voxel");
-   algorithmComboBox->insertItem(BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MCW_BRAINFISH,
-                                 "MCW BrainFish");    
+   for (unsigned int i = 0; i < algNames.size(); i++) {
+      algorithmComboBox->insertItem(algValues[i], algNames[i]);
+   }
    QObject::connect(algorithmComboBox, SIGNAL(activated(int)),
                     this, SLOT(slotAlgorithmComboBox(int)));
 
@@ -3462,8 +3933,8 @@ GuiMapFmriDialog::createAlgorithmPage()
    //
    // Parameters for average nodes algorithm
    //
-   algorithmAverageNodesParametersBox = new QWidget;
-   algorithmParameterWidgetStack->addWidget(algorithmAverageNodesParametersBox);
+   algorithmMetricAverageNodesParametersBox = new QWidget;
+   algorithmParameterWidgetStack->addWidget(algorithmMetricAverageNodesParametersBox);
    
    //
    // Parameters for average voxel algorithm
@@ -3474,19 +3945,19 @@ GuiMapFmriDialog::createAlgorithmPage()
    algorithmAverageVoxelNeighborDoubleSpinBox->setMaximum(10000.0);
    algorithmAverageVoxelNeighborDoubleSpinBox->setSingleStep(1.0);
    algorithmAverageVoxelNeighborDoubleSpinBox->setDecimals(2);
-   algorithmAverageVoxelParametersBox = new QWidget;
-   QHBoxLayout* avgVoxLayout = new QHBoxLayout(algorithmAverageVoxelParametersBox);
+   algorithmMetricAverageVoxelParametersBox = new QWidget;
+   QHBoxLayout* avgVoxLayout = new QHBoxLayout(algorithmMetricAverageVoxelParametersBox);
    avgVoxLayout->addWidget(avgVoxLabel);
    avgVoxLayout->addWidget(algorithmAverageVoxelNeighborDoubleSpinBox);
    avgVoxLayout->addStretch();
-   algorithmAverageVoxelParametersBox->setFixedSize(algorithmAverageVoxelParametersBox->sizeHint());
-   algorithmParameterWidgetStack->addWidget(algorithmAverageVoxelParametersBox);
+   algorithmMetricAverageVoxelParametersBox->setFixedSize(algorithmMetricAverageVoxelParametersBox->sizeHint());
+   algorithmParameterWidgetStack->addWidget(algorithmMetricAverageVoxelParametersBox);
    
    //
    // Parameters for enclosing voxel algorithm
    //
-   algorithmEnclosingVoxelParametersBox = new QWidget;
-   algorithmParameterWidgetStack->addWidget(algorithmEnclosingVoxelParametersBox);
+   algorithmMetricEnclosingVoxelParametersBox = new QWidget;
+   algorithmParameterWidgetStack->addWidget(algorithmMetricEnclosingVoxelParametersBox);
    
    //
    // Parameters for gaussian algorithm
@@ -3527,8 +3998,8 @@ GuiMapFmriDialog::createAlgorithmPage()
    algorithmGaussianTangCutoffDoubleSpinBox->setMaximum(10000.0);
    algorithmGaussianTangCutoffDoubleSpinBox->setSingleStep(1.0);
    algorithmGaussianTangCutoffDoubleSpinBox->setDecimals(3);
-   algorithmGaussianParametersBox = new QWidget;
-   QGridLayout* gaussLayout = new QGridLayout(algorithmGaussianParametersBox);
+   algorithmMetricGaussianParametersBox = new QWidget;
+   QGridLayout* gaussLayout = new QGridLayout(algorithmMetricGaussianParametersBox);
    gaussLayout->addWidget(gaussBoxLabel, 0, 0);
    gaussLayout->addWidget(algorithmGaussianNeighborDoubleSpinBox, 0, 1);
    gaussLayout->addWidget(gaussSNLabel, 1, 0);
@@ -3541,14 +4012,14 @@ GuiMapFmriDialog::createAlgorithmPage()
    gaussLayout->addWidget(algorithmGaussianNormAboveDoubleSpinBox, 4, 1);
    gaussLayout->addWidget(gaussTCLabel, 5, 0);
    gaussLayout->addWidget(algorithmGaussianTangCutoffDoubleSpinBox, 5, 1);
-   algorithmGaussianParametersBox->setFixedSize(algorithmGaussianParametersBox->sizeHint());
-   algorithmParameterWidgetStack->addWidget(algorithmGaussianParametersBox);
+   algorithmMetricGaussianParametersBox->setFixedSize(algorithmMetricGaussianParametersBox->sizeHint());
+   algorithmParameterWidgetStack->addWidget(algorithmMetricGaussianParametersBox);
    
    //
    // Parameters for interpolated voxel algorithm
    //
-   algorithmInterpolatedVoxelParametersBox = new QWidget;
-   algorithmParameterWidgetStack->addWidget(algorithmInterpolatedVoxelParametersBox);
+   algorithmMetricInterpolatedVoxelParametersBox = new QWidget;
+   algorithmParameterWidgetStack->addWidget(algorithmMetricInterpolatedVoxelParametersBox);
    
    //
    // Parameters for maximum voxel algorithm
@@ -3559,13 +4030,13 @@ GuiMapFmriDialog::createAlgorithmPage()
    algorithmMaximumVoxelNeighborDoubleSpinBox->setMaximum(10000.0);
    algorithmMaximumVoxelNeighborDoubleSpinBox->setSingleStep(1.0);
    algorithmMaximumVoxelNeighborDoubleSpinBox->setDecimals(2);
-   algorithmMaximumVoxelParametersBox = new QWidget;
-   QHBoxLayout* maxVoxLayout = new QHBoxLayout(algorithmMaximumVoxelParametersBox);
+   algorithmMetricMaximumVoxelParametersBox = new QWidget;
+   QHBoxLayout* maxVoxLayout = new QHBoxLayout(algorithmMetricMaximumVoxelParametersBox);
    maxVoxLayout->addWidget(maxLabel);
    maxVoxLayout->addWidget(algorithmMaximumVoxelNeighborDoubleSpinBox);
    maxVoxLayout->addStretch();
-   algorithmMaximumVoxelParametersBox->setFixedSize(algorithmMaximumVoxelParametersBox->sizeHint());
-   algorithmParameterWidgetStack->addWidget(algorithmMaximumVoxelParametersBox);
+   algorithmMetricMaximumVoxelParametersBox->setFixedSize(algorithmMetricMaximumVoxelParametersBox->sizeHint());
+   algorithmParameterWidgetStack->addWidget(algorithmMetricMaximumVoxelParametersBox);
    
    //
    // Parameters for MCW BrainFish algorithm
@@ -3581,15 +4052,38 @@ GuiMapFmriDialog::createAlgorithmPage()
    algorithmBrainFishSplatFactorSpinBox->setMinimum(0);
    algorithmBrainFishSplatFactorSpinBox->setMaximum(10000);
    algorithmBrainFishSplatFactorSpinBox->setSingleStep(1);
-   algorithmMcwBrainFishParametersBox = new QWidget;
-   QGridLayout* mcwLayout = new QGridLayout(algorithmMcwBrainFishParametersBox);
+   algorithmMetricMcwBrainFishParametersBox = new QWidget;
+   QGridLayout* mcwLayout = new QGridLayout(algorithmMetricMcwBrainFishParametersBox);
    mcwLayout->addWidget(mcwDistLabel, 0, 0);
    mcwLayout->addWidget(algorithmBrainFishMaxDistanceDoubleSpinBox, 0, 1);
    mcwLayout->addWidget(mcwSplatLabel, 1, 0);
    mcwLayout->addWidget(algorithmBrainFishSplatFactorSpinBox, 1, 1);
-   algorithmMcwBrainFishParametersBox->setFixedSize(algorithmMcwBrainFishParametersBox->sizeHint());
-   algorithmParameterWidgetStack->addWidget(algorithmMcwBrainFishParametersBox);
+   algorithmMetricMcwBrainFishParametersBox->setFixedSize(algorithmMetricMcwBrainFishParametersBox->sizeHint());
+   algorithmParameterWidgetStack->addWidget(algorithmMetricMcwBrainFishParametersBox);
 
+   //
+   // Parameters for strongest voxel algorithm
+   //
+   QLabel* strongestLabel = new QLabel("Neighbor Box Size");
+   algorithmStrongestVoxelNeighborDoubleSpinBox = new QDoubleSpinBox;
+   algorithmStrongestVoxelNeighborDoubleSpinBox->setMinimum(0.0);
+   algorithmStrongestVoxelNeighborDoubleSpinBox->setMaximum(10000.0);
+   algorithmStrongestVoxelNeighborDoubleSpinBox->setSingleStep(1.0);
+   algorithmStrongestVoxelNeighborDoubleSpinBox->setDecimals(2);
+   algorithmMetricStrongestVoxelParametersBox = new QWidget;
+   QHBoxLayout* strongestVoxLayout = new QHBoxLayout(algorithmMetricStrongestVoxelParametersBox);
+   strongestVoxLayout->addWidget(strongestLabel);
+   strongestVoxLayout->addWidget(algorithmStrongestVoxelNeighborDoubleSpinBox);
+   strongestVoxLayout->addStretch();
+   algorithmMetricStrongestVoxelParametersBox->setFixedSize(algorithmMetricStrongestVoxelParametersBox->sizeHint());
+   algorithmParameterWidgetStack->addWidget(algorithmMetricStrongestVoxelParametersBox);
+   
+   //
+   // Parameters for enclosing voxel algorithm
+   //
+   algorithmPaintEnclosingVoxelParametersBox = new QWidget;
+   algorithmParameterWidgetStack->addWidget(algorithmPaintEnclosingVoxelParametersBox);
+   
    //
    // Group box for mapping selection and parameters
    //
@@ -3619,179 +4113,72 @@ GuiMapFmriDialog::createAlgorithmPage()
  * Load the algorithm parameters from the preferences file.
  */
 void
-GuiMapFmriDialog::loadSaveAlgorithmParametersFromPreferences(const bool loadThem)
+GuiMapFmriDialog::loadAlgorithmParametersFromPreferences()
 {
-   const QString algorithmAverageNodesName("AVERAGE_NODES");
-   const QString algorithmAverageVoxelName("AVERAGE_VOXEL");
-   const QString algorithmEnclosingVoxelName("ENCLOSING_VOXEL");
-   const QString algorithmGaussianName("GAUSSIAN");
-   const QString algorithmInterpolatedVoxelName("INTERPOLATED_VOXEL");
-   const QString algorithmMaximumVoxelName("MAXIMUM_VOXEL");
-   const QString algorithmMcwBrainFishName("MCW_BRAIN_FISH");
+   static bool loadedFlag = false;
+   if (loadedFlag) {
+      return;
+   }
+   loadedFlag = true;
    
-   if (loadThem) {
-      //
-      // Use default params for those with current brain set
-      //
-      PreferencesFile pfTemp;
-      PreferencesFile::FmriAlgorithm* params = pfTemp.getFmriAlgorithmParameters();
-      if (theMainWindow->getBrainSet() != NULL) {
-         params = theMainWindow->getBrainSet()->getPreferencesFile()->getFmriAlgorithmParameters();
-      }
-
-      //
-      // Set the algorithm
-      //
-      BrainModelVolumeToSurfaceMetricMapper::ALGORITHM alg =
-                BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_ENCLOSING_VOXEL;
-      const QString algName(params->getAlgorithmName());
-      if (algName == algorithmAverageNodesName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_NODES;
-      }
-      else if (algName == algorithmAverageVoxelName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_VOXEL;
-      }
-      else if (algName == algorithmEnclosingVoxelName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_ENCLOSING_VOXEL;
-      }
-      else if (algName == algorithmGaussianName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_GAUSSIAN;
-      }
-      else if (algName == algorithmInterpolatedVoxelName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_INTERPOLATED_VOXEL;
-      }
-      else if (algName == algorithmMaximumVoxelName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MAXIMUM_VOXEL;
-      }
-      else if (algName == algorithmMcwBrainFishName) {
-         alg = BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MCW_BRAINFISH;
-      }
-      algorithmComboBox->setCurrentIndex(alg);
-      slotAlgorithmComboBox(alg);
-      
-      //
-      // Average voxel parameters
-      //
-      float avgVoxNeighbor = 1.0;
-      params->getAverageVoxelParameters(avgVoxNeighbor);
-      algorithmAverageVoxelNeighborDoubleSpinBox->setValue(avgVoxNeighbor);
-      
-      //
-      // Maximum voxel parameters
-      //
-      float maxVoxNeighbor = 1.0;
-      params->getMaximumVoxelParameters(maxVoxNeighbor);
-      algorithmMaximumVoxelNeighborDoubleSpinBox->setValue(maxVoxNeighbor);
-      
-      //
-      // Gaussian parameters
-      //
-      float gaussNeighbor;
-      float gaussSigmaTang;
-      float gaussSigmaNorm;
-      float gaussNormBelow;
-      float gaussNormAbove;
-      float gaussTang;
-      params->getGaussianParameters(gaussNeighbor,
-                                    gaussSigmaTang,
-                                    gaussSigmaNorm,
-                                    gaussNormBelow,
-                                    gaussNormAbove,
-                                    gaussTang);
-      algorithmGaussianNeighborDoubleSpinBox->setValue(gaussNeighbor);
-      algorithmGaussianSigmaNormDoubleSpinBox->setValue(gaussSigmaNorm);
-      algorithmGaussianSigmaTangDoubleSpinBox->setValue(gaussSigmaTang);
-      algorithmGaussianNormBelowDoubleSpinBox->setValue(gaussNormBelow);
-      algorithmGaussianNormAboveDoubleSpinBox->setValue(gaussNormAbove);
-      algorithmGaussianTangCutoffDoubleSpinBox->setValue(gaussTang);
-      
-      //
-      // MCW BrainFish Parameters
-      //
-      float bfMaxDist;
-      int   bfSplat;
-      params->getBrainFishParameters(bfMaxDist,
-                                     bfSplat);
-      algorithmBrainFishMaxDistanceDoubleSpinBox->setValue(bfMaxDist);
-      algorithmBrainFishSplatFactorSpinBox->setValue(bfSplat);      
-   }
-   else {
-      PreferencesFile::FmriAlgorithm* params = NULL;
-      PreferencesFile* pf = NULL;
-      if (theMainWindow->getBrainSet() != NULL) {
-         pf = theMainWindow->getBrainSet()->getPreferencesFile();
-         params = pf->getFmriAlgorithmParameters();
-      }
-      if (params != NULL) {
-         //
-         // Algorithm Name
-         //
-         QString algName(algorithmEnclosingVoxelName);
-         switch (algorithmComboBox->currentIndex()) {
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_NODES:
-               algName = algorithmAverageNodesName;
-               break;
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_VOXEL:
-               algName = algorithmAverageVoxelName;
-               break;
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_ENCLOSING_VOXEL:
-               algName = algorithmEnclosingVoxelName;
-               break;
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_GAUSSIAN:
-               algName = algorithmGaussianName;
-               break;
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_INTERPOLATED_VOXEL:
-               algName = algorithmInterpolatedVoxelName;
-               break;
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MAXIMUM_VOXEL:
-               algName = algorithmMaximumVoxelName;
-               break;
-            case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MCW_BRAINFISH:
-               algName = algorithmMcwBrainFishName;
-               break;
-         }
-         params->setAlgorithmName(algName);
-         
-         //
-         // Average voxel parameters
-         //
-         params->setAverageVoxelParameters(
-                     algorithmAverageVoxelNeighborDoubleSpinBox->value());
-         
-         //
-         // Maximum voxel parameters
-         //
-         params->setMaximumVoxelParameters(
-                     algorithmMaximumVoxelNeighborDoubleSpinBox->value());
-         
-         //
-         // Gaussian parameters
-         //
-         params->setGaussianParameters(
-                     algorithmGaussianNeighborDoubleSpinBox->value(),
-                     algorithmGaussianSigmaTangDoubleSpinBox->value(),
-                     algorithmGaussianSigmaNormDoubleSpinBox->value(),
-                     algorithmGaussianNormBelowDoubleSpinBox->value(),
-                     algorithmGaussianNormAboveDoubleSpinBox->value(),
-                     algorithmGaussianTangCutoffDoubleSpinBox->value());
-         
-         //
-         // MCW BrainFish Parameters
-         //
-         params->setBrainFishParameters(
-                     algorithmBrainFishMaxDistanceDoubleSpinBox->value(),
-                     algorithmBrainFishSplatFactorSpinBox->value());
-                     
-         //
-         // Update preferences file on disk
-         //
-         try {
-            pf->writeFile(pf->getFileName());
-         }
-         catch (FileException&) {
-         }
-      }
-   }
+   //
+   // Algorithm 
+   //
+   algorithmComboBox->setCurrentIndex(mappingParameters.getAlgorithm());
+   slotAlgorithmComboBox(algorithmComboBox->currentIndex());
+   
+   //
+   // Average voxel parameters
+   //
+   float avgVoxNeighbor = 1.0;
+   mappingParameters.getAlgorithmMetricAverageVoxelParameters(avgVoxNeighbor);
+   algorithmAverageVoxelNeighborDoubleSpinBox->setValue(avgVoxNeighbor);
+   
+   //
+   // Maximum voxel parameters
+   //
+   float maxVoxNeighbor = 1.0;
+   mappingParameters.getAlgorithmMetricMaximumVoxelParameters(maxVoxNeighbor);
+   algorithmMaximumVoxelNeighborDoubleSpinBox->setValue(maxVoxNeighbor);
+   
+   //
+   // Strongest voxel parameters
+   //
+   float strongestVoxNeighbor = 1.0;
+   mappingParameters.getAlgorithmMetricStrongestVoxelParameters(strongestVoxNeighbor);
+   algorithmStrongestVoxelNeighborDoubleSpinBox->setValue(strongestVoxNeighbor);
+   
+   //
+   // Gaussian parameters
+   //
+   float gaussNeighbor;
+   float gaussSigmaTang;
+   float gaussSigmaNorm;
+   float gaussNormBelow;
+   float gaussNormAbove;
+   float gaussTang;
+   mappingParameters.getAlgorithmMetricGaussianParameters(gaussNeighbor,
+                                 gaussSigmaTang,
+                                 gaussSigmaNorm,
+                                 gaussNormBelow,
+                                 gaussNormAbove,
+                                 gaussTang);
+   algorithmGaussianNeighborDoubleSpinBox->setValue(gaussNeighbor);
+   algorithmGaussianSigmaNormDoubleSpinBox->setValue(gaussSigmaNorm);
+   algorithmGaussianSigmaTangDoubleSpinBox->setValue(gaussSigmaTang);
+   algorithmGaussianNormBelowDoubleSpinBox->setValue(gaussNormBelow);
+   algorithmGaussianNormAboveDoubleSpinBox->setValue(gaussNormAbove);
+   algorithmGaussianTangCutoffDoubleSpinBox->setValue(gaussTang);
+   
+   //
+   // MCW BrainFish Parameters
+   //
+   float bfMaxDist;
+   int   bfSplat;
+   mappingParameters.getAlgorithmMetricMcwBrainFishParameters(bfMaxDist,
+                                                              bfSplat);
+   algorithmBrainFishMaxDistanceDoubleSpinBox->setValue(bfMaxDist);
+   algorithmBrainFishSplatFactorSpinBox->setValue(bfSplat);      
 }
 
 /**
@@ -3800,33 +4187,34 @@ GuiMapFmriDialog::loadSaveAlgorithmParametersFromPreferences(const bool loadThem
 void
 GuiMapFmriDialog::slotAlgorithmComboBox(int item)
 {
-   const BrainModelVolumeToSurfaceMetricMapper::ALGORITHM alg =
-      static_cast<BrainModelVolumeToSurfaceMetricMapper::ALGORITHM>(item);
-    
+   const BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM alg =
+      static_cast<BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM>(item);
+   mappingParameters.setAlgorithm(alg);
+   
    QString infoText = "For all algorithms, the node's stereotaxic position identifies "
                       "a voxel in the volume.<P>";
    
    switch(alg) {
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_NODES:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmAverageNodesParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_AVERAGE_NODES:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricAverageNodesParametersBox);
          infoText += "<B>Average Nodes Algorithm:</B><P>"
                      "Each node is set to the average of the voxel it falls within and "
                      "the voxels containing the node's connected neighbors.";
          break;
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_VOXEL:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmAverageVoxelParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_AVERAGE_VOXEL:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricAverageVoxelParametersBox);
          infoText += "<B>Average Voxel Algorithm:</B><P>"
                      "A cube with each edge <B>NEIGHBORHOOD SIZE</B> millimeters long is "
                      "centered at the node.  The node is assigned the average of "
                      "all voxels that are contained in the cube.";
          break;
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_ENCLOSING_VOXEL:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmEnclosingVoxelParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_ENCLOSING_VOXEL:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricEnclosingVoxelParametersBox);
          infoText += "<B>Enclosing Voxel Algorithm:</B><P>"
                      "The node is assigned the voxel that contains the node.";
          break;
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_GAUSSIAN:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmGaussianParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_GAUSSIAN:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricGaussianParametersBox);
          infoText += "<B>Gaussian Algorithm:</B><P>"
                      "The gaussian is defined by the equation e(-(norm*norm)/(sigma*sigma))<P>"
                      "A cube whose sides are of length <B>NEIGHBOR BOX SIZE</B> is placed around "
@@ -3851,8 +4239,8 @@ GuiMapFmriDialog::slotAlgorithmComboBox(int item)
          infoText += StringUtilities::replace(
                            GaussianComputation::tooltipTextForTangentCutoff(), '\n', ' ');
          break;
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_INTERPOLATED_VOXEL:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmInterpolatedVoxelParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_INTERPOLATED_VOXEL:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricInterpolatedVoxelParametersBox);
          infoText += "<B>Interpolated Voxel Algorithm:</B><P>"
                      "The node containing the voxel is determined.  A cube the "
                      "size of the volume's voxel size is centered at the node. "
@@ -3863,8 +4251,8 @@ GuiMapFmriDialog::slotAlgorithmComboBox(int item)
                      "assigned to the node would be the same as the Enclosing Voxel "
                      "Algorithm";
          break;
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MAXIMUM_VOXEL:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmMaximumVoxelParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_MAXIMUM_VOXEL:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricMaximumVoxelParametersBox);
          infoText += "<B>Maximum Voxel Algorithm:</B><P>"
                      "A cube with each edge <B>NEIGHBORHOOD SIZE</B> millimeters long is "
                      "centered at the node.  The node is assigned the maximum of "
@@ -3873,8 +4261,8 @@ GuiMapFmriDialog::slotAlgorithmComboBox(int item)
                      "assigned the most negative value.  If the cube contains any "
                      "positive values, the node will be assigned the most positive value.";
          break;
-      case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MCW_BRAINFISH:
-         algorithmParameterWidgetStack->setCurrentWidget(algorithmMcwBrainFishParametersBox);
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_MCW_BRAINFISH:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricMcwBrainFishParametersBox);
          infoText += "<B>MCW BrainFish Algorithm:</B><P>"
                      "This algorithm loops through the voxels.  For each voxel that "
                      "is non-zero, the algorithm find the closest node that is within "
@@ -3882,6 +4270,18 @@ GuiMapFmriDialog::slotAlgorithmComboBox(int item)
                      "than that of the current voxel, the voxel is assigned to the node "
                      "The splat factor essentially smooths the nodes for <B>SPLAT FACTOR</B> "
                      "iterations.";
+         break;
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_METRIC_STRONGEST_VOXEL:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmMetricStrongestVoxelParametersBox);
+         infoText += "<B>Strongest Voxel Algorithm:</B><P>"
+                     "A cube with each edge <B>NEIGHBORHOOD SIZE</B> millimeters long is "
+                     "centered at the node.  The node is assigned the value of the "
+                     "voxel that is furthest from zero. ";
+         break;
+      case BrainModelVolumeToSurfaceMapperAlgorithmParameters::ALGORITHM_PAINT_ENCLOSING_VOXEL:
+         algorithmParameterWidgetStack->setCurrentWidget(algorithmPaintEnclosingVoxelParametersBox);
+         infoText += "<B>Enclosing Voxel Algorithm:</B><P>"
+                     "The node is assigned the voxel that contains the node.";
          break;
    }
    
@@ -4004,6 +4404,26 @@ GuiMapFmriDialog::loadSummaryTextEdit()
          }
          
          //
+         // List most common if applicable
+         //
+         if (mms.getDoMostCommonOfAllCasesFlag() &&
+             (mi->getMetricMostCommonValueColumnNameRowNumber() >= 0)) {
+            text.append("Most Common Column: ");
+            text.append(mi->getMetricMostCommonValueColumnName());
+            text.append("\n\n");
+         }
+         
+         //
+         // List most common exclude unidentified if applicable
+         //
+         if (mms.getDoMostCommonExcludeUnidentifiedOfAllCasesFlag() &&
+             (mi->getMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber() >= 0)) {
+            text.append("Most Common Exclude No ID Column: ");
+            text.append(mi->getMetricMostCommonExcludeUnidentifiedValueColumnName());
+            text.append("\n\n");
+         }
+         
+         //
          // List Standard Deviation if applicable
          //
          if (mms.getDoStdDevOfAllCoordFileFlag() &&
@@ -4092,29 +4512,7 @@ GuiMapFmriDialog::loadSummaryTextEdit()
    
    if (showAlgorithm) {
       text += "Algorithm: ";
-      switch (algorithmComboBox->currentIndex()) {
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_NODES:
-            text += "Average Nodes";
-            break;
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_AVERAGE_VOXEL:
-            text += "Average Voxel";
-            break;
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_ENCLOSING_VOXEL:
-            text += "Enclosing Voxel";
-            break;
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_GAUSSIAN:
-            text += "Gaussian";
-            break;
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_INTERPOLATED_VOXEL:
-            text += "Interpolated Voxel";
-            break;
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MAXIMUM_VOXEL:
-            text += "Maximum Voxel";
-            break;
-         case BrainModelVolumeToSurfaceMetricMapper::ALGORITHM_MCW_BRAINFISH:
-            text += "MCW Brain Fish";
-            break;
-      }
+      text += BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmName(mappingParameters.getAlgorithm());
    }
    text += "\n\n";
    

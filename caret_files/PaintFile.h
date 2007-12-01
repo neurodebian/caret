@@ -35,6 +35,7 @@ class AreaColorFile;
 class ColorFile;
 class CoordinateFile;
 class DeformationMapFile;
+class TopologyFile;
 class VolumeFile;
 
 /// This file contains node paint information.
@@ -120,6 +121,29 @@ class PaintFile : public GiftiNodeDataFile {
       // get the number of paint names
       int getNumberOfPaintNames() const;
 
+      /// get all paint names and indices sorted by name (may contain duplicate names)
+      void getAllPaintNamesAndIndices(std::vector<QString>& namesOut,
+                                      std::vector<int>& indicesOut) const;
+                                      
+      // get all paint names (could be duplicates)
+      void getAllPaintNames(std::vector<QString>& namesOut) const;
+      
+      // get all paint count (# nodes using each paint)
+      void getAllPaintCounts(std::vector<int>& countsOut) const;
+                
+      // copy one paint column to another in this paint file
+      void copyColumns(const PaintFile* fromPaintFile,
+                       const int fromColumnNumber,
+                       const int newColumnNumber,
+                       const QString& newColumnName = "") throw (FileException);
+                       
+      // dilate paint ID "paintIndex" if neighbors paint index >= 0 do only those
+      int dilatePaintID(const TopologyFile* tf,
+                         const int columnNumber,
+                         const int iterations,
+                         const int paintIndex,
+                         const int neighborOnlyWithPaintIndex) throw (FileException);
+                         
       // set all the paints for a node
       void setPaints(const int nodeNumber, const int* paints);
       
@@ -130,6 +154,34 @@ class PaintFile : public GiftiNodeDataFile {
       // set the name of a paint at an index.
       void setPaintName(const int indexIn, const QString& name);
       
+      // get paint enabled by index
+      bool getPaintNameEnabled(const int paintIndex) const;
+      
+      // set paint enable by index
+      void setPaintNameEnabled(const int paintIndex,
+                               const bool b);
+           
+      // set all paint names enabled
+      void setAllPaintNamesEnabled(const bool b);
+      
+      // append most common column (if name empty, column is not created)
+      void appendMostCommon(const QString& mostCommonColumnName,
+                            const QString& mostCommonExcludeQuestionColumnName) throw (FileException);
+                            
+      // delete a paint any nodes using paint become ???
+      void deletePaintName(const int paintIndex);
+      
+      // deassign a paint any nodes in column using paint become ???
+      // if columnNumber is negative, operation is applied to all columns
+      void deassignPaintName(const int columnNumber,
+                             const int paintIndex);
+                         
+      // reassign a paint 
+      // if columnNumber is negative, operation is applied to all columns
+      void reassignPaintName(const int columnNumber,
+                             const int oldPaintIndex,
+                             const int newPaintIndex);
+                             
       // Export to a free surfer label file.
       void exportFreeSurferAsciiLabelFile(const int columnNumber,
                                           const QString& filenamePrefix,

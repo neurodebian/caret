@@ -49,6 +49,13 @@ class CellStudyInfo {
       /// equality operator
       bool operator==(const CellStudyInfo& cci) const; 
       
+      /// clear the study info
+      void clear();
+      
+      /// set element from text (used by SAX XML parser)
+      void setElementFromText(const QString& elementName,
+                              const QString& textValue);
+                              
       /// called to read from an XML structure
       void readXML(QDomNode& node) throw (FileException);
       
@@ -149,7 +156,60 @@ class CellStudyInfo {
       
       /// partitioning scheme full name
       QString partitioningSchemeFullName;
+      
+      /// tag for reading and writing study info
+      static const QString tagCellStudyInfo;
+      
+      /// tag for reading and writing study info
+      static const QString tagUrl;
+      
+      /// tag for reading and writing study info
+      static const QString tagKeywords;
+      
+      /// tag for reading and writing study info
+      static const QString tagTitle;
+      
+      /// tag for reading and writing study info
+      static const QString tagAuthors;
+      
+      /// tag for reading and writing study info
+      static const QString tagCitation;
+      
+      /// tag for reading and writing study info
+      static const QString tagStereotaxicSpace;
+      
+      /// tag for reading and writing study info
+      static const QString tagComment;
+      
+      /// tag for reading and writing study info
+      static const QString tagStudyNumber;
+      
+      /// tag for reading and writing study info
+      static const QString tagPartitioningSchemeAbbreviation;
+      
+      /// tag for reading and writing study info
+      static const QString tagPartitioningSchemeFullName;
+      
+   friend class CellFile;
+   friend class CellProjectionFile;
+   friend class CellProjectionFileSaxReader;
+   friend class VocabularyFile;
+
 };
+
+#ifdef __CELL_STUDY_INFO_MAIN__
+      const QString CellStudyInfo::tagCellStudyInfo = "CellStudyInfo";
+      const QString CellStudyInfo::tagUrl = "url";
+      const QString CellStudyInfo::tagKeywords = "keywords";
+      const QString CellStudyInfo::tagTitle = "title";
+      const QString CellStudyInfo::tagAuthors = "authors";
+      const QString CellStudyInfo::tagCitation = "citation";
+      const QString CellStudyInfo::tagStereotaxicSpace = "stereotaxicSpace";
+      const QString CellStudyInfo::tagComment = "comment";
+      const QString CellStudyInfo::tagStudyNumber = "studyNumber";
+      const QString CellStudyInfo::tagPartitioningSchemeAbbreviation = "partitioningSchemeAbbreviation";
+      const QString CellStudyInfo::tagPartitioningSchemeFullName = "partitioningSchemeFullName";
+#endif // __CELL_STUDY_INFO_MAIN__
 
 #endif // __CELL_STUDY_INFO_H__
 

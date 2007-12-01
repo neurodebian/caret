@@ -34,6 +34,7 @@ class BrainModelVolumeTopologicalError {
    public:
       /// Constructor
       BrainModelVolumeTopologicalError(const int voxelIJKIn[3],
+             const float voxelXYZIn[3],
              const int slicesIn[2],
              const std::vector<int>& handleVoxelsIn,
              const int numVoxelsIn,
@@ -45,6 +46,7 @@ class BrainModelVolumeTopologicalError {
              
       /// get the handle info
       void getInfo(int voxelIJKOut[3],
+                   float voxelXYZOut[3],
                    int slicesOut[2],
                    int& numVoxelsOut,
                    VolumeFile::VOLUME_AXIS& axisOut) const;
@@ -55,6 +57,9 @@ class BrainModelVolumeTopologicalError {
    protected:
       /// a voxel in the handle
       int voxelIJK[3];
+      
+      /// stereotaxic coordinate of voxel in handle
+      float voxelXYZ[3];
       
       /// starting and ending slice of the handle
       int slices[2];

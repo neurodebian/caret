@@ -18,6 +18,7 @@ HEADERS += BorderFileProjector.h \
       BrainModel.h \
 	   BrainModelAlgorithm.h \
 	   BrainModelAlgorithmException.h \
+      BrainModelAlgorithmMultiThreadExecutor.h \
 	   BrainModelAlgorithmMultiThreaded.h \
       BrainModelAlgorithmRunAsThread.h \
 	   BrainModelBorderSet.h \
@@ -39,19 +40,24 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfaceDeformDataFile.h \
 	   BrainModelSurfaceDeformation.h \
 	   BrainModelSurfaceDeformationFlat.h \
+      BrainModelSurfaceDeformationMapCreate.h \
       BrainModelSurfaceDeformationMeasurement.h \
 	   BrainModelSurfaceDeformationSpherical.h \
 	   BrainModelSurfaceDistortion.h \
+      BrainModelSurfaceFindExtremum.h \
 	   BrainModelSurfaceFlatHexagonalSubsample.h \
 	   BrainModelSurfaceFlattenFullHemisphere.h \
 	   BrainModelSurfaceFlattenPartialHemisphere.h \
 	   BrainModelSurfaceGeodesic.h \
       BrainModelSurfaceMetricAnovaOneWay.h \
+      BrainModelSurfaceMetricAnovaTwoWay.h \
 	   BrainModelSurfaceMetricClustering.h \
       BrainModelSurfaceMetricCoordinateDifference.h \
       BrainModelSurfaceMetricFindClustersBase.h \
+      BrainModelSurfaceMetricFullWidthHalfMaximum.h \
       BrainModelSurfaceMetricInGroupDifference.h \
       BrainModelSurfaceMetricInterHemClusters.h \
+      BrainModelSurfaceMetricKruskalWallisRankTest.h \
       BrainModelSurfaceMetricOneAndPairedTTest.h \
       BrainModelSurfaceMetricTwinComparison.h \
       BrainModelSurfaceMetricTwoSampleTTest.h \
@@ -59,15 +65,23 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfaceMorphing.h \
 	   BrainModelSurfaceMultiresolutionMorphing.h \
       BrainModelSurfaceNodeColoring.h \
+      BrainModelSurfacePaintAssignRelativeToLine.h \
       BrainModelSurfacePaintToBorderConverter.h \
 	   BrainModelSurfacePointLocator.h \
 	   BrainModelSurfacePointProjector.h \
-      BrainModelSurfaceRegionOfInterest.h \
+      BrainModelSurfaceROICreateBorderUsingGeodesic.h \
+      BrainModelSurfaceROICreateBorderUsingMetricShape.h \
+      BrainModelSurfaceROINodeSelection.h \
+      BrainModelSurfaceROIOperation.h \
+      BrainModelSurfaceROISurfaceXYZMeansReport.h \
+      BrainModelSurfaceROITextReport.h \
 	   BrainModelSurfaceResection.h \
 	   BrainModelSurfaceSmoothing.h \
       BrainModelSurfaceSphericalTessellator.h \
 	   BrainModelSurfaceSulcalDepth.h \
       BrainModelSurfaceSulcalDepthWithNormals.h \
+      BrainModelSurfaceSulcalIdentification.h \
+      BrainModelSurfaceSulcalIdentificationAll.h \
 	   BrainModelSurfaceToVolumeConverter.h \
       BrainModelSurfaceToVolumeSegmentationConverter.h \
       BrainModelSurfaceTopologyCorrector.h \
@@ -84,11 +98,14 @@ HEADERS += BorderFileProjector.h \
       BrainModelVolumeSureFitErrorCorrection.h \
       BrainModelVolumeSureFitSegmentation.h \
 	   BrainModelVolumeToSurfaceConverter.h \
-	   BrainModelVolumeToSurfaceMetricMapper.h \
-      BrainModelVolumeToSurfacePaintMapper.h \
+      BrainModelVolumeToSurfaceMapper.h \
+      BrainModelVolumeToSurfaceMapperAlgorithmParameters.h \
+      BrainModelVolumeToSurfaceMapperPALS.h \
       BrainModelVolumeTopologicalError.h \
 	   BrainModelVolumeVoxelColoring.h \
       BrainSet.h  \
+      BrainSetDataFileReader.h \
+      BrainSetMultiThreadedSpecFileReader.h \
 	   BrainSetNodeAttribute.h \
 	   CellDensityToMetricConverter.h \
 	   CellFileProjector.h \
@@ -106,6 +123,7 @@ HEADERS += BorderFileProjector.h \
       DisplaySettingsImages.h \
       DisplaySettingsMetric.h \
 	   DisplaySettingsModels.h \
+      DisplaySettingsNodeAttributeFile.h \
 	   DisplaySettingsSurface.h \
       DisplaySettingsPaint.h \
       DisplaySettingsProbabilisticAtlas.h \
@@ -131,6 +149,7 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModel.cxx \
       BrainModelAlgorithm.cxx \
       BrainModelAlgorithmException.cxx \
+      BrainModelAlgorithmMultiThreadExecutor.cxx \
 	   BrainModelAlgorithmMultiThreaded.cxx \
       BrainModelAlgorithmRunAsThread.cxx \
 	   BrainModelBorderSet.cxx \
@@ -152,19 +171,24 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelSurfaceDeformDataFile.cxx \
 	   BrainModelSurfaceDeformation.cxx \
 	   BrainModelSurfaceDeformationFlat.cxx \
+      BrainModelSurfaceDeformationMapCreate.cxx \
       BrainModelSurfaceDeformationMeasurement.cxx \
 	   BrainModelSurfaceDeformationSpherical.cxx \
 	   BrainModelSurfaceDistortion.cxx \
+      BrainModelSurfaceFindExtremum.cxx \
 	   BrainModelSurfaceFlatHexagonalSubsample.cxx \
 	   BrainModelSurfaceFlattenFullHemisphere.cxx \
 	   BrainModelSurfaceFlattenPartialHemisphere.cxx \
 	   BrainModelSurfaceGeodesic.cxx \
       BrainModelSurfaceMetricAnovaOneWay.cxx \
+      BrainModelSurfaceMetricAnovaTwoWay.cxx \
 	   BrainModelSurfaceMetricClustering.cxx \
       BrainModelSurfaceMetricCoordinateDifference.cxx \
       BrainModelSurfaceMetricFindClustersBase.cxx \
+      BrainModelSurfaceMetricFullWidthHalfMaximum.cxx \
       BrainModelSurfaceMetricInGroupDifference.cxx \
       BrainModelSurfaceMetricInterHemClusters.cxx \
+      BrainModelSurfaceMetricKruskalWallisRankTest.cxx \
       BrainModelSurfaceMetricOneAndPairedTTest.cxx \
       BrainModelSurfaceMetricTwinComparison.cxx \
       BrainModelSurfaceMetricTwoSampleTTest.cxx \
@@ -172,15 +196,23 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelSurfaceMorphing.cxx \
 	   BrainModelSurfaceMultiresolutionMorphing.cxx \
       BrainModelSurfaceNodeColoring.cxx \
+      BrainModelSurfacePaintAssignRelativeToLine.cxx \
       BrainModelSurfacePaintToBorderConverter.cxx \
 	   BrainModelSurfacePointLocator.cxx \
 	   BrainModelSurfacePointProjector.cxx \
-      BrainModelSurfaceRegionOfInterest.cxx \
+      BrainModelSurfaceROICreateBorderUsingGeodesic.cxx \
+      BrainModelSurfaceROICreateBorderUsingMetricShape.cxx \
+      BrainModelSurfaceROINodeSelection.cxx \
+      BrainModelSurfaceROIOperation.cxx \
+      BrainModelSurfaceROISurfaceXYZMeansReport.cxx \
+      BrainModelSurfaceROITextReport.cxx \
 	   BrainModelSurfaceResection.cxx \
       BrainModelSurfaceSphericalTessellator.cxx \
 	   BrainModelSurfaceSmoothing.cxx \
 	   BrainModelSurfaceSulcalDepth.cxx \
       BrainModelSurfaceSulcalDepthWithNormals.cxx \
+      BrainModelSurfaceSulcalIdentification.cxx \
+      BrainModelSurfaceSulcalIdentificationAll.cxx \
 	   BrainModelSurfaceToVolumeConverter.cxx \
       BrainModelSurfaceToVolumeSegmentationConverter.cxx \
       BrainModelSurfaceTopologyCorrector.cxx \
@@ -197,11 +229,14 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelVolumeSureFitSegmentation.cxx \
       BrainModelVolumeThresholdSegmentation.cxx \
 	   BrainModelVolumeToSurfaceConverter.cxx \
-	   BrainModelVolumeToSurfaceMetricMapper.cxx \
-      BrainModelVolumeToSurfacePaintMapper.cxx \
+      BrainModelVolumeToSurfaceMapper.cxx \
+      BrainModelVolumeToSurfaceMapperAlgorithmParameters.cxx \
+      BrainModelVolumeToSurfaceMapperPALS.cxx \
       BrainModelVolumeTopologicalError.cxx \
 	   BrainModelVolumeVoxelColoring.cxx \
       BrainSet.cxx \
+      BrainSetDataFileReader.cxx \
+      BrainSetMultiThreadedSpecFileReader.cxx \
 	   BrainSetNodeAttribute.cxx \
 	   CellDensityToMetricConverter.cxx \
 	   CellFileProjector.cxx \
@@ -219,6 +254,7 @@ SOURCES += BorderFileProjector.cxx \
       DisplaySettingsImages.cxx \
       DisplaySettingsMetric.cxx \
 	   DisplaySettingsModels.cxx \
+      DisplaySettingsNodeAttributeFile.cxx \
       DisplaySettingsPaint.cxx \
 	   DisplaySettingsSurface.cxx \
       DisplaySettingsProbabilisticAtlas.cxx \

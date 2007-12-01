@@ -30,7 +30,7 @@
 
 #include "QtMessageBox.h"
 
-class GuiSpeechGenerator;
+//class GuiSpeechGenerator;
 class QPixmap;
 class QString;
 class QWidget;
@@ -96,7 +96,7 @@ class GuiMessageBox {
                          int escapeButtonNumber = -1 );
 
       /// set the speech generator
-      static void setSpeechGenerator(GuiSpeechGenerator* speechGeneratorIn);
+      //static void setSpeechGenerator(GuiSpeechGenerator* speechGeneratorIn);
       
       /// Load the icon.
       static void loadIcon(const QString& filename);
@@ -115,7 +115,7 @@ class GuiMessageBox {
                             int escapeButtonNumber);
                     
       /// the speech generator
-      static GuiSpeechGenerator* speechGenerator;
+      //static GuiSpeechGenerator* speechGenerator;
       
       /// the icon for display in the dialogs
       static QPixmap* dialogIcon;
@@ -125,7 +125,7 @@ class GuiMessageBox {
 };
 
 #ifdef __GUI_MESSAGE_BOX_H_MAIN__
-GuiSpeechGenerator* GuiMessageBox::speechGenerator = NULL;
+//GuiSpeechGenerator* GuiMessageBox::speechGenerator = NULL;
 QPixmap* GuiMessageBox::dialogIcon = NULL;
 bool    GuiMessageBox::dialogIconValid = false;
 #endif //__GUI_MESSAGE_BOX_H_MAIN__

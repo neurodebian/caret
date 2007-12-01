@@ -32,6 +32,7 @@
 
 class GuiBrainModelOpenGL;
 class GuiMainWindow;
+class GuiMainWindowFileActions;
 
 /// This class creates the Main Window's File Menu.
 class GuiMainWindowFileMenu : public QMenu {

@@ -27,21 +27,21 @@
 #include <sstream>
 
 #include <QComboBox>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QToolTip>
 
 #include "BrainSet.h"
-#include "GuiDataFileDialog.h"
+#include "FileFilters.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiVolumeCreateDialog.h"
 #include <QDoubleSpinBox>
 #include "QtRadioButtonSelectionDialog.h"
@@ -258,13 +258,13 @@ GuiVolumeCreateDialog::slotSetAttsFromFilePushButton()
    //
    // Create a spec file dialog to select the spec file.
    //
-   QFileDialog openVolumeFileDialog(this);
+   WuQFileDialog openVolumeFileDialog(this);
    openVolumeFileDialog.setModal(true);
    openVolumeFileDialog.setWindowTitle("Choose Volume File");
-   openVolumeFileDialog.setFileMode(QFileDialog::ExistingFile);
+   openVolumeFileDialog.setFileMode(WuQFileDialog::ExistingFile);
    openVolumeFileDialog.setDirectory(QDir::currentPath());
-   openVolumeFileDialog.setAcceptMode(QFileDialog::AcceptOpen);
-   openVolumeFileDialog.setFilter(GuiDataFileDialog::volumeGenericFileFilter);
+   openVolumeFileDialog.setAcceptMode(WuQFileDialog::AcceptOpen);
+   openVolumeFileDialog.setFilter(FileFilters::getVolumeGenericFileFilter());
    if (openVolumeFileDialog.exec() == QDialog::Accepted) {
       if (openVolumeFileDialog.selectedFiles().count() > 0) {
          const QString vname(openVolumeFileDialog.selectedFiles().at(0));
@@ -290,7 +290,7 @@ GuiVolumeCreateDialog::slotSetAttsFromFilePushButton()
                zVoxelSizeDoubleSpinBox->setValue(spacing[2]);
             }
             catch (FileException& e) {
-               GuiMessageBox::critical(this, "Error Reading Volume", e.whatQString(), "OK");
+               QMessageBox::critical(this, "Error Reading Volume", e.whatQString());
             }
          }
       }
@@ -409,7 +409,7 @@ GuiVolumeCreateDialog::done(int r)
       // See if there are error
       //
       if (errorMessage.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+         QMessageBox::critical(this, "ERROR", errorMessage);
          return;
       }
       
