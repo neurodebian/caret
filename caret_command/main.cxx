@@ -14304,8 +14304,8 @@ main(int argc, char* argv[])
    //
    // Get image plugins so JPEGs can be loaded
    //   
-   //Q_IMPORT_PLUGIN(QJpegPlugin)
-   //Q_IMPORT_PLUGIN(QGifPlugin)
+   Q_IMPORT_PLUGIN(QJpegPlugin)
+   Q_IMPORT_PLUGIN(QGifPlugin)
 
    //
    // Command line QT application

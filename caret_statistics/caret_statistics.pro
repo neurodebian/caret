@@ -4,7 +4,7 @@
 
 
 TARGET	= CaretStatistics
-CONFIG	+= plugin
+CONFIG	+= staticlib
 INCLUDEPATH += .
 
 include(../caret_qmake_include.pro)

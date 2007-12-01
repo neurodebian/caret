@@ -69,6 +69,7 @@ macx {
 
 unix:!macx {
    LIBS += -L../caret_brain_set -lCaretBrainSet \
+           -L../caret_vtk4_classes -lCaretVtk4Classes \
 	   -L../caret_files -lCaretFiles \
            -L../caret_uniformize -lCaretUniformize \
            -L../caret_statistics -lCaretStatistics \
@@ -89,7 +90,10 @@ unix:!macx {
    # FreeBSD also does not have libdl, but integrates its functions
    # into libc.
    !exists( /etc/rc.conf ) { 
-      LIBS += -ldl 
+      LIBS += -lvtkjpeg \
+              -lvtkpng \
+              -lvtkexpat \
+              -ldl 
    }       
            
    # for SGI systems

@@ -408,8 +408,8 @@ main(int argc, char* argv[])
    //
    // needed for static linking to have JPEG support
    //
-   //Q_IMPORT_PLUGIN(QJpegPlugin)
-   //Q_IMPORT_PLUGIN(QGifPlugin)
+   Q_IMPORT_PLUGIN(QJpegPlugin)
+   Q_IMPORT_PLUGIN(QGifPlugin)
 
 #ifdef Q_OS_MACX
    GuiMacOSXApplication app(argc, argv);
