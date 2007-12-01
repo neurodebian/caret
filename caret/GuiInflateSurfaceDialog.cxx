@@ -27,6 +27,7 @@
 #include <QGridLayout>
 #include <QLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -35,7 +36,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiInflateSurfaceDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -142,7 +142,7 @@ GuiInflateSurfaceDialog::slotApplyButton()
 {
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no surface in the main window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no surface in the main window.");
       return;
    }
    

@@ -37,11 +37,16 @@ class StatisticDataGroup;
 class StatisticAlgorithm {
    public:
       // constructor
-      StatisticAlgorithm();
+      StatisticAlgorithm(const std::string& algorithmNameIn);
       
       // destructor
       virtual ~StatisticAlgorithm();
       
+      // add a data array group to this algorithm
+      int addDataArray(const float array[],
+                       const int numItemsInArray,
+                       const bool takeOwnershipOfThisDataGroup = false);
+                       
       // add a data group to this algorithm
       int addDataGroup(StatisticDataGroup* dataGroup,
                        const bool takeOwnershipOfThisDataGroup = false);
@@ -63,6 +68,9 @@ class StatisticAlgorithm {
       
       /// see if debugging is on
       static bool getDebugOn() { return debugOnFlag; }
+      
+      /// get the name of the algorithm
+      std::string getAlgorithmName() const { return algorithmName; }
       
    protected:
       // get all of the data values in a vector
@@ -88,6 +96,9 @@ class StatisticAlgorithm {
       
       /// own the data group
       std::vector<bool> ownDataGroup;
+      
+      /// name of the algorithm
+      std::string algorithmName;
       
       /// debug flag for all algorithms
       static bool debugOnFlag;

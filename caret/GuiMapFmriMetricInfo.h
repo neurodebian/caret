@@ -250,6 +250,62 @@ class GuiMapFmriMetricInfo {
       /// set the metric maximum value thresholds
       void setMetricMaxValueThresholds(const float negThresh, const float posThresh);
       
+      /// get the most common value metric column name
+      QString getMetricMostCommonValueColumnName() const { return metricMostCommonValueColumnName; }
+      
+      /// set the most common value metric column name
+      void setMetricMostCommonValueColumnName(const QString& name)
+                                            { metricMostCommonValueColumnName = name; }
+       
+      /// get the most common value metric column name row number for metric naming table
+      int getMetricMostCommonValueColumnNameRowNumber() const 
+                                { return metricMostCommonValueColumnNameRowNumber; }
+      
+      /// set the most common value metric column name row number for metric naming table
+      void setMetricMostCommonValueColumnNameRowNumber(const int rowNumber)
+                                            { metricMostCommonValueColumnNameRowNumber = rowNumber; }
+
+      /// get the  metric most common value comment
+      QString getMetricMostCommonValueComment() const { return metricMostCommonValueComment; }
+      
+      /// set the metric most common value comment
+      void setMetricMostCommonValueComment(const QString& comment)
+                                 { metricMostCommonValueComment = comment; }
+      
+      /// get the metric most common value thresholds
+      void getMetricMostCommonValueThresholds(float& negThresh, float& posThresh) const;
+      
+      /// set the metric most common value thresholds
+      void setMetricMostCommonValueThresholds(const float negThresh, const float posThresh);
+      
+      /// get the most common no idvalue metric column name
+      QString getMetricMostCommonExcludeUnidentifiedValueColumnName() const { return metricMostCommonExcludeUnidentifiedValueColumnName; }
+      
+      /// set the most common no idvalue metric column name
+      void setMetricMostCommonExcludeUnidentifiedValueColumnName(const QString& name)
+                                            { metricMostCommonExcludeUnidentifiedValueColumnName = name; }
+       
+      /// get the most common no idvalue metric column name row number for metric naming table
+      int getMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber() const 
+                                { return metricMostCommonExcludeUnidentifiedValueColumnNameRowNumber; }
+      
+      /// set the most common no idvalue metric column name row number for metric naming table
+      void setMetricMostCommonExcludeUnidentifiedValueColumnNameRowNumber(const int rowNumber)
+                                            { metricMostCommonExcludeUnidentifiedValueColumnNameRowNumber = rowNumber; }
+
+      /// get the  metric most common no idvalue comment
+      QString getMetricMostCommonExcludeUnidentifiedValueComment() const { return metricMostCommonExcludeUnidentifiedValueComment; }
+      
+      /// set the metric most common no idvalue comment
+      void setMetricMostCommonExcludeUnidentifiedValueComment(const QString& comment)
+                                 { metricMostCommonExcludeUnidentifiedValueComment = comment; }
+      
+      /// get the metric most common no idvalue thresholds
+      void getMetricMostCommonExcludeUnidentifiedValueThresholds(float& negThresh, float& posThresh) const;
+      
+      /// set the metric most common no idvalue thresholds
+      void setMetricMostCommonExcludeUnidentifiedValueThresholds(const float negThresh, const float posThresh);
+      
       /// get the volume's index
       int getVolumeIndex() const { return volumeIndex; }
       
@@ -364,6 +420,36 @@ class GuiMapFmriMetricInfo {
       
       /// positive threshold for maximum value threshold
       float metricMaxValueColumnPositiveThreshold;
+      
+      /// name of most common value metric column name
+      QString metricMostCommonValueColumnName;
+      
+      /// row number of most common value metric column in naming table
+      int metricMostCommonValueColumnNameRowNumber;
+      
+      /// comment for most common value metric 
+      QString metricMostCommonValueComment;
+      
+      /// negative threshold for most common value threshold
+      float metricMostCommonValueColumnNegativeThreshold;
+      
+      /// positive threshold for most common value threshold
+      float metricMostCommonValueColumnPositiveThreshold;
+      
+      /// name of most common exclude unidentified value metric column name
+      QString metricMostCommonExcludeUnidentifiedValueColumnName;
+      
+      /// row number of most common exclude unidentified value metric column in naming table
+      int metricMostCommonExcludeUnidentifiedValueColumnNameRowNumber;
+      
+      /// comment for most common exclude unidentified value metric 
+      QString metricMostCommonExcludeUnidentifiedValueComment;
+      
+      /// negative threshold for most common exclude unidentified value threshold
+      float metricMostCommonExcludeUnidentifiedValueColumnNegativeThreshold;
+      
+      /// positive threshold for most common exclude unidentified value threshold
+      float metricMostCommonExcludeUnidentifiedValueColumnPositiveThreshold;
       
       /// index into volumes
       int volumeIndex;

@@ -28,13 +28,13 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BrainModelContours.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiContourSetScaleDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
 
@@ -189,8 +189,8 @@ GuiContourSetScaleDialog::slotApplyButton()
    const float dy = scaleEndPoint[1] - scaleStartPoint[1];
    const float dist = std::sqrt(dx*dx + dy*dy);
    if (dist == 0.0) {
-      GuiMessageBox::critical(this, "Contour Set Scale Error",
-                            "Start and End Points must not be the same.", "OK");
+      QMessageBox::critical(this, "Contour Set Scale Error",
+                            "Start and End Points must not be the same.");
       return;
    } 
    
@@ -199,8 +199,8 @@ GuiContourSetScaleDialog::slotApplyButton()
    //
    const float contourDistance = distanceDoubleSpinBox->value();
    if (contourDistance <= 0.0) {
-      GuiMessageBox::critical(this, "Contour Set Scale Error",
-                            "Distance must be greater than zero.", "OK");
+      QMessageBox::critical(this, "Contour Set Scale Error",
+                            "Distance must be greater than zero.");
       return;
    }
    
@@ -209,8 +209,8 @@ GuiContourSetScaleDialog::slotApplyButton()
    //
    BrainModelContours* bmc = theMainWindow->getBrainModelContours();
    if (bmc == NULL) {
-      GuiMessageBox::critical(this, "Contour Set Scale Error",
-                            "A contour model must be in the main window.", "OK");
+      QMessageBox::critical(this, "Contour Set Scale Error",
+                            "A contour model must be in the main window.");
       return;
    }
   
@@ -254,8 +254,8 @@ GuiContourSetScaleDialog::slotResetButton()
    //
    BrainModelContours* bmc = theMainWindow->getBrainModelContours();
    if (bmc == NULL) {
-      GuiMessageBox::critical(this, "Contour Set Scale Error",
-                            "A contour model must be in the main window.", "OK");
+      QMessageBox::critical(this, "Contour Set Scale Error",
+                            "A contour model must be in the main window.");
       return;
    }
   

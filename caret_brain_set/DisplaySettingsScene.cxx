@@ -32,6 +32,7 @@ DisplaySettingsScene::DisplaySettingsScene(BrainSet* bsIn)
    : DisplaySettings(bsIn)
 {
    windowPositions = WINDOW_POSITIONS_IGNORE_MAIN_OTHERS_RELATIVE;
+   preserveFociAndFociColorsAndStudyMetaDataFlag = false;
 }
 
 /**

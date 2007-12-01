@@ -30,8 +30,10 @@
 
 #include "AbstractFile.h"
 
+class Border;
 class BorderProjectionFile;
 class ColorFile;
+class CoordinateFile;
 
 /// Class for storing a border projection link.
 class BorderProjectionLink {
@@ -60,6 +62,9 @@ class BorderProjectionLink {
                    float areasOut[3],
                    float& radiusOut) const;
                    
+      /// unproject a border link
+      void unprojectLink(const CoordinateFile* unprojectCoordFile,
+                         float xyzOut[3]) const;
    private:
       /// border projection file this border projection belongs to
       BorderProjectionFile* borderProjectionFile;
@@ -85,7 +90,7 @@ class BorderProjectionLink {
 class BorderProjection {
    public:
       /// constructor
-      BorderProjection(const QString& nameIn, const float centerIn[3], 
+      BorderProjection(const QString& nameIn, const float* centerIn3 = NULL, 
                        const float samplingDensityIn = 25.0,
                        const float varianceIn = 1.0, 
                        const float topographyIn = 0.0,
@@ -97,9 +102,15 @@ class BorderProjection {
       /// determine if two border projections are the same
       bool operator==(const BorderProjection& bp) const;
 
+      /// append a border projection to this border projection
+      void append(const BorderProjection& bp);
+      
       /// add a border projection link
       void addBorderProjectionLink(const BorderProjectionLink& bl);
 
+      /// add border projection link directly on node
+      void addBorderProjectionLinkOnNode(const int nodeNumber);
+      
       /// get borders attribute data
       void getData(QString& nameOut, float centerOut[3], 
                    float& samplingDensityOut, float& varianceOut,
@@ -128,12 +139,42 @@ class BorderProjection {
       /// get a border's name
       QString getName() const { return name; }
       
+      /// set a border's name
+      void setName(const QString& s) { name = s; }
+      
       // return the number of links in this border projection
       int getNumberOfLinks() const { return links.size(); }
       
       /// get the unique ID
       int getUniqueID() const { return uniqueID; }
       
+      /// unproject a border
+      void unprojectBorderProjection(const CoordinateFile* cf,
+                                     Border& borderOut);
+                           
+      /// change the starting link of a closed border so it is close to a point
+      void changeStartingLinkOfClosedBorderToBeNearPoint(const CoordinateFile* cf,
+                                                         const float pointXYZ[3]);
+      
+      /// remove links from border within specified distances of point
+      /// if a specified distance is zero or less it is ignored
+      void removeLinksNearPoint(const CoordinateFile* unprojectCoordFile,
+                                const float pointXYZ[3],
+                                const float xDistance,
+                                const float yDistance,
+                                const float zDistance,
+                                const float straightLineDistance);
+                                                        
+      /// remove links in border before/after link nearest to point
+      void removeLinksBeforeAfterLinkNearestPoint(const CoordinateFile* cf,
+                                                  const float pointXYZ[3],
+                                                  const bool removeAfterFlag,
+                                                  const bool removeBeforeFlag);
+      
+      /// remove links from border that are not within the specified extent 
+      void removeLinksOutsideExtent(const CoordinateFile* unprojectCoordFile,
+                                    const float extent[6]);
+                                                        
       /// remove the border projection link at the specified index
       void removeBorderProjectionLink(const int linkNumber);
    
@@ -214,6 +255,21 @@ class BorderProjectionFile : public AbstractFile {
       /// get a specified border by index
       const BorderProjection* getBorderProjection(const int i) const { return &links[i]; }
 
+      /// get the index of a border projection
+      int getBorderProjectionIndex(const BorderProjection* bp) const;
+      
+      /// get first specified border by name
+      BorderProjection* getFirstBorderProjectionByName(const QString& name);
+
+      /// get first specified border by name
+      const BorderProjection* getFirstBorderProjectionByName(const QString& name) const;
+
+      /// get last specified border by name
+      BorderProjection* getLastBorderProjectionByName(const QString& name);
+
+      /// get last specified border by name
+      const BorderProjection* getLastBorderProjectionByName(const QString& name) const;
+
       /// get number of borders in this file
       int getNumberOfBorderProjections() const { return links.size(); }
       
@@ -223,6 +279,9 @@ class BorderProjectionFile : public AbstractFile {
       /// get the index of border projection with the specified unique ID
       int getBorderProjectionIndexWithUniqueID(const int uniqueID) const;
       
+      /// get the border projection with the largest number of links
+      BorderProjection* getBorderProjectionWithLargestNumberOfLinks();
+      
       /// remove border projection with the specified unique ID
       void removeBorderProjectionWithUniqueID(const int uniqueID);
       
@@ -231,6 +290,9 @@ class BorderProjectionFile : public AbstractFile {
       
       /// remove borders with the specified indices.
       void removeBordersWithIndices(const std::vector<int>& borderProjectionIndicesIn);
+
+      /// remove borders with the specified name.
+      void removeBordersWithName(const QString& nameIn);
 
       /// read the file's data
       void readFileData(QFile& file, QTextStream& stream, QDataStream&,

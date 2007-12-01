@@ -44,26 +44,43 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn,
 }
                  
 /**
+ * constructor space name.
+ */
+StereotaxicSpace::StereotaxicSpace(const QString& nameIn)
+{
+   setDataFromSpace(getSpaceFromName(nameIn));
+}
+      
+/**
  * constructor.
  */
 StereotaxicSpace::StereotaxicSpace(const SPACE spaceIn)
 {
+   setDataFromSpace(spaceIn);
+}
+
+/**
+ * set data from space.
+ */
+void 
+StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
+{
    space = spaceIn;
    
-   setData("Unknown",
+   setData("UNKNOWN",
                          0, 0, 0,
                          0.0, 0.0, 0.0,
                          0.0, 0.0, 0.0);
 
    switch (space) {
       case SPACE_UNKNOWN:
-         setData("Unknown",
+         setData("UNKNOWN",
                                0, 0, 0,
                                0.0, 0.0, 0.0,
                                0.0, 0.0, 0.0);
          break;
       case SPACE_OTHER:
-         setData("Other",
+         setData("OTHER",
                                0, 0, 0,
                                0.0, 0.0, 0.0,
                                0.0, 0.0, 0.0);
@@ -237,7 +254,7 @@ StereotaxicSpace::StereotaxicSpace(const SPACE spaceIn)
                                -73.5, -108.0, -60.0);
          break;
       case SPACE_NUMBER_OF_SPACES:
-         setData("Unknown",
+         setData("UNKNOWN",
                                0, 0, 0,
                                0.0, 0.0, 0.0,
                                0.0, 0.0, 0.0);
@@ -334,11 +351,10 @@ StereotaxicSpace::getStereotaxicSpace(const SPACE space)
 }
 
 /**
- * get information about a stereotaxic space.
- * Returns the space SPACE_NON_STANDARD_OR_UNKNOWN if name is not recognized.
+ * get teh space from the name.
  */
-StereotaxicSpace 
-StereotaxicSpace::getStereotaxicSpace(const QString& spaceNameIn)
+QString 
+StereotaxicSpace::cleanupSpaceName(const QString& spaceNameIn)
 {
    QString spaceName(spaceNameIn.toUpper());
    if (spaceName == "7112B") {
@@ -365,6 +381,26 @@ StereotaxicSpace::getStereotaxicSpace(const QString& spaceNameIn)
    else if (spaceName == "SPM_TEMPLATE") {
       spaceName = "SPM99";
    }
+   return spaceName;
+}
+      
+/**
+ * get a space from its name.
+ */
+StereotaxicSpace::SPACE 
+StereotaxicSpace::getSpaceFromName(const QString& name)
+{
+   return getStereotaxicSpace(name).getSpace();
+}
+      
+/**
+ * get information about a stereotaxic space.
+ * Returns the space SPACE_NON_STANDARD_OR_UNKNOWN if name is not recognized.
+ */
+StereotaxicSpace 
+StereotaxicSpace::getStereotaxicSpace(const QString& spaceNameIn)
+{
+   const QString spaceName = cleanupSpaceName(spaceNameIn);
    
    for (int i = 0; i < SPACE_NUMBER_OF_SPACES; i++) {
       StereotaxicSpace ss = getStereotaxicSpace(static_cast<SPACE>(i));

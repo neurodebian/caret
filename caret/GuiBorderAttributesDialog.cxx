@@ -32,6 +32,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 
@@ -41,7 +42,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
 
@@ -400,7 +400,8 @@ GuiBorderAttributesDialog::processBorderFile()
       borderFile.writeFile(fileName);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
    }
 }
 
@@ -465,7 +466,8 @@ GuiBorderAttributesDialog::processBorderProjectionFile()
       borderProjectionFile.writeFile(fileName);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
    }
 }
       

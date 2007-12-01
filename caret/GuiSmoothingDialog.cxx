@@ -31,6 +31,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -42,7 +43,6 @@
 #include "DebugControl.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiSmoothingDialog.h"
 #include "PaintFile.h"
 #include "PreferencesFile.h"
@@ -555,20 +555,25 @@ GuiSmoothingDialog::doSmoothing()
          case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
          case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
             if (projectToSphereIterationsCheckBox->isChecked()) {
-               if (GuiMessageBox::question(this, "Question",
+               if (QMessageBox::question(this, 
+                     "Question",
                      "The surface does not appear to be a sphere\n"
-                     "but Project to Sphere is selected.  Continue?",
-                     "Continue", "Change Selections") == 1) {
+                        "but Project to Sphere is selected.  Continue?",
+                     (QMessageBox::Yes | QMessageBox::No),
+                     QMessageBox::Cancel)
+                        == QMessageBox::Cancel) {
                   return true;
                }
             }
             break;
          case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
             if (projectToSphereIterationsCheckBox->isChecked() == false) {
-               if (GuiMessageBox::question(this, "Question",
+               if (QMessageBox::question(this, "Question",
                      "The surface appears to be a sphere but\n"
                      "Project to Sphere is not selected.  Continue?",
-                     "Continue", "Change Selections") == 1) {
+                     (QMessageBox::Yes | QMessageBox::No),
+                     QMessageBox::Cancel)
+                        == QMessageBox::Cancel) {
                   return true;
                }
             }
@@ -590,10 +595,12 @@ GuiSmoothingDialog::doSmoothing()
          case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
          case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
             if (smoothingMode == MODE_FLAT_OVERLAP_SMOOTHING) {
-               if (GuiMessageBox::question(this, "Question",
+               if (QMessageBox::question(this, "Question",
                      "The surface does not appear to be a flat but\n"
                      "Flat Surface Overlap Smoothing is selected.  Continue?",
-                     "Continue", "Change Selections") == 1) {
+                     (QMessageBox::Yes | QMessageBox::No),
+                     QMessageBox::Cancel)
+                        == QMessageBox::Cancel) {
                   return true;
                }
             }
@@ -607,8 +614,8 @@ GuiSmoothingDialog::doSmoothing()
       
       switch (smoothingMode) {
          case MODE_NOT_SELECTED:
-            GuiMessageBox::critical(this, "Smoothing Error",
-                                    "You must select a smoothing type.", "OK");
+            QMessageBox::critical(this, "Smoothing Error",
+                                    "You must select a smoothing type.");
             return true;
             break;
          case MODE_AREAL_SMOOTHING:
@@ -632,7 +639,8 @@ GuiSmoothingDialog::doSmoothing()
                   smooth.execute();
                }
                catch (BrainModelAlgorithmException& e) {
-                  GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", e.whatQString());
                   return true;
                }
             }
@@ -661,7 +669,8 @@ GuiSmoothingDialog::doSmoothing()
                   bms->landmarkConstrainedSmoothing(strength, iterations, landmarkNodes);
                }
                else {
-                  GuiMessageBox::critical(this, "Error", errorMessage, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "Error", errorMessage);
                   return true;
                }
             }
@@ -679,7 +688,8 @@ GuiSmoothingDialog::doSmoothing()
                                                             projectToSphereEveryX);
                }
                else {
-                  GuiMessageBox::critical(this, "Error", errorMessage, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "Error", errorMessage);
                   return true;
                }
             }
@@ -705,7 +715,8 @@ GuiSmoothingDialog::doSmoothing()
                   smooth.execute();
                }
                catch (BrainModelAlgorithmException& e) {
-                  GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", e.whatQString());
                   return true;
                }
             }

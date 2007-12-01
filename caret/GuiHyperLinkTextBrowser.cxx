@@ -24,7 +24,9 @@
 /*LICENSE_END*/
 
 #include <QKeyEvent>
+#include <QScrollBar>
 
+#include "BrainModelIdentification.h"
 #include "BrainSet.h"
 #include "GuiHyperLinkTextBrowser.h"
 #include "GuiMainWindow.h"
@@ -59,10 +61,10 @@ GuiHyperLinkTextBrowser::setSource(const QUrl& url)
    
    if (s.startsWith("vocabulary://")) {
       const QString name = s.mid(13);
-      VocabularyFile* vf = theMainWindow->getBrainSet()->getVocabularyFile();
-      VocabularyFile::VocabularyEntry* ve = vf->getBestMatchingVocabularyEntry(name, false);
-      if (ve != NULL) {
-         append(ve->getFullDescriptionForDisplayToUser(true));
+      BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+      const QString idString(bmi->getIdentificationTextForVocabulary(true, name));
+      if (idString.isEmpty() == false) {
+         appendHtml(idString);
       }
    }
    else {
@@ -96,6 +98,12 @@ GuiHyperLinkTextBrowser::append(const QString& textIn)
    displayText.append("<br>");
    displayText.append(text);
    setHtml(displayText);
+
+   //
+   // Scroll to newest text (at end of scroll bar)
+   //
+   QScrollBar* vsb = verticalScrollBar();
+   vsb->setValue(vsb->maximum());
 }
 
 /**
@@ -108,6 +116,12 @@ GuiHyperLinkTextBrowser::appendHtml(const QString& html)
    displayText.append("<br>");
    displayText.append(html);
    setHtml(displayText);
+
+   //
+   // Scroll to newest text (at end of scroll bar)
+   //
+   QScrollBar* vsb = verticalScrollBar();
+   vsb->setValue(vsb->maximum());
 }
       
 /**
@@ -130,7 +144,13 @@ GuiHyperLinkTextBrowser::setText(const QString& textIn)
       displayText = textIn;
    }   
    displayText.replace("\n", "<br>");
-   QTextBrowser::setHtml(displayText);
+   setHtml(displayText);
+
+   //
+   // Scroll to newest text (at end of scroll bar)
+   //
+   QScrollBar* vsb = verticalScrollBar();
+   vsb->setValue(vsb->maximum());
 }
 
 /**

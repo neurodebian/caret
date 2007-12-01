@@ -44,12 +44,13 @@ class QRadioButton;
 class QScrollArea;
 class QSpinBox;
 class QTextEdit;
-class QtWidgetGroup;
+class WuQWidgetGroup;
 class QVBoxLayout;
 class StudyFigurePanelWidget;
 class StudyFigureWidget;
 class StudyMetaAnalysisWidget;
 class StudyPageReferenceWidget;
+class StudyProvenanceWidget;
 class StudyTableWidget;
 class StudySubHeaderWidget;
 class StudyWidget;
@@ -111,6 +112,9 @@ class GuiStudyMetaDataFileEditorDialog : public QtDialogNonModal {
       
       // called to add page reference button pressed
       void slotPageReferenceAddPushButton();
+      
+      // called to add provenance button pressed
+      void slotProvenanceAddPushButton();
       
       // called when help button pressed
       void slotHelpPushButton();
@@ -182,6 +186,9 @@ class GuiStudyMetaDataFileEditorDialog : public QtDialogNonModal {
       /// add page reference push button
       QPushButton* pageReferenceAddPushButton;
       
+      /// add provenance push button
+      QPushButton* provenanceAddPushButton;
+      
       /// fetch all studies push button
       QPushButton* fetchAllStudiesPushButton;
       
@@ -226,8 +233,14 @@ class StudyWidget : public QGroupBox {
       // add a page reference to the study (if NULL add new, empty page reference)
       void addPageReference(StudyMetaData::PageReference* pageReference);
       
+      // add a provenance to the study (if NULL add new, empty provenance)
+      void addProvenance(StudyMetaData::Provenance* provenance);
+      
       // remove a page reference widget from its layout (does not delete the widget)
       void removePageReferenceWidget(StudyPageReferenceWidget* pageReferenceWidget);
+      
+      // remove a provenance widget from its layout (does not delete the widget)
+      void removeProvenanceWidget(StudyProvenanceWidget* provenanceWidget);
       
       // load data into the widget
       void loadData();
@@ -260,6 +273,12 @@ class StudyWidget : public QGroupBox {
       // called when name changed
       void slotStudyNameLineEditChanged();
       
+      // called when data format changed
+      void slotStudyDataFormatLineEditChanged();
+      
+      // called when data type changed
+      void slotStudyDataTypeLineEditChanged();
+      
       // called when pubmed id changed
       void slotStudyPubMedIDSpinBoxChanged();
       
@@ -271,6 +290,9 @@ class StudyWidget : public QGroupBox {
       
       // called when space description changed
       void slotStudyStereotaxicSpaceDetailsLineEditChanged();
+      
+      // called to update quality
+      void slotStudyQualityLineEditChanged();
       
       // called to update keywords 
       void slotStudyKeywordsLineEditChanged();
@@ -299,12 +321,18 @@ class StudyWidget : public QGroupBox {
       // called when PubMed ID "LINK" button is pressed
       void slotStudyPubMedIDPushButton();
       
+      // called when study data format ADD button is pressed
+      void slotStudyDataFormatAddPushButton();
+      
+      // called when study data type ADD button is pressed
+      void slotStudyDataTypeAddPushButton();
+      
    public:
       // save all data including figures and tables
       void saveDataIncludingFiguresAndTables();
       
       // all widgets in widget
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
       
       // parent dialog
       GuiStudyMetaDataFileEditorDialog* parentStudyMetaDataFileEditorDialog;
@@ -345,6 +373,12 @@ class StudyWidget : public QGroupBox {
       /// stereotaxic space details line edit
       QLineEdit* studyStereotaxicSpaceDetailsLineEdit;
       
+      /// data format line edit
+      QLineEdit* studyDataFormatLineEdit;
+      
+      /// data format type edit
+      QLineEdit* studyDataTypeLineEdit;
+      
       /// PubMed ID line edit
       QLineEdit* studyPubMedIDLineEdit;
       
@@ -360,6 +394,9 @@ class StudyWidget : public QGroupBox {
       /// partitioning scheme full name line edit
       QLineEdit* studyPartitioningSchemeFullNameLineEdit;
       
+      /// quality line edit
+      QLineEdit* studyQualityLineEdit;
+      
       /// last time study saved line edit
       QLineEdit* studyLastSaveLineEdit;
       
@@ -368,6 +405,9 @@ class StudyWidget : public QGroupBox {
       
       /// layout for page references
       QVBoxLayout* pageReferenceLayout;
+      
+      /// layout for provenances
+      QVBoxLayout* provenanceLayout;
       
       /// layout for tables
       QVBoxLayout* tablesLayout;
@@ -434,7 +474,7 @@ class StudySubHeaderWidget : public QGroupBox {
       
    public:
       // all widgets in widget
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
       
       // table that is in this widget
       StudyMetaData::SubHeader* subHeader;
@@ -533,7 +573,7 @@ class StudyTableWidget : public QGroupBox {
       
    public:
       // all widgets in widget
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
       
       // table that is in this widget
       StudyMetaData::Table* table;
@@ -616,7 +656,7 @@ class StudyFigureWidget : public QGroupBox {
       
    public:
       // all widgets in widget
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
       
       // figure that is in this widget
       StudyMetaData::Figure* figure;
@@ -684,7 +724,7 @@ class StudyFigurePanelWidget : public QGroupBox {
       
    public:
       // all widgets in widget
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
       
       // figure that is in this widget
       StudyMetaData::Figure::Panel* figurePanel;
@@ -776,7 +816,7 @@ class StudyPageReferenceWidget : public QGroupBox {
       
    public:
       // all widgets in widget
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
       
       // page reference that is in this widget
       StudyMetaData::PageReference* pageReference;
@@ -812,6 +852,68 @@ class StudyPageReferenceWidget : public QGroupBox {
       QVBoxLayout* subHeadersLayout;
 };
      
+//=========================================================================
+//
+/// provenance widget
+class StudyProvenanceWidget : public QGroupBox {
+   Q_OBJECT
+   
+   public:
+      // constructor
+      StudyProvenanceWidget(StudyMetaData::Provenance* provenanceIn,
+                            StudyWidget* parentStudyWidgetIn,
+                            QWidget* parentIn = 0);
+      
+      // destructor
+      ~StudyProvenanceWidget();
+      
+      // load data into the widget
+      void loadData();
+      
+      /// get the provenance in this widget
+      StudyMetaData::Provenance* getProvenanceInThisWidget() { return provenance; }
+      
+   public slots:
+      // save the data into the study meta data provenance
+      void slotSaveData();
+      
+      // called when delete this provenance widget button is pressed.
+      void slotDeleteThisProvenancePushButton();
+      
+      // called when name changed
+      void slotNameLineEditChanged();
+      
+      // called when date changed
+      void slotDateLineEditChanged();
+      
+      // called when comment changed
+      void slotCommentLineEditChanged();
+      
+   public:
+      // all widgets in widget
+      WuQWidgetGroup* allWidgetsGroup;
+      
+      // provenance that is in this widget
+      StudyMetaData::Provenance* provenance;
+      
+      /// layout used by this widget
+      QVBoxLayout* layout;
+      
+      /// provenance name line edit
+      QLineEdit* provenanceNameLineEdit;
+      
+      /// provenance date line edit
+      QLineEdit* provenanceDateLineEdit;
+      
+      /// provenance comment line edit
+      QLineEdit* provenanceCommentLineEdit;
+
+      /// parent study widget
+      StudyWidget* parentStudyWidget;      
+};
+
+//=========================================================================
+//
 /// meta-analysis widget
 class StudyMetaAnalysisWidget : public QGroupBox {
    Q_OBJECT
@@ -853,7 +955,7 @@ class StudyMetaAnalysisWidget : public QGroupBox {
       StudyWidget* parentStudyWidget;
       
       /// all widgets in the group
-      QtWidgetGroup* allWidgetsGroup;
+      WuQWidgetGroup* allWidgetsGroup;
 };
 
 /// new study dialog
@@ -874,6 +976,9 @@ class GuiStudyMetaDataNewDialog : public QtDialogModal {
       // called when OK/Cancel button pressed
       void done(int r);
       
+      // get the PubMed ID
+      QString getPubMedID() const;
+      
    protected:
       /// new clear entries radio button
       QRadioButton* newEmptyStudyRadioButton;
@@ -886,6 +991,9 @@ class GuiStudyMetaDataNewDialog : public QtDialogModal {
       
       /// button group for new study
       QButtonGroup* newStudyButtonGroup;
+      
+      /// new study PubMed ID Line Edit
+      QLineEdit* newStudyPubMedIDLineEdit;
       
       /// last checked ID
       static int lastCheckedID;

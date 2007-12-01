@@ -52,7 +52,9 @@ class LatLonFile : public NodeAttributeFile {
                                 const bool readNumNodes) throw (FileException);
       
       /// read a version 1 file
-      void readFileDataVersion1(QTextStream& stream, QDataStream& binStream) throw (FileException);
+      void readFileDataVersion1(QFile& file,
+                                QTextStream& stream, 
+                                QDataStream& binStream) throw (FileException);
       
       /// read an LatLon file data
       void readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,

@@ -34,6 +34,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QToolTip>
@@ -45,7 +46,6 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiMorphingDialog.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
@@ -330,9 +330,11 @@ GuiMorphingDialog::slotApplyButton()
            BrainModelSurface::SURFACE_TYPE_FLAT) &
           (morphingSurface->getSurfaceType() !=
            BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         if (GuiMessageBox::warning(this, "Warning",
+         if (QMessageBox::warning(this, "Warning",
                                   "Surface for morphing is not a flat surface.", 
-                                  "Continue", "Cancel") != 0) {
+                                  (QMessageBox::Ok | QMessageBox::Cancel),
+                                  QMessageBox::Cancel)
+                                     == QMessageBox::Cancel) {
             return;
          }
       }
@@ -340,9 +342,11 @@ GuiMorphingDialog::slotApplyButton()
    else {
       if (morphingSurface->getSurfaceType() !=
            BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
-         if (GuiMessageBox::warning(this, "Warning",
+         if (QMessageBox::warning(this, "Warning",
                                   "Surface for morphing is not a spherical surface.", 
-                                  "Continue", "Cancel") != 0) {
+                                  (QMessageBox::Ok | QMessageBox::Cancel),
+                                  QMessageBox::Cancel)
+                                     == QMessageBox::Cancel) {
             return;
          }
       }
@@ -412,7 +416,8 @@ GuiMorphingDialog::slotApplyButton()
       bsm.execute();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
       return;
    }
    const float elapsedTime = timer.elapsed() * 0.001;

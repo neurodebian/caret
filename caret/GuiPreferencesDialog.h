@@ -27,12 +27,16 @@
 #ifndef __GUI_PREFERENCES_DIALOG_H__
 #define __GUI_PREFERENCES_DIALOG_H__
 
+#include <vector>
+
 #include "QtDialog.h"
 
 class QCheckBox;
 class QComboBox;
+class QDoubleSpinBox;
 class QLineEdit;
 class QSpinBox;
+class WuQWidgetGroup;
 
 /// Dialog used to set user preferences
 class GuiPreferencesDialog : public QtDialog {
@@ -52,9 +56,27 @@ class GuiPreferencesDialog : public QtDialog {
       /// called by reset display lists push button
       void slotResetDisplayListsPushButton();
       
+      // called to set background color
+      void slotSetBackgroundColor();
+      
+      // called to set foreground color
+      void slotSetForegroundColor();
+      
    private:
-      /// load preferences into the dialog
+      // load preferences into the dialog
       void loadPreferences();
+      
+      // create the debug section
+      QWidget* createDebugSection();
+      
+      // create the file section
+      QWidget* createFileSection();
+      
+      // create the misc section
+      QWidget* createMiscSection();
+      
+      // create the opengl section
+      QWidget* createOpenglSection();
       
       /// surface background color red spin box
       QSpinBox* surfaceBackgroundRedSpinBox;
@@ -74,17 +96,17 @@ class GuiPreferencesDialog : public QtDialog {
       /// surface foreground color blue spin box
       QSpinBox* surfaceForegroundBlueSpinBox;
       
-      /// light position X line edit
-      QLineEdit* lightPositionLineEditX;
+      /// light position X double spin box
+      QDoubleSpinBox* lightPositionXDoubleSpinBox;
       
-      /// light position Y line edit
-      QLineEdit* lightPositionLineEditY;
+      /// light position Y double spin box
+      QDoubleSpinBox* lightPositionYDoubleSpinBox;
       
-      /// light position Z line edit
-      QLineEdit* lightPositionLineEditZ;
+      /// light position Z double spin box
+      QDoubleSpinBox* lightPositionZDoubleSpinBox;
       
-      /// mouse speed line edit
-      QLineEdit* mouseSpeedLineEdit;
+      /// mouse speed double spin box
+      QDoubleSpinBox* mouseSpeedDoubleSpinBox;
       
       /// iterative update check box
       QSpinBox* iterUpdateSpinBox;
@@ -95,6 +117,12 @@ class GuiPreferencesDialog : public QtDialog {
       /// debug node number
       QSpinBox* debugNodeSpinBox;
       
+      /// test flag 1 on checkbox
+      QCheckBox* testFlag1CheckBox;
+      
+      /// test flag 2 on checkbox
+      QCheckBox* testFlag2CheckBox;
+      
       /// web browser line edit
       QLineEdit* webBrowserLineEdit;
       
@@ -104,14 +132,14 @@ class GuiPreferencesDialog : public QtDialog {
       /// number of threads spin box
       QSpinBox* numberOfThreadsSpinBox;
       
-      /// speech enabled check box
-      QComboBox* speechComboBox;
+      /// number of spec file read thread
+      QSpinBox* numberOfSpecFileReadThreadsSpinBox;
       
       /// floating point precision spin box
       QSpinBox* floatPrecisionSpinBox;
       
       /// file write data type combo box
-      QComboBox* fileWriteDataTypeComboBox;
+      std::vector<QComboBox*> fileWriteDataTypeComboBox;
       
       /// SuMS hosts line edit
       QLineEdit* sumsHostsLineEdit;
@@ -125,8 +153,11 @@ class GuiPreferencesDialog : public QtDialog {
       /// random seed spin box
       QSpinBox* randomSeedSpinBox;
       
-      /// loading preferences flag
-      bool loadingPreferencesFile;
+      /// widget group for all widgets
+      WuQWidgetGroup* allWidgetsGroup;
+      
+      /// OpenGL debugging check box
+      QCheckBox* openGLDebugCheckBox;
 };
 
 #endif

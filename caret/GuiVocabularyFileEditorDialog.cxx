@@ -33,6 +33,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -41,12 +42,11 @@
 
 #include "BrainSet.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #include "GuiStudyInfoEditorWidget.h"
 #include "GuiStudyMetaDataLinkCreationDialog.h"
 #include "GuiVocabularyFileEditorDialog.h"
-#include "QtWidgetGroup.h"
+#include "WuQWidgetGroup.h"
 #include "VocabularyFile.h"
 #include "global_variables.h"
 
@@ -148,7 +148,7 @@ GuiVocabularyFileEditorDialog::createVocabularyWidget()
    //
    // Widget group for edit spin box and delete button
    //
-   entryEditWidgetGroup = new QtWidgetGroup(this);
+   entryEditWidgetGroup = new WuQWidgetGroup(this);
    entryEditWidgetGroup->addWidget(entryEditSpinBox);
    entryEditWidgetGroup->addWidget(deleteEntryPushButton);
    
@@ -251,11 +251,11 @@ void
 GuiVocabularyFileEditorDialog::slotVocabularStudyMetaDataPushButton()
 {
    GuiStudyMetaDataLinkCreationDialog smdlcd(this);
-   StudyMetaDataLink smdl;
-   smdl.setLinkFromCodedText(vocabularyStudyMetaDataLineEdit->text());
-   smdlcd.initializeSelectedLink(smdl);
+   StudyMetaDataLinkSet smdls;
+   smdls.setLinkSetFromCodedText(vocabularyStudyMetaDataLineEdit->text());
+   smdlcd.initializeSelectedLinkSet(smdls);
    if (smdlcd.exec() == GuiStudyMetaDataLinkCreationDialog::Accepted) {
-      vocabularyStudyMetaDataLineEdit->setText(smdlcd.getLinkCreated().getLinkAsCodedText());
+      vocabularyStudyMetaDataLineEdit->setText(smdlcd.getLinkSetCreated().getLinkSetAsCodedText());
       vocabularyStudyMetaDataLineEdit->home(false);
    }
 }      
@@ -270,7 +270,7 @@ GuiVocabularyFileEditorDialog::slotApplyButton()
       const QString& abbreviation = abbreviationLineEdit->text();
       
       if (abbreviation.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "Abbreviation is empty.", "OK");
+         QMessageBox::critical(this, "ERROR", "Abbreviation is empty.");
          return;
       }
       
@@ -305,12 +305,12 @@ GuiVocabularyFileEditorDialog::slotApplyButton()
       }
       const int indx = entryEditSpinBox->value();
       if ((indx < 0) || (indx >= vf->getNumberOfVocabularyEntries())) {
-         GuiMessageBox::critical(this, "ERROR", "Invalid editing number selection.", "OK");
+         QMessageBox::critical(this, "ERROR", "Invalid editing number selection.");
          return;
       }
       
-      StudyMetaDataLink smdl;
-      smdl.setLinkFromCodedText(vocabularyStudyMetaDataLineEdit->text());
+      StudyMetaDataLinkSet smdls;
+      smdls.setLinkSetFromCodedText(vocabularyStudyMetaDataLineEdit->text());
       
       //
       // Get the currently selected item and set its parameters
@@ -320,7 +320,7 @@ GuiVocabularyFileEditorDialog::slotApplyButton()
       ve->setFullName(fullNameLineEdit->text());
       ve->setClassName(classNameLineEdit->text());
       ve->setVocabularyID(vocabularyIdLineEdit->text());
-      ve->setStudyMetaDataLink(smdl);
+      ve->setStudyMetaDataLinkSet(smdls);
       int studyNum = studyNumberComboBox->currentIndex();
       if (studyNumberComboBox->currentText() == noneStudyName) {
          studyNum = -1;
@@ -364,7 +364,8 @@ GuiVocabularyFileEditorDialog::slotLoadVocabularyEntry(int indx)
       }
       studyNumberComboBox->setCurrentIndex(studyNum);
       descriptionTextEdit->setText(ve->getDescription());
-      vocabularyStudyMetaDataLineEdit->setText(ve->getStudyMetaDataLink().getLinkAsCodedText());
+      vocabularyStudyMetaDataLineEdit->setText(ve->getStudyMetaDataLinkSet().getLinkSetAsCodedText());
+      vocabularyStudyMetaDataLineEdit->home(false);
    }   
 }
 
@@ -411,9 +412,11 @@ GuiVocabularyFileEditorDialog::slotEntryModeChanged()
 void 
 GuiVocabularyFileEditorDialog::slotDeleteEntryPushButton()
 {
-   if (GuiMessageBox::question(this, "Confirm",
+   if (QMessageBox::question(this, "Confirm",
                                "Are you sure you want to delete the current vocabulary entry?",
-                               "Yes", "No") == 0) {
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       if (entryEditRadioButton->isChecked()) {
          int indx = entryEditSpinBox->value();
          VocabularyFile* vf = theMainWindow->getBrainSet()->getVocabularyFile();      

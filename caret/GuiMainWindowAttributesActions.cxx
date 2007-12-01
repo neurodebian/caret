@@ -25,6 +25,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QMessageBox>
 
 #include "AreaColorFile.h"
 #include "BorderToTopographyConverter.h"
@@ -44,16 +45,10 @@
 #include "GuiMainWindow.h"
 #include "GuiMainWindowAttributesActions.h"
 #include "GuiMapFmriDialog.h"
-#include "GuiMessageBox.h"
-#include "GuiMetricShapeStatisticsDialog.h"
-#include "GuiMetricShapeOneAndPairedTTestDialog.h"
-#include "GuiMetricShapeStatisticalAlgorithmDialog.h"
 #include "GuiChooseNodeAttributeColumnDialog.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiNodeAttributeFileClearResetDialog.h"
-#include "GuiPaintNamesEditDialog.h"
-#include "GuiMetricShapeInterHemClustersDialog.h"
-#include "GuiMetricShapeTwoSampleTTestDialog.h"
+#include "GuiPaintNameEditorDialog.h"
 #include "GuiSurfaceToVolumeDialog.h"
 #include "GuiShapeOrVectorsFromCoordinateSubtractionDialog.h"
 #include "LatLonFile.h"
@@ -80,289 +75,212 @@ GuiMainWindowAttributesActions::GuiMainWindowAttributesActions(GuiMainWindow* pa
    generateTopographyAction = new QAction(parent);
    generateTopographyAction->setText("Generate Topography From Borders and Paint");
    //generateTopographyAction->setName("generateTopographyAction");
-   QObject::connect(generateTopographyAction, SIGNAL(activated()),
+   QObject::connect(generateTopographyAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGenerateTopography()));
 
    generateArealEstimationMapAction = new QAction(parent);
    generateArealEstimationMapAction->setText("Generate Areal Estimation Map...");
    //generateArealEstimationMapAction->setName("generateArealEstimationMapAction");
-   QObject::connect(generateArealEstimationMapAction, SIGNAL(activated()),
+   QObject::connect(generateArealEstimationMapAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGenerateArealEstimationMap()));
 
    displayParamsFileEditorAction = new QAction(parent);
    displayParamsFileEditorAction->setText("Edit...");
    //displayParamsFileEditorAction->setName("displayParamsFileEditorAction");
-   QObject::connect(displayParamsFileEditorAction, SIGNAL(activated()),
+   QObject::connect(displayParamsFileEditorAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayParamsFileEditorDialog()));
 
    displayPaletteEditorAction = new QAction(parent);
    displayPaletteEditorAction->setText("Edit...");
    //displayPaletteEditorAction->setName("displayPaletteEditorAction");
-   QObject::connect(displayPaletteEditorAction, SIGNAL(activated()),
+   QObject::connect(displayPaletteEditorAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayPaletteEditorDialog()));
 
    areaColorsEditAction = new QAction(parent);
    areaColorsEditAction->setText("Edit...");
    //areaColorsEditAction->setName("areaColorsEditAction");
-   QObject::connect(areaColorsEditAction, SIGNAL(activated()),
+   QObject::connect(areaColorsEditAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotAreaColorsEdit()));
 
    metricMathAction = new QAction(parent);
    metricMathAction->setText("Mathematical Operations...");
    //metricMathAction->setName("metricMathAction");
-   QObject::connect(metricMathAction, SIGNAL(activated()),
+   QObject::connect(metricMathAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayMetricMathDialog()));
 
    metricToRgbPaintAction = new QAction(parent);
    metricToRgbPaintAction->setText("Convert Metric to RGB Paint...");
    //metricToRgbPaintAction->setName("metricToRgbPaintAction");
-   QObject::connect(metricToRgbPaintAction, SIGNAL(activated()),
+   QObject::connect(metricToRgbPaintAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMetricToRgbPaint()));
 
    metricAverageDeviationAction = new QAction(parent);
    metricAverageDeviationAction->setText("Compute Average and Sample Standard Deviation of All Columns...");
    //metricAverageDeviationAction->setName("metricAverageDeviationAction");
-   QObject::connect(metricAverageDeviationAction, SIGNAL(activated()),
+   QObject::connect(metricAverageDeviationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMetricAverageDeviation()));
 
    metricToVolumeAction = new QAction(parent);
    metricToVolumeAction->setText("Convert Metric Column to Functional Volume...");
    //metricToVolumeAction->setName("metricToVolumeAction");
-   QObject::connect(metricToVolumeAction, SIGNAL(activated()),
+   QObject::connect(metricToVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMetricToVolume()));
 
    metricClearAllOrPartAction = new QAction(parent);
    metricClearAllOrPartAction->setText("Clear All or Part of Metric File...");
    //metricClearAllOrPartAction->setName("metricClearAllOrPartAction");
-   QObject::connect(metricClearAllOrPartAction, SIGNAL(activated()),
+   QObject::connect(metricClearAllOrPartAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMetricClearAllOrPart()));
 
    volumeToSurfaceMapperAction = new QAction(parent);
    volumeToSurfaceMapperAction->setText("Map Volume(s) to Surface(s)...");
    //volumeToSurfaceMapperAction->setName("volumeToSurfaceMapperAction");
-   QObject::connect(volumeToSurfaceMapperAction, SIGNAL(activated()),
+   QObject::connect(volumeToSurfaceMapperAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotVolumeToSurfaceMapper()));
 
    metricModificationAction = new QAction(parent);
    metricModificationAction->setText("Clustering and Smoothing...");
    //metricModificationAction->setName("metricModificationAction");
-   QObject::connect(metricModificationAction, SIGNAL(activated()),
+   QObject::connect(metricModificationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotMetricModification()));
 
    surfaceShapeToVolumeAction = new QAction(parent);
    surfaceShapeToVolumeAction->setText("Convert Surface Shape Column to Functional Volume...");
    //surfaceShapeToVolumeAction->setName("surfaceShapeToVolumeAction");
-   QObject::connect(surfaceShapeToVolumeAction, SIGNAL(activated()),
+   QObject::connect(surfaceShapeToVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSurfaceShapeToVolume()));
 
    surfaceShapeClearAllOrPartAction = new QAction(parent);
    surfaceShapeClearAllOrPartAction->setText("Clear All or Part of Surface Shape File...");
    //surfaceShapeClearAllOrPartAction->setName("surfaceShapeClearAllOrPartAction");
-   QObject::connect(surfaceShapeClearAllOrPartAction, SIGNAL(activated()),
+   QObject::connect(surfaceShapeClearAllOrPartAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSurfaceShapeClearAllOrPart()));
 
    surfaceShapeAverageDeviationAction = new QAction(parent);
    surfaceShapeAverageDeviationAction->setText("Compute Average and Sample Standard Deviation of All Columns...");
    //surfaceShapeAverageDeviationAction->setName("surfaceShapeAverageDeviationAction");
-   QObject::connect(surfaceShapeAverageDeviationAction, SIGNAL(activated()),
+   QObject::connect(surfaceShapeAverageDeviationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSurfaceShapeAverageDeviation()));
 
    shapeMathAction = new QAction(parent);
    shapeMathAction->setText("Mathematical Operations...");
    //shapeMathAction->setName("shapeMathAction");
-   QObject::connect(shapeMathAction, SIGNAL(activated()),
+   QObject::connect(shapeMathAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayShapeMathDialog()));
 
    shapeModificationAction = new QAction(parent);
    shapeModificationAction->setText("Clustering and Smoothing...");
    //shapeModificationAction->setName("shapeModificationAction");
-   QObject::connect(shapeModificationAction, SIGNAL(activated()),
+   QObject::connect(shapeModificationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotShapeModification()));
-
-   metricShapeCoordinateDifferenceAction = new QAction(parent);
-   metricShapeCoordinateDifferenceAction->setText("Coordinate Difference...");
-   //metricShapeCoordinateDifferenceAction->setName("metricShapeCoordinateDifferenceAction");
-   QObject::connect(metricShapeCoordinateDifferenceAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeCoordinateDifference()));
-
-   metricShapeNormalizationAction = new QAction(parent);
-   metricShapeNormalizationAction->setText("Normalization of File...");
-   //metricShapeNormalizationAction->setName("shapeNormalizationAction");
-   QObject::connect(metricShapeNormalizationAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeNormalization()));
-
-   metricShapeRootMeanSquareAction = new QAction(parent);
-   metricShapeRootMeanSquareAction->setText("Root Mean Square...");
-   QObject::connect(metricShapeRootMeanSquareAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeRootMeanSquare()));
-                    
-   metricShapeLeveneMapAction = new QAction(parent);
-   metricShapeLeveneMapAction->setText("Levene Map on File...");
-   //metricShapeLeveneMapAction->setName("metricShapeLeveneMapAction");
-   QObject::connect(metricShapeLeveneMapAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeLeveneMap()));
-
-   metricShapeZMapAction = new QAction(parent);
-   metricShapeZMapAction->setText("Z-Map on File...");
-   //shapeZMapAction->setName("shapeZMapAction");
-   QObject::connect(metricShapeZMapAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeZMap()));
-
-   metricShapeTMapAction = new QAction(parent);
-   metricShapeTMapAction->setText("T-Map on Files...");
-   //shapeTMapAction->setName("shapeTMapAction");
-   QObject::connect(metricShapeTMapAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeTMap()));
-
-   metricShapeSubtractAverageAction = new QAction(parent);
-   metricShapeSubtractAverageAction->setText("Subtract Group Average on Files...");
-   //shapeSubtractAverageAction->setName("shapeSubtractAverageAction");
-   QObject::connect(metricShapeSubtractAverageAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeSubtractAverage()));
-
-   metricShapeTMapShuffledColumnsAction = new QAction(parent);
-   metricShapeTMapShuffledColumnsAction->setText("T-Maps on Shuffled Columns on Files...");
-   //shapeTMapShuffledColumnsAction->setName("shapeTMapShuffledColumnsAction");
-   QObject::connect(metricShapeTMapShuffledColumnsAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeTMapShuffledColumns()));
-
-   metricShapeShuffledCorrelationColumnsAction = new QAction(parent);
-   metricShapeShuffledCorrelationColumnsAction->setText("Shuffled Cross-Correlation Maps...");
-   //shapeShuffledCorrelationColumnsAction->setName("shapeShuffledCorrelationColumnsAction");
-   QObject::connect(metricShapeShuffledCorrelationColumnsAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeShuffledCorrelationColumns()));
-
-   metricShapeOneSampleTTestAction = new QAction(parent);
-   metricShapeOneSampleTTestAction->setText("One Sample T-Test...");
-   //shapeInterHemClustersAction->setName("shapeInterHemClustersAction");
-   QObject::connect(metricShapeOneSampleTTestAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeOneSampleTTestDialog()));
-
-   metricShapePairedTTestAction = new QAction(parent);
-   metricShapePairedTTestAction->setText("Paired T-Test...");
-   //shapeInterHemClustersAction->setName("shapeInterHemClustersAction");
-   QObject::connect(metricShapePairedTTestAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapePairedTTestDialog()));
-
-   metricShapeInterHemClustersAction = new QAction(parent);
-   metricShapeInterHemClustersAction->setText("Interhemispheric Clusters...");
-   //shapeInterHemClustersAction->setName("shapeInterHemClustersAction");
-   QObject::connect(metricShapeInterHemClustersAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeInterHemClustersDialog()));
-
-   metricShapeTwoSampleTTestAction = new QAction(parent);
-   metricShapeTwoSampleTTestAction->setText("Two Sample T-Test...");
-   //shapeSignificantClustersAction->setName("shapeSignificantClustersAction");
-   QObject::connect(metricShapeTwoSampleTTestAction, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeTwoSampleTTestDialog()));
-
-   metricShapeWilcoxonRankSum = new QAction(parent);
-   metricShapeWilcoxonRankSum->setText("Wilcoxon Rank-Sum Test...");
-   QObject::connect(metricShapeWilcoxonRankSum, SIGNAL(activated()),
-                    this, SLOT(slotMetricShapeWilcoxonRankSumDialog()));
 
    paintCleanNamesAction = new QAction(parent);
    paintCleanNamesAction->setText("Cleanup Paint Names");
    //paintCleanNamesAction->setName("paintCleanNamesAction");
-   QObject::connect(paintCleanNamesAction, SIGNAL(activated()),
+   QObject::connect(paintCleanNamesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintCleanNames()));
 
+   generateColorsForPaints = new QAction(parent);
+   generateColorsForPaints->setText("Generate Colors for Paints Without Colors");
+   QObject::connect(generateColorsForPaints, SIGNAL(triggered(bool)),
+                    this, SLOT(slotGenerateColorsForPaints()));
+                    
    paintToVolumeAction = new QAction(parent);
    paintToVolumeAction->setText("Convert Paint Column to Paint Volume...");
    //paintToVolumeAction->setName("paintToVolumeAction");
-   QObject::connect(paintToVolumeAction, SIGNAL(activated()),
+   QObject::connect(paintToVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintToVolume()));
 
    paintNamesEditAction = new QAction(parent);
-   paintNamesEditAction->setText("Edit Paint Names...");
+   paintNamesEditAction->setText("Edit Paint Names and Properties...");
    //paintNamesEditAction->setName("paintNamesEditAction");
-   QObject::connect(paintNamesEditAction, SIGNAL(activated()),
-                    this, SLOT(slotPaintNamesEdit()));
+   QObject::connect(paintNamesEditAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayPaintEditorDialog()));
 
    paintAssignWithinDisplayedBordersAction = new QAction(parent);
    paintAssignWithinDisplayedBordersAction->setText("Assign Nodes Within Displayed Borders...");
    //paintAssignWithinDisplayedBordersAction->setName("paintAssignWithinDisplayedBordersAction");
-   QObject::connect(paintAssignWithinDisplayedBordersAction, SIGNAL(activated()),
+   QObject::connect(paintAssignWithinDisplayedBordersAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintAssignWithinDisplayedBorders()));
 
    paintClearAllOrPartAction = new QAction(parent);
    paintClearAllOrPartAction->setText("Clear All or Part of Paint File...");
    //paintClearAllOrPartAction->setName("paintClearAllOrPartAction");
-   QObject::connect(paintClearAllOrPartAction, SIGNAL(activated()),
+   QObject::connect(paintClearAllOrPartAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintClearAllOrPart()));
 
    copyColoringToRgbPaintAction = new QAction(parent);
    copyColoringToRgbPaintAction->setText("Copy Current Coloring to RGB Paint...");
    //copyColoringToRgbPaintAction->setName("copyColoringToRgbPaintAction");
-   QObject::connect(copyColoringToRgbPaintAction, SIGNAL(activated()),
+   QObject::connect(copyColoringToRgbPaintAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCopyColoringToRgbPaint()));
 
    copyNormalsToRgbPaintAction = new QAction(parent);
    copyNormalsToRgbPaintAction->setText("Copy Surface Normals to RGB Paint");
    //copyNormalsToRgbPaintAction->setName("copyNormalsToRgbPaintAction");
-   QObject::connect(copyNormalsToRgbPaintAction, SIGNAL(activated()),
+   QObject::connect(copyNormalsToRgbPaintAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCopyNormalsToRgbPaint()));
 
    copyColoringToVolumeAction = new QAction(parent);
    copyColoringToVolumeAction->setText("Copy Current Coloring to RGB Volume...");
    //copyColoringToVolumeAction->setName("copyColoringToVolumeAction");
-   QObject::connect(copyColoringToVolumeAction, SIGNAL(activated()),
+   QObject::connect(copyColoringToVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCopyColoringToVolume()));
 
    latLonClearAllOrPartAction = new QAction(parent);
    latLonClearAllOrPartAction->setText("Clear All or Part of Lat/Long File...");
    //latLonClearAllOrPartAction->setName("latLonClearAllOrPartAction");
-   QObject::connect(latLonClearAllOrPartAction, SIGNAL(activated()),
+   QObject::connect(latLonClearAllOrPartAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotLatLonClearAllOrPart()));
 
    latLonGenerateOnSphereAction = new QAction(parent);
    latLonGenerateOnSphereAction->setText("Generate Lat/Long on Spherical Surface...");
    //latLonGenerateOnSphereAction->setName("latLonGenerateOnSphereAction");
-   QObject::connect(latLonGenerateOnSphereAction, SIGNAL(activated()),
+   QObject::connect(latLonGenerateOnSphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotLatLonGenerateOnSphere()));
 
    generateDeformationFieldAction = new QAction(parent);
    generateDeformationFieldAction->setText("Generate Deformation Field...");
    //generateDeformationFieldAction->setName("generateDeformationFieldAction");
-   QObject::connect(generateDeformationFieldAction, SIGNAL(activated()),
+   QObject::connect(generateDeformationFieldAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGenerateDeformationField()));
 
    probAtlasThresholdToPaintAction = new QAction(parent);
    probAtlasThresholdToPaintAction->setText("Convert Threshold Coloring to Paint...");
    //probAtlasThresholdToPaintAction->setName("probAtlasThresholdToPaintAction");
-   QObject::connect(probAtlasThresholdToPaintAction, SIGNAL(activated()),
+   QObject::connect(probAtlasThresholdToPaintAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotProbAtlasThresholdToPaint()));
 
    coordsToVectorsAction = new QAction(parent);
    coordsToVectorsAction->setText("Create Vectors From Surface Subtraction...");
    //coordsToVectorsAction->setName("coordsToVectorsAction");
-   QObject::connect(coordsToVectorsAction, SIGNAL(activated()),
+   QObject::connect(coordsToVectorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCoordsToVectors()));
 
    normalsToVectorsAction = new QAction(parent);
    normalsToVectorsAction->setText("Create Vectors From Surface Normals...");
-   QObject::connect(normalsToVectorsAction, SIGNAL(activated()),
+   QObject::connect(normalsToVectorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotNormalsToVectors()));
                     
    modelsEditorAction = new QAction(parent);
    modelsEditorAction->setText("Edit...");
    //modelsEditorAction->setName("modelsEditorAction");
-   QObject::connect(modelsEditorAction, SIGNAL(activated()),
+   QObject::connect(modelsEditorAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayModelsEditorDialog()));
          
    studyMetaDataEditorDialogAction = new QAction(parent);
    studyMetaDataEditorDialogAction->setText("Edit...");
-   QObject::connect(studyMetaDataEditorDialogAction, SIGNAL(activated()),
+   QObject::connect(studyMetaDataEditorDialogAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayStudyMetaDataFileEditorDialog()));
                     
    vocabularyFileEditorDialogAction = new QAction(parent);
    vocabularyFileEditorDialogAction->setText("Edit...");
-   QObject::connect(vocabularyFileEditorDialogAction, SIGNAL(activated()),
+   QObject::connect(vocabularyFileEditorDialogAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayVocabularyFileEditorDialog()));
                     
    vocabularyMoveStudyInfoToStudyMetaDataAction = new QAction(parent);
    vocabularyMoveStudyInfoToStudyMetaDataAction->setText("Move Vocabulary Study Info to Study Metadata File");
-   QObject::connect(vocabularyMoveStudyInfoToStudyMetaDataAction, SIGNAL(activated()),
+   QObject::connect(vocabularyMoveStudyInfoToStudyMetaDataAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotVocabularyMoveStudyInfoToStudyMetaData()));
 }
 
@@ -391,7 +309,7 @@ GuiMainWindowAttributesActions::slotVocabularyMoveStudyInfoToStudyMetaData()
    const QString msg("The StudyInfo from the Vocabulary File has been moved\n"
                      "to the Study Metadata File.  As a result, both the \n"
                      "StudyMetaData and Vocabulary Files need to be saved.");
-   GuiMessageBox::information(theMainWindow, "INFO", msg, "OK");
+   QMessageBox::information(theMainWindow, "INFO", msg);
 }
 
 /**
@@ -455,8 +373,10 @@ GuiMainWindowAttributesActions::slotGenerateTopography()
       btc.execute();
    }
    catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(theMainWindow, "Error", e.whatQString());
    }
+   QApplication::restoreOverrideCursor();
 }
 
 /**
@@ -532,7 +452,7 @@ GuiMainWindowAttributesActions::slotMetricToVolume()
    if (svd.exec() == QDialog::Accepted) {
       const int metricColumn = svd.getSelectedNodeAttributeColumn();
       if ((metricColumn < 0) || (metricColumn >= theMainWindow->getBrainSet()->getMetricFile()->getNumberOfColumns())) {
-         GuiMessageBox::critical(theMainWindow, "Error", "Invalid metric Column", "OK");
+         QMessageBox::critical(theMainWindow, "Error", "Invalid metric Column");
          return;
       }
       
@@ -565,7 +485,7 @@ GuiMainWindowAttributesActions::slotMetricToVolume()
          stv.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+         QMessageBox::critical(theMainWindow, "Error", e.whatQString());
          return;
       }
       
@@ -654,7 +574,7 @@ GuiMainWindowAttributesActions::slotProbAtlasThresholdToPaint()
 {
    ProbabilisticAtlasFile* probAtlasFile = theMainWindow->getBrainSet()->getProbabilisticAtlasSurfaceFile();
    if (probAtlasFile->getNumberOfColumns() < 1) {
-      GuiMessageBox::critical(theMainWindow, "ERROR", "Probabilistic Atlas File is Empty.", "OK");
+      QMessageBox::critical(theMainWindow, "ERROR", "Probabilistic Atlas File is Empty.");
       return;
    }
    
@@ -669,7 +589,7 @@ GuiMainWindowAttributesActions::slotProbAtlasThresholdToPaint()
    bool error = false;
    if ((bsnc->getPrimaryOverlay(0) != BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) &&
        (bsnc->getSecondaryOverlay(0) != BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) &&
-       (bsnc->getUnderlay(0) != BrainModelSurfaceNodeColoring::UNDERLAY_PROBABILISTIC_ATLAS)) {
+       (bsnc->getUnderlay(0) != BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS)) {
       error = true;
    }
    
@@ -683,9 +603,9 @@ GuiMainWindowAttributesActions::slotProbAtlasThresholdToPaint()
    }
    
    if (error) {
-      GuiMessageBox::critical(theMainWindow, "ERROR",
+      QMessageBox::critical(theMainWindow, "ERROR",
          "The overlay or underlay must be set to Probabilistic\n"
-         "Atlas with the Display Mode set to Threshold.", "OK");
+         "Atlas with the Display Mode set to Threshold.");
       return;
    }
    
@@ -837,16 +757,6 @@ GuiMainWindowAttributesActions::slotPaintAssignWithinDisplayedBorders()
 }
 
 /**
- * Called to edit paint names.
- */
-void
-GuiMainWindowAttributesActions::slotPaintNamesEdit()
-{
-   GuiPaintNamesEditDialog pned(theMainWindow);
-   pned.exec();
-}
-
-/**
  * Clear all or part of the paint file.
  */
 void
@@ -869,7 +779,7 @@ GuiMainWindowAttributesActions::slotPaintToVolume()
    if (svd.exec() == QDialog::Accepted) {
       const int paintColumn = svd.getSelectedNodeAttributeColumn();
       if ((paintColumn < 0) || (paintColumn >= theMainWindow->getBrainSet()->getPaintFile()->getNumberOfColumns())) {
-         GuiMessageBox::critical(theMainWindow, "Error", "Invalid paint Column", "OK");
+         QMessageBox::critical(theMainWindow, "Error", "Invalid paint Column");
          return;
       }
       
@@ -902,7 +812,7 @@ GuiMainWindowAttributesActions::slotPaintToVolume()
          stv.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+         QMessageBox::critical(theMainWindow, "Error", e.whatQString());
          return;
       }
       
@@ -955,7 +865,7 @@ GuiMainWindowAttributesActions::slotCopyColoringToVolume()
          stv.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+         QMessageBox::critical(theMainWindow, "Error", e.whatQString());
          return;
       }
       
@@ -1008,91 +918,26 @@ GuiMainWindowAttributesActions::slotPaintCleanNames()
 }
 
 /**
- * slot for shuffled correlation columns.
+ * slot for generating colors for non-matching paint names.
  */
 void 
-GuiMainWindowAttributesActions::slotMetricShapeShuffledCorrelationColumns()
+GuiMainWindowAttributesActions::slotGenerateColorsForPaints()
 {
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_SHUFF_CROSS_CORRELATION);
-   mssd.exec();
-}
-      
-/**
- * slot for shape normalization.
- */
-void
-GuiMainWindowAttributesActions::slotMetricShapeNormalization()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_NORMALIZE);
-   mssd.exec();
-}
-      
-/**
- * slot for metric and shape root mean square.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeRootMeanSquare()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_ROOT_MEAN_SQUARE);
-   mssd.exec();
-}
-      
-/**
- * slot for shape Levene Map computation.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeLeveneMap()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_LEVENE);
-   mssd.exec();
-}
-
-/**
- * slot for shape Z-Map computation.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeZMap()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_ZMAP);
-   mssd.exec();
-}
-
-/**
- * slot for shape T-Map computation.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeTMap()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_TMAP);
-   mssd.exec();
-}
-      
-/**
- * slot for shape subtract average computation.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeSubtractAverage()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_SUBTRACT_GROUP_AVERAGE);
-   mssd.exec();
-}
-
-/**
- * slot for shape T-Map shuffled columns.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeTMapShuffledColumns()
-{
-   GuiMetricShapeStatisticsDialog mssd(theMainWindow,
-                                       GuiMetricShapeStatisticsDialog::DIALOG_MODE_SHUFFLED_TMAP);
-   mssd.exec();
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+   PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
+   const int numNames = pf->getNumberOfPaintNames();
+   std::vector<QString> paintNames;
+   for (int i = 0; i < numNames; i++) {
+      paintNames.push_back(pf->getPaintNameFromIndex(i));
+   }
+   ColorFile* cf = theMainWindow->getBrainSet()->getAreaColorFile();
+   cf->generateColorsForNamesWithoutColors(paintNames, true);
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+   GuiFilesModified fm;
+   fm.setAreaColorModified();
+   theMainWindow->fileModificationUpdate(fm);
+   QApplication::restoreOverrideCursor();
 }
       
 /**
@@ -1184,7 +1029,7 @@ GuiMainWindowAttributesActions::slotSurfaceShapeToVolume()
    if (svd.exec() == QDialog::Accepted) {
       const int shapeColumn = svd.getSelectedNodeAttributeColumn();
       if ((shapeColumn < 0) || (shapeColumn >= theMainWindow->getBrainSet()->getSurfaceShapeFile()->getNumberOfColumns())) {
-         GuiMessageBox::critical(theMainWindow, "Error", "Invalid surface shape Column", "OK");
+         QMessageBox::critical(theMainWindow, "Error", "Invalid surface shape Column");
          return;
       }
       
@@ -1217,7 +1062,7 @@ GuiMainWindowAttributesActions::slotSurfaceShapeToVolume()
          stv.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "Error", e.whatQString(), "OK");
+         QMessageBox::critical(theMainWindow, "Error", e.whatQString());
          return;
       }
       
@@ -1253,14 +1098,18 @@ GuiMainWindowAttributesActions::slotLatLonGenerateOnSphere()
 {
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(theMainWindow, "Error", "There is no surface in the main window.", "OK");
+      QMessageBox::critical(theMainWindow, "Error", "There is no surface in the main window.");
       return;
    }
    
    if (bms->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
-      if (GuiMessageBox::warning(theMainWindow, "Warning", "The surface in the main window does\n"
+      if (QMessageBox::warning(theMainWindow, 
+                               "Warning", 
+                               "The surface in the main window does\n"
                                                 "not appear to be a sphere.", 
-                                                "Continue", "Cancel") != 0) {
+                               (QMessageBox::Ok | QMessageBox::Cancel),
+                               QMessageBox::Cancel)
+                                  == QMessageBox::Cancel) {
          return;
       }
    }
@@ -1317,101 +1166,6 @@ GuiMainWindowAttributesActions::slotNormalsToVectors()
          theMainWindow->fileModificationUpdate(fm);
       }
    }
-}
-
-/**
- * slot for one-sample t-test dialog.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeOneSampleTTestDialog()
-{
-   static GuiMetricShapeOneAndPairedTTestDialog* shapeOneSampleTTestDialog = NULL;
-   if (shapeOneSampleTTestDialog == NULL) {
-      shapeOneSampleTTestDialog = new GuiMetricShapeOneAndPairedTTestDialog(theMainWindow, false);
-   }
-   shapeOneSampleTTestDialog->show();
-   shapeOneSampleTTestDialog->raise();
-   shapeOneSampleTTestDialog->activateWindow();
-}      
-
-/**
- * slot for two-sample t-test dialog.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapePairedTTestDialog()
-{
-   static GuiMetricShapeOneAndPairedTTestDialog* shapePairedTTestDialog = NULL;
-   if (shapePairedTTestDialog == NULL) {
-      shapePairedTTestDialog = new GuiMetricShapeOneAndPairedTTestDialog(theMainWindow, true);
-   }
-   shapePairedTTestDialog->show();
-   shapePairedTTestDialog->raise();
-   shapePairedTTestDialog->activateWindow();
-}      
-
-/**
- * slot for the shape significant clusters dialog.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeTwoSampleTTestDialog()
-{
-   static GuiMetricShapeTwoSampleTTestDialog* shapeSignificantClustersDialog = NULL;
-   
-   if (shapeSignificantClustersDialog == NULL) {
-      shapeSignificantClustersDialog = new GuiMetricShapeTwoSampleTTestDialog(theMainWindow,
-                  BrainModelSurfaceMetricTwoSampleTTest::DATA_TRANSFORM_NONE);
-   }
-   shapeSignificantClustersDialog->show();
-   shapeSignificantClustersDialog->raise();
-   shapeSignificantClustersDialog->activateWindow();
-}
-      
-/**
- * slot for metric shape coordinate difference.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeCoordinateDifference()
-{
-   static GuiMetricShapeStatisticalAlgorithmDialog* statAlgDialog = NULL;
-   if (statAlgDialog == NULL) {
-      statAlgDialog = new GuiMetricShapeStatisticalAlgorithmDialog(theMainWindow);
-   }
-   statAlgDialog->show();
-   statAlgDialog->raise();
-   statAlgDialog->activateWindow();
-}
-
-/**
- * slot for the wilcoxon rank-sum dialog.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeWilcoxonRankSumDialog()
-{
-   static GuiMetricShapeTwoSampleTTestDialog* shapeSignificantClustersDialog = NULL;
-   
-   if (shapeSignificantClustersDialog == NULL) {
-      shapeSignificantClustersDialog = new GuiMetricShapeTwoSampleTTestDialog(theMainWindow,
-                   BrainModelSurfaceMetricTwoSampleTTest::DATA_TRANSFORM_WILCOXON_RANK_SUM_THEN_TWO_SAMPLE_T_TEST);
-   }
-   shapeSignificantClustersDialog->show();
-   shapeSignificantClustersDialog->raise();
-   shapeSignificantClustersDialog->activateWindow();
-}
-      
-/**
- * slot shape inter-hem clusters dialog.
- */
-void 
-GuiMainWindowAttributesActions::slotMetricShapeInterHemClustersDialog()
-{
-   static GuiMetricShapeInterHemClustersDialog* shapeInterHemClustersDialog = NULL;
-   
-   if (shapeInterHemClustersDialog == NULL) {
-      shapeInterHemClustersDialog = new GuiMetricShapeInterHemClustersDialog(theMainWindow);
-   }
-   shapeInterHemClustersDialog->show();
-   shapeInterHemClustersDialog->raise();
-   shapeInterHemClustersDialog->activateWindow();
 }
 
 /**

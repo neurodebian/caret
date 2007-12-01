@@ -44,6 +44,8 @@ ImageFile::ImageFile()
                   FILE_IO_NONE,
                   FILE_IO_NONE,
                   FILE_IO_NONE,
+                  FILE_IO_NONE,
+                  FILE_IO_NONE,
                   FILE_IO_READ_AND_WRITE)  // be sure to update all constructors
 {
    clear();

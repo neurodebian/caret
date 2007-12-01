@@ -26,10 +26,10 @@
 #ifndef __GUI_FILE_DIALOG_WITH_INSTRUCTIONS_H__
 #define __GUI_FILE_DIALOG_WITH_INSTRUCTIONS_H__
 
-#include <q3filedialog.h>
+#include "WuQFileDialog.h"
 
 /// class for file dialog with instructions
-class GuiFileDialogWithInstructions : public Q3FileDialog {
+class GuiFileDialogWithInstructions : public WuQFileDialog {
    Q_OBJECT
    
    public:

@@ -2,18 +2,14 @@ SHELL	= /bin/sh
 
 PROGS	= caret \
 	  caret_command \
-	  caret_copy_spec \
-	  caret_edit \
-	  caret_file_convert \
-	  caret_map_fmri \
-	  caret_metric \
-	  caret_zip_spec
+	  caret_edit 
 
 LIBS	= \
 	  caret_statistics \
 	  caret_common \
 	  caret_files \
 	  caret_brain_set \
+	  caret_command_operations \
 	  caret_uniformize \
 	  caret_widgets \
 	  caret_vtk4_classes
@@ -47,6 +43,14 @@ build8:
 	   echo "making " $$i ; \
 	   cd $$i ; \
 	   make -j 8; \
+	   cd .. ; \
+	done
+
+build4:
+	@for i in ${DIRS} ; do \
+	   echo "making " $$i ; \
+	   cd $$i ; \
+	   make -j 4; \
 	   cd .. ; \
 	done
 
@@ -101,6 +105,10 @@ rebuild:
 rebuild8:
 	make qmake-static
 	make build8
+	
+rebuild4:
+	make qmake-static
+	make build4
 	
 rebuild2:
 	make qmake-static

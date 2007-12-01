@@ -27,7 +27,7 @@
 /*LICENSE_END*/
 
 #include "GiftiDataArrayFile.h"
-#include "StudyMetaDataLink.h"
+#include "StudyMetaDataLinkSet.h"
 
 /// This abstract class defines some variables and methods used for node data files.
 class GiftiNodeDataFile : public GiftiDataArrayFile {
@@ -104,6 +104,12 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
       // get the index of the column with the specified name 
       int getColumnWithName(const QString& n) const;
  
+      // get a node attribute file column number where input may be a column 
+      // name or number.  Input numbers range 1..N and output column 
+      // numbers range 0..(N-1)
+      int getColumnFromNameOrNumber(const QString& columnNameOrNumber,
+                                    const bool addColumnIfNotFoundAndNotNumber)  throw (FileException);
+      
       // get the comment for a column
       QString getColumnComment(const int col) const;
       
@@ -120,11 +126,11 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
       void prependToColumnComment(const int col, const QString& comm);
       
       // get the study metadata link for a column
-      StudyMetaDataLink getColumnStudyMetaDataLink(const int col) const;
+      StudyMetaDataLinkSet getColumnStudyMetaDataLinkSet(const int col) const;
       
       // set the study metadata link for a column
-      void setColumnStudyMetaDataLink(const int col,
-                                      const StudyMetaDataLink smdl);
+      void setColumnStudyMetaDataLinkSet(const int col,
+                                         const StudyMetaDataLinkSet smdls);
       
       // transfer file data for deformation
       void transferFileDataForDeformation(const DeformationMapFile& dmf,

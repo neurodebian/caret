@@ -29,15 +29,19 @@
 
 #include "QtDialogModal.h"
 #include "StudyMetaDataFile.h"
+#include "StudyMetaDataLinkSet.h"
 
+class QAction;
 class QComboBox;
 class QButtonGroup;
 class QLabel;
 class QLineEdit;
+class QPushButton;
 class QRadioButton;
 class QSpinBox;
 class QTableWidget;
-class QtWidgetGroup;
+class QToolButton;
+class WuQWidgetGroup;
 
 /// class for creating a link to a study in a study meta data file
 class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
@@ -50,21 +54,21 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       // destructor
       ~GuiStudyMetaDataLinkCreationDialog();
       
-      // get the link that was created
-      StudyMetaDataLink getLinkCreated() const;
+      // get the link set that was created
+      StudyMetaDataLinkSet getLinkSetCreated() const;
       
-      // initialize the selected link
-      void initializeSelectedLink(const StudyMetaDataLink& smdl);
+      // initialize the selected link set
+      void initializeSelectedLinkSet(const StudyMetaDataLinkSet& smdls);
       
    protected slots:
       // called when a study table item is changed
-      void studyTableItemChanged(int row,int column);
+      void slotStudySelected(int row,int column);
       
       // enable/disable OK button
       void slotEnableDisableOkButton();
       
       // called when a link widget selection is made
-      void slotLinkWidgetSelection();
+      void enableLinkSelections();
       
       // called when a figure is selected
       void slotLinkFigureSelectionComboBox(int item);
@@ -74,11 +78,29 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       
       // called when a page reference is selected
       void slotLinkPageReferenceSelectionComboBox(int item);
+
+      // called to add a new study meta data link
+      void slotAddStudyMetaDataLink();
       
-   protected:
+      // called to delete the current study meta data link
+      void slotDeleteStudyMetaDataLink();
+
+      // called by link selection up arrow
+      void slotLinkSelectionUpArrowAction();
       
+      // called by link selection down arrow
+      void slotLinkSelectionDownArrowAction();
+      
+   protected:      
       // called when OK or Cancel button pressed
       void done(int r);
+      
+      // get the selected study metadata link
+      StudyMetaDataLink* getSelectedStudyMetaDataLink();
+      
+      // set the selected study checkbox
+      void setSelectedStudyCheckBox(const int studyIndex,
+                                    const bool scrollToStudyFlag);
       
       // get the index of the selected study
       int getSelectedStudyIndex() const;
@@ -89,14 +111,29 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       // create the type of link widget
       QWidget* createStudyLinkWidget();
       
+      // create the link selection widget
+      QWidget* createLinkSelectionWidget();
+      
       // load the study table widget
       void loadStudyTableWidget();
       
-      // load the link widget
-      void loadStudyLinkWidget();
+      // called to load the selected study metadata link
+      void loadStudyMetaDataLink(const bool scrollToStudyFlag);
       
-      /// the study meta data link
-      StudyMetaDataLink studyMetaDataLink;
+      // update the link selection controls
+      void updateLinkSelectionControls();
+           
+      /// Save the current study
+      void saveCurrentStudy();
+      
+      /// update the link selection labels and arrows
+      void updateLinkSelectionLabelsAndArrows();
+      
+      /// the study meta data link index
+      int studyMetaDataLinkIndex;
+      
+      /// the study meta data link set
+      StudyMetaDataLinkSet studyMetaDataLinkSet;
       
       /// the study table widget
       QTableWidget* studyTableWidget;
@@ -147,7 +184,7 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       QComboBox* linkFigurePanelSelectionComboBox;
       
       /// contains widgets enabled if linking to a figure
-      QtWidgetGroup* linkFigureWidgetsGroup;
+      WuQWidgetGroup* linkFigureWidgetsGroup;
       
       /// link page ref selection combo box
       QComboBox* linkPageReferenceSelectionComboBox;
@@ -156,7 +193,7 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       QComboBox* linkPageReferenceSubHeaderSelectionComboBox;
       
       /// contains widgets enabled if linking to a page ref
-      QtWidgetGroup* linkPageReferenceWidgetsGroup;
+      WuQWidgetGroup* linkPageReferenceWidgetsGroup;
       
       /// link table selection combo box
       QComboBox* linkTableSelectionComboBox;
@@ -165,13 +202,37 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       QComboBox* linkTableSubHeaderSelectionComboBox;
       
       /// contains widgets enabled if linking to a table
-      QtWidgetGroup* linkTableWidgetsGroup;
+      WuQWidgetGroup* linkTableWidgetsGroup;
       
       /// page number widget group
-      QtWidgetGroup* pageNumberWidgetGroup;
+      WuQWidgetGroup* pageNumberWidgetGroup;
       
       /// link page number line edit
       QLineEdit* linkPageNumberLineEdit;
+      
+      /// link selected number label
+      QLabel* currentLinkNumberLabel;
+      
+      /// link total number label
+      QLabel* numberOfLinksLabel;
+      
+      /// link selection up arrow
+      QToolButton* linkSelectionUpArrowToolButton;
+      
+      /// link selection down arrow
+      QToolButton* linkSelectionDownArrowToolButton;
+      
+      /// action for link selection up arrow
+      QAction* linkSelectionUpArrowAction;
+      
+      /// action for link selection down arrow
+      QAction* linkSelectionDownArrowAction;
+      
+      /// delete link push button
+      QPushButton* deleteLinkPushButton;
+      
+      /// add link push button
+      QPushButton* addNewLinkPushButton;
 };
 
 #endif // __GUI_STUDY_META_DATA_LINK_CREATION_DIALOG_H__

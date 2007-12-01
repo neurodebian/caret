@@ -34,11 +34,12 @@
 #include <QCheckBox>
 #include <QDir>
 #include <QFile>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -67,11 +68,13 @@
 #include "DebugControl.h"
 #include "DeformationFieldFile.h"
 #include "DeformationMapFile.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
 #include "GeodesicDistanceFile.h"
+#include "GuiDataFileOpenDialog.h"
 #include "GuiStructureComboBox.h"
 #include "GuiMainWindow.h"
 #include "LatLonFile.h"
@@ -80,8 +83,6 @@
 #include "QtUtilities.h"
 #include "GuiDataFileCommentDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
-#include "GuiOpenDataFileDialog.h"
 #include "GuiSpecFileDialog.h"
 #include "PaintFile.h"
 #include "PaletteFile.h"
@@ -98,6 +99,7 @@
 #include "SurfaceVectorFile.h"
 #include "TopographyFile.h"
 #include "VocabularyFile.h"
+#include "WuQFileDialog.h"
 #include "WustlRegionFile.h"
 #include "global_variables.h"
 
@@ -777,7 +779,7 @@ GuiSpecFileDialogMainWindow::writeSpecFileIfNeeded()
          specFile.writeFile(specFile.getFileName());
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "Error Writing Spec File", e.whatQString(), "OK");
+         QMessageBox::critical(this, "Error Writing Spec File", e.whatQString());
       }
       specFileNeedsToBeWritten = false;
    }
@@ -1413,85 +1415,93 @@ GuiSpecFileDialogMainWindow::slotCreateSpecButton()
       std::cout << "Current directory now: " << QDir::currentPath().toAscii().constData() << std::endl;
    }
    
-   QFileDialog* fd = new QFileDialog(this);
-   fd->setModal(true);
-   fd->setWindowTitle("Choose New Spec File Name");
-   fd->setFileMode(QFileDialog::AnyFile);
-   fd->setFilter("Spec File (*.spec)");
-   fd->setDirectory(directoryName);
+   WuQFileDialog fd(this);
+   fd.setModal(true);
+   fd.setWindowTitle("Choose New Spec File Name");
+   fd.setFileMode(WuQFileDialog::AnyFile);
+   fd.setFilters(QStringList(FileFilters::getSpecFileFilter()));
+   fd.selectFilter(FileFilters::getSpecFileFilter());
+   fd.setDirectory(directoryName);
+   fd.rereadDir();
    
 //   if (newSpecName.isNull() == false) {
-   if (fd->exec() == QDialog::Accepted) {
-      QString name = fd->selectedFiles().at(0);
-      
-      //
-      // Add file extension if necessary
-      //
-      if (name.length() > 5) {
-         const QString ext = name.right(5);
-         if (ext.compare(".spec") != 0) {
-            name.append(".spec");
-         }
-      }
-      else {
-         name.append(".spec");
-      }
-      
-      if (QFile::exists(name)) {
-         if (GuiMessageBox::question(this, "Overwrite ?",
-                "The Spec File you have selected exists.\n"
-                "Do you want to replace it with this new\n"
-                "Spec File that will contain only the \n"
-                "selected files in the the Spec File Dialog?", "Overwrite", "No") == 1) {
-            return;
-         }
-      }
-      
-      //
-      // Save current spec file name
-      //
-      const QString saveName(specFile.getFileName());
-      
-      //
-      // Set the hemisphere, space, species, subject and category
-      //
-      specFile.setStructure(structureComboBox->getSelectedStructureAsString());
-      specFile.setSpace(spaceLineEdit->text());
-      specFile.setSpecies(speciesLineEdit->text());
-      specFile.setCategory(categoryLineEdit->text());
-      specFile.setSubject(subjectLineEdit->text());
-      
-      //
-      // Set the checked files as selected files in the spec file
-      //
-      setCheckedFilesAsSelected();
+   if (fd.exec() == QDialog::Accepted) {
+      if (fd.selectedFiles().count() > 0) {
+         QString name = fd.selectedFiles().at(0);
+         if (name.isEmpty() == false) {
+            //
+            // Add file extension if necessary
+            //
+            if (name.length() > 5) {
+               const QString ext = name.right(5);
+               if (ext.compare(".spec") != 0) {
+                  name.append(".spec");
+               }
+            }
+            else {
+               name.append(".spec");
+            }
+            
+            if (QFile::exists(name)) {
+               if (QMessageBox::question(this, "Overwrite ?",
+                      "The Spec File you have selected exists.\n"
+                      "Do you want to replace it with this new\n"
+                      "Spec File that will contain only the \n"
+                      "selected files in the the Spec File Dialog?",
+                      (QMessageBox::Yes | QMessageBox::No),
+                      QMessageBox::No)
+                         == QMessageBox::No) {
+                  return;
+               }
+            }
+            
+            //
+            // Save current spec file name
+            //
+            const QString saveName(specFile.getFileName());
+            
+            //
+            // Set the hemisphere, space, species, subject and category
+            //
+            specFile.setStructure(structureComboBox->getSelectedStructureAsString());
+            specFile.setSpace(spaceLineEdit->text());
+            specFile.setSpecies(speciesLineEdit->text());
+            specFile.setCategory(categoryLineEdit->text());
+            specFile.setSubject(subjectLineEdit->text());
+            
+            //
+            // Set the checked files as selected files in the spec file
+            //
+            setCheckedFilesAsSelected();
 
-      //
-      // Write the spec file with only the selected files.
-      //
-      specFile.setWriteOnlySelectedFiles(true);
-      try {
-         specFile.writeFile(name);
+            //
+            // Write the spec file with only the selected files.
+            //
+            specFile.setWriteOnlySelectedFiles(true);
+            try {
+               specFile.writeFile(name);
+            }
+            catch (FileException& e) {
+               QMessageBox::critical(this, "Error Updating Spec File", e.whatQString());
+            }
+            specFile.setWriteOnlySelectedFiles(false);
+            
+            //
+            // Restore the spec file's name
+            //
+            specFile.setFileName(saveName);
+            
+            //
+            // Open new spec in a spec file dialog
+            //
+            theMainWindow->readSpecFile(name);
+            
+            //
+            // Close this dialog
+            //
+            dynamic_cast<GuiSpecFileDialog*>(parent())->close();
+         }
       }
-      catch (FileException& e) {
-         GuiMessageBox::critical(this, "Error Updating Spec File", e.whatQString(), "OK");
-      }
-      specFile.setWriteOnlySelectedFiles(false);
-      
-      //
-      // Restore the spec file's name
-      //
-      specFile.setFileName(saveName);
-      
-      //
-      // Open new spec in a spec file dialog
-      //
-      theMainWindow->readSpecFile(name);
-      
-      //
-      // Close this dialog
-      //
-      dynamic_cast<GuiSpecFileDialog*>(parent())->close();
    }
    else {
       //
@@ -1549,16 +1559,17 @@ GuiSpecFileDialogMainWindow::slotSetTransformPushButton()
    //
    // Popup a dialog to choose a transformation matrix file
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setDirectory(directoryName);
-   fd.setFilter(GuiDataFileDialog::transformationMatrixFileFilter);
+   fd.setFilter(FileFilters::getTransformationMatrixFileFilter());
+   fd.selectFilter(FileFilters::getTransformationMatrixFileFilter());
    fd.setModal(true);
-   fd.setFileMode(QFileDialog::ExistingFile);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
    
    //
    // If the user selected a file
    //
-   if (fd.exec() == QFileDialog::Accepted) {
+   if (fd.exec() == WuQFileDialog::Accepted) {
       const QString filename = fd.selectedFiles().at(0);
       
       //
@@ -1569,7 +1580,7 @@ GuiSpecFileDialogMainWindow::slotSetTransformPushButton()
          tmf.readFile(filename);
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
       
@@ -1578,7 +1589,7 @@ GuiSpecFileDialogMainWindow::slotSetTransformPushButton()
       //
       const int num = tmf.getNumberOfMatrices();
       if (num <= 0) {
-         GuiMessageBox::critical(this, "ERROR", "Matrix file contains no matrices.", "OK");
+         QMessageBox::critical(this, "ERROR", "Matrix file contains no matrices.");
          return;
       }
       std::vector<QString> matrixNames;
@@ -1612,16 +1623,6 @@ GuiSpecFileDialogMainWindow::slotOkButton()
    //
    writeSpecFileIfNeeded();
    
-/*
-   const QString species(speciesLineEdit->text());
-   if (species.empty()) {
-      if (GuiMessageBox::warning(this, "Species Warning",
-                              "A species is not specified.",
-                              "Continue", "Change Selections") == 1) {
-         return;
-      }  
-   }
-*/
    setCheckedFilesAsSelected();
    
    //
@@ -1629,10 +1630,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
    //
    if (specFile.flatCoordFile.getNumberOfFilesSelected() > 0) {
       if (specFile.cutTopoFile.getNumberOfFilesSelected() == 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected a flat coordinate file but\n"
                                  "no cut topology file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }         
       }
@@ -1643,10 +1646,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
    //
    if (specFile.lobarFlatCoordFile.getNumberOfFilesSelected() > 0) {
       if (specFile.lobarCutTopoFile.getNumberOfFilesSelected() == 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected a lobar flat coordinate file but\n"
                                  "no lobar cut topology file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }         
       }
@@ -1664,10 +1669,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
          specFile.volumeProbAtlasFile.getNumberOfFilesSelected() +
          specFile.volumePaintFile.getNumberOfFilesSelected();
       if (count > 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected files that require an area\n"
                                  "color file but no area color file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }
       }
@@ -1692,10 +1699,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
             + specFile.volumeBorderFile.getNumberOfFilesSelected()
             + specFile.borderProjectionFile.getNumberOfFilesSelected();
       if (count > 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected border files that require a border\n"
                                  "color file but no border color file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }
       }
@@ -1709,10 +1718,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
             specFile.cellFile.getNumberOfFilesSelected()
             + specFile.cellProjectionFile.getNumberOfFilesSelected();
       if (count > 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected cell files that require a cell\n"
                                  "color file but no cell color file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }
       }
@@ -1724,10 +1735,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
    if (specFile.contourCellColorFile.getNumberOfFilesSelected() == 0) {
       const int count = specFile.contourCellFile.getNumberOfFilesSelected();
       if (count > 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected contour cell files that require a contour cell\n"
                                  "color file but no contour cell color file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }
       }
@@ -1741,10 +1754,12 @@ GuiSpecFileDialogMainWindow::slotOkButton()
    //
    if (specFile.fociColorFile.getNumberOfFilesSelected() == 0) {
       if (numFociSelected > 0) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected foci files that require a foci\n"
                                  "color file but no foci color file is selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }
          
@@ -1757,28 +1772,17 @@ GuiSpecFileDialogMainWindow::slotOkButton()
    if (numFociSelected > 0) {
       if ((specFile.studyMetaDataFile.getNumberOfFiles() > 0) &&
           (specFile.studyMetaDataFile.getNumberOfFilesSelected() == 0)) {
-         if (GuiMessageBox::warning(this, "File Selection Warning",
+         if (QMessageBox::warning(this, "File Selection Warning",
                                  "You have selected foci or foci projection files.\n"
                                  "There is at least one study metadata file but it\n"
                                  "is not selected.",
-                                 "Continue", "Change File Selections") == 1) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
             return;
          }
       }
    }
-/*
-   if (species.empty() == false) {
-      if (species != originalSpeciesValue) {
-         specFile.setSpecies(species);
-         try {
-            specFile.writeFile(specFile.getFileName());
-         }
-         catch (FileException& e) {
-            GuiMessageBox::critical(this, "Error updating spec file with species.", e.whatQString(), "OK");
-         }
-      }
-   }
-*/   
 
    theMainWindow->loadSpecFilesDataFiles(specFile, &transformMatrix);
    
@@ -3061,16 +3065,23 @@ GuiSpecFileDialogMainWindow::fastOpenButtonSlot(int buttonNumber)
       }
       
       if (askFlag) {
-         switch (GuiMessageBox::information(this, "Append or Replace",
-               "Append to currently loaded file ?", "Append", "Replace", "Cancel")) {
-            case 0:
-               break;
-            case 1:
-               appendFile = false;
-               break;
-            case 2:
-               return;
-               break;
+         QMessageBox msgBox(this);
+         msgBox.setWindowTitle("Append or Replace");
+         msgBox.setText("Append to currently loaded file ?");
+         QPushButton* appendPushButton = msgBox.addButton("Append",
+                                                        QMessageBox::AcceptRole);
+         QPushButton* replacePushButton = msgBox.addButton("Replace",
+                                                        QMessageBox::AcceptRole);
+         msgBox.addButton("Cancel", QMessageBox::RejectRole);
+         msgBox.exec();
+         if (msgBox.clickedButton() == appendPushButton) {
+            appendFile = true;
+         }
+         else if (msgBox.clickedButton() == replacePushButton) {
+            appendFile = false;
+         }
+         else {
+            return;
          }
       }
       
@@ -3078,10 +3089,11 @@ GuiSpecFileDialogMainWindow::fastOpenButtonSlot(int buttonNumber)
    
       QString msg1;
       bool relatedFileWarning;
-      error = GuiOpenDataFileDialog::openDataFile(this, s.specFileTag, *(s.fileName), appendFile, 
+      error = GuiDataFileOpenDialog::openDataFile(this, s.specFileTag, *(s.fileName), appendFile, 
                                                   true, msg1, relatedFileWarning);
       if (error) {
-         GuiMessageBox::critical(this, "Error Opening File", msg1, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error Opening File", msg1);
          return;
       }
       else if (relatedFileWarning) {

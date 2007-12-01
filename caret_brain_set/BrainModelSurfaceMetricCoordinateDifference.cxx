@@ -32,7 +32,6 @@
 #include <QTextStream>
 
 #include "BrainModelSurface.h"
-#include "BrainModelSurfaceMetricClustering.h"
 #include "BrainModelSurfaceMetricCoordinateDifference.h"
 #include "BrainSet.h"
 #include "CoordinateFile.h"

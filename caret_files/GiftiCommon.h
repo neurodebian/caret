@@ -86,8 +86,17 @@ class GiftiCommon {
       /// tag for reading/writing GIFTI files
       static const QString tagMatrixData;
       
+      /// tag for reading/writing GIFTI files
+      //static const QString tagExternalFileName;
+      
+      /// tag for reading/writing GIFTI files
+      //static const QString tagExternalFileOffset;
+
       /// attribute for reading/writing GIFTI files
       static const QString attVersion;
+                                   
+      /// attribute for reading/writing GIFTI files
+      static const QString attNumberOfDataArrays;
                                    
       /// attribute for reading/writing GIFTI files
       static const QString attArraySubscriptingOrder;
@@ -96,10 +105,10 @@ class GiftiCommon {
       static const QString attIndex;
                                    
       /// attribute for reading/writing GIFTI files
-      static const QString attDataLocation;
+      //static const QString attDataLocation;
       
       /// attribute for reading/writing GIFTI files
-      static const QString attCategory;
+      static const QString attIntent;
                                    
       /// attribute for reading/writing GIFTI files
       static const QString attDataType;
@@ -116,6 +125,12 @@ class GiftiCommon {
       /// attribute for reading/writing GIFTI files
       static const QString attEndian;
       
+      /// attribute for reading/writing GIFTI files
+      static const QString attExternalFileName;
+      
+      /// attribute for reading/writing GIFTI files
+      static const QString attExternalFileOffset;
+      
       /// data type name
       static const QString typeNameFloat32;
       
@@ -126,13 +141,16 @@ class GiftiCommon {
       static const QString typeNameUInt8;
       
       /// encoding type name
-      static const QString encodingNameAscii;
+      static const QString encodingNameInternalAscii;
       
       /// encoding type name
-      static const QString encodingNameBase64Binary;
+      static const QString encodingNameInternalBase64Binary;
       
       /// encoding type name
-      static const QString encodingNameBase64BinaryGZip;
+      static const QString encodingNameInternalBase64BinaryGZip;
+      
+      /// encoding type name
+      static const QString encodingNameExternalBinary;
       
       /// encoding type name
       static const QString endianBig;
@@ -141,10 +159,10 @@ class GiftiCommon {
       static const QString endianLittle;
       
       /// data location internal name
-      static const QString dataLocationInternal;
+      //static const QString dataLocationInternal;
       
       /// data location external name
-      static const QString dataLocationExternal;
+      //static const QString dataLocationExternal;
       
       /// array subscripting highest order first 
       static const QString arraySubscriptingOrderHighestFirst;
@@ -167,29 +185,119 @@ class GiftiCommon {
       /// label for MNI 152 space 
       static const QString spaceLabelMNI152;
       
-      /// category for coordinates
-      static const QString categoryCoordinates;
+      /// nifti intent unknown
+      static const QString intentUnknown;
+   
+      /// nifti intent prefix
+      static const QString intentPrefix;
+   
+      /// intent for coordinates
+      static const QString intentCoordinates;
       
-      /// category for functional
-      static const QString categoryFunctional;
+      /// intent for time series
+      static const QString intentTimeSeries;
       
-      /// category for normals
-      static const QString categoryNormals;
+      /// intent for normals
+      static const QString intentNormals;
       
-      /// category for labels
-      static const QString categoryLabels;
+      /// intent for labels
+      static const QString intentLabels;
       
-      /// category for rgba
-      static const QString categoryRGBA;
+      /// intent for rgba
+      static const QString intentRGBA;
       
-      /// category for shape
-      static const QString categoryShape;
+      /// intent for rgb
+      static const QString intentRGB;
       
-      /// category for tensors
-      static const QString categoryTensors;
+      /// intent for shape
+      static const QString intentShape;
       
-      /// category for triangles
-      static const QString categoryTopologyTriangles;
+      /// intent for tensors
+      static const QString intentTensors;
+      
+      /// intent for triangles
+      static const QString intentTopologyTriangles;
+      
+      /// metadata unique id name
+      static const QString metaDataNameUniqueID;
+      
+      /// topological type metadata name
+      static const QString metaDataNameTopologicalType;
+      
+      /// topological type closed value
+      static const QString metaDataValueTopologicalTypeClosed;
+      
+      /// topological type open value
+      static const QString metaDataValueTopologicalTypeOpen;
+      
+      /// topological type cut value
+      static const QString metaDataValueTopologicalTypeCut;
+      
+      /// topological type cut lobar value
+      static const QString metaDataValueTopologicalTypeCutLobar;
+      
+      /// geometric type metadata name
+      static const QString metaDataNameGeometricType;
+      
+      /// geometric type reconstruction value
+      static const QString metaDataValueGeometricTypeReconstruction;
+      
+      /// geometric type anatomical value
+      static const QString metaDataValueGeometricTypeAnatomical;
+      
+      /// geometric type inflated value
+      static const QString metaDataValueGeometricTypeInflated;
+      
+      /// geometric type very inflated value
+      static const QString metaDataValueGeometricTypeVeryInflated;
+      
+      /// geometric type spherical value
+      static const QString metaDataValueGeometricTypeSpherical;
+      
+      /// geometric type spherical value
+      static const QString metaDataValueGeometricTypeSemiSpherical;
+      
+      /// geometric type ellipsoid value
+      static const QString metaDataValueGeometricTypeEllipsoid;
+      
+      /// geometric type flat value
+      static const QString metaDataValueGeometricTypeFlat;
+      
+      /// geometric type flat lobar value
+      static const QString metaDataValueGeometricTypeFlatLobar;
+      
+      /// geometric type hull value
+      static const QString metaDataValueGeometricTypeHull;
+
+      /// anatomical structure primary metadata name
+      static const QString metaDataNameAnatomicalStructurePrimary;
+      
+      /// anatomical structure primary cortex left value
+      static const QString metaDataValueAnatomicalStructurePrimaryCortexLeft;
+      
+      /// anatomical structure primary cortex right value
+      static const QString metaDataValueAnatomicalStructurePrimaryCortexRight;
+      
+      /// anatomical structure primary cortex right and left value
+      static const QString metaDataValueAnatomicalStructurePrimaryCortexRightAndLeft;
+      
+      /// anatomical structure primary cerebellum value
+      static const QString metaDataValueAnatomicalStructurePrimaryCerebellum;
+      
+      /// anatomical structure primary head value
+      static const QString metaDataValueAnatomicalStructurePrimaryHead;
+      
+      /// anatomical structure secondary metadata name
+      static const QString metaDataNameAnatomicalStructureSecondary;
+      
+      /// anatomical structure secondary  white/gray boundary value
+      static const QString metaDataValueAnatomicalStructureSecondaryWhiteGray;
+      
+      /// anatomical structure secondary gray/CSF boundary value
+      static const QString metaDataValueAnatomicalStructureSecondarGrayCSF;
+      
+      /// anatomical structure secondary MidLayer value
+      static const QString metaDataValueAnatomicalStructureSecondaryMidLayer;
       
 };
 
@@ -207,30 +315,37 @@ class GiftiCommon {
    const QString GiftiCommon::tagMatrixDataSpace = "DataSpace";
    const QString GiftiCommon::tagMatrixTransformedSpace = "TransformedSpace";
    const QString GiftiCommon::tagMatrixData = "MatrixData";
+   //const QString GiftiCommon::tagExternalFileName = "ExternalFileName";
+   //const QString GiftiCommon::tagExternalFileOffset = "ExternalFileOffset";
 
    const QString GiftiCommon::attVersion = "Version";
+   const QString GiftiCommon::attNumberOfDataArrays = "NumberOfDataArrays";
    const QString GiftiCommon::attArraySubscriptingOrder = "ArrayIndexingOrder";
    const QString GiftiCommon::attIndex = "Index";
-   const QString GiftiCommon::attCategory = "Category";
-   const QString GiftiCommon::attDataLocation = "DataLocation";
+   const QString GiftiCommon::attIntent = "Intent";
+   //const QString GiftiCommon::attIntent = "Category";
+   //const QString GiftiCommon::attDataLocation = "DataLocation";
    const QString GiftiCommon::attDataType = "DataType";
    const QString GiftiCommon::attDimensionality = "Dimensionality";
    const QString GiftiCommon::attDim = "Dim";
    const QString GiftiCommon::attEncoding = "Encoding";
    const QString GiftiCommon::attEndian = "Endian";
+   const QString GiftiCommon::attExternalFileName = "ExternalFileName";
+   const QString GiftiCommon::attExternalFileOffset = "ExternalFileOffset";
    
    const QString GiftiCommon::typeNameFloat32 = "NIFTI_TYPE_FLOAT32";
    const QString GiftiCommon::typeNameInt32 = "NIFTI_TYPE_INT32";
    const QString GiftiCommon::typeNameUInt8 = "NIFTI_TYPE_UINT8";
-   const QString GiftiCommon::encodingNameAscii = "ASCII";
-   const QString GiftiCommon::encodingNameBase64Binary = "Base64Binary";
-   const QString GiftiCommon::encodingNameBase64BinaryGZip = "GZipBase64Binary";
+   const QString GiftiCommon::encodingNameInternalAscii = "ASCII";
+   const QString GiftiCommon::encodingNameInternalBase64Binary = "Base64Binary";
+   const QString GiftiCommon::encodingNameInternalBase64BinaryGZip = "GZipBase64Binary";
+   const QString GiftiCommon::encodingNameExternalBinary = "ExternalFileBinary";
    const QString GiftiCommon::endianBig = "BigEndian";
    const QString GiftiCommon::endianLittle = "LittleEndian";
-   const QString GiftiCommon::arraySubscriptingOrderHighestFirst = "HighestFirst";
-   const QString GiftiCommon::arraySubscriptingOrderLowestFirst = "LowestFirst";
-   const QString GiftiCommon::dataLocationInternal = "Internal";
-   const QString GiftiCommon::dataLocationExternal = "External";
+   const QString GiftiCommon::arraySubscriptingOrderHighestFirst = "RowMajorOrder";
+   const QString GiftiCommon::arraySubscriptingOrderLowestFirst = "ColumnMajorOrder";
+   //const QString GiftiCommon::dataLocationInternal = "Internal";
+   //const QString GiftiCommon::dataLocationExternal = "External";
    
    const QString GiftiCommon::spaceLabelUnknown = "NIFTI_XFORM_UNKNOWN";
    const QString GiftiCommon::spaceLabelScannerCoords = "NIFTI_XFORM_SCANNER_ANAT";
@@ -238,14 +353,48 @@ class GiftiCommon {
    const QString GiftiCommon::spaceLabelTalairach = "NIFTI_XFORM_TALAIRACH";
    const QString GiftiCommon::spaceLabelMNI152 = "NIFTI_XFORM_MNI_152";
    
-   const QString GiftiCommon::categoryCoordinates = "Coordinates";
-   const QString GiftiCommon::categoryFunctional = "Functional";
-   const QString GiftiCommon::categoryNormals = "Normals";
-   const QString GiftiCommon::categoryLabels = "Labels";
-   const QString GiftiCommon::categoryRGBA = "RGBA";
-   const QString GiftiCommon::categoryShape = "Shape";
-   const QString GiftiCommon::categoryTensors = "Tensors";
-   const QString GiftiCommon::categoryTopologyTriangles = "TopologyTriangles";
+   const QString GiftiCommon::intentUnknown = "NIFTI_INTENT_UNKNOWN";
+   const QString GiftiCommon::intentPrefix = "NIFTI_INTENT";
+   const QString GiftiCommon::intentCoordinates = "NIFTI_INTENT_POINTSET";
+   const QString GiftiCommon::intentTimeSeries = "NIFTI_INTENT_TIME_SERIES";
+   const QString GiftiCommon::intentNormals = "NIFTI_INTENT_VECTOR";
+   const QString GiftiCommon::intentLabels = "NIFTI_INTENT_LABEL";
+   const QString GiftiCommon::intentRGB = "NIFTI_INTENT_RGB_VECTOR";
+   const QString GiftiCommon::intentRGBA = "NIFTI_INTENT_RGBA_VECTOR";
+   const QString GiftiCommon::intentShape = "NIFTI_INTENT_SHAPE";
+   const QString GiftiCommon::intentTensors = "NIFTI_INTENT_GENMATRIX";
+   const QString GiftiCommon::intentTopologyTriangles = "NIFTI_INTENT_TRIANGLE";
+
+   const QString GiftiCommon::metaDataNameUniqueID = "UniqueID";
+   
+   const QString GiftiCommon::metaDataNameTopologicalType = "TopologicalType";
+   const QString GiftiCommon::metaDataValueTopologicalTypeClosed = "Closed";
+   const QString GiftiCommon::metaDataValueTopologicalTypeOpen = "Open";
+   const QString GiftiCommon::metaDataValueTopologicalTypeCut = "Cut";
+   const QString GiftiCommon::metaDataValueTopologicalTypeCutLobar = "CutLobar";
+
+   const QString GiftiCommon::metaDataNameGeometricType = "GeometricType";
+   const QString GiftiCommon::metaDataValueGeometricTypeReconstruction = "Reconstruction";
+   const QString GiftiCommon::metaDataValueGeometricTypeAnatomical = "Anatomical";
+   const QString GiftiCommon::metaDataValueGeometricTypeInflated = "Inflated";
+   const QString GiftiCommon::metaDataValueGeometricTypeVeryInflated = "VeryInflated";
+   const QString GiftiCommon::metaDataValueGeometricTypeSpherical = "Spherical";
+   const QString GiftiCommon::metaDataValueGeometricTypeSemiSpherical = "SemiSpherical";
+   const QString GiftiCommon::metaDataValueGeometricTypeEllipsoid = "Ellipsoid";
+   const QString GiftiCommon::metaDataValueGeometricTypeFlat = "Flat";
+   const QString GiftiCommon::metaDataValueGeometricTypeFlatLobar = "FlatLobar";
+   const QString GiftiCommon::metaDataValueGeometricTypeHull = "Hull";
+
+   const QString GiftiCommon::metaDataNameAnatomicalStructurePrimary = "AnatomicalStructurePrimary";
+   const QString GiftiCommon::metaDataValueAnatomicalStructurePrimaryCortexLeft = "CortexLeft";
+   const QString GiftiCommon::metaDataValueAnatomicalStructurePrimaryCortexRight = "CortexRight";
+   const QString GiftiCommon::metaDataValueAnatomicalStructurePrimaryCortexRightAndLeft = "CortexRightAndLeft";
+   const QString GiftiCommon::metaDataValueAnatomicalStructurePrimaryCerebellum = "Cerebellum";
+   const QString GiftiCommon::metaDataValueAnatomicalStructurePrimaryHead = "Head";
+   const QString GiftiCommon::metaDataNameAnatomicalStructureSecondary = "AnatomicalStructureSecondary";
+   const QString GiftiCommon::metaDataValueAnatomicalStructureSecondaryWhiteGray = "WhiteGray";
+   const QString GiftiCommon::metaDataValueAnatomicalStructureSecondarGrayCSF = "GrayCSF";
+   const QString GiftiCommon::metaDataValueAnatomicalStructureSecondaryMidLayer = "MidLayer";
 #endif // __GIFTI_COMMON_MAIN__
 
 #endif // __GIFTI_COMMON_H__

@@ -1,4 +1,5 @@
 
+#include <QAction>
 #include <QButtonGroup>
 #include <QComboBox>
 #include <QGridLayout>
@@ -6,15 +7,17 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
 #include <QTableWidget>
+#include <QToolButton>
 
 #include "BrainSet.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiStudyMetaDataLinkCreationDialog.h"
-#include "QtWidgetGroup.h"
+#include "QtUtilities.h"
+#include "WuQWidgetGroup.h"
 #include "global_variables.h"
 
 /**
@@ -24,6 +27,11 @@ GuiStudyMetaDataLinkCreationDialog::GuiStudyMetaDataLinkCreationDialog(QWidget* 
    : QtDialogModal(parent)
 {
    setWindowTitle("Link to Study Metadata");
+   
+   //
+   // Create the link selection widget
+   //
+   QWidget* linkSelWidget = createLinkSelectionWidget();
    
    //
    // Create the study table widgets
@@ -39,6 +47,7 @@ GuiStudyMetaDataLinkCreationDialog::GuiStudyMetaDataLinkCreationDialog(QWidget* 
    // Get the layout for the dialog
    //
    QVBoxLayout* dialogLayout = getDialogLayout();
+   dialogLayout->addWidget(linkSelWidget);
    dialogLayout->addWidget(tableWidget);
    dialogLayout->addWidget(linkWidget);
    
@@ -46,11 +55,6 @@ GuiStudyMetaDataLinkCreationDialog::GuiStudyMetaDataLinkCreationDialog(QWidget* 
    // load the table
    //
    loadStudyTableWidget();
-   
-   //
-   // Disable some widgets
-   //
-   slotLinkWidgetSelection();
 }
 
 /**
@@ -103,7 +107,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyTableWidget()
    
    studyTableWidget = new QTableWidget;
    QObject::connect(studyTableWidget, SIGNAL(cellClicked(int,int)),  // was cellChanged in QT 4.1.x
-                    this, SLOT(studyTableItemChanged(int,int)));
+                    this, SLOT(slotStudySelected(int,int)));
    
    QGroupBox* g = new QGroupBox("Study Selection");
    QVBoxLayout* l = new QVBoxLayout(g);
@@ -137,7 +141,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    QLabel* linkFigurePanelLabel = new QLabel("Panel");
    linkFigurePanelSelectionComboBox = new QComboBox;
    linkFigurePanelSelectionComboBox->setMinimumWidth(comboMinWidth);
-   linkFigureWidgetsGroup = new QtWidgetGroup(this);
+   linkFigureWidgetsGroup = new WuQWidgetGroup(this);
    linkFigureWidgetsGroup->addWidget(linkFigureSelectionComboBox);
    linkFigureWidgetsGroup->addWidget(linkFigurePanelLabel);
    linkFigureWidgetsGroup->addWidget(linkFigurePanelSelectionComboBox);
@@ -152,7 +156,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    QLabel* linkPageReferenceSubHeaderLabel = new QLabel("Subheader");
    linkPageReferenceSubHeaderSelectionComboBox = new QComboBox;
    linkPageReferenceSubHeaderSelectionComboBox->setMinimumWidth(comboMinWidth);
-   linkPageReferenceWidgetsGroup = new QtWidgetGroup(this);
+   linkPageReferenceWidgetsGroup = new WuQWidgetGroup(this);
    linkPageReferenceWidgetsGroup->addWidget(linkPageReferenceSelectionComboBox);
    linkPageReferenceWidgetsGroup->addWidget(linkPageReferenceSubHeaderLabel);
    linkPageReferenceWidgetsGroup->addWidget(linkPageReferenceSubHeaderSelectionComboBox);
@@ -167,7 +171,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    QLabel* linkTableSubHeaderLabel = new QLabel("Subheader");
    linkTableSubHeaderSelectionComboBox = new QComboBox;
    linkTableSubHeaderSelectionComboBox->setMinimumWidth(comboMinWidth);
-   linkTableWidgetsGroup = new QtWidgetGroup(this);
+   linkTableWidgetsGroup = new WuQWidgetGroup(this);
    linkTableWidgetsGroup->addWidget(linkTableSelectionComboBox);
    linkTableWidgetsGroup->addWidget(linkTableSubHeaderLabel);
    linkTableWidgetsGroup->addWidget(linkTableSubHeaderSelectionComboBox);
@@ -201,7 +205,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    //
    linkButtonGroup = new QButtonGroup(this);
    QObject::connect(linkButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(slotLinkWidgetSelection()));
+                    this, SLOT(enableLinkSelections()));
    linkButtonGroup->addButton(linkToStudyOnlyRadioButton, 0);
    linkButtonGroup->addButton(linkToFigureRadioButton, 1);
    linkButtonGroup->addButton(linkToPageReferenceRadioButton, 2);
@@ -220,7 +224,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    //
    // Widget group for page link
    //
-   pageNumberWidgetGroup = new QtWidgetGroup(this);
+   pageNumberWidgetGroup = new WuQWidgetGroup(this);
    pageNumberWidgetGroup->addWidget(pageNumberLabel);
    pageNumberWidgetGroup->addWidget(linkPageNumberLineEdit);
 
@@ -236,20 +240,185 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
 }
 
 /**
- * initialize the selected link.
+ * create the link selection widget.
+ */
+QWidget* 
+GuiStudyMetaDataLinkCreationDialog::createLinkSelectionWidget()
+{
+   //
+   // link label, current link label, number of links label
+   //
+   QLabel* linkLabel = new QLabel("Link ");
+   currentLinkNumberLabel = new QLabel("  ");
+   currentLinkNumberLabel->setFixedSize(currentLinkNumberLabel->sizeHint());
+   QLabel* ofLabel = new QLabel(" of ");
+   numberOfLinksLabel = new QLabel("  ");
+   numberOfLinksLabel->setFixedSize(numberOfLinksLabel->sizeHint());
+
+   //
+   // Selection arrow actions
+   //
+   linkSelectionUpArrowAction = new QAction(this);
+   QObject::connect(linkSelectionUpArrowAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotLinkSelectionUpArrowAction()));
+   linkSelectionDownArrowAction = new QAction(this);
+   QObject::connect(linkSelectionDownArrowAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotLinkSelectionDownArrowAction()));
+                    
+   //
+   // Selection arrow tool buttons
+   //   
+   linkSelectionUpArrowToolButton = new QToolButton;
+   linkSelectionUpArrowToolButton->setArrowType(Qt::UpArrow);
+   linkSelectionUpArrowToolButton->setDefaultAction(linkSelectionUpArrowAction);
+   linkSelectionDownArrowToolButton = new QToolButton;
+   linkSelectionDownArrowToolButton->setArrowType(Qt::DownArrow);
+   linkSelectionDownArrowToolButton->setDefaultAction(linkSelectionDownArrowAction);
+   
+   //
+   // Add new link button
+   //
+   addNewLinkPushButton = new QPushButton("Add");
+   addNewLinkPushButton->setToolTip("Press this button to add an \n"
+                                    "additional Study Metadata Link.");
+   addNewLinkPushButton->setAutoDefault(false);
+   QObject::connect(addNewLinkPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotAddStudyMetaDataLink()));
+                    
+   //
+   // Delete Link
+   //
+   deleteLinkPushButton = new QPushButton("Delete");
+   deleteLinkPushButton->setToolTip("Press this button to delete \n"
+                                    "the current link.");
+   deleteLinkPushButton->setAutoDefault(false);
+   QObject::connect(deleteLinkPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotDeleteStudyMetaDataLink()));
+   
+   QtUtilities::makeButtonsSameSize(addNewLinkPushButton,
+                                    deleteLinkPushButton);
+                                    
+   //
+   // Group box and layout
+   //
+   QGroupBox* linkGroupBox = new QGroupBox("Study Link Selection");
+   QHBoxLayout* layout = new QHBoxLayout(linkGroupBox);
+   layout->addWidget(linkLabel);
+   layout->addWidget(currentLinkNumberLabel);
+   layout->addWidget(ofLabel);
+   layout->addWidget(numberOfLinksLabel);
+   layout->addWidget(linkSelectionDownArrowToolButton);
+   layout->addWidget(linkSelectionUpArrowToolButton);
+   layout->addWidget(addNewLinkPushButton);
+   layout->addWidget(deleteLinkPushButton);
+   layout->addStretch();
+   
+   return linkGroupBox;
+}
+   
+/**
+ * called by link selection up arrow.
  */
 void 
-GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLink& smdl)
+GuiStudyMetaDataLinkCreationDialog::slotLinkSelectionUpArrowAction()
 {
-   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
-   const int indx = smdf->getStudyIndexFromLink(smdl);
-   if ((indx >= 0) && (indx < studyTableWidget->rowCount())) {
-      //
-      // Select the study
-      //
-      studyTableItemChanged(indx, studyTableColumnNumberCheckBox);
-      studyTableWidget->scrollToItem(studyTableWidget->item(indx, studyTableColumnNumberCheckBox),
-                                     QAbstractItemView::PositionAtTop);
+   saveCurrentStudy();
+   studyMetaDataLinkIndex++;
+   if (studyMetaDataLinkIndex >= studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks()) {
+      studyMetaDataLinkIndex = studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks() - 1;
+   }
+   loadStudyMetaDataLink(true);
+   updateLinkSelectionLabelsAndArrows();
+}
+
+/**
+ * called by link selection down arrow.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::slotLinkSelectionDownArrowAction()
+{
+   saveCurrentStudy();
+   studyMetaDataLinkIndex--;
+   if (studyMetaDataLinkIndex < 0) {
+      studyMetaDataLinkIndex = 0;
+   }
+   loadStudyMetaDataLink(true);
+   updateLinkSelectionLabelsAndArrows();
+}
+      
+/**
+ * called to add a new study meta data link.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::slotAddStudyMetaDataLink()
+{
+   saveCurrentStudy();
+   StudyMetaDataLink smdl;
+   studyMetaDataLinkSet.addStudyMetaDataLink(smdl);
+   studyMetaDataLinkIndex = studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks() - 1;
+   updateLinkSelectionLabelsAndArrows();
+   setSelectedStudyCheckBox(-1, false);
+   loadStudyMetaDataLink(true);
+}
+
+/**
+ * update the link selection spin box.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::updateLinkSelectionLabelsAndArrows()
+{
+   linkSelectionUpArrowAction->setEnabled(false);
+   linkSelectionDownArrowAction->setEnabled(false);
+   const int num = studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks();
+   numberOfLinksLabel->setNum(num);
+   currentLinkNumberLabel->setNum(studyMetaDataLinkIndex + 1);
+   if (num > 0) {
+      if (studyMetaDataLinkIndex > 0) {
+         linkSelectionDownArrowAction->setEnabled(true);
+      }
+      if (studyMetaDataLinkIndex < (num - 1)) {
+         linkSelectionUpArrowAction->setEnabled(true);
+      }
+   }
+   else {
+      currentLinkNumberLabel->setText("  ");
+   }
+   
+   deleteLinkPushButton->setEnabled(num > 0);
+}
+
+/**
+ * called to delete the current study meta data link.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::slotDeleteStudyMetaDataLink()
+{
+   int num = studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks();
+   if (num > 0) {
+      if ((studyMetaDataLinkIndex >= 0) &&
+          (studyMetaDataLinkIndex < num)) {
+         studyMetaDataLinkSet.removeStudyMetaDataLink(studyMetaDataLinkIndex);
+         num = studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks();
+         if (studyMetaDataLinkIndex >= num) {
+            studyMetaDataLinkIndex--;
+         }
+         if (studyMetaDataLinkIndex < 0) {
+            studyMetaDataLinkIndex = 0;
+         }
+         updateLinkSelectionLabelsAndArrows();
+         loadStudyMetaDataLink(true);         
+      }
+   }
+}
+
+/**
+ * update the link selection controls.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::updateLinkSelectionControls()
+{
+   StudyMetaDataLink* smdl = getSelectedStudyMetaDataLink();
+   if (smdl != NULL) {
       //QTableWidgetItem* item = studyTableWidget->item(indx, studyTableColumnNumberCheckBox);
       //item->setCheckState(Qt::Checked);
       
@@ -261,7 +430,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
       //
       // Check for link to figure
       //
-      const QString figNum = smdl.getFigureNumber();
+      const QString figNum = smdl->getFigureNumber();
       if (figNum.isEmpty() == false) {
          linkToFigureRadioButton->setChecked(true);
          for (int i = 0; i < linkFigureSelectionComboBox->count(); i++) {
@@ -274,7 +443,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
                //
                for (int j = 0; j < linkFigurePanelSelectionComboBox->count(); j++) {
                   if (linkFigurePanelSelectionComboBox->itemData(j).toString() ==
-                      smdl.getFigurePanelNumberOrLetter()) {
+                      smdl->getFigurePanelNumberOrLetter()) {
                      linkFigurePanelSelectionComboBox->setCurrentIndex(j);
                      break;
                   }
@@ -287,11 +456,11 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
       //
       // Check for link to page reference
       //
-      const QString pageRefNum = smdl.getPageReferencePageNumber();
+      const QString pageRefNum = smdl->getPageReferencePageNumber();
       if (pageRefNum.isEmpty() == false) {
          linkToPageReferenceRadioButton->setChecked(true);
          for (int i = 0;  i < linkPageReferenceSelectionComboBox->count(); i++) {
-            linkPageReferenceSelectionComboBox->setCurrentItem(i);
+            linkPageReferenceSelectionComboBox->setCurrentIndex(i);
             slotLinkPageReferenceSelectionComboBox(i);
             
             //
@@ -299,7 +468,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
             //
             for (int j = 0; j < linkPageReferenceSubHeaderSelectionComboBox->count(); j++) {
                if (linkPageReferenceSubHeaderSelectionComboBox->itemData(j).toString() ==
-                   smdl.getPageReferenceSubHeaderNumber()) {
+                   smdl->getPageReferenceSubHeaderNumber()) {
                   linkPageReferenceSubHeaderSelectionComboBox->setCurrentIndex(j);
                }
             }
@@ -309,7 +478,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
       //
       // Check for link to table
       //
-      const QString tableNum = smdl.getTableNumber();
+      const QString tableNum = smdl->getTableNumber();
       if (tableNum.isEmpty() == false) {
          linkToTableRadioButton->setChecked(true);
          for (int i = 0; i < linkTableSelectionComboBox->count(); i++) {
@@ -322,7 +491,7 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
                //
                for (int j = 0; j < linkTableSubHeaderSelectionComboBox->count(); j++) {
                   if (linkTableSubHeaderSelectionComboBox->itemData(j).toString() ==
-                      smdl.getTableSubHeaderNumber()) {
+                      smdl->getTableSubHeaderNumber()) {
                      linkTableSubHeaderSelectionComboBox->setCurrentIndex(j);
                      break;
                   }
@@ -332,23 +501,45 @@ GuiStudyMetaDataLinkCreationDialog::initializeSelectedLink(const StudyMetaDataLi
          }
       }
       
-      linkPageNumberLineEdit->setText(smdl.getPageNumber());
+      linkPageNumberLineEdit->setText(smdl->getPageNumber());
    }
+}
+            
+/**
+ * initialize the selected link.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::initializeSelectedLinkSet(const StudyMetaDataLinkSet& smdls)
+{
+   studyMetaDataLinkSet = smdls;
+   studyMetaDataLinkIndex = 0;
    
-   slotLinkWidgetSelection();
+   loadStudyMetaDataLink(true);
+   updateLinkSelectionLabelsAndArrows();
 }
       
 /**
- * load the link widget.
+ * get the selected study metadata link.
+ */
+StudyMetaDataLink* 
+GuiStudyMetaDataLinkCreationDialog::getSelectedStudyMetaDataLink()
+{
+   StudyMetaDataLink* smdl = NULL;
+   
+   if ((studyMetaDataLinkIndex >= 0) &&
+       (studyMetaDataLinkIndex < studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks())) {
+      smdl = studyMetaDataLinkSet.getStudyMetaDataLinkPointer(studyMetaDataLinkIndex);
+   }
+   
+   return smdl;
+}
+      
+/**
+ * called to load the selected study metadata link.
  */
 void 
-GuiStudyMetaDataLinkCreationDialog::loadStudyLinkWidget()
+GuiStudyMetaDataLinkCreationDialog::loadStudyMetaDataLink(const bool scrollToStudyFlag)
 {
-   //
-   // Clear the selected link
-   //
-   studyMetaDataLink.clear();
-   
    //
    // Default to linking to study only
    //
@@ -366,38 +557,70 @@ GuiStudyMetaDataLinkCreationDialog::loadStudyLinkWidget()
    linkPageNumberLineEdit->setText("");
    
    //
-   // Load figure and table combo boxes
+   // Get the selected study meta data link
    //
-   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
-   const int indx = getSelectedStudyIndex();
-   if ((indx >= 0) && 
-       (indx < smdf->getNumberOfStudyMetaData())) {
-      const StudyMetaData* smd = smdf->getStudyMetaData(indx);
-      
-      const int numFigures = smd->getNumberOfFigures();
-      for (int i = 0; i < numFigures; i++) {
-         const StudyMetaData::Figure* figure = smd->getFigure(i);
-         linkFigureSelectionComboBox->addItem(figure->getNumber(),
-                                              figure->getNumber());
+   const StudyMetaDataLink* smdl = getSelectedStudyMetaDataLink();
+   if (smdl != NULL) {
+      //
+      // Load figure and table combo boxes
+      //
+      StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+      const int indx = smdf->getStudyIndexFromPubMedID(smdl->getPubMedID());
+      if ((indx >= 0) && 
+          (indx < smdf->getNumberOfStudyMetaData())) {
+         //
+         // Update the checkbox next to the study
+         //
+         setSelectedStudyCheckBox(indx, scrollToStudyFlag);
+         
+         //
+         // Get the study metadata
+         //
+         const StudyMetaData* smd = smdf->getStudyMetaData(indx);
+         
+         //
+         // Update the available figure selections
+         //
+         const int numFigures = smd->getNumberOfFigures();
+         for (int i = 0; i < numFigures; i++) {
+            const StudyMetaData::Figure* figure = smd->getFigure(i);
+            linkFigureSelectionComboBox->addItem(figure->getNumber(),
+                                                 figure->getNumber());
+         }
+         slotLinkFigureSelectionComboBox(0);
+         
+         //
+         // Update the available page ref selections
+         //
+         const int numPageRefs = smd->getNumberOfPageReferences();
+         for (int i = 0; i < numPageRefs; i++) {
+            const StudyMetaData::PageReference* pageRef = smd->getPageReference(i);
+            linkPageReferenceSelectionComboBox->addItem(pageRef->getPageNumber(),
+                                                        pageRef->getPageNumber());
+         }
+         slotLinkPageReferenceSelectionComboBox(0);
+         
+         //
+         // Update the available table selections
+         //
+         const int numTables = smd->getNumberOfTables();
+         for (int i = 0; i < numTables; i++) {
+            const StudyMetaData::Table* table = smd->getTable(i);
+            linkTableSelectionComboBox->addItem(table->getNumber(),
+                                                table->getNumber());
+         }
       }
-      slotLinkFigureSelectionComboBox(0);
-      
-      const int numPageRefs = smd->getNumberOfPageReferences();
-      for (int i = 0; i < numPageRefs; i++) {
-         const StudyMetaData::PageReference* pageRef = smd->getPageReference(i);
-         linkPageReferenceSelectionComboBox->addItem(pageRef->getPageNumber(),
-                                                     pageRef->getPageNumber());
-      }
-      slotLinkPageReferenceSelectionComboBox(0);
-      
-      const int numTables = smd->getNumberOfTables();
-      for (int i = 0; i < numTables; i++) {
-         const StudyMetaData::Table* table = smd->getTable(i);
-         linkTableSelectionComboBox->addItem(table->getNumber(),
-                                             table->getNumber());
-      }
-      slotLinkTableSelectionComboBox(0);
    }
+   
+   //
+   // Update the link control selections
+   //
+   updateLinkSelectionControls();
+   
+   //
+   // Enable selection of link controls
+   //
+   enableLinkSelections();   
 }
       
 /**
@@ -491,14 +714,17 @@ GuiStudyMetaDataLinkCreationDialog::slotLinkTableSelectionComboBox(int item)
  * called when a link widget selection is made.
  */
 void 
-GuiStudyMetaDataLinkCreationDialog::slotLinkWidgetSelection()
+GuiStudyMetaDataLinkCreationDialog::enableLinkSelections()
 {
    linkToStudyOnlyRadioButton->setEnabled(false);
    linkToFigureRadioButton->setEnabled(false);
    linkToPageReferenceRadioButton->setEnabled(false);
    linkToTableRadioButton->setEnabled(false);
    
-   if (getSelectedStudyIndex() >= 0) {
+   studyTableWidget->setEnabled(getSelectedStudyMetaDataLink() != NULL);
+   
+   if ((getSelectedStudyIndex() >= 0) &&
+       (getSelectedStudyMetaDataLink() != NULL)) {
       linkToStudyOnlyRadioButton->setEnabled(true);
       linkToFigureRadioButton->setEnabled(linkFigureSelectionComboBox->count() > 0);
       linkToPageReferenceRadioButton->setEnabled(linkPageReferenceSelectionComboBox->count() > 0);
@@ -541,10 +767,11 @@ GuiStudyMetaDataLinkCreationDialog::getSelectedStudyIndex() const
 }
       
 /**
- * called when a study table item is changed.
+ * set the selected study checkbox.
  */
 void 
-GuiStudyMetaDataLinkCreationDialog::studyTableItemChanged(int row,int column)
+GuiStudyMetaDataLinkCreationDialog::setSelectedStudyCheckBox(const int studyIndex,
+                                                             const bool scrollToStudyFlag)
 {
    //
    // Block signals otherwise setting a checked status will result
@@ -552,25 +779,20 @@ GuiStudyMetaDataLinkCreationDialog::studyTableItemChanged(int row,int column)
    //
    studyTableWidget->blockSignals(true);
    
-   //
-   // Make checkbox mutually exclusive
-   //
-   if (column == studyTableColumnNumberCheckBox) {
-      for (int i = 0; i < studyTableWidget->rowCount(); i++) {
-         QTableWidgetItem* item = studyTableWidget->item(i, studyTableColumnNumberCheckBox);
-         if (i == row) {
-            item->setCheckState(Qt::Checked);
-
-            //
-            // Load/Enable/Disable linking controls
-            //
-            loadStudyLinkWidget();
-            slotLinkWidgetSelection();
-         }
-         else {
-            item->setCheckState(Qt::Unchecked);
-         }
+   for (int i = 0; i < studyTableWidget->rowCount(); i++) {
+      QTableWidgetItem* item = studyTableWidget->item(i, 0);
+      if (i == studyIndex) {      
+         item->setCheckState(Qt::Checked);
       }
+      else {
+         item->setCheckState(Qt::Unchecked);
+      }
+   }
+   
+   if (scrollToStudyFlag &&
+       (studyIndex >= 0)) {
+      studyTableWidget->scrollToItem(studyTableWidget->item(studyIndex, studyTableColumnNumberCheckBox),
+                                     QAbstractItemView::PositionAtTop);
    }
    
    //
@@ -580,13 +802,39 @@ GuiStudyMetaDataLinkCreationDialog::studyTableItemChanged(int row,int column)
 }
       
 /**
+ * called when a study table item is changed.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::slotStudySelected(int row,int column)
+{
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   if ((row >= 0) &&
+       (row < smdf->getNumberOfStudyMetaData())) {
+      StudyMetaData* smd = smdf->getStudyMetaData(row);
+      if (column == studyTableColumnNumberCheckBox) {
+         setSelectedStudyCheckBox(row, false);
+         StudyMetaDataLink* smdl = getSelectedStudyMetaDataLink();
+         if (smdl != NULL) {
+            //
+            // Replace with new link
+            //
+            StudyMetaDataLink newLink;
+            newLink.setPubMedID(smd->getPubMedID());
+            *smdl = newLink;
+         }
+         loadStudyMetaDataLink(false);
+      }
+   }
+}
+      
+/**
  * load the study table widget.
  */
 void 
 GuiStudyMetaDataLinkCreationDialog::loadStudyTableWidget()
 {
    //
-   // Block signals otherwise, signals will call studyTableItemChanged()
+   // Block signals otherwise, signals will call slotStudySelected()
    // before the table is filled and hence a crash
    //
    studyTableWidget->blockSignals(true);
@@ -661,23 +909,24 @@ GuiStudyMetaDataLinkCreationDialog::loadStudyTableWidget()
 /**
  * get the link that was created.
  */
-StudyMetaDataLink
-GuiStudyMetaDataLinkCreationDialog::getLinkCreated() const
+StudyMetaDataLinkSet
+GuiStudyMetaDataLinkCreationDialog::getLinkSetCreated() const
 {
-   return studyMetaDataLink;
+   return studyMetaDataLinkSet;
 }
 
 /**
- * called when OK or Cancel button pressed.
+ * Save the current study.
  */
 void 
-GuiStudyMetaDataLinkCreationDialog::done(int r)
+GuiStudyMetaDataLinkCreationDialog::saveCurrentStudy()
 {
-   if (r == QDialog::Accepted) {
-      //
-      // Clear the link
-      //
-      studyMetaDataLink.clear();
+   //
+   // Clear the link
+   //
+   StudyMetaDataLink* smdl = getSelectedStudyMetaDataLink();
+   if (smdl != NULL) {
+      smdl->clear();
       
       //
       // See if a study is selected
@@ -691,7 +940,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
          //
          // Set PubMedID
          //
-         studyMetaDataLink.setPubMedID(smd->getPubMedID());
+         smdl->setPubMedID(smd->getPubMedID());
          
          //
          // if linking to figure
@@ -703,7 +952,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
                const QString figureNumber = linkFigureSelectionComboBox->itemData(figureIndex).toString();
                const StudyMetaData::Figure* figure = smd->getFigureByFigureNumber(figureNumber);
                if (figure != NULL) {
-                  studyMetaDataLink.setFigureNumber(figureNumber);
+                  smdl->setFigureNumber(figureNumber);
                   
                   //
                   // Linking to a panel in the figure ??
@@ -712,7 +961,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
                      const QString panelNumberOrLetter = linkFigurePanelSelectionComboBox->itemData(
                                               linkFigurePanelSelectionComboBox->currentIndex()).toString();
                      if (panelNumberOrLetter.isEmpty() == false) {
-                        studyMetaDataLink.setFigurePanelNumberOrLetter(panelNumberOrLetter);
+                        smdl->setFigurePanelNumberOrLetter(panelNumberOrLetter);
                      }
                   }
                }
@@ -727,7 +976,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
             if ((pageRefIndex >= 0) &&
                 (pageRefIndex < smd->getNumberOfPageReferences())) {
                const QString pageNumber = linkPageReferenceSelectionComboBox->itemData(pageRefIndex).toString();
-               studyMetaDataLink.setPageReferencePageNumber(pageNumber);
+               smdl->setPageReferencePageNumber(pageNumber);
                
                //
                // Linking to subheader in the page reference ??
@@ -736,7 +985,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
                   const int subHeaderIndex = linkPageReferenceSubHeaderSelectionComboBox->currentIndex();
                   const QString subHeaderNumber = linkPageReferenceSubHeaderSelectionComboBox->itemData(subHeaderIndex).toString();
                   if (subHeaderNumber.isEmpty() == false) {
-                     studyMetaDataLink.setPageReferenceSubHeaderNumber(subHeaderNumber);
+                     smdl->setPageReferenceSubHeaderNumber(subHeaderNumber);
                   }
                }
             }
@@ -750,7 +999,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
             if ((tableIndex >= 0) &&
                 (tableIndex < smd->getNumberOfTables())) {
                const QString tableNumber = linkTableSelectionComboBox->itemData(tableIndex).toString();
-               studyMetaDataLink.setTableNumber(tableNumber);
+               smdl->setTableNumber(tableNumber);
                
                //
                // Linking to a subheader in the table ??
@@ -759,7 +1008,7 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
                   const int subHeaderIndex = linkTableSubHeaderSelectionComboBox->currentIndex();
                   const QString subHeaderNumber = linkTableSubHeaderSelectionComboBox->itemData(subHeaderIndex).toString();
                   if (subHeaderNumber.isEmpty() == false) {
-                     studyMetaDataLink.setTableSubHeaderNumber(subHeaderNumber);
+                     smdl->setTableSubHeaderNumber(subHeaderNumber);
                   }
                }
             }            
@@ -768,13 +1017,20 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
          //
          // set page link
          //
-         studyMetaDataLink.setPageNumber(linkPageNumberLineEdit->text());
-      }
-      else {
-         GuiMessageBox::critical(this, "ERROR", "No study selected.", "OK");
-         return;
+         smdl->setPageNumber(linkPageNumberLineEdit->text());
       }
    }
-   
+}
+      
+/**
+ * called when OK or Cancel button pressed.
+ */
+void 
+GuiStudyMetaDataLinkCreationDialog::done(int r)
+{
+   if (r == QDialog::Accepted) {
+      saveCurrentStudy();
+   }
+
    QtDialogModal::done(r);
 }

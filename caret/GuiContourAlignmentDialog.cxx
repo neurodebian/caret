@@ -26,6 +26,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QSpinBox>
 
 #include "BrainModelContours.h"
@@ -34,7 +35,6 @@
 #include "DisplaySettingsContours.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiContourAlignmentDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiMainWindow.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -154,7 +154,7 @@ GuiContourAlignmentDialog::slotSelectRegionButton()
    if (firstTime) {
       const QString msg("Region alignment will not function\n"
                         "if the contours are rotated.");
-      GuiMessageBox::information(this, "Information", msg, "OK");
+      QMessageBox::information(this, "Information", msg);
       firstTime = false;
    }
    

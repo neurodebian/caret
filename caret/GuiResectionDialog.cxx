@@ -31,6 +31,7 @@
 #include <QLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -41,7 +42,6 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiResectionDialog.h"
 #include <QDoubleSpinBox>
@@ -267,7 +267,7 @@ GuiResectionDialog::done(int r)
       //
       const QString columnName(columnNameLineEdit->text());
       if (columnName.isEmpty()) {
-         GuiMessageBox::critical(this, "ERROR", "Column Name is blank.", "OK");
+         QMessageBox::critical(this, "ERROR", "Column Name is blank.");
          return;
       }
       
@@ -281,7 +281,7 @@ GuiResectionDialog::done(int r)
       //
       BrainModelSurface* bms = surfaceComboBox->getSelectedBrainModelSurface();
       if (bms == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "There is no surface.", "OK");
+         QMessageBox::critical(this, "ERROR", "There is no surface.");
          return;
       }
       
@@ -296,7 +296,7 @@ GuiResectionDialog::done(int r)
          sectionType = BrainModelSurfaceResection::SECTION_TYPE_THICKNESS;
       }
       else {
-            GuiMessageBox::critical(this, "ERROR", "Select How to Section.", "OK");
+            QMessageBox::critical(this, "ERROR", "Select How to Section.");
             return;
       }
       
@@ -325,7 +325,8 @@ GuiResectionDialog::done(int r)
          GuiBrainModelOpenGL::updateAllGL();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
       QApplication::restoreOverrideCursor();

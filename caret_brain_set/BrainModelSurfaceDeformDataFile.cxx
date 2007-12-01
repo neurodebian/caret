@@ -249,7 +249,15 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
    //
    // Set to source directory
    //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Find the source surface's
@@ -447,9 +455,15 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
    //
    // Set to the target directory
    //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
-   
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }
    
    //
    // Create the deformed file name
@@ -459,7 +473,7 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
       outputFileName =
          FileUtilities::basename(
             createDeformedFileName(dataFileName, 
-                                 outputSpecFileName,
+                                 dmf->getOutputSpecFileName(),
                                  dmf->getDeformedFileNamePrefix(),
                                  dmf->getNumberOfNodes(),
                                  false));
@@ -559,21 +573,22 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
       //
       // Update the target spec file
       //
-      SpecFile sf;
-      try {
-         sf.readFile(outputSpecFileName);
-         //
-         // file will be written if file is new to spec file
-         //
-         sf.addToSpecFile(specFileTag, outputFileName, "", true);
-      }
-      catch(FileException& e) {
-         QDir::setCurrent(savedDirectory);
-         QString msg("File was successfully deformed.");
-         msg.append("However, unable to update spec file:\n ");
-         msg.append(outputSpecFileName);
-         msg.append("\n");
-         throw BrainModelAlgorithmException(msg);
+      QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+      if (specFileInfo.isFile()) {
+         SpecFile sf;
+         try {
+            sf.readFile(dmf->getOutputSpecFileName());
+            //
+            // file will be written if file is new to spec file
+            //
+            sf.addToSpecFile(specFileTag, outputFileName, "", true);
+         }
+         catch(FileException& e) {
+            QDir::setCurrent(savedDirectory);
+            QString msg("File successfully deformed.  However, unable to update spec file:\n");
+            msg.append(dmf->getOutputSpecFileName());
+            throw BrainModelAlgorithmException(msg);
+         }
       }
    }
    
@@ -601,7 +616,15 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
    //
    // Set to source directory
    //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Default deformation type to nearest node
@@ -704,8 +727,15 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
    //
    // Set to the target directory
    //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }
    
    //
    // Create the deformed file name
@@ -715,7 +745,7 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
       outputFileName =
          FileUtilities::basename(
             createDeformedFileName(dataFileName, 
-                                outputSpecFileName,
+                                dmf->getOutputSpecFileName(),
                                 dmf->getDeformedFileNamePrefix(),
                                 dmf->getNumberOfNodes(),
                                 false));
@@ -740,21 +770,24 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
    //
    // Update the target spec file
    //
-   SpecFile sf;
-   try {
-      sf.readFile(outputSpecFileName);
-      //
-      // file will be written if file is new to spec file
-      //
-      sf.addToSpecFile(specFileTag, outputFileName, "", true);
-   }
-   catch(FileException& e) {
-      if (inputFile != NULL) delete inputFile;
-      if (outputFile != NULL) delete outputFile;
-      QDir::setCurrent(savedDirectory);
-      QString msg("File successfully deformed.  However, unable to update spec file:\n");
-      msg.append(outputSpecFileName);
-      throw BrainModelAlgorithmException(msg);
+   QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+   if (specFileInfo.isFile()) {
+      SpecFile sf;
+      try {
+         sf.readFile(dmf->getOutputSpecFileName());
+         //
+         // file will be written if file is new to spec file
+         //
+         sf.addToSpecFile(specFileTag, outputFileName, "", true);
+      }
+      catch(FileException& e) {
+         if (inputFile != NULL) delete inputFile;
+         if (outputFile != NULL) delete outputFile;
+         QDir::setCurrent(savedDirectory);
+         QString msg("File successfully deformed.  However, unable to update spec file:\n");
+         msg.append(dmf->getOutputSpecFileName());
+         throw BrainModelAlgorithmException(msg);
+      }
    }
    
    //
@@ -787,7 +820,15 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
    //
    // Set to source directory
    //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Default deformation type to nearest node
@@ -898,8 +939,15 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
    //
    // Set to the target directory
    //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }
    
    //
    // Create the deformed file name
@@ -909,7 +957,7 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
       outputFileName =
          FileUtilities::basename(
             createDeformedFileName(dataFileName, 
-                                outputSpecFileName,
+                                dmf->getOutputSpecFileName(),
                                 dmf->getDeformedFileNamePrefix(),
                                 dmf->getNumberOfNodes(),
                                 false));
@@ -934,21 +982,24 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
    //
    // Update the target spec file
    //
-   SpecFile sf;
-   try {
-      sf.readFile(outputSpecFileName);
-      //
-      // file will be written if file is new to spec file
-      //
-      sf.addToSpecFile(specFileTag, outputFileName, "", true);
-   }
-   catch(FileException& e) {
-      if (inputFile != NULL) delete inputFile;
-      if (outputFile != NULL) delete outputFile;
-      QDir::setCurrent(savedDirectory);
-      QString msg("File successfully deformed.  However, unable to update spec file:\n");
-      msg.append(outputSpecFileName);
-      throw BrainModelAlgorithmException(msg);
+   QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+   if (specFileInfo.isFile()) {
+      SpecFile sf;
+      try {
+         sf.readFile(dmf->getOutputSpecFileName());
+         //
+         // file will be written if file is new to spec file
+         //
+         sf.addToSpecFile(specFileTag, outputFileName, "", true);
+      }
+      catch(FileException& e) {
+         if (inputFile != NULL) delete inputFile;
+         if (outputFile != NULL) delete outputFile;
+         QDir::setCurrent(savedDirectory);
+         QString msg("File successfully deformed.  However, unable to update spec file:\n");
+         msg.append(dmf->getOutputSpecFileName());
+         throw BrainModelAlgorithmException(msg);
+      }
    }
    
    //
@@ -1010,7 +1061,15 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    //
    // Set to source directory
    //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Find the source surface's
@@ -1188,9 +1247,15 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    //
    // Set to the target directory
    //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
-   
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }
    
    //
    // Create the deformed file name
@@ -1200,7 +1265,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
       outputFileName =
          FileUtilities::basename(
             createDeformedFileName(dataFileName, 
-                                outputSpecFileName,
+                                dmf->getOutputSpecFileName(),
                                 dmf->getDeformedFileNamePrefix(),
                                 dmf->getNumberOfNodes(),
                                 false));
@@ -1224,25 +1289,28 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    //
    // Update the target spec file
    //
-   SpecFile sf;
-   try {
-      sf.readFile(outputSpecFileName);
-      //
-      // file will be written if file is new to spec file
-      //
-      if (fociFileFlag) {
-         sf.addToSpecFile(SpecFile::fociFileTag, outputFileName, "", true);
+   QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+   if (specFileInfo.isFile()) {
+      SpecFile sf;
+      try {
+         sf.readFile(dmf->getOutputSpecFileName());
+         //
+         // file will be written if file is new to spec file
+         //
+         if (fociFileFlag) {
+            sf.addToSpecFile(SpecFile::fociFileTag, outputFileName, "", true);
+         }
+         else {
+            sf.addToSpecFile(SpecFile::cellFileTag, outputFileName, "", true);
+         }
       }
-      else {
-         sf.addToSpecFile(SpecFile::cellFileTag, outputFileName, "", true);
+      catch(FileException& e) {
+         QDir::setCurrent(savedDirectory);
+         QString msg("File was successfully deformed.  However, unable to "
+                         "update Spec File: \n");
+         msg.append(dmf->getOutputSpecFileName());
+         throw BrainModelAlgorithmException(msg);
       }
-   }
-   catch(FileException& e) {
-      QDir::setCurrent(savedDirectory);
-      QString msg("File was successfully deformed.  However, unable to "
-                      "update Spec File: \n");
-      msg.append(outputSpecFileName);
-      throw BrainModelAlgorithmException(msg);
    }
    
    //
@@ -1300,7 +1368,15 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    //
    // Set to source directory
    //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Find the source surface's
@@ -1485,9 +1561,15 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    //
    // Set to the target directory
    //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
-   
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }   
    
    //
    // Create the deformed file name
@@ -1497,7 +1579,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
       outputFileName =
          FileUtilities::basename(
             createDeformedFileName(dataFileName, 
-                                outputSpecFileName,
+                                dmf->getOutputSpecFileName(),
                                 dmf->getDeformedFileNamePrefix(),
                                 dmf->getNumberOfNodes(),
                                 false));
@@ -1521,25 +1603,28 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    //
    // Update the target spec file
    //
-   SpecFile sf;
-   try {
-      sf.readFile(outputSpecFileName);
-      //
-      // file will be written if file is new to spec file
-      //
-      if (fociFileFlag) {
-         sf.addToSpecFile(SpecFile::fociProjectionFileTag, outputFileName, "", true);
+   QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+   if (specFileInfo.isFile()) {
+      SpecFile sf;
+      try {
+         sf.readFile(dmf->getOutputSpecFileName());
+         //
+         // file will be written if file is new to spec file
+         //
+         if (fociFileFlag) {
+            sf.addToSpecFile(SpecFile::fociProjectionFileTag, outputFileName, "", true);
+         }
+         else {
+            sf.addToSpecFile(SpecFile::cellProjectionFileTag, outputFileName, "", true);
+         }
       }
-      else {
-         sf.addToSpecFile(SpecFile::cellProjectionFileTag, outputFileName, "", true);
+      catch(FileException& e) {
+         QDir::setCurrent(savedDirectory);
+         QString msg("File was successfully deformed.  However, unable to "
+                         "update Spec File: \n");
+         msg.append(dmf->getOutputSpecFileName());
+         throw BrainModelAlgorithmException(msg);
       }
-   }
-   catch(FileException& e) {
-      QDir::setCurrent(savedDirectory);
-      QString msg("File was successfully deformed.  However, unable to "
-                      "update Spec File: \n");
-      msg.append(outputSpecFileName);
-      throw BrainModelAlgorithmException(msg);
    }
    
    //
@@ -1939,7 +2024,15 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
    //
    // Set to the source directory
    //
-   QDir::setCurrent(dmf->getSourceDirectory());
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Create a brain set
@@ -1987,7 +2080,15 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
    //
    // Set to the target directory
    //
-   QDir::setCurrent(dmf->getTargetDirectory());
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }
    
    //
    // Read the deformed coordinate file
@@ -2130,20 +2231,23 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
    //
    // Update the target spec file
    //
-   SpecFile sfOut;
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   try {
-      sfOut.readFile(outputSpecFileName);
-      //
-      // file will be written if file is new to spec file
-      //
-      sfOut.addToSpecFile(specFileTag, outputTopoFileName, "", true);
-   }
-   catch(FileException& e) {
-      QDir::setCurrent(savedDirectory);
-      QString msg("File successfully deformed.  However, unable to update spec file:\n");
-      msg.append(outputSpecFileName);
-      throw BrainModelAlgorithmException(msg);
+   QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+   if (specFileInfo.isFile()) {
+      SpecFile sfOut;
+      const QString outputSpecFileName(dmf->getOutputSpecFileName());
+      try {
+         sfOut.readFile(outputSpecFileName);
+         //
+         // file will be written if file is new to spec file
+         //
+         sfOut.addToSpecFile(specFileTag, outputTopoFileName, "", true);
+      }
+      catch(FileException& e) {
+         QDir::setCurrent(savedDirectory);
+         QString msg("File successfully deformed.  However, unable to update spec file:\n");
+         msg.append(outputSpecFileName);
+         throw BrainModelAlgorithmException(msg);
+      }
    }
    
    //
@@ -2195,7 +2299,15 @@ BrainModelSurfaceDeformDataFile::deformCoordinateFile(const DeformationMapFile* 
    //
    // Set to source directory
    //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+   if (dmf->getSourceDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getSourceDirectory());
+   }
+   else if (dmf->getSourceSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getSourceSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
+      }
+   }
    
    //
    // Read input file
@@ -2270,8 +2382,15 @@ BrainModelSurfaceDeformDataFile::deformCoordinateFile(const DeformationMapFile* 
    //
    // Set to the target directory
    //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
+   if (dmf->getTargetDirectory().isEmpty() == false) {
+      QDir::setCurrent(dmf->getTargetDirectory());
+   }
+   else if (dmf->getOutputSpecFileName().isEmpty() == false) {
+      QFileInfo fi(dmf->getOutputSpecFileName());
+      if (fi.isFile()) {
+         QDir::setCurrent(FileUtilities::dirname(dmf->getOutputSpecFileName()));
+      }
+   }
    
    //
    // Create the deformed file name
@@ -2280,7 +2399,7 @@ BrainModelSurfaceDeformDataFile::deformCoordinateFile(const DeformationMapFile* 
       outputFileNameInOut =
          FileUtilities::basename(
             createDeformedFileName(dataFileName, 
-                                outputSpecFileName,
+                                dmf->getOutputSpecFileName(),
                                 dmf->getDeformedFileNamePrefix(),
                                 dmf->getNumberOfNodes(),
                                 false));
@@ -2344,19 +2463,22 @@ BrainModelSurfaceDeformDataFile::deformCoordinateFile(const DeformationMapFile* 
    //
    // Update the target spec file
    //
-   SpecFile sf;
-   try {
-      sf.readFile(outputSpecFileName);
-      //
-      // file will be written if file is new to spec file
-      //
-      sf.addToSpecFile(specFileTag, outputFileNameInOut, "", true);
-   }
-   catch(FileException& e) {
-      QDir::setCurrent(savedDirectory);
-      QString msg("File successfully deformed.  However, unable to update spec file:\n");
-      msg.append(outputSpecFileName);
-      throw BrainModelAlgorithmException(msg);
+   QFileInfo specFileInfo(dmf->getOutputSpecFileName());
+   if (specFileInfo.isFile()) {
+      SpecFile sf;
+      try {
+         sf.readFile(dmf->getOutputSpecFileName());
+         //
+         // file will be written if file is new to spec file
+         //
+         sf.addToSpecFile(specFileTag, outputFileNameInOut, "", true);
+      }
+      catch(FileException& e) {
+         QDir::setCurrent(savedDirectory);
+         QString msg("File successfully deformed.  However, unable to update spec file:\n");
+         msg.append(dmf->getOutputSpecFileName());
+         throw BrainModelAlgorithmException(msg);
+      }
    }
    
    //

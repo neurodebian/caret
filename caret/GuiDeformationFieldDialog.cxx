@@ -26,26 +26,26 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QRadioButton>
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
 #include "DeformationFieldFile.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelSelectionComboBox.h"
-#include "GuiDataFileDialog.h"
 #include "GuiDeformationFieldDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "QtUtilities.h"
 #include "StringUtilities.h"
@@ -276,14 +276,14 @@ GuiDeformationFieldDialog::slotIndivTopoFilePushButton()
    //
    // Create a file dialog and get the file.
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setDirectory(QDir::currentPath());
    fd.setModal(true);
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setWindowTitle("Choose Topology File");
-   fd.setFileMode(QFileDialog::ExistingFile);
-   fd.setFilter(GuiDataFileDialog::topographyFileFilter);
-   fd.selectFilter(GuiDataFileDialog::topographyFileFilter);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
+   fd.setFilter(FileFilters::getTopographyFileFilter());
+   fd.selectFilter(FileFilters::getTopographyFileFilter());
    if (fd.exec() == QDialog::Accepted) {
       QStringList sl = fd.selectedFiles();
       if (sl.isEmpty() == false) {
@@ -301,14 +301,14 @@ GuiDeformationFieldDialog::slotIndivCoordFilePushButton()
    //
    // Create a file dialog and get the file.
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setWindowTitle("Choose Coordinate File");
-   fd.setFileMode(QFileDialog::ExistingFile);
-   fd.setFilter(GuiDataFileDialog::coordinateGenericFileFilter);
-   fd.selectFilter(GuiDataFileDialog::coordinateGenericFileFilter);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
+   fd.setFilter(FileFilters::getCoordinateGenericFileFilter());
+   fd.selectFilter(FileFilters::getCoordinateGenericFileFilter());
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          indivCoordFileLineEdit->setText(fd.selectedFiles().at(0));
@@ -324,14 +324,14 @@ GuiDeformationFieldDialog::slotIndivDeformedCoordFilePushButton()
    //
    // Create a file dialog and get the file.
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setWindowTitle("Choose Coordinate File");
-   fd.setFileMode(QFileDialog::ExistingFile);
-   fd.setFilter(GuiDataFileDialog::coordinateGenericFileFilter);
-   fd.selectFilter(GuiDataFileDialog::coordinateGenericFileFilter);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
+   fd.setFilter(FileFilters::getCoordinateGenericFileFilter());
+   fd.selectFilter(FileFilters::getCoordinateGenericFileFilter());
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          indivDeformedCoordFileLineEdit->setText(fd.selectedFiles().at(0));
@@ -355,13 +355,15 @@ GuiDeformationFieldDialog::done(int r)
             {
                const BrainModelSurface* bms = surfaceComboBox->getSelectedBrainModelSurface();
                if (bms == NULL) {
-                  GuiMessageBox::critical(this, "ERROR", "No Surface is selected.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", "No Surface is selected.");
                   return;
                }
                
                const BrainModelSurface* defBms = deformedSurfaceComboBox->getSelectedBrainModelSurface();
                if (defBms == NULL) {
-                  GuiMessageBox::critical(this, "ERROR", "No Deformed Surface is selected.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", "No Deformed Surface is selected.");
                   return;
                }
 
@@ -380,21 +382,25 @@ GuiDeformationFieldDialog::done(int r)
                QString indivCoordFileName(indivCoordFileLineEdit->text());
                QString indivDeformedCoordFileName(indivDeformedCoordFileLineEdit->text());
                if (indivTopoFileName.isEmpty()) {
-                  GuiMessageBox::critical(this, "ERROR", "Indiv Topo File Name is missing.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", "Indiv Topo File Name is missing.");
                   return;
                }
                if (indivCoordFileName.isEmpty()) {
-                  GuiMessageBox::critical(this, "ERROR", "Indiv Coord File Name is missing.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", "Indiv Coord File Name is missing.");
                   return;
                }
                if (indivDeformedCoordFileName.isEmpty()) {
-                  GuiMessageBox::critical(this, "ERROR", "Indiv Deformed Coord File Name is missing.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", "Indiv Deformed Coord File Name is missing.");
                   return;
                }
                
                const BrainModelSurface* bms = atlasSurfaceComboBox->getSelectedBrainModelSurface();
                if (bms == NULL) {
-                  GuiMessageBox::critical(this, "ERROR", "No Atlas Surface is selected.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", "No Atlas Surface is selected.");
                   return;
                }
                
@@ -434,8 +440,9 @@ GuiDeformationFieldDialog::done(int r)
                // Did an error occur while reading the files
                //
                if (errorMessages.empty() == false) {
-                  GuiMessageBox::critical(this, "ERROR reading indiv files",
-                                          StringUtilities::combine(errorMessages, "\n"), "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR reading indiv files",
+                                          StringUtilities::combine(errorMessages, "\n"));
                   return;
                }
                
@@ -443,8 +450,9 @@ GuiDeformationFieldDialog::done(int r)
                // Should be two brain models
                //
                if (indivBrainSet.getNumberOfBrainModels() < 2) {
-                  GuiMessageBox::critical(this, "ERROR",
-                                          "Problems reading indiv files (less than 2 brain models)", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR",
+                                          "Problems reading indiv files (less than 2 brain models)");
                   return;
                }
                
@@ -453,14 +461,16 @@ GuiDeformationFieldDialog::done(int r)
                //
                const BrainModelSurface* indivSurface = indivBrainSet.getBrainModelSurface(0);
                if (indivSurface == NULL) {
-                  GuiMessageBox::critical(this, "ERROR",
-                                          "Indiv surface missing.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR",
+                                          "Indiv surface missing.");
                   return;
                }
                const BrainModelSurface* indivDeformSurface = indivBrainSet.getBrainModelSurface(1);
                if (indivDeformSurface == NULL) {
-                  GuiMessageBox::critical(this, "ERROR",
-                                          "Indiv deformed surface missing.", "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR",
+                                          "Indiv deformed surface missing.");
                   return;
                }
                

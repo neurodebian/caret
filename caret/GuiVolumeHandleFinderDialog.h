@@ -37,7 +37,7 @@ class QCheckBox;
 class QListWidget;
 class QPushButton;
 class QRadioButton;
-class QtWidgetGroup;
+class WuQWidgetGroup;
 
 /// Dialog for handle finding
 class GuiVolumeHandleFinderDialog : public QtDialog {
@@ -107,7 +107,7 @@ class GuiVolumeHandleFinderDialog : public QtDialog {
       int selectedHandleIndex;
       
       /// search segmentation widget group
-      QtWidgetGroup* searchSegmentationWidgetGroup;
+      WuQWidgetGroup* searchSegmentationWidgetGroup;
       
       /// fill handle push button
       QPushButton* fillHandlePushButton;

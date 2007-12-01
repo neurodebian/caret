@@ -33,97 +33,6 @@
 /// This class is used to store user preferences.
 class PreferencesFile : public AbstractFile {
    public:
-      /// class for fmri mapping algorithm parameters
-      class FmriAlgorithm {
-         public:
-            /// constructor
-            FmriAlgorithm();
-            
-            /// destructor
-            ~FmriAlgorithm();
-            
-            /// reset parameters to their default values
-            void resetParametersToDefault();
-            
-            /// get algorithm name
-            QString getAlgorithmName() const;
-            
-            /// set algorithm name
-            void setAlgorithmName(const QString& name);
-            
-            /// get averge voxel parameters
-            void getAverageVoxelParameters(float& neighborsOut) const;
-            
-            /// set averge voxel parameters
-            void setAverageVoxelParameters(const float neighborsIn);
-            
-            /// get maximum voxel parameters
-            void getMaximumVoxelParameters(float& neighborsOut) const;
-            
-            /// set maximum voxel parameters
-            void setMaximumVoxelParameters(const float neighborsIn);
-            
-            /// get gaussian algorithm parameters
-            void getGaussianParameters(float& neighborsOut,
-                                      float& sigmaTangOut,
-                                      float& sigmaNormOut,
-                                      float& normBelowOut,
-                                      float& normAboveOut,
-                                      float& tangOut) const;
-                                          
-            /// set gaussian algorithm parameters
-            void setGaussianParameters(const float neighborsIn,
-                                      const float sigmaTangIn,
-                                      const float sigmaNormIn,
-                                      const float normBelowIn,
-                                      const float normAboveIn,
-                                      const float tangIn);
-                                          
-            /// get brain fish algorithm parameters
-            void getBrainFishParameters(float& maxDistanceOut,
-                                        int& splatFactorOut) const;
-            
-            /// set brain fish algorithm parameters
-            void setBrainFishParameters(const float maxDistanceIn,
-                                        const int splatFactorIn);
-            
-         protected:
-            friend class PreferencesFile;
-            
-            /// algorithm name
-            QString algorithmName;
-            
-            /// average voxel neighbors
-            float averageVoxelNeighbors;
-            
-            /// maximum voxel neighbors
-            float maximumVoxelNeighbors;
-            
-            /// gaussian neighbors
-            float gaussianNeighbors;
-            
-            /// gaussian sigma tang
-            float gaussianSigmaTang;
-            
-            /// gaussian sigma norm
-            float gaussianSigmaNorm;
-            
-            /// gaussian norm below cutoff
-            float gaussianNormBelow;
-            
-            /// gaussian norm above cutoff
-            float gaussianNormAbove;
-            
-            /// gaussian tangent
-            float gaussianTang;
-            
-            /// brain fish max distance
-            float brainFishMaxDistance;
-            
-            /// brain fish splat factor
-            int brainFishSplatFactor;
-      };
-      
       /// class for storing user views
       class UserView {
          public:
@@ -177,13 +86,6 @@ class PreferencesFile : public AbstractFile {
          IMAGE_CAPTURE_OPENGL_BUFFER = 1
       };
       
-      /// speech type
-      enum SPEECH_TYPE {
-         SPEECH_TYPE_OFF,
-         SPEECH_TYPE_NORMAL,
-         SPEECH_TYPE_VERBOSE
-      };
-      
       /// Constructor
       PreferencesFile();
       
@@ -197,10 +99,10 @@ class PreferencesFile : public AbstractFile {
       bool empty() const { return false; }
       
       /// get the fmri algorithm parameters (const method)
-      const FmriAlgorithm* getFmriAlgorithmParameters() const { return &fmriParameters; }
-      
-      /// get the fmri algorithm parameters
-      FmriAlgorithm* getFmriAlgorithmParameters() { return &fmriParameters; }
+      const QString getFmriAlgorithmParameters() const { return fmriParametersString; }
+
+      /// set the fmri algorithm parameters
+      void setFmriAlgorithmParameters(const QString& s);
       
       /// get the surface background color
       void getSurfaceBackgroundColor(unsigned char& r, unsigned char& g, unsigned char& b) const;
@@ -255,6 +157,24 @@ class PreferencesFile : public AbstractFile {
       /// get the recent data file directories
       void getRecentDataFileDirectories(std::vector<QString>& dirs) const;
       
+      // get the test flag 1
+      bool getTestFlag1() const;
+      
+      // set the test flag 1
+      void setTestFlag1(const bool val);
+      
+      // get the test flag 2
+      bool getTestFlag2() const;
+      
+      // set the test flag 2
+      void setTestFlag2(const bool val);
+      
+      // get the OpenGL debug
+      bool getOpenGLDebug() const;
+      
+      // set the OpenGL debug
+      void setOpenGLDebug(const bool val);
+      
       /// get the debug default value
       bool getDebugOn() const;    
 
@@ -306,17 +226,17 @@ class PreferencesFile : public AbstractFile {
       /// set the anatomy volume brightness
       void setAnatomyVolumeBrightness(const int b);
       
+      /// get number of file reading threads
+      int getNumberOfFileReadingThreads() const { return numberOfFileReadingThreads; }
+      
+      /// set number of file reading threads
+      void setNumberOfFileReadingThreads(const int num) { numberOfFileReadingThreads = num; }
+      
       /// get the maximum number of threads
       int getMaximumNumberOfThreads() const;
       
       /// set the maximum number of threads
       void setMaximumNumberOfThreads(const int num) { maximumNumberOfThreads = num; }
-      
-      /// get speech type
-      SPEECH_TYPE getSpeechType() const { return speechType; }
-      
-      /// set speech type
-      void setSpeechType(const SPEECH_TYPE st) { speechType = st; }
       
       /// get the number of digits right of the decimal when writing float to text files
       int getTextFileDigitsRightOfDecimal()
@@ -335,11 +255,11 @@ class PreferencesFile : public AbstractFile {
                                                   { preferredVolumeWriteType = pt; }
                          
       /// get the preferred file writing data type
-      AbstractFile::FILE_FORMAT getPreferredWriteDataType() const
+      std::vector<AbstractFile::FILE_FORMAT> getPreferredWriteDataType() const
                                                   { return preferredWriteDataType; }
                                   
       /// set the preferred file writing data type
-      void setPreferredWriteDataType(const AbstractFile::FILE_FORMAT pt)
+      void setPreferredWriteDataType(const std::vector<AbstractFile::FILE_FORMAT> pt)
                                                        { preferredWriteDataType = pt; }
                                   
       /// get SuMS login information
@@ -400,8 +320,8 @@ class PreferencesFile : public AbstractFile {
       
    private:
       
-      /// fmri mapping parameters
-      FmriAlgorithm fmriParameters;
+      /// fmri mapping parameters string
+      QString fmriParametersString;
       
       /// the user views
       std::vector<UserView> userViews;
@@ -442,17 +362,17 @@ class PreferencesFile : public AbstractFile {
       /// maximum number of threads
       int maximumNumberOfThreads;
       
+      /// number of file reading threads
+      int numberOfFileReadingThreads;
+      
       /// update debuggin stuff
       void updateDebugging();
 
-      /// speech enabled type
-      SPEECH_TYPE speechType;
-      
       /// the number of digits right of the decimal when writing float to text files
       int textFileDigitsRightOfDecimal;
       
       /// preferred data write type for files
-      AbstractFile::FILE_FORMAT preferredWriteDataType;
+      std::vector<AbstractFile::FILE_FORMAT> preferredWriteDataType;
       
       /// SuMS user name
       QString sumsUserName;
@@ -512,7 +432,10 @@ class PreferencesFile : public AbstractFile {
    static const QString tagRecentSpecFiles;
    static const QString tagRecentCopiedSpecFiles;
    static const QString tagRecentDataFileDirectories;
+   static const QString tagOpenGLDebugOn;
    static const QString tagDebugOn;
+   static const QString tagTestFlag1;
+   static const QString tagTestFlag2;
    static const QString tagDebugNodeNumber;
    static const QString tagIterativeUpdate;
    static const QString tagWebBrowser;
@@ -521,6 +444,7 @@ class PreferencesFile : public AbstractFile {
    static const QString tagAnatomyVolumeBrightness;
    static const QString tagAnatomyVolumeContrast;   
    static const QString tagMaximumNumberOfThreads;   
+   static const QString tagNumberOfFileReadingThreads;   
    static const QString tagSpeechEnabled;
    static const QString tagFloatDigitsRightOfDecimal;
    static const QString tagPreferredWriteDataType;
@@ -533,9 +457,11 @@ class PreferencesFile : public AbstractFile {
    static const QString tagPreferredVolumeWriteType;
    static const QString tagCaretTips;
    
+   static const QString tagFmriParameters;
    static const QString tagFmriAlgorithm;
    static const QString tagFmriAvgVoxelNeighbors;
    static const QString tagFmriMaxVoxelNeighbors;
+   static const QString tagFmriStrongestVoxelNeighbors;
    static const QString tagFmriGaussNeighbors;
    static const QString tagFmriGaussSigmaNorm;
    static const QString tagFmriGaussSigmaTang;
@@ -555,6 +481,9 @@ class PreferencesFile : public AbstractFile {
    const QString PreferencesFile::tagRecentSpecFiles = "tag-recent-spec-files";
    const QString PreferencesFile::tagRecentCopiedSpecFiles = "tag-recent-copied-spec-files";
    const QString PreferencesFile::tagRecentDataFileDirectories = "tag-recent-data-file-directories";
+   const QString PreferencesFile::tagTestFlag1 = "tag-flag-1";
+   const QString PreferencesFile::tagTestFlag2 = "tag-flag-2";
+   const QString PreferencesFile::tagOpenGLDebugOn = "tag-opengl-debug-on";
    const QString PreferencesFile::tagDebugOn = "tag-debug-on";
    const QString PreferencesFile::tagDebugNodeNumber = "tag-debug-node";
    const QString PreferencesFile::tagIterativeUpdate = "tag-iterative-update";
@@ -564,6 +493,7 @@ class PreferencesFile : public AbstractFile {
    const QString PreferencesFile::tagAnatomyVolumeBrightness = "tag-anatomy-volume-brightness";
    const QString PreferencesFile::tagAnatomyVolumeContrast = "tag-anatomy-volume-contrast";   
    const QString PreferencesFile::tagMaximumNumberOfThreads = "tag-maximum-number-of-threads";
+   const QString PreferencesFile::tagNumberOfFileReadingThreads = "tag-number-of-file-reading-threads";
    const QString PreferencesFile::tagSpeechEnabled = "tag-speech-enabled";
    const QString PreferencesFile::tagFloatDigitsRightOfDecimal = "tag-float-digits-right-of-decimal";
    const QString PreferencesFile::tagPreferredWriteDataType = "tag-preferred-data-type";
@@ -576,9 +506,11 @@ class PreferencesFile : public AbstractFile {
    const QString PreferencesFile::tagPreferredVolumeWriteType = "tag-volume-write-type";
    const QString PreferencesFile::tagCaretTips = "tag-caret-tips";
    
+   const QString PreferencesFile::tagFmriParameters         = "tag-fmri-parameters";
    const QString PreferencesFile::tagFmriAlgorithm         = "tag-fmri-algorithm";
    const QString PreferencesFile::tagFmriAvgVoxelNeighbors = "tag-fmri-av-neighbors";
    const QString PreferencesFile::tagFmriMaxVoxelNeighbors = "tag-fmri-mv-neighbors";
+   const QString PreferencesFile::tagFmriStrongestVoxelNeighbors = "tag-fmri-sv-neighbors";
    const QString PreferencesFile::tagFmriGaussNeighbors    = "tag-fmri-gauss-algorithm-neighbors";
    const QString PreferencesFile::tagFmriGaussSigmaNorm    = "tag-fmri-gauss-algorithm-sigma-norm";
    const QString PreferencesFile::tagFmriGaussSigmaTang    = "tag-fmri-gauss-algorithm-sigma-tang";

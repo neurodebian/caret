@@ -57,6 +57,12 @@ BrainModelVolumeSureFitErrorCorrection::BrainModelVolumeSureFitErrorCorrection(
                                                           const bool saveIntermediateFilesIn)
    : BrainModelAlgorithm(bs)
 {
+   //
+   // Setting true will reduce runtime by about 5% but does
+   // require plenty of memory
+   //
+   keepIntermediateFilesInMemoryFlag = false; // true;
+   
    segmentationVolume = new VolumeFile(*segmentationVolumeIn);
    radialPositionMapVolume = new VolumeFile(*radialPositionMapVolumeIn);
    typeOfVolumeFilesToWrite = typeOfVolumeFilesToWriteIn;
@@ -67,6 +73,10 @@ BrainModelVolumeSureFitErrorCorrection::BrainModelVolumeSureFitErrorCorrection(
    
    intermediateFilesSubDirectory = "ERROR_CORRECTION_INTERMEDIATES";
    saveIntermediateFiles = saveIntermediateFilesIn;
+   
+   if (saveIntermediateFiles) {
+      keepIntermediateFilesInMemoryFlag = false;
+   }
    
    outputVolume = NULL;
 }
@@ -84,8 +94,15 @@ BrainModelVolumeSureFitErrorCorrection::~BrainModelVolumeSureFitErrorCorrection(
    }
    
    if (saveIntermediateFiles == false) {
-      for (unsigned int i = 0; i < intermediateFiles.size(); i++) {
-         QFile::remove(intermediateFiles[i]);
+      for (unsigned int i = 0; i < intermediateFileNames.size(); i++) {
+         QFile::remove(intermediateFileNames[i]);
+      }
+      
+      for (std::map<QString,VolumeFile*>::iterator iter = 
+                      intermediateVolumeFilesInMemory.begin();
+           iter != intermediateVolumeFilesInMemory.end();
+           iter++) {
+         delete iter->second;
       }
       
       QDir dir;
@@ -2721,6 +2738,27 @@ void
 BrainModelVolumeSureFitErrorCorrection::readIntermediateVolume(VolumeFile& vf,
                 const QString& nameIn) throw (BrainModelAlgorithmException)
 {
+   if (keepIntermediateFilesInMemoryFlag) {
+      //
+      // Make sure volume is in memory
+      //
+      std::map<QString,VolumeFile*>::iterator iter = 
+         intermediateVolumeFilesInMemory.find(nameIn);
+      if (iter == intermediateVolumeFilesInMemory.end()) {
+         throw BrainModelAlgorithmException(
+            "PROGRAM ERROR: Unable to find volume named "
+            + nameIn
+            + " in intermediate volume files in memory.");
+      }
+      
+      //
+      // copy the volume to output
+      //
+      vf = *(iter->second);
+      
+      return;
+   }
+   
    try {
       QString name;
       QDir intermedDir(intermediateFilesSubDirectory);
@@ -2786,6 +2824,25 @@ void
 BrainModelVolumeSureFitErrorCorrection::writeIntermediateVolume(VolumeFile* vf,
                                const QString& nameIn) throw (BrainModelAlgorithmException)
 {
+   if (keepIntermediateFilesInMemoryFlag) {
+      //
+      // If volume with name exists, free its memory and remove from map
+      //
+      std::map<QString,VolumeFile*>::iterator iter = 
+         intermediateVolumeFilesInMemory.find(nameIn);
+      if (iter != intermediateVolumeFilesInMemory.end()) {
+         delete iter->second;
+         intermediateVolumeFilesInMemory.erase(iter);
+      }
+      
+      //
+      // Keep file in memory
+      //
+      intermediateVolumeFilesInMemory[nameIn] = new VolumeFile(*vf);
+      
+      return;
+   }
+   
    try {
       vf->setDescriptiveLabel(nameIn);
       QString name;
@@ -2814,9 +2871,9 @@ BrainModelVolumeSureFitErrorCorrection::writeIntermediateVolume(VolumeFile* vf,
       if (DebugControl::getDebugOn()) {
          std::cout << "Write Volume File: " << fileNameWritten.toAscii().constData() << std::endl;
       }
-      intermediateFiles.push_back(fileNameWritten);
+      intermediateFileNames.push_back(fileNameWritten);
       if (dataFileNameWritten.isEmpty() == false) {
-         intermediateFiles.push_back(dataFileNameWritten);
+         intermediateFileNames.push_back(dataFileNameWritten);
       }
    }
    catch (FileException& e) {

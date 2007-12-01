@@ -124,6 +124,25 @@ StatisticDataGroup::getSumOfData() const
 }
       
 /**
+ * get the mean of all of the data.
+ */
+float 
+StatisticDataGroup::getMeanOfData() const
+{
+   double sum = 0.0;
+   for (int i = 0; i < numData; i++) {
+      sum += data[i];
+   }
+   
+   float mean = 0.0;
+   if (numData > 0.0) {
+      mean = sum / static_cast<double>(numData);
+   }
+   
+   return mean;
+}
+      
+/**
  * assignment operator.
  */
 StatisticDataGroup& 

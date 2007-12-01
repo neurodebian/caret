@@ -231,6 +231,12 @@ class GuiIdentifyMainWindow : public QtMainWindow {
       /// show study comment info check box;
       void slotShowStudyCommentInfoCheckBox(bool val);
       
+      /// show study data format info check box;
+      void slotShowStudyDataFormatInfoCheckBox(bool val);
+      
+      /// show study data type info check box;
+      void slotShowStudyDataTypeInfoCheckBox(bool val);
+      
       /// show study DOI info check box;
       void slotShowStudyDOIInfoCheckBox(bool val);
       
@@ -480,6 +486,12 @@ class GuiIdentifyMainWindow : public QtMainWindow {
       
       /// show study comment info check box;
       QCheckBox* showStudyCommentInfoCheckBox;
+      
+      /// show study data format info check box
+      QCheckBox* showStudyDataFormatInfoCheckBox;
+      
+      /// show study data type info check box
+      QCheckBox* showStudyDataTypeInfoCheckBox;
       
       /// show study DOI info check box;
       QCheckBox* showStudyDOIInfoCheckBox;

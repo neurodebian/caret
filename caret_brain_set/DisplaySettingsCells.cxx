@@ -36,6 +36,7 @@
 #include "CellColorFile.h"
 #include "DisplaySettingsCells.h"
 #include "DisplaySettingsFoci.h"
+#include "DisplaySettingsScene.h"
 #include "DisplaySettingsSection.h"
 #include "DisplaySettingsStudyMetaData.h"
 #include "FociColorFile.h"
@@ -356,20 +357,28 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
       bool keywordDisplayFlag = true;
       if (fociFlag) {
          keywordDisplayFlag = displayCellsWithoutLinkToStudyWithKeywords;
-         const StudyMetaDataLink smdl = cp->getStudyMetaDataLink();
-         const int smdIndex = smdf->getStudyIndexFromLink(smdl);
-         if ((smdIndex >= 0) &&
-             (smdIndex < smdf->getNumberOfStudyMetaData())) {
-            switch (studyKeywordStatus[smdIndex]) {
-               case DisplaySettingsStudyMetaData::KEYWORD_STATUS_KEYWORD_SELECTED:
-                  keywordDisplayFlag = true;
-                  break;
-               case DisplaySettingsStudyMetaData::KEYWORD_STATUS_KEYWORD_NOT_SELECTED:
-                  keywordDisplayFlag = false;
-                  break;
-               case DisplaySettingsStudyMetaData::KEYWORD_STATUS_HAS_NO_KEYWORDS:
-                  keywordDisplayFlag = true;
-                  break;
+         const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
+         bool done = false;
+         for (int mm = 0; mm < smdls.getNumberOfStudyMetaDataLinks(); mm++) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(mm);
+            const int smdIndex = smdf->getStudyIndexFromLink(smdl);
+            if ((smdIndex >= 0) &&
+                (smdIndex < smdf->getNumberOfStudyMetaData())) {
+               switch (studyKeywordStatus[smdIndex]) {
+                  case DisplaySettingsStudyMetaData::KEYWORD_STATUS_KEYWORD_SELECTED:
+                     keywordDisplayFlag = true;
+                     done = true; // show study
+                     break;
+                  case DisplaySettingsStudyMetaData::KEYWORD_STATUS_KEYWORD_NOT_SELECTED:
+                     keywordDisplayFlag = false;
+                     break;
+                  case DisplaySettingsStudyMetaData::KEYWORD_STATUS_HAS_NO_KEYWORDS:
+                     keywordDisplayFlag = true;
+                     break;
+               }
+            }
+            if (done) {
+               break;
             }
          }
       }
@@ -380,18 +389,24 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
       bool subHeaderDisplayFlag = true;
       if (fociFlag) {
          subHeaderDisplayFlag = displayCellsWithoutLinkToStudyWithTableSubHeader;
-         const StudyMetaDataLink smdl = cp->getStudyMetaDataLink();
-         const int smdIndex = smdf->getStudyIndexFromLink(smdl);
-         if ((smdIndex >= 0) &&
-             (smdIndex < smdf->getNumberOfStudyMetaData())) {
-            const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
-            const QString tableNumber = smdl.getTableNumber();
-            const StudyMetaData::Table* table = smd->getTableByTableNumber(tableNumber);
-            if (table != NULL) {
-               const QString subHeaderNumber = smdl.getTableSubHeaderNumber();
-               const StudyMetaData::SubHeader* subHeader = table->getSubHeaderBySubHeaderNumber(subHeaderNumber);
-               if (subHeader != NULL) {
-                  subHeaderDisplayFlag = subHeader->getSelected();
+         const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
+         for (int mm = 0; mm < smdls.getNumberOfStudyMetaDataLinks(); mm++) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(mm);
+            const int smdIndex = smdf->getStudyIndexFromLink(smdl);
+            if ((smdIndex >= 0) &&
+                (smdIndex < smdf->getNumberOfStudyMetaData())) {
+               const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
+               const QString tableNumber = smdl.getTableNumber();
+               const StudyMetaData::Table* table = smd->getTableByTableNumber(tableNumber);
+               if (table != NULL) {
+                  const QString subHeaderNumber = smdl.getTableSubHeaderNumber();
+                  const StudyMetaData::SubHeader* subHeader = table->getSubHeaderBySubHeaderNumber(subHeaderNumber);
+                  if (subHeader != NULL) {
+                     subHeaderDisplayFlag = subHeader->getSelected();
+                     if (subHeaderDisplayFlag) {
+                         break;
+                     }
+                  }
                }
             }
          }
@@ -419,6 +434,17 @@ void
 DisplaySettingsCells::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
    const bool fociFlag = (dynamic_cast<DisplaySettingsFoci*>(this) != NULL);
+   
+   //
+   // If preserving foci, do not alter scene settings
+   //
+   if (fociFlag) {
+      DisplaySettingsScene* dss = brainSet->getDisplaySettingsScene();
+      if (dss->getPreserveFociAndFociColorsAndStudyMetaDataFlag()) {
+         return;
+      }
+   }
+   
    CellProjectionFile* fidCells = brainSet->getCellProjectionFile();    
    if (fociFlag) {
       fidCells = brainSet->getFociProjectionFile();

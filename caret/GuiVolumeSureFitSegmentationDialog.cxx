@@ -35,6 +35,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSlider>
@@ -49,16 +50,15 @@
 #include "BrainModelVolumeVoxelColoring.h"
 #include "BrainSet.h"
 #include "DisplaySettingsVolume.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiFileSelectionButton.h"
 #include "GuiGraphWidget.h"
 #include "GuiStructureComboBox.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
-#include "GuiMessageBox.h"
 #include "GuiVolumeSureFitSegmentationDialog.h"
 #include "GuiVolumeSelectionControl.h"
 #include "StatisticHistogram.h"
@@ -438,7 +438,7 @@ GuiVolumeSureFitSegmentationDialog::createSpecFilePage()
    GuiFileSelectionButton* specFilePushButton = 
                      new GuiFileSelectionButton(NULL,
                                                 "Choose Spec File...",
-                                                GuiDataFileDialog::specFileFilter,
+                                                FileFilters::getSpecFileFilter(),
                                                 false);
    QObject::connect(specFilePushButton, SIGNAL(fileSelected(const QString&)),
                     specFileNameLineEdit, SLOT(setText(const QString&)));
@@ -916,36 +916,36 @@ GuiVolumeSureFitSegmentationDialog::slotGenerateTopologicallyCorrectFiducialSurf
          //warningAlreadyGivenFlag = true;
          
          const QString msg = 
-            "This option, which corrects all topological errors in the fiducial surface,\n"
-            "should be used with caution.  While the resulting surface will be topologically\n"
-            "correct, it will not necessarily be anatomically correct.  In areas of the \n"
-            "surface where correction occurs, there may be adjacent triangles with sharply\n"
-            "angled edges, such as those you might find on a diamond or cubic zirconia.  It\n"
-            "is best to correct the topological errors in the segmentation, particularly if\n"
-            "the topological errors are large or involve non-cortical material such as a\n"
+            "This option, which corrects all topological errors in the fiducial surface,"
+            "should be used with caution.  While the resulting surface will be topologically"
+            "correct, it will not necessarily be anatomically correct.  In areas of the "
+            "surface where correction occurs, there may be adjacent triangles with sharply"
+            "angled edges, such as those you might find on a diamond or cubic zirconia.  It"
+            "is best to correct the topological errors in the segmentation, particularly if"
+            "the topological errors are large or involve non-cortical material such as a"
             "blood vessel or the optic chiasm.\n"
             "\n"
-            "This option is probably best used if there are small topological errors in\n"
-            "the medial wall or if the user is unable to find remaining topological \n"
-            "errors.  The user may check for topological errors by selecting Surface\n"
-            "Menu->Topology->Topology Error Report.  An \"Euler Count\" of 2 indicates\n"
-            "that there are no topological errors and the surface is topologically \n"
+            "This option is probably best used if there are small topological errors in"
+            "the medial wall or if the user is unable to find remaining topological "
+            "errors.  The user may check for topological errors by selecting Surface"
+            "Menu->Topology->Topology Error Report.  An \"Euler Count\" of 2 indicates"
+            "that there are no topological errors and the surface is topologically "
             "equivalent to a sphere.\n"
             "\n"
-            "If you are using surface shape depth maps for comparing coritical shape \n"
-            "your topological corrections MUST be done in the volume since the \n"
-            "segmentation volume is used to generate the cerebral hull which in turn\n"
+            "If you are using surface shape depth maps for comparing coritical shape "
+            "your topological corrections MUST be done in the volume since the "
+            "segmentation volume is used to generate the cerebral hull which in turn"
             "is used to compute depth measurements.\n"
             "\n"
-            "When this option is used, two fiducial coordinate files and two closed\n"
-            "topology files will be produced.  One fiducial coordinate and closed\n"
-            "topology file pair will contain the uncorrected surface and the other\n"
+            "When this option is used, two fiducial coordinate files and two closed"
+            "topology files will be produced.  One fiducial coordinate and closed"
+            "topology file pair will contain the uncorrected surface and the other"
             "will contain the corrected surface.\n"
             "\n"
-            "If you have questions or wish to provided feedback on this option, please\n"
+            "If you have questions or wish to provided feedback on this option, please"
             "send an email to john@brainmap.wustl.edu.";
          
-         GuiMessageBox::warning(this, "WARNING", msg, "OK");
+         QMessageBox::warning(this, "WARNING", msg);
       }
    }
 }
@@ -1031,7 +1031,7 @@ GuiVolumeSureFitSegmentationDialog::slotBackPushButton()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainSet()->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There are no volumes loaded.", "OK");
+      QMessageBox::critical(this, "ERROR", "There are no volumes loaded.");
       showPage(pagesStackedWidget->widget(0), true);
       return;
    }
@@ -1066,7 +1066,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainSet()->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There are no volumes loaded.", "OK");
+      QMessageBox::critical(this, "ERROR", "There are no volumes loaded.");
       showPage(pagesStackedWidget->widget(0));
       return;
    }
@@ -1096,7 +1096,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       }
       
       if (msg.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
       
@@ -1137,23 +1137,23 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       if (QFile::exists(specFileName)) {
          if (StringUtilities::endsWith(specFileName, "/") ||
              StringUtilities::endsWith(specFileName, "\\")) {
-            GuiMessageBox::critical(this, "ERROR",
-               "Name of spec file is missing.\n", "OK");
+            QMessageBox::critical(this, "ERROR",
+               "Name of spec file is missing.");
             return;
          }         
       }
       else {
          const QString directory(FileUtilities::dirname(specFileName));
          if (QFile::exists(directory) == false) {
-            GuiMessageBox::critical(this, "ERROR",
-               "Directory of spec file does not exist.\n"
-               "Create the directory before continuing.", "OK");
+            QMessageBox::critical(this, "ERROR",
+               "Directory of spec file does not exist."
+               "Create the directory before continuing.");
             return;
          }
          
          if (filename == SpecFile::getSpecFileExtension()) {
-            GuiMessageBox::critical(this, "ERROR",
-               "Name of spec file is missing, just have extension.\n", "OK");
+            QMessageBox::critical(this, "ERROR",
+               "Name of spec file is missing, just have extension.\n");
             return;
          }
       }
@@ -1201,18 +1201,20 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
    if (currentPage == volumeSelectionPage) {
       const VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
       if (vf == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "You must select a volume.", "OK");
+         QMessageBox::critical(this, "ERROR", "You must select a volume.");
          return;
       }
       
       switch (volumeSelectionControl->getSelectedVolumeType()) {
          case VolumeFile::VOLUME_TYPE_ANATOMY:
             if (vf != bmv->getSelectedVolumeAnatomyFile()) {
-               if (GuiMessageBox::warning(this, "Warning",
-                     "The anatomy volume selected for segmenting is \n"
-                        "different than the anatomy volume selected on \n"
+               if (QMessageBox::warning(this, "Warning",
+                     "The anatomy volume selected for segmenting is "
+                        "different than the anatomy volume selected on "
                         "the Display Control Dialog.", 
-                     "Continue", "Change Volume") != 0) {
+                     (QMessageBox::Ok | QMessageBox::Cancel),
+                     QMessageBox::Cancel)
+                        == QMessageBox::Cancel) {
                   return;
                }
             }
@@ -1229,11 +1231,13 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
             break;
          case VolumeFile::VOLUME_TYPE_SEGMENTATION:
             if (vf != bmv->getSelectedVolumeSegmentationFile()) {
-               if (GuiMessageBox::warning(this, "Warning",
-                     "The segmentation volume selected for processing is \n"
-                        "different than the segmentation volume selected \n"
+               if (QMessageBox::warning(this, "Warning",
+                     "The segmentation volume selected for processing is "
+                        "different than the segmentation volume selected "
                         "on the Display Control Dialog.", 
-                     "Continue", "Change Volume") != 0) {
+                     (QMessageBox::Ok | QMessageBox::Cancel),
+                     QMessageBox::Cancel)
+                        == QMessageBox::Cancel) {
                   return;
                }
             }
@@ -1251,7 +1255,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
    if (currentPage == volumeAttributesPage) {
       VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
       if (vf == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "You must select a volume.", "OK");
+         QMessageBox::critical(this, "ERROR", "You must select a volume.");
          return;
       }
       VolumeFile::ORIENTATION orient[3];
@@ -1288,8 +1292,8 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
          std::ostringstream str;
          str << "Voxels must be in the range (0.0, 255.0).\n"
              << "The selected volume's range is (" << minVoxel << ", " << maxVoxel << ").\n"
-             << "Press the OK button to close this message dialog.  After doing so,\n"
-             << "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab\n"
+             << "Press the OK button to close this message dialog.  After doing so,"
+             << "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab"
              << "labeled \"Data\" and then press the button labeled \"Rescale Voxels\".";
          if (msg.isEmpty() == false) {
             msg.append("\n");
@@ -1298,7 +1302,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       }
       
       if (msg.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
 
@@ -1315,17 +1319,28 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
              << ", " << spacing[1]
              << ", " << spacing[2]
              << ")."
+             << "0.5 mm voxels are acceptable for monkeys."
              << "   Do you want to continue?";
-         if (GuiMessageBox::warning(this, "Warning", str.str().c_str(), "Yes", "No") != 0) {
+         if (QMessageBox::warning(this, 
+                                  "Warning", 
+                                  str.str().c_str(), 
+                                 (QMessageBox::Yes | QMessageBox::No),
+                                 QMessageBox::No)
+                                    == QMessageBox::No) {
             return;
          }
       }
       
       if ((origin[0] >= 0.0) || (origin[1] >= 0.0) || (origin[2] >= 0.0)) {
-         QString msg("At least one origin value is greater than or equal to zero.\n"
-                         "This indicates that the origin may not be at the Anterior\n"
+         QString msg("At least one origin value is greater than or equal to zero."
+                         "This indicates that the origin may not be at the Anterior"
                          "commissure.  Do you want to continue ?");
-         if (GuiMessageBox::warning(this, "Warning", msg, "Yes", "No") != 0) {
+         if (QMessageBox::warning(this, 
+                                  "Warning", 
+                                  msg,
+                                 (QMessageBox::Yes | QMessageBox::No),
+                                 QMessageBox::No)
+                                    == QMessageBox::No) {
             return;
          }
       }
@@ -1342,7 +1357,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
          typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
       }
       else {
-         GuiMessageBox::critical(this, "ERROR", "Choose a volume file write type.", "OK");
+         QMessageBox::critical(this, "ERROR", "Choose a volume file write type.");
          return;
       }
    }
@@ -1363,7 +1378,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       }
       
       if (msg.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
       
@@ -1859,7 +1874,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainSet()->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There are no volumes loaded.", "OK");
+      QMessageBox::critical(this, "ERROR", "There are no volumes loaded.");
       return true;
    }
    
@@ -1873,7 +1888,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
       case VolumeFile::VOLUME_TYPE_ANATOMY:
          anatomyVolume = volumeSelectionControl->getSelectedVolumeFile();
          if (anatomyVolume == NULL) {
-            GuiMessageBox::critical(this, "ERROR", "No anatomy volume is selected.", "OK");
+            QMessageBox::critical(this, "ERROR", "No anatomy volume is selected.");
             return true;
          }
          vf = anatomyVolume;
@@ -1891,7 +1906,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
       case VolumeFile::VOLUME_TYPE_SEGMENTATION:
          segmentationVolume = volumeSelectionControl->getSelectedVolumeFile();
          if (segmentationVolume == NULL) {
-            GuiMessageBox::critical(this, "ERROR", "No segmentation volume is selected.", "OK");
+            QMessageBox::critical(this, "ERROR", "No segmentation volume is selected.");
             return true;
          }
          vf = segmentationVolume;
@@ -1903,7 +1918,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    }
    
    if ((anatomyVolume == NULL) && (segmentationVolume == NULL)) {
-      GuiMessageBox::critical(this, "ERROR", "No Anatomical Volume is Selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "No Anatomical Volume is Selected.");
       return true;
    }
    
@@ -1911,12 +1926,14 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    int acIJK[3];
    float offset[3];
    if (vf->convertCoordinatesToVoxelIJK(zeros, acIJK, offset) == false) {
-      if (GuiMessageBox::warning(this, "WARNING", 
-                                 "The Anterior Commissure is not located inside the volume.\n"
-                                 "If you are segmenting a partial hemisphere, this is \n"
-                                 "probably okay.  If you are segmenting a full hemisphere,\n"
+      if (QMessageBox::warning(this, "WARNING", 
+                                 "The Anterior Commissure is not located inside the volume."
+                                 "If you are segmenting a partial hemisphere, this is "
+                                 "probably okay.  If you are segmenting a full hemisphere,"
                                  "the origin of the volume is probably not set correctly.",
-                                 "Continue", "Cancel") != 0) {
+                                 (QMessageBox::Ok | QMessageBox::Cancel),
+                                 QMessageBox::Cancel)
+                                    == QMessageBox::Cancel) {
          return true;
       }
    }
@@ -1926,15 +1943,17 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    //
    if (generateRawAndFiducialSurfaceCheckBox->isChecked() &&
        generateRawAndFiducialSurfaceCheckBox->isEnabled()) {
-      if (GuiMessageBox::information(this, "INFORMATION",
-            "You have chosen to generate raw and fiducial surfaces.\n"
-            "If the selected spec file contains any surface type files\n"
-            "(coordinate, metric, topology, etc.) they will be removed\n"
-            "from the spec file and deleted from the disk.  These files\n"
-            "will be deleted since the number of nodes in the newly \n"
-            "generated files will be different and thus incompatible \n"
+      if (QMessageBox::information(this, "INFORMATION",
+            "You have chosen to generate raw and fiducial surfaces.  "
+            "If the selected spec file contains any surface type files"
+            "(coordinate, metric, topology, etc.) they will be removed"
+            "from the spec file and deleted from the disk.  These files"
+            "will be deleted since the number of nodes in the newly "
+            "generated files will be different and thus incompatible "
             " with the previously generated files.\n",
-            "OK", "Cancel") != 0) {
+            (QMessageBox::Ok | QMessageBox::Cancel),
+            QMessageBox::Ok)
+               == QMessageBox::Cancel) {
          return true;
       }
    }
@@ -2117,7 +2136,8 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
       
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       QtDialog::show();  // use this otherwise initial page gets shown
       segmentationTime = algorithmTimer.elapsed() * 0.001;
       return true;

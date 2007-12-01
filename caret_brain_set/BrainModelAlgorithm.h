@@ -51,6 +51,9 @@ class BrainModelAlgorithm : public QObject {
       /// get warnings from execution
       QString getWarningMessages() const { return warningMessages; }
    
+      /// get a text description of algorithm
+      virtual QString getTextDescription() const;
+      
    signals:
       /// signal emitted to indicate progress
       void signalProgressUpdate(const QString& text,

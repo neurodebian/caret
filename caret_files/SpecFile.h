@@ -105,6 +105,10 @@ class SpecFile : public AbstractFile {
             // destructor
             ~Entry();
             
+            // comparison operator
+            bool operator<(const Entry& e) const
+               { return descriptiveName < e.descriptiveName; }
+
             // initialize
             void initialize(const QString& descriptiveNameIn,
                             const QString& specFileTagIn,
@@ -249,10 +253,10 @@ class SpecFile : public AbstractFile {
       bool onlySceneFilesSelected() const;
       
       // get all entries
-      void getAllEntries(std::vector<Entry*>& allEntriesOut) { allEntriesOut = allEntries; }
+      void getAllEntries(std::vector<Entry>& allEntriesOut);
             
       // convert all data files to the specified data type
-      void convertAllDataFilesToType(const AbstractFile::FILE_FORMAT ft,
+      void convertAllDataFilesToType(const std::vector<AbstractFile::FILE_FORMAT> ft,
                                      const bool printInfoToStdout);
       
       // get all of the data files in the spec file
@@ -284,6 +288,11 @@ class SpecFile : public AbstractFile {
       // Set the specified topology and coordinate files as selected.
       void setTopoAndCoordSelected(const QString& topoName,
                                    const QString& coordName,
+                                   const Structure structureIn);
+
+      // Set the specified topology and coordinate files as selected.
+      void setTopoAndCoordSelected(const QString& topoName,
+                                   const std::vector<QString>& coordNames,
                                    const Structure structureIn);
 
       /// set to write only files that are selected to the spec file
@@ -386,6 +395,7 @@ class SpecFile : public AbstractFile {
       static QString getLatLonFileExtension() { return ".latlon"; }
       static QString getSectionFileExtension() { return ".section"; }
       static QString getPaintFileExtension() { return ".paint"; }
+      static QString getRegionOfInterestFileExtension() { return ".roi"; }
       static QString getProbabilisticAtlasFileExtension() { return ".atlas"; }
       static QString getAreaColorFileExtension() { return ".areacolor"; }
       static QString getRgbPaintFileExtension() { return ".RGB_paint"; }
@@ -446,6 +456,7 @@ class SpecFile : public AbstractFile {
       static QString getXmlFileExtension() { return ".xml"; }
       static QString getTextFileExtension() { return ".txt"; }
       static QString getNeurolucidaFileExtension() { return ".xml"; }
+      static QString getCaretScriptFileExtension() { return ".script"; }
       
       /// all spec file "Entry" DO NOT CLEAR
       std::vector<Entry*> allEntries;
@@ -582,6 +593,8 @@ class SpecFile : public AbstractFile {
       Entry vocabularyFile;
       
       Entry documentFile;
+      
+      Entry scriptFile;
       
       static const QString volumeFunctionalFileTag;
       static const QString volumePaintFileTag;
@@ -728,6 +741,8 @@ class SpecFile : public AbstractFile {
       
       static const QString vtkModelFileTag;
 
+      static const QString scriptFileTag;
+      
       static const QString imageFileTag;
       static const QString sceneFileTag;
       static const QString geodesicDistanceFileTag;
@@ -968,6 +983,7 @@ class SpecFile : public AbstractFile {
    
    const QString SpecFile::imageFileTag = "image_file";
    const QString SpecFile::sceneFileTag = "scene_file";
+   const QString SpecFile::scriptFileTag = "script_file";
    
    const QString SpecFile::metaAnalysisFileTag = "meta_analysis_file";
    const QString SpecFile::studyMetaDataFileTag = "study_metadata_file";

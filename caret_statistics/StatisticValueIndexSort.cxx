@@ -32,6 +32,7 @@
  * Constructor.
  */
 StatisticValueIndexSort::StatisticValueIndexSort()
+   : StatisticAlgorithm("Value-Index Sort")
 {
 }
               

@@ -44,6 +44,7 @@
 #include "DebugControl.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
+#include "StatisticHistogram.h"
 #include "SurfaceShapeFile.h"
 #include "TopologyFile.h"
 
@@ -792,7 +793,7 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
                segmentVolumeForProcessing = new VolumeFile(*correctedVolume);
             }
          }
-         
+                  
          //
          // If the surface should be generated
          //
@@ -805,7 +806,7 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
             // Only need to do this if generating an ellipsoid too
             //
             if (generateEllipsoidSurfaceFlag) {
-               if ((partialHemispherePadding[0] != 0)  ||
+               if ((partialHemispherePadding[0] != 0) ||
                    (partialHemispherePadding[1] != 0) ||
                    (partialHemispherePadding[2] != 0) ||
                    (partialHemispherePadding[3] != 0) ||
@@ -914,6 +915,11 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
       }
    }
    catch (BrainModelAlgorithmException& e) {
+      freeAllFilesInMemory();
+      removeProgressDialog();
+      throw BrainModelAlgorithmException(e.whatQString());
+   }
+   catch (FileException& e) {
       freeAllFilesInMemory();
       removeProgressDialog();
       throw BrainModelAlgorithmException(e.whatQString());
@@ -1270,11 +1276,11 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    //
    // Set CUT.FACE paint ID for padded volumes
    //
-   assignPaddedCutFaceNodePainting(rawCoordFile,
+   assignPaddedCutFaceNodePainting(fiducialSurface->getCoordinateFile(), //rawCoordFile,
                                    segmentVol,
                                    pf,
                                    1);
-                                   
+
    //  #CombineVols.py subrect CerebralHull.erode.4.mnc $Segment_file BuriedCortex.4deep
    //  vol = volume.Volume (che4fname)
    //  data = vol.VoxData3D
@@ -1504,6 +1510,7 @@ BrainModelVolumeSureFitSegmentation::assignPaddedCutFaceNodePainting(const Coord
        (partialHemispherePadding[3] > 0) ||
        (partialHemispherePadding[4] > 0) ||
        (partialHemispherePadding[5] > 0)) {
+
       //
       // Make a copy of the segmentation volume
       //
@@ -2444,6 +2451,88 @@ BrainModelVolumeSureFitSegmentation::disconnectHindBrain() throw (BrainModelAlgo
 }      
 
 /**
+ * generate the corpus callosum slice (assumes AC at center)
+ * estimate white matter peak if invalid.
+ */
+void 
+BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(const VolumeFile& anatomyVolumeFileIn,
+                                        VolumeFile& corpusCallosumVolumeFileOut,
+                                        const Structure& structure,
+                                        const float grayMatterPeakIn,
+                                        const float whiteMatterPeakIn) throw (BrainModelAlgorithmException)
+{
+   float grayMatterPeak  = grayMatterPeakIn;
+   float whiteMatterPeak = whiteMatterPeakIn;
+   if ((grayMatterPeak <= 0) ||
+       (whiteMatterPeak <= 0)) {
+      const StatisticHistogram* hist = anatomyVolumeFileIn.getHistogram();
+      int grayPeakBucketNumber, whitePeakBucketNumber,
+          grayMinimumBucketNumber, whiteMaximumBucketNumber,
+          grayWhiteBoundaryBucketNumber, csfPeakBucketNumber;
+      hist->getGrayWhitePeakEstimates(grayPeakBucketNumber, whitePeakBucketNumber,
+                                      grayMinimumBucketNumber, whiteMaximumBucketNumber,
+                                      grayWhiteBoundaryBucketNumber, csfPeakBucketNumber);
+      if (grayMatterPeak <= 0) {
+         grayMatterPeak  = hist->getDataValueForBucket(grayPeakBucketNumber);
+      }
+      if (whiteMatterPeak <= 0) {
+         whiteMatterPeak = hist->getDataValueForBucket(whitePeakBucketNumber);
+      }
+      delete hist;
+   }
+   
+   const float whiteMatterThresh = (grayMatterPeak + whiteMatterPeak) * 0.5;
+   
+   corpusCallosumVolumeFileOut = anatomyVolumeFileIn;
+   corpusCallosumVolumeFileOut.thresholdVolume(whiteMatterThresh);
+
+   const float acXYZ[3] = { 0.0, 0.0, 0.0 };
+   int acIJK[3];
+   corpusCallosumVolumeFileOut.convertCoordinatesToVoxelIJK(acXYZ, acIJK);
+   
+   int Hem = 0;
+   if (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
+      Hem = 1;
+   }
+   const int Hem1   = Hem;
+   const int Hem2   = 1 - Hem1;
+   const int HemDbl = 2 * Hem1;
+   const int Hem3   = HemDbl - 1;
+   const int xAC_1 = acIJK[0] + Hem3 * 1;
+   const int xAC_1_low  = xAC_1 * Hem2 + acIJK[0] * Hem1;
+	const int xAC_1_high = xAC_1 * Hem1 + acIJK[0] * Hem2;
+   
+	//MaskVol.py WM.thresh.mnc CC.slice xAC_1_low xAC_1_high `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
+   int extent[6];
+	extent[0] = xAC_1_low;
+	extent[1] = xAC_1_high;
+	extent[2] = acIJK[1] - 50;
+	extent[3] = acIJK[1] + 40;
+	extent[4] = acIJK[2];
+	extent[5] = acIJK[2] + 40;
+	//%MaskVolume (ccdata, xdim, ydim, zdim, extent);
+	//%write_minc ("CC.slice.mnc", ccdata, xdim, ydim, zdim);
+   corpusCallosumVolumeFileOut.maskVolume(extent);
+   corpusCallosumVolumeFileOut.stretchVoxelValues();
+
+              
+	//FillBiggestObject.py CC.slice.mnc CC.slice.fill.mnc xAC_1_low xAC_1_high  `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
+	//%FindBiggestObjectWithinMask (ccdata, xdim, ydim, zdim, extent[0],extent[1],extent[2],extent[3],extent[4],extent[5], seed);
+	//%vtkFloodFill (seed, ccdata, 255, 255, 0, xdim, ydim, zdim);
+	//%write_minc ("CorpusCallosumSlice.mnc", ccdata, xdim, ydim, zdim);
+
+   VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+   corpusCallosumVolumeFileOut.findBiggestObjectWithinMask(extent, 255, 255, voxelSeed);
+   if (voxelSeed.getI() < 0) {
+      throw BrainModelAlgorithmException(
+         "findBiggestObjectWithinMask() failed to find biggest object when\n"
+         "trying to create intermediate volume \"CorpusCallosumSlice\".");
+   }
+   corpusCallosumVolumeFileOut.floodFillWithVTK(voxelSeed, 255, 255, 0);
+   corpusCallosumVolumeFileOut.setDescriptiveLabel("CorpusCallosumSlice");   
+}
+                                        
+/**
  * cut the corpus callossum.
  */
 void 
@@ -2514,7 +2603,22 @@ BrainModelVolumeSureFitSegmentation::cutCorpusCallossum() throw (BrainModelAlgor
          "trying to create intermediate volume \"CorpusCallosumSlice\".");
    }
    ccdata.floodFillWithVTK(voxelSeed, 255, 255, 0);
-   writeDebugVolume(&ccdata, "CorpusCallosumSlice");
+   //writeDebugVolume(&ccdata, "CorpusCallosumSlice");
+   
+   //
+   // Now save the corpus callosum slice volume (30 July 2007)
+   // which will be used for sulcal ID
+   //
+   {
+      QString fileNameWritten, dataFileNameWritten;
+      ccdata.setDescriptiveLabel("CorpusCallosumSlice");
+      VolumeFile::writeVolumeFile(&ccdata,
+                               typeOfVolumeFilesToWrite,
+                               "CorpusCallosumSlice",
+                               false,
+                               fileNameWritten,
+                               dataFileNameWritten);
+   }
 
 	//%FindLimits (xdim, ydim, zdim, ccdata, "CC.slice.fill.limits", extent);
    ccdata.findLimits("CC.slice.fill.limits", extent);

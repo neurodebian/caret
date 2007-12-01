@@ -34,7 +34,7 @@
 class QComboBox;
 class QLineEdit;
 class QTextEdit;
-class QtWidgetGroup;
+class WuQWidgetGroup;
 
 /// widget for editing study info
 class GuiStudyInfoEditorWidget : public QWidget {
@@ -106,10 +106,10 @@ class GuiStudyInfoEditorWidget : public QWidget {
       QTextEdit* commentTextEdit;
       
       /// stereotaxic space widget group
-      QtWidgetGroup* stereotaxicSpaceWidgetGroup;
+      WuQWidgetGroup* stereotaxicSpaceWidgetGroup;
       
       /// partitioning scheme widget group
-      QtWidgetGroup* partitioningSchemeWidgetGroup;
+      WuQWidgetGroup* partitioningSchemeWidgetGroup;
 };
 
 #endif // __GUI_STUDY_INFO_EDITOR_WIDGET_H__

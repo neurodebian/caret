@@ -72,8 +72,11 @@ class StatisticDataGroup {
       /// get a pointer to data (const method)
       const float* getPointerToData() const { return data; }
       
-      /// get the sum of all of the data 
+      // get the sum of all of the data 
       double getSumOfData() const;
+      
+      // get mean of data
+      float getMeanOfData() const;
       
    protected:
       // copy helper for copy constructor and operator=

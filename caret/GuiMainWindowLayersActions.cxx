@@ -26,6 +26,8 @@
 #include <QAction>
 #include <QApplication>
 #include <QInputDialog>
+#include <QMessageBox>
+#include <QPushButton>
 
 #include "BorderColorFile.h"
 #include "BrainModelBorderSet.h"
@@ -50,6 +52,7 @@
 #include "GuiBorderAttributesDialog.h"
 #include "GuiBorderComparisonDialog.h"
 #include "GuiBorderProjectionDialog.h"
+#include "GuiCellAndFociAttributeAssignmentDialog.h"
 #include "GuiCellAndFociReportDialog.h"
 #include "GuiCellAttributesDialog.h"
 #include "GuiChooseNodeAttributeColumnDialog.h"
@@ -66,11 +69,11 @@
 #include "GuiDeleteBordersByNameDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowLayersActions.h"
-#include "GuiMessageBox.h"
 #include "GuiMultipleInputDialog.h"
 #include "GuiCellsOrFociProjectionDialog.h"
 #include "PaintFile.h"
 #include "QtDataEntryDialog.h"
+#include "QtTableDialog.h"
 #include "StudyMetaDataFile.h"
 #include "global_variables.h"
 
@@ -85,428 +88,440 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    bordersDrawAction = new QAction(parent);
    bordersDrawAction->setText("Draw Borders...");
    bordersDrawAction->setObjectName("bordersDrawAction");
-   QObject::connect(bordersDrawAction, SIGNAL(activated()),
+   QObject::connect(bordersDrawAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayDrawBorderDialog()));
                     
    bordersVolumeToFiducialCellsAction = new QAction(parent);
    bordersVolumeToFiducialCellsAction->setText("Convert Volume Borders to Fiducial Cells");
    bordersVolumeToFiducialCellsAction->setObjectName("bordersVolumeToFiducialCellsAction");
-   QObject::connect(bordersVolumeToFiducialCellsAction, SIGNAL(activated()),
+   QObject::connect(bordersVolumeToFiducialCellsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersVolumeToFiducialCells()));
                     
    bordersVolumeToBordersFiducialAction = new QAction(parent);
    bordersVolumeToBordersFiducialAction->setText("Convert Volume Borders to Fiducial Borders");
    bordersVolumeToBordersFiducialAction->setObjectName("bordersVolumeToBordersFiducialAction");
-   QObject::connect(bordersVolumeToBordersFiducialAction, SIGNAL(activated()),
+   QObject::connect(bordersVolumeToBordersFiducialAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersVolumeToBordersFiducial()));
                     
    bordersAverageAction = new QAction(parent);
    bordersAverageAction->setText("Create Average Borders...");
    bordersAverageAction->setObjectName("bordersAverageAction");
-   QObject::connect(bordersAverageAction, SIGNAL(activated()),
+   QObject::connect(bordersAverageAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersAverage()));
                     
    bordersCompareAction = new QAction(parent);
    bordersCompareAction->setText("Compute Average Separation Between Border Point Pairs...");
    bordersCompareAction->setObjectName("bordersCompareAction");
-   QObject::connect(bordersCompareAction, SIGNAL(activated()),
+   QObject::connect(bordersCompareAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersCompare()));
                     
    bordersFromPaintAction = new QAction(parent);
    bordersFromPaintAction->setText("Create Borders From Paint Regions...");
    bordersFromPaintAction->setObjectName("bordersFromPaintAction");
-   QObject::connect(bordersFromPaintAction, SIGNAL(activated()),
+   QObject::connect(bordersFromPaintAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersFromPaintAction()));
                     
    bordersCreateGridAction = new QAction(parent);
    bordersCreateGridAction->setText("Create Cartesian Flat Grid Borders...");
    bordersCreateGridAction->setObjectName("bordersCreateGridAction");
-   QObject::connect(bordersCreateGridAction, SIGNAL(activated()),
+   QObject::connect(bordersCreateGridAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersCreateGrid()));
                     
    bordersCreateAnalysisGridAction = new QAction(parent);
    bordersCreateAnalysisGridAction->setText("Create Cartesian Flat Analysis Grid Borders...");
    bordersCreateAnalysisGridAction->setObjectName("bordersCreateAnalysisGridAction");
-   QObject::connect(bordersCreateAnalysisGridAction, SIGNAL(activated()),
+   QObject::connect(bordersCreateAnalysisGridAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersCreateAnalysisGrid()));
                     
    bordersCreateSphericalAction = new QAction(parent);
    bordersCreateSphericalAction->setText("Create Lat/Lon Spherical Borders");
    bordersCreateSphericalAction->setObjectName("bordersCreateSphericalAction");
-   QObject::connect(bordersCreateSphericalAction, SIGNAL(activated()),
+   QObject::connect(bordersCreateSphericalAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersCreateSpherical()));
                     
    bordersConvertToVtkModelAction = new QAction(parent);
    bordersConvertToVtkModelAction->setText("Convert Displayed Borders to VTK Model");
    bordersConvertToVtkModelAction->setObjectName("bordersConvertToVtkModelAction");
-   QObject::connect(bordersConvertToVtkModelAction, SIGNAL(activated()),
+   QObject::connect(bordersConvertToVtkModelAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersConvertToVtkModel()));
                     
    bordersEditColorsAction = new QAction(parent);
    bordersEditColorsAction->setText("Edit Border Colors...");
    bordersEditColorsAction->setObjectName("bordersEditColorsAction");
-   QObject::connect(bordersEditColorsAction, SIGNAL(activated()),
+   QObject::connect(bordersEditColorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersEditColors()));
                     
    bordersResampleDisplayedAction = new QAction(parent);
    bordersResampleDisplayedAction->setText("Resample Displayed Borders...");
    bordersResampleDisplayedAction->setObjectName("bordersResampleDisplayedAction");
-   QObject::connect(bordersResampleDisplayedAction, SIGNAL(activated()),
+   QObject::connect(bordersResampleDisplayedAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersResampleDisplayed()));
                     
    bordersRenameWithMouseAction = new QAction(parent);
    bordersRenameWithMouseAction->setText("Rename Borders With Mouse");
    bordersRenameWithMouseAction->setObjectName("bordersRenameWithMouseAction");
-   QObject::connect(bordersRenameWithMouseAction, SIGNAL(activated()),
+   QObject::connect(bordersRenameWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersRenameWithMouse()));
                     
    bordersReverseWithMouseAction = new QAction(parent);
    bordersReverseWithMouseAction->setText("Reverse Borders With Mouse");
    bordersReverseWithMouseAction->setObjectName("bordersReverseWithMouseAction");
-   QObject::connect(bordersReverseWithMouseAction, SIGNAL(activated()),
+   QObject::connect(bordersReverseWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersReverseWithMouse()));
                     
    bordersReverseDisplayedAction = new QAction(parent);
    bordersReverseDisplayedAction->setText("Reverse Displayed Borders");
    bordersReverseDisplayedAction->setObjectName("bordersReverseDisplayedAction");
-   QObject::connect(bordersReverseDisplayedAction, SIGNAL(activated()),
+   QObject::connect(bordersReverseDisplayedAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersReverseDisplayed()));
                     
    bordersOrientDisplayedClockwiseAction = new QAction(parent);
    bordersOrientDisplayedClockwiseAction->setText("Orient Displayed Borders Clockwise");
    bordersOrientDisplayedClockwiseAction->setObjectName("bordersOrientDisplayedClockwiseAction");
-   QObject::connect(bordersOrientDisplayedClockwiseAction, SIGNAL(activated()),
+   QObject::connect(bordersOrientDisplayedClockwiseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersOrientDisplayedClockwise()));
                     
    bordersProjectAction = new QAction(parent);
    bordersProjectAction->setText("Project Borders...");
    bordersProjectAction->setObjectName("bordersProjectAction");
-   QObject::connect(bordersProjectAction, SIGNAL(activated()),
+   QObject::connect(bordersProjectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersProject()));
                     
    bordersDeletePointWithMouseAction = new QAction(parent);
    bordersDeletePointWithMouseAction->setText("Delete Border Point With Mouse");
    bordersDeletePointWithMouseAction->setObjectName("bordersDeletePointWithMouseAction");
-   QObject::connect(bordersDeletePointWithMouseAction, SIGNAL(activated()),
+   QObject::connect(bordersDeletePointWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersDeletePointWithMouse()));
                     
    bordersDeleteWithMouseAction = new QAction(parent);
    bordersDeleteWithMouseAction->setText("Delete Border With Mouse");
    bordersDeleteWithMouseAction->setObjectName("bordersDeleteWithMouseAction");
-   QObject::connect(bordersDeleteWithMouseAction, SIGNAL(activated()),
+   QObject::connect(bordersDeleteWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersDeleteWithMouse()));
                     
    bordersDeleteByNameAction = new QAction(parent);
    bordersDeleteByNameAction->setText("Delete Borders By Name...");
    bordersDeleteByNameAction->setObjectName("bordersDeleteByNameAction");
-   QObject::connect(bordersDeleteByNameAction, SIGNAL(activated()),
+   QObject::connect(bordersDeleteByNameAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotDeleteBordersByName()));
                     
    bordersDeleteAllAction = new QAction(parent);
    bordersDeleteAllAction->setText("Delete All Borders...");
    bordersDeleteAllAction->setObjectName("bordersDeleteAllAction");
-   QObject::connect(bordersDeleteAllAction, SIGNAL(activated()),
+   QObject::connect(bordersDeleteAllAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersDeleteAll()));
                     
    bordersMovePointWithMouseAction = new QAction(parent);
    bordersMovePointWithMouseAction->setText("Move Border Point With Mouse");
    bordersMovePointWithMouseAction->setObjectName("bordersMovePointWithMouseAction");
-   QObject::connect(bordersMovePointWithMouseAction, SIGNAL(activated()),
+   QObject::connect(bordersMovePointWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersMovePointWithMouse()));
                     
    bordersDeletePointsOutsideSurfaceAction = new QAction(parent);
    bordersDeletePointsOutsideSurfaceAction->setText("Delete Border Points Outside Surface");
    bordersDeletePointsOutsideSurfaceAction->setObjectName("bordersDeletePointsOutsideSurfaceAction");
-   QObject::connect(bordersDeletePointsOutsideSurfaceAction, SIGNAL(activated()),
+   QObject::connect(bordersDeletePointsOutsideSurfaceAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersDeletePointsOutsideSurface()));
                     
    bordersEditAttributesAction = new QAction(parent);
    bordersEditAttributesAction->setText("Edit Border Attributes...");
    bordersEditAttributesAction->setObjectName("bordersEditAttributesAction");
-   QObject::connect(bordersEditAttributesAction, SIGNAL(activated()),
+   QObject::connect(bordersEditAttributesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersEditAttributes()));
                     
    bordersClearHighlightingAction = new QAction(parent);
    bordersClearHighlightingAction->setText("Clear Border Highlighting");
    bordersClearHighlightingAction->setObjectName("bordersClearHighlightingAction");
-   QObject::connect(bordersClearHighlightingAction, SIGNAL(activated()),
+   QObject::connect(bordersClearHighlightingAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersClearHighlighting()));
                     
    bordersCreateInterpolatedAction = new QAction(parent);
    bordersCreateInterpolatedAction->setText("Create Interpolated Borders...");
    bordersCreateInterpolatedAction->setObjectName("bordersCreateInterpolatedAction");
-   QObject::connect(bordersCreateInterpolatedAction, SIGNAL(activated()),
+   QObject::connect(bordersCreateInterpolatedAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersCreateInterpolated()));
                     
    fociMapStereotaxicFocusAction = new QAction(parent);
    fociMapStereotaxicFocusAction->setText("Map Stereotaxic Focus...");
    fociMapStereotaxicFocusAction->setObjectName("fociMapStereotaxicFocusAction");
-   QObject::connect(fociMapStereotaxicFocusAction, SIGNAL(activated()),
+   QObject::connect(fociMapStereotaxicFocusAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociMapStereotaxicFocus()));
                     
    fociConvertToVtkModelAction = new QAction(parent);
    fociConvertToVtkModelAction->setText("Convert Displayed Foci to VTK Model");
    fociConvertToVtkModelAction->setObjectName("fociConvertToVtkModelAction");
-   QObject::connect(fociConvertToVtkModelAction, SIGNAL(activated()),
+   QObject::connect(fociConvertToVtkModelAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociConvertToVtkModel()));
                     
    fociEditColorsAction = new QAction(parent);
    fociEditColorsAction->setText("Edit Foci Colors...");
    fociEditColorsAction->setObjectName("fociEditColorsAction");
-   QObject::connect(fociEditColorsAction, SIGNAL(activated()),
+   QObject::connect(fociEditColorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociEditColors()));
                     
    fociProjectAction = new QAction(parent);
    fociProjectAction->setText("Project Fiducial Foci...");
    fociProjectAction->setObjectName("fociProjectAction");
-   QObject::connect(fociProjectAction, SIGNAL(activated()),
+   QObject::connect(fociProjectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociProject()));
                     
    fociPalsProjectAction = new QAction(parent);
    fociPalsProjectAction->setText("Project Foci To PALS Atlas...");
    fociPalsProjectAction->setObjectName("fociPalsProjectAction");
-   QObject::connect(fociPalsProjectAction, SIGNAL(activated()),
+   QObject::connect(fociPalsProjectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociPalsProject()));
                     
    fociDeleteAllAction = new QAction(parent);
    fociDeleteAllAction->setText("Delete All Foci...");
    fociDeleteAllAction->setObjectName("fociDeleteAllAction");
-   QObject::connect(fociDeleteAllAction, SIGNAL(activated()),
+   QObject::connect(fociDeleteAllAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociDeleteAll()));
     
    fociAssignClassToDisplayedFoci = new QAction(parent);
    fociAssignClassToDisplayedFoci->setText("Assign Class to Displayed Foci...");
    fociAssignClassToDisplayedFoci->setObjectName("fociAssignClassToDisplayedFoci");
-   QObject::connect(fociAssignClassToDisplayedFoci, SIGNAL(activated()),
+   QObject::connect(fociAssignClassToDisplayedFoci, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociAssignClassToDisplayedFoci()));
                     
    fociDeleteNonDisplayedAction = new QAction(parent);
    fociDeleteNonDisplayedAction->setText("Delete Foci Not Displayed on Main Window Surface...");
    fociDeleteNonDisplayedAction->setObjectName("fociDeleteNonDisplayedAction");
-   QObject::connect(fociDeleteNonDisplayedAction, SIGNAL(activated()),
+   QObject::connect(fociDeleteNonDisplayedAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociDeleteNonDisplayed()));
                     
    fociDeleteNonMatchingColors = new QAction(parent);
    fociDeleteNonMatchingColors->setText("Delete Foci Colors Not Matching Foci...");
    fociDeleteNonMatchingColors->setObjectName("fociDeleteNonMatchingColors");
-   QObject::connect(fociDeleteNonMatchingColors, SIGNAL(activated()),
+   QObject::connect(fociDeleteNonMatchingColors, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociDeleteNonMatchingColors()));
                     
    fociDeleteUsingMouseAction = new QAction(parent);
    fociDeleteUsingMouseAction->setText("Delete Focus Using Mouse");
    fociDeleteUsingMouseAction->setObjectName("fociDeleteUsingMouseAction");
-   QObject::connect(fociDeleteUsingMouseAction, SIGNAL(activated()),
+   QObject::connect(fociDeleteUsingMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociDeleteUsingMouse()));
                     
    fociUncertaintyLimitsAction = new QAction(parent);
    fociUncertaintyLimitsAction->setText("Convert Uncertainty Limits to RGB Paint...");
    fociUncertaintyLimitsAction->setObjectName("fociUncertaintyLimitsAction");
-   QObject::connect(fociUncertaintyLimitsAction, SIGNAL(activated()),
+   QObject::connect(fociUncertaintyLimitsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociUncertaintyLimits()));
                     
    fociReportAction = new QAction(parent);
    fociReportAction->setText("Foci Report...");
    fociReportAction->setObjectName("fociReportAction");
-   QObject::connect(fociReportAction, SIGNAL(activated()),
+   QObject::connect(fociReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociReport()));
+       
+   fociAttributeAssignmentAction = new QAction(parent);
+   fociAttributeAssignmentAction->setText("Attribute Assignment...");
+   fociAttributeAssignmentAction->setObjectName("fociAttributeAssigmentAction");
+   QObject::connect(fociAttributeAssignmentAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayFociAttributeAssignmentDialog()));
        
    fociStudyInfoToStudyMetaDataFileAction = new QAction(parent);
    fociStudyInfoToStudyMetaDataFileAction->setText("Move Foci Study Info to Study Metadata File");
    fociStudyInfoToStudyMetaDataFileAction->setObjectName("fociStudyInfoToStudyMetaDataFileAction");
-   QObject::connect(fociStudyInfoToStudyMetaDataFileAction, SIGNAL(activated()),
+   QObject::connect(fociStudyInfoToStudyMetaDataFileAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociStudyInfoToStudyMetaDataFile()));
                     
    fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction = new QAction(parent);
    fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction->setText("Update Focus' PubMed ID if Focus Name Matches Study Name");
    fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction->setObjectName("fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction");
-   QObject::connect(fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction, SIGNAL(activated()),
+   QObject::connect(fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociUpdatePubMedIDIfFocusNameMatchesStudyName()));
                     
    fociClearHighlightingAction = new QAction(parent);
    fociClearHighlightingAction->setText("Clear Foci Highlighting");
    fociClearHighlightingAction->setObjectName("fociClearHighlightingAction");
-   QObject::connect(fociClearHighlightingAction, SIGNAL(activated()),
+   QObject::connect(fociClearHighlightingAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociClearHighlighting()));
                     
    cellsConvertToVtkModelAction = new QAction(parent);
    cellsConvertToVtkModelAction->setText("Convert Displayed Cells to VTK Model");
    cellsConvertToVtkModelAction->setObjectName("cellsConvertToVtkModelAction");
-   QObject::connect(cellsConvertToVtkModelAction, SIGNAL(activated()),
+   QObject::connect(cellsConvertToVtkModelAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsConvertToVtkModel()));
                     
    cellsAddAction = new QAction(parent);
    cellsAddAction->setText("Add Cells With Mouse...");
    cellsAddAction->setObjectName("cellsAddAction");
-   QObject::connect(cellsAddAction, SIGNAL(activated()),
+   QObject::connect(cellsAddAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsAdd()));
                     
    cellsEditColorsAction = new QAction(parent);
    cellsEditColorsAction->setText("Edit Cell Colors...");
    cellsEditColorsAction->setObjectName("cellsEditColorsAction");
-   QObject::connect(cellsEditColorsAction, SIGNAL(activated()),
+   QObject::connect(cellsEditColorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsEditColors()));
                     
    cellsProjectAction = new QAction(parent);
    cellsProjectAction->setText("Project Fiducial Cells...");
    cellsProjectAction->setObjectName("cellsProjectAction");
-   QObject::connect(cellsProjectAction, SIGNAL(activated()),
+   QObject::connect(cellsProjectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsProject()));
                     
    cellsDeleteAllAction = new QAction(parent);
    cellsDeleteAllAction->setText("Delete All Cells...");
    cellsDeleteAllAction->setObjectName("cellsDeleteAllAction");
-   QObject::connect(cellsDeleteAllAction, SIGNAL(activated()),
+   QObject::connect(cellsDeleteAllAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsDeleteAll()));
                     
    cellsEditAttributesAction = new QAction(parent);
    cellsEditAttributesAction->setText("Edit Cell Attributes");
    cellsEditAttributesAction->setObjectName("cellsEditAttributesAction");
-   QObject::connect(cellsEditAttributesAction, SIGNAL(activated()),
+   QObject::connect(cellsEditAttributesAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsEditAttributes()));
                     
    cellsDeleteUsingMouseAction = new QAction(parent);
    cellsDeleteUsingMouseAction->setText("Delete Cells Using Mouse");
    cellsDeleteUsingMouseAction->setObjectName("cellsDeleteUsingMouseAction");
-   QObject::connect(cellsDeleteUsingMouseAction, SIGNAL(activated()),
+   QObject::connect(cellsDeleteUsingMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsDeleteUsingMouse()));
                     
    cellsDensityToMetricAction = new QAction(parent);
    cellsDensityToMetricAction->setText("Convert Cell Density to Metric...");
    cellsDensityToMetricAction->setObjectName("cellsDensityToMetricAction");
-   QObject::connect(cellsDensityToMetricAction, SIGNAL(activated()),
+   QObject::connect(cellsDensityToMetricAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsDensityToMetric()));
                     
    cellReportAction = new QAction(parent);
    cellReportAction->setText("Cell Report...");
    cellReportAction->setObjectName("cellReportAction");
-   QObject::connect(cellReportAction, SIGNAL(activated()),
+   QObject::connect(cellReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellReport()));
                     
    contourNewSetAction = new QAction(parent);
    contourNewSetAction->setText("Create New Contour Set");
    contourNewSetAction->setObjectName("contourNewSetAction");
-   QObject::connect(contourNewSetAction, SIGNAL(activated()),
+   QObject::connect(contourNewSetAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourNewSet()));
                     
    contourApplyCurrentViewAction = new QAction(parent);
    contourApplyCurrentViewAction->setText("Apply Current View");
    contourApplyCurrentViewAction->setObjectName("contourApplyCurrentViewAction");
-   QObject::connect(contourApplyCurrentViewAction, SIGNAL(activated()),
+   QObject::connect(contourApplyCurrentViewAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourApplyCurrentView()));
                     
    contourSetScaleAction = new QAction(parent);
    contourSetScaleAction->setText("Set Contour Scale...");
    contourSetScaleAction->setObjectName("contourSetScaleAction");
-   QObject::connect(contourSetScaleAction, SIGNAL(activated()),
+   QObject::connect(contourSetScaleAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourSetScale()));
                     
    contourSectionsAction = new QAction(parent);
    contourSectionsAction->setText("Select Contour Sections...");
    contourSectionsAction->setObjectName("contourSectionsAction");
-   QObject::connect(contourSectionsAction, SIGNAL(activated()),
+   QObject::connect(contourSectionsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourSections()));
                     
    contourSpacingAction = new QAction(parent);
    contourSpacingAction->setText("Set Contour Section Spacing...");
    contourSpacingAction->setObjectName("contourSpacingAction");
-   QObject::connect(contourSpacingAction, SIGNAL(activated()),
+   QObject::connect(contourSpacingAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourSpacing()));
                     
    contourDrawAction = new QAction(parent);
    contourDrawAction->setText("Draw Contours...");
    contourDrawAction->setObjectName("contourDrawAction");
-   QObject::connect(contourDrawAction, SIGNAL(activated()),
+   QObject::connect(contourDrawAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourDraw()));
                     
    contourAlignAction = new QAction(parent);
    contourAlignAction->setText("Align Contours...");
    contourAlignAction->setObjectName("contourAlignAction");
-   QObject::connect(contourAlignAction, SIGNAL(activated()),
+   QObject::connect(contourAlignAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourAlign()));
                     
    contourMergeAction = new QAction(parent);
    contourMergeAction->setText("Merge Contours");
    contourMergeAction->setObjectName("contourMergeAction");
-   QObject::connect(contourMergeAction, SIGNAL(activated()),
+   QObject::connect(contourMergeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourMerge()));
                     
    contourMovePointAction = new QAction(parent);
    contourMovePointAction->setText("Move Contour Point With Mouse");
    contourMovePointAction->setObjectName("contourMovePointAction");
-   QObject::connect(contourMovePointAction, SIGNAL(activated()),
+   QObject::connect(contourMovePointAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourMovePoint()));
                     
    contourDeleteAllAction = new QAction(parent);
    contourDeleteAllAction->setText("Delete All Contours...");
    contourDeleteAllAction->setObjectName("contourDeleteAllAction");
-   QObject::connect(contourDeleteAllAction, SIGNAL(activated()),
+   QObject::connect(contourDeleteAllAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourDeleteAll()));
                     
    contourReverseAction = new QAction(parent);
    contourReverseAction->setText("Reverse Contour With Mouse");
    contourReverseAction->setObjectName("contourReverseAction");
-   QObject::connect(contourReverseAction, SIGNAL(activated()),
+   QObject::connect(contourReverseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourReverse()));
                     
    contourDeletePointAction = new QAction(parent);
    contourDeletePointAction->setText("Delete Contour Point With Mouse");
    contourDeletePointAction->setObjectName("contourDeletePointAction");
-   QObject::connect(contourDeletePointAction, SIGNAL(activated()),
+   QObject::connect(contourDeletePointAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourDeletePoint()));
                     
    contourDeleteAction = new QAction(parent);
    contourDeleteAction->setText("Delete Contour With Mouse");
    contourDeleteAction->setObjectName("contourDeleteAction");
-   QObject::connect(contourDeleteAction, SIGNAL(activated()),
+   QObject::connect(contourDeleteAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourDelete()));
                     
    contourReconstructAction = new QAction(parent);
    contourReconstructAction->setText("Reconstruct Into Surface...");
    contourReconstructAction->setObjectName("contourReconstructAction");
-   QObject::connect(contourReconstructAction, SIGNAL(activated()),
+   QObject::connect(contourReconstructAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourReconstruct()));
       
    contourResampleAction = new QAction(parent);
    contourResampleAction->setText("Resample All Contours...");
    contourResampleAction->setObjectName("contourResampleAction");
-   QObject::connect(contourResampleAction, SIGNAL(activated()),
+   QObject::connect(contourResampleAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourResample()));
                     
    contourCleanUpAction = new QAction(parent);
    contourCleanUpAction->setText("Cleanup Contours");
    contourCleanUpAction->setObjectName("contourCleanUpAction");
-   QObject::connect(contourCleanUpAction, SIGNAL(activated()),
+   QObject::connect(contourCleanUpAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourCleanUp()));
                     
    contourCellsAddAction = new QAction(parent);
    contourCellsAddAction->setText("Add Contour Cells...");
    contourCellsAddAction->setObjectName("contourCellsAddAction");
-   QObject::connect(contourCellsAddAction, SIGNAL(activated()),
+   QObject::connect(contourCellsAddAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourCellsAdd()));
                     
    contourCellsDeleteWithMouseAction = new QAction(parent);
    contourCellsDeleteWithMouseAction->setText("Delete Contour Cells With Mouse");
    contourCellsDeleteWithMouseAction->setObjectName("contourCellsDeleteWithMouseAction");
-   QObject::connect(contourCellsDeleteWithMouseAction, SIGNAL(activated()),
+   QObject::connect(contourCellsDeleteWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourCellsDeleteWithMouse()));
                     
    contourCellsDeleteAllAction = new QAction(parent);
    contourCellsDeleteAllAction->setText("Delete All Contour Cells...");
    contourCellsDeleteAllAction->setObjectName("contourCellsDeleteAllAction");
-   QObject::connect(contourCellsDeleteAllAction, SIGNAL(activated()),
+   QObject::connect(contourCellsDeleteAllAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourCellsDeleteAll()));
                     
    contourCellsEditColorsAction = new QAction(parent);
    contourCellsEditColorsAction->setText("Edit Contour Cell Colors...");
    contourCellsEditColorsAction->setObjectName("contourCellsEditColorsAction");
-   QObject::connect(contourCellsEditColorsAction, SIGNAL(activated()),
+   QObject::connect(contourCellsEditColorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourCellsEditColors()));
                     
    contourCellsMoveWithMouseAction = new QAction(parent);
    contourCellsMoveWithMouseAction->setText("Move Contour Cells With Mouse");
    contourCellsMoveWithMouseAction->setObjectName("contourCellsMoveWithMouseAction");
-   QObject::connect(contourCellsMoveWithMouseAction, SIGNAL(activated()),
+   QObject::connect(contourCellsMoveWithMouseAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotContourCellsMoveWithMouse()));
+
+   contourInformationAction = new QAction(parent);
+   contourInformationAction->setText("Contour Information...");
+   contourInformationAction->setObjectName("contourInformationAction");
+   QObject::connect(contourInformationAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotContourInformation()));
 }
 
 /**
@@ -524,6 +539,12 @@ GuiMainWindowLayersActions::slotCellReport()
 {
    GuiCellAndFociReportDialog cfrd(theMainWindow, false);
    cfrd.exec();
+   cfrd.close();
+   QtTableDialog* tableDialog = cfrd.getResultsTableDialog();
+   if (tableDialog != NULL) {
+      tableDialog->show();
+      tableDialog->activateWindow();
+   }
 }
       
 /**
@@ -574,7 +595,8 @@ GuiMainWindowLayersActions::slotCellsDensityToMetric()
       CellDensityToMetricConverter cdc;
       QString errorMessage;
       if (cdc.convert(theMainWindow->getBrainSet(), gridSpacing, errorMessage)) {
-         GuiMessageBox::critical(theMainWindow, "Surface Type", errorMessage, "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "Surface Type", errorMessage);
       }
       
       //
@@ -648,8 +670,12 @@ GuiMainWindowLayersActions::slotCellsEditAttributes()
 void
 GuiMainWindowLayersActions::slotCellsDeleteAll()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete All Cells", "Are you sure you want to delete all cells?",
-                            "Yes", "No", QString::null, 1) == 0) {
+   if (QMessageBox::warning(theMainWindow, 
+                            "Delete All Cells", 
+                            "Are you sure you want to delete all cells?",
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes)
+                               == QMessageBox::Yes) {
       theMainWindow->getBrainSet()->deleteAllCells(true, true);
       GuiFilesModified fm;
       fm.setCellModified();
@@ -674,10 +700,12 @@ GuiMainWindowLayersActions::slotCellsDeleteUsingMouse()
 void 
 GuiMainWindowLayersActions::slotFociUpdatePubMedIDIfFocusNameMatchesStudyName()
 {
-   if (GuiMessageBox::question(theMainWindow,
+   if (QMessageBox::question(theMainWindow,
                                "Confirm",
-                               "Update foci's PubMed IDs if the focus\nname matches the name of a study.",
-                               "Confirm", "Cancel") == 0) {
+                               "Update foci's PubMed IDs if the focus\nname matches the name of a study?",
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       BrainSet* bs = theMainWindow->getBrainSet();
       FociProjectionFile* fpf = bs->getFociProjectionFile();
@@ -707,7 +735,7 @@ GuiMainWindowLayersActions::slotFociStudyInfoToStudyMetaDataFile()
    const QString msg("The StudyInfo from the Foci Projection File has been moved\n"
                      "to the Study Metadata File.  As a result, both the \n"
                      "StudyMetaData and Foci Projection Files need to be saved.");
-   GuiMessageBox::information(theMainWindow, "INFO", msg, "OK");
+   QMessageBox::information(theMainWindow, "INFO", msg);
 }
       
 /**
@@ -729,6 +757,12 @@ GuiMainWindowLayersActions::slotFociReport()
 {
    GuiCellAndFociReportDialog cfrd(theMainWindow, true);
    cfrd.exec();
+   cfrd.close();
+   QtTableDialog* tableDialog = cfrd.getResultsTableDialog();
+   if (tableDialog != NULL) {
+      tableDialog->show();
+      tableDialog->activateWindow();
+   }
 }
       
 /**
@@ -824,8 +858,12 @@ GuiMainWindowLayersActions::slotFociPalsProject()
 void
 GuiMainWindowLayersActions::slotFociDeleteAll()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete All Foci", "Are you sure you want to delete all foci?",
-                            "Yes", "No", QString::null, 1) == 0) {
+   if (QMessageBox::warning(theMainWindow, 
+                              "Delete All Foci", 
+                              "Are you sure you want to delete all foci?",
+                              (QMessageBox::Yes | QMessageBox::No),
+                              QMessageBox::No) 
+                                 == QMessageBox::Yes) {
       theMainWindow->getBrainSet()->deleteAllFoci(true, true);
       GuiFilesModified fm;
       fm.setFociModified();
@@ -872,10 +910,14 @@ GuiMainWindowLayersActions::slotFociAssignClassToDisplayedFoci()
          msg.append("\" for focus ");
          msg.append(name);
          msg.append(" ?");
-         QString noButton("No, define color ");
-         noButton.append(name);
-         if (GuiMessageBox::information(theMainWindow, "Use Partially Matching Color",
-                                      msg, "Yes", noButton, QString::null, 0) != 0) {
+         const QString noButtonText("No, define color " + name);
+         QMessageBox msgBox(theMainWindow);
+         msgBox.setWindowTitle("Use Partially Matching Color");
+         msgBox.setText(msg);
+         msgBox.addButton("Yes", QMessageBox::YesRole);
+         QPushButton* noPushButton = msgBox.addButton(noButtonText, QMessageBox::NoRole);
+         msgBox.exec();
+         if (msgBox.clickedButton() == noPushButton) {
             createFociColor = true;      
          }
       }   
@@ -918,10 +960,13 @@ GuiMainWindowLayersActions::slotFociAssignClassToDisplayedFoci()
 void
 GuiMainWindowLayersActions::slotFociDeleteNonDisplayed()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete Non-Displayed Foci", 
-                         "Are you sure you want to delete\n"
-                         "all foci that are NOT displayed?",
-                            "Yes", "No", QString::null, 1) == 0) {
+   if (QMessageBox::warning(theMainWindow, 
+                            "Delete Non-Displayed Foci", 
+                            "Are you sure you want to delete\n"
+                               "all foci that are NOT displayed?",
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes) 
+                               == QMessageBox::Yes) {
       Structure structure;
       DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
       if (dsf->getDisplayCellsOnCorrectHemisphereOnly()) {
@@ -946,11 +991,14 @@ GuiMainWindowLayersActions::slotFociDeleteNonDisplayed()
 void 
 GuiMainWindowLayersActions::slotFociDeleteNonMatchingColors()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete Non-Matching Foci Colors", 
-                         "Are you sure you want to delete\n"
-                         "all foci colors that do not match\n"
-                         "the names of any foci?",
-                            "Yes", "No", QString::null, 1) == 0) {
+   if (QMessageBox::warning(theMainWindow, 
+                            "Delete Non-Matching Foci Colors", 
+                            "Are you sure you want to delete\n"
+                              "all foci colors that do not match\n"
+                              "the names of any foci?",
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes) 
+                               == QMessageBox::Yes) {
       const FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
       FociColorFile* fcf = theMainWindow->getBrainSet()->getFociColorFile();
       fcf->removeNonMatchingColors(fpf);
@@ -996,7 +1044,8 @@ GuiMainWindowLayersActions::slotBordersFromPaintAction()
          ptb.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(theMainWindow, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
       }
       
       DisplaySettingsBorders* dsb = bs->getDisplaySettingsBorders();
@@ -1125,8 +1174,8 @@ GuiMainWindowLayersActions::slotBordersCreateGrid()
       BrainModelSurface::SURFACE_TYPES st = bms->getSurfaceType();
       if ((st != BrainModelSurface::SURFACE_TYPE_FLAT) &&
           (st != BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         GuiMessageBox::critical(theMainWindow, "Surface Type", 
-                          "The surface in the main window must be flat for this operation !!!", "OK");
+         QMessageBox::critical(theMainWindow, "Surface Type", 
+                          "The surface in the main window must be flat for this operation !!!");
          return;
       }
  
@@ -1175,8 +1224,8 @@ GuiMainWindowLayersActions::slotBordersCreateAnalysisGrid()
       BrainModelSurface::SURFACE_TYPES st = bms->getSurfaceType();
       if ((st != BrainModelSurface::SURFACE_TYPE_FLAT) &&
           (st != BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         GuiMessageBox::critical(theMainWindow, "Surface Type", 
-                          "The surface in the main window must be flat for this operation !!!", "OK");
+         QMessageBox::critical(theMainWindow, "Surface Type", 
+                          "The surface in the main window must be flat for this operation !!!");
          return;
       }
  
@@ -1244,8 +1293,8 @@ GuiMainWindowLayersActions::slotBordersCreateSpherical()
       //
       BrainModelSurface::SURFACE_TYPES st = bms->getSurfaceType();
       if (st != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
-         GuiMessageBox::critical(theMainWindow, "Surface Type", 
-                         "The surface in the main window must be a sphere for this operation !!!", "OK");
+         QMessageBox::critical(theMainWindow, "Surface Type", 
+                         "The surface in the main window must be a sphere for this operation !!!");
          return;
       }
       
@@ -1401,7 +1450,12 @@ GuiMainWindowLayersActions::slotBordersMovePointWithMouse()
       if (verify) {
          const QString msg("Border points move in the XY plane which means that\n"
                            "border points may only be moved on flat surfaces.");
-         if (GuiMessageBox::warning(theMainWindow, "Danger", msg, "Continue", "Cancel") != 0) {
+         if (QMessageBox::warning(theMainWindow, 
+                                  "Danger", 
+                                  msg, 
+                                  (QMessageBox::Ok | QMessageBox::Cancel),
+                                  QMessageBox::Cancel)
+                                     == QMessageBox::Cancel) {
             return;
          }
       }
@@ -1454,8 +1508,9 @@ GuiMainWindowLayersActions::slotBordersOrientDisplayedClockwise()
       const BrainModelSurface::SURFACE_TYPES st = bms->getSurfaceType();
       if ((st != BrainModelSurface::SURFACE_TYPE_FLAT) &&
           (st != BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         GuiMessageBox::critical(theMainWindow, "Surface Type", 
-                         "The surface in the main window must be flat for this operation !!!", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "Surface Type", 
+                         "The surface in the main window must be flat for this operation !!!");
          return;
       }
       
@@ -1503,8 +1558,12 @@ GuiMainWindowLayersActions::slotBordersDeleteWithMouse()
 void
 GuiMainWindowLayersActions::slotBordersDeleteAll()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete All Borders", "Are you sure you want to delete all borders?",
-                            "Yes", "No", QString::null, 1) == 0) {
+   if (QMessageBox::warning(theMainWindow, 
+                            "Delete All Borders", 
+                            "Are you sure you want to delete all borders?",
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes)
+                               == QMessageBox::Yes) {
       theMainWindow->getBrainSet()->deleteAllBorders();
       GuiFilesModified fm;
       fm.setBorderModified();
@@ -1637,9 +1696,12 @@ GuiMainWindowLayersActions::slotContourCellsMoveWithMouse()
 void 
 GuiMainWindowLayersActions::slotContourCellsDeleteAll()
 {
-   if (GuiMessageBox::warning(theMainWindow, "Delete All Contour Cells", 
+   if (QMessageBox::warning(theMainWindow, 
+                            "Delete All Contour Cells", 
                             "Are you sure you want to delete all contour cells?",
-                            "Yes", "No", QString::null, 1) == 0) {
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes)
+                               == QMessageBox::Yes) {
       theMainWindow->getBrainSet()->clearContourCellFile();
       GuiFilesModified fm;
       fm.setContourModified();
@@ -1812,9 +1874,11 @@ GuiMainWindowLayersActions::slotContourDeleteAll()
    if (bmc == NULL) {
       return;
    }
-   if (GuiMessageBox::warning(theMainWindow, "Delete All Contours", 
+   if (QMessageBox::warning(theMainWindow, "Delete All Contours", 
                             "Are you sure you want to delete all contours?",
-                            "Yes", "No", QString::null, 1) == 0) {
+                            (QMessageBox::Yes | QMessageBox::No),
+                            QMessageBox::Yes) 
+                               == QMessageBox::Yes) {
       theMainWindow->getBrainSet()->clearContourFile();
       GuiFilesModified fm;
       fm.setContourModified();
@@ -1849,12 +1913,12 @@ GuiMainWindowLayersActions::slotContourCleanUp()
    if (problemsCleanedFlag) {
       message = "Problems were found and cleaned.";
    }
-   GuiMessageBox::information(theMainWindow, "INFO", message, "OK");
    GuiFilesModified fm;
    fm.setContourModified();
    theMainWindow->fileModificationUpdate(fm);
    GuiBrainModelOpenGL::updateAllGL();
    QApplication::restoreOverrideCursor();
+   QMessageBox::information(theMainWindow, "INFO", message);
 }
 
 /**
@@ -1905,7 +1969,7 @@ GuiMainWindowLayersActions::slotContourResample()
 void 
 GuiMainWindowLayersActions::slotContourReconstruct()
 {
-   if (GuiMessageBox::question(theMainWindow, "Clean Up Contours?",
+   const QString msg = 
       "You should run \"Clean Up Contours\" prior to reconstruction which will remove\n"
       "invalid contours that may cause problems during reconstruction.  Clean Up Contours\n"
       "will remove consecutive, duplicate points from contours and will remove contours\n"
@@ -1915,8 +1979,14 @@ GuiMainWindowLayersActions::slotContourReconstruct()
       "lines, press the D/C pushbutton in the Main Window's Toolbar.  Set Page Selection to\n"
       "Contours and Contour Cells and set the Draw Mode to Points and Lines.  In addition,\n"
       "select Show First Point in Each Contour in Red to verify that each contour is a \n"
-      "single contour and not composed of multiple contours segments.", 
-      "Proceed with Reconstruction", "Cancel") != 0) {
+      "single contour and not composed of multiple contours segments.";
+   QMessageBox msgBox(theMainWindow);
+   msgBox.setWindowTitle("Clean Up Contours?");
+   msgBox.setText(msg);
+   msgBox.addButton("Proceed With Reconstruction", QMessageBox::AcceptRole);
+   QPushButton* cancelPushButton = msgBox.addButton("Cancel", QMessageBox::RejectRole);
+   msgBox.exec();
+   if (msgBox.clickedButton() == cancelPushButton) {   
       return;
    }
    
@@ -1986,4 +2056,56 @@ GuiMainWindowLayersActions::updateActions()
    fociStudyInfoToStudyMetaDataFileAction->setEnabled(fpf->getNumberOfStudyInfo() > 0);
 }
 
+/**
+ * slot called when contour information selected.
+ */
+void 
+GuiMainWindowLayersActions::slotContourInformation()
+{
+   BrainModelContours* bmc = theMainWindow->getBrainModelContours();
+   if (bmc != NULL) {
+      ContourFile* cf = bmc->getContourFile();
+      const int numContours = cf->getNumberOfContours();
+      
+      QString msg;
+      msg += ("Number of Contours: " 
+              + QString::number(numContours)
+              + "\n");
+      
+      if (numContours > 0) {
+         msg += ("Section Number Range: "
+                 + QString::number(cf->getMinimumSection())
+                 + " to "
+                 + QString::number(cf->getMaximumSection())
+                 + "\n");
+         
+         msg += ("Section Spacing: "
+                 + QString::number(cf->getSectionSpacing(), 'f', 3)
+                 + "\n");
+                 
+         float xmin, xmax, ymin, ymax;
+         cf->getExtent(xmin, xmax, ymin, ymax);
+         msg += ("X-Range: "
+                 + QString::number(xmin, 'f', 3)
+                 + " to "
+                 + QString::number(xmax, 'f', 3)
+                 + "\n");
+         msg += ("Y-Range: "
+                 + QString::number(ymin, 'f', 3)
+                 + " to "
+                 + QString::number(ymax, 'f', 3)
+                 + "\n");
+         msg += ("Z-Range: "
+                 + QString::number(cf->getSectionSpacing() * cf->getMinimumSection(), 'f', 3)
+                 + " to "
+                 + QString::number(cf->getSectionSpacing() * cf->getMaximumSection(), 'f', 3)
+                 + "\n");
+                 
+         QMessageBox::information(theMainWindow, 
+                                  "Contour Information",
+                                  msg);
+      }
+   }
+}
+      
 

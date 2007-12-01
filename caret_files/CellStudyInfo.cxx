@@ -31,7 +31,9 @@
 #include <QDomText>
 
 #include "AbstractFile.h"
+#define __CELL_STUDY_INFO_MAIN__
 #include "CellStudyInfo.h"
+#undef __CELL_STUDY_INFO_MAIN__
 #include "StringTable.h"
 
 /**
@@ -39,6 +41,7 @@
  */
 CellStudyInfo::CellStudyInfo()
 {
+   clear();
 }
 
 /**
@@ -66,6 +69,67 @@ CellStudyInfo::operator==(const CellStudyInfo& cci) const
 }
 
 /**
+ * clear the study info.
+ */
+void 
+CellStudyInfo::clear()
+{
+   url = "";
+   keywords = "";
+   title = "";
+   authors = "";
+   citation = "";
+   comment = "";
+   stereotaxicSpace = "";
+   partitioningSchemeAbbreviation = "";
+   partitioningSchemeFullName = "";
+}
+
+/**
+ * set element from text (used by SAX XML parser).
+ */
+void 
+CellStudyInfo::setElementFromText(const QString& elementName,
+                                  const QString& textValue)
+{
+   if (elementName == tagUrl) {
+      url = textValue;
+   }
+   else if (elementName == tagKeywords) {
+      keywords = textValue;
+   }
+   else if (elementName == tagTitle) {
+      title = textValue;
+   }
+   else if (elementName == tagAuthors) {
+      authors = textValue;
+   }
+   else if (elementName == tagCitation) {
+      citation = textValue;
+   }
+   else if (elementName == tagStereotaxicSpace) {
+      stereotaxicSpace = textValue;
+   }
+   else if (elementName == tagComment) {
+      comment = textValue;
+   }
+   else if (elementName == tagStudyNumber) {
+      // ignore studyNumber
+   }
+   else if (elementName == tagPartitioningSchemeAbbreviation) {
+      partitioningSchemeAbbreviation = textValue;
+   }
+   else if (elementName == tagPartitioningSchemeFullName) {
+      partitioningSchemeFullName = textValue;
+   }
+   else {
+      std::cout << "WARNING: unrecognized CellStudyInfo element: "
+                << elementName.toAscii().constData()
+                << std::endl;
+   }
+}
+                              
+/**
  * called to read from an XML structure.
  */
 void 
@@ -78,7 +142,7 @@ CellStudyInfo::readXML(QDomNode& nodeIn) throw (FileException)
    if (elem.isNull()) {
       return;
    }
-   if (elem.tagName() != "CellStudyInfo") {
+   if (elem.tagName() != tagCellStudyInfo) {
       QString msg("Incorrect element type passed to CellStudyInfo::readXML() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
@@ -88,34 +152,34 @@ CellStudyInfo::readXML(QDomNode& nodeIn) throw (FileException)
    while (node.isNull() == false) {
       QDomElement elem = node.toElement();
       if (elem.isNull() == false) {
-         if (elem.tagName() == "url") {
+         if (elem.tagName() == tagUrl) {
             url = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "keywords") {
+         else if (elem.tagName() == tagKeywords) {
             keywords = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "title") {
+         else if (elem.tagName() == tagTitle) {
             title = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "authors") {
+         else if (elem.tagName() == tagAuthors) {
             authors = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "citation") {
+         else if (elem.tagName() == tagCitation) {
             citation = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "stereotaxicSpace") {
+         else if (elem.tagName() == tagStereotaxicSpace) {
             stereotaxicSpace = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "comment") {
+         else if (elem.tagName() == tagComment) {
             comment = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "studyNumber") {
+         else if (elem.tagName() == tagStudyNumber) {
             // ignore studyNumber
          }
-         else if (elem.tagName() == "partitioningSchemeAbbreviation") {
+         else if (elem.tagName() == tagPartitioningSchemeAbbreviation) {
             partitioningSchemeAbbreviation = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "partitioningSchemeFullName") {
+         else if (elem.tagName() == tagPartitioningSchemeFullName) {
             partitioningSchemeFullName = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else {
@@ -139,57 +203,57 @@ CellStudyInfo::writeXML(QDomDocument& xmlDoc,
    //
    // Create the element for this class instance's data
    //
-   QDomElement cellStudyElement = xmlDoc.createElement("CellStudyInfo");
+   QDomElement cellStudyElement = xmlDoc.createElement(tagCellStudyInfo);
 
    //
    // study number
    //
-   AbstractFile::addXmlTextElement(xmlDoc, cellStudyElement, "studyNumber", studyNumber);
+   AbstractFile::addXmlTextElement(xmlDoc, cellStudyElement, tagStudyNumber, studyNumber);
    
    //
    // url
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "url", url);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagUrl, url);
    
    //
    // keywords
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "keywords", keywords);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagKeywords, keywords);
    
    //
    // title
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "title", title);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagTitle, title);
    
    //
    // authors
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "authors", authors);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagAuthors, authors);
    
    //
    // citation
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "citation", citation);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagCitation, citation);
    
    //
    // stereotaxicSpace
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "stereotaxicSpace", stereotaxicSpace);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagStereotaxicSpace, stereotaxicSpace);
    
    //
    // comment
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "comment", comment);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagComment, comment);
    
    //
    // partitioning scheme abbreviation
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "partitioningSchemeAbbreviation", partitioningSchemeAbbreviation);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagPartitioningSchemeAbbreviation, partitioningSchemeAbbreviation);
    
    //
    // partitioning scheme full name
    //
-   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, "partitioningSchemeFullName", partitioningSchemeFullName);
+   AbstractFile::addXmlCdataElement(xmlDoc, cellStudyElement, tagPartitioningSchemeFullName, partitioningSchemeFullName);
    
    //
    // Add to parent

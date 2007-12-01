@@ -32,8 +32,8 @@
 
 #include "QtDialog.h"
 
+class QComboBox;
 class QListWidget;
-class QRadioButton;
 
 /// dialog for converting data files between various formats
 class GuiConvertDataFileDialog : public QtDialog {
@@ -66,12 +66,9 @@ class GuiConvertDataFileDialog : public QtDialog {
       /// list box for data files
       QListWidget* dataFilesListBox;
       
-      /// format binary radio button
-      QRadioButton* formatBinaryRadioButton;
-      
-      /// format text radio button
-      QRadioButton* formatTextRadioButton;
-      
+      /// combo boxes for file format
+      std::vector<QComboBox*> formatComboBoxes;
+
       /// names of data files
       std::vector<QString> dataFileNames;
 };

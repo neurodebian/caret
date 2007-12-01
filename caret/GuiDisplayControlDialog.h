@@ -23,9 +23,8 @@
  */
 /*LICENSE_END*/
 
-
-#ifndef __VE_GUI_DISPLAY_CONTROL_DIALOG_H__
-#define __VE_GUI_DISPLAY_CONTROL_DIALOG_H__
+#ifndef __GUI_DISPLAY_CONTROL_DIALOG_H__
+#define __GUI_DISPLAY_CONTROL_DIALOG_H__
 
 #include <vector>
 
@@ -53,8 +52,8 @@ class QScrollArea;
 class QSlider;
 class QSpinBox;
 class QStackedWidget;
-class QTabWidget;
 class QTextEdit;
+class QToolButton;
 class QVBoxLayout;
 
 class GuiBrainModelSelectionComboBox;
@@ -62,6 +61,7 @@ class GuiNodeAttributeColumnSelectionComboBox;
 class GuiTransformationMatrixSelectionControl;
 class QDoubleSpinBox;
 class QtTextEditDialog;
+class WuQWidgetGroup;
 
 /// Dialog for controlling display of data
 class GuiDisplayControlDialog : public QtDialog {
@@ -101,18 +101,69 @@ class GuiDisplayControlDialog : public QtDialog {
       /// pass true.
       void updateBorderItems(const bool bordersWereChanged = false);
       
+      /// update border main page
+      void updateBorderMainPage();
+      
+      /// update border colors page
+      void updateBorderColorPage(const bool filesChanged);
+      
+      /// update border name page
+      void updateBorderNamePage(const bool filesChanged);
+      
       /// update all cell items in dialog.  If the number of cells has changed
       /// pass true.
       void updateCellItems(const bool cellsWereChanged = false);
       
+      /// upate cell main page
+      void updateCellMainPage();
+      
+      /// update cell class page
+      void updateCellClassPage(const bool cellsWereChanged);
+      
+      /// update cell color page
+      void updateCellColorPage(const bool cellsWereChanged);
+      
       /// update all cocomac items in dialog.
       void updateCocomacItems();
+      
+      /// update the cocomac display page
+      void updateCocomacDisplayPage();
+      
+      /// update the cocomac information page
+      void updateCocomacInformationPage();
       
       /// update all contour items in dialog.
       void updateContourItems(const bool filesChanged = false);
       
+      /// update all contour main page in dialog.
+      void updateContourMainPage();
+      
+      /// update all contour class page in dialog.
+      void updateContourClassPage(const bool filesChanged);
+      
+      /// update all contour color page in dialog.
+      void updateContourColorPage(const bool filesChanged);
+      
       /// update the deformation field page
       void updateDeformationFieldPage();
+      
+      /// update foci main page
+      void updateFociMainPage();
+      
+      /// update foci class page
+      void updateFociClassPage(const bool filesChanged);
+      
+      /// update foci color page
+      void updateFociColorPage(const bool filesChanged);
+      
+      /// update foci keyword page
+      void updateFociKeywordPage(const bool filesChanged);
+      
+      /// update foci name page
+      void updateFociNamePage(const bool filesChanged);
+      
+      /// update foci page
+      void updateFociTablePage(const bool filesChanged);
       
       /// update all foci items in dialog.  If the number of foci has changed
       /// pass true.
@@ -130,17 +181,62 @@ class GuiDisplayControlDialog : public QtDialog {
       /// update all metric items in dialog
       void updateMetricItems();
       
+      /// update metric overlay/underlay selection
+      void updateMetricOverlayUnderlaySelection();
+      
+      /// update the metric selection page
+      void updateMetricSelectionPage();
+      
+      /// update the metric settings page
+      void updateMetricSettingsPage();
+      
       /// update the misc items
       void updateMiscItems();
+      
+      /// update model main page
+      void updateModelMainPage();
+      
+      /// update model settings page
+      void updateModelSettingsPage();
       
       /// update the model items in the dialog
       void updateModelItems();
       
+      /// update paint overlay/underlay selection
+      void updatePaintOverlayUnderlaySelection();
+
       /// update the paint items in the dialog
       void updatePaintItems();
       
+      /// update paint column name page 
+      void updatePaintColumnPage();
+      
+      /// update paint name page
+      void updatePaintNamePage();
+      
+      /// update prob atlas surface overlay/underlay selection
+      void updateProbAtlasSurfaceOverlayUnderlaySelection();
+
       /// update all prob atlas surface items in dialog
       void updateProbAtlasSurfaceItems(const bool filesWereChanged = false);
+      
+      /// update prob atlas surface main page
+      void updateProbAtlasSurfaceMainPage();
+      
+      /// update prob atlas surface channel page
+      void updateProbAtlasSurfaceChannelPage(const bool filesWereChanged);
+      
+      /// update prob atlas surface area page
+      void updateProbAtlasSurfaceAreaPage(const bool filesWereChanged);
+      
+      /// update all prob atlas volume main page
+      void updateProbAtlasVolumeMainPage();
+      
+      /// update all prob atlas volume area page
+      void updateProbAtlasVolumeAreaPage(const bool filesChanged);
+      
+      /// update all prob atlas volume channel page
+      void updateProbAtlasVolumeChannelPage(const bool filesChanged);
       
       /// update all prob atlas volume items in dialog
       void updateProbAtlasVolumeItems(const bool filesWereChanged = false);
@@ -151,15 +247,36 @@ class GuiDisplayControlDialog : public QtDialog {
       /// update scene items
       void updateSceneItems();
       
+      /// update rgb paint overlay/underlay selections
+      void updateRgbPaintOverlayUnderlaySelection();
+      
       /// update all rgb paint items in dialog
       void updateRgbPaintItems();
             
-      /// update all surface shape items in dialog
+      /// update shape overlay/underlay selection
+      void updateShapeOverlayUnderlaySelection();
+
+      /// update all surface shape selections in dialog
+      void updateShapeSelections();
+      
+      /// update the shape items
       void updateShapeItems();
+      
+      /// update all surface shape settings in dialog
+      void updateShapeSettings();
       
       /// update surface vector items in dialog
       void updateSurfaceVectorItems();
       
+      /// update surface vector selection page
+      void updateSurfaceVectorSelectionPage();
+      
+      /// update surface vector settings page
+      void updateSurfaceVectorSettingsPage();
+      
+      /// update topography overlay/underlay selection
+      void updateTopographyOverlayUnderlaySelection();
+
       /// update all topography items in dialog
       void updateTopographyItems();
       
@@ -179,6 +296,12 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// called when page combo box selection is made
       void pageComboBoxSelection(int item);
+      
+      /// called when page back tool button pressed
+      void slotPageBackToolButtonPressed(QAction*);
+      
+      /// called when page forward tool button pressed
+      void slotPageForwardToolButtonPressed(QAction*);
       
       /// called when popup menu selection is made
       void popupMenuSelection(QAction*);
@@ -264,6 +387,9 @@ class GuiDisplayControlDialog : public QtDialog {
       /// called to display comment info for volume
       void volumeProbAtlasInfoPushButtonSelection();
       
+      /// called to set prob atlas volume study metadata link
+      void volumeProbAtlasVolumeStudyMetaDataPushButton();
+      
       /// called to display comment info for volume
       void volumeRgbInfoPushButtonSelection();
       
@@ -284,9 +410,6 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// called to display metadata for paint volume
       void volumePaintMetaDataPushButtonSelection();
-      
-      /// called to display metadata for prob atlas volume
-      void volumeProbAtlasMetaDataPushButtonSelection();
       
       /// called to display metadata for rgb volume
       void volumeRgbMetaDataPushButtonSelection();
@@ -317,6 +440,9 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// Called to display comment information about an areal estimation column.
       void arealEstimationCommentColumnSelection(int column);
+
+      /// Called to display metadata information about an areal estimation column.
+      void arealEstimationMetaDataColumnSelection(int column);
 
       /// read the areal estimation page.
       void readArealEstimationSelections();
@@ -417,11 +543,23 @@ class GuiDisplayControlDialog : public QtDialog {
       /// reads the volume selections
       void readVolumeSelections();
       
-      /// read the cocomac selections
-      void readCocomacSelections();
+      /// reads the volume settings
+      void readVolumeSettings();
+      
+      /// reads the volume surface outline
+      void readVolumeSurfaceOutline();
+      
+      /// read the cocomac display page
+      void readCocomacDisplayPage();
    
-      /// read the contour items
-      void readContourSelections();
+      /// read the contour main page
+      void readContourMainPage();
+      
+      /// read the contour class page
+      void readContourClassPage();
+      
+      /// read the contour color page
+      void readContourColorPage();
       
       /// slot to turn all contour cell classes on
       void contourCellClassAllOn();
@@ -441,8 +579,14 @@ class GuiDisplayControlDialog : public QtDialog {
       /// called when borders selected on borders or overlay/underlay surface page
       void showBordersToggleSlot(bool b);
       
-      /// read the border selections
-      void readBorderSelections();
+      /// read border main page
+      void readBorderMainPage();
+      
+      /// read border color page
+      void readBorderColorPage();
+      
+      /// read border name page
+      void readBorderNamePage();
       
       /// called when border colors All On button is pressed
       void borderColorAllOn();
@@ -459,8 +603,14 @@ class GuiDisplayControlDialog : public QtDialog {
       /// called when cells selected on cells page or overlay/underlay surface page
       void showCellsToggleSlot(bool b);
       
-      /// read the cell selections
-      void readCellSelections();
+      /// read the cell main page
+      void readCellMainPage();
+      
+      /// read the cell color page
+      void readCellColorPage();
+      
+      /// read the cell class page
+      void readCellClassPage();
       
       /// read the misc selections
       void readMiscSelections();
@@ -486,8 +636,23 @@ class GuiDisplayControlDialog : public QtDialog {
       /// called when foci color mode changed
       void slotFociColorModeComboBox(int i);
       
-      /// read the foci selections
-      void readFociSelections();
+      /// read the foci main page
+      void readFociMainPage(const bool updateDisplay = true);
+      
+      /// read the foci class page
+      void readFociClassPage(const bool updateDisplay = true);
+      
+      /// read the foci color page
+      void readFociColorPage(const bool updateDisplay = true);
+      
+      /// read the foci keyword page
+      void readFociKeywordPage(const bool updateDisplay = true);
+      
+      /// read the foci name page
+      void readFociNamePage(const bool updateDisplay = true);
+      
+      /// read the foci table page
+      void readFociTablePage(const bool updateDisplay = true);
       
       /// called when foci class All On button is pressed
       void fociClassAllOn();
@@ -528,17 +693,32 @@ class GuiDisplayControlDialog : public QtDialog {
       /// read the lat lon page
       void readLatLonSelections();
       
-      /// read the metric selections
-      void readMetricSelections();
+      /// read the metric selection page
+      void readMetricSelectionPage();
+      
+      /// read metric L-to-L, R-to-R
+      void readMetricL2LR2R();
+      
+      /// read the metric settings page
+      void readMetricSettingsPage();
       
       /// read the region selections
       void readRegionSelections();
+      
+      /// read rgb paint L-to-L, R-to-R
+      void readRgbPaintL2LR2R();
       
       /// read the rgb paint selections
       void readRgbPaintSelections();
       
       /// read the surface shape selections
       void readShapeSelections();
+      
+      /// read the surface shape settings
+      void readShapeSettings();
+      
+      /// read the shape L-to-L, R-to-R
+      void readShapeL2LR2R();
       
       /// read the scene selections
       void readSceneSelections();
@@ -561,14 +741,29 @@ class GuiDisplayControlDialog : public QtDialog {
       /// called when a type of topography is selected
       void topographyTypeSelection(int typeSelected);
       
-      /// read the surface vector selections
-      void readSurfaceVectorSelections();
+      /// read the surface vector selection page
+      void readSurfaceVectorSelectionPage();
+      
+      /// read the surface vector settings page
+      void readSurfaceVectorSettingsPage();
       
       /// called when surface vector comment button pressed
       void slotSurfaceVectorCommentPushButton(int item);
       
-      /// read the probabilistic atlas surface selections
-      void readProbAtlasSurfaceSelections();
+      /// read the probabilistic atlas surface main page
+      void readProbAtlasSurfaceMainPage();
+      
+      /// read the probabilistic atlas surface channel page
+      void readProbAtlasSurfaceChannelPage();
+      
+      /// called to set prob atlas surface study metadata link
+      void volumeProbAtlasSurfaceStudyMetaDataPushButton();
+      
+      /// read the probabilistic atlas surface area page
+      void readProbAtlasSurfaceAreaPage();
+      
+      /// read the prob atlas L-to-L, R-to-R
+      void readProbAtlasSurfaceL2LR2R();
       
       /// called when a prob atlas surface display mode selection is made
       void probAtlasSurfaceModeSelection(int num);
@@ -585,8 +780,14 @@ class GuiDisplayControlDialog : public QtDialog {
       ///  called when prob atlas surface all off areas button is pressed
       void probAtlasSurfaceAreasAllOff();
       
-      /// read the probabilistic Volume atlas selections
-      void readProbAtlasVolumeSelections();
+      /// read the probabilistic Volume main page
+      void readProbAtlasVolumeMainPage();
+      
+      /// read the probabilistic Volume area page
+      void readProbAtlasVolumeAreaPage();
+      
+      /// read the probabilistic Volumechannel page
+      void readProbAtlasVolumeChannelPage();
       
       /// called when a prob atlas Volume display mode selection is made
       void probAtlasVolumeModeSelection(int num);
@@ -606,8 +807,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// read the image selections
       void readImagesSelections();
       
-      /// called to read model items from dialog
-      void readModelSelections();
+      /// called to read model main page items from dialog
+      void readModelMainPage();
+
+      /// called to read model main page items from dialog
+      void readModelSettingsPage();
 
       /// called when all models on pushbutton pressed
       void slotModelsAllOn();
@@ -616,8 +820,20 @@ class GuiDisplayControlDialog : public QtDialog {
       void slotModelsAllOff();
 
       /// called to read paint items in the dialog
-      void readPaintSelections();  
+      void readPaintColumnSelections();  
                 
+      /// called to read paint L-to-L, R-to-R
+      void readPaintL2LR2R();  
+                
+      /// called to read paint name selections
+      void readPaintNameSelections();
+      
+      /// called when paint name all on button is pressed
+      void slotPaintNamesAllOnPushButton();
+      
+      /// called when paint name all off button is pressed
+      void slotPaintNamesAllOffPushButton();
+      
    private:
       /// volume animate direction
       enum VOLUME_ANIMATE_DIRECTION {
@@ -636,23 +852,29 @@ class GuiDisplayControlDialog : public QtDialog {
       /// override of sizeHint (limits width of dialog but user can stretch)
       //virtual QSize sizeHint() const;
       
+      /// update the data validity flag
+      void updateDataValidityFlags();
+      
+      /// update volume selection page
+      void updateVolumeSelectionPage();
+      
+      /// update volume settings page
+      void updateVolumeSettingsPage();
+      
+      /// update volume surface outline page
+      void updateVolumeSurfaceOutlinePage();
+      
       /// Update the page selection combo box based upon enabled pages.
-      void updatePageComboBox();
+      void updatePageSelectionComboBox();
 
       /// create overlay/underlay surface page
       void createOverlayUnderlaySurfacePage();
       
-      /// create the cocomac tab page
-      void createCocomacPage();
-      
       /// create the cocomac display sub page
-      void createCocomacDisplaySubPage();
+      void createCocomacDisplayPage();
       
       /// create the cocomac file info sub page
-      void createCocomacFileInfoSubPage();
-      
-      /// create the contour sub page
-      void createContourPage();
+      void createCocomacFileInformationPage();
       
       /// create the contour main page
       void createContourMainPage();
@@ -675,9 +897,6 @@ class GuiDisplayControlDialog : public QtDialog {
       /// create the surface misc page
       void createSurfaceMiscPage();
       
-      /// create the probabilistic atlas surface page
-      void createProbAtlasSurfacePage();
-      
       /// create the probabilistic atlas surface main sub page
       void createProbAtlasSurfaceMainPage();
       
@@ -692,9 +911,6 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// create and update the check boxes for prob atlas  surface
       void createAndUpdateProbAtlasSurfaceAreaNameCheckBoxes();
-      
-      /// create the probabilistic atlas volume page
-      void createProbAtlasVolumePage();
       
       /// create the probabilistic atlas volume main sub page
       void createProbAtlasVolumeMainPage();
@@ -723,8 +939,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// create and update the geodesic page
       void createAndUpdateGeodesicPage();
       
-      /// create the surface vector page
-      void createSurfaceVectorPage();
+      /// create the surface vector selection page
+      void createSurfaceVectorSelectionPage();
+
+      /// create the surface vector settings page
+      void createSurfaceVectorSettingsPage();
 
       /// create the lat/lon page
       void createLatLonPage();
@@ -744,9 +963,6 @@ class GuiDisplayControlDialog : public QtDialog {
       /// create the region page
       void createRegionPage();
       
-      /// create the metric page
-      void createMetricPage();
-      
       /// create the metric selections page
       void createMetricSelectionPage();
       
@@ -755,9 +971,6 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// create and update metric selection page
       void createAndUpdateMetricSelectionPage();
-      
-      /// create the surface shape page
-      void createShapePage();
       
       /// create the shape settings page
       void createShapeSettingsPage();
@@ -768,9 +981,6 @@ class GuiDisplayControlDialog : public QtDialog {
       /// read shape color mapping min/max
       void readShapeColorMapping();
 
-      /// create the borders page
-      void createBorderPage();
-      
       /// create the border main sub page
       void createBorderMainPage();
       
@@ -785,9 +995,6 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// create and update border name toggles section
       void createAndUpdateBorderNameCheckBoxes();
-      
-      /// create the cells page
-      void createCellPage();
       
       /// create the cell main sub page
       void createCellMainPage();
@@ -807,9 +1014,6 @@ class GuiDisplayControlDialog : public QtDialog {
       /// create the deformation field page
       void createDeformationFieldPage();
       
-      /// create the foci page
-      void createFociPage();
-      
       /// create the foci main sub page
       void createFociMainPage();
       
@@ -823,10 +1027,10 @@ class GuiDisplayControlDialog : public QtDialog {
       void createFociNamePage();
       
       /// create the foci keywords page
-      void createFociKeywordsPage();
+      void createFociKeywordPage();
       
       /// create the foci tables page
-      void createFociTablesPage();
+      void createFociTablePage();
       
       /// create and update foci class toggles section
       void createAndUpdateFociClassCheckBoxes();
@@ -843,20 +1047,17 @@ class GuiDisplayControlDialog : public QtDialog {
       /// create and update foci table toggles section
       void createAndUpdateFociTableCheckBoxes();
       
-      /// create the overlay underlay volume page
-      void createOverlayUnderlayVolumePage();
-      
       /// create the overlay underlay volume setttings page
-      QWidget* createOverlayUnderlayVolumeSettingsPage();
+      void createOverlayUnderlayVolumeSettingsPage();
       
       /// create the overlay underlay volume selection page
-      QWidget* createOverlayUnderlayVolumeSelectionPage();
+      void createOverlayUnderlayVolumeSelectionPage();
+      
+      /// create the overlay underlay volume surface outline page
+      void createOverlayUnderlayVolumeSurfaceOutlinePage();
       
       /// create the images page
       void createImagesPage();
-      
-      /// create the models page
-      void createModelsPage();
       
       /// create the models main page
       void createModelsMainPage();
@@ -867,11 +1068,17 @@ class GuiDisplayControlDialog : public QtDialog {
       /// create the model settings page
       void createModelsSettingsPage();
       
-      /// create the paint page
-      void createPaintPage();
+      /// create the paint column page
+      void createPaintColumnPage();
       
-      /// create and update the paints
-      void createAndUpdatePaintPage();
+      /// create and update the paint columns
+      void createAndUpdatePaintColumnPage();
+      
+      /// create the paint name page
+      void createPaintNamePage();
+      
+      /// create and update the paint names
+      void createAndUpdatePaintNamePage();
       
       /// Create a surface model combo box
       void createSurfaceModelIndexComboBox();
@@ -889,44 +1096,83 @@ class GuiDisplayControlDialog : public QtDialog {
       void printPageSizesHelper(const QString& pageName,
                           QWidget* thePage);
       
-      /// enumerated types for pages (pages must be created in this order)
+      /// enumerated types for pages
       enum PAGE_NAME {
-         PAGE_NAME_OVERLAY_UNDERLAY_SURFACE = 0,
-         PAGE_NAME_OVERLAY_UNDERLAY_VOLUME,
          PAGE_NAME_AREAL_ESTIMATION,
-         PAGE_NAME_BORDER,
-         PAGE_NAME_CELL,
-         PAGE_NAME_COCOMAC,
-         PAGE_NAME_CONTOUR,
+         PAGE_NAME_BORDER_MAIN,
+         PAGE_NAME_BORDER_COLOR,
+         PAGE_NAME_BORDER_NAME,
+         PAGE_NAME_CELL_MAIN,
+         PAGE_NAME_CELL_CLASS,
+         PAGE_NAME_CELL_COLOR,
+         PAGE_NAME_COCOMAC_DISPLAY,
+         PAGE_NAME_COCOMAC_INFORMATION,
+         PAGE_NAME_CONTOUR_MAIN,
+         PAGE_NAME_CONTOUR_CLASS,
+         PAGE_NAME_CONTOUR_COLOR,
          PAGE_NAME_DEFORMATION_FIELD,
-         PAGE_NAME_FOCI,
+         PAGE_NAME_FOCI_MAIN,
+         PAGE_NAME_FOCI_CLASS,
+         PAGE_NAME_FOCI_COLOR,
+         PAGE_NAME_FOCI_KEYWORD,
+         PAGE_NAME_FOCI_NAME,
+         PAGE_NAME_FOCI_TABLE,
          PAGE_NAME_GEODESIC,
          PAGE_NAME_IMAGES,
          PAGE_NAME_LATLON,
-         PAGE_NAME_METRIC,
-         PAGE_NAME_MODELS,
-         PAGE_NAME_PAINT,
-         PAGE_NAME_PROB_ATLAS_SURFACE,
-         PAGE_NAME_PROB_ATLAS_VOLUME,
+         PAGE_NAME_METRIC_SELECTION,
+         PAGE_NAME_METRIC_SETTINGS,
+         PAGE_NAME_MODELS_MAIN,
+         PAGE_NAME_MODELS_SETTINGS,
+         PAGE_NAME_PAINT_COLUMN,
+         PAGE_NAME_PAINT_NAMES,
+         PAGE_NAME_PROB_ATLAS_SURFACE_MAIN,
+         PAGE_NAME_PROB_ATLAS_SURFACE_AREA,
+         PAGE_NAME_PROB_ATLAS_SURFACE_CHANNEL,
+         PAGE_NAME_PROB_ATLAS_VOLUME_MAIN,
+         PAGE_NAME_PROB_ATLAS_VOLUME_AREA,
+         PAGE_NAME_PROB_ATLAS_VOLUME_CHANNEL,
          PAGE_NAME_REGION,
          PAGE_NAME_RGB_PAINT,
          PAGE_NAME_SCENE,
-         PAGE_NAME_SHAPE,
+         PAGE_NAME_SHAPE_SELECTION,
+         PAGE_NAME_SHAPE_SETTINGS,
          PAGE_NAME_SURFACE_AND_VOLUME,
          PAGE_NAME_SURFACE_MISC,
-         PAGE_NAME_SURFACE_VECTOR,
+         PAGE_NAME_SURFACE_VECTOR_SELECTION,
+         PAGE_NAME_SURFACE_VECTOR_SETTINGS,
+         PAGE_NAME_SURFACE_OVERLAY_UNDERLAY,
          PAGE_NAME_TOPOGRAPHY,
+         PAGE_NAME_VOLUME_SELECTION,
+         PAGE_NAME_VOLUME_SETTINGS,
+         PAGE_NAME_VOLUME_SURFACE_OUTLINE,
          PAGE_NAME_INVALID
       };
       
-      /// allow sub pages to have scroll bars
-      bool allowSubPagesToHaveScrollBars;
+      /// get the name of a page
+      QString getPageName(const PAGE_NAME pageName) const;
+      
+      /// show a display control page
+      void showDisplayControlPage(const PAGE_NAME pageName,
+                                  const bool updatePagesVisited);
       
       /// default size for this dialog
       QSize dialogDefaultSize;
       
       /// page selection combo box
       QComboBox* pageComboBox;
+      
+      /// page back tool button
+      QToolButton* pageBackToolButton;
+      
+      /// page forward tool button
+      QToolButton* pageForwardToolButton;
+      
+      /// tracks pages as they are visited
+      std::vector<PAGE_NAME> pagesVisited;
+      
+      /// current index in pages visited
+      int pagesVisitedIndex;
       
       /// items for page combo box
       std::vector<PAGE_NAME> pageComboBoxItems;
@@ -947,31 +1193,25 @@ class GuiDisplayControlDialog : public QtDialog {
       bool creatingDialog;
       
       /// overlay/underlay page
-      QWidget* overlayUnderlayMainPage;
+      QWidget* pageOverlayUnderlaySurface;
       
       /// misc page
-      QWidget* miscPage;
+      QWidget* pageSurfaceMisc;
       
       /// prob atlas surface coloring to corresponding structures
       QCheckBox* probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox;
       
-      /// prob atlas surface page
-      QWidget* probAtlasSurfacePage;
+      /// prob atlas surface main page
+      QWidget* pageProbAtlasSurfaceMain;
       
-      /// prob atlas surface page
-      QTabWidget* probAtlasSurfacePageTabWidget;
-      
-      /// prob atlas surface main sub page
-      QWidget* probAtlasSurfaceSubPageMain;
-      
-      /// prob atlas surface channel sub page
-      QWidget* probAtlasSurfaceSubPageChannel;
+      /// prob atlas surface channel page
+      QWidget* pageProbAtlasSurfaceChannel;
       
       /// prob atlas surface channel sub page layout
       QVBoxLayout* probAtlasSurfaceSubPageChannelLayout;
       
-      /// prob atlas surface area sub page
-      QWidget* probAtlasSurfaceSubPageArea;
+      /// prob atlas surface area page
+      QWidget* pageProbAtlasSurfaceArea;
       
       /// prob atlas surface area sub page layout
       QVBoxLayout* probAtlasSurfaceSubPageAreaLayout;
@@ -1012,20 +1252,17 @@ class GuiDisplayControlDialog : public QtDialog {
       /// prob atlas surface threshold display type ratio float spin box
       QDoubleSpinBox* probAtlasSurfaceThresholdRatioDoubleSpinBox;
 
-      /// prob atlas volume page
-      QTabWidget* probAtlasVolumePage;
+      /// prob atlas volume main page
+      QWidget* pageProbAtlasVolumeMain;
       
-      /// prob atlas volume main sub page
-      QWidget* probAtlasVolumeSubPageMain;
-      
-      /// prob atlas volume channel sub page
-      QWidget* probAtlasVolumeSubPageChannel;
+      /// prob atlas volume channel page
+      QWidget* pageProbAtlasVolumeChannel;
       
       /// prob atlas volume channel sub page layout
       QVBoxLayout* probAtlasVolumeSubPageChannelLayout;
       
       /// prob atlas volume area sub page
-      QWidget* probAtlasVolumeSubPageArea;
+      QWidget* pageProbAtlasVolumeArea;
       
       /// prob atlas volume area sub page
       QVBoxLayout* probAtlasVolumeSubPageAreaLayout;
@@ -1067,10 +1304,10 @@ class GuiDisplayControlDialog : public QtDialog {
       QDoubleSpinBox* probAtlasVolumeThresholdRatioDoubleSpinBox;
 
       /// topography page
-      QWidget* topographyPage;
+      QWidget* pageTopography;
       
       /// rgb paint page
-      QWidget* rgbPaintMainPage;
+      QWidget* pageRgbPaintMain;
       
       /// rgb paint page file selection box
       QComboBox* rgbSelectionComboBox;
@@ -1138,9 +1375,6 @@ class GuiDisplayControlDialog : public QtDialog {
       /// topography file selection combo box
       QComboBox* topographyFileComboBox;
       
-      /// surface shape page
-      QTabWidget* shapeMainPage;
-      
       /// surface shape minimum label
       QLabel* shapeViewMinimumLabel;
       
@@ -1186,9 +1420,15 @@ class GuiDisplayControlDialog : public QtDialog {
       /// number of valid surface shape columns
       int numValidSurfaceShape;
       
-      /// shape sub pages for selections
-      QWidget* surfaceShapeSubSelections;
+      /// shape page for selections
+      QWidget* pageSurfaceShapeSelections;
 
+      /// shape page for settings
+      QWidget* pageSurfaceShapeSettings;
+      
+      /// widget group for shape settings page
+      WuQWidgetGroup* pageSurfaceShapeSettingsWidgetGroup;
+      
       /// layout for shape sub page selections
       QVBoxLayout* surfaceShapeSubSelectionsLayout;
             
@@ -1219,17 +1459,17 @@ class GuiDisplayControlDialog : public QtDialog {
       /// surface shape name line edits
       std::vector<QLineEdit*> surfaceShapeColumnNameLineEdits;
       
-      /// metric page
-      QTabWidget* metricPage;
-      
-      /// metric sub page selections
-      QWidget* metricSubPageSelections;
+      /// metric selection page
+      QWidget* pageMetricSelection;
       
       /// layout for metric sub page selections
       QVBoxLayout* metricSubPageSelectionsLayout;
       
-      /// metric sub page settings
-      QWidget* metricSubPageSettings;
+      /// metric settings page
+      QWidget* pageMetricSettings;
+      
+      /// widget group for metric settings page
+      WuQWidgetGroup* pageMetricSettingsWidgetGroup;
       
       /// layout for metric selections
       QGridLayout* metricSelectionGridLayout;
@@ -1366,20 +1606,26 @@ class GuiDisplayControlDialog : public QtDialog {
       /// metric palette display color bar
       QCheckBox* metricDisplayColorBarCheckBox;
       
-      /// borders page
-      QTabWidget* borderPage;
+      /// border main page
+      QWidget* pageBorderMain;
       
-      /// border man sub page
-      QWidget* bordersSubPageMain;
+      /// border main page widget group (all widgets on foci main page)
+      WuQWidgetGroup* pageBorderMainWidgetGroup;
       
-      /// border color sub page
-      QWidget* borderSubPageColor;
+      /// border color page
+      QWidget* pageBorderColor;
+      
+      /// border color page widget group (all widgets on foci main page)
+      WuQWidgetGroup* pageBorderColorWidgetGroup;
       
       /// border color sub page layout
       QVBoxLayout* borderSubPageColorLayout;
       
-      /// border name sub page
-      QWidget* borderSubPageName;
+      /// border name page
+      QWidget* pageBorderName;
+      
+      /// border name page widget group (all widgets on foci main page)
+      WuQWidgetGroup* pageBorderNameWidgetGroup;
       
       /// layout for border name sub page
       QVBoxLayout* borderSubPageNameLayout;
@@ -1411,20 +1657,26 @@ class GuiDisplayControlDialog : public QtDialog {
       /// number of border color check boxes being used
       int numValidBorderColors;
       
-      /// cell page
-      QTabWidget* cellPage;
+      /// cell main page
+      QWidget* pageCellsMain;
       
-      /// cell main sub page
-      QWidget* cellSubPageMain;
+      /// cell main page widget group
+      WuQWidgetGroup* pageCellsMainWidgetGroup;
       
-      /// cell color sub page
-      QWidget* cellSubPageColor;
+      /// cell color page
+      QWidget* pageCellsColor;
+      
+      /// cell color page widget group
+      WuQWidgetGroup* pageCellsColorWidgetGroup;
       
       /// cell color sub page layout
       QVBoxLayout* cellSubPageColorLayout;
       
-      /// cell class sub page
-      QWidget* cellSubPageClass;
+      /// cell class page
+      QWidget* pageCellsClass;
+      
+      /// cell class page widget group
+      WuQWidgetGroup* pageCellsClassWidgetGroup;
       
       /// cell class sub page layout
       QVBoxLayout* cellSubPageClassLayout;
@@ -1453,23 +1705,26 @@ class GuiDisplayControlDialog : public QtDialog {
       /// number of valid cell classes
       int numValidCellClasses;
       
-      /// updating cells in progress
-      bool updatingCellsInProgress;
+      /// foci main page
+      QWidget* pageFociMain;
       
-      /// foci page
-      QTabWidget* fociPage;
+      /// foci main page widget group (all widgets on foci main page)
+      WuQWidgetGroup* pageFociMainWidgetGroup;
       
-      /// foci main sub page
-      QWidget* fociSubPageMain;
+      /// foci color page
+      QWidget* pageFociColor;
       
-      /// foci color sub page
-      QWidget* fociSubPageColor;
+      /// foci color page widget group (all widgets on foci color page)
+      WuQWidgetGroup* pageFociColorWidgetGroup;
       
       /// foci color sub page layout
       QVBoxLayout* fociSubPageColorLayout;
       
-      /// foci class sub page
-      QWidget* fociSubPageClass;
+      /// foci class page
+      QWidget* pageFociClass;
+      
+      /// foci class page widget group (all widgets on foci class page)
+      WuQWidgetGroup* pageFociClassWidgetGroup;
       
       /// foci class sub page
       QVBoxLayout* fociSubPageClassLayout;
@@ -1477,11 +1732,14 @@ class GuiDisplayControlDialog : public QtDialog {
       /// foci class button group
       QButtonGroup* fociClassButtonGroup;
       
-      /// foci keywords sub page
-      QWidget* fociSubPageKeywords;
+      /// foci keywords page
+      QWidget* pageFociKeyword;
       
       /// foci keywords sub page layout
       QVBoxLayout* fociSubPageKeywordsLayout;
+      
+      /// foci main keyword widget group (all widgets on foci keywords page)
+      WuQWidgetGroup* pageFociKeywordsWidgetGroup;
       
       /// foci keywords grid layout
       QGridLayout* fociKeywordGridLayout;
@@ -1492,8 +1750,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// foci keyword checkboxes
       std::vector<QCheckBox*> fociKeywordCheckBoxes;
       
-      /// foci names sub page
-      QWidget* fociSubPageNames;
+      /// foci names page
+      QWidget* pageFociName;
+      
+      /// foci name page widget group (all widgets on foci name page)
+      WuQWidgetGroup* pageFociNameWidgetGroup;
       
       /// foci names sub page layout
       QVBoxLayout* fociSubPageNamesLayout;
@@ -1507,8 +1768,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// foci names checkboxes
       std::vector<QCheckBox*> fociNamesCheckBoxes;
       
-      /// foci tables sub page
-      QWidget* fociSubPageTables;
+      /// foci tables page
+      QWidget* pageFociTable;
+      
+      /// foci tables page widget group (all widgets on foci table page)
+      WuQWidgetGroup* pageFociTableWidgetGroup;
       
       /// foci tables sub page layout
       QVBoxLayout* fociSubPageTablesLayout;
@@ -1537,9 +1801,6 @@ class GuiDisplayControlDialog : public QtDialog {
       /// layout for fociClassQVBox
       QGridLayout* fociClassGridLayout;
       
-      /// updating foci in progress
-      bool updatingFociInProgress;
-      
       /// number of valid foci color checkboxes
       int numValidFociColors;
       
@@ -1564,7 +1825,7 @@ class GuiDisplayControlDialog : public QtDialog {
       QRadioButton* underlayNoneButton;
       
       /// update the areal estimation combo box
-      void updateArealEstComboBox();
+      void updateArealEstOverlayUnderlaySelections();
       
       /// areal estimation selection items
       QComboBox* arealEstSelectionComboBox;
@@ -1807,7 +2068,7 @@ class GuiDisplayControlDialog : public QtDialog {
       QComboBox* miscProjectionComboBox;
       
       /// deformation field page
-      QWidget* deformationFieldPage;
+      QWidget* pageDeformationField;
       
       /// deformation field mode combo box
       QComboBox* deformationFieldModeComboBox;
@@ -1827,14 +2088,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// deformation field unstretched factor
       QDoubleSpinBox* deformationFieldUnstretchedDoubleSpinBox;
       
-      /// Cocoamac page
-      QTabWidget* cocomacPage;
-      
-      /// Cocomac display sub page
-      QWidget* cocomacDisplaySubPage;
+      /// Cocomac display page
+      QWidget* pageCocomacDisplay;
       
       /// Cocomac file info sub page
-      QWidget* cocomacFileInfoSubPage;
+      QWidget* pageCocomacInformation;
       
       /// Cocoamc afferent connection  radio button
       QRadioButton* cocomacAfferentRadioButton;
@@ -1866,20 +2124,17 @@ class GuiDisplayControlDialog : public QtDialog {
       /// Cocomac  text area
       QTextEdit* cocomacProjectionsTextEdit;
   
-      /// Contour page
-      QTabWidget* contourPage;
-      
       /// Contour main page
-      QWidget* contourMainPage;
+      QWidget* pageContourMain;
       
       /// contour cell class sub page
-      QWidget* contourSubPageClass;
+      QWidget* pageContourClass;
       
       /// contour cell class sub page layout
       QVBoxLayout* contourSubPageClassLayout;
       
       /// contour color class sub page
-      QWidget* contourSubPageColor;
+      QWidget* pageContourColor;
       
       /// contour color class sub page layout
       QVBoxLayout* contourSubPageColorLayout;
@@ -1929,8 +2184,20 @@ class GuiDisplayControlDialog : public QtDialog {
       /// contour cell color check boxes
       std::vector<QCheckBox*> contourCellColorCheckBoxes;
       
-      /// the volume page
-      QWidget* volumePage;
+      /// the volume selection page 
+      QWidget* pageVolumeSelection;
+      
+      /// the volume settings page 
+      QWidget* pageVolumeSettings;
+      
+      /// widget group for volume settings page
+      WuQWidgetGroup* pageVolumeSettingsWidgetGroup;
+      
+      /// the volume surface outline page 
+      QWidget* pageVolumeSurfaceOutline;
+      
+      /// widget group for volume surface outline page
+      WuQWidgetGroup* pageVolumeSurfaceOutlineWidgetGroup;
       
       /// volume primary overlay none button
       QRadioButton* volumePrimaryOverlayNoneButton;
@@ -2167,7 +2434,10 @@ class GuiDisplayControlDialog : public QtDialog {
       QCheckBox* volumeShowCrosshairsCheckBox;
       
       /// surface and volume page
-      QWidget* surfaceAndVolumePage;
+      QWidget* pageSurfaceAndVolume;
+      
+      /// surface and volume page widget group
+      WuQWidgetGroup* pageSurfaceAndVolumeWidgetGroup;
       
       /// surface and volume draw black anatomy voxels
       QCheckBox* surfaceAndVolumeAnatomyBlackCheckBox;
@@ -2189,10 +2459,7 @@ class GuiDisplayControlDialog : public QtDialog {
       
       /// surface and volume coronal slice spin box
       QSpinBox* surfaceAndVolumeCoronalSliceSpinBox;
-      
-      /// updating surface and volume items flag
-      bool updatingSurfaceAndVolumeItems;
-      
+            
       /// surface and volume show surface check box
       QCheckBox* surfaceAndVolumeShowSurfaceCheckBox;
       
@@ -2230,7 +2497,7 @@ class GuiDisplayControlDialog : public QtDialog {
       QCheckBox* surfaceAndVolumeShowVectorCloudCheckBox;
       
       /// the images page
-      QWidget* imagesPage;
+      QWidget* pageImages;
       
       /// show image in main window checkbox
       QCheckBox* showImageInMainWindowCheckBox;
@@ -2244,11 +2511,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// images selection buttons
       std::vector<QRadioButton*> imagesRadioButtons;
       
-      /// models page
-      QTabWidget* modelsPage;
+      /// models main page
+      QWidget* pageModelsMain;
       
-      /// models main sub page
-      QWidget* modelsSubPageMain;
+      /// models settings page
+      QWidget* pageModelsSettings;
       
       /// models main sub page layout
       QVBoxLayout* modelsSubPageMainLayout;
@@ -2295,8 +2562,26 @@ class GuiDisplayControlDialog : public QtDialog {
       /// model polygons lighting check box
       QCheckBox* modelPolygonsLightingCheckBox;
       
+      /// paint name page
+      QWidget* pagePaintName;
+      
+      /// paint name checkbox layout
+      QGridLayout* paintNameCheckBoxGridLayout;
+      
+      /// paint name checkboxes
+      std::vector<QCheckBox*> paintNameCheckBoxes;
+      
+      /// paint name checkbox paint file indices
+      std::vector<int> paintNameCheckBoxPaintFileNameIndices;
+      
+      /// paint name checkbox widget groupt
+      WuQWidgetGroup* paintNameCheckBoxWidgetGroup;
+      
       /// top level paint page
-      QWidget* paintPage;
+      QWidget* pagePaintColumn;
+      
+      /// widget group for paint column page
+      WuQWidgetGroup* pagePaintColumnWidgetGroup;
       
       /// paint page layout
       QVBoxLayout* paintPageLayout;
@@ -2304,23 +2589,26 @@ class GuiDisplayControlDialog : public QtDialog {
       /// number of valid paint
       int numValidPaints;
       
+      /// labels for paint column numbers
+      std::vector<QLabel*> paintColumnNameLabels;
+      
       /// radio buttons for paint selection
-      std::vector<QRadioButton*> paintRadioButtons;
+      std::vector<QRadioButton*> paintColumnRadioButtons;
       
       /// line edits for paint names
-      std::vector<QLineEdit*> paintNameLineEdits;
+      std::vector<QLineEdit*> paintColumnNameLineEdits;
       
       /// layout for paint radio button and text boxes
-      QGridLayout* paintSelectionGridLayout;
+      QGridLayout* paintColumnSelectionGridLayout;
       
       /// button group for paint radio buttons
-      QButtonGroup* paintButtonGroup;
+      QButtonGroup* paintColumnButtonGroup;
       
       /// button group for paint comment buttons
-      QButtonGroup* paintCommentButtonGroup;
+      QButtonGroup* paintColumnCommentButtonGroup;
       
       /// button group for paint metadata buttons
-      QButtonGroup* paintMetaDataButtonGroup;
+      QButtonGroup* paintColumnMetaDataButtonGroup;
       
       /// paint apply coloring to corresponding structures
       QCheckBox* paintApplySelectionToLeftAndRightStructuresFlagCheckBox;
@@ -2369,7 +2657,7 @@ class GuiDisplayControlDialog : public QtDialog {
       bool continueVolumeAnimation;
       
       /// scene main page
-      QWidget* sceneMainPage;
+      QWidget* pageSceneMain;
       
       /// skip updating of scene page
       bool skipScenePageUpdate;
@@ -2377,11 +2665,14 @@ class GuiDisplayControlDialog : public QtDialog {
       /// scene list box
       QListWidget* sceneListBox;
       
+      /// scene preserve foci, foci colors, and study metadata checkbox
+      QCheckBox* scenePreserveFociCheckBox;
+      
       /// scene window position combo box
       QComboBox* sceneWindowPositionComboBox;
       
       /// region main page
-      QWidget* regionMainPage;
+      QWidget* pageRegionMain;
       
       /// region all time courses check box
       QRadioButton* regionAllTimeCoursesCheckBox;
@@ -2420,7 +2711,7 @@ class GuiDisplayControlDialog : public QtDialog {
       GuiNodeAttributeColumnSelectionComboBox* paintMedWallColumnComboBox;
       
       /// lat/lon main page
-      QWidget* latLonMainPage;
+      QWidget* pageLatLonMain;
       
       /// layout for lat/lon main page
       QVBoxLayout* latLonMainPageLayout;
@@ -2440,8 +2731,11 @@ class GuiDisplayControlDialog : public QtDialog {
       /// lat lon name line edits
       std::vector<QLineEdit*> latLonNameLineEdits;
       
-      /// surface vector main page
-      QWidget* surfaceVectorMainPage;
+      /// surface vector selection page
+      QWidget* pageSurfaceVectorSelection;
+      
+      /// surface vector settings page
+      QWidget* pageSurfaceVectorSettings;
       
       /// surface vector radio buttons
       std::vector<QRadioButton*> surfaceVectorRadioButtons;
@@ -2471,7 +2765,7 @@ class GuiDisplayControlDialog : public QtDialog {
       QDoubleSpinBox* surfaceVectorLengthMultiplierDoubleSpinBox;
       
       /// geodesic main page
-      QWidget* geodesicMainPage;
+      QWidget* pageGeodesicMain;
       
       /// geodesic main page layout
       QVBoxLayout* geodesicMainPageLayout;
@@ -2507,13 +2801,16 @@ class GuiDisplayControlDialog : public QtDialog {
       QCheckBox* geodesicShowRootNodeCheckBox;
       
       /// areal estimation main page
-      QWidget* arealEstimationMainPage;
+      QWidget* pageArealEstimation;
       
       /// layout for areal estimation main page
       QVBoxLayout* arealEstimationMainPageLayout;
       
       /// areal estimation comment button group
       QButtonGroup* arealEstimationCommentButtonGroup;
+      
+      /// areal estimation metadata button group
+      QButtonGroup* arealEstimationMetaDataButtonGroup;
       
       /// areal estimation selection button group
       QButtonGroup* arealEstimationSelectionButtonGroup;
@@ -2527,24 +2824,87 @@ class GuiDisplayControlDialog : public QtDialog {
       /// areal estimation comment push buttons
       std::vector<QPushButton*> arealEstimationColumnCommentPushButtons;
       
+      /// areal estimation metadata push buttons
+      std::vector<QPushButton*> arealEstimationColumnMetaDataPushButtons;
+      
       /// areal estimation selection radio button
       std::vector<QRadioButton*> arealEstimationSelectionRadioButtons;
       
       /// areal estimation name line edits
       std::vector<QLineEdit*> arealEstimationNameLineEdits;
       
-      /// updating borders in progress
-      bool updatingBordersInProgress;
+      /// surface data valid
+      bool validSurfaceData;
       
-      /// updating metric  in progress
-      bool updatingMetricInProgress;
+      /// volume data valid
+      bool validVolumeData;
       
-      /// updating shape in progress
-      bool updatingShapeInProgress;
-
-      /// updating paint in progress
-      bool updatingPaintInProgress;
+      /// areal estimation data valid
+      bool validArealEstimationData;
+      
+      /// border data valid
+      bool validBorderData;
+      
+      /// cell data valid
+      bool validCellData;
+      
+      /// Cocomac data valid
+      bool validCocomacData;
+      
+      /// contour data valid
+      bool validContourData;
+      
+      /// deformation field data valid
+      bool validDeformationFieldData;
+      
+      /// foci data valid
+      bool validFociData;
+      
+      /// geodesic data valid
+      bool validGeodesicData;
+      
+      /// image data valid
+      bool validImageData;
+      
+      /// latlon data valid
+      bool validLatLonData;
+      
+      /// metric data valid
+      bool validMetricData;
+      
+      /// model data valid
+      bool validModelData;
+      
+      /// paint data valid
+      bool validPaintData;
+      
+      /// prob atlas surface data valid
+      bool validProbAtlasSurfaceData;
+      
+      /// prob atlas volume data valid
+      bool validProbAtlasVolumeData;
+      
+      /// region data valid
+      bool validRegionData;
+      
+      /// rgb paint data valid
+      bool validRgbPaintData;
+      
+      /// scene data valid
+      bool validSceneData;
+      
+      /// shape data valid
+      bool validShapeData;
+      
+      /// surface and volume data valid
+      bool validSurfaceAndVolumeData;
+      
+      /// surface vector data valid
+      bool validSurfaceVectorData;
+      
+      /// topography data valid
+      bool validTopographyData;
 };
 
-#endif // __VE_GUI_DISPLAY_CONTROL_DIALOG_H__
+#endif // __GUI_DISPLAY_CONTROL_DIALOG_H__
 

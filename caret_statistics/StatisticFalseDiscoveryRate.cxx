@@ -35,6 +35,7 @@
  */
 StatisticFalseDiscoveryRate::StatisticFalseDiscoveryRate(const float qIn,
                                                          const C_CONSTANT cConstantIn)
+   : StatisticAlgorithm("False Discovery Rate")
 {
    pCutoff = 0.0;
    q = qIn;

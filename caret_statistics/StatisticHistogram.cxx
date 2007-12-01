@@ -40,6 +40,7 @@
 StatisticHistogram::StatisticHistogram(const int numberOfBucketsIn,
                      const float excludeLeftPercentIn,
                      const float excludeRightPercentIn)
+   : StatisticAlgorithm("Histogram")
 {
    numberOfBuckets = std::max(numberOfBucketsIn, 1);
    excludeLeftPercent = excludeLeftPercentIn;
@@ -837,3 +838,34 @@ StatisticHistogram::vectorLength(const float v[3])
    return len;
 }
 
+/**
+ * print the histogram peaks.
+ */
+void 
+StatisticHistogram::printHistogramPeaks(std::ostream& stream) const
+{
+   int grayPeakBucketNumber;
+   int whitePeakBucketNumber;
+   int grayMinimumBucketNumber;
+   int whiteMaximumBucketNumber;
+   int grayWhiteBoundaryBucketNumber;
+   int csfPeakBucketNumber;
+   getGrayWhitePeakEstimates(grayPeakBucketNumber,
+                                    whitePeakBucketNumber,
+                                    grayMinimumBucketNumber,
+                                    whiteMaximumBucketNumber,
+                                    grayWhiteBoundaryBucketNumber,
+                                    csfPeakBucketNumber);
+   //
+   // Print results
+   //
+   stream << std::endl;
+   stream << "CSF Peak:            " << getDataValueForBucket(csfPeakBucketNumber) << std::endl;
+   stream << "Gray Minimum:        " << getDataValueForBucket(grayMinimumBucketNumber) << std::endl;
+   stream << "Gray Peak:           " << getDataValueForBucket(grayPeakBucketNumber) << std::endl;
+   stream << "Gray/White Boundary: " << getDataValueForBucket(grayWhiteBoundaryBucketNumber) << std::endl;
+   stream << "White Peak:          " << getDataValueForBucket(whitePeakBucketNumber) << std::endl;
+   stream << "White Maximum:       " << getDataValueForBucket(whiteMaximumBucketNumber) << std::endl;
+   stream << std::endl;
+}
+      

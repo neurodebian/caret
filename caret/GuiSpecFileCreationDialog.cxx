@@ -27,13 +27,14 @@
 
 #include <QApplication>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextEdit>
 #include <QToolTip>
@@ -42,7 +43,6 @@
 #include "Categories.h"
 #include "GuiStructureComboBox.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiSpecFileCreationDialog.h"
 #include "QtListBoxSelectionDialog.h"
 #include "QtUtilities.h"
@@ -240,12 +240,12 @@ GuiSpecFileCreationDialog::~GuiSpecFileCreationDialog()
 void 
 GuiSpecFileCreationDialog::slotDirectoryPushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
-   fd.setFileMode(QFileDialog::DirectoryOnly);
+   fd.setFileMode(WuQFileDialog::DirectoryOnly);
    fd.setWindowTitle("Choose Directory");
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          directoryLineEdit->setText(fd.selectedFiles().at(0));
@@ -351,7 +351,7 @@ GuiSpecFileCreationDialog::done(int r)
       QDir dir(directory);
       if (dir.exists() == false) {
          if (dir.mkdir(".") == false) {
-            GuiMessageBox::critical(this, "ERROR", "Unable to create spec file directory.", "OK");
+            QMessageBox::critical(this, "ERROR", "Unable to create spec file directory.");
             return;
          }
       }
@@ -389,7 +389,7 @@ GuiSpecFileCreationDialog::done(int r)
       }
 
       if (msg.isEmpty() == false) {
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
       
@@ -425,7 +425,7 @@ GuiSpecFileCreationDialog::done(int r)
       }
       if (valid) {
          if (specFileName.isEmpty()) {
-            GuiMessageBox::critical(this, "ERROR", "Spec File name is empty.", "OK");
+            QMessageBox::critical(this, "ERROR", "Spec File name is empty.");
             return;
          }
          
@@ -485,7 +485,7 @@ GuiSpecFileCreationDialog::done(int r)
          catch (FileException& e) {
             QString s("Unable to create spec file.\n");
             s.append(e.whatQString());
-            GuiMessageBox::critical(this, "ERROR", s, "OK");
+            QMessageBox::critical(this, "ERROR", s);
             createdSpecFileName = "";
             return;
          }

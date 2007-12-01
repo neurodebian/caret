@@ -205,6 +205,11 @@ class ColorFile : public AbstractFile {
       /// Destructor
       virtual ~ColorFile();
    
+      /// get a "new" color file from the file name's extension
+      /// Note: file is not read, just a new file is returned.
+      static ColorFile* getColorFileFromFileNameExtension(const QString& fileNameIn)
+                                                                 throw (FileException);
+      
       /// add a color
       int addColor(const QString& name,
                    const unsigned char r, const unsigned char g, const unsigned char b,
@@ -220,6 +225,15 @@ class ColorFile : public AbstractFile {
       
       /// returns true if the file is isEmpty (contains no data)
       bool empty() const { return (getNumberOfColors() == 0); }
+      
+      /// Generate random colors for any name that does not match an area color name.
+      /// if "requireExactMatchFlag" is true, a new color is created in there is not 
+      /// a color that exactly matches name.  If "requireExactMatchFlag" is false
+      /// and the "name" begins with the color name, a new color is not created, 
+      /// so, for example, if "name" is "SUL.CeS" and there is a color named "SUL",
+      /// a new color is not created.
+      void generateColorsForNamesWithoutColors(const std::vector<QString>& names,
+                                               const bool requireExactMatchFlag);
       
       /// get the number of colors
       int getNumberOfColors() const { return colors.size(); }

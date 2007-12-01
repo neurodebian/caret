@@ -41,6 +41,7 @@
  * @param 2nd data group must be the deonominator degrees of freedom for F-Distribution
  */
 StatisticGeneratePValue::StatisticGeneratePValue(const INPUT_STATISTIC inputStatisticTypeIn)
+   : StatisticAlgorithm("Generate P-Value")
 {
    inputStatisticType = inputStatisticTypeIn;
    outputDataGroupContainingPValues = NULL;

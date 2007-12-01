@@ -28,10 +28,10 @@
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
-#include "GuiDataFileDialog.h"
 #include "GuiGiftiFileDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMessageBox.h"
@@ -46,7 +46,7 @@
  */
 GuiGiftiFileDialog::GuiGiftiFileDialog(QWidget* parent,
                                        const DIALOG_MODE modeIn)
-   : QFileDialog(parent)
+   : WuQFileDialog(parent)
 {
    //
    // set dialog non-modal
@@ -62,9 +62,9 @@ GuiGiftiFileDialog::GuiGiftiFileDialog(QWidget* parent,
    // Create the file filters
    //
    QStringList filterTypes;
-   filterTypes << GuiDataFileDialog::giftiFunctionalFileFilter
-           << GuiDataFileDialog::giftiLabelFileFilter
-           << GuiDataFileDialog::giftiShapeFileFilter;
+   filterTypes << FileFilters::getGiftiFunctionalFileFilter()
+           << FileFilters::getGiftiLabelFileFilter()
+           << FileFilters::getGiftiShapeFileFilter();
 
    //
    // Set up the dialog based upon the mode
@@ -75,14 +75,14 @@ GuiGiftiFileDialog::GuiGiftiFileDialog(QWidget* parent,
          setAcceptMode(AcceptOpen);
          setFileMode(ExistingFiles);
          setWindowTitle("Open GIFTI Files");
-         filterTypes << GuiDataFileDialog::giftiSurfaceFileFilter;
+         filterTypes << FileFilters::getGiftiSurfaceFileFilter();
          break;
       case DIALOG_MODE_FILE_SAVE:
          setAcceptMode(AcceptSave);
          setFileMode(AnyFile);
          setWindowTitle("Save GIFTI Files");
          if (theMainWindow->getBrainModelSurface() != NULL) {
-            filterTypes << GuiDataFileDialog::giftiSurfaceFileFilter;
+            filterTypes << FileFilters::getGiftiSurfaceFileFilter();
          }
          break;
    }
@@ -174,16 +174,16 @@ GuiGiftiFileDialog::saveFile()
       // Get the extension for this file type
       //
       QString desiredExtension;
-      if (filterName == GuiDataFileDialog::giftiFunctionalFileFilter) {
+      if (filterName == FileFilters::getGiftiFunctionalFileFilter()) {
          desiredExtension = SpecFile::getGiftiFileExtension();
       }
-      else if (filterName == GuiDataFileDialog::giftiLabelFileFilter) {
+      else if (filterName == FileFilters::getGiftiLabelFileFilter()) {
          desiredExtension = SpecFile::getGiftiFileExtension();
       }
-      else if (filterName == GuiDataFileDialog::giftiShapeFileFilter) {
+      else if (filterName == FileFilters::getGiftiShapeFileFilter()) {
          desiredExtension = SpecFile::getGiftiFileExtension();
       }
-      else if (filterName == GuiDataFileDialog::giftiSurfaceFileFilter) {
+      else if (filterName == FileFilters::getGiftiSurfaceFileFilter()) {
          desiredExtension = SpecFile::getGiftiFileExtension();
       }
       else {
@@ -205,22 +205,22 @@ GuiGiftiFileDialog::saveFile()
       try {
          BrainSet* brainSet = theMainWindow->getBrainSet();
          BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
-         if (filterName == GuiDataFileDialog::giftiFunctionalFileFilter) {
+         if (filterName == FileFilters::getGiftiFunctionalFileFilter()) {
             MetricFile* mf = brainSet->getMetricFile();
             mf->setFileWriteType(fileFormat);
             brainSet->writeMetricFile(name);
          }
-         else if (filterName == GuiDataFileDialog::giftiLabelFileFilter) {
+         else if (filterName == FileFilters::getGiftiLabelFileFilter()) {
             PaintFile* pf = brainSet->getPaintFile();
             pf->setFileWriteType(fileFormat);
             brainSet->writePaintFile(name);
          }
-         else if (filterName == GuiDataFileDialog::giftiShapeFileFilter) {
+         else if (filterName == FileFilters::getGiftiShapeFileFilter()) {
             SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
             ssf->setFileWriteType(fileFormat);
             brainSet->writeSurfaceShapeFile(name);
          }
-         else if (filterName == GuiDataFileDialog::giftiSurfaceFileFilter) {
+         else if (filterName == FileFilters::getGiftiSurfaceFileFilter()) {
            theMainWindow->getBrainSet()->writeSurfaceFile(name,
                                                           bms->getSurfaceType(),
                                                           bms,
@@ -277,19 +277,19 @@ GuiGiftiFileDialog::openFile()
          const bool updateSpecFileFlag = true;
          const bool appendFileFlag = true;
          BrainSet* brainSet = theMainWindow->getBrainSet();
-         if (filterName == GuiDataFileDialog::giftiFunctionalFileFilter) {
+         if (filterName == FileFilters::getGiftiFunctionalFileFilter()) {
             brainSet->readMetricFile(name, appendFileFlag, updateSpecFileFlag);
             fm.setMetricModified();
          }
-         else if (filterName == GuiDataFileDialog::giftiLabelFileFilter) {
+         else if (filterName == FileFilters::getGiftiLabelFileFilter()) {
             brainSet->readPaintFile(name, appendFileFlag, updateSpecFileFlag);
             fm.setPaintModified();
          }
-         else if (filterName == GuiDataFileDialog::giftiShapeFileFilter) {
+         else if (filterName == FileFilters::getGiftiShapeFileFilter()) {
             brainSet->readSurfaceShapeFile(name, appendFileFlag, updateSpecFileFlag);
             fm.setSurfaceShapeModified();
          }
-         else if (filterName == GuiDataFileDialog::giftiSurfaceFileFilter) {
+         else if (filterName == FileFilters::getGiftiSurfaceFileFilter()) {
             brainSet->readSurfaceFile(name,
                                       BrainModelSurface::SURFACE_TYPE_UNKNOWN,
                                       false,
@@ -339,6 +339,6 @@ GuiGiftiFileDialog::show()
    //
    selectFilter(selectedFilter());
    
-   QFileDialog::show();
+   WuQFileDialog::show();
 }
       

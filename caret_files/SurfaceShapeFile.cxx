@@ -37,7 +37,7 @@
  * Constructor
  */
 SurfaceShapeFile::SurfaceShapeFile() 
-   : MetricFile("Surface Shape File", GiftiCommon::categoryShape, SpecFile::getSurfaceShapeFileExtension()) 
+   : MetricFile("Surface Shape File", GiftiCommon::intentShape, SpecFile::getSurfaceShapeFileExtension()) 
 {
 }
 

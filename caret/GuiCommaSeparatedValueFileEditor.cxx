@@ -35,6 +35,7 @@
 #include <QLayout>
 #include <QMainWindow>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QStackedWidget>
 #include <QTableWidget>
 #include <QToolBar>
@@ -46,7 +47,6 @@
 #include "GuiCommaSeparatedValueFileEditor.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "QtTextEditDialog.h"
 #include "StringTable.h"
 #include "global_variables.h"
@@ -244,9 +244,12 @@ GuiCommaSeparatedValueFileEditorMainWindow::checkForFileChanges()
       }
       
       if (modifiedFlag) {
-         if (GuiMessageBox::question(this, "Apply Changes", 
-                "Data has been modified.  Apply Changes?", "Yes", "No") == 0) {
-                
+         if (QMessageBox::question(this, 
+                                   "Apply Changes", 
+                                   "Data has been modified.  Apply Changes?", 
+                                   (QMessageBox::Yes | QMessageBox::No),
+                                   QMessageBox::Yes)
+                                      == QMessageBox::Yes) {
             for (int i = 0; i < num; i++) {
                if (tableHasBeenModified[i]) {
                   QTableWidget* tw = tableWidgets[i];
@@ -309,9 +312,9 @@ GuiCommaSeparatedValueFileEditorMainWindow::addRow()
          slotCellChanged(lastRow+1, 0);
       }
       else {
-         GuiMessageBox::information(this, "INFO",
+         QMessageBox::information(this, "INFO",
                   "A row must be selected before pressing the Add Row button. \n"
-                  "Select a row by clicking on the row number in the left column.", "OK");
+                  "Select a row by clicking on the row number in the left column.");
       }
    }
 }
@@ -345,9 +348,9 @@ GuiCommaSeparatedValueFileEditorMainWindow::deleteRows()
          }
       }
       else {
-         GuiMessageBox::information(this, "INFO", 
+         QMessageBox::information(this, "INFO", 
              "One or more rows must be selected before pressing the Delete Row(s)\n"  
-             "button.  Select a row by clicking on the row number in the left column.", "OK");
+             "button.  Select a row by clicking on the row number in the left column.");
       }
    }
 }

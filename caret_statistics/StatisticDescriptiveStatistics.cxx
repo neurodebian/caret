@@ -35,6 +35,7 @@
  * constructor.
  */
 StatisticDescriptiveStatistics::StatisticDescriptiveStatistics()
+   : StatisticAlgorithm("Descriptive Statistics")
 {
    mean           = 0.0;
    dataSumSquared = 0.0;

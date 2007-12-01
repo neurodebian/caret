@@ -32,12 +32,13 @@
 #include <QCursor>
 #include <QDoubleSpinBox>
 #include <QFile>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QTextEdit>
@@ -48,7 +49,6 @@
 #include "BrainSet.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #include "GuiVolumeRegionOfInterestDialog.h"
 #include "GuiVolumeSelectionControl.h"
@@ -492,7 +492,7 @@ GuiVolumeRegionOfInterestDialog::slotSelectionPaintVoxelIdPushButton()
       }
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", "No paint volume is loaded.", "OK");
+      QMessageBox::critical(this, "ERROR", "No paint volume is loaded.");
    }
 }
        
@@ -854,13 +854,13 @@ GuiVolumeRegionOfInterestDialog::slotReportClearPushButton()
 void 
 GuiVolumeRegionOfInterestDialog::slotReportSavePushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setWindowTitle("Choose ROI Text File Name");
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptSave);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
    fd.setFilter("Text Files (*.txt)");
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          const QString fileName = fd.selectedFiles().at(0);
@@ -873,7 +873,7 @@ GuiVolumeRegionOfInterestDialog::slotReportSavePushButton()
          else {
             QString msg("Unable to open for writing: ");
             msg.append(fileName);
-            GuiMessageBox::critical(this, "Error Opening File", msg, "OK");         
+            QMessageBox::critical(this, "Error Opening File", msg);         
          }
       }
    }
@@ -974,7 +974,8 @@ GuiVolumeRegionOfInterestDialog::slotFinishPushButtonPressed()
       QApplication::restoreOverrideCursor();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
 }

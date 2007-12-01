@@ -32,6 +32,9 @@
 /// This class contains system independent version of system dependent functions
 class SystemUtilities {
    public:
+      /// get the user's name
+      static QString getUserName();
+      
       /// see if external program exists (can be executed - ie: in path)
       static bool externalProgramExists(const QString& programName);
       

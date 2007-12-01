@@ -31,6 +31,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -39,7 +40,6 @@
 #include "DisplaySettingsVolume.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiToolBar.h"
 #include "GuiVolumeResizingDialog.h"
 #include "ParamsFile.h"
@@ -390,7 +390,8 @@ GuiVolumeResizingDialog::slotOKButton()
                catch (FileException& e) {
                   QString msg("Unable to write parameters file: ");
                   msg.append(e.whatQString());
-                  GuiMessageBox::critical(this, "ERROR", msg, "OK");
+                  QApplication::restoreOverrideCursor();
+                  QMessageBox::critical(this, "ERROR", msg);
                }
                
                GuiFilesModified fm;

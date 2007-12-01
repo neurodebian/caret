@@ -27,6 +27,8 @@
  */
 /*LICENSE_END*/
 
+#include <ostream>
+
 #include "StatisticAlgorithm.h"
 
 /// class for creating a histogram from a set of values
@@ -74,7 +76,10 @@ class StatisticHistogram : public StatisticAlgorithm {
       void smoothHistogram(const float strengthZeroToOne = 0.5,
                            const int iterations = 5,
                            const int neighborDepth = 2) throw (StatisticException);
-                                                     
+       
+      /// print the histogram peaks
+      void printHistogramPeaks(std::ostream& stream) const;
+      
    protected:
       /// used to sort items for the histogram
       class HistoPts {

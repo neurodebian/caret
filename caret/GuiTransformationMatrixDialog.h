@@ -31,7 +31,6 @@
 #include <vector>
 
 #include "QtDialog.h"
-#include <q3mainwindow.h>
 
 class GuiTransformationMatrixSelectionControl; 
 class QCheckBox;

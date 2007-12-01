@@ -24,22 +24,22 @@
 /*LICENSE_END*/
 
 #include <QCheckBox>
-#include <QFileDialog>
+#include <QDoubleSpinBox>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BorderFile.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiAverageBorderDialog.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFileDialogWithInstructions.h"
-#include "GuiMessageBox.h"
-#include <QDoubleSpinBox>
 #include "QtUtilities.h"
+#include "WuQFileDialog.h"
 #include "StringUtilities.h"
 
 /**
@@ -192,11 +192,11 @@ GuiAverageBorderDialog::~GuiAverageBorderDialog()
 void
 GuiAverageBorderDialog::slotOutputBorderButton()
 {
-   QFileDialog outputBorderFileDialog(this);
+   WuQFileDialog outputBorderFileDialog(this);
    outputBorderFileDialog.setModal(true);
    outputBorderFileDialog.setWindowTitle("Choose Border File");
-   outputBorderFileDialog.setFileMode(QFileDialog::AnyFile);
-   outputBorderFileDialog.setFilter(GuiDataFileDialog::borderGenericFileFilter);
+   outputBorderFileDialog.setFileMode(WuQFileDialog::AnyFile);
+   outputBorderFileDialog.setFilter(FileFilters::getBorderGenericFileFilter());
    if (outputBorderFileDialog.exec() == QDialog::Accepted) {
       outputBorderFileLineEdit->setText(outputBorderFileDialog.selectedFiles().at(0));
    }
@@ -213,8 +213,9 @@ GuiAverageBorderDialog::slotAddButton()
                           "the Apple key).";
    GuiFileDialogWithInstructions openBorderFileDialog(this, instructions, "chooseBorderFile", true);
    openBorderFileDialog.setWindowTitle("Choose Border File");
-   openBorderFileDialog.setMode(GuiFileDialogWithInstructions::ExistingFiles);
-   openBorderFileDialog.setFilter(GuiDataFileDialog::borderGenericFileFilter);
+   openBorderFileDialog.setFileMode(GuiFileDialogWithInstructions::ExistingFiles);
+   openBorderFileDialog.setFilters(QStringList(FileFilters::getBorderGenericFileFilter()));
+   openBorderFileDialog.selectFilter(FileFilters::getBorderGenericFileFilter());
    if (openBorderFileDialog.exec() == QDialog::Accepted) {
       QStringList list = openBorderFileDialog.selectedFiles();
       QStringList::Iterator it = list.begin();
@@ -269,17 +270,17 @@ GuiAverageBorderDialog::slotApplyButton()
    // Verify valid data entered
    //
    if (borderFileNames.empty()) {
-      GuiMessageBox::critical(this, "ERROR", "No input border file are selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "No input border file are selected.");
       return;
    }
    QString outputFileName(outputBorderFileLineEdit->text());
    if (outputFileName.length() <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "No output border file specified.", "OK");
+      QMessageBox::critical(this, "ERROR", "No output border file specified.");
       return;      
    }
    const float resampling = resamplingDoubleSpinBox->value();
    if (resampling <= 0.0) {
-      GuiMessageBox::critical(this, "ERROR", "Resampling must be greater than zero", "OK");
+      QMessageBox::critical(this, "ERROR", "Resampling must be greater than zero");
       return;
    }
    
@@ -297,7 +298,7 @@ GuiAverageBorderDialog::slotApplyButton()
          for (int i = 0; i < static_cast<int>(borderFiles.size()); i++) {
             delete borderFiles[i];
          }
-         GuiMessageBox::critical(this, "File Read Error", e.whatQString(), "OK");
+         QMessageBox::critical(this, "File Read Error", e.whatQString());
          return;
       }
    }
@@ -314,7 +315,7 @@ GuiAverageBorderDialog::slotApplyButton()
                                           averageBorderFile);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    
@@ -325,7 +326,6 @@ GuiAverageBorderDialog::slotApplyButton()
       //
       // Add the file extension, if needed
       //
-//      const QString ext(GuiDataFileDialog::borderGenericFileFilter);
       const QString ext(".border");
       if (StringUtilities::endsWith(outputFileName, ext) == false) {
          outputFileName.append(ext);
@@ -333,7 +333,7 @@ GuiAverageBorderDialog::slotApplyButton()
       averageBorderFile.writeFile(outputFileName);
    }
    catch (FileException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    
@@ -347,5 +347,5 @@ GuiAverageBorderDialog::slotApplyButton()
    //
    // Let the user know the file was created.
    //
-   GuiMessageBox::information(this, "Success", "Average Border File Created", "OK");
+   QMessageBox::information(this, "Success", "Average Border File Created");
 }

@@ -30,6 +30,7 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 
 #include "BrainModelSurfaceDistortion.h"
 #include "BrainSet.h"
@@ -37,7 +38,6 @@
 #include "GuiDistortionDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "QtUtilities.h"
 #include "SurfaceShapeFile.h"
@@ -233,7 +233,8 @@ GuiDistortionDialog::done(int r)
          bmsd.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error", e.whatQString());
          return;
       }
       GuiFilesModified fm;
