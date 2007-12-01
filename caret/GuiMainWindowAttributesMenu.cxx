@@ -44,8 +44,6 @@ GuiMainWindowAttributesMenu::GuiMainWindowAttributesMenu(GuiMainWindow* parent)
    
    createMetricSubMenu(attributesActions);
    
-   createMetricShapeStatisticalSubMenu(attributesActions);
-   
    createModelsSubMenu(attributesActions);
    
    createPaintSubMenu(attributesActions);
@@ -198,32 +196,9 @@ GuiMainWindowAttributesMenu::createPaintSubMenu(GuiMainWindowAttributesActions* 
    paintSubMenu->addAction(attributesActions->getPaintClearAllOrPartAction());
    paintSubMenu->addAction(attributesActions->getPaintToVolumeAction());
    paintSubMenu->addAction(attributesActions->getPaintNamesEditAction());
+   paintSubMenu->addAction(attributesActions->getGenerateColorsForPaints());
 }
 
-/**
- * create the metric/shape statistical operations menu.
- */
-void 
-GuiMainWindowAttributesMenu::createMetricShapeStatisticalSubMenu(GuiMainWindowAttributesActions* attributesActions)
-{
-   metricShapeStatisticalSubMenu = addMenu("Metric and Surface Shape Statistical Operations");
-   
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeCoordinateDifferenceAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeInterHemClustersAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeLeveneMapAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeNormalizationAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeOneSampleTTestAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapePairedTTestAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeRootMeanSquareAction());   
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeShuffledCorrelationColumnsAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeSubtractAverageAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeTwoSampleTTestAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeTMapAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeTMapShuffledColumnsAction());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeWilcoxonRankSum());
-   metricShapeStatisticalSubMenu->addAction(attributesActions->getMetricShapeZMapAction());
-}
-      
 /**
  * create the study metadata sub menu.
  */

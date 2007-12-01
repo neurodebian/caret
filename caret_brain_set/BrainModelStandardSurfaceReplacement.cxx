@@ -272,7 +272,7 @@ BrainModelStandardSurfaceReplacement::execute() throw (BrainModelAlgorithmExcept
    BrainModelSurfaceNodeColoring* nodeColoring = brainSet->getNodeColoring();
    nodeColoring->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
    nodeColoring->setSecondaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-   nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::UNDERLAY_NONE);
+   nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
    
    brainSet->postSpecFileReadInitializations();
 }      

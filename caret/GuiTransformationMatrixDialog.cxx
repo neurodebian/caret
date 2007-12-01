@@ -39,6 +39,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QTabWidget>
@@ -66,7 +67,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiTransformationMatrixDialog.h"
 #include "GuiTransformationMatrixSelectionControl.h"
 #include "MathUtilities.h"
@@ -1661,9 +1661,11 @@ void
 GuiTransformationMatrixDialog::slotMatrixDelete()
 {
    if (currentMatrix != NULL) {
-      if (GuiMessageBox::warning(this, "Confirm",
+      if (QMessageBox::warning(this, "Confirm",
           "Are you sure you want to delete the current matrix ?",
-          "Yes", "No") == 0) {
+          (QMessageBox::Yes | QMessageBox::No),
+          QMessageBox::Yes)
+             == QMessageBox::Yes) {
          TransformationMatrixFile* tmf = theMainWindow->getBrainSet()->getTransformationMatrixFile();
          const int numMatrices = tmf->getNumberOfMatrices();
          for (int i = 0; i < numMatrices; i++) {

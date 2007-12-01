@@ -84,6 +84,15 @@ GiftiLabelTable::addLabel(const QString& labelName)
 }
 
 /**
+ * delete a label.
+ */
+void 
+GiftiLabelTable::deleteLabel(const int labelIndex)
+{
+   labels.erase(labels.begin() + labelIndex);
+}
+      
+/**
  * append a label table to this one.
  */
 void 
@@ -168,6 +177,42 @@ GiftiLabelTable::setLabel(const int indx,
       labels.resize(indx + 1, LabelData(""));
    }
    labels[indx] = labelName;
+}
+
+/**
+ * get label enabled using its index.
+ */
+bool 
+GiftiLabelTable::getLabelEnabled(const int indx) const
+{
+   if ((indx >= 0) && (indx < static_cast<int>(labels.size()))) {
+      return labels[indx].getLabelEnabled();
+   }
+   return false;
+}
+
+/**
+ * set label enabled for a specified index (index must be >= 0).
+ */
+void 
+GiftiLabelTable::setLabelEnabled(const int indx,
+                                 const bool b)
+{
+   if ((indx >= 0) && (indx < static_cast<int>(labels.size()))) {
+      labels[indx].setLabelEnabled(b);
+   }
+}
+                           
+/**
+ * set all labels enabled.
+ */
+void 
+GiftiLabelTable::setAllLabelsEnabled(const bool b)
+{
+   const int num = getNumberOfLabels();
+   for (int i = 0; i < num; i++) {
+      setLabelEnabled(i, b);
+   }
 }
 
 /**

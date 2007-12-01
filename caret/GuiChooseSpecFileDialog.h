@@ -30,7 +30,7 @@
 #include <vector>
 #include <QString>
 
-#include <q3filedialog.h>
+#include "WuQFileDialog.h"
 
 class GuiPreviousSpecFileComboBox;
 class QPushButton;
@@ -39,25 +39,30 @@ class PreferencesFile;
 class QtTextEditDialog;
 
 /// class for a file dialog specialized for choosing spec files
-class GuiChooseSpecFileDialog : public Q3FileDialog {
+class GuiChooseSpecFileDialog : public WuQFileDialog {
    Q_OBJECT
    
    public:
       /// Constructor
       GuiChooseSpecFileDialog(QWidget* parent,
                               const std::vector<QString>& previousSpecFilesIn,
-                              const bool modal);
+                              const bool modal,
+                              const bool allowMultipleSelectionsFlag = false);
       
       /// Constructor
       GuiChooseSpecFileDialog(QWidget* parent,
                               const PreferencesFile* pf,
-                              const bool modal);
+                              const bool modal,
+                              const bool allowMultipleSelectionsFlag = false);
                               
       /// Destructor
       ~GuiChooseSpecFileDialog();
       
       /// get the selected spec file
       QString getSelectedSpecFile() const;
+      
+      /// get the selected spec files
+      std::vector<QString> getSelectedSpecFiles() const;
       
    protected slots:
       /// called when a previous spec file is selected
@@ -67,11 +72,12 @@ class GuiChooseSpecFileDialog : public Q3FileDialog {
       void slotViewPushButton();
       
       /// Called when a file is highlighted
-      void slotFileHighlighted(const QString& name);
+      void slotFilesSelected(const QStringList& name);
 
    protected:
       /// create the dialog
-      void createDialog(const std::vector<QString>& specFileNames);
+      void createDialog(const std::vector<QString>& specFileNames,
+                        const bool allowMultipleSpecFilesFlag);
       
       /// previous spec files combo box
       GuiPreviousSpecFileComboBox* previousSpecFilesComboBox;

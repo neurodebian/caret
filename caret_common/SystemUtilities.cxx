@@ -28,8 +28,8 @@
   Program:   Visualization Toolkit
   Module:    $RCSfile: SystemUtilities.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/06/19 16:53:09 $
-  Version:   $Revision: 1.11 $
+  Date:      $Date: 2007/11/06 16:38:50 $
+  Version:   $Revision: 1.4 $
 
 
 Copyright (c) 1993-2001 Ken Martin, Will Schroeder, Bill Lorensen 
@@ -66,6 +66,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =========================================================================*/
 
 #include <iostream>
+#include <cstdlib>
 
 #include <QApplication>
 #include <QGlobalStatic>
@@ -86,6 +87,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "SystemUtilities.h"
 
+/**
+ * get the user's name.
+ */
+QString 
+SystemUtilities::getUserName()
+{
+#ifdef Q_OS_WIN32
+   const QString name(getenv("USERNAME"));
+#else // Q_OS_WIN32
+   QString name(getlogin());
+   if (name.isEmpty()) {
+      name = getenv("USERNAME");
+   }
+#endif // Q_OS_WIN32
+   return name;
+}
+      
 /**
  * see if external program exists (can be executed - ie: in path).
  */
@@ -162,7 +180,7 @@ SystemUtilities::displayInWebBrowser(const QString& webPage,
    result = reinterpret_cast<int>(ShellExecute(
                                      NULL,
                                      "open",
-                                     webPage,
+                                     webPage.toAscii().constData(),
                                      NULL,
                                      NULL,
                                      SW_SHOWNORMAL));
@@ -210,7 +228,7 @@ SystemUtilities::displayInWebBrowser(const QString& webPage,
    command.append(" \"");
    command.append(webPage);
    command.append("\" &");
-   result =  system(command);
+   result =  system(command.toAscii().constData());
 #endif
 #endif
 

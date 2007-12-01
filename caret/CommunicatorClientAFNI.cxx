@@ -28,12 +28,13 @@
 #include <sstream>
 #include <vector>
 
+#include <QMessageBox>
+
 #include "CommunicatorClientAFNI.h"
 #include "DebugControl.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiIdentifyDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "FileUtilities.h"
 #include "StringUtilities.h"
 #include "global_variables.h"
@@ -192,12 +193,12 @@ CommunicatorClientAFNI::findTransformationMatrix(const QString& afniHeadFileName
    if (foundTransformationMatrix == false) {
       QString msg("Unable to find a transformation matrix for volume ");
       msg.append(fileName);
-      GuiMessageBox::critical(theMainWindow, "AFNI Communication Error", msg, "OK"); 
+      QMessageBox::critical(theMainWindow, "AFNI Communication Error", msg); 
    }
    else if (foundCoordinateFile == false) {
       QString msg("Coordinate file needed for AFNI communication not loaded ");
       msg.append(coordFileName);
-      GuiMessageBox::critical(theMainWindow, "AFNI Communication Error", msg, "OK"); 
+      QMessageBox::critical(theMainWindow, "AFNI Communication Error", msg); 
    }
 }
 

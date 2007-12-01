@@ -332,215 +332,254 @@ NiftiHelper::nifti_quatern_to_mat44( float qb, float qc, float qd,
 /**
  * get the NIFTI intention (such as statistical parameters) information.
  */
-QString 
-NiftiHelper::getNiftiIntentionInformation(const nifti_1_header& hdr)
+void
+NiftiHelper::getNiftiIntentionInformation(const nifti_1_header& hdr,
+                                          QString& niftiIntentCodeAndParam,
+                                          QString& niftiIntentName)
 {
-   QString intentName;
+   niftiIntentName = ("NIFTI_INTENT_NOT_RECOGNIZED_CODE_"
+                      + QString::number(hdr.intent_code));
+   
+   QString intentDescription;
    QString p1;
    QString p2;
    QString p3;
    
    switch (hdr.intent_code) {
      case NIFTI_INTENT_CORREL:     
-        intentName = "Correlation statistic" ;
+        niftiIntentName = "NIFTI_INTENT_CORREL";
+        intentDescription = "Correlation statistic" ;
         p1 = "DOF";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_TTEST:      
-        intentName = "T-statistic" ;
+        niftiIntentName = "NIFTI_INTENT_TTEST";
+        intentDescription = "T-statistic" ;
         p1 = "DOF";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_FTEST:      
-        intentName = "F-statistic" ;
+        niftiIntentName = "NIFTI_INTENT_FTEST";
+        intentDescription = "F-statistic" ;
         p1 = "Numerator DOF";
         p2 = "Denorminator DOF";
         p3 = "";
         break;
      case NIFTI_INTENT_ZSCORE:     
-        intentName = "Z-score"     ;
+        niftiIntentName = "NIFTI_INTENT_ZSCORE";
+        intentDescription = "Z-score"     ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_CHISQ:      
-        intentName = "Chi-squared distribution" ;
+        niftiIntentName = "NIFTI_INTENT_CHISQ";
+        intentDescription = "Chi-squared distribution" ;
         p1 = "DOF";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_BETA:       
-        intentName = "Beta distribution" ;
+        niftiIntentName = "NIFTI_INTENT_BETA";
+        intentDescription = "Beta distribution" ;
         p1 = "a";
         p2 = "b";
         p3 = "";
         break;
      case NIFTI_INTENT_BINOM:      
-        intentName = "Binomial distribution" ;
+        niftiIntentName = "NIFTI_INTENT_BINOM";
+        intentDescription = "Binomial distribution" ;
         p1 = "Number of Trials";
         p2 = "Probability per Trial";
         p3 = "";
         break;
      case NIFTI_INTENT_GAMMA:      
-        intentName = "Gamma distribution" ;
+        niftiIntentName = "NIFTI_INTENT_GAMMA";
+        intentDescription = "Gamma distribution" ;
         p1 = "Shape";
         p2 = "Scale";
         p3 = "";
         break;
      case NIFTI_INTENT_POISSON:    
-        intentName = "Poisson distribution" ;
+        niftiIntentName = "NIFTI_INTENT_POISSON";
+        intentDescription = "Poisson distribution" ;
         p1 = "Mean";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_NORMAL:     
-        intentName = "Normal distribution" ;
+        niftiIntentName = "NIFTI_INTENT_NORMAL";
+        intentDescription = "Normal distribution" ;
         p1 = "Mean";
         p2 = "Standard Deviation";
         p3 = "";
         break;
      case NIFTI_INTENT_FTEST_NONC: 
-        intentName = "F-statistic noncentral" ;
+        niftiIntentName = "NIFTI_INTENT_FTEST_NONC";
+        intentDescription = "F-statistic noncentral" ;
         p1 = "Numerator DOF";
         p2 = "Denominator DOF";
         p3 = "Numerator Noncentrality Parameter";
         break;
      case NIFTI_INTENT_CHISQ_NONC: 
-        intentName = "Chi-squared noncentral" ;
+        niftiIntentName = "NIFTI_INTENT_CHISQ_NONC";
+        intentDescription = "Chi-squared noncentral" ;
         p1 = "DOF";
         p2 = "Noncentrality Parameter";
         p3 = "";
         break;
      case NIFTI_INTENT_LOGISTIC:   
-        intentName = "Logistic distribution" ;
+        niftiIntentName = "NIFTI_INTENT_LOGISTIC";
+        intentDescription = "Logistic distribution" ;
         p1 = "Location";
         p2 = "Scale";
         p3 = "";
         break;
      case NIFTI_INTENT_LAPLACE:    
-        intentName = "Laplace distribution" ;
+        niftiIntentName = "NIFTI_INTENT_LAPLACE";
+        intentDescription = "Laplace distribution" ;
         p1 = "Location";
         p2 = "Scale";
         p3 = "";
         break;
      case NIFTI_INTENT_UNIFORM:    
-        intentName = "Uniform distribition" ;
+        niftiIntentName = "NIFTI_INTENT_UNIFORM";
+        intentDescription = "Uniform distribition" ;
         p1 = "Lower End";
         p2 = "Upper End";
         p3 = "";
         break;
      case NIFTI_INTENT_TTEST_NONC: 
-        intentName = "T-statistic noncentral" ;
+        niftiIntentName = "NIFTI_INTENT_TTEST_NONC";
+        intentDescription = "T-statistic noncentral" ;
         p1 = "DOF";
         p2 = "Noncentrality Parameter";
         p3 = "";
         break;
      case NIFTI_INTENT_WEIBULL:    
-        intentName = "Weibull distribution" ;
+        niftiIntentName = "NIFTI_INTENT_WEIBULL";
+        intentDescription = "Weibull distribution" ;
         p1 = "Location";
         p2 = "Scale";
         p3 = "Power";
         break;
      case NIFTI_INTENT_CHI:        
-        intentName = "Chi distribution" ;
+        niftiIntentName = "NIFTI_INTENT_CHI";
+        intentDescription = "Chi distribution" ;
         p1 = "Half Normal Distribution";
         p2 = "Rayleigh Distritibution";
         p3 = "Maxwell-Boltzmann Distribution";
         break;
      case NIFTI_INTENT_INVGAUSS:   
-        intentName = "Inverse Gaussian distribution" ;
+        niftiIntentName = "NIFTI_INTENT_INVGAUSS";
+        intentDescription = "Inverse Gaussian distribution" ;
         p1 = "MU";
         p2 = "Lambda";
         p3 = "";
         break;
      case NIFTI_INTENT_EXTVAL:     
-        intentName = "Extreme Value distribution" ;
+        niftiIntentName = "NIFTI_INTENT_EXTVAL";
+        intentDescription = "Extreme Value distribution" ;
         p1 = "Location";
         p2 = "Scale";
         p3 = "";
         break;
      case NIFTI_INTENT_PVAL:       
-        intentName = "P-value" ;
+        niftiIntentName = "NIFTI_INTENT_PVAL";
+        intentDescription = "P-value" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_LOGPVAL:    
-        intentName = "Log P-value" ;
+        niftiIntentName = "NIFTI_INTENT_LOGPVAL";
+        intentDescription = "Log P-value" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_LOG10PVAL:  
-        intentName = "Log10 P-value" ;
+        niftiIntentName = "NIFTI_INTENT_LOG10PVAL";
+        intentDescription = "Log10 P-value" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_ESTIMATE:   
-        intentName = "Estimate" ;
+        niftiIntentName = "NIFTI_INTENT_ESTIMATE";
+        intentDescription = "Estimate" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_LABEL:      
-        intentName = "Label index" ;
+        niftiIntentName = "NIFTI_INTENT_LABEL";
+        intentDescription = "Label index" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_NEURONAME:  
-        intentName = "NeuroNames index" ;
+        niftiIntentName = "NIFTI_INTENT_NEURONAME";
+        intentDescription = "NeuroNames index" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_GENMATRIX:  
-        intentName = "General matrix" ;
+        niftiIntentName = "NIFTI_INTENT_GENMATRIX";
+        intentDescription = "General matrix" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_SYMMATRIX:  
-        intentName = "Symmetric matrix" ;
+        niftiIntentName = "NIFTI_INTENT_SYMMATRIX";
+        intentDescription = "Symmetric matrix" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_DISPVECT:   
-        intentName = "Displacement vector" ;
+        niftiIntentName = "NIFTI_INTENT_DISPVECT";
+        intentDescription = "Displacement vector" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_VECTOR:     
-        intentName = "Vector" ;
+        niftiIntentName = "NIFTI_INTENT_VECTOR";
+        intentDescription = "Vector" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_POINTSET:   
-        intentName = "Pointset" ;
+        niftiIntentName = "NIFTI_INTENT_POINTSET";
+        intentDescription = "Pointset" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_TRIANGLE:   
-        intentName = "Triangle" ;
+        niftiIntentName = "NIFTI_INTENT_TRIANGLE";
+        intentDescription = "Triangle" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_QUATERNION: 
-        intentName = "Quaternion" ;
+        niftiIntentName = "NIFTI_INTENT_QUATERNION";
+        intentDescription = "Quaternion" ;
         p1 = "";
         p2 = "";
         p3 = "";
         break;
      case NIFTI_INTENT_DIMLESS:    
-        intentName = "Dimensionless number" ;
+        niftiIntentName = "NIFTI_INTENT_DIMLESS";
+        intentDescription = "Dimensionless number" ;
         p1 = "";
         p2 = "";
         p3 = "";
@@ -549,8 +588,8 @@ NiftiHelper::getNiftiIntentionInformation(const nifti_1_header& hdr)
 
    QString s;
    
-   if (intentName.isEmpty() == false) {
-      s += intentName;
+   if (intentDescription.isEmpty() == false) {
+      s += intentDescription;
       
       if (p1.isEmpty() == false) {
          s += ("  "
@@ -573,7 +612,8 @@ NiftiHelper::getNiftiIntentionInformation(const nifti_1_header& hdr)
                + QString::number(hdr.intent_p3, 'f', 2));
       }
    }
-   return s;
+   
+   niftiIntentCodeAndParam = s;
 }
       
 /**

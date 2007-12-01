@@ -28,13 +28,14 @@
 #include <QCheckBox>
 #include <QDir>
 #include <QDoubleSpinBox>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QFileInfo>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPixmap>
 #include <QProcess>
 #include <QPushButton>
@@ -53,14 +54,14 @@
 #include "Categories.h"
 #include "DebugControl.h"
 #include "DisplaySettingsVolume.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
+#include "GuiDataFileOpenDialog.h"
 #include "GuiFileSelectionButton.h"
 #include "GuiGraphWidget.h"
 #include "GuiHistogramDisplayDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
-#include "GuiOpenDataFileDialog.h"
 #include "GuiToolBar.h"
 #include "GuiVolumeFileOrientationComboBox.h"
 #include "GuiVolumeMultiHemSureFitSegmentationDialog.h"
@@ -460,7 +461,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::updateSegmentationChooseFilesPage()
                           "of the cerebellum spec files.");
    }
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }
    
@@ -606,7 +607,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::createAnatomyChooseFilePage()
    QPushButton* fileNameSelectionButton = 
       new GuiFileSelectionButton(0,
                                  "Choose Anatomical Volume File...",
-                                 GuiDataFileDialog::volumeAnatomyFileFilter,
+                                 FileFilters::getVolumeAnatomyFileFilter(),
                                  true);
    fileNameSelectionButton->setFixedSize(fileNameSelectionButton->sizeHint());
    QObject::connect(fileNameSelectionButton, SIGNAL(fileSelected(const QString&)),
@@ -648,14 +649,14 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeSelected(const QStr
    //
    QString errorMessage;
    bool dummyFlag;
-   if (GuiOpenDataFileDialog::openDataFile(this,
+   if (GuiDataFileOpenDialog::openDataFile(this,
                                            SpecFile::volumeAnatomyFileTag,
                                            name,
                                            false,
                                            false,
                                            errorMessage,
                                            dummyFlag)) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }
    else {
@@ -664,8 +665,8 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeSelected(const QStr
    
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "PROGRAM ERROR", 
-                              "PROGRAM ERROR: there should be a volume in the main window.", "OK");
+      QMessageBox::critical(this, "PROGRAM ERROR", 
+                              "PROGRAM ERROR: there should be a volume in the main window.");
       return;
    }
    
@@ -683,12 +684,14 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeSelected(const QStr
       std::cout << "File path:    " << volumePath.toAscii().constData() << std::endl;
    }
    if (currentPath != volumePath) {
-      if (GuiMessageBox::warning(this,
+      if (QMessageBox::warning(this,
                                   "Change Directory",
                                   "The volume selected is not in the current directory.\n"
                                   "Caret is going to set the current directory to the\n"
                                   "directory containing the volume.",
-                                  "Continue", "Cancel") == 0) {
+                                  (QMessageBox::Ok | QMessageBox::Cancel),
+                                  QMessageBox::Ok)
+                                     == QMessageBox::Ok) {
          QDir::setCurrent(volumePath);
          anatomyVolume->setFileName(FileUtilities::basename(anatomyVolume->getFileName()));
          anatomyVolume->clearModified();
@@ -917,7 +920,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::createAnatomyChooseSpecPage()
    QPushButton* leftAnatomyChooseSpecPushButton = 
                       new GuiFileSelectionButton(0,
                                                  "Select...",
-                                                 GuiDataFileDialog::specFileFilter,
+                                                 FileFilters::getSpecFileFilter(),
                                                  true);
    QObject::connect(leftAnatomyChooseSpecPushButton, SIGNAL(fileSelected(const QString&)),
                     leftAnatomySpecFileLineEdit, SLOT(setText(const QString&)));
@@ -951,7 +954,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::createAnatomyChooseSpecPage()
    QPushButton* rightAnatomyChooseSpecPushButton = 
                       new GuiFileSelectionButton(0,
                                                  "Select...",
-                                                 GuiDataFileDialog::specFileFilter,
+                                                 FileFilters::getSpecFileFilter(),
                                                  true);
    QObject::connect(rightAnatomyChooseSpecPushButton, SIGNAL(fileSelected(const QString&)),
                     rightAnatomySpecFileLineEdit, SLOT(setText(const QString&)));
@@ -986,7 +989,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::createAnatomyChooseSpecPage()
    QPushButton* cerebellumAnatomyChooseSpecPushButton = 
                       new GuiFileSelectionButton(0,
                                                  "Select...",
-                                                 GuiDataFileDialog::specFileFilter,
+                                                 FileFilters::getSpecFileFilter(),
                                                  true);
    QObject::connect(cerebellumAnatomyChooseSpecPushButton, SIGNAL(fileSelected(const QString&)),
                     cerebellumAnatomySpecFileLineEdit, SLOT(setText(const QString&)));
@@ -1505,7 +1508,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyCrosshairsAlignAC()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -1525,7 +1528,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyCrosshairsAlignPC()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -1545,7 +1548,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyCrosshairsAlignLF()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -1564,7 +1567,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeFlipX()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "DISPLAY THE VOLUME IN THE MAIN WINDOW", "OK");
+      QMessageBox::critical(this, "ERROR", "DISPLAY THE VOLUME IN THE MAIN WINDOW");
       return;
    }
    
@@ -1602,7 +1605,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeFlipY()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "DISPLAY THE VOLUME IN THE MAIN WINDOW", "OK");
+      QMessageBox::critical(this, "ERROR", "DISPLAY THE VOLUME IN THE MAIN WINDOW");
       return;
    }
    
@@ -1796,7 +1799,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotSaveAnatomyVolumeFile()
    bool zipAfniFlag = false;
    if (volumeFileTypeAfniRadioButton->isChecked()) {
       name += SpecFile::getAfniVolumeFileExtension();
-      fileFilter = GuiDataFileDialog::volumeFileAfniFilter;
+      fileFilter = FileFilters::getVolumeFileAfniFilter();
       zipAfniFlag = volumeFileWriteCompressedCheckBox->isChecked();
    }
    else if (volumeFileTypeNiftiRadioButton->isChecked()) {
@@ -1806,34 +1809,34 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotSaveAnatomyVolumeFile()
       else {
          name += SpecFile::getNiftiVolumeFileExtension();
       }
-      fileFilter = GuiDataFileDialog::volumeFileNiftiWriteFilter;
+      fileFilter = FileFilters::getVolumeFileNiftiWriteFilter();
    }
    else if (volumeFileTypeSpmRadioButton->isChecked()) {
       name += SpecFile::getAnalyzeVolumeFileExtension();
-      fileFilter = GuiDataFileDialog::volumeFileSpmMedxFilter;
+      fileFilter = FileFilters::getVolumeFileSpmMedxFilter();
    }
    else if (volumeFileTypeWuNilRadioButton->isChecked()) {
       name += ".4dfp." + SpecFile::getWustlVolumeFileExtension();
-      fileFilter = GuiDataFileDialog::volumeFileWuNilFilter;
+      fileFilter = FileFilters::getVolumeFileWuNilFilter();
    }
    else {
       name += SpecFile::getNiftiVolumeFileExtension();
-      fileFilter = GuiDataFileDialog::volumeFileNiftiWriteFilter;
+      fileFilter = FileFilters::getVolumeFileNiftiWriteFilter();
    }
    
    //
    // Use a file dialog to save the volume file
    //
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setWindowTitle("Save Volume File");
    fd.setDirectory(QDir::current());
-   fd.setAcceptMode(QFileDialog::AcceptSave);
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    fd.setFilter(fileFilter);
    fd.selectFilter(fileFilter);
    fd.setConfirmOverwrite(true);
    fd.selectFile(name);
-   if (fd.exec() == QFileDialog::Accepted) {
+   if (fd.exec() == WuQFileDialog::Accepted) {
       QStringList files = fd.selectedFiles();
       if (files.isEmpty() == false) {
          name = files.at(0);
@@ -1848,7 +1851,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotSaveAnatomyVolumeFile()
                                   zipAfniFlag);
          }
          catch (FileException& e) {
-            GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+            QMessageBox::critical(this, "ERROR", e.whatQString());
             return;
          }
          anatomyVolume->setFileName(FileUtilities::basename(name));
@@ -1944,7 +1947,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeSetOrigin()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no volume in the Main Window.");
       return;
    }
    
@@ -2361,7 +2364,8 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeNonUniformityCorrec
                          anatomyVolumeNonUniformAFNIIterationsSpinBox->value());
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
    }
    else if (anatomyVolumeNonUniformAlgorithmITKRadioButton->isChecked()) {
@@ -2389,7 +2393,8 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyVolumeNonUniformityCorrec
          biasCorrector.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
    }
    

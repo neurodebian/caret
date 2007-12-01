@@ -28,14 +28,14 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextEdit>
 
-#include "GuiMessageBox.h"
 #include "GuiStudyInfoEditorWidget.h"
 #include "StereotaxicSpace.h"
 #include "QtListBoxSelectionDialog.h"
-#include "QtWidgetGroup.h"
+#include "WuQWidgetGroup.h"
 
 static const QString newStudyRetainEntriesString("New - Retain Entries");
 static const QString newStudyClearEntriesString("New - Clear Entries");
@@ -91,7 +91,7 @@ GuiStudyInfoEditorWidget::GuiStudyInfoEditorWidget(std::vector<CellStudyInfo>* s
    //
    // Widget group for stereotaxic space items
    //
-   stereotaxicSpaceWidgetGroup = new QtWidgetGroup(this);
+   stereotaxicSpaceWidgetGroup = new WuQWidgetGroup(this);
    stereotaxicSpaceWidgetGroup->addWidget(stereotaxicSpacePushButton);
    stereotaxicSpaceWidgetGroup->addWidget(stereotaxicSpaceLineEdit);
    
@@ -106,7 +106,7 @@ GuiStudyInfoEditorWidget::GuiStudyInfoEditorWidget(std::vector<CellStudyInfo>* s
    //
    // Widget group for stereotaxic space items
    //
-   partitioningSchemeWidgetGroup = new QtWidgetGroup(this);
+   partitioningSchemeWidgetGroup = new WuQWidgetGroup(this);
    partitioningSchemeWidgetGroup->addWidget(partitioningSchemeAbbreviationLabel);
    partitioningSchemeWidgetGroup->addWidget(partitioningSchemeAbbreviationLineEdit);
    partitioningSchemeWidgetGroup->addWidget(partitioningSchemeFullNameLabel);
@@ -267,7 +267,7 @@ void
 GuiStudyInfoEditorWidget::slotAcceptEditorContents()
 {
    if (titleLineEdit->text().isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "You must enter a title.", "OK");
+      QMessageBox::critical(this, "ERROR", "You must enter a title.");
       return;
    }
    

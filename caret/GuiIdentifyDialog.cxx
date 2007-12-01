@@ -453,6 +453,20 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
                     this, SLOT(slotShowStudyCommentInfoCheckBox(bool)));
    
    //
+   // show study data format info check box
+   //
+   showStudyDataFormatInfoCheckBox = new QCheckBox("Data Format");
+   QObject::connect(showStudyDataFormatInfoCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotShowStudyDataFormatInfoCheckBox(bool)));
+   
+   //
+   // show study data type info check box
+   //
+   showStudyDataTypeInfoCheckBox = new QCheckBox("Data Type");
+   QObject::connect(showStudyDataTypeInfoCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotShowStudyDataTypeInfoCheckBox(bool)));
+   
+   //
    // show study DOI info check box
    //
    showStudyDOIInfoCheckBox = new QCheckBox("DOI (Document Object Identifier)");
@@ -770,6 +784,8 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
    studyInfoGroupLayout->addWidget(showStudyAuthorInfoCheckBox);
    studyInfoGroupLayout->addWidget(showStudyCitationInfoCheckBox);
    studyInfoGroupLayout->addWidget(showStudyCommentInfoCheckBox);
+   studyInfoGroupLayout->addWidget(showStudyDataFormatInfoCheckBox);
+   studyInfoGroupLayout->addWidget(showStudyDataTypeInfoCheckBox);
    studyInfoGroupLayout->addWidget(showStudyDOIInfoCheckBox);
    studyInfoGroupLayout->addWidget(showStudyKeywordsInfoCheckBox);
    studyInfoGroupLayout->addWidget(showStudyMedicalSubjectHeadingInfoCheckBox);
@@ -915,6 +931,8 @@ GuiIdentifyMainWindow::updateFilteringSelections()
    showStudyAuthorInfoCheckBox->setChecked(bmi->getDisplayStudyAuthorsInformation());
    showStudyCitationInfoCheckBox->setChecked(bmi->getDisplayStudyCitationInformation());
    showStudyCommentInfoCheckBox->setChecked(bmi->getDisplayStudyCommentInformation());
+   showStudyDataFormatInfoCheckBox->setChecked(bmi->getDisplayStudyDataFormatInformation());
+   showStudyDataTypeInfoCheckBox->setChecked(bmi->getDisplayStudyDataTypeInformation());
    showStudyDOIInfoCheckBox->setChecked(bmi->getDisplayStudyDOIInformation());
    showStudyKeywordsInfoCheckBox->setChecked(bmi->getDisplayStudyKeywordsInformation());
    showStudyMedicalSubjectHeadingInfoCheckBox->setChecked(bmi->getDisplayStudyMedicalSubjectHeadingsInformation());
@@ -1353,6 +1371,26 @@ GuiIdentifyMainWindow::slotShowStudyCommentInfoCheckBox(bool val)
 {
    BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
    bmi->setDisplayStudyCommentInformation(val);
+}
+
+/**
+ * show study data format info check box.
+ */
+void 
+GuiIdentifyMainWindow::slotShowStudyDataFormatInfoCheckBox(bool val)
+{
+   BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+   bmi->setDisplayStudyDataFormatInformation(val);
+}
+
+/**
+ * show study data type info check box.
+ */
+void 
+GuiIdentifyMainWindow::slotShowStudyDataTypeInfoCheckBox(bool val)
+{
+   BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+   bmi->setDisplayStudyDataTypeInformation(val);
 }
 
 /**
@@ -1995,6 +2033,14 @@ GuiIdentifyDialog::saveScene(std::vector<SceneFile::SceneClass>& scs)
 void 
 GuiIdentifyDialog::displayVocabularyNameData(const QString& name)
 {
+   BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+   const QString txt = bmi->getIdentificationTextForVocabulary(true, name);
+   if (txt.isEmpty() == false) {
+      idMainWindow->appendHtml(txt);
+      show();
+      activateWindow();
+   }
+/*
    const VocabularyFile* vf = theMainWindow->getBrainSet()->getVocabularyFile();
    const VocabularyFile::VocabularyEntry* ve = vf->getBestMatchingVocabularyEntry(name);
    if (ve != NULL) {
@@ -2002,6 +2048,7 @@ GuiIdentifyDialog::displayVocabularyNameData(const QString& name)
       show();
       activateWindow();
    }   
+*/
 }
 
 /**

@@ -35,6 +35,7 @@
  * the input StatisticDataGroup with DATA_STORAGE_MODE_POINT.
  */
 StatisticRankTransformation::StatisticRankTransformation()
+   : StatisticAlgorithm("Rank Transformation")
 {
 }
 

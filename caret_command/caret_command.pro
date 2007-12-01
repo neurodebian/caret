@@ -18,21 +18,25 @@ include(../caret_qmake_include.pro)
 win32 {
    debug {
       LIBS += \
+         ..\caret_command_operations\debug\libCaretCommandOperations.a \
          ..\caret_brain_set\debug\libCaretBrainSet.a \
          ..\caret_vtk4_classes\debug\libCaretVtk4Classes.a \
          ..\caret_files\debug\libCaretFiles.a \
+         ..\caret_widgets\debug\libCaretWidgets.a \
          ..\caret_uniformize\debug\libCaretUniformize.a \
-	 ..\caret_statistics\debug\libCaretStatistics.a \
+	      ..\caret_statistics\debug\libCaretStatistics.a \
          ..\caret_common\debug\libCaretCommon.a 
    }
    
    release {
       LIBS += \
+         ..\caret_command_operations\release\libCaretCommandOperations.a \
          ..\caret_brain_set\release\libCaretBrainSet.a \
          ..\caret_vtk4_classes\release\libCaretVtk4Classes.a \
          ..\caret_files\release\libCaretFiles.a \
+         ..\caret_widgets\release\libCaretWidgets.a \
          ..\caret_uniformize\release\libCaretUniformize.a \
-	 ..\caret_statistics\release\libCaretStatistics.a \
+	      ..\caret_statistics\release\libCaretStatistics.a \
          ..\caret_common\release\libCaretCommon.a 
    }
    
@@ -53,12 +57,26 @@ win32::debug {
 
 macx {
    CONFIG -= app_bundle
-   LIBS += -L../caret_brain_set -lCaretBrainSet \
+   LIBS += \
+           -L../caret_command_operations -lCaretCommandOperations \
+           -L../caret_brain_set -lCaretBrainSet \
            -L../caret_vtk4_classes -lCaretVtk4Classes \
-	   -L../caret_files -lCaretFiles \
-	   -L../caret_uniformize -lCaretUniformize \
-	   -L../caret_statistics -lCaretStatistics \
-	   -L../caret_common -lCaretCommon 
+           -L../caret_files -lCaretFiles \
+           -L../caret_widgets -lCaretWidgets \
+	        -L../caret_uniformize -lCaretUniformize \
+	        -L../caret_statistics -lCaretStatistics \
+	        -L../caret_common -lCaretCommon 
+
+   PRE_TARGETDEPS +=  \
+           ../caret_command_operations/libCaretCommandOperations.a \
+           ../caret_brain_set/libCaretBrainSet.a \
+           ../caret_vtk4_classes/libCaretVtk4Classes.a \
+           ../caret_files/libCaretFiles.a \
+           ../caret_widgets/libCaretWidgets.a \
+           ../caret_uniformize/libCaretUniformize.a \
+           ../caret_statistics/libCaretStatistics.a \
+           ../caret_common/libCaretCommon.a \
+           ../caret_widgets/libCaretWidgets.a
 
    contains ( DEFINES, HAVE_ITK ) {
       LIBS += $$ITK_LIBS
@@ -72,11 +90,14 @@ macx {
 }
 
 unix:!macx {
-   LIBS += -L../caret_brain_set -lCaretBrainSet \
-	   -L../caret_files -lCaretFiles \
-	   -L../caret_uniformize -lCaretUniformize \
-	   -L../caret_statistics -lCaretStatistics \
-	   -L../caret_common -lCaretCommon 
+   LIBS += \
+           -L../caret_command_operations -lCaretCommandOperations \
+           -L../caret_brain_set -lCaretBrainSet \
+           -L../caret_files -lCaretFiles \
+           -L../caret_widgets -lCaretWidgets \
+	        -L../caret_uniformize -lCaretUniformize \
+	        -L../caret_statistics -lCaretStatistics \
+	        -L../caret_common -lCaretCommon 
 
    contains ( DEFINES, HAVE_ITK ) {
       LIBS += $$ITK_LIBS
@@ -103,7 +124,6 @@ unix:!macx {
 }
 
 # Input
-#HEADERS += OffScreenOpenGLWidget.h
+#HEADERS += 
 
-SOURCES += main.cxx \
-           OffScreenOpenGLWidget.cxx
+SOURCES += main.cxx

@@ -157,6 +157,12 @@ class Border {
                           const bool thisBorderIsClosed, const bool otherBorderIsClosed,
                           int& myLinkIntersect, int& otherLinkIntersect) const;
       
+      /// find first link in "this" border that is within "tolerance" distance
+      /// of a link in "other border"
+      bool intersection3D(const Border* otherBorder,
+                          const float intersectionTolerance,
+                          int& myLinkIntersect, int& otherLinkIntersect) const;
+      
       /// get total length of a border      
       float getBorderLength() const;
       
@@ -231,7 +237,8 @@ class Border {
       /// See if points are inside a border (border assumed flat in X-Y plane)
       void pointsInsideBorder2D(const float* points, const int numPoints,
                                 std::vector<bool>& insideFlags,
-                                const bool checkNonNegativeZPointsOnly = false) const;
+                                const bool checkNonNegativeZPointsOnly = false,
+                                const float zMinimum = 0.0) const;
 
       /// See if 3D points are inside a 3D border (transform all to screen axis)
       void pointsInsideBorder3D(const GLdouble* modelMatrix,
@@ -262,6 +269,11 @@ class Border {
       /// get the character that begins the landmark rater into in a border name
       static char getLandmarkRaterFirstChar() { return ':'; }
       
+      /// smooth the border links
+      void smoothBorderLinks(const int numberOfIterations,
+                             const bool closedBorderFlag,
+                             const std::vector<bool>* smoothTheseLinksOnly = NULL);
+                             
       /// compare the name of two landmark borders
       /// only compares text before the semi-colon in the name
       static bool compareLandmarkBorderNames(const QString& name1, const QString& name2);

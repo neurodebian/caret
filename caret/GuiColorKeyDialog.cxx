@@ -1086,7 +1086,17 @@ GuiColorKeyDialog::displayStudyMatchingFociColor(const QString& colorName)
       for (int i = 0; i < numFoci; i++) {
          const CellProjection* cp = fpf->getCellProjection(i);
          if (cp->getColorIndex() == colorIndex) {
-            const StudyMetaDataLink smdl = cp->getStudyMetaDataLink();
+            const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
+            BrainModelIdentification* bmi = bs->getBrainModelIdentification();
+            const QString studyMessage = bmi->getIdentificationTextForStudies(true,
+                                                                              smdf,
+                                                                              smdls);
+            if (studyMessage.isEmpty() == false) {
+               GuiIdentifyDialog* idDialog = theMainWindow->getIdentifyDialog(true);
+               idDialog->appendHtml(studyMessage);
+               break;
+            }
+/*
             const int studyIndex = smdf->getStudyIndexFromLink(smdl);
             if ((studyIndex >= 0) &&
                 (studyIndex < smdf->getNumberOfStudyMetaData())) {
@@ -1101,6 +1111,7 @@ GuiColorKeyDialog::displayStudyMatchingFociColor(const QString& colorName)
                   break;
                }
             }
+*/
          }
       }
    }

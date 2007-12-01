@@ -53,9 +53,6 @@ class GuiMainWindowAttributesMenu : public QMenu {
       /// create the metric sub menu
       void createMetricSubMenu(GuiMainWindowAttributesActions* attributesActions);
       
-      /// create the metric/shape statistical operations menu
-      void createMetricShapeStatisticalSubMenu(GuiMainWindowAttributesActions* attributesActions);
-      
       /// create the models sub menu
       void createModelsSubMenu(GuiMainWindowAttributesActions* attributesActions);
       
@@ -91,9 +88,6 @@ class GuiMainWindowAttributesMenu : public QMenu {
       
       /// Metric sub menu
       QMenu* metricSubMenu;
-      
-      /// Metric/Shape statistical sub menu
-      QMenu* metricShapeStatisticalSubMenu;
       
       /// Models sub menu
       QMenu* modelsSubMenu;

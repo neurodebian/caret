@@ -448,7 +448,8 @@ LatLonFile::removeColumn(const int columnNumber)
  * Read the lat/lon file's version 1 data.
  */
 void 
-LatLonFile::readFileDataVersion1(QTextStream& stream,
+LatLonFile::readFileDataVersion1(QFile& file,
+                                 QTextStream& stream,
                                  QDataStream& binStream) throw (FileException)
 {
    int numNodes = -1;
@@ -503,6 +504,11 @@ LatLonFile::readFileDataVersion1(QTextStream& stream,
       return;
    }
 
+   //
+   // Fixes reading of binary files
+   //
+   file.seek(stream.pos());
+   
    switch (getFileReadType()) {
       case FILE_FORMAT_ASCII:
          {
@@ -642,7 +648,7 @@ LatLonFile::readFileData(QFile& file, QTextStream& stream,
 #endif // QT4_FILE_POS_BUG
          break;
       case 1:
-         readFileDataVersion1(stream, binStream);
+         readFileDataVersion1(file, stream, binStream);
          break;
       default:
          throw FileException(filename, "Invalid Lat/Lon file version");

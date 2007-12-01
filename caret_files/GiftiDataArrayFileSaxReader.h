@@ -158,7 +158,13 @@ class GiftiDataArrayFileSaxReader : public QXmlDefaultHandler {
       GiftiDataArray::ENCODING encodingForReadingArrayData;
       
       /// data location for reading
-      GiftiDataArray::DATA_LOCATION dataLocationForReadingArrayData;
+      //GiftiDataArray::DATA_LOCATION dataLocationForReadingArrayData;
+      
+      /// external file name
+      QString externalFileNameForReadingData;
+      
+      /// external file offset
+      int externalFileOffsetForReadingData;
 };
 
 #endif // __GIFTI_DATA_ARRAY_FILE_SAX_READER_H__

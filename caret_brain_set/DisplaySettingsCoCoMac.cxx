@@ -117,8 +117,7 @@ DisplaySettingsCoCoMac::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
 {
    if (onlyIfSelected) {
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_COCOMAC,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) == false) {
+      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) == false) {
          return;
       }
    }

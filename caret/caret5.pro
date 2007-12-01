@@ -19,23 +19,25 @@ INCLUDEPATH += .
 include(../caret_qmake_include.pro)
 
 win32 {
-   debug {
+   CONFIG(debug) {
       LIBS += ..\caret_common\debug\libCaretCommon.a \
+         ..\caret_command_operations\debug\libCaretCommandOperations.a \
          ..\caret_brain_set\debug\libCaretBrainSet.a \
          ..\caret_vtk4_classes\debug\libCaretVtk4Classes.a \
          ..\caret_files\debug\libCaretFiles.a \
-	 ..\caret_uniformize\debug\libCaretUniformize.a \
+	      ..\caret_uniformize\debug\libCaretUniformize.a \
          ..\caret_statistics\debug\libCaretStatistics.a \
          ..\caret_widgets\debug\libCaretWidgets.a \
          ..\caret_common\debug\libCaretCommon.a 
    }
-   release {
+   CONFIG(release) {
       LIBS += ..\caret_common\release\libCaretCommon.a \
+         ..\caret_command_operations\release\libCaretCommandOperations.a \
          ..\caret_brain_set\release\libCaretBrainSet.a \
          ..\caret_vtk4_classes\release\libCaretVtk4Classes.a \
          ..\caret_files\release\libCaretFiles.a \
-	 ..\caret_uniformize\release\libCaretUniformize.a \
-         ..\caret_common\release\libCaretStatistics.a \
+	      ..\caret_uniformize\release\libCaretUniformize.a \
+         ..\caret_statistics\release\libCaretStatistics.a \
          ..\caret_widgets\release\libCaretWidgets.a \
          ..\caret_common\release\libCaretCommon.a 
    }
@@ -60,12 +62,13 @@ win32::debug {
 }
 
 macx {
-   INCLUDEPATH += \
-		  /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
+   #INCLUDEPATH += \
+	#	  /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
 
    QMAKE_LFLAGS_APP -= -prebind
    
    LIBS +=  \
+      -L../caret_command_operations -lCaretCommandOperations \
 	   -L../caret_brain_set -lCaretBrainSet \
       -L../caret_vtk4_classes -lCaretVtk4Classes \
 	   -L../caret_files -lCaretFiles \
@@ -74,7 +77,9 @@ macx {
 	   -L../caret_common -lCaretCommon \
 	   -L../caret_widgets -lCaretWidgets 
       
+
    PRE_TARGETDEPS +=  \
+      ../caret_command_operations/libCaretCommandOperations.a \
 	   ../caret_brain_set/libCaretBrainSet.a \
       ../caret_vtk4_classes/libCaretVtk4Classes.a \
 	   ../caret_files/libCaretFiles.a \
@@ -105,6 +110,7 @@ macx {
 
 unix:!macx {
    LIBS +=  \
+      -L../caret_command_operations -lCaretCommandOperations \
 	   -L../caret_brain_set -lCaretBrainSet \
 	   -L../caret_files -lCaretFiles \
 	   -L../caret_uniformize -lCaretUniformize \
@@ -163,7 +169,11 @@ HEADERS += global_variables.h \
       GuiBrainModelSelectionComboBox.h \
       GuiBrainModelViewingWindow.h \
       GuiCaptureMainWindowImageDialog.h \
+      GuiCaretCommandDialog.h \
+      GuiCaretCommandScriptBuilderDialog.h \
+      GuiCaretCommandWidget.h \
       GuiCaretTipsDialog.h \
+      GuiCellAndFociAttributeAssignmentDialog.h \
       GuiCellAndFociReportDialog.h \
 	   GuiCellAttributesDialog.h \
       GuiCellsOrFociProjectionDialog.h \
@@ -181,17 +191,17 @@ HEADERS += global_variables.h \
 	   GuiContourSetScaleDialog.h \
 	   GuiConvertDataFileDialog.h \
       GuiCopySpecFileDialog.h \
-	   GuiDataFileDialog.h \
 	   GuiCurrentColoringToRgbPaintDialog.h \
 	   GuiDataFileCommentDialog.h \
-	   GuiDataFileDialog.h \
+      GuiDataFileImportOptionsDialog.h \
       GuiDataFileMathDialog.h \
+      GuiDataFileOpenDialog.h \
+      GuiDataFileSaveDialog.h \
 	   GuiDeformationFieldDialog.h \
 	   GuiDeleteBordersByNameDialog.h \
 	   GuiDisplayControlDialog.h \
 	   GuiDistortionDialog.h \
 	   GuiDrawBorderDialog.h \
-	   GuiExportDataFileDialog.h \
       GuiFilesModified.h \
       GuiFileDialogWithInstructions.h \
       GuiFileSelectionButton.h \
@@ -215,8 +225,6 @@ HEADERS += global_variables.h \
       GuiImageEditorWindow.h \
       GuiImageFormatComboBox.h \
       GuiImageViewingWindow.h \
-      GuiImageFileOpenSaveDialog.h \
-	   GuiImportDataFileDialog.h \
 	   GuiInflateAndSmoothFingersDialog.h \
 	   GuiInflateSurfaceDialog.h \
 	   GuiInterpolateSurfacesDialog.h \
@@ -250,25 +258,20 @@ HEADERS += global_variables.h \
       GuiMapStereotaxicFocusDialog.h \
       GuiMessageBox.h \
 	   GuiMetricModificationDialog.h \
-      GuiMetricShapeInterHemClustersDialog.h \
-      GuiMetricShapeOneAndPairedTTestDialog.h \
-      GuiMetricShapeTwoSampleTTestDialog.h \
-      GuiMetricShapeStatisticalAlgorithmDialog.h \
-      GuiMetricShapeStatisticsDialog.h \
 	   GuiMetricsToRgbPaintDialog.h \
       GuiModelSelectionControl.h \
       GuiModelsEditorDialog.h \
 	   GuiMorphingDialog.h \
 	   GuiMorphingMeasurementsDialog.h \
+      GuiMouseModePopupMenu.h \
 	   GuiMultipleInputDialog.h \
 	   GuiMultiresolutionMorphingDialog.h \
 	   GuiNameSelectionDialog.h \
 	   GuiNodeAttributeColumnSelectionComboBox.h \
 	   GuiNodeAttributeFileClearResetDialog.h \
 	   GuiLoadNodeAttributeFileColumnSelectionDialog.h \
-	   GuiOpenDataFileDialog.h \
 	   GuiPaintColumnNamesListBoxSelectionDialog.h \
-	   GuiPaintNamesEditDialog.h \
+	   GuiPaintNameEditorDialog.h \
       GuiPaletteColorSelectionDialog.h \
       GuiPaletteEditorDialog.h \
       GuiParamsFileEditorDialog.h \
@@ -277,10 +280,6 @@ HEADERS += global_variables.h \
 	   GuiRecordingDialog.h \
 	   GuiResectionDialog.h \
 	   GuiSectionControlDialog.h \
-	   GuiSaveDataFileDialog.h \
-      GuiScriptArg.h \
-      GuiScriptDialog.h \
-      GuiScriptOperation.h \
 	   GuiSetTopologyDialog.h \
 	   GuiSetViewDialog.h \
       GuiShapeOrVectorsFromCoordinateSubtractionDialog.h \
@@ -289,7 +288,6 @@ HEADERS += global_variables.h \
       GuiSpecAndSceneFileCreationDialog.h \
       GuiSpecFileCreationDialog.h \
       GuiSpecFileDialog.h \
-      GuiSpeechGenerator.h \
       GuiStructureComboBox.h \
       GuiStudyInfoEditorWidget.h \
       GuiStudyMetaDataFileEditorDialog.h \
@@ -323,7 +321,6 @@ HEADERS += global_variables.h \
       GuiVolumePaintEditorDialog.h \
 	   GuiVolumeReconstructionDialog.h \
 	   GuiVolumeRegionOfInterestDialog.h \
-	   GuiVolumeRegionOfInterestDialogOld.h \
       GuiVolumeRescaleDialog.h \
 	   GuiVolumeResizingDialog.h \
 	   GuiVolumeSegmentationEditorDialog.h \
@@ -359,7 +356,11 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiBrainModelViewingWindow.cxx \
       GuiBrainSetAndModelSelectionControl.cxx \
       GuiCaptureMainWindowImageDialog.cxx \
+      GuiCaretCommandDialog.cxx \
+      GuiCaretCommandScriptBuilderDialog.cxx \
+      GuiCaretCommandWidget.cxx \
       GuiCaretTipsDialog.cxx \
+      GuiCellAndFociAttributeAssignmentDialog.cxx \
       GuiCellAndFociReportDialog.cxx \
 	   GuiCellAttributesDialog.cxx \
       GuiCellsOrFociProjectionDialog.cxx \
@@ -379,14 +380,15 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiCopySpecFileDialog.cxx \ 
 	   GuiCurrentColoringToRgbPaintDialog.cxx \
 	   GuiDataFileCommentDialog.cxx \
-	   GuiDataFileDialog.cxx \
+      GuiDataFileImportOptionsDialog.cxx \
       GuiDataFileMathDialog.cxx \
+      GuiDataFileOpenDialog.cxx \
+      GuiDataFileSaveDialog.cxx \
 	   GuiDeformationFieldDialog.cxx \
 	   GuiDeleteBordersByNameDialog.cxx \
 	   GuiDisplayControlDialog.cxx \
 	   GuiDistortionDialog.cxx \
 	   GuiDrawBorderDialog.cxx \
-	   GuiExportDataFileDialog.cxx \
       GuiFilesModified.cxx \
       GuiFileDialogWithInstructions.cxx \
       GuiFileSelectionButton.cxx \
@@ -410,11 +412,9 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiImageEditorWindow.cxx \
       GuiImageFormatComboBox.cxx \
       GuiImageViewingWindow.cxx \
-      GuiImageFileOpenSaveDialog.cxx \
 	   GuiInflateAndSmoothFingersDialog.cxx \
 	   GuiInflateSurfaceDialog.cxx \
 	   GuiInterpolateSurfacesDialog.cxx \
-	   GuiImportDataFileDialog.cxx \
       GuiMacOSXApplication.cxx \
       GuiMainWindow.cxx \
       GuiMainWindowAttributesActions.cxx \
@@ -445,25 +445,20 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiMapStereotaxicFocusDialog.cxx \
       GuiMessageBox.cxx \
 	   GuiMetricModificationDialog.cxx \
-      GuiMetricShapeInterHemClustersDialog.cxx \
-      GuiMetricShapeOneAndPairedTTestDialog.cxx \
-      GuiMetricShapeTwoSampleTTestDialog.cxx \
-      GuiMetricShapeStatisticalAlgorithmDialog.cxx \
-      GuiMetricShapeStatisticsDialog.cxx \
 	   GuiMetricsToRgbPaintDialog.cxx \
       GuiModelSelectionControl.cxx \
       GuiModelsEditorDialog.cxx \
 	   GuiMorphingDialog.cxx \
 	   GuiMorphingMeasurementsDialog.cxx \
+      GuiMouseModePopupMenu.cxx \
 	   GuiMultipleInputDialog.cxx \
 	   GuiMultiresolutionMorphingDialog.cxx \
 	   GuiNameSelectionDialog.cxx \
 	   GuiNodeAttributeColumnSelectionComboBox.cxx \
 	   GuiNodeAttributeFileClearResetDialog.cxx \
 	   GuiLoadNodeAttributeFileColumnSelectionDialog.cxx \
-	   GuiOpenDataFileDialog.cxx \
 	   GuiPaintColumnNamesListBoxSelectionDialog.cxx \
-	   GuiPaintNamesEditDialog.cxx \
+	   GuiPaintNameEditorDialog.cxx \
       GuiPaletteColorSelectionDialog.cxx \
       GuiPaletteEditorDialog.cxx \
       GuiParamsFileEditorDialog.cxx \
@@ -471,10 +466,6 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiPreviousSpecFileComboBox.cxx \
 	   GuiRecordingDialog.cxx \
 	   GuiResectionDialog.cxx \
-	   GuiSaveDataFileDialog.cxx \
-      GuiScriptArg.cxx \
-      GuiScriptDialog.cxx \
-      GuiScriptOperation.cxx \
 	   GuiSetTopologyDialog.cxx \
 	   GuiSetViewDialog.cxx \
       GuiShapeOrVectorsFromCoordinateSubtractionDialog.cxx \
@@ -484,7 +475,6 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiSpecAndSceneFileCreationDialog.cxx \
       GuiSpecFileCreationDialog.cxx \
       GuiSpecFileDialog.cxx \
-      GuiSpeechGenerator.cxx \
       GuiStructureComboBox.cxx \
       GuiStudyInfoEditorWidget.cxx \
       GuiStudyMetaDataFileEditorDialog.cxx \
@@ -518,7 +508,6 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiVolumePaintEditorDialog.cxx \
 	   GuiVolumeReconstructionDialog.cxx \
 	   GuiVolumeRegionOfInterestDialog.cxx \
-	   GuiVolumeRegionOfInterestDialogOld.cxx \
       GuiVolumeRescaleDialog.cxx \
 	   GuiVolumeResizingDialog.cxx \
 	   GuiVolumeSegmentationEditorDialog.cxx \

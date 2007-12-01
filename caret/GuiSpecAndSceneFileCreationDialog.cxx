@@ -26,11 +26,11 @@
 #include <QGridLayout>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 
 #include "BrainSet.h"
-#include "GuiDataFileDialog.h"
+#include "FileFilters.h"
 #include "GuiFileSelectionButton.h"
-#include "GuiMessageBox.h"
 #include "GuiSpecAndSceneFileCreationDialog.h"
 
 /**
@@ -51,7 +51,7 @@ GuiSpecAndSceneFileCreationDialog::GuiSpecAndSceneFileCreationDialog(QWidget* pa
    //
    GuiFileSelectionButton* specFileButton = new GuiFileSelectionButton(0,
                                                                        "Spec File...",
-                                                                       GuiDataFileDialog::specFileFilter,
+                                                                       FileFilters::getSpecFileFilter(),
                                                                        false);
    specFileNameLineEdit = new QLineEdit;
    QObject::connect(specFileButton, SIGNAL(fileSelected(const QString&)),
@@ -62,7 +62,7 @@ GuiSpecAndSceneFileCreationDialog::GuiSpecAndSceneFileCreationDialog(QWidget* pa
    //
    GuiFileSelectionButton* sceneFileButton = new GuiFileSelectionButton(0,
                                                                        "Scene File...",
-                                                                       GuiDataFileDialog::sceneFileFilter,
+                                                                       FileFilters::getSceneFileFilter(),
                                                                        false);
    sceneFileNameLineEdit = new QLineEdit;
    QObject::connect(sceneFileButton, SIGNAL(fileSelected(const QString&)),
@@ -102,7 +102,7 @@ GuiSpecAndSceneFileCreationDialog::done(int r)
    //
    QString specFileName = specFileNameLineEdit->text();
    if (specFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "You must enter the name for the Spec File.", "OK");
+      QMessageBox::critical(this, "ERROR", "You must enter the name for the Spec File.");
       return;
    }
 
@@ -111,7 +111,7 @@ GuiSpecAndSceneFileCreationDialog::done(int r)
    //
    QString sceneFileName = sceneFileNameLineEdit->text();
    if (sceneFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "You must enter the name for the Scene File.", "OK");
+      QMessageBox::critical(this, "ERROR", "You must enter the name for the Scene File.");
       return;
    }
 
@@ -128,7 +128,7 @@ GuiSpecAndSceneFileCreationDialog::done(int r)
    // Was there an error ?
    //
    if (errorMessage.isEmpty() == false) {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
       return;
    }
    

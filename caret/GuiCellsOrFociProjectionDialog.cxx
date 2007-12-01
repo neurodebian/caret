@@ -28,6 +28,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 
@@ -41,7 +42,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiCellsOrFociProjectionDialog.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
@@ -217,7 +217,7 @@ GuiCellsOrFociProjectionDialog::done(int r)
          projType = CellFileProjector::PROJECTION_TYPE_FLIP_TO_MATCH_HEMISPHERE;
       }
       else {
-         GuiMessageBox::critical(this, "ERROR", "You must select a projection type.", "OK");
+         QMessageBox::critical(this, "ERROR", "You must select a projection type.");
          return;
       }
       
@@ -226,7 +226,7 @@ GuiCellsOrFociProjectionDialog::done(int r)
       //
       BrainModelSurface* bms = theMainWindow->getBrainSet()->getActiveFiducialSurface();
       if (bms == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "There is no fiducial surface.", "OK");
+         QMessageBox::critical(this, "ERROR", "There is no fiducial surface.");
          return;
       }
 

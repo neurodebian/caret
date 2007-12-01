@@ -34,6 +34,7 @@
  * constructor.
  */
 StatisticCorrelationCoefficient::StatisticCorrelationCoefficient()
+   : StatisticAlgorithm("Correlation Coefficient")
 {
    correlationCoefficientR  = 0.0;
    correlationCoefficientR2 = 0.0;

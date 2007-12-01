@@ -36,12 +36,13 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
@@ -63,7 +64,8 @@
 #include "BrainModelSurfaceGeodesic.h"
 #include "BrainModelSurfaceMetricClustering.h"
 #include "BrainModelSurfaceNodeColoring.h"
-#include "BrainModelSurfaceRegionOfInterest.h"
+#include "BrainModelSurfaceROICreateBorderUsingGeodesic.h" 
+#include "BrainModelSurfaceROITextReport.h" 
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "BrainSet.h"
 #include "ColorFile.h"
@@ -71,6 +73,7 @@
 #include "DisplaySettingsMetric.h"
 #include "DisplaySettingsSurface.h"
 #include "DisplaySettingsSurfaceShape.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBorderNamesListBoxSelectionDialog.h"
 #include "GuiBrainModelSelectionComboBox.h"
@@ -78,7 +81,6 @@
 #include "GuiFilesModified.h"
 #include "GeodesicDistanceFile.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiPaintColumnNamesListBoxSelectionDialog.h"
@@ -89,6 +91,7 @@
 #include "MathUtilities.h"
 #include "MetricFile.h"
 #include "NameIndexSort.h"
+#include "NodeRegionOfInterestFile.h"
 #include "QtUtilities.h"
 #include "PaintFile.h"
 #include "ProbabilisticAtlasFile.h"
@@ -108,6 +111,7 @@ static const int maxComboBoxWidth = 400;
 GuiSurfaceRegionOfInterestDialog::GuiSurfaceRegionOfInterestDialog(QWidget* parent)
    : QtDialog(parent)
 {
+   showSelectedNodesCheckBoxValueWhenDialogClosed = true;
    separatorCharacter = ";";
    paintWithNameIndex = -1;
    metricNodeForQuery = -1;
@@ -191,17 +195,32 @@ GuiSurfaceRegionOfInterestDialog::slotHelpButton()
 }
 
 /**
+ * show the dialog.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::show()
+{
+   //
+   // May want to show selected nodes 
+   //
+   showSelectedNodesCheckBox->setChecked(true);  // showSelectedNodesCheckBoxValueWhenDialogClosed);
+   slotShowSelectedNodes(showSelectedNodesCheckBox->isChecked());
+   updateNumberOfSelectedNodesLabel();
+   QtDialog::show();
+}
+
+/**
  * Called when dialog closed.
  */
 void
 GuiSurfaceRegionOfInterestDialog::close()
 {
-   resetMarkedNodesAndReportHeader();
-   const int numNodes = theMainWindow->getBrainSet()->getNumberOfNodes();
-   for (int i = 0; i < numNodes; i++) {
-         BrainSetNodeAttribute* bna = theMainWindow->getBrainSet()->getNodeAttributes(i);
-         bna->setNodeInROI(false);
-   }
+   showSelectedNodesCheckBoxValueWhenDialogClosed = showSelectedNodesCheckBox->isChecked();
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->setDisplaySelectedNodes(false);
+   
+   resetMarkedNodesAndReportHeader(false);
    updateNumberOfSelectedNodesLabel();
    
    GuiBrainModelOpenGL::MOUSE_MODES m = theMainWindow->getBrainModelOpenGL()->getMouseMode();
@@ -218,70 +237,30 @@ GuiSurfaceRegionOfInterestDialog::close()
 }
 
 /**
- * See if any nodes are in the ROI.
- */
-bool
-GuiSurfaceRegionOfInterestDialog::haveNodesInROI() const
-{
-   return (std::find(nodeInROI.begin(), nodeInROI.end(), true) != nodeInROI.end());
-}
-
-/**
  * Reset/resize the marked nodes flags.
  */
 void
-GuiSurfaceRegionOfInterestDialog::resetMarkedNodesAndReportHeader()
+GuiSurfaceRegionOfInterestDialog::resetMarkedNodesAndReportHeader(const bool deselectNodesInROI)
 {
-   const unsigned int numNodes = theMainWindow->getBrainSet()->getNumberOfNodes();
-   if (nodeInROI.size() != numNodes) {
-      nodeInROI.resize(numNodes, false);
-   }
-
-   switch (selectionLogic) {
-      case SELECTION_LOGIC_NORMAL:
+   switch (getSelectionLogic()) {
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_NORMAL:
          reportHeader = "";
          break;
-      case SELECTION_LOGIC_AND:
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_AND:
          reportHeader.append("\n--- AND ---\n");
          break;
-      case SELECTION_LOGIC_OR:
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_OR:
          reportHeader.append("\n--- OR ----\n");
          break;
-      case SELECTION_LOGIC_NOT:
-         reportHeader = "\n--- NOT ---\n";
-         break;
-      case SELECTION_LOGIC_AND_NOT:
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_AND_NOT:
          reportHeader = "\n--- AND NOT ---\n";
          break;
    }
    
-   std::fill(nodeInROI.begin(), nodeInROI.end(), false);
-}
-
-/**
- * Remove any nodes without neighbors from the ROI.
- */
-void
-GuiSurfaceRegionOfInterestDialog::removeNodesWithoutNeighborsFromROI()
-{
-   BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
-   if (bms == NULL) {
-      return;
-   }
-   const int numNodes = theMainWindow->getBrainSet()->getNumberOfNodes();
-   
-   //
-   // Unmark any nodes without neighbors
-   //
-   //const TopologyFile* tf = topologyComboBox->getSelectedTopologyFile(); //()bms->getTopologyFile();
-   const TopologyFile* tf = bms->getTopologyFile();
-   if (tf != NULL) {
-      TopologyHelper th(tf, false, true, false);
-      for (int i = 0; i < numNodes; i++) {
-         if (th.getNodeHasNeighbors(i) == false) {
-            nodeInROI[i] = false;
-         }
-      }
+   if (deselectNodesInROI) {
+      BrainModelSurfaceROINodeSelection* surfaceROI = 
+         theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+      surfaceROI->deselectAllNodes();
    }
 }
 
@@ -702,7 +681,9 @@ GuiSurfaceRegionOfInterestDialog::paintROI(const BrainModelSurface* bms,
 void
 GuiSurfaceRegionOfInterestDialog::selectNodesAll()
 {
-   std::fill(nodeInROI.begin(), nodeInROI.end(), true);
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->selectAllNodes(operationSurfaceComboBox->getSelectedBrainModelSurface());
    reportHeader.append("\nQUERY: All Nodes.");
 }
 
@@ -713,50 +694,25 @@ GuiSurfaceRegionOfInterestDialog::selectNodesAll()
 void
 GuiSurfaceRegionOfInterestDialog::selectNodesBorder()
 {
-   const int numNodes = theMainWindow->getBrainSet()->getNumberOfNodes();
-   
    //
    // Get the selected flat surface for border queries
    //
    if (borderSurfaceComboBox->count() == 0) {
-      GuiMessageBox::warning(this, "No Flat Surface",
-             "There is no flat surface which is required for border queries.", "OK");
+      QMessageBox::warning(this, "No Flat Surface",
+             "There is no flat surface which is required for border queries.");
       return;
    }
    const BrainModelSurface* bms = borderSurfaceComboBox->getSelectedBrainModelSurface();
-   const CoordinateFile* cf = bms->getCoordinateFile();
-   const float* coords = cf->getCoordinate(0);
    
-   //
-   // Get the border file for the surface type
-   //
-   BorderFile bf;
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
-   bmbs->copyBordersToBorderFile(bms, bf);
-   const int numBorders = bf.getNumberOfBorders();
-   if (bf.getNumberOfBorders() <= 0) {
-      GuiMessageBox::warning(this, "No Borders",
-                          "Flat surface has no borders.", "OK");
-      return;
-   }
-   
-   //
-   // Need to check all borders since there may be more than one 
-   // with the same name.
-   //
-   for (int i = 0; i < numBorders; i++) {
-      Border* b = bf.getBorder(i);
-      if (b->getName() == selectedBorderName) {
-         std::vector<bool> insideFlags;
-         b->pointsInsideBorder2D(coords, numNodes, insideFlags);
-         
-         for (int j = 0; j < numNodes; j++) {
-            if (insideFlags[j]) {
-               nodeInROI[j] = true;
-            }
-         }
-      }
-   }
+
+   surfaceROI->selectNodesWithinBorder(getSelectionLogic(),
+                                       operationSurfaceComboBox->getSelectedBrainModelSurface(),
+                                       bms,
+                                       bmbs,
+                                       selectedBorderName);
    
    QString str("\nQuery: All nodes within all border(s) named ");
    str.append(selectedBorderName);
@@ -768,6 +724,25 @@ GuiSurfaceRegionOfInterestDialog::selectNodesBorder()
 }
 
 /**
+ * select nodes by lat/lon.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::selectNodesLatLon()
+{
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   const int columnNumber = 0;
+   surfaceROI->selectNodesWithLatLong(getSelectionLogic(),
+                                      operationSurfaceComboBox->getSelectedBrainModelSurface(),
+                                      theMainWindow->getBrainSet()->getLatLonFile(),
+                                      columnNumber,
+                                      latLowerRangeDoubleSpinBox->value(),
+                                      latUpperRangeDoubleSpinBox->value(),
+                                      lonLowerRangeDoubleSpinBox->value(),
+                                      lonUpperRangeDoubleSpinBox->value());
+}
+      
+/**
  * Select nodes by metric.
  */
 void
@@ -778,58 +753,28 @@ GuiSurfaceRegionOfInterestDialog::selectNodesMetric()
       return;
    }
    const int modelIndex = bms->getBrainModelIndex();
+   MetricFile* metricFile = theMainWindow->getBrainSet()->getMetricFile();
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    
    const bool checkAllNodes = metricAllNodesRadioButton->isChecked();
-   
-   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
-   const int numNodes = mf->getNumberOfNodes();
-   
-   if (mf->getNumberOfColumns() <= 0) {
-      GuiMessageBox::critical(this, "Error", "There are no metric columns.", "OK");
-      return;
-   }
-   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-   const int thresholdColumn = dsm->getSelectedThresholdColumn(modelIndex);
-   if ((thresholdColumn < 0) || (thresholdColumn >= mf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Error", "Threshold column is invalid.", "OK");
-      return;
-   }
-   
-   const float lowMetric  = metricLowerThresholdDoubleSpinBox->value();
-   const float highMetric = metricUpperThresholdDoubleSpinBox->value();
-   
    if (checkAllNodes) {
-      for (int i = 0; i < numNodes; i++) {
-         const float metric = mf->getValue(i, thresholdColumn);
-         if ((metric >= lowMetric) && (metric <= highMetric)) {
-            nodeInROI[i] = true;
-         }
-      }
+      surfaceROI->selectNodesWithMetric(getSelectionLogic(),
+                                        bms,
+                                        metricFile,
+                                        dsm->getSelectedThresholdColumn(modelIndex),
+                                        metricLowerThresholdDoubleSpinBox->value(),
+                                        metricUpperThresholdDoubleSpinBox->value());
    }
-   else {
-      if ((metricNodeForQuery < 0) || (metricNodeForQuery >= numNodes)) {
-         GuiMessageBox::critical(this, "Error", "Starting metric node invalid.  Reselect it.", "OK");
-         return;
-      }
-      
-      //
-      // Find metrics connected to selected node that are within metric threshold values
-      //
-      BrainModelSurfaceConnectedSearchMetric metricSearch(theMainWindow->getBrainSet(), bms, metricNodeForQuery,
-                                                          mf,
-                                                          thresholdColumn, lowMetric, highMetric);
-      try {
-         metricSearch.execute();
-         for (int i = 0; i < numNodes; i++) {
-            if (metricSearch.getNodeConnected(i)) {
-               nodeInROI[i] = true;
-            }
-         }
-      }
-      catch (BrainModelAlgorithmException& bmae) {
-         GuiMessageBox::critical(this, "Error", bmae.whatQString(), "OK");
-         return;
-      }
+   else{
+      surfaceROI->selectConnectedNodesWithMetric(getSelectionLogic(),
+                                                 bms,
+                                                 metricFile,
+                                                 dsm->getSelectedThresholdColumn(modelIndex),
+                                                 metricLowerThresholdDoubleSpinBox->value(),
+                                                 metricUpperThresholdDoubleSpinBox->value(),
+                                                 metricNodeForQuery);
    }
    
    QString modeMessage;   
@@ -843,15 +788,15 @@ GuiSurfaceRegionOfInterestDialog::selectNodesMetric()
    str << "\nQUERY:  "
       << modeMessage.toAscii().constData()
       << " ("
-      << lowMetric
+      << metricLowerThresholdDoubleSpinBox->value()
       << ", "
-      << highMetric
+      << metricUpperThresholdDoubleSpinBox->value()
       << ")\n"
       << "Starting Node: "
       << metricNodeForQuery
       << "\n"
       << "Column Name: "
-      << mf->getColumnName(thresholdColumn).toAscii().constData()
+      << metricFile->getColumnName(dsm->getSelectedThresholdColumn(modelIndex)).toAscii().constData()
       << "\n";
    reportHeader.append(str.str().c_str());
 }
@@ -866,15 +811,10 @@ GuiSurfaceRegionOfInterestDialog::selectNodesCrossovers()
    if (bms == NULL) {
       return;
    }
-   const BrainSet* bs = theMainWindow->getBrainSet();
-   
-   const int numNodes = bms->getNumberOfNodes();
-   for (int i = 0; i < numNodes; i++) {
-      const BrainSetNodeAttribute* bna = bs->getNodeAttributes(i);
-      if (bna->getCrossover() == BrainSetNodeAttribute::CROSSOVER_YES) {
-         nodeInROI[i] = true;
-      }
-   }
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->selectNodesThatAreCrossovers(getSelectionLogic(),
+                                            bms);
 }
       
 /**
@@ -888,58 +828,29 @@ GuiSurfaceRegionOfInterestDialog::selectNodesShape()
       return;
    }
    const int modelIndex = bms->getBrainModelIndex();
-   
-   const bool checkAllNodes = shapeAllNodesRadioButton->isChecked();
-   
    SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
-   const int numNodes = ssf->getNumberOfNodes();
-   
-   if (ssf->getNumberOfColumns() <= 0) {
-      GuiMessageBox::critical(this, "Error", "There are no shape columns.", "OK");
-      return;
-   }
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
    DisplaySettingsSurfaceShape* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
    const int column = dss->getSelectedDisplayColumn(modelIndex);
-   if ((column < 0) || (column >= ssf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Error", "Threshold column is invalid.", "OK");
-      return;
-   }
    
-   const float lowShape  = shapeLowerThresholdDoubleSpinBox->value();
-   const float highShape = shapeUpperThresholdDoubleSpinBox->value();
-   
+   const bool checkAllNodes = shapeAllNodesRadioButton->isChecked();
    if (checkAllNodes) {
-      for (int i = 0; i < numNodes; i++) {
-         const float shape = ssf->getValue(i, column);
-         if ((shape >= lowShape) && (shape <= highShape)) {
-            nodeInROI[i] = true;
-         }
-      }
+      surfaceROI->selectNodesWithSurfaceShape(getSelectionLogic(),
+                                        bms,
+                                        ssf,
+                                        column,
+                                        shapeLowerThresholdDoubleSpinBox->value(),
+                                        shapeUpperThresholdDoubleSpinBox->value());
    }
-   else {
-      if ((shapeNodeForQuery < 0) || (shapeNodeForQuery >= numNodes)) {
-         GuiMessageBox::critical(this, "Error", "Starting shape node invalid.  Reselect it.", "OK");
-         return;
-      }
-      
-      //
-      // Find shapes connected to selected node that are within shape threshold values
-      //
-      BrainModelSurfaceConnectedSearchMetric shapeSearch(theMainWindow->getBrainSet(), bms, shapeNodeForQuery,
-                                                          ssf,
-                                                          column, lowShape, highShape);
-      try {
-         shapeSearch.execute();
-         for (int i = 0; i < numNodes; i++) {
-            if (shapeSearch.getNodeConnected(i)) {
-               nodeInROI[i] = true;
-            }
-         }
-      }
-      catch (BrainModelAlgorithmException& bmae) {
-         GuiMessageBox::critical(this, "Error", bmae.whatQString(), "OK");
-         return;
-      }
+   else{
+      surfaceROI->selectConnectedNodesWithSurfaceShape(getSelectionLogic(),
+                                                 bms,
+                                                 ssf,
+                                                 column,
+                                                 shapeLowerThresholdDoubleSpinBox->value(),
+                                                 shapeUpperThresholdDoubleSpinBox->value(),
+                                                 shapeNodeForQuery);
    }
    
    QString modeMessage;   
@@ -953,9 +864,9 @@ GuiSurfaceRegionOfInterestDialog::selectNodesShape()
    str << "\nQUERY:  "
       << modeMessage.toAscii().constData()
       << " ("
-      << lowShape
+      << shapeLowerThresholdDoubleSpinBox->value()
       << ", "
-      << highShape
+      << shapeUpperThresholdDoubleSpinBox->value()
       << ")\n"
       << "Starting Node: "
       << shapeNodeForQuery
@@ -974,15 +885,14 @@ GuiSurfaceRegionOfInterestDialog::selectNodesPaint()
 {
    const int column = paintWithNameCategoryComboBox->currentIndex();
    if (column >= 0) {
-      PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
-      if (column < pf->getNumberOfColumns()) {
-         const int numNodes = pf->getNumberOfNodes();
-         for (int i = 0; i < numNodes; i++) {
-            if (pf->getPaint(i, column) == paintWithNameIndex) {
-               nodeInROI[i] = true;
-            }
-         }
-      }
+      BrainModelSurfaceROINodeSelection* surfaceROI = 
+         theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+      const PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
+      surfaceROI->selectNodesWithPaint(getSelectionLogic(),
+                                       operationSurfaceComboBox->getSelectedBrainModelSurface(),
+                                       pf,
+                                       column,
+                                       pf->getPaintNameFromIndex(paintWithNameIndex));
       
       //
       // Header for text report
@@ -1002,15 +912,41 @@ void
 GuiSurfaceRegionOfInterestDialog::slotDeselectNodesButton()
 {
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-   resetMarkedNodesAndReportHeader();   
-   const int numQueryNodes = static_cast<int>(nodeInROI.size());
-   for (int i = 0; i < numQueryNodes; i++) {
-      if (i < numQueryNodes) {
-         BrainSetNodeAttribute* bna = theMainWindow->getBrainSet()->getNodeAttributes(i);
-         bna->setNodeInROI(nodeInROI[i]);
-      }
-   }
+   resetMarkedNodesAndReportHeader(true);   
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->deselectAllNodes();
    updateNumberOfSelectedNodesLabel();
+   theMainWindow->getBrainSet()->clearAllDisplayLists();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+   QApplication::restoreOverrideCursor();
+}
+
+BrainModelSurfaceROINodeSelection::SELECTION_LOGIC
+GuiSurfaceRegionOfInterestDialog::getSelectionLogic() const
+{
+   return static_cast<BrainModelSurfaceROINodeSelection::SELECTION_LOGIC>(selectionLogicComboBox->currentIndex());
+}
+
+/**
+ * call when invert nodes button pressed.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotInvertNodeSelectionPushButton()
+{
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "No Nodes Selected",
+         "No nodes are presently selected so inverting the node election\" will\n"
+         "select nothing.  Change to \"Normal Selection\" then select nodes.");
+      return;
+   }
+
+   surfaceROI->invertSelectedNodes(operationSurfaceComboBox->getSelectedBrainModelSurface());
+   updateNumberOfSelectedNodesLabel();
+   reportHeader = "\n--- NOT ---\n";
    theMainWindow->getBrainSet()->clearAllDisplayLists();
    GuiBrainModelOpenGL::updateAllGL(NULL);
    QApplication::restoreOverrideCursor();
@@ -1024,40 +960,32 @@ GuiSurfaceRegionOfInterestDialog::slotSelectNodesButton()
 {
    
    if (selectionMode == SELECTION_MODE_NONE) {
-      GuiMessageBox::critical(this, "ROI Error",
-                            "You must select a query type", "OK");
+      QMessageBox::critical(this, "ROI Error",
+                            "You must select a query type");
       return;
    }
    
-   switch(selectionLogic) {
-      case SELECTION_LOGIC_NORMAL:
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+      
+   switch(getSelectionLogic()) {
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_NORMAL:
          break;
-      case SELECTION_LOGIC_AND:
-         if (haveNodesInROI() == false) {
-            GuiMessageBox::critical(this, "No Nodes Selected",
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_AND:
+         if (surfaceROI->anyNodesSelected() == false) {
+            QMessageBox::critical(this, "No Nodes Selected",
                "No nodes are presently selected so an \"AND Selection\" will\n"
-               "select nothing.  Change to \"Normal Selection\" then select nodes.",
-               "OK");
+               "select nothing.  Change to \"Normal Selection\" then select nodes.");
             return;
          }
          break;
-      case SELECTION_LOGIC_OR:
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_OR:
          break;
-      case SELECTION_LOGIC_NOT:
-         if (haveNodesInROI() == false) {
-            GuiMessageBox::critical(this, "No Nodes Selected",
-               "No nodes are presently selected so a \"NOT Selection\" will\n"
-               "select nothing.  Change to \"Normal Selection\" then select nodes.",
-               "OK");
-            return;
-         }
-         break;
-      case SELECTION_LOGIC_AND_NOT:
-         if (haveNodesInROI() == false) {
-            GuiMessageBox::critical(this, "No Nodes Selected",
+      case BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_AND_NOT:
+         if (surfaceROI->anyNodesSelected() == false) {
+            QMessageBox::critical(this, "No Nodes Selected",
                "No nodes are presently selected so a \"NOT AND Selection\" will\n"
-               "select nothing.  Change to \"Normal Selection\" then select nodes.",
-               "OK");
+               "select nothing.  Change to \"Normal Selection\" then select nodes.");
             return;
          }
          break;
@@ -1065,13 +993,7 @@ GuiSurfaceRegionOfInterestDialog::slotSelectNodesButton()
    
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    
-   std::vector<bool> savedNodeInROI = nodeInROI;
-   const int numNodes = theMainWindow->getBrainSet()->getNumberOfNodes();
-   if (static_cast<int>(savedNodeInROI.size()) != numNodes) {
-      savedNodeInROI.resize(numNodes, false);
-   }
-   
-   resetMarkedNodesAndReportHeader();
+   resetMarkedNodesAndReportHeader(false);
    
    switch(selectionMode) {
       case SELECTION_MODE_ENTIRE_SURFACE:
@@ -1082,11 +1004,14 @@ GuiSurfaceRegionOfInterestDialog::slotSelectNodesButton()
          break;
       case SELECTION_MODE_NODES_WITHIN_BORDER:
          if (selectedBorderName.isEmpty()) {
-            GuiMessageBox::critical(this, "ROI Error",
-                                 "You must select a border name", "OK");
+            QMessageBox::critical(this, "ROI Error",
+                                 "You must select a border name");
             return;
          }
          selectNodesBorder();
+         break;
+      case SELECTION_MODE_NODES_WITHIN_LATLON:
+         selectNodesLatLon();
          break;
       case SELECTION_MODE_NODES_WITH_METRIC:
          selectNodesMetric();
@@ -1101,72 +1026,12 @@ GuiSurfaceRegionOfInterestDialog::slotSelectNodesButton()
          break;
    }
    
-   switch (selectionLogic) {
-      case SELECTION_LOGIC_NORMAL:
-         break;
-      case SELECTION_LOGIC_AND:
-         {
-            for (int i = 0; i < numNodes; i++) {
-               if (savedNodeInROI[i] && nodeInROI[i]) {
-                  nodeInROI[i] = true;
-               }
-               else {
-                  nodeInROI[i] = false;
-               }
-            }
-         }
-         break;
-      case SELECTION_LOGIC_OR:
-         {
-            for (int i = 0; i < numNodes; i++) {
-               if (savedNodeInROI[i] || nodeInROI[i]) {
-                  nodeInROI[i] = true;
-               }
-               else {
-                  nodeInROI[i] = false;
-               }
-            }
-         }
-         break;
-      case SELECTION_LOGIC_NOT:
-         {
-            for (int i = 0; i < numNodes; i++) {
-               nodeInROI[i] = ! nodeInROI[i];
-            }
-         }
-         break;
-      case SELECTION_LOGIC_AND_NOT:
-         {
-            for (int i = 0; i < numNodes; i++) {
-               if (savedNodeInROI[i] && (nodeInROI[i] == false)) {
-                  nodeInROI[i] = true;
-               }
-               else {
-                  nodeInROI[i] = false;
-               }
-            }
-         }
-         break;
-   }
-   
-   //
-   // Remove any nodes that do not have neighbors from the ROI
-   //
-   removeNodesWithoutNeighborsFromROI();
-   
    //
    // Set node highlighting
    //
-   const int numQueryNodes = static_cast<int>(nodeInROI.size());
-   for (int i = 0; i < numNodes; i++) {
-      if (i < numQueryNodes) {
-         BrainSetNodeAttribute* bna = theMainWindow->getBrainSet()->getNodeAttributes(i);
-         bna->setNodeInROI(nodeInROI[i]);
-      }
-   }
    updateNumberOfSelectedNodesLabel();
-   //theMainWindow->getBrainSet()->clearAllDisplayLists();
    slotShowSelectedNodes(showSelectedNodesCheckBox->isChecked());   
+   
    QApplication::restoreOverrideCursor();
 }
 
@@ -1179,6 +1044,9 @@ GuiSurfaceRegionOfInterestDialog::createReportHeader(const QString& headerText,
                                                      float& roiAreaOut)
 {
    tabSeparateReport = tabSeparateReportIn;
+
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
 
    //
    // Add the header describing the node selection
@@ -1217,9 +1085,9 @@ GuiSurfaceRegionOfInterestDialog::createReportHeader(const QString& headerText,
       totalArea += tileArea[i];
       
       double numMarked = 0.0;
-      if (nodeInROI[nodes[0]]) numMarked += 1.0;
-      if (nodeInROI[nodes[1]]) numMarked += 1.0;
-      if (nodeInROI[nodes[2]]) numMarked += 1.0;
+      if (surfaceROI->getNodeSelected(nodes[0])) numMarked += 1.0;
+      if (surfaceROI->getNodeSelected(nodes[1])) numMarked += 1.0;
+      if (surfaceROI->getNodeSelected(nodes[2])) numMarked += 1.0;
       
       if (tileArea[i] > 0.0) {
          roiAreaOut += (numMarked / 3.0) * tileArea[i];
@@ -1228,7 +1096,7 @@ GuiSurfaceRegionOfInterestDialog::createReportHeader(const QString& headerText,
    }
    
    for (int m = 0; m < numNodes; m++) {
-      if (nodeInROI[m]) {
+      if (surfaceROI->getNodeSelected(m)) {
          const float* xyz = cf->getCoordinate(m);
          centerOfGravity[0] += xyz[0];
          centerOfGravity[1] += xyz[1];
@@ -1251,7 +1119,7 @@ GuiSurfaceRegionOfInterestDialog::createReportHeader(const QString& headerText,
    reportTextEdit->append(topo);
    
    reportTextEdit->append("");
-   const int count = std::count(nodeInROI.begin(), nodeInROI.end(), true);
+   const int count = surfaceROI->getNumberOfNodesSelected();
    std::ostringstream str;
    str << count << " of " << numNodes << " nodes in region of interest\n" << std::ends;
    reportTextEdit->append(str.str().c_str());
@@ -1276,7 +1144,7 @@ GuiSurfaceRegionOfInterestDialog::createReportHeader(const QString& headerText,
    
    str.str("");  // clears contents
    str << "Region Mean Distance Between Nodes: "
-       << bms->getMeanDistanceBetweenNodes(&nodeInROI)
+       << bms->getMeanDistanceBetweenNodes(surfaceROI)
        << std::ends;
    reportTextEdit->append(str.str().c_str());
    
@@ -1291,12 +1159,15 @@ GuiSurfaceRegionOfInterestDialog::createReportHeader(const QString& headerText,
 void
 GuiSurfaceRegionOfInterestDialog::slotCreatePaintReportButton()
 {
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+
    //
    // Make sure nodes are selected
    //
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                            "There are no nodes in the region of interest.", "OK");
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                            "There are no nodes in the region of interest.");
       return;
    }
       
@@ -1306,7 +1177,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreatePaintReportButton()
    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
    const int paintColumn = paintRegionReportColumnComboBox->currentIndex();
    if ((paintColumn < 0) || (paintColumn >= pf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "ERROR", "Invalid (or no) paint column selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "Invalid (or no) paint column selected.");
       return;
    }
    
@@ -1331,16 +1202,17 @@ GuiSurfaceRegionOfInterestDialog::slotCreatePaintReportButton()
       //
       // Save the selected nodes
       //
-      std::vector<bool> savedNodeInROI = nodeInROI;
+      const int numNodes = pf->getNumberOfNodes();
+      std::vector<int> savedNodeInROI(numNodes, 0);
       
       //
       // Limit nodes in ROI to those with valid paint column
       //
-      const int numNodes = pf->getNumberOfNodes();
       for (int j = 0; j < numNodes; j++) {
-         if (nodeInROI[j]) {
-            if (pf->getPaint(j, paintColumn) != paintIndex) {
-               nodeInROI[j] = false;
+         savedNodeInROI[j] = surfaceROI->getNodeSelected(j);
+         if (surfaceROI->getNodeSelected(j)) {
+            if (pf->getPaint(j, paintColumn) == paintIndex) {
+               surfaceROI->setNodeSelected(j, true);
             }
          }
       }
@@ -1357,7 +1229,9 @@ GuiSurfaceRegionOfInterestDialog::slotCreatePaintReportButton()
       //
       // Restore the selected nodes
       //
-      nodeInROI = savedNodeInROI;
+      for (int j = 0; j < numNodes; j++) {
+         surfaceROI->setNodeSelected(j, (savedNodeInROI[j] != 0));
+      }
    }
    QApplication::restoreOverrideCursor();
 }
@@ -1368,9 +1242,12 @@ GuiSurfaceRegionOfInterestDialog::slotCreatePaintReportButton()
 void
 GuiSurfaceRegionOfInterestDialog::slotCreateReportButton()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                            "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                            "There are no nodes in the region of interest.");
       return;
    }
    
@@ -1403,11 +1280,10 @@ GuiSurfaceRegionOfInterestDialog::createReport(const QString& headerText,
    }
    
    BrainSet* bs = theMainWindow->getBrainSet();
-   BrainModelSurfaceRegionOfInterest bmsri(bs,
-                                           operationSurfaceComboBox->getSelectedBrainModelSurface(),
-                                           BrainModelSurfaceRegionOfInterest::OPERATION_TEXT_REPORT,
-                                           nodeInROI);
-   bmsri.setTextReportControlsAndOptions(bs->getMetricFile(),
+   BrainModelSurfaceROITextReport bmsri(bs,
+                                        operationSurfaceComboBox->getSelectedBrainModelSurface(),
+                                         bs->getBrainModelSurfaceRegionOfInterestNodeSelection(),
+                                         bs->getMetricFile(),
                                          metricSelections,
                                          bs->getSurfaceShapeFile(),
                                          shapeSelections,
@@ -1424,7 +1300,7 @@ GuiSurfaceRegionOfInterestDialog::createReport(const QString& headerText,
       bmsri.execute();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
 
@@ -1500,6 +1376,7 @@ GuiSurfaceRegionOfInterestDialog::createQuerySelectionPage()
    selectionModeComboBox->insertItem(SELECTION_MODE_ENTIRE_SURFACE, "Entire Surface");
    selectionModeComboBox->insertItem(SELECTION_MODE_NODES_WITH_PAINT, "Nodes With Paint");
    selectionModeComboBox->insertItem(SELECTION_MODE_NODES_WITHIN_BORDER, "Nodes Within Border");
+   selectionModeComboBox->insertItem(SELECTION_MODE_NODES_WITHIN_LATLON, "Nodes within Lat/Long Range");
    selectionModeComboBox->insertItem(SELECTION_MODE_NODES_WITH_METRIC, "Nodes With Metric");
    selectionModeComboBox->insertItem(SELECTION_MODE_NODES_WITH_SHAPE, "Nodes with Surface Shape");
    selectionModeComboBox->insertItem(SELECTION_MODE_NODES_WITH_CROSSOVERS, "Nodes with Crossovers");
@@ -1539,6 +1416,13 @@ GuiSurfaceRegionOfInterestDialog::createQuerySelectionPage()
    //
    createNodeSelectionBorder();
    queryControlWidgetStack->addWidget(nodesWithinBorderQVBox);
+   
+   //-----------------------------------------------------------------------------
+   //
+   // nodes with lat/lon
+   //
+   createNodeSelectionLatLon();
+   queryControlWidgetStack->addWidget(nodesWithinLatLonQVBox);
    
    //-----------------------------------------------------------------------------
    //
@@ -1843,9 +1727,11 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignMetric()
 void 
 GuiSurfaceRegionOfInterestDialog::slotAssignMetricToNodes()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                              "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                              "There are no nodes in the region of interest.");
       return;
    }
    
@@ -1863,8 +1749,8 @@ GuiSurfaceRegionOfInterestDialog::slotAssignMetricToNodes()
    }
    
    if ((metricColumn < 0) || (metricColumn >= mf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Invalid metric column",
-         "An invalid metric column is selected.", "OK");
+      QMessageBox::critical(this, "Invalid metric column",
+         "An invalid metric column is selected.");
       return;
    }
       
@@ -1880,7 +1766,7 @@ GuiSurfaceRegionOfInterestDialog::slotAssignMetricToNodes()
    //
    const float value = metricValueDoubleSpinBox->value();
    for (int i = 0; i < numNodes; i++) {
-      if (nodeInROI[i]) {
+      if (surfaceROI->getNodeSelected(i)) {
          mf->setValue(i, metricColumn, value);
       }
    }
@@ -2008,7 +1894,7 @@ GuiSurfaceRegionOfInterestDialog::createOperationsBordersFromROI()
    //
    // Create border push button
    //
-   QPushButton* createBorderPushButton = new QPushButton("Create Border Along Sulcus");
+   QPushButton* createBorderPushButton = new QPushButton("Create Border Along Sulcus Using Geodesic");
    createBorderPushButton->setAutoDefault(false);
    createBorderPushButton->setFixedSize(createBorderPushButton->sizeHint());
    QObject::connect(createBorderPushButton, SIGNAL(clicked()),
@@ -2051,14 +1937,13 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIEndNodePushButton()
 void 
 GuiSurfaceRegionOfInterestDialog::setCreateBorderOpenStartNode(const int nodeNumber)
 {
-   if ((nodeNumber >= 0) &&
-       (nodeNumber < static_cast<int>(nodeInROI.size()))) {
-      if (nodeInROI[nodeNumber]) {
-         createBorderFromROIStartNodeSpinBox->setValue(nodeNumber);
-      }
-      else {
-         GuiMessageBox::critical(this, "ERROR", "Node selected is not in the ROI.", "OK");
-      }
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->getNodeSelected(nodeNumber)) {
+      createBorderFromROIStartNodeSpinBox->setValue(nodeNumber);
+   }
+   else {
+      QMessageBox::critical(this, "ERROR", "Node selected is not in the ROI.");
    }
 }
 
@@ -2068,14 +1953,13 @@ GuiSurfaceRegionOfInterestDialog::setCreateBorderOpenStartNode(const int nodeNum
 void 
 GuiSurfaceRegionOfInterestDialog::setCreateBorderOpenEndNode(const int nodeNumber)
 {
-   if ((nodeNumber >= 0) &&
-       (nodeNumber < static_cast<int>(nodeInROI.size()))) {
-      if (nodeInROI[nodeNumber]) {
-         createBorderFromROIEndNodeSpinBox->setValue(nodeNumber);
-      }
-      else {
-         GuiMessageBox::critical(this, "ERROR", "Node selected is not in the ROI.", "OK");
-      }
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->getNodeSelected(nodeNumber)) {
+      createBorderFromROIEndNodeSpinBox->setValue(nodeNumber);
+   }
+   else {
+      QMessageBox::critical(this, "ERROR", "Node selected is not in the ROI.");
    }
 }
 
@@ -2106,18 +1990,17 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIPushButton()
    // Create the border from the ROI
    //
    BrainModelSurface* operationSurface = operationSurfaceComboBox->getSelectedBrainModelSurface(); 
-   BrainModelSurfaceRegionOfInterest roi(theMainWindow->getBrainSet(),
-                                         operationSurface,
-                                         BrainModelSurfaceRegionOfInterest::OPERATION_CREATE_BORDER,
-                                         nodeInROI);
+   const QString borderName(createBorderFromROINameLineEdit->text());
    int startNode = -1;
    int endNode   = -1;
    if (createBorderFromROIManualRadioButton->isChecked()) {
       startNode = createBorderFromROIStartNodeSpinBox->value();
       endNode   = createBorderFromROIEndNodeSpinBox->value();
    }
-   const QString borderName(createBorderFromROINameLineEdit->text());
-   roi.setCreateBorderControlsAndOptions(borderName,
+   BrainModelSurfaceROICreateBorderUsingGeodesic roi(theMainWindow->getBrainSet(),
+                                         operationSurface,
+                                         theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection(),
+                                         borderName,
                                          startNode,
                                          endNode,
                                          createBorderFromROISamplingDensityDoubleSpinBox->value());
@@ -2127,7 +2010,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIPushButton()
       QApplication::restoreOverrideCursor();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    
@@ -2136,7 +2019,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIPushButton()
    //
    Border border = roi.getBorder();
    if (border.getNumberOfLinks() <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "Border created has no links.", "OK");
+      QMessageBox::critical(this, "ERROR", "Border created has no links.");
       return;
    }
 
@@ -2162,9 +2045,15 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBorderFromROIPushButton()
       msg.append(" ?");
       QString noButton("No, define color ");
       noButton.append(borderName);
-      if (GuiMessageBox::information(this, "Use Partially Matching Color",
-                                   msg, "Yes", noButton, QString::null, 0) != 0) {
-         createBorderColor = true;      }
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle("Use Partially Matching Color");
+      msgBox.setText(msg);
+      msgBox.addButton("Yes", QMessageBox::YesRole);
+      QPushButton* defineColorPushButton = msgBox.addButton(noButton, QMessageBox::NoRole);
+      msgBox.exec();
+      if (msgBox.clickedButton() == defineColorPushButton) {
+         createBorderColor = true;
+      }
    }   
    else {
       createBorderColor = true;
@@ -2297,36 +2186,40 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBordersFromClusters()
 {
    const QString borderName = clusterBorderNameLineEdit->text();
    if (borderName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Please enter a border name.");
+      QMessageBox::critical(this, "ERROR", "Please enter a border name.");
       return;
    }
    
    BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "Operation surface is invalid.");
+      QMessageBox::critical(this, "ERROR", "Operation surface is invalid.");
       return;
    }
    //TopologyFile* topologyFile =  topologyComboBox->getSelectedTopologyFile();
    TopologyFile* topologyFile =  bms->getTopologyFile();
    if (topologyFile == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "Operation topology is invalid.");
+      QMessageBox::critical(this, "ERROR", "Operation topology is invalid.");
       return;
    }
    int numberOfBordersCreated = 0;
    
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    try {
       BrainModelSurfaceClusterToBorderConverter scbc(theMainWindow->getBrainSet(),
                                                      bms,
                                                      topologyFile,
                                                      borderName,
-                                                     nodeInROI,
+                                                     surfaceROI,
                                                      clusterBorderAutoProjectCheckBox->isChecked());
       scbc.execute();
       numberOfBordersCreated = scbc.getNumberOfBordersCreated();
    }
    catch (BrainModelAlgorithmException& e) {
-      GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
    QApplication::restoreOverrideCursor();
@@ -2349,7 +2242,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBordersFromClusters()
       //
       bool createBorderColor = false;
       if ((borderColorIndex >= 0) && (borderColorMatch == true)) {
-         GuiMessageBox::information(this, "INFO", str.str().c_str(), "OK");
+         QMessageBox::information(this, "INFO", str.str().c_str());
          createBorderColor = false;
       }
       else if ((borderColorIndex >= 0) && (borderColorMatch == false)) {
@@ -2362,20 +2255,32 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBordersFromClusters()
          b2.append(borderColorFile->getColorNameByIndex(borderColorIndex));
          QString b1("Define color ");
          b1.append(borderName);
-         const int buttonPressed = GuiMessageBox::question(this, "INFO", str.str().c_str(),
-                                    b1, b2); 
-         if (buttonPressed == 0) {
+         QMessageBox msgBox(this);
+         msgBox.setWindowTitle("Color");
+         msgBox.setText(str.str().c_str());
+         QPushButton* pb1 = msgBox.addButton(b1, QMessageBox::NoRole);
+         msgBox.addButton(b2, QMessageBox::NoRole);
+         msgBox.exec();
+         if (msgBox.clickedButton() == pb1) {
             createBorderColor = true;
          }
       }
       else {
          str << "There is no matching color for "
-             << borderName.toAscii().constData();
+             << borderName.toAscii().constData()
+             << "\n"
+             << "Would you like to define the color "
+             << borderName.toAscii().constData()
+             << "?";
          QString b1("Define color ");
          b1.append(borderName);
-         const int buttonPressed = GuiMessageBox::question(this, "INFO", str.str().c_str(),
-                                     b1, "Cancel");
-         if (buttonPressed == 0) {
+         QMessageBox msgBox(this);
+         msgBox.setWindowTitle("Color");
+         msgBox.setText(str.str().c_str());
+         QPushButton* pb1 = msgBox.addButton(b1, QMessageBox::YesRole);
+         msgBox.addButton("No", QMessageBox::NoRole);
+         msgBox.exec();
+         if (msgBox.clickedButton() == pb1) {
             createBorderColor = true;
          }
       }
@@ -2417,7 +2322,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreateBordersFromClusters()
       theMainWindow->fileModificationUpdate(fm);
    }
    else {
-      GuiMessageBox::information(this, "INFO", "No clusters were found.", "OK");
+      QMessageBox::information(this, "INFO", "No clusters were found.");
    }
    
    GuiBrainModelOpenGL::updateAllGL();
@@ -2501,9 +2406,11 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignSurfaceShape()
 void 
 GuiSurfaceRegionOfInterestDialog::slotAssignSurfaceShapeToNodes()
 {  
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                              "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                              "There are no nodes in the region of interest.");
       return;
    }
    
@@ -2521,8 +2428,8 @@ GuiSurfaceRegionOfInterestDialog::slotAssignSurfaceShapeToNodes()
    }
    
    if ((surfaceShapeColumn < 0) || (surfaceShapeColumn >= ssf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Invalid surface shape column",
-         "An invalid surface shape column is selected.", "OK");
+      QMessageBox::critical(this, "Invalid surface shape column",
+         "An invalid surface shape column is selected.");
       return;
    }
       
@@ -2533,7 +2440,7 @@ GuiSurfaceRegionOfInterestDialog::slotAssignSurfaceShapeToNodes()
    //
    const float value = surfaceShapeValueDoubleSpinBox->value();
    for (int i = 0; i < numNodes; i++) {
-      if (nodeInROI[i]) {
+      if (surfaceROI->getNodeSelected(i)) {
          ssf->setValue(i, surfaceShapeColumn, value);
       }
    }
@@ -2636,9 +2543,11 @@ GuiSurfaceRegionOfInterestDialog::createOperationAssignPaint()
 void
 GuiSurfaceRegionOfInterestDialog::slotAssignPaintToNodes()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                              "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                              "There are no nodes in the region of interest.");
       return;
    }
    
@@ -2656,15 +2565,15 @@ GuiSurfaceRegionOfInterestDialog::slotAssignPaintToNodes()
    }
    
    if ((paintColumn < 0) || (paintColumn >= pf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Invalid paint column",
-         "An invalid paint column is selected.", "OK");
+      QMessageBox::critical(this, "Invalid paint column",
+         "An invalid paint column is selected.");
       return;
    }
    
    const QString paintName(paintAssignNameLineEdit->text());
    if (paintName.isEmpty()) {
-      GuiMessageBox::critical(this, "No Paint Name",
-         "The name for the paint is empty.", "OK");
+      QMessageBox::critical(this, "No Paint Name",
+         "The name for the paint is empty.");
       return;
    }
    
@@ -2691,8 +2600,13 @@ GuiSurfaceRegionOfInterestDialog::slotAssignPaintToNodes()
       msg.append(" ?");
       QString noButton("No, define color ");
       noButton.append(paintName);
-      if (GuiMessageBox::information(this, "Use Partially Matching Color",
-                                   msg, "Yes", noButton, QString::null, 0) != 0) {
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle("Use Partially Matching Color");
+      msgBox.setText(msg);
+      msgBox.addButton("Yes", QMessageBox::YesRole);
+      QPushButton* noPushButton = msgBox.addButton(noButton, QMessageBox::NoRole);
+      msgBox.exec();
+      if (msgBox.clickedButton() == noPushButton) {
          createAreaColor = true;
       }
    }
@@ -2733,7 +2647,7 @@ GuiSurfaceRegionOfInterestDialog::slotAssignPaintToNodes()
    // Assign the paint index to the nodes
    //
    for (int i = 0; i < numNodes; i++) {
-      if (nodeInROI[i]) {
+      if (surfaceROI->getNodeSelected(i)) {
          pf->setPaint(i, paintColumn, paintIndex);
       }
    }
@@ -2824,19 +2738,21 @@ GuiSurfaceRegionOfInterestDialog::createOperationProbAtlas()
 void 
 GuiSurfaceRegionOfInterestDialog::slotCreateProbAtlasReport()
 {
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
    ProbabilisticAtlasFile* pf = theMainWindow->getBrainSet()->getProbabilisticAtlasSurfaceFile();
    
    const int numNodes = pf->getNumberOfNodes();
    const int numCols  = pf->getNumberOfColumns();
    
    if ((numNodes <= 0) || (numCols <= 0)) {
-      GuiMessageBox::critical(this, "ERROR", "The Probabilistic Atlas File is Empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "The Probabilistic Atlas File is Empty.");
       return;
    }
    
    const int numNames = pf->getNumberOfPaintNames();
    if (numNames <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "No names in Probabilistic Atlas File.", "OK");
+      QMessageBox::critical(this, "ERROR", "No names in Probabilistic Atlas File.");
    }
 
    float roiArea = 0.0;
@@ -2852,7 +2768,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreateProbAtlasReport()
       blankTab = separatorCharacter;
    }
 
-   const int numNodesSelected = std::count(nodeInROI.begin(), nodeInROI.end(), true);
+   const int numNodesSelected = surfaceROI->getNumberOfNodesSelected();
    
    const int countCols = numCols + 1;
    int* counts = new int[countCols];
@@ -2899,7 +2815,7 @@ GuiSurfaceRegionOfInterestDialog::slotCreateProbAtlasReport()
       // Find nodes using paint
       //
       for (int i = 0; i < numNodes; i++) {
-         if (nodeInROI[i]) {
+         if (surfaceROI->getNodeSelected(i)) {
             int cnt = 0;
             for (int j = 0; j < numCols; j++) {
                if (pf->getPaint(i, j) == indx) {
@@ -3076,22 +2992,24 @@ GuiSurfaceRegionOfInterestDialog::createShapeClusterReport()
 void
 GuiSurfaceRegionOfInterestDialog::slotShapeClusterReport()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                            "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                            "There are no nodes in the region of interest.");
       return;
    }
 
    SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
    const int numNodes = ssf->getNumberOfNodes();
    if (numNodes <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "The surface shape file is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "The surface shape file is empty.");
       return;
    }
    
    BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(this, "ERROR", "There is no selected surface.", "OK");
+      QMessageBox::critical(this, "ERROR", "There is no selected surface.");
       return;
    }
 
@@ -3107,14 +3025,24 @@ GuiSurfaceRegionOfInterestDialog::slotShapeClusterReport()
          metricColumn = dsm->getSelectedDisplayColumn(0);
          QString msg("Areal Distortion Correction using metric column:\n   ");
          msg.append(mf->getColumnName(metricColumn));
-         if (GuiMessageBox::information(this, "INFO", msg, "Continue", "Cancel") != 0) {
+         if (QMessageBox::information(this, 
+                                      "INFO", 
+                                      msg,
+                                      (QMessageBox::Ok | QMessageBox::Cancel),
+                                      QMessageBox::Ok)
+                                         == QMessageBox::Cancel) {
             return;
          }
       }
    }
    else {
       const QString msg("No metric column for distortion correction is loaded.");
-      if (GuiMessageBox::information(this, "INFO", msg, "Continue", "Cancel") != 0) {
+      if (QMessageBox::information(this, 
+                                   "INFO", 
+                                   msg,
+                                   (QMessageBox::Ok | QMessageBox::Cancel),
+                                   QMessageBox::Ok)
+                                      == QMessageBox::Cancel) {
          return;
       }
    }
@@ -3213,14 +3141,22 @@ GuiSurfaceRegionOfInterestDialog::slotShapeClusterReport()
                                               negMin,
                                               negMax,
                                               posMin,
-                                              posMax);
+                                              posMax,
+                                              true);
       try {
          bmsmc.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
+      
+      //
+      // Node areas
+      //
+      std::vector<float> nodeAreas;
+      bms->getAreaOfAllNodes(nodeAreas);
       
       //
       // Process the clusters
@@ -3238,7 +3174,7 @@ GuiSurfaceRegionOfInterestDialog::slotShapeClusterReport()
          if (metricColumn >= 0) {
             for (int k = 0; k < numNodesInCluster; k++) {
                const int nodeNum = cluster->getNodeInCluster(k);
-               float nodeArea = bmsmc.getNodeArea(nodeNum);
+               float nodeArea = nodeAreas[nodeNum];
                const double metric = mf->getValue(nodeNum, metricColumn);
                correctedArea += (nodeArea * std::pow(2.0, metric));
             }
@@ -3330,6 +3266,11 @@ GuiSurfaceRegionOfInterestDialog::slotCorrelationShapeReport()
       blankTab = separatorCharacter;
    }
 
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   std::vector<bool> nodesAreInROI;
+   surfaceROI->getNodesInROI(nodesAreInROI);
+   
    SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
    std::vector<float> coefficients;
    const int column = shapeCorrelationColumnComboBox->currentIndex();
@@ -3347,7 +3288,7 @@ GuiSurfaceRegionOfInterestDialog::slotCorrelationShapeReport()
       for (int j = 0; j < ssf->getNumberOfColumns(); j++) {
          ssf->correlationCoefficient(j,
                                      coefficients,
-                                     &nodeInROI);
+                                     &nodesAreInROI);
          std::ostringstream str;
          str.setf(std::ios::fixed);
          for (int i = 0; i < ssf->getNumberOfColumns(); i++) {
@@ -3362,7 +3303,7 @@ GuiSurfaceRegionOfInterestDialog::slotCorrelationShapeReport()
    else {
       ssf->correlationCoefficient(column,
                                   coefficients,
-                                  &nodeInROI);
+                                  &nodesAreInROI);
 
       std::ostringstream str;
       str.setf(std::ios::fixed);
@@ -3405,7 +3346,12 @@ GuiSurfaceRegionOfInterestDialog::slotDisconnectNodes()
       //TopologyFile* tf = topologyComboBox->getSelectedTopologyFile(); //bms->getTopologyFile();
       TopologyFile* tf = bms->getTopologyFile();
       if (tf != NULL) {
-         theMainWindow->getBrainSet()->disconnectNodes(tf, nodeInROI);
+         BrainModelSurfaceROINodeSelection* surfaceROI = 
+            theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+         std::vector<bool> nodesAreInROI;
+         surfaceROI->getNodesInROI(nodesAreInROI);
+         
+         theMainWindow->getBrainSet()->disconnectNodes(tf, nodesAreInROI);
          GuiBrainModelOpenGL::updateAllGL(NULL); 
          theMainWindow->speakText("Nodes have been disconnected.", false);
       }
@@ -3466,16 +3412,18 @@ GuiSurfaceRegionOfInterestDialog::createOperationIntegratedFoldingIndex()
 void 
 GuiSurfaceRegionOfInterestDialog::slotComputeIntegratedFoldingIndex()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                            "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                            "There are no nodes in the region of interest.");
       return;
    }
    
    SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
    const int numColumns = ssf->getNumberOfColumns();
    if (numColumns <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "No surface shape columns are selected.", "OK");
+      QMessageBox::critical(this, "ERROR", "No surface shape columns are selected.");
       return;
    }
 
@@ -3510,15 +3458,15 @@ GuiSurfaceRegionOfInterestDialog::slotComputeIntegratedFoldingIndex()
                      //
                      float shapeSum = 0.0;
                      float numInROI = 0.0;
-                     if (nodeInROI[n1]) {
+                     if (surfaceROI->getNodeSelected(n1)) {
                         shapeSum += ssf->getValue(n1, j);
                         numInROI += 1.0;
                      }
-                     if (nodeInROI[n2]) {
+                     if (surfaceROI->getNodeSelected(n2)) {
                         shapeSum += ssf->getValue(n2, j);
                         numInROI += 1.0;
                      }
-                     if (nodeInROI[n3]) {
+                     if (surfaceROI->getNodeSelected(n3)) {
                         shapeSum += ssf->getValue(n3, j);
                         numInROI += 1.0;
                      }
@@ -3657,9 +3605,11 @@ GuiSurfaceRegionOfInterestDialog::slotGeodesicNodePushButton()
 void
 GuiSurfaceRegionOfInterestDialog::slotGeodesicPushButton()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                            "There are no nodes in the region of interest.", "OK");
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                            "There are no nodes in the region of interest.");
       return;
    }
    
@@ -3667,7 +3617,7 @@ GuiSurfaceRegionOfInterestDialog::slotGeodesicPushButton()
    BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
    if (bms != NULL) {
       if ((nodeNumber < 0) || (nodeNumber >= bms->getNumberOfNodes())) {
-         GuiMessageBox::critical(this, "Error", "No query node selected", "OK");
+         QMessageBox::critical(this, "Error", "No query node selected");
          return;
       }
       //TopologyFile* tf = topologyComboBox->getSelectedTopologyFile(); //bms->getTopologyFile();
@@ -3684,12 +3634,13 @@ GuiSurfaceRegionOfInterestDialog::slotGeodesicPushButton()
                                         geodesicDistanceColumnComboBox->currentIndex(),
                                         geodesicDistanceColumnNameLineEdit->text(),
                                         nodeNumber,
-                                        &nodeInROI);
+                                        surfaceROI);
          try {
             bmsg.execute();
          }
          catch (BrainModelAlgorithmException& e) {
-            GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+            QApplication::restoreOverrideCursor();
+            QMessageBox::critical(this, "Error", e.whatQString());
          }
 
          GuiFilesModified fm;
@@ -3730,7 +3681,12 @@ GuiSurfaceRegionOfInterestDialog::slotSmoothNodes()
 {
    BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
    if (bms != NULL) {
-      GuiSmoothingDialog sd(this, true, false, &nodeInROI);
+      BrainModelSurfaceROINodeSelection* surfaceROI = 
+         theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+      std::vector<bool> nodesAreInROI;
+      surfaceROI->getNodesInROI(nodesAreInROI);
+
+      GuiSmoothingDialog sd(this, true, false, &nodesAreInROI);
       if (sd.exec()) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          GuiBrainModelOpenGL::updateAllGL(NULL); 
@@ -3890,22 +3846,31 @@ GuiSurfaceRegionOfInterestDialog::createNodeSelectionSection()
    // Selection logic combo box
    //
    selectionLogicComboBox = new QComboBox;
-   selectionLogicComboBox->insertItem(SELECTION_LOGIC_NORMAL, "Normal Selection");
-   selectionLogicComboBox->insertItem(SELECTION_LOGIC_AND, "And Selection (Intersection)");
-   selectionLogicComboBox->insertItem(SELECTION_LOGIC_OR, "Or Selection (Union)");
-   selectionLogicComboBox->insertItem(SELECTION_LOGIC_NOT, "Not Selection");
-   selectionLogicComboBox->insertItem(SELECTION_LOGIC_AND_NOT, "And-Not Selection");
+   std::vector<BrainModelSurfaceROINodeSelection::SELECTION_LOGIC> selectionTypes;
+   std::vector<QString> selectionNames;
+   BrainModelSurfaceROINodeSelection::getNodeSelectionTypesAndNames(selectionTypes,
+                                                                                 selectionNames);
+   for (unsigned int i = 0; i < selectionNames.size(); i++) {
+      selectionLogicComboBox->insertItem(selectionTypes[i], selectionNames[i]);
+   }
    selectionLogicComboBox->setFixedSize(selectionLogicComboBox->sizeHint());
-   QObject::connect(selectionLogicComboBox, SIGNAL(activated(int)),
-                    this, SLOT(slotSelectionLogic(int)));
-   slotSelectionLogic(selectionLogicComboBox->currentIndex());
    
+   //
+   // Invert selection combo box
+   //
+   QPushButton* invertNodeSelectionPushButton = new QPushButton("Invert Node Selection");
+   invertNodeSelectionPushButton->setAutoDefault(false);
+   invertNodeSelectionPushButton->setFixedSize(invertNodeSelectionPushButton->sizeHint());
+   QObject::connect(invertNodeSelectionPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotInvertNodeSelectionPushButton()));
+                    
    //
    // layout on left
    //
    QVBoxLayout* selectLayout = new QVBoxLayout;
    selectLayout->addWidget(selectNodesPushButton);
    selectLayout->addWidget(selectionLogicComboBox);
+   selectLayout->addWidget(invertNodeSelectionPushButton);
    selectLayout->addStretch();
    
    //
@@ -3927,10 +3892,12 @@ GuiSurfaceRegionOfInterestDialog::createNodeSelectionSection()
    //
    // Show nodes check box
    //
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+            theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
    showSelectedNodesCheckBox = new QCheckBox("Show Selected Nodes");
    QObject::connect(showSelectedNodesCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(slotShowSelectedNodes(bool)));
-   showSelectedNodesCheckBox->setChecked(true);
+   showSelectedNodesCheckBox->setChecked(surfaceROI->getDisplaySelectedNodes());
    slotShowSelectedNodes(showSelectedNodesCheckBox->isChecked());
    
    //
@@ -3946,22 +3913,198 @@ GuiSurfaceRegionOfInterestDialog::createNodeSelectionSection()
    togglesLayout->addWidget(showSelectedNodesCheckBox);
    
    //
+   // Dilate Push Button
+   //
+   QPushButton* dilatePushButton = new QPushButton("Dilate");
+   dilatePushButton->setAutoDefault(false);
+   dilatePushButton->setToolTip("Each press of this button will add\n"
+                                "a layer of nodes to the outside\n"
+                                "of the current region of interest.");
+   QObject::connect(dilatePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotDilatePushButton()));
+                    
+   //
+   // Erode Push Button
+   //
+   QPushButton* erodePushButton = new QPushButton("Erode");
+   erodePushButton->setAutoDefault(false);
+   dilatePushButton->setToolTip("Each press of this button will remove\n"
+                                "a layer of nodes from the outside\n"
+                                "of the current region of interest.");
+   QObject::connect(erodePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotErodePushButton()));
+   
+   //
+   // Layout and sizes of Dilate/Erode push buttons
+   //
+   QtUtilities::makeButtonsSameSize(dilatePushButton,
+                                    erodePushButton);
+   QVBoxLayout* dilateErodeLayout = new QVBoxLayout;
+   dilateErodeLayout->addWidget(dilatePushButton);
+   dilateErodeLayout->addWidget(erodePushButton);
+   dilateErodeLayout->addStretch();
+   
+   //
+   // Load ROI Push Button
+   //
+   QPushButton* loadROIPushButton = new QPushButton("Load ROI...");
+   loadROIPushButton->setAutoDefault(false);
+   QObject::connect(loadROIPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotLoadROIPushButton()));
+                    
+   //
+   // Save ROI Push Button
+   //
+   QPushButton* saveROIPushButton = new QPushButton("Save ROI...");
+   saveROIPushButton->setAutoDefault(false);
+   QObject::connect(saveROIPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotSaveROIPushButton()));
+   
+   //
+   // layout and sizes of Load/Save push buttons
+   //
+   QtUtilities::makeButtonsSameSize(loadROIPushButton,
+                                    saveROIPushButton);
+   QVBoxLayout* loadSaveLayout = new QVBoxLayout;
+   loadSaveLayout->addWidget(loadROIPushButton);
+   loadSaveLayout->addWidget(saveROIPushButton);
+   loadSaveLayout->addStretch();
+   
+   //
    // Widget and layout for page
    //
    QWidget* nodeBox = new QWidget;
    QHBoxLayout* layout = new QHBoxLayout(nodeBox);
    layout->addLayout(selectLayout);
    layout->addLayout(togglesLayout);
+   layout->addLayout(dilateErodeLayout);
+   layout->addLayout(loadSaveLayout);
    return nodeBox;
 }
 
 /**
- * Called when the selection logic is changed.
+ * called when dilate button is pressed.
  */
-void
-GuiSurfaceRegionOfInterestDialog::slotSelectionLogic(int item)
+void 
+GuiSurfaceRegionOfInterestDialog::slotDilatePushButton()
 {
-   selectionLogic = static_cast<SELECTION_LOGIC>(item);
+   BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
+   if (bms == NULL) {
+      return;
+   }
+   
+   //
+   // Dilate the ROI
+   //
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->dilate(bms, 1);
+   
+   //
+   // Set node highlighting
+   //
+   updateNumberOfSelectedNodesLabel();
+   slotShowSelectedNodes(showSelectedNodesCheckBox->isChecked());   
+   theMainWindow->getBrainSet()->clearAllDisplayLists();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+}
+
+/**
+ * called when erode button is pressed.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotErodePushButton()
+{
+   BrainModelSurface* bms = operationSurfaceComboBox->getSelectedBrainModelSurface();
+   if (bms == NULL) {
+      return;
+   }
+
+   //
+   // Erode the ROI
+   //
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->erode(bms, 1);
+   
+   //
+   // Set node highlighting
+   //
+   updateNumberOfSelectedNodesLabel();
+   slotShowSelectedNodes(showSelectedNodesCheckBox->isChecked());   
+   theMainWindow->getBrainSet()->clearAllDisplayLists();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+}
+      
+/**
+ * called when load ROI button is pressed.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotLoadROIPushButton()
+{
+   WuQFileDialog fd(this);
+   fd.setModal(true);
+   fd.setDirectory(QDir::currentPath());
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
+   fd.setWindowTitle("Choose Region of Interest File Name");
+   fd.setFilter(FileFilters::getRegionOfInterestFileFilter());
+   fd.setFileMode(WuQFileDialog::ExistingFile);
+   if (fd.exec() == QDialog::Accepted) {
+      if (fd.selectedFiles().count() > 0) {
+         const QString fileName = fd.selectedFiles().at(0);
+         NodeRegionOfInterestFile roiFile;
+         try {
+            roiFile.readFile(fileName);
+            BrainModelSurfaceROINodeSelection* surfaceROI = 
+               theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+            surfaceROI->getRegionOfInterestFromFile(roiFile);
+
+            //
+            // Set node highlighting
+            //
+            resetMarkedNodesAndReportHeader(false);
+            updateNumberOfSelectedNodesLabel();
+            slotShowSelectedNodes(showSelectedNodesCheckBox->isChecked());   
+            theMainWindow->getBrainSet()->clearAllDisplayLists();
+            GuiBrainModelOpenGL::updateAllGL(NULL);
+         }
+         catch (FileException& e) {
+            QMessageBox::critical(this, "ERROR", e.whatQString());
+            return;
+         }
+      }
+   }
+}
+
+/**
+ * called when save ROI button is pressed.
+ */
+void 
+GuiSurfaceRegionOfInterestDialog::slotSaveROIPushButton()
+{
+   WuQFileDialog fd(this);
+   fd.setModal(true);
+   fd.setDirectory(QDir::currentPath());
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
+   fd.setWindowTitle("Choose Region of Interest File Name");
+   fd.setFilter(FileFilters::getRegionOfInterestFileFilter());
+   fd.setFileMode(WuQFileDialog::AnyFile);
+   if (fd.exec() == QDialog::Accepted) {
+      if (fd.selectedFiles().count() > 0) {
+         const QString fileName = fd.selectedFiles().at(0);
+         NodeRegionOfInterestFile roiFile;
+         BrainModelSurfaceROINodeSelection* surfaceROI = 
+            theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+         surfaceROI->setRegionOfInterestIntoFile(roiFile);
+         try {
+            roiFile.writeFile(fileName);
+         }
+         catch (FileException& e) {
+            QMessageBox::critical(this, "ERROR", e.whatQString());
+            return;
+         }
+      }
+   }
 }
 
 /**
@@ -3970,8 +4113,9 @@ GuiSurfaceRegionOfInterestDialog::slotSelectionLogic(int item)
 void
 GuiSurfaceRegionOfInterestDialog::slotShowSelectedNodes(bool on)
 {
-   DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
-   dss->setDisplayRoiNodeHighlights(on);
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+            theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   surfaceROI->setDisplaySelectedNodes(on);
    theMainWindow->getBrainSet()->clearAllDisplayLists();
    GuiBrainModelOpenGL::updateAllGL(NULL);
 }
@@ -3982,8 +4126,9 @@ GuiSurfaceRegionOfInterestDialog::slotShowSelectedNodes(bool on)
 void
 GuiSurfaceRegionOfInterestDialog::updateNumberOfSelectedNodesLabel()
 {
-   int numSelected = std::count(nodeInROI.begin(), nodeInROI.end(), true);
-   numberOfNodesSelectedLabel->setNum(numSelected);
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+            theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   numberOfNodesSelectedLabel->setNum(surfaceROI->getNumberOfNodesSelected());
 }
 
 /**
@@ -4119,11 +4264,11 @@ GuiSurfaceRegionOfInterestDialog::createNodeSelectionBorder()
 }
 
 /**
- * Create the metric node selection section.
+ * create the node selection with metric.
  */
-void
+void 
 GuiSurfaceRegionOfInterestDialog::createNodeSelectionMetric()
-{
+{      
    QLabel* lowLabel = new QLabel("Threshold   Low");
    metricLowerThresholdDoubleSpinBox = new QDoubleSpinBox;
    metricLowerThresholdDoubleSpinBox->setMinimum(-std::numeric_limits<float>::max());
@@ -4170,6 +4315,62 @@ GuiSurfaceRegionOfInterestDialog::createNodeSelectionMetric()
    layout->addWidget(metricAllNodesRadioButton);
    layout->addWidget(metricChooseNodesRadioButton);
    layout->addWidget(metricNodeNumberLabel);
+}
+
+/**
+ * Create the lat/long node selection section.
+ */
+void
+GuiSurfaceRegionOfInterestDialog::createNodeSelectionLatLon()
+{
+   latLowerRangeDoubleSpinBox = new QDoubleSpinBox;
+   latLowerRangeDoubleSpinBox->setMinimum(-90.0);
+   latLowerRangeDoubleSpinBox->setMaximum( 90.0);
+   latLowerRangeDoubleSpinBox->setSingleStep(1.0);
+   latLowerRangeDoubleSpinBox->setDecimals(3);
+   latLowerRangeDoubleSpinBox->setValue(-90.0);
+   latLowerRangeDoubleSpinBox->setFixedWidth(120);
+
+   latUpperRangeDoubleSpinBox = new QDoubleSpinBox;
+   latUpperRangeDoubleSpinBox->setMinimum(-90.0);
+   latUpperRangeDoubleSpinBox->setMaximum( 90.0);
+   latUpperRangeDoubleSpinBox->setSingleStep(1.0);
+   latUpperRangeDoubleSpinBox->setDecimals(3);
+   latUpperRangeDoubleSpinBox->setValue(90.0);
+   latUpperRangeDoubleSpinBox->setFixedWidth(120);
+   
+   lonLowerRangeDoubleSpinBox = new QDoubleSpinBox;
+   lonLowerRangeDoubleSpinBox->setMinimum(-360.0);
+   lonLowerRangeDoubleSpinBox->setMaximum( 360.0);
+   lonLowerRangeDoubleSpinBox->setSingleStep(1.0);
+   lonLowerRangeDoubleSpinBox->setDecimals(3);
+   lonLowerRangeDoubleSpinBox->setValue(-180.0);
+   lonLowerRangeDoubleSpinBox->setFixedWidth(120);
+
+   lonUpperRangeDoubleSpinBox = new QDoubleSpinBox;
+   lonUpperRangeDoubleSpinBox->setMinimum(-360.0);
+   lonUpperRangeDoubleSpinBox->setMaximum( 360.0);
+   lonUpperRangeDoubleSpinBox->setSingleStep(1.0);
+   lonUpperRangeDoubleSpinBox->setDecimals(3);
+   lonUpperRangeDoubleSpinBox->setValue(180.0);
+   lonUpperRangeDoubleSpinBox->setFixedWidth(120);
+   
+   QWidget* gridWidget = new QWidget;
+   QGridLayout* latLonLayout = new QGridLayout(gridWidget);
+   latLonLayout->addWidget(new QLabel("Min-Value"), 0, 1);
+   latLonLayout->addWidget(new QLabel("Max-Value"), 0, 2);
+   latLonLayout->addWidget(new QLabel("Latitude"), 1, 0);
+   latLonLayout->addWidget(new QLabel("Longitude"), 2, 0);
+   latLonLayout->addWidget(latLowerRangeDoubleSpinBox, 1, 1);
+   latLonLayout->addWidget(latUpperRangeDoubleSpinBox, 1, 2);
+   latLonLayout->addWidget(lonLowerRangeDoubleSpinBox, 2, 1);
+   latLonLayout->addWidget(lonUpperRangeDoubleSpinBox, 2, 2);
+   gridWidget->setFixedSize(gridWidget->sizeHint());
+   
+   nodesWithinLatLonQVBox = new QWidget;
+   QVBoxLayout* layout = new QVBoxLayout(nodesWithinLatLonQVBox);
+   layout->addWidget(gridWidget, 0, Qt::AlignLeft);
+   layout->addStretch();
 }
 
 /**
@@ -4243,9 +4444,11 @@ GuiSurfaceRegionOfInterestDialog::slotShapeModeSelection(int shapeMode)
 void
 GuiSurfaceRegionOfInterestDialog::slotCreateVolumeFromQueryNodesButton()
 {
-   if (haveNodesInROI() == false) {
-      GuiMessageBox::critical(this, "Error: no nodes in ROI",
-                            "There are no nodes in the region of interest.", "OK");                            
+   BrainModelSurfaceROINodeSelection* surfaceROI = 
+      theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+   if (surfaceROI->anyNodesSelected() == false) {
+      QMessageBox::critical(this, "Error: no nodes in ROI",
+                            "There are no nodes in the region of interest.");                            
       return;
    }
 
@@ -4279,7 +4482,8 @@ GuiSurfaceRegionOfInterestDialog::slotCreateVolumeFromQueryNodesButton()
          stv.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error", e.whatQString());
          return;
       }
       
@@ -4367,6 +4571,7 @@ GuiSurfaceRegionOfInterestDialog::slotSelectionMode(int item)
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();   
    bool haveBorders = bmbs->getNumberOfBorders();
    
+   const bool haveLatLon  = (theMainWindow->getBrainSet()->getLatLonFile()->getNumberOfColumns() > 0);
    const bool haveMetrics = (theMainWindow->getBrainSet()->getMetricFile()->getNumberOfColumns() > 0);
    const bool haveShape   = (theMainWindow->getBrainSet()->getSurfaceShapeFile()->getNumberOfColumns() > 0);
    //
@@ -4389,6 +4594,10 @@ GuiSurfaceRegionOfInterestDialog::slotSelectionMode(int item)
       case SELECTION_MODE_NODES_WITHIN_BORDER:
          nodesWithinBorderQVBox->setEnabled(haveBorders);
          queryControlWidgetStack->setCurrentWidget(nodesWithinBorderQVBox);
+         break;
+      case SELECTION_MODE_NODES_WITHIN_LATLON:
+         nodesWithinLatLonQVBox->setEnabled(haveLatLon);
+         queryControlWidgetStack->setCurrentWidget(nodesWithinLatLonQVBox);
          break;
       case SELECTION_MODE_NODES_WITH_METRIC:
          nodesWithMetricQVBox->setEnabled(haveMetrics);
@@ -4662,13 +4871,13 @@ GuiSurfaceRegionOfInterestDialog::slotClearPushButton()
 void
 GuiSurfaceRegionOfInterestDialog::slotSavePushButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptSave);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
    fd.setWindowTitle("Choose ROI Text File Name");
    fd.setFilter("Text Files (*.txt)");
-   fd.setFileMode(QFileDialog::AnyFile);
+   fd.setFileMode(WuQFileDialog::AnyFile);
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          const QString fileName = fd.selectedFiles().at(0);
@@ -4681,7 +4890,7 @@ GuiSurfaceRegionOfInterestDialog::slotSavePushButton()
          else {
             QString msg("Unable to open for writing: ");
             msg.append(fileName);
-            GuiMessageBox::critical(this, "Error Opening File", msg, "OK");         
+            QMessageBox::critical(this, "Error Opening File", msg);         
          }
       }
    }
@@ -4828,13 +5037,13 @@ GuiSurfaceRegionOfInterestDialog::setMetricNodeForQuery(const int metricNodeForQ
    MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
    
    if (mf->getNumberOfColumns() <= 0) {
-      GuiMessageBox::critical(this, "Error", "There are no metric columns.", "OK");
+      QMessageBox::critical(this, "Error", "There are no metric columns.");
       return;
    }
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    const int thresholdColumn = dsm->getSelectedThresholdColumn(modelIndex);
    if ((thresholdColumn < 0) || (thresholdColumn >= mf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Error", "Threshold column is invalid.", "OK");
+      QMessageBox::critical(this, "Error", "Threshold column is invalid.");
       return;
    }
    
@@ -4863,13 +5072,13 @@ GuiSurfaceRegionOfInterestDialog::setShapeNodeForQuery(const int shapeNodeForQue
    SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
    
    if (ssf->getNumberOfColumns() <= 0) {
-      GuiMessageBox::critical(this, "Error", "There are no shape columns.", "OK");
+      QMessageBox::critical(this, "Error", "There are no shape columns.");
       return;
    }
    DisplaySettingsSurfaceShape* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
    const int column = dss->getSelectedDisplayColumn(modelIndex);
    if ((column < 0) || (column >= ssf->getNumberOfColumns())) {
-      GuiMessageBox::critical(this, "Error", "Column is invalid.", "OK");
+      QMessageBox::critical(this, "Error", "Column is invalid.");
       return;
    }
    
@@ -4926,7 +5135,7 @@ GuiSurfaceRegionOfInterestDialog::slotTopologySelection()
                 << ".\n  Topo file has tiles with node numbers exceeding \n"
                 << "the number of coordinates in the coordinate file.";
             bms->setTopologyFile(oldTopologyFile);
-            GuiMessageBox::critical(this, "ERROR", str.str().c_str(), "OK");
+            QMessageBox::critical(this, "ERROR", str.str().c_str());
             return;
          }
          GuiFilesModified fm;

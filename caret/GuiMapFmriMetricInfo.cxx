@@ -187,6 +187,34 @@ GuiMapFmriMetricInfo::GuiMapFmriMetricInfo(const GuiMapFmriMappingSet* surfaceIn
    metricMaxValueColumnNameRowNumber = -1;
    metricMaxValueColumnNegativeThreshold = 0.0; //negThresh;
    metricMaxValueColumnPositiveThreshold = 0.0; //posThresh;
+
+   metricMostCommonValueColumnName = "MFM (Most Common) ";
+   if (structName.isEmpty() == false) {
+      metricMostCommonValueColumnName.append(structName);
+   }
+   metricMostCommonValueColumnName.append(" - ");
+   metricMostCommonValueColumnName.append(volumeInfo->getSubVolumeName(subVolumeIndex));
+   metricMostCommonValueComment.append("Multi-Fiducial Most Common Mapping (MFM); ");
+   metricMostCommonValueComment.append(volumeComment);
+   metricMostCommonValueComment.append("MFM using surface files: ");
+   metricMostCommonValueComment.append(allSurfaceNames);
+   metricMostCommonValueColumnNameRowNumber = -1;
+   metricMostCommonValueColumnNegativeThreshold = 0.0; //negThresh;
+   metricMostCommonValueColumnPositiveThreshold = 0.0; //posThresh;   
+
+   metricMostCommonExcludeUnidentifiedValueColumnName = "MFM (Most Common Exclude No ID) ";
+   if (structName.isEmpty() == false) {
+      metricMostCommonExcludeUnidentifiedValueColumnName.append(structName);
+   }
+   metricMostCommonExcludeUnidentifiedValueColumnName.append(" - ");
+   metricMostCommonExcludeUnidentifiedValueColumnName.append(volumeInfo->getSubVolumeName(subVolumeIndex));
+   metricMostCommonExcludeUnidentifiedValueComment.append("Multi-Fiducial Most Common Exclude No ID Mapping (MFM); ");
+   metricMostCommonExcludeUnidentifiedValueComment.append(volumeComment);
+   metricMostCommonExcludeUnidentifiedValueComment.append("MFM using surface files: ");
+   metricMostCommonExcludeUnidentifiedValueComment.append(allSurfaceNames);
+   metricMostCommonExcludeUnidentifiedValueColumnNameRowNumber = -1;
+   metricMostCommonExcludeUnidentifiedValueColumnNegativeThreshold = 0.0; //negThresh;
+   metricMostCommonExcludeUnidentifiedValueColumnPositiveThreshold = 0.0; //posThresh;   
 }      
 
 /**
@@ -334,5 +362,45 @@ GuiMapFmriMetricInfo::setMetricMaxValueThresholds(const float negThresh, const f
 {
    metricMaxValueColumnNegativeThreshold = negThresh;
    metricMaxValueColumnPositiveThreshold = posThresh;
+}      
+     
+/**
+ * get the metric most common value thresholds.
+ */
+void 
+GuiMapFmriMetricInfo::getMetricMostCommonValueThresholds(float& negThresh, float& posThresh) const
+{
+   negThresh = metricMostCommonValueColumnNegativeThreshold;
+   posThresh = metricMostCommonValueColumnPositiveThreshold;
+}
+
+/**
+ * set the metric most common value thresholds.
+ */
+void 
+GuiMapFmriMetricInfo::setMetricMostCommonValueThresholds(const float negThresh, const float posThresh)
+{
+   metricMostCommonValueColumnNegativeThreshold = negThresh;
+   metricMostCommonValueColumnPositiveThreshold = posThresh;
+}      
+     
+/**
+ * get the metric most common exclude unidentified value thresholds.
+ */
+void 
+GuiMapFmriMetricInfo::getMetricMostCommonExcludeUnidentifiedValueThresholds(float& negThresh, float& posThresh) const
+{
+   negThresh = metricMostCommonExcludeUnidentifiedValueColumnNegativeThreshold;
+   posThresh = metricMostCommonExcludeUnidentifiedValueColumnPositiveThreshold;
+}
+
+/**
+ * set the metric most common exclude unidentified value thresholds.
+ */
+void 
+GuiMapFmriMetricInfo::setMetricMostCommonExcludeUnidentifiedValueThresholds(const float negThresh, const float posThresh)
+{
+   metricMostCommonExcludeUnidentifiedValueColumnNegativeThreshold = negThresh;
+   metricMostCommonExcludeUnidentifiedValueColumnPositiveThreshold = posThresh;
 }      
      

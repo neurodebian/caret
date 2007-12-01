@@ -32,6 +32,7 @@
 #include "BrainModelSurfaceClusterToBorderConverter.h"
 #include "BrainModelSurfaceConnectedSearchPaint.h"
 #include "BrainModelSurfacePaintToBorderConverter.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainSet.h"
 #include "PaintFile.h"
 
@@ -150,8 +151,11 @@ BrainModelSurfacePaintToBorderConverter::execute() throw (BrainModelAlgorithmExc
                //
                // Get the connected nodes found
                //
+               BrainModelSurfaceROINodeSelection paintROI(brainSet);
+               paintROI.update();
+               paintROI.deselectAllNodes();
+               
                bool atLeastOneNodeInCluster = false;
-               std::vector<bool> nodeInPaintCluster(numNodes, false);
                for (int j = 0; j < numNodes; j++) {
                   if (paintSearch.getNodeConnected(j)) {
                      //
@@ -167,7 +171,7 @@ BrainModelSurfacePaintToBorderConverter::execute() throw (BrainModelAlgorithmExc
                      //
                      // Mark node in the cluster
                      //
-                     nodeInPaintCluster[j] = true;
+                     paintROI.setNodeSelected(j, 1);
                   }
                }
                
@@ -182,7 +186,7 @@ BrainModelSurfacePaintToBorderConverter::execute() throw (BrainModelAlgorithmExc
                                                                             bms,
                                                                             topologyFile,
                                                                             paintFile->getPaintNameFromIndex(paintIndex),
-                                                                            nodeInPaintCluster,
+                                                                            &paintROI,
                                                                             false);
                   borderGenerator.execute();
                   

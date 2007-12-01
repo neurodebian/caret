@@ -34,6 +34,7 @@
  * constructor.
  */
 StatisticTtestTwoSample::StatisticTtestTwoSample(const VARIANCE_TYPE varianceTypeIn)
+   : StatisticAlgorithm("T-Test Two-Sample")
 {
    varianceType = varianceTypeIn;
    varianceOverride[0] = 0.0;

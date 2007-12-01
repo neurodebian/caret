@@ -321,7 +321,7 @@ DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QStr
                   const QString name = si->getModelName();
                   bool nameFound = false;
                   for (int i = 0; i < brainSet->getNumberOfVolumeProbAtlasFiles(); i++) {
-                     if (FileUtilities::basename(brainSet->getVolumeProbAtlasFile(i)->getFileName()) == name) {
+                     if (FileUtilities::basename(brainSet->getVolumeProbAtlasFile(i)->getDescriptiveLabel()) == name) {
                         if (i < static_cast<int>(channelSelected.size())) {
                            channelSelected[i] = si->getValueAsBool();
                            nameFound = true;
@@ -383,8 +383,7 @@ DisplaySettingsProbabilisticAtlas::saveScene(SceneFile::Scene& scene, const bool
                }
                
                BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-               if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_PROBABILISTIC_ATLAS,
-                                             BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) == false) {
+               if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) == false) {
                   return;
                }
             }
@@ -441,9 +440,10 @@ DisplaySettingsProbabilisticAtlas::saveScene(SceneFile::Scene& scene, const bool
                std::min(brainSet->getNumberOfVolumeProbAtlasFiles(),
                         static_cast<int>(channelSelected.size()));
             for (int i = 0; i < numChannels; i++) {
+               const VolumeFile* vf = brainSet->getVolumeProbAtlasFile(i);
                sc.addSceneInfo(SceneFile::SceneInfo("vol-channelSelected",
-                  FileUtilities::basename(brainSet->getVolumeProbAtlasFile(i)->getFileName()),
-                  channelSelected[i]));
+                               vf->getDescriptiveLabel(),
+                               channelSelected[i]));
             }
 
             int numNames = 0;

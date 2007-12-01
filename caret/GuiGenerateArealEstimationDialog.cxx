@@ -31,6 +31,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QRadioButton>
 #include <QSpinBox>
 #include <QTextEdit>
@@ -43,7 +44,6 @@
 #include "GuiFilesModified.h"
 #include "GuiGenerateArealEstimationDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiPaintColumnNamesListBoxSelectionDialog.h"
 #include "PaintFile.h"
@@ -261,7 +261,7 @@ GuiGenerateArealEstimationDialog::slotPaintNamePushButton()
       }
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", "Invalid paint column", "OK");
+      QMessageBox::critical(this, "ERROR", "Invalid paint column");
    }
 }      
 
@@ -279,7 +279,8 @@ GuiGenerateArealEstimationDialog::done(int r)
       
       BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
       if (bms == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "There is no surface in the main window.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", "There is no surface in the main window.");
          return;
       }
       
@@ -287,19 +288,22 @@ GuiGenerateArealEstimationDialog::done(int r)
       BorderFile borderFile;
       bmbs->copyBordersToBorderFile(bms, borderFile);
       if (borderFile.getNumberOfBorders() <= 0) {
-         GuiMessageBox::critical(this, "ERROR", "There are no borders on the main window surface.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", "There are no borders on the main window surface.");
          return;
       }
       
       if ((borderFileUncertaintyRadioButton->isChecked() == false) &&
           (borderOverrideUncertaintyRadioButton->isChecked() == false)) {
-         GuiMessageBox::critical(this, "ERROR", "You must select a border uncertainty source.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", "You must select a border uncertainty source.");
          return;
       }
       
       if ((nodesAllRadioButton->isChecked() == false) &&
           (nodesRestrictRadioButton->isChecked() == false)) {
-         GuiMessageBox::critical(this, "ERROR", "You must make a node selection.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", "You must make a node selection.");
          return;
       }
       
@@ -333,7 +337,8 @@ GuiGenerateArealEstimationDialog::done(int r)
          GuiBrainModelOpenGL::updateAllGL();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
       QApplication::restoreOverrideCursor();

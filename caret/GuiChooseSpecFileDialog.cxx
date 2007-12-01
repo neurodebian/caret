@@ -30,10 +30,10 @@
 #include <QLayout>
 #include <QPushButton>
 
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiDataFileCommentDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiPreviousSpecFileComboBox.h"
 #include "SpecFile.h"
 #include "PreferencesFile.h"
@@ -45,10 +45,13 @@
  */
 GuiChooseSpecFileDialog::GuiChooseSpecFileDialog(QWidget* parent,
                                        const std::vector<QString>& previousSpecFilesIn,
-                                       const bool modal)
-   : Q3FileDialog(parent, "GuiChooseSpecFileDialog", modal)
+                                       const bool modalIn,
+                                       const bool allowMultipleSelectionsFlag)
+   : WuQFileDialog(parent)
 {
-   createDialog(previousSpecFilesIn);
+   setModal(modalIn);
+   createDialog(previousSpecFilesIn,
+                allowMultipleSelectionsFlag);
 }
 
 /**
@@ -56,31 +59,37 @@ GuiChooseSpecFileDialog::GuiChooseSpecFileDialog(QWidget* parent,
  */
 GuiChooseSpecFileDialog::GuiChooseSpecFileDialog(QWidget* parent,
                                        const PreferencesFile* pf,
-                                       const bool modal)
-   : Q3FileDialog(parent, "GuiChooseSpecFileDialog", modal)
+                                       const bool modalIn,
+                                       const bool allowMultipleSelectionsFlag)
+   : WuQFileDialog(parent)
 {
+   setModal(modalIn);
    std::vector<QString> specFileNames;
    pf->getRecentSpecFiles(specFileNames);
-   createDialog(specFileNames);
+   createDialog(specFileNames,
+                allowMultipleSelectionsFlag);
 }
 
 /**
  * Create the dialog.
  */
 void
-GuiChooseSpecFileDialog::createDialog(const std::vector<QString>& specFileNames)
+GuiChooseSpecFileDialog::createDialog(const std::vector<QString>& specFileNames,
+                                      const bool allowMultipleSpecFilesFlag)
 {
    viewContentsDialog = NULL;
    
-   setDir(QDir::currentPath());
+   setDirectory(QDir::currentPath());
    setWindowTitle("Choose Spec File");
-   setMode(Q3FileDialog::ExistingFile);
-   std::ostringstream str;
-   str << "Spec Files (*"
-       << SpecFile::getSpecFileExtension().toAscii().constData()
-       << ")";
-   const QString specFilter = str.str().c_str();
-   setFilter(specFilter);
+   setAcceptMode(WuQFileDialog::AcceptOpen);
+   if (allowMultipleSpecFilesFlag) {
+      setFileMode(WuQFileDialog::ExistingFiles);
+   }
+   else {
+      setFileMode(WuQFileDialog::ExistingFile);
+   }
+   setFilters(QStringList(FileFilters::getSpecFileFilter()));
+   selectFilter(FileFilters::getSpecFileFilter());
    
    //
    // Combo box for selecting previous spec files
@@ -109,20 +118,11 @@ GuiChooseSpecFileDialog::createDialog(const std::vector<QString>& specFileNames)
    //
    // Called when a file is highlighted
    //
-   QObject::connect(this, SIGNAL(fileHighlighted(const QString&)),
-                    this, SLOT(slotFileHighlighted(const QString&)));
+   QObject::connect(this, SIGNAL(filesSelected(const QStringList&)),
+                    this, SLOT(slotFilesSelected(const QStringList&)));
                     
-   addWidgets(NULL, previousSpecFilesGroupBox, viewPushButton);
+   addWidgets(previousSpecFilesGroupBox, previousSpecFilesGroupBox, viewPushButton);
    
-   //
-   // Try to get around QT4 bug that shows no files until user selects file filter
-   //
-   setFilter(specFilter);
-   setSelectedFilter(specFilter);
-   rereadDir();
-   setFilter(specFilter);
-   setSelectedFilter(specFilter);
-
    QtUtilities::setMaximumHeightToNinetyPercentOfScreenHeight(this);
 }
 
@@ -132,8 +132,36 @@ GuiChooseSpecFileDialog::createDialog(const std::vector<QString>& specFileNames)
 QString 
 GuiChooseSpecFileDialog::getSelectedSpecFile() const
 {
-   return selectedFile();
+   QString name;
+   
+   const QStringList fileList = selectedFiles();
+   if (fileList.count() > 0) {
+      name = fileList.at(0);
+   }
+   
+   return name;
 }      
+
+/**
+ * get the selected spec files.
+ */
+std::vector<QString> 
+GuiChooseSpecFileDialog::getSelectedSpecFiles() const
+{
+   std::vector<QString> names;
+   
+   const QStringList fileList = selectedFiles();
+   int numFiles = fileList.count();
+   if ((numFiles > 1) &&
+       (fileMode() == WuQFileDialog::ExistingFile)) {
+      numFiles = 1;
+   }
+   for (int i = 0; i < numFiles; i++) {
+      names.push_back(fileList.at(i));
+   }
+   
+   return names;
+}
 
 /**
  * Destructor.
@@ -146,10 +174,14 @@ GuiChooseSpecFileDialog::~GuiChooseSpecFileDialog()
  * Called when a file is highlighted
  */
 void
-GuiChooseSpecFileDialog::slotFileHighlighted(const QString& name)
+GuiChooseSpecFileDialog::slotFilesSelected(const QStringList& names)
 {
-   highlightedFileName = name;
-   viewPushButton->setEnabled(name.isEmpty() == false);
+   highlightedFileName = "";
+   viewPushButton->setEnabled(false);
+   if (names.count() == 1) {
+      highlightedFileName = names.at(0);
+      viewPushButton->setEnabled(true);
+   }
 }
 
 /**
@@ -170,5 +202,5 @@ GuiChooseSpecFileDialog::slotViewPushButton()
 void 
 GuiChooseSpecFileDialog::slotPreviousSpecFileComboBox(const QString& name)
 {
-   setSelection(name);
+   selectFile(name);
 }

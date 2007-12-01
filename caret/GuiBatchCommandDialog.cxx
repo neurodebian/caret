@@ -34,20 +34,19 @@
 #include <iostream>
 #include <sstream>
 
-#include <QApplication>
 #include <QDateTime>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QGroupBox>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTextStream>
 
 #include "DebugControl.h"
 #include "GuiBatchCommandDialog.h"
-#include "GuiMessageBox.h"
 #include "QtUtilities.h"
+#include "WuQFileDialog.h"
 
 /**
  * Constructor.
@@ -147,10 +146,10 @@ GuiBatchCommandDialog::slotCommandFilePushButton()
    //
    // Create a file dialog to select the command file.
    //
-   QFileDialog commandFileNameDialog(this);
+   WuQFileDialog commandFileNameDialog(this);
    commandFileNameDialog.setModal(true);
    commandFileNameDialog.setWindowTitle("Choose Command File");
-   commandFileNameDialog.setFileMode(QFileDialog::AnyFile);
+   commandFileNameDialog.setFileMode(WuQFileDialog::AnyFile);
 #ifdef Q_OS_WIN32
    const QString filter("Command File (*.bat)");
 #else
@@ -177,7 +176,7 @@ GuiBatchCommandDialog::done(int r)
       // Make sure command exists
       //
       if (command.isEmpty()) {
-         GuiMessageBox::critical(this, "Error", "PROGRAM ERROR: command is empty.", "OK");
+         QMessageBox::critical(this, "Error", "PROGRAM ERROR: command is empty.");
          return;
       }
       
@@ -188,9 +187,12 @@ GuiBatchCommandDialog::done(int r)
       if (QFile::exists(commandFileName)) {
          QString msg("Command file ");
          msg.append(commandFileName);
-         msg.append(" exits.");
-         if (GuiMessageBox::warning(this, "Warning", msg,
-                                 "Overwrite", "Change Name") != 0) {
+         msg.append(" exits.  Overwrite it?");
+         if (QMessageBox::warning(this, 
+                                  "Warning", 
+                                  msg,
+                                 (QMessageBox::Yes | QMessageBox::No),
+                                      QMessageBox::No) == QMessageBox::No) {
             return;
          }
       }
@@ -238,7 +240,7 @@ GuiBatchCommandDialog::done(int r)
             msg = "File exists and is not writable: ";
          }
          msg.append(commandFileName);
-         GuiMessageBox::critical(this, "Error", msg, "OK");
+         QMessageBox::critical(this, "Error", msg);
          return;
       }
    }

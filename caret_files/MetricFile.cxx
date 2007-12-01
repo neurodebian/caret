@@ -50,6 +50,7 @@
 #include "StatisticGeneratePValue.h"
 #include "StatisticLeveneVarianceEquality.h"
 #include "StatisticMeanAndDeviation.h"
+#include "StatisticMultipleRegression.h"
 #include "StatisticNormalizeDistribution.h"
 #include "StatisticPermutation.h"
 #include "StatisticRandomNumber.h"
@@ -305,7 +306,7 @@ MetricFile::deformFile(const DeformationMapFile& dmf,
       dmf.getDeformDataForNode(i, tileNodes, tileAreas);
       if (dt == DEFORM_NEAREST_NODE) {
          if (tileNodes[0] > -1) {
-            getValue(tileNodes[0], data0);
+            getAllColumnValuesForNode(tileNodes[0], data0);
             for (int j = 0; j < numCols; j++) {
                dataOut[j] = data0[j];
             }
@@ -319,9 +320,9 @@ MetricFile::deformFile(const DeformationMapFile& dmf,
       else {
          if ((tileNodes[0] > -1) && (tileNodes[1] > -1) &&
              (tileNodes[2] > -1)) {
-            getValue(tileNodes[0], data0);
-            getValue(tileNodes[1], data1);
-            getValue(tileNodes[2], data2);
+            getAllColumnValuesForNode(tileNodes[0], data0);
+            getAllColumnValuesForNode(tileNodes[1], data1);
+            getAllColumnValuesForNode(tileNodes[2], data2);
             for (int j = 0; j < numCols; j++) {
                const float totalArea = tileAreas[0] + tileAreas[1] + tileAreas[2];
                if (totalArea > 0.0) {
@@ -341,7 +342,7 @@ MetricFile::deformFile(const DeformationMapFile& dmf,
             }
          }
       }
-      deformedMetricFile.setValue(i, dataOut);
+      deformedMetricFile.setAllColumnValuesForNode(i, dataOut);
    }
    
    delete[] data0;
@@ -621,11 +622,11 @@ MetricFile::getValue(const int nodeNumber, const int columnNumber) const
 } 
 
 /**
- * Get the metrics (all columns) for a node.
- * User must allocate sufficient space for "metrics".
+ * get metrics for all columns of a specified node
+ *"metrics" must be allocated by user to contain getNumberOfColumns() elements.
  */
 void 
-MetricFile::getValue(const int nodeNumber, float* metrics) const
+MetricFile::getAllColumnValuesForNode(const int nodeNumber, float* metrics) const
 {
    for (int i = 0; i < getNumberOfColumns(); i++) {
       float* data = dataArrays[i]->getDataPointerFloat();
@@ -637,7 +638,7 @@ MetricFile::getValue(const int nodeNumber, float* metrics) const
  * Get the metrics (all columns) for a node.
  */
 void 
-MetricFile::getValue(const int nodeNumber, std::vector<float>& metrics) const
+MetricFile::getAllColumnValuesForNode(const int nodeNumber, std::vector<float>& metrics) const
 {
    const int num = getNumberOfColumns();
    if (num > 0) {
@@ -666,10 +667,10 @@ MetricFile::setValue(const int nodeNumber, const int columnNumber,
 }
 
 /**
- * Set the value of all columns for a node.
+ * Set all column metrics for a specified node.
  */
 void 
-MetricFile::setValue(const int nodeNumber, const float* metrics)
+MetricFile::setAllColumnValuesForNode(const int nodeNumber, const float* metrics)
 {
    for (int i = 0; i < getNumberOfColumns(); i++) {
       float* data = dataArrays[i]->getDataPointerFloat();
@@ -1487,6 +1488,9 @@ MetricFile::performUnaryOperation(const UNARY_OPERATION operation,
       case UNARY_OPERATION_SQUARE_ROOT:
          columnComment = "Square Root";
          break;
+      case UNARY_OPERATION_SUBTRACT_FROM_ONE:
+         columnComment = "Subtract from One";
+         break;
       case UNARY_OPERATION_LOG2:
          columnComment = "Log2";
          break;
@@ -1525,6 +1529,9 @@ MetricFile::performUnaryOperation(const UNARY_OPERATION operation,
             if (value > 0.0) {
                value = std::sqrt(value);
             }
+            break;
+         case UNARY_OPERATION_SUBTRACT_FROM_ONE:
+            value = 1.0 - value;
             break;
          case UNARY_OPERATION_LOG2:  // use scalar as base
             value = MathUtilities::log(scalar, value);
@@ -1644,9 +1651,155 @@ MetricFile::smoothNeighbors(const TopologyFile* tf, const int column)
 }      
 
 /**
- * smooth a metric column.
+ * average neighbor smooth a metric column.
  * (if output column is negative a new column is created).
  */
+void 
+MetricFile::smoothAverageNeighbors(const int column, 
+                                   const int outputColumnIn,
+                                   const QString& outputColumnName,
+                                   const float strength,
+                                   const int iterations,
+                                   const TopologyFile* topologyFile)
+{   
+   //
+   // Check for valid input column
+   //
+   const int numberOfNodes = getNumberOfNodes();
+   const int numberOfColumns = getNumberOfColumns();
+   if ((numberOfColumns <= 0) || (numberOfNodes <= 0)) {
+      return;
+   }
+   if ((column < 0) || (column >= numberOfColumns)) {
+      return;
+   }
+   
+   //
+   // Inverse of strength is applied to the node's current metric value
+   //
+   const float oneMinusStrength = 1.0 - strength;
+   
+   //
+   // Create a new column if needed.
+   //
+   int outputColumn = outputColumnIn;
+   if ((outputColumn < 0) || (outputColumn >= numberOfColumns)){
+      addColumns(1);
+      outputColumn = getNumberOfDataArrays() - 1;
+   }
+   setColumnName(outputColumn, outputColumnName);
+   
+   //
+   // Copy the input column to the output column
+   //
+   if (column != outputColumn) {
+      std::vector<float> values;
+      getColumnForAllNodes(column, values);
+      setColumnForAllNodes(outputColumn, values);
+   }
+   
+   //
+   // column now being smoothed
+   //
+   const int smoothColumn = outputColumn;
+   
+   //
+   // Get the topology helper
+   //
+   const TopologyHelper* topologyHelper = 
+                      topologyFile->getTopologyHelper(false, true, false);
+    
+   //
+   // Allocate arrays for storing data of column being smoothed
+   //
+   float* inputValues = new float[numberOfNodes];
+   float* outputValues = new float[numberOfNodes];
+   
+   //
+   // smooth the data for the specified number of iterations
+   //
+   for (int iter = 0; iter < iterations; iter++) {
+      //
+      // allow other events to process
+      //
+      AbstractFile::allowEventsToProcess();
+
+      //
+      // load arrays for smoothing data
+      //
+      //std::vector<float> columnValues(numberOfNodes);
+      //getColumnForAllNodes(outputColumn, columnValues);
+      getColumnForAllNodes(smoothColumn, inputValues);        
+      
+      //
+      // smooth all of the nodes
+      //
+      for (int i = 0; i < numberOfNodes; i++) {
+         //
+         // copy input to output in event this node is not smoothed
+         //
+         outputValues[i] = inputValues[i];
+         
+         //
+         // Get the neighbors for this node
+         //
+         //std::vector<int> neighbors;
+         //topologyHelper->getNodeNeighbors(i, neighbors);
+         int numNeighbors = 0;
+         const int* neighbors = topologyHelper->getNodeNeighbors(i, numNeighbors);
+         
+         //
+         // Does this node have neighbors
+         //
+         //const int numNeighbors = static_cast<int>(neighbors.size());
+         if (numNeighbors > 0) {         
+            //
+            // smooth metric data for this node
+            //
+            float neighborSum = 0.0;
+            for (int j = 0; j < numNeighbors; j++) {
+               //
+               // Note: outputColumn has output from last iteration of smoothing
+               //
+               neighborSum += inputValues[neighbors[j]];
+            }
+            const float neighborAverage = neighborSum / static_cast<float>(numNeighbors);
+            
+            //
+            // Apply smoothing to the node
+            //
+            outputValues[i] = (inputValues[i] * oneMinusStrength)
+                            + (neighborAverage * strength);
+         }
+      }
+      
+      //
+      // Copy the smoothed values to the output column
+      //
+      setColumnForAllNodes(smoothColumn, outputValues);
+   }
+   
+   //
+   // Add comments describing smoothing
+   //
+   QString smoothComment(getColumnComment(smoothColumn));
+   if (smoothComment.isEmpty() == false) {
+      smoothComment.append("\n");
+      smoothComment.append("Average Neighbors Smoothing: \n");
+   }
+   smoothComment.append("   Stength/Iterations: ");
+   smoothComment.append(StringUtilities::fromNumber(strength));
+   smoothComment.append(" ");
+   smoothComment.append(StringUtilities::fromNumber(iterations));
+   smoothComment.append("\n");
+   setColumnComment(smoothColumn, smoothComment);
+   
+   delete[] inputValues;
+   delete[] outputValues;
+   
+   setModified();
+}                        
+/*
 void 
 MetricFile::smooth(const SMOOTH_ALGORITHM algorithm,
                    const int column, 
@@ -1788,7 +1941,7 @@ MetricFile::smooth(const SMOOTH_ALGORITHM algorithm,
                                      + (neighborAverage * strength);
                   };
                   break;
-               case SMOOTH_ALGORITHM_GAUSSIAN:
+               case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
                   {
                      //
                      // Coordinates of all nodes
@@ -1878,8 +2031,8 @@ MetricFile::smooth(const SMOOTH_ALGORITHM algorithm,
       case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
          smoothComment.append("Average Neighbors Smoothing: \n");
          break;
-      case SMOOTH_ALGORITHM_GAUSSIAN:
-         smoothComment.append("Gaussian Smoothing: \n");
+      case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+         smoothComment.append("Gaussian Smoothing (Surface Normal-Based: \n");
          smoothComment.append("   Norm Below Cutoff: ");
          smoothComment.append(StringUtilities::fromNumber(gaussNormBelowCutoff));
          smoothComment.append("\n");
@@ -1912,6 +2065,7 @@ MetricFile::smooth(const SMOOTH_ALGORITHM algorithm,
    
    setModified();
 }                        
+*/
 
 /**
  * Get a column of values for all nodes
@@ -2164,9 +2318,9 @@ MetricFile::readFileVersion_2(QFile& file,
       else if (tag == tagColumnStudyMetaData) {
          QString name;
          const int indx = splitTagIntoColumnAndValue(tagValue, name);
-         StudyMetaDataLink smdl;
-         smdl.setLinkFromCodedText(name);
-         setColumnStudyMetaDataLink(indx, smdl);
+         StudyMetaDataLinkSet smdls;
+         smdls.setLinkSetFromCodedText(name);
+         setColumnStudyMetaDataLinkSet(indx, smdls);
       }
       else if (tag == tagColumnColorMapping) {
          std::vector<QString> tokens;
@@ -2309,7 +2463,7 @@ MetricFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStream)
    }
    for (int k = 0; k < numberOfColumns; k++) {
       stream << tagColumnStudyMetaData << " " << k
-             << " " << getColumnStudyMetaDataLink(k).getLinkAsCodedText().toAscii().constData() << "\n";
+             << " " << getColumnStudyMetaDataLinkSet(k).getLinkSetAsCodedText().toAscii().constData() << "\n";
    }
    for (int k = 0; k < numberOfColumns; k++) {
       float neg, pos;
@@ -2496,7 +2650,7 @@ MetricFile::computeStatisticalZMap() const throw (FileException)
       //
       // Convert to Z-score
       //
-      getValue(i, values);
+      getAllColumnValuesForNode(i, values);
       StatisticConvertToZScore zAlg;
       StatisticDataGroup sdg(values, 
                              numberOfColumns, 
@@ -2511,7 +2665,7 @@ MetricFile::computeStatisticalZMap() const throw (FileException)
          zAlg.convertToZScore(values[m]);
       }
       
-      metricOut->setValue(i, values);
+      metricOut->setAllColumnValuesForNode(i, values);
    }
    delete[] values;
    
@@ -2533,8 +2687,8 @@ MetricFile::computeStatisticalZMap() const throw (FileException)
 }
 
 /**
- * compute and return a metric file that is a Z-map of "this" metric file
- * Z-map is (Xi - Mean)/Dev for all elements in each row.
+ * compute and return a metric file that has each column fit to a
+ * normal distribution.
  */
 MetricFile* 
 MetricFile::computeNormalization(const float mean,
@@ -2617,7 +2771,7 @@ MetricFile::computeTValues(const float constant,
    float* deviation = new float[numNodes];
    float* values = new float[numCols];
    for (int i = 0; i < numNodes; i++) {
-      getValue(i, values);
+      getAllColumnValuesForNode(i, values);
       StatisticDataGroup sdg(values,
                              numCols,
                              StatisticDataGroup::DATA_STORAGE_MODE_POINT);
@@ -2648,15 +2802,12 @@ MetricFile::computeTValues(const float constant,
          const float variance =  deviation[i]*deviation[i];
          m.setValue(i, 0, variance);
       }
-      m.smooth(SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
-               0,
-               0,
-               "",
-               varianceSmoothingStrength,
-               varianceSmoothingIterations,
-               varianceSmoothingTopologyFile,
-               NULL,
-               NULL);
+      m.smoothAverageNeighbors(0,
+                               0,
+                               "",
+                               varianceSmoothingStrength,
+                               varianceSmoothingIterations,
+                               varianceSmoothingTopologyFile);
       for (int i = 0; i < numNodes; i++) {
          const float variance = m.getValue(i, 0);
          deviation[i] = std::sqrt(variance);
@@ -2772,11 +2923,11 @@ MetricFile::computePermutedTValues(const float constant,
       // Get the value for all nodes from the copy metric file and apply sign flips
       //
       for (int k = 0; k < numNodes; k++) {
-         metricCopy.getValue(k, values);
+         metricCopy.getAllColumnValuesForNode(k, values);
          for (int j = 0; j < numCols; j++) {
             values[j] *= signFlips[j];
          }
-         metricCopy.setValue(k, values);
+         metricCopy.setAllColumnValuesForNode(k, values);
       }
       
       //
@@ -2869,7 +3020,7 @@ MetricFile::computeStatisticalLeveneMap(const std::vector<MetricFile*>& inputFil
       for (int j = 0; j < numFiles; j++) {
          const MetricFile* mf = inputFiles[j];
          std::vector<float>* metricData = new std::vector<float>;
-         mf->getValue(i, *metricData);
+         mf->getAllColumnValuesForNode(i, *metricData);
          dataGroups[j] = new StatisticDataGroup(metricData,
                                                 StatisticDataGroup::DATA_STORAGE_MODE_TAKE_OWNERSHIP); 
          levene.addDataGroup(dataGroups[j], true); // 2nd arg true => take possession and delete when done
@@ -3021,7 +3172,7 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
    float* mean1 = new float[m1NumberOfNodes];
    float* var1 = new float[m1NumberOfNodes];
    for (int i = 0; i < m1NumberOfNodes; i++) {
-      m1->getValue(i, values1);
+      m1->getAllColumnValuesForNode(i, values1);
       StatisticDataGroup sdg(values1,
                              m1NumberOfColumns,
                              StatisticDataGroup::DATA_STORAGE_MODE_POINT);
@@ -3046,7 +3197,7 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
    float* mean2 = new float[m2NumberOfNodes];
    float* var2 = new float[m2NumberOfNodes];
    for (int i = 0; i < m2NumberOfNodes; i++) {
-      m2->getValue(i, values2);
+      m2->getAllColumnValuesForNode(i, values2);
       StatisticDataGroup sdg(values2,
                              m2NumberOfColumns,
                              StatisticDataGroup::DATA_STORAGE_MODE_POINT);
@@ -3076,15 +3227,12 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
       for (int i = 0; i < m1NumberOfNodes; i++) {
          m.setValue(i, 0, var1[i]);
       }
-      m.smooth(SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
-               0,
-               0,
-               "",
-               varianceSmoothingStrength,
-               varianceSmoothingIterations,
-               varianceSmoothingTopologyFile,
-               NULL,
-               NULL);
+      m.smoothAverageNeighbors(0,
+                               0,
+                               "",
+                               varianceSmoothingStrength,
+                               varianceSmoothingIterations,
+                               varianceSmoothingTopologyFile);
       for (int i = 0; i < m1NumberOfNodes; i++) {
          var1[i] = m.getValue(i, 0);
       }
@@ -3096,15 +3244,12 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
       for (int i = 0; i < m2NumberOfNodes; i++) {
          m.setValue(i, 0, var2[i]);
       }
-      m.smooth(SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
-               0,
-               0,
-               "",
-               varianceSmoothingStrength,
-               varianceSmoothingIterations,
-               varianceSmoothingTopologyFile,
-               NULL,
-               NULL);
+      m.smoothAverageNeighbors(0,
+                               0,
+                               "",
+                               varianceSmoothingStrength,
+                               varianceSmoothingIterations,
+                               varianceSmoothingTopologyFile);
       for (int i = 0; i < m2NumberOfNodes; i++) {
          var2[i] = m.getValue(i, 0);
       }
@@ -3350,6 +3495,167 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
  * compute correlation coefficient map.
  */
 MetricFile* 
+MetricFile::computeMultipleCorrelationCoefficientMap(const MetricFile* dependentMetricFile,
+                                                     const std::vector<MetricFile*>& independentMetricFiles) throw (FileException)
+{
+   //
+   // Check inputs
+   //
+   if (dependentMetricFile == NULL) {
+      throw FileException("Dependent metric file is NULL (invalid).");
+   }
+   const int numIndepMetricFiles = static_cast<int>(independentMetricFiles.size());
+   if (numIndepMetricFiles <= 0) {
+      throw FileException("No Independent metric files.");
+   }   
+   const int numNodes = dependentMetricFile->getNumberOfNodes();
+   if (numNodes <= 0) {
+      throw FileException("Dependent metric file has an invalid number of nodes.");
+   }
+   const int numCols = dependentMetricFile->getNumberOfColumns();
+   if (numCols <= 0) {
+      throw FileException("Dependent metric file has an invalid number of columns.");
+   }
+   for (int i = 0; i < numIndepMetricFiles; i++) {
+      if (numNodes != independentMetricFiles[i]->getNumberOfNodes()) {
+        const QString msg("Independent metric file "
+                          + QString::number(i + 1)
+                          + " has a different number of nodes than dependent metric file.");
+        throw FileException(msg);
+      } 
+      else if (numCols != independentMetricFiles[i]->getNumberOfColumns()) {
+        const QString msg("Independent metric file "
+                          + QString::number(i + 1)
+                          + " has a different number of columns than dependent metric file.");
+        throw FileException(msg);
+      }
+   }
+   
+   //
+   // Create output metric file
+   //
+   int colCtr = 0;
+   const int r2ColumnNumber = colCtr++;
+   const int rColumnNumber = colCtr++;
+   const int fColumnNumber = colCtr++;
+   const int pColumnNumber = colCtr++;
+   const int dofNumeratorColumnNumber = colCtr++;
+   const int dofDenominatorColumnNumber = colCtr++;
+   const int numOutputColumns = colCtr;
+   MetricFile* metricOut = new MetricFile(numNodes, numOutputColumns);
+   if (r2ColumnNumber >= 0) {
+      metricOut->setColumnName(r2ColumnNumber, "r2 - Coefficient of Multiple Determination");
+   }
+   if (rColumnNumber >= 0) {
+      metricOut->setColumnName(rColumnNumber, "r - Correlation Coefficient");
+   }
+   if (fColumnNumber >= 0) {
+      metricOut->setColumnName(fColumnNumber, "F-Value");
+   }
+   if (pColumnNumber >= 0) {
+      metricOut->setColumnName(pColumnNumber, "P-Value");
+   }
+   if (dofNumeratorColumnNumber >= 0) {
+      metricOut->setColumnName(dofNumeratorColumnNumber, "DOF (numerator)- Degrees of Freedom");
+   }
+   if (dofDenominatorColumnNumber >= 0) {
+      metricOut->setColumnName(dofDenominatorColumnNumber, "DOF (denomenator)- Degrees of Freedom");
+   }
+   
+   //
+   // Compute correlation coefficients
+   //
+   float* dependentData = new float[numCols];
+   std::vector<float*> independentData(numIndepMetricFiles);
+   for (int m = 0; m < numIndepMetricFiles; m++) {
+      independentData[m] = new float[numCols];
+   }
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         dependentData[j] = dependentMetricFile->getValue(i, j);
+      }
+      for (int m = 0; m < numIndepMetricFiles; m++) {
+         float* d = independentData[m];
+         for (int j = 0; j < numCols; j++) {
+            d[j] = independentMetricFiles[m]->getValue(i, j);
+         }
+      }
+
+      //
+      // Create multiple regression object and load data
+      //
+      StatisticMultipleRegression smr;      
+      smr.setDependentDataArray(dependentData, numCols);
+      smr.setNumberOfIndependentDataGroups(numIndepMetricFiles);
+      for (int m = 0; m < numIndepMetricFiles; m++) {
+         smr.setIndependentDataArray(m, independentData[m], numCols);
+      }
+
+      //
+      // Execute multiple regression
+      //
+      try {
+         smr.execute();
+      }
+      catch (StatisticException& e) {
+         throw FileException(e);
+      }
+      float SSTO,
+            SSE,
+            SSR,
+            MSR,
+            MSE,
+            F,
+            pValue,
+            R2;
+      int regressionDOF,
+          errorDOF,
+          totalDOF;
+      smr.getAnovaParameters(SSTO,
+                             SSE,
+                             SSR,
+                             MSR,
+                             MSE,
+                             F,
+                             pValue,
+                             R2,
+                             regressionDOF,
+                             errorDOF,
+                             totalDOF);
+                            
+      if (r2ColumnNumber >= 0) {
+         metricOut->setValue(i, r2ColumnNumber, R2);
+      }
+      if (rColumnNumber >= 0) {
+         metricOut->setValue(i, rColumnNumber, std::sqrt(R2));
+      }
+      if (fColumnNumber >= 0) {
+         metricOut->setValue(i, fColumnNumber, F);
+      }
+      if (pColumnNumber >= 0) {
+         metricOut->setValue(i, pColumnNumber, pValue);
+      }
+      if (dofNumeratorColumnNumber >= 0) {
+         metricOut->setValue(i, dofNumeratorColumnNumber, regressionDOF);
+      }
+      if (dofDenominatorColumnNumber >= 0) {
+         metricOut->setValue(i, dofDenominatorColumnNumber, errorDOF);
+      }
+   }
+   delete[] dependentData;
+   dependentData = NULL;
+   for (int m = 0;  m < numIndepMetricFiles; m++) {
+      delete[] independentData[m];
+      independentData[m] = NULL;
+   }
+   
+   return metricOut;
+}
+                                                   
+/**
+ * compute correlation coefficient map.
+ */
+MetricFile* 
 MetricFile::computeCorrelationCoefficientMap(const MetricFile* m1,
                                              const MetricFile* m2) throw (FileException)
 {
@@ -3410,32 +3716,31 @@ MetricFile::computeCorrelationCoefficientMap(const MetricFile* m1,
       for (int j = 0; j < numCols; j++) {
          data1[j] = m1->getValue(i, j);
          data2[j] = m2->getValue(i, j);
-         
-         StatisticDataGroup sdg1(data1, numCols, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-         StatisticDataGroup sdg2(data2, numCols, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
-         
-         StatisticCorrelationCoefficient scc;
-         scc.addDataGroup(&sdg1);
-         scc.addDataGroup(&sdg2);
-         try {
-            scc.execute();
-         }
-         catch (StatisticException& e) {
-            throw FileException(e);
-         }
-         
-         if (rColumnNumber >= 0) {
-            metricOut->setValue(i, rColumnNumber, scc.getCorrelationCoefficientR());
-         }
-         if (tColumnNumber >= 0) {
-            metricOut->setValue(i, tColumnNumber, scc.getTValue());
-         }
-         if (pColumnNumber >= 0) {
-            metricOut->setValue(i, pColumnNumber, scc.getPValue());
-         }
-         if (dofColumnNumber >= 0) {
-            metricOut->setValue(i, dofColumnNumber, scc.getDegreesOfFreedom());
-         }
+      }   
+      StatisticDataGroup sdg1(data1, numCols, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+      StatisticDataGroup sdg2(data2, numCols, StatisticDataGroup::DATA_STORAGE_MODE_POINT);
+      
+      StatisticCorrelationCoefficient scc;
+      scc.addDataGroup(&sdg1);
+      scc.addDataGroup(&sdg2);
+      try {
+         scc.execute();
+      }
+      catch (StatisticException& e) {
+         throw FileException(e);
+      }
+      
+      if (rColumnNumber >= 0) {
+         metricOut->setValue(i, rColumnNumber, scc.getCorrelationCoefficientR());
+      }
+      if (tColumnNumber >= 0) {
+         metricOut->setValue(i, tColumnNumber, scc.getTValue());
+      }
+      if (pColumnNumber >= 0) {
+         metricOut->setValue(i, pColumnNumber, scc.getPValue());
+      }
+      if (dofColumnNumber >= 0) {
+         metricOut->setValue(i, dofColumnNumber, scc.getDegreesOfFreedom());
       }
    }
    delete[] data1;

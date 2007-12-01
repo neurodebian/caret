@@ -28,7 +28,9 @@
 #include <QDateTime>
 
 #include "BrainModelSurface.h"
+#include "BrainModelSurfaceMetricFullWidthHalfMaximum.h"
 #include "BrainModelSurfaceMetricSmoothing.h"
+#include "DebugControl.h"
 #include "GaussianComputation.h"
 #include "MetricFile.h"
 #include "StringUtilities.h"
@@ -49,6 +51,7 @@ BrainModelSurfaceMetricSmoothing::BrainModelSurfaceMetricSmoothing(
                                                 const QString& outputColumnNameIn,
                                                 const float strengthIn,
                                                 const int iterationsIn,
+                                                const float desiredFullWidthHalfMaximumIn,
                                                 const float gaussNormBelowCutoffIn,
                                                 const float gaussNormAboveCutoffIn,
                                                 const float gaussSigmaNormIn,
@@ -68,6 +71,7 @@ BrainModelSurfaceMetricSmoothing::BrainModelSurfaceMetricSmoothing(
    outputColumnName = outputColumnNameIn;
    strength = strengthIn;
    iterations = iterationsIn;
+   desiredFullWidthHalfMaximum = desiredFullWidthHalfMaximumIn;
    gaussNormBelowCutoff = gaussNormBelowCutoffIn;
    gaussNormAboveCutoff = gaussNormAboveCutoffIn;
    gaussSigmaNorm = gaussSigmaNormIn;
@@ -88,6 +92,7 @@ BrainModelSurfaceMetricSmoothing::~BrainModelSurfaceMetricSmoothing()
 void 
 BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
 {
+   fullWidthHalfMaximumSmoothingResultsDescription = "";
    numberOfNodes = fiducialSurface->getNumberOfNodes();
    
    //
@@ -155,9 +160,66 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
    determineNeighbors();
    
    //
+   // Full width half maximum measurements
+   //
+   float fullWidthHalfMaximum = 0.0;
+   int fullWidthHalfMaximumNumberOfIterations = 0;
+   
+   //
    // smooth the data for the specified number of iterations
    //
    for (int iter = 0; iter < iterations; iter++) {
+   
+      bool stopSmoothingFlag = false;
+      switch (algorithm) {
+         case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+            break;
+         case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+            {
+               //
+               // Determine Full Width Half Maximum
+               //
+               BrainModelSurfaceMetricFullWidthHalfMaximum fwhm(brainSet,
+                                                                fiducialSurface,
+                                                                metricFile,
+                                                                smoothColumn);
+               fwhm.execute();
+               fullWidthHalfMaximum = fwhm.getFullWidthHalfMaximum();
+               
+               if (DebugControl::getDebugOn()) {
+                  std::cout << "Smoothing Full Width Half Maximum before iteration "
+                            << iter
+                            << " is "
+                            << fullWidthHalfMaximum
+                            << std::endl;
+               }
+               
+               fullWidthHalfMaximumSmoothingResultsDescription += 
+                  ("Before Iteration " + QString::number(iter)
+                   + " Estimated FWHM: " + QString::number(fullWidthHalfMaximum, 'f', 3)
+                   + "\n");
+                   
+               //
+               // if FWHM achieved, stop smoothing
+               //
+               if (fullWidthHalfMaximum >= desiredFullWidthHalfMaximum) {
+                  stopSmoothingFlag = true;
+               }
+            }
+            break;
+         case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+         case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
+         case SMOOTH_ALGORITHM_NONE:
+            break;
+      }
+      
+      //
+      // Should smoothing be stopped ???
+      //
+      if (stopSmoothingFlag) {
+         break;
+      }
+      
       //
       // load arrays for smoothing data
       //
@@ -182,6 +244,7 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
          if (neighInfo.numNeighbors > 0) {
          
             float neighborSum = 0.0;
+            bool setOutputValueFlag = true;
             
             switch (algorithm) {
                case SMOOTH_ALGORITHM_NONE:
@@ -200,7 +263,30 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                      neighborSum = neighborSum / static_cast<float>(neighInfo.numNeighbors);
                   };
                   break;
-               case SMOOTH_ALGORITHM_GAUSSIAN:
+               case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+                  {
+                     //
+                     // smooth metric data for this node
+                     //
+                     for (int j = 0; j < neighInfo.numNeighbors; j++) {
+                        //
+                        // Note: outputColumn has output from last iteration of smoothing
+                        //
+                        neighborSum += inputValues[neighInfo.neighbors[j]];
+                     }
+                     
+                     //neighborSum = neighborSum / static_cast<float>(neighInfo.numNeighbors);
+
+                     //
+                     // Ignore strength so set output value here
+                     // FWHM paper does average of node and its neighbors
+                     //
+                     neighborSum += inputValues[i];
+                     outputValues[i] = neighborSum / static_cast<float>(neighInfo.numNeighbors + 1);
+                     setOutputValueFlag = false;
+                  };
+                  break;
+               case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
                   {
                      //
                      // Get neighbor information for gaussian smoothing
@@ -264,8 +350,10 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
             //
             // Apply smoothing to the node
             //
-            outputValues[i] = (inputValues[i] * oneMinusStrength)
-                            + (neighborSum * strength);
+            if (setOutputValueFlag) {
+               outputValues[i] = (inputValues[i] * oneMinusStrength)
+                               + (neighborSum * strength);
+            }
          }
       }
       
@@ -273,7 +361,12 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
       // Copy the smoothed values to the output column
       //
       metricFile->setColumnForAllNodes(smoothColumn, outputValues);
-   }
+      
+      //
+      // Keep track of iterations
+      //
+      fullWidthHalfMaximumNumberOfIterations++;
+   } // for +iterations
    
    //
    // Add comments describing smoothing
@@ -289,8 +382,17 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
       case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
          smoothComment.append("Average Neighbors Smoothing: \n");
          break;
-      case SMOOTH_ALGORITHM_GAUSSIAN:
-         smoothComment.append("Gaussian Smoothing: \n");
+      case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+         smoothComment.append("Full Width Half Maximum Algorithm: \n"
+                              "   Desired Full Width Half Maximum: "
+                              + QString::number(desiredFullWidthHalfMaximum, 'f', 3) + "\n"
+                              + "   Full Width Half Maximum achieved: "
+                              + QString::number(fullWidthHalfMaximum, 'f', 3) + "\n"
+                              + "   Number of Iterations to achieve FWHM "
+                              + QString::number(fullWidthHalfMaximumNumberOfIterations) + "\n");
+         break;
+      case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+         smoothComment.append("Gaussian (Surface Normal) Smoothing: \n");
          smoothComment.append("   Norm Below Cutoff: ");
          smoothComment.append(StringUtilities::fromNumber(gaussNormBelowCutoff));
          smoothComment.append("\n");
@@ -347,10 +449,11 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
    float maxDistanceCutoff = std::numeric_limits<float>::max();
    switch (algorithm) {
       case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+      case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
       case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
          cf = fiducialSurface->getCoordinateFile();
          break;
-      case SMOOTH_ALGORITHM_GAUSSIAN:
+      case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
          cf = gaussianSphericalSurface->getCoordinateFile();
          maxDistanceCutoff = std::max(std::max(gaussNormBelowCutoff,
                                                gaussNormAboveCutoff),
@@ -370,6 +473,7 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
       
       switch (algorithm) {
          case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+         case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
          case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
             {
                //
@@ -378,7 +482,7 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
                topologyHelper->getNodeNeighbors(i, neighbors);
             }
             break;
-         case SMOOTH_ALGORITHM_GAUSSIAN:
+         case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
             {
                //
                // Get the neighbors for the node to the specified depth

@@ -35,6 +35,7 @@
 
 #include "FileException.h"
 
+class AbstractFile;
 class StringTable;
 class QTextStream;
 
@@ -101,6 +102,9 @@ class GiftiMetaData {
       // set metadata as vector of float
       void set(const QString& name, const std::vector<float>& values);
       
+      /// remove a metadata element
+      void remove(const QString& name);
+      
       /// metadata name element
       static QString getMetaDataName() { return "Name"; }
       
@@ -116,6 +120,12 @@ class GiftiMetaData {
       
       /// read the data from a StringTable
       void readDataFromStringTable(const StringTable& table) throw (FileException);
+      
+      /// copy the metadata from a caret file
+      void copyMetaDataFromCaretFile(const AbstractFile* af);
+      
+      /// copy the metadata into a caret file
+      void copyMetaDataToCaretFile(AbstractFile* af) const;
       
    protected:
       // copy helper used by copy constructor and assignment operator

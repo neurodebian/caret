@@ -34,6 +34,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -53,7 +54,6 @@
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiMapStereotaxicFocusDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiNameSelectionDialog.h"
 #include "GuiStudyInfoEditorWidget.h"
 #include "GuiStudyMetaDataLinkCreationDialog.h"
@@ -416,11 +416,11 @@ void
 GuiMapStereotaxicFocusDialog::slotFocusStudyMetaDataPushButton()
 {
    GuiStudyMetaDataLinkCreationDialog smdlcd(this);
-   StudyMetaDataLink smdl;
-   smdl.setLinkFromCodedText(focusStudyMetaDataLineEdit->text());
-   smdlcd.initializeSelectedLink(smdl);
+   StudyMetaDataLinkSet smdls;
+   smdls.setLinkSetFromCodedText(focusStudyMetaDataLineEdit->text());
+   smdlcd.initializeSelectedLinkSet(smdls);
    if (smdlcd.exec() == GuiStudyMetaDataLinkCreationDialog::Accepted) {
-      focusStudyMetaDataLineEdit->setText(smdlcd.getLinkCreated().getLinkAsCodedText());
+      focusStudyMetaDataLineEdit->setText(smdlcd.getLinkSetCreated().getLinkSetAsCodedText());
       focusStudyMetaDataLineEdit->home(false);
    }
 }      
@@ -495,7 +495,7 @@ GuiMapStereotaxicFocusDialog::loadFocusSlot()
          cd = ff->getCellProjection(focusNumber);
       }
       else {
-         GuiMessageBox::critical(this, "Focus Error", "Invalid focus number entered.", "OK");
+         QMessageBox::critical(this, "Focus Error", "Invalid focus number entered.");
          return;
       }
    }
@@ -515,7 +515,7 @@ GuiMapStereotaxicFocusDialog::loadFocusSlot()
    focusSizeDoubleSpinBox->setValue(cd->getSize());
    focusStatisticLineEdit->setText(cd->getStatistic());
    focusCommentTextEdit->setPlainText(cd->getComment());
-   focusStudyMetaDataLineEdit->setText(cd->getStudyMetaDataLink().getLinkAsCodedText());
+   focusStudyMetaDataLineEdit->setText(cd->getStudyMetaDataLinkSet().getLinkSetAsCodedText());
    focusStudyMetaDataLineEdit->home(false);
    int studyNumber = cd->getStudyNumber();
    if ((studyNumber < 0) ||
@@ -531,11 +531,12 @@ GuiMapStereotaxicFocusDialog::loadFocusSlot()
 void 
 GuiMapStereotaxicFocusDialog::deleteFocusSlot()
 {
-   if (GuiMessageBox::question(this,
+   if (QMessageBox::question(this,
                                "Confirm",
                                "Delete the selected focus?",
-                               "Yes",
-                               "No") != 0) {
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::No) {
       return;
    }
    
@@ -561,7 +562,7 @@ GuiMapStereotaxicFocusDialog::deleteFocusSlot()
          loadFocusSlot();
       }
       else {
-         GuiMessageBox::critical(this, "Focus Error", "Invalid focus number entered.", "OK");
+         QMessageBox::critical(this, "Focus Error", "Invalid focus number entered.");
          return;
       }
    }
@@ -625,7 +626,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
                                        
       if ((projectToMainWindowSurface == false) && 
           (projectToPalsSurfaces == false)) {
-         GuiMessageBox::critical(this, "ERROR", "You must select a Projection Surface or \n"
+         QMessageBox::critical(this, "ERROR", "You must select a Projection Surface or \n"
                                                 "deselect Automatic Projection of Foci.");
          return;
       }
@@ -640,13 +641,13 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
    
    if (projectToMainWindowSurface) {
       if (bms == NULL) {
-         GuiMessageBox::critical(this, "ERROR", "There is no surface in the main window.", "OK");
+         QMessageBox::critical(this, "ERROR", "There is no surface in the main window.");
          return;
       }
    }
    if (projectToPalsSurfaces) {
       if (theMainWindow->getBrainSet()->getNumberOfNodes() != 73730) {
-         GuiMessageBox::critical(this, "ERROR", "Cannot project to PALS since no PALS compatible surface is loaded.", "OK");
+         QMessageBox::critical(this, "ERROR", "Cannot project to PALS since no PALS compatible surface is loaded.");
          return;
       }
    }
@@ -670,7 +671,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
    }
    
    if (msg.isEmpty() == false) {
-      GuiMessageBox::critical(this, "Data Entry Error", msg, "OK");
+      QMessageBox::critical(this, "Data Entry Error", msg);
       return;
    }
 
@@ -706,10 +707,13 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
       msg.append("\" for foci ");
       msg.append(fociName);
       msg.append(" ?");
-      QString noButton("No, define color ");
-      noButton.append(fociName);
-      if (GuiMessageBox::information(this, "Use Partially Matching Color",
-                                   msg, "Yes", noButton, QString::null, 0) != 0) {
+      const QString noButtonText("No, define color " + fociName);
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle("Use Partially Matching Color");
+      msgBox.addButton("Yes", QMessageBox::YesRole);
+      QPushButton* noPushButton = msgBox.addButton(noButtonText, QMessageBox::NoRole);
+      msgBox.exec();
+      if (msgBox.clickedButton() == noPushButton) {
          createColor = true;
       }
    }
@@ -759,8 +763,8 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
    
    int focusNumber = -1;
    
-   StudyMetaDataLink studyMetaDataLink;
-   studyMetaDataLink.setLinkFromCodedText(focusStudyMetaDataLineEdit->text());
+   StudyMetaDataLinkSet studyMetaDataLinkSet;
+   studyMetaDataLinkSet.setLinkSetFromCodedText(focusStudyMetaDataLineEdit->text());
    if (newRadioButton->isChecked()) {
       //
       // Create the foci
@@ -777,7 +781,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
       cd.setGeography(focusGeographyLineEdit->text());
       cd.setSize(focusSizeDoubleSpinBox->text().toFloat());
       cd.setStatistic(focusStatisticLineEdit->text());
-      cd.setStudyMetaDataLink(studyMetaDataLink);
+      cd.setStudyMetaDataLinkSet(studyMetaDataLinkSet);
       ff->addCellProjection(cd);
       focusNumber = ff->getNumberOfCellProjections() - 1;
    }
@@ -795,11 +799,12 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
          cd->setGeography(focusGeographyLineEdit->text());
          cd->setSize(focusSizeDoubleSpinBox->value());
          cd->setStatistic(focusStatisticLineEdit->text());
-         cd->setStudyMetaDataLink(studyMetaDataLink);
+         cd->setStudyMetaDataLinkSet(studyMetaDataLinkSet);
       }
       else {
-         GuiMessageBox::critical(this, "Focus Number Invalid", 
-                               "The focus number entered is invalid", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Focus Number Invalid", 
+                               "The focus number entered is invalid");
          return;
       }
    }
@@ -836,7 +841,8 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
          palsProjector->execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
       }
    }
    
@@ -954,11 +960,11 @@ GuiMapStereotaxicFocusDialog::classNameButtonSlot()
          }
       }
       else {
-         GuiMessageBox::information(this, "No Classes", "Cell File has no classes", "OK");   
+         QMessageBox::information(this, "No Classes", "Cell File has no classes");   
       }
    }
    else {
-      GuiMessageBox::information(this, "No Classes", "Cell File has no classes", "OK");   
+      QMessageBox::information(this, "No Classes", "Cell File has no classes");   
    }   
 }
 

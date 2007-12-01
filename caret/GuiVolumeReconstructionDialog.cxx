@@ -36,6 +36,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -44,7 +45,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "QtUtilities.h"
 #include "VolumeFile.h"
 #include "global_variables.h"
@@ -191,8 +191,9 @@ GuiVolumeReconstructionDialog::done(int r)
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    
       if (segmentationVolumeFile == NULL) {
-         GuiMessageBox::critical(this, "Convert to Surface Error", 
-                               "There is no selected segmentation volume file.", "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Convert to Surface Error", 
+                               "There is no selected segmentation volume file.");
          return;
       }
       
@@ -225,7 +226,8 @@ GuiVolumeReconstructionDialog::done(int r)
          bmvsc.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Convert to Surface Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Convert to Surface Error", e.whatQString());
          return;
       }
       

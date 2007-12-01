@@ -25,25 +25,25 @@
 
 #include <QApplication>
 #include <QCheckBox>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGroupBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QSpinBox>
 #include <QToolTip>
 
 #include "BrainModelSurfaceSulcalDepthWithNormals.h"
 #include "BrainSet.h"
+#include "FileFilters.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelSelectionComboBox.h"
-#include "GuiDataFileDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiGenerateSulcalDepthDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "QtUtilities.h"
 #include "SurfaceShapeFile.h"
@@ -228,13 +228,13 @@ GuiGenerateSulcalDepthDialog::GuiGenerateSulcalDepthDialog(QWidget* parent)
 void 
 GuiGenerateSulcalDepthDialog::slotHullButton()
 {
-   QFileDialog fd(this);
+   WuQFileDialog fd(this);
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
-   fd.setAcceptMode(QFileDialog::AcceptOpen);
-   fd.setFileMode(QFileDialog::ExistingFile);
-   fd.setFilter(GuiDataFileDialog::vtkSurfaceFileFilter);
-   fd.selectFilter(GuiDataFileDialog::vtkSurfaceFileFilter);
+   fd.setAcceptMode(WuQFileDialog::AcceptOpen);
+   fd.setFileMode(WuQFileDialog::ExistingFile);
+   fd.setFilter(FileFilters::getVtkSurfaceFileFilter());
+   fd.selectFilter(FileFilters::getVtkSurfaceFileFilter());
    fd.setWindowTitle("Select VTK Poly Data File");
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
@@ -262,8 +262,8 @@ GuiGenerateSulcalDepthDialog::done(int r)
       //
       BrainModelSurface* bms = surfaceComboBox->getSelectedBrainModelSurface();
       if (bms == NULL) {
-         GuiMessageBox::critical(this, "Error",
-                               "A surface must be selected.", "OK");
+         QMessageBox::critical(this, "Error",
+                               "A surface must be selected.");
          return;
       }
       
@@ -272,8 +272,8 @@ GuiGenerateSulcalDepthDialog::done(int r)
       //
       const QString vtkFileName(hullFileNameLineEdit->text());
       if (vtkFileName.isEmpty()) {
-         GuiMessageBox::critical(this, "Error",
-                               "VTK file name is missing.", "OK");
+         QMessageBox::critical(this, "Error",
+                               "VTK file name is missing.");
          return;
       }
       
@@ -292,8 +292,8 @@ GuiGenerateSulcalDepthDialog::done(int r)
       const QString depthName(depthNameLineEdit->text());
       if (depthColumn != BrainModelSurfaceSulcalDepthWithNormals::DEPTH_COLUMN_DO_NOT_GENERATE) {
          if (depthName.isEmpty()) {
-            GuiMessageBox::critical(this, "Error",
-                                  "Name for depth must be provided.", "OK");
+            QMessageBox::critical(this, "Error",
+                                  "Name for depth must be provided.");
             return;
          }
       }
@@ -313,8 +313,8 @@ GuiGenerateSulcalDepthDialog::done(int r)
       const QString smoothDepthName(smoothDepthNameLineEdit->text());
       if (smoothDepthColumn != BrainModelSurfaceSulcalDepthWithNormals::DEPTH_COLUMN_DO_NOT_GENERATE) {
          if (smoothDepthName.isEmpty()) {
-            GuiMessageBox::critical(this, "Error",
-                                  "Name for smoothed depth must be provided.", "OK");
+            QMessageBox::critical(this, "Error",
+                                  "Name for smoothed depth must be provided.");
             return;
          }
       }
@@ -324,7 +324,7 @@ GuiGenerateSulcalDepthDialog::done(int r)
       //
       if ((depthColumn == BrainModelSurfaceSulcalDepthWithNormals::DEPTH_COLUMN_DO_NOT_GENERATE) &&
           (smoothDepthColumn == BrainModelSurfaceSulcalDepthWithNormals::DEPTH_COLUMN_DO_NOT_GENERATE)) {
-         GuiMessageBox::critical(this, "Error", "No shape file columns selected", "OK");
+         QMessageBox::critical(this, "Error", "No shape file columns selected");
          return;
       }
       
@@ -370,7 +370,8 @@ GuiGenerateSulcalDepthDialog::done(int r)
          GuiBrainModelOpenGL::updateAllGL();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error", e.whatQString());
          return;
       }
       

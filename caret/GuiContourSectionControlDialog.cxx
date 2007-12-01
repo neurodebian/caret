@@ -38,7 +38,7 @@
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiContourSectionControlDialog.h"
-#include "QtWidgetGroup.h"
+#include "WuQWidgetGroup.h"
 
 #include "global_variables.h"
 
@@ -162,7 +162,7 @@ GuiContourSectionControlDialog::GuiContourSectionControlDialog(QWidget* parent)
    //
    // Keep track of the section adjustment widgets
    //
-   adjustSectionsWidgetGroup = new QtWidgetGroup(this);
+   adjustSectionsWidgetGroup = new WuQWidgetGroup(this);
    adjustSectionsWidgetGroup->addWidget(minimumSlider);
    adjustSectionsWidgetGroup->addWidget(maximumSlider);
    adjustSectionsWidgetGroup->addWidget(minimumSpinBox);

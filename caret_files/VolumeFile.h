@@ -38,7 +38,7 @@
 #include "AbstractFile.h"
 #include "AfniHeader.h"
 #include "FileException.h"
-#include "StudyMetaDataLink.h"
+#include "StudyMetaDataLinkSet.h"
 #include "WuNilHeader.h"
 
 #include "zlib.h"
@@ -333,7 +333,9 @@ class VolumeFile : public AbstractFile {
          /// math operation NAND
          VOLUME_MATH_OPERATION_NAND,
          /// math operation AVERAGE
-         VOLUME_MATH_OPERATION_AVERAGE
+         VOLUME_MATH_OPERATION_AVERAGE,
+         /// math operation EXCLUSIVE OR
+         VOLUME_MATH_EXCLUSIVE_OR
       };
       
       /// operations on segmentation volumes
@@ -445,7 +447,10 @@ class VolumeFile : public AbstractFile {
       bool compareFileForUnitTesting(const AbstractFile* af,
                                      const float tolerance,
                                      QString& messageOut) const;
-                                     
+          
+      /// get axis from string
+      static VOLUME_AXIS getAxisFromString(const QString& s);
+      
       /// Get the label of an axis enumerated type.
       static QString getAxisLabel(const VOLUME_AXIS axis);
       
@@ -456,7 +461,12 @@ class VolumeFile : public AbstractFile {
       static bool isFileNifti(const QString& name);
       
       /// get NIFTI intention and tr
-      void getNiftiInfo(QString& intentionOut,
+      void getNiftiInfo(QString& intentCodeAndParamStringOut,
+                        QString& intentNameOut,
+                        int& intentCodeOut,
+                        float& intentParameter1Out,
+                        float& intentParameter2Out,
+                        float& intentParameter3Out,
                         float &trOut) const;
       
       /// get the string describing the type of volume (anatomy, functional, etc)
@@ -1082,7 +1092,7 @@ class VolumeFile : public AbstractFile {
       void smearAxis(const VOLUME_AXIS axis, 
                          const int mag, 
                          const int sign, 
-                         const int core);
+                         const int core) throw (FileException);
 
       /// Stretch the voxels in the volume to range 0 to 255.
       void stretchVoxelValues();
@@ -1236,10 +1246,10 @@ class VolumeFile : public AbstractFile {
                                     const int iterations = 5) throw (FileException);
                                     
       /// get study meta data link
-      StudyMetaDataLink getStudyMetaDataLink() const { return studyMetaDataLink; }
+      //StudyMetaDataLinkSet getStudyMetaDataLinkSet() const { return studyMetaDataLinkSet; }
 
       // set study meta data link
-      void setStudyMetaDataLink(const StudyMetaDataLink& smdl);
+      //void setStudyMetaDataLinkSet(const StudyMetaDataLinkSet& smdls);
       
       //************************************************************************
       //
@@ -1386,10 +1396,10 @@ class VolumeFile : public AbstractFile {
       void readUnsignedIntData(gzFile dataFile, const bool byteSwapData) throw (FileException);
       
       /// Read voxels from the data file 
-      void readLongData(gzFile dataFile, const bool byteSwapData) throw (FileException);
+      void readLongLongData(gzFile dataFile, const bool byteSwapData) throw (FileException);
       
       /// Read voxels from the data file
-      void readUnsignedLongData(gzFile dataFile, const bool byteSwapData) throw (FileException);
+      void readUnsignedLongLongData(gzFile dataFile, const bool byteSwapData) throw (FileException);
       
       /// Read voxels from the data file
       void readFloatData(gzFile dataFile, const bool byteSwapData) throw (FileException);
@@ -1515,14 +1525,29 @@ class VolumeFile : public AbstractFile {
       /// NIFTI read data offset
       unsigned long niftiReadDataOffset;
       
-      /// NIFTI intention
-      QString niftiIntention;
+      /// NIFTI intention code and parameters
+      QString niftiIntentCodeAndParamString;
+      
+      /// NIFTI intent name
+      QString niftiIntentName;
+      
+      /// NIFTI intent code
+      int niftiIntentCode;
+      
+      /// NIFTI intention parameter 1
+      float niftiIntentParameter1;
+      
+      /// NIFTI intention parameter 2
+      float niftiIntentParameter2;
+      
+      /// NIFTI intention parameter 3
+      float niftiIntentParameter3;
       
       /// NIFTI TR
       float niftiTR;
       
       /// study meta data link
-      StudyMetaDataLink studyMetaDataLink;
+      //StudyMetaDataLinkSet studyMetaDataLinkSet;
       
       // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       // IF NEW VARIABLES ADDED UPDATE copyVolumeData() !!!!!!!!!!!!!!!!!!

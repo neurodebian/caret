@@ -33,7 +33,7 @@
 #include "GuiMessageBox.h"
 #undef __GUI_MESSAGE_BOX_H_MAIN__
 
-#include "GuiSpeechGenerator.h"
+//#include "GuiSpeechGenerator.h"
 #include "StringUtilities.h"
 
 /**
@@ -160,24 +160,26 @@ GuiMessageBox::critical(QWidget *parent, const QString &caption,
  * Stuff common to each dialog, restore cursor, beep, and perhaps speak message.
  */
 void
-GuiMessageBox::dialogCommon(const QString& dialogType, const QString& text)
+GuiMessageBox::dialogCommon(const QString& /*dialogType*/, const QString& /*text*/)
 {
    QApplication::beep();
    QApplication::restoreOverrideCursor();
    
-   if (speechGenerator != NULL) {
-      speechGenerator->speakText(dialogType, QString(text));
-   }
+   //if (speechGenerator != NULL) {
+  //    speechGenerator->speakText(dialogType, QString(text));
+  // }
 }
 
 /**
  * set the speech generator.
  */
+/*
 void 
 GuiMessageBox::setSpeechGenerator(GuiSpeechGenerator* speechGeneratorIn)
 {
    speechGenerator = speechGeneratorIn;
 }
+*/
 
 /**
  * Load the icon.
@@ -205,7 +207,7 @@ GuiMessageBox::loadIcon(const QString& filename)
  * to display the Caret icon.
  *
 ****************************************************************************
-** $Id: GuiMessageBox.cxx,v 1.5 2006/06/20 22:17:06 john Exp $
+** $Id: GuiMessageBox.cxx,v 1.2 2007/11/01 15:18:54 john Exp $
 **
 ** Implementation of QMessageBox class
 **

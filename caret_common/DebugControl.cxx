@@ -55,6 +55,17 @@ DebugControl::setDebugOn(const bool onOff)
 }
 
 /**
+ * set debug flags using environment variables.
+ */
+void 
+DebugControl::setDebugFlagsFromEnvironmentVariables()
+{
+   setDebugOn(std::getenv("CARET_DEBUG") != NULL);
+   setTestFlag1(std::getenv("CARET_TEST1") != NULL);
+   setTestFlag2(std::getenv("CARET_TEST2") != NULL);
+}
+      
+/**
  * If the environment variable name passed in is valid, debugging is
  * set to on, otherwise it is set off.
  */

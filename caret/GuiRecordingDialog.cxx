@@ -41,6 +41,7 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -72,7 +73,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFileSelectionButton.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiRecordingDialog.h"
 #include "QtUtilities.h"
 
@@ -525,12 +525,12 @@ GuiRecordingDialog::slotCreateMovieButton()
 {
    const QString movieName(movieNameLineEdit->text());
    if (movieName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Movie name is blank.", "OK");
+      QMessageBox::critical(this, "ERROR", "Movie name is blank.");
       return;
    }
 
    if (imageCounter <= 0) {
-      GuiMessageBox::critical(this, "ERROR", "No images (frames) have been captured.", "OK");
+      QMessageBox::critical(this, "ERROR", "No images (frames) have been captured.");
       return;
    }
       
@@ -684,21 +684,20 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
       
       file.close();
 
-/*
-      char* args[2] = { "mpeg_encode",   "mpeg_encode.mpeg_params" };
-      if (createMpegMovie(2, args) != 0) {
-         GuiMessageBox::critical(this, "ERROR", "Error creating movie", "OK");
-         return;         
-      }
-*/      
 #ifdef Q_OS_WIN32
       QString msg("We have seen a problem on MS Windows systems that causes\n"
                       "this process to hang if there are about 20 or more frames\n"
                       "in the movie.  You can choose to continue and see what happens\n"
                       "or choose to create a command file that you can execute\n"
                       "separately from Caret to create the movie.");
-      if (GuiMessageBox::information(this, "MS Windows Problem", msg, 
-                                "Continue", "Create Command File") == 1) {
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle("MS Windows Problem");
+      msgBox.setText(msg);
+      msgBox.addButton("Continue", QMessageBox::ActionRole);
+      QPushButton* createCommandPushButton = msgBox.addButton("Create Command File",
+                                                              QMessageBox::ActionRole);
+      msgBox.exec();
+      if (msgBox.clickedButton() == createCommandPushButton) { 
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          
          const QString fileName("create_movie.bat");
@@ -713,7 +712,7 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
             file.close();
          }
          else {
-            GuiMessageBox::critical(this, "ERROR", "Unable to create command file.", "OK");
+            QMessageBox::critical(this, "ERROR", "Unable to create command file.");
             return;
          }
          
@@ -723,12 +722,12 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
          msg.append(QDir::currentPath());
          msg.append("\n");
          msg.append("Run it by double-clicking it or run it from the command line.");
-         GuiMessageBox::information(this, "Command File Created", msg, "OK");
+         QMessageBox::information(this, "Command File Created", msg);
          
          return;
       }
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 #endif
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
       //
       // Run the program to convert images into an MPEG movie
@@ -738,15 +737,17 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
          cup.execute();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "ERROR", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", e.whatQString());
          return;
       }
       QApplication::restoreOverrideCursor();
       theMainWindow->speakText("The movie has been created.", false);
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", 
-                            "Error creating command file for creating movie.", "OK");
+      QApplication::restoreOverrideCursor();
+      QMessageBox::critical(this, "ERROR", 
+                            "Error creating command file for creating movie.");
       return;
    }
 }
@@ -882,15 +883,6 @@ GuiRecordingDialog::addImageToMpeg1VTK(const QImage& image)
 #ifdef HAVE_VTK5
 #ifdef HAVE_VTK_MPEG
    const QString fileName(movieNameLineEdit->text());
-/*
-   if (QFileInfo(fileName).isWritable() == false) {
-      const QString msg("ERROR cannot write to file: " 
-                        + FileUtilities::basename(fileName) + ".\n"
-                        + "Does the file exist and is it write protected?");
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
-      return;
-   }
-*/
    vtkImageData* vtkImage = convertQImagetoVTKImageData(image);
    if (vtkMpeg1MovieWriter == NULL) {
       vtkMpeg1MovieWriter = vtkMPEG1Writer::New();
@@ -899,12 +891,6 @@ GuiRecordingDialog::addImageToMpeg1VTK(const QImage& image)
       vtkMpeg1MovieWriter->SetInput(vtkImage);
       vtkMpeg1MovieWriter->Start();
    }
-/*
- *     vtkJPEGWriter* jpeg = vtkJPEGWriter::New();
- *     jpeg->SetFileName("jpeg.jpg");
- *     jpeg->SetInput(vtkImage);
- *     jpeg->Write();
- */
    vtkMpeg1MovieWriter->SetInput(vtkImage);
    vtkMpeg1MovieWriter->Write();
 
@@ -926,15 +912,6 @@ GuiRecordingDialog::addImageToMpeg2VTK(const QImage& image)
 #ifdef HAVE_VTK5
 #ifdef HAVE_VTK_MPEG
    const QString fileName(movieNameLineEdit->text());
-/*
-   if (QFileInfo(fileName).isWritable() == false) {
-      const QString msg("ERROR cannot write to file: " 
-                        + FileUtilities::basename(fileName) + ".\n"
-                        + "Does the file exist and is it write protected?");
-      GuiMessageBox::critical(this, "ERROR", msg, "OK");
-      return;
-   }
-*/
    vtkImageData* vtkImage = convertQImagetoVTKImageData(image);
    if (vtkMpeg2MovieWriter == NULL) {
       vtkMpeg2MovieWriter = vtkMPEG2Writer::New();
@@ -943,12 +920,6 @@ GuiRecordingDialog::addImageToMpeg2VTK(const QImage& image)
       vtkMpeg2MovieWriter->SetInput(vtkImage);
       vtkMpeg2MovieWriter->Start();
    }
-/*
- *     vtkJPEGWriter* jpeg = vtkJPEGWriter::New();
- *     jpeg->SetFileName("jpeg.jpg");
- *     jpeg->SetInput(vtkImage);
- *     jpeg->Write();
- */
    vtkMpeg2MovieWriter->SetInput(vtkImage);
    vtkMpeg2MovieWriter->Write();
 
@@ -1094,7 +1065,7 @@ GuiRecordingDialog::addImageToMpegCreate(const QImage& image)
       if (gzipImageFile == NULL) {
          QString msg("Error writing image ");
          msg.append(outputName);
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
       gzwrite(gzipImageFile, imageBuffer, bufferIndex);
@@ -1105,7 +1076,7 @@ GuiRecordingDialog::addImageToMpegCreate(const QImage& image)
       if (!ppmImageFile) {
          QString msg("Error writing image ");
          msg.append(outputName);
-         GuiMessageBox::critical(this, "ERROR", msg, "OK");
+         QMessageBox::critical(this, "ERROR", msg);
          return;
       }
       ppmImageFile.write(imageBuffer, bufferIndex);

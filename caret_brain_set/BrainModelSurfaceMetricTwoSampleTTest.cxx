@@ -32,7 +32,6 @@
 #include <QTextStream>
 
 #include "BrainModelSurface.h"
-#include "BrainModelSurfaceMetricClustering.h"
 #include "BrainModelSurfaceMetricTwoSampleTTest.h"
 #include "BrainSet.h"
 #include "CoordinateFile.h"
@@ -731,8 +730,8 @@ BrainModelSurfaceMetricTwoSampleTTest::transformToRankSum(MetricFile& fileA,
       //
       // Get the data for each node
       //
-      fileA.getValue(i, dataA);
-      fileB.getValue(i, dataB);
+      fileA.getAllColumnValuesForNode(i, dataA);
+      fileB.getAllColumnValuesForNode(i, dataB);
       
       //
       // Transform the data
@@ -762,9 +761,9 @@ BrainModelSurfaceMetricTwoSampleTTest::transformToRankSum(MetricFile& fileA,
       // set the data for each node
       //
       const StatisticDataGroup* sdgRankA = rt.getOutputDataGroupContainingRankValues(0);
-      fileA.setValue(i, sdgRankA->getPointerToData());
+      fileA.setAllColumnValuesForNode(i, sdgRankA->getPointerToData());
       const StatisticDataGroup* sdgRankB = rt.getOutputDataGroupContainingRankValues(1);
-      fileB.setValue(i, sdgRankB->getPointerToData());
+      fileB.setAllColumnValuesForNode(i, sdgRankB->getPointerToData());
    }
    
    //

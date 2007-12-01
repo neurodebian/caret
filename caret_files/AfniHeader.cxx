@@ -803,7 +803,7 @@ AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite)
       if (i > 0) {
          metaDataString += "~";
       }
-      metaDataString += vf->getStudyMetaDataLink().getLinkAsCodedText();
+      metaDataString += vf->getStudyMetaDataLinkSet().getLinkSetAsCodedText();
    }
    AfniAttribute md(AfniAttribute::NAME_CARET_METADATA_LINK, metaDataString);
    addAttribute(md);

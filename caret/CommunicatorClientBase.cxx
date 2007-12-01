@@ -25,13 +25,13 @@
 
 #include <iostream>
 
+#include <QMessageBox>
 #include <QTimer>
 
 #include "CommunicatorClientBase.h"
 #include "DebugControl.h"
 #include "GuiCommunicatorClientConnectDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "global_variables.h"
 
 /**
@@ -330,10 +330,16 @@ CommunicatorClientBase::socketErrorSlot(QAbstractSocket::SocketError errorCode)
       case QTcpSocket::UnknownSocketError:
          msg.append(" unknown socket error");
          break;
+      case QTcpSocket::ProxyAuthenticationRequiredError:
+         msg.append(" proxy authentication required error");
+         break;
+      case QTcpSocket::UnfinishedSocketOperationError:
+         msg.append(" unfinished socket operation error");
+         break;
    }
    if (DebugControl::getDebugOn()) std::cout << msg.toAscii().constData() << std::endl;
    
-   GuiMessageBox::critical(theMainWindow, "Communication Error", msg, "OK");    
+   QMessageBox::critical(theMainWindow, "Communication Error", msg);    
 }
 
 /**

@@ -64,6 +64,9 @@ class GiftiLabelTable {
       // clear out the labels
       void clear();
       
+      // delete a label
+      void deleteLabel(const int labelIndex);
+      
       // are there labels ?
       bool empty() const { return labels.empty(); }
       
@@ -79,7 +82,7 @@ class GiftiLabelTable {
       /// get the number of labels
       int getNumberOfLabels() const { return labels.size(); }
       
-      // set the label for a specified index (index must by >= 0)
+      // set the label for a specified index (index must be >= 0)
       void setLabel(const int indx,
                     const QString& labelName);
         
@@ -89,6 +92,16 @@ class GiftiLabelTable {
       
       // get a labels color file index
       int getColorFileIndex(const int indx) const;
+      
+      // get label enabled using its index
+      bool getLabelEnabled(const int indx) const;
+      
+      // set label enabled for a specified index (index must be >= 0)
+      void setLabelEnabled(const int indx,
+                           const bool b);
+      
+      // set all labels enabled
+      void setAllLabelsEnabled(const bool b);
       
       // write the label table
       void writeAsXML(QTextStream& stream,
@@ -108,6 +121,7 @@ class GiftiLabelTable {
             LabelData(const QString& labelNameIn) {
                labelName = labelNameIn;
                colorFileIndex = -1;
+               labelEnabled = true;
             };
             
             /// destructor
@@ -125,12 +139,21 @@ class GiftiLabelTable {
             /// set the color file index
             void setColorFileIndex(const int indx) { colorFileIndex = indx; }
             
+            /// set the label is enabled
+            void setLabelEnabled(const bool b) { labelEnabled = b; }
+            
+            /// get the label is enabled
+            bool getLabelEnabled() const { return labelEnabled; }
+            
          protected:
             /// name of label
             QString labelName;
          
             /// index in color file
             int colorFileIndex;
+            
+            /// label is enabled
+            bool labelEnabled;
       };
       
       // copy helper used by copy constructor and assignement operators

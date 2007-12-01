@@ -31,8 +31,6 @@
 #include <string>
 #include <vector>
 
-class QString;
-
 /// class contains static methods for handling C++ strings
 class StringUtilities {
 
@@ -73,6 +71,10 @@ class StringUtilities {
                   const QString& separators,
                   std::vector<int>& tokenInts);
       
+      // split "s" into tokens breaking at whitespace but maintaining string in double quotes
+      static void tokenStringsWithQuotes(const QString& s,
+                                         QStringList& stringsOut);
+                                         
       // split "s" into "tokens" splitting with the literal string "separatorString"
       static void tokenSingleSeparator(const QString& stin,
                                       const QString& separatorString,

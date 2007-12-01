@@ -31,13 +31,17 @@
 #include <QDomElement>
 #include <QDomNode>
 #include <QDomText>
+#include <QXmlSimpleReader>
 
-#define CELL_PROJECTION_MAIN
+#define __CELL_PROJECTION_FILE_MAIN__
+#define __CELL_PROJECTION_MAIN__
 #include "CellProjectionFile.h"
-#undef CELL_PROJECTION_MAIN
+#undef __CELL_PROJECTION_MAIN__
+#undef __CELL_PROJECTION_FILE_MAIN__
 
 #include "CellClass.h"
 #include "CellFile.h"
+#include "CellProjectionFileSaxReader.h"
 #include "ColorFile.h"
 #include "CommaSeparatedValueFile.h"
 #include "CoordinateFile.h"
@@ -54,17 +58,70 @@
 /**
  * Constructor.
  */
-CellProjection::CellProjection()
+CellProjection::CellProjection(const QString& filenameIn)
 {
-   initialize();
+   initialize(filenameIn);
 }
 
+/**
+ * Constructor for placing cell projection at a node (no need to project).
+ */
+CellProjection::CellProjection(const QString& nameIn,
+                               const CoordinateFile* fiducialCoordinateFile,
+                               const int nodeNumber,
+                               const Structure& structureIn)
+{
+   initialize();
+   const float* fidXYZ = fiducialCoordinateFile->getCoordinate(nodeNumber);
+   setXYZ(fidXYZ);
+   setName(nameIn);
+   
+   //
+   // Set fiducial position
+   //
+   posFiducial[0] = fidXYZ[0];
+   posFiducial[1] = fidXYZ[1];
+   posFiducial[2] = fidXYZ[2];
+
+   //
+   // save original hemisphere
+   //
+   if (structureIn.getType() != Structure::STRUCTURE_TYPE_INVALID) {
+      structure = structureIn;
+   }
+   else {
+      if (fidXYZ[0] < 0.0) {
+         structure.setType(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+      }
+      else {
+         structure.setType(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+      }
+   }
+   
+   //
+   // Project
+   //
+   setSignedDistanceAboveSurface(0.0);
+   projectionType = CellProjection::PROJECTION_TYPE_INSIDE_TRIANGLE;
+
+   closestTileVertices[0] = nodeNumber;
+   closestTileVertices[1] = nodeNumber;
+   closestTileVertices[2] = nodeNumber;
+   closestTileAreas[0] = 0.33333;
+   closestTileAreas[1] = 0.33333;
+   closestTileAreas[2] = 0.33333;
+   cdistance[0] = 0.0;
+   cdistance[1] = 0.0;
+   cdistance[2] = 0.0;
+}
+                                      
 /**
  * Initialize the cell projection
  */
 void
-CellProjection::initialize()
+CellProjection::initialize(const QString& filenameIn)
 {
+   filename = filenameIn;
    CellBase::initialize();
    uniqueNameIndex = -1;
    cellProjectionFile = NULL;
@@ -819,6 +876,108 @@ CellProjection::writeFileData(QTextStream& stream, const int cellNumber) throw (
 }
 
 /**
+ * set element from text (used by SAX XML parser).
+ */
+void 
+CellProjection::setElementFromText(const QString& elementName,
+                                   const QString& textValue)
+{
+   const QStringList sl = textValue.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+   const int numItems = sl.count();
+   
+   if (elementName == CellProjection::tagCellProjNumber) {
+      // ignore
+   }
+   else if (elementName == CellProjection::tagProjectionType) {
+      if (textValue == tagInsideTriangle) {
+         projectionType = PROJECTION_TYPE_INSIDE_TRIANGLE;
+      }
+      else if (textValue == tagOutsideTriangle) {
+         projectionType = PROJECTION_TYPE_OUTSIDE_TRIANGLE;
+      }
+   }
+   else if (elementName == CellProjection::tagClosestTileVertices) {
+      if (numItems == 3) {
+         for (int i = 0; i < 3; i++) {
+            closestTileVertices[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagClosestTileAreas) {
+      if (numItems == 3) {
+         for (int i = 0; i < 3; i++) {
+            closestTileAreas[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagCDistance) {
+      if (numItems == 3) {
+         for (int i = 0; i < 3; i++) {
+            cdistance[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == tagDR) {
+      dR = textValue.toFloat();
+   }
+   else if (elementName == CellProjection::tagTriFiducial) {
+      if (numItems == 18) {
+         float* data = (float*)triFiducial;
+         for (int i = 0; i < 18; i++) {
+            data[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagThetaR) {
+      thetaR = textValue.toFloat();
+   }
+   else if (elementName == CellProjection::tagPhiR) {
+      phiR = textValue.toFloat();
+   }
+   else if (elementName == CellProjection::tagTriVertices) {
+      if (numItems == 6) {
+         int* data = (int*)triVertices;
+         for (int i = 0; i < 6; i++) {
+            data[i] = sl.at(i).toInt();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagVertex) {
+      if (numItems == 2) {
+         for (int i = 0; i < 2; i++) {
+            vertex[i] = sl.at(i).toInt();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagVertexFiducial) {
+      if (numItems == 6) {
+         float* data = (float*)vertexFiducial;
+         for (int i = 0; i < 6; i++) {
+            data[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagPosFiducial) {
+      if (numItems == 3) {
+         for (int i = 0; i < 3; i++) {
+            posFiducial[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagFracRI) {
+      fracRI = textValue.toFloat();
+   }
+   else if (elementName == CellProjection::tagFracRJ) {
+      fracRJ = textValue.toFloat();
+   }
+   else {
+      std::cout << "WARNING: Unrecognized child of CellProjection element "
+                << elementName.toAscii().constData()
+                << std::endl;
+   }
+}
+                              
+/**
  * called to read from an XML structure.
  */
 void 
@@ -831,7 +990,7 @@ CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
    if (elem.isNull()) {
       return;
    }
-   if (elem.tagName() != "CellProjection") {
+   if (elem.tagName() != tagCellProjection) {
       QString msg("Incorrect element type passed to CellProjection::readXML() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
@@ -842,10 +1001,10 @@ CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
    while (node.isNull() == false) {
       QDomElement elem = node.toElement();
       if (elem.isNull() == false) {
-         if (elem.tagName() == "cellProjNumber") {
+         if (elem.tagName() == tagCellProjNumber) {
             // ignore
          }
-         else if (elem.tagName() == "projectionType") {
+         else if (elem.tagName() == tagProjectionType) {
             const QString value = AbstractFile::getXmlElementFirstChildAsString(elem);
             if (value == tagInsideTriangle) {
                projectionType = PROJECTION_TYPE_INSIDE_TRIANGLE;
@@ -854,55 +1013,55 @@ CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
                projectionType = PROJECTION_TYPE_OUTSIDE_TRIANGLE;
             }
          }
-         else if (elem.tagName() == "closestTileVertices") {
+         else if (elem.tagName() == tagClosestTileVertices) {
             AbstractFile::getXmlElementFirstChildAsInt(elem, closestTileVertices, 3);
          }
-         else if (elem.tagName() == "closestTileAreas") {
+         else if (elem.tagName() == tagClosestTileAreas) {
             AbstractFile::getXmlElementFirstChildAsFloat(elem, closestTileAreas, 3);
          }
-         else if (elem.tagName() == "cdistance") {
+         else if (elem.tagName() == tagCDistance) {
             AbstractFile::getXmlElementFirstChildAsFloat(elem, cdistance, 3);
          }
-         else if (elem.tagName() == "dR") {
+         else if (elem.tagName() == tagDR) {
             dR = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
-         else if (elem.tagName() == "triFiducial") {
+         else if (elem.tagName() == tagTriFiducial) {
             AbstractFile::getXmlElementFirstChildAsFloat(elem, (float*)triFiducial, 18);
          }
-         else if (elem.tagName() == "thetaR") {
+         else if (elem.tagName() == tagThetaR) {
             thetaR = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
-         else if (elem.tagName() == "phiR") {
+         else if (elem.tagName() == tagPhiR) {
             phiR = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
-         else if (elem.tagName() == "triVertices") {
+         else if (elem.tagName() == tagTriVertices) {
             AbstractFile::getXmlElementFirstChildAsInt(elem, (int*)triVertices, 6);
          }
-         else if (elem.tagName() == "vertex") {
+         else if (elem.tagName() == tagVertex) {
             AbstractFile::getXmlElementFirstChildAsInt(elem, vertex, 2);
          }
-         else if (elem.tagName() == "vertexFiducial") {
+         else if (elem.tagName() == tagVertexFiducial) {
             AbstractFile::getXmlElementFirstChildAsFloat(elem, (float*)vertexFiducial, 6);
          }
-         else if (elem.tagName() == "posFiducial") {
+         else if (elem.tagName() == tagPosFiducial) {
             AbstractFile::getXmlElementFirstChildAsFloat(elem, posFiducial, 3);
          }
-         else if (elem.tagName() == "fracRI") {
+         else if (elem.tagName() == tagFracRI) {
             fracRI = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
-         else if (elem.tagName() == "fracRJ") {
+         else if (elem.tagName() == tagFracRJ) {
             fracRJ = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
-         else if (elem.tagName() == "signedDistanceAboveSurface") {
+         else if (elem.tagName() == CellBase::tagSignedDistanceAboveSurface) {
             signedDistanceAboveSurface = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
-         else if (elem.tagName() == "className") {
+         else if (elem.tagName() == CellBase::tagClassName) {
             className = AbstractFile::getXmlElementFirstChildAsString(elem);
             if (className == "???") {
                className = "";
             }
          }
-         else if (elem.tagName() == "CellBase") {
+         else if (elem.tagName() == CellBase::tagCellBase) {
             CellBase::readXML(node);
          }
          else {
@@ -926,74 +1085,74 @@ CellProjection::writeXML(QDomDocument& xmlDoc,
    //
    // Create the element for this class instance's data
    //
-   QDomElement cellProjElement = xmlDoc.createElement("CellProjection");
+   QDomElement cellProjElement = xmlDoc.createElement(tagCellProjection);
 
    //
    // cell number
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement, 
-                                   "cellProjNumber", cellProjNumber);
+                                   tagCellProjNumber, cellProjNumber);
    
    switch(projectionType) {
       case PROJECTION_TYPE_INSIDE_TRIANGLE:
          AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                         "projectionType", tagInsideTriangle);
+                                         tagProjectionType, tagInsideTriangle);
          break;
       case PROJECTION_TYPE_OUTSIDE_TRIANGLE:
          AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                         "projectionType", tagOutsideTriangle);
+                                         tagProjectionType, tagOutsideTriangle);
          break;
       case PROJECTION_TYPE_UNKNOWN:
       default:
          AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                         "projectionType", tagUnknownTriangle);
+                                         tagProjectionType, tagUnknownTriangle);
          break;
    }
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "closestTileVertices", closestTileVertices, 3);
+                                   tagClosestTileVertices, closestTileVertices, 3);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "closestTileAreas", closestTileAreas, 3);
+                                   tagClosestTileAreas, closestTileAreas, 3);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "cdistance", cdistance, 3);
+                                   tagCDistance, cdistance, 3);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "dR", dR);
+                                   tagDR, dR);
                                 
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "triFiducial", (float*)(triFiducial), 18);
+                                   tagTriFiducial, (float*)(triFiducial), 18);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "thetaR", thetaR);
+                                   tagThetaR, thetaR);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "phiR", phiR);
+                                   tagPhiR, phiR);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "triVertices", (int*)triVertices, 6);
+                                   tagTriVertices, (int*)triVertices, 6);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "vertex", (int*)vertex, 2);
+                                   tagVertex, (int*)vertex, 2);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "vertexFiducial", (float*)vertexFiducial, 6);
+                                   tagVertexFiducial, (float*)vertexFiducial, 6);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "posFiducial", posFiducial, 3);
+                                   tagPosFiducial, posFiducial, 3);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "fracRI", fracRI);
+                                   tagFracRI, fracRI);
                                    
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-                                   "fracRJ", fracRJ);
+                                   tagFracRJ, fracRJ);
                                    
    //AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-   //                                "className", className);
+   //                                CellData::tagClassName, className);
                                    
    //AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
-   //                                "signedDistanceAboveSurface", signedDistanceAboveSurface);
+   //                                CellBase::tagSignedDistanceAboveSurface, signedDistanceAboveSurface);
                                    
    //
    // Write the base class' data
@@ -1026,6 +1185,9 @@ CellProjectionFile::CellProjectionFile(const QString& descriptiveName,
 {
    readVersionNumberOnly = 0;
    clear();
+   //if (DebugControl::getTestFlag2()) {
+   //   setXmlVersionReadWithSaxParser(true);
+   //}
 }
 
 /**
@@ -1143,6 +1305,73 @@ CellProjectionFile::getCellFileForRightLeftFiducials(const CoordinateFile* leftC
    cellFileOut.setFileComment(getFileComment());
 }
                        
+/**
+ * get first cell projection with specified name (const method)
+ */
+const CellProjection* 
+CellProjectionFile::getFirstCellProjectionWithName(const QString& name) const
+{
+   const int numCellProj = getNumberOfCellProjections();
+   for (int i = 0; i < numCellProj; i++) {
+      const CellProjection* cp = getCellProjection(i);
+      if (cp->getName() == name) {
+         return cp;
+      }
+   }
+   
+   return NULL;
+}
+
+/**
+ * get first cell projection with specified name.
+ */
+CellProjection* 
+CellProjectionFile::getFirstCellProjectionWithName(const QString& name)
+{
+   const int numCellProj = getNumberOfCellProjections();
+   for (int i = 0; i < numCellProj; i++) {
+      CellProjection* cp = getCellProjection(i);
+      if (cp->getName() == name) {
+         return cp;
+      }
+   }
+   
+   return NULL;
+}
+
+/**
+ * get last cell projection with specified name.
+ */
+CellProjection* 
+CellProjectionFile::getLastCellProjectionWithName(const QString& name)
+{
+   const int numCellProj = getNumberOfCellProjections();
+   for (int i = (numCellProj - 1); i >= 0; i--) {
+      CellProjection* cp = getCellProjection(i);
+      if (cp->getName() == name) {
+         return cp;
+      }
+   }
+   
+   return NULL;
+}
+      
+/**
+ * get last cell projection with specified name (const method).
+ */
+const CellProjection* 
+CellProjectionFile::getLastCellProjectionWithName(const QString& name) const
+{
+   const int numCellProj = getNumberOfCellProjections();
+   for (int i = (numCellProj - 1); i >= 0; i--) {
+      const CellProjection* cp = getCellProjection(i);
+      if (cp->getName() == name) {
+         return cp;
+      }
+   }
+   
+   return NULL;
+}
 /**
  * get a cell file projecting to supplied coord/topo.
  */
@@ -1614,6 +1843,21 @@ CellProjectionFile::clear()
 }
 
 /**
+ * delete cell projections with name.
+ */
+void 
+CellProjectionFile::deleteCellProjectionsWithName(const QString& name)
+{
+   const int num = getNumberOfCellProjections();
+   for (int i = (num - 1); i >= 0; i--) {
+      CellProjection* cp = getCellProjection(i);
+      if (cp->getName() == name) {
+         deleteCellProjection(i);
+      }
+   }
+}
+      
+/**
  * Delete the cell projection at the specified index
  */
 void
@@ -1652,13 +1896,133 @@ CellProjectionFile::assignClassToDisplayedFoci(const QString& className)
       }
    }
 }
+
+/**
+ * delete cell projections whose indices are not specified.
+ */
+void 
+CellProjectionFile::deleteAllButTheseCellProjections(const int* indices,
+                                                     const int numIndices)
+{
+   if ((getNumberOfCellProjections() <= 0) ||
+       (numIndices <= 0)) {
+      return;
+   }
+   
+   //
+   // Place indices of cells that are to be kept into a sorted vector
+   //
+   std::vector<int> cellIndicesToKeep;
+   for (int i = 0; i < numIndices; i++) {
+      cellIndicesToKeep.push_back(indices[i]);
+   }
+   std::sort(cellIndicesToKeep.begin(), cellIndicesToKeep.end());
+   
+   //
+   // Copy this cell projection file
+   //
+   CellProjectionFile cpf = *this;
+   
+   //
+   // Clear out "this" file's data
+   //
+   cellProjections.clear();
+   studyInfo.clear();
+   cellClasses.clear();
+   cellUniqueNames.clear();
+   
+   //
+   // Keep track of which study info are needed
+   //
+   const int numStudyInfo = cpf.getNumberOfStudyInfo();
+   std::vector<int> studyInfoTransferIndex;
+   if (numStudyInfo > 0) {
+      studyInfoTransferIndex.resize(numStudyInfo, -1);
+   }
+   
+   //
+   // Loop through the cell projections and add them to "this" file
+   //
+   for (int i = 0; i < static_cast<int>(cellIndicesToKeep.size()); i++) {
+      //
+      // Copy the cell projection
+      //
+      CellProjection cp = *(cpf.getCellProjection(cellIndicesToKeep[i]));
       
+      //
+      // See if the study info is used
+      //
+      const int studyInfoIndex = cp.getStudyNumber();
+      if ((studyInfoIndex >= 0) && (studyInfoIndex < numStudyInfo)) {
+         //
+         // study info has not been transferred
+         //
+         if (studyInfoTransferIndex[studyInfoIndex] < 0) {
+            //
+            // add the study info to "this" file and keep track of its new index
+            // 
+            studyInfoTransferIndex[studyInfoIndex] = addStudyInfo(*(cpf.getStudyInfo(studyInfoIndex)));
+         }
+         
+         //
+         // Set the index for the study info
+         //
+         cp.setStudyNumber(studyInfoTransferIndex[studyInfoIndex]);
+      }
+      
+      //
+      // Add the cell projection to "this" file
+      //
+      addCellProjection(cp);
+   }
+}
+
 /**
  * delete all cell projections whose display flag is false.
  */
 void 
 CellProjectionFile::deleteAllNonDisplayedCellProjections(const Structure& keepThisStructureOnly)
 {
+   std::vector<int> indicesToKeep;
+   
+   //
+   // find cell projections that are to be kept
+   //
+   const int num = getNumberOfCellProjections();
+   for (int i = 0; i < num; i++) {
+      //
+      // Copy the cell projection
+      //
+      const CellProjection* cp = getCellProjection(i);
+      
+      //
+      // Is this cell projection displayed
+      //
+      if (cp->getDisplayFlag()) {
+         
+         //
+         // Limit to a specific structure
+         //
+         if (keepThisStructureOnly.isLeftCortex() ||
+             keepThisStructureOnly.isRightCortex()) {
+            if (cp->getCellStructure() != keepThisStructureOnly.getType()) {
+               continue;
+            }
+         }
+         
+         //
+         // Keep this one
+         //
+         indicesToKeep.push_back(i);
+      }
+   }
+   
+   const int numToKeep = static_cast<int>(indicesToKeep.size());
+   if (numToKeep > 0) {
+      deleteAllButTheseCellProjections(&indicesToKeep[0], 
+                                       numToKeep);
+   }
+/*
    if (getNumberOfCellProjections() <= 0) {
       return;
    }
@@ -1737,6 +2101,7 @@ CellProjectionFile::deleteAllNonDisplayedCellProjections(const Structure& keepTh
          addCellProjection(cp);
       }
    }
+*/
 }
       
 /**
@@ -1850,31 +2215,51 @@ CellProjectionFile::updatePubMedIDIfCellNameMatchesStudyName(const StudyMetaData
          // Does study name match cell name?
          //
          if (name == smd->getName()) {
-            StudyMetaDataLink smdl = cp->getStudyMetaDataLink();
             //
-            // Only update if PubMed ID is different
+            // Get the links
             //
-            const QString studyPubMedID = smd->getPubMedID();
-            if (smdl.getPubMedID() != studyPubMedID) {
+            StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
+            bool linkModified = false;
+            
+            //
+            // Loop through the cell's links
+            //
+            for (int m = 0; m < smdls.getNumberOfStudyMetaDataLinks(); m++) {
                //
-               // Is the link to the study's Project ID?
+               // Get a link
                //
-               if (smdl.getPubMedID() == smd->getProjectID()) {
+               StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(m);
+               
+               //
+               // Only update if PubMed ID is different
+               //
+               const QString studyPubMedID = smd->getPubMedID();
+               if (smdl.getPubMedID() != studyPubMedID) {
                   //
-                  // Do nothing
+                  // Is the link to the study's Project ID?
                   //
+                  if (smdl.getPubMedID() == smd->getProjectID()) {
+                     //
+                     // Do nothing
+                     //
+                  }
+                  else {
+                     //
+                     // Clear study to clear out links to figures and tables since different study
+                     //
+                     // 08/10/2007  smdl.clear();
+                  }
+                  //
+                  // Update only the link's PubMed ID
+                  //
+                  smdl.setPubMedID(studyPubMedID);
+                  smdls.setStudyMetaDataLink(m, smdl);
+                  linkModified = true;
                }
-               else {
-                  //
-                  // Clear study to clear out links to figures and tables since different study
-                  //
-                  smdl.clear();
-               }
-               //
-               // Update only the link's PubMed ID
-               //
-               smdl.setPubMedID(studyPubMedID);
-               cp->setStudyMetaDataLink(smdl);
+            }
+            
+            if (linkModified) {
+               cp->setStudyMetaDataLinkSet(smdls);
             }
          }
       }
@@ -2034,7 +2419,21 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
       ct->setElement(i, fracRICol, cd->fracRI);
       ct->setElement(i, fracRJCol, cd->fracRJ);
       
-      const StudyMetaDataLink smdl = cd->getStudyMetaDataLink();
+      const StudyMetaDataLinkSet smdls = cd->getStudyMetaDataLinkSet();
+      StudyMetaDataLink smdl;
+      if (smdls.getNumberOfStudyMetaDataLinks() > 1) {
+         const QString msg("Cell[" 
+                           + QString::number(i)
+                           + "] named \""
+                           + cd->getName()
+                           + "\" has more than one Study Metadata Link so it "
+                             "cannot be written as a Comma Separated Value File");
+         throw FileException(msg);
+      }
+      else if (smdls.getNumberOfStudyMetaDataLinks() == 1) {
+         smdl = smdls.getStudyMetaDataLink(0);
+      }
+
       ct->setElement(i, studyMetaPubMedCol, smdl.getPubMedID());
       ct->setElement(i, studyMetaTableCol, smdl.getTableNumber());
       ct->setElement(i, studyMetaTableSubHeaderCol, smdl.getTableSubHeaderNumber());
@@ -2215,7 +2614,7 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
    }
    
    for (int i = 0; i < ct->getNumberOfRows(); i++) {
-      CellProjection cd;
+      CellProjection cd(csv.getFileName());
       float xyz[3] = { 0.0, 0.0, 0.0 };
       int section = 0;
       QString name;
@@ -2356,7 +2755,11 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
       cd.setComment(comment);
       cd.setCellStructure(structure);
       cd.setClassName(className);
-      cd.setStudyMetaDataLink(smdl);
+      StudyMetaDataLinkSet smdls;
+      if (smdl.getPubMedID().isEmpty() == false) {
+         smdls.addStudyMetaDataLink(smdl);
+      }
+      cd.setStudyMetaDataLinkSet(smdls);
       
       addCellProjection(cd);
    }
@@ -2399,7 +2802,7 @@ CellProjectionFile::readFileVersion1(QTextStream& stream, const int numProjectio
                                      const int numStudyInfo) throw (FileException)
 {
    for (int i = 0; i < numProjections; i++) {
-      CellProjection cp;
+      CellProjection cp(getFileName());
       cp.readFileDataVersion1(stream);
       addCellProjection(cp);
    }
@@ -2425,7 +2828,7 @@ CellProjectionFile::readFileVersion2(QTextStream& stream, const int numProjectio
                                      const int numStudyInfo) throw (FileException)
 {
    for (int i = 0; i < numProjections; i++) {
-      CellProjection cp;
+      CellProjection cp(getFileName());
       cp.readFileDataVersion2(stream);
       addCellProjection(cp);
    }
@@ -2451,7 +2854,7 @@ CellProjectionFile::readFileVersion3(QFile& /*file*/, QTextStream& stream,
                                      const int numProjections) throw (FileException)
 {
    for (int i = 0; i < numProjections; i++) {
-      CellProjection cp;
+      CellProjection cp(getFileName());
       cp.readFileDataVersion2(stream);
       addCellProjection(cp);
    }
@@ -2512,6 +2915,103 @@ CellProjectionFile::readFileVersion3(QFile& /*file*/, QTextStream& stream,
 }
 
 /**
+ * read the file with a SAX parser.
+ */
+void 
+CellProjectionFile::readFileWithSaxParser(QFile& file) throw (FileException)
+{
+   //
+   // Move to beginning of file
+   //
+   file.reset();
+   
+   QXmlSimpleReader reader;
+   CellProjectionFileSaxReader saxReader(this);
+   reader.setContentHandler(&saxReader);
+   reader.setErrorHandler(&saxReader);
+ 
+   //
+   // Some constant to determine how to read a file based upon the file's size
+   //
+   const int oneMegaByte = 1048576;
+   const qint64 bigFileSize = 25 * oneMegaByte;
+   
+   if (file.size() < bigFileSize) {
+      //
+      // This call reads the entire file at once but this is a problem
+      // since the XML files can be very large and will cause the 
+      // QT XML parsing to crash
+      //
+      if (reader.parse(&file) == false) {
+         throw FileException(filename, saxReader.getErrorMessage());
+      }
+   }
+   else {
+      //
+      // The following code reads the XML file in pieces
+      // and hopefully will prevent QT from crashing when
+      // reading large files
+      //
+      
+      //
+      // Create a data stream
+      //   
+      QDataStream stream(&file);
+      
+      //
+      // buffer for data read
+      //
+      const int bufferSize = oneMegaByte;
+      char buffer[bufferSize];
+      
+      //
+      // the XML input source
+      //
+      QXmlInputSource xmlInput;
+
+      int totalRead = 0;
+      
+      bool firstTime = true;
+      while (stream.atEnd() == false) {
+         int numRead = stream.readRawData(buffer, bufferSize);
+         totalRead += numRead;
+         if (DebugControl::getDebugOn()) {
+            std::cout << "Cell Projection large file read, total: " << numRead << ", " << totalRead << std::endl;
+         }
+         
+         //
+         // Place the input data into the XML input
+         //
+         xmlInput.setData(QByteArray(buffer, numRead));
+         
+         //
+         // Process the data that was just read
+         //
+         if (firstTime) {
+            if (reader.parse(&xmlInput, true) == false) {
+               throw FileException(filename, saxReader.getErrorMessage());            
+            }
+         }
+         else {
+            if (reader.parseContinue() == false) {
+               throw FileException(filename, saxReader.getErrorMessage());
+            }
+         }
+         
+         firstTime = false;
+      }
+      
+      //
+      // Tells parser that there is no more data
+      //
+      xmlInput.setData(QByteArray());
+      if (reader.parseContinue() == false) {
+         throw FileException(filename, saxReader.getErrorMessage());
+      }
+   }
+}
+                                 
+/**
  * Read the cell projection file.
  */
 void
@@ -2530,8 +3030,6 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
    switch (getFileReadType()) {
       case FILE_FORMAT_ASCII:
          {
-            CellProjection::filename = filename;
-            
             bool readingTags = true;
             bool firstTag = true;
             int  numProjections = -1;
@@ -2596,7 +3094,10 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
          throw FileException(filename, "Reading in Binary format not supported.");
          break;
       case FILE_FORMAT_XML:
-         {
+         if (DebugControl::getTestFlag2()) {
+            readFileWithSaxParser(file);
+         }
+         else {
             QDomNode node = rootElement.firstChild();
             while (node.isNull() == false) {
                QDomElement elem = node.toElement();
@@ -2604,12 +3105,12 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
                   //
                   // Is this a "CellData" element
                   //
-                  if (elem.tagName() == "CellProjection") {
-                     CellProjection cp;
+                  if (elem.tagName() == CellProjection::tagCellProjection) {
+                     CellProjection cp(getFileName());
                      cp.readXML(node);
                      addCellProjection(cp);
                   }
-                  else if (elem.tagName() == "CellStudyInfo") {
+                  else if (elem.tagName() == CellStudyInfo::tagCellStudyInfo) {
                      CellStudyInfo csi;
                      csi.readXML(node);
                      addStudyInfo(csi);
@@ -2626,9 +3127,8 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
                }
                node = node.nextSibling();
             }
-            
-            versionNumber = 10;
          }
+         versionNumber = 10;
          break;
       case FILE_FORMAT_XML_BASE64:
          throw FileException(filename, "Reading XML Base64 not supported.");

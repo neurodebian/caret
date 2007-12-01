@@ -36,6 +36,7 @@
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceGeodesic.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainSet.h"
 #include "DebugControl.h"
 #include "DisplaySettingsGeodesicDistance.h"
@@ -60,7 +61,7 @@ BrainModelSurfaceGeodesic::BrainModelSurfaceGeodesic(
                                           const int geodesicDistanceFileColumnIn,
                                           const QString& geodesicDistanceColumnNameIn,
                                           const int rootNodeNumberIn,
-                                          const std::vector<bool>* nodeInROIIn)
+                                          BrainModelSurfaceROINodeSelection* surfaceROIIn)
    : BrainModelAlgorithm(bs)
 {
    surface    = surfaceIn;
@@ -73,14 +74,17 @@ BrainModelSurfaceGeodesic::BrainModelSurfaceGeodesic(
    
    rootNodeNumber   = rootNodeNumberIn;
    
-   if (nodeInROIIn != NULL) {
-      nodeInROI = *nodeInROIIn;
-      if (static_cast<int>(nodeInROI.size()) < surface->getNumberOfNodes()) {
-         nodeInROI.resize(surface->getNumberOfNodes(), false);
+   const int numNodes = surface->getNumberOfNodes();
+   nodeInROI.resize(surface->getNumberOfNodes(), false);
+   if (surfaceROIIn != NULL) {
+      for (int i = 0; i < numNodes; i++) {
+         if (surfaceROIIn->getNodeSelected(i)) {
+            nodeInROI[i] = true;
+         }
       }
    }
    else {
-      nodeInROI.resize(surface->getNumberOfNodes(), true);
+      std::fill(nodeInROI.begin(), nodeInROI.end(), true);
    }
 }
 

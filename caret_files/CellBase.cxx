@@ -32,7 +32,9 @@
 #include <QDomText>
 
 #include "AbstractFile.h"
+#define __CELL_BASE_MAIN__
 #include "CellBase.h"
+#undef __CELL_BASE_MAIN__
 #include "StringUtilities.h"
 
 /**
@@ -62,7 +64,7 @@ CellBase::initialize()
    sectionNumber = -1;
    name = "";
    studyNumber = -1;
-   studyMetaDataLink.clear();
+   studyMetaDataLinkSet.clear();
    geography = "";
    area = "";
    size = 0.0;
@@ -90,7 +92,7 @@ CellBase::copyData(const CellBase& cb)
    sectionNumber = cb.sectionNumber;
    name = cb.name;
    studyNumber = cb.studyNumber;
-   studyMetaDataLink = cb.studyMetaDataLink;
+   studyMetaDataLinkSet = cb.studyMetaDataLinkSet;
    geography = cb.geography;
    area = cb.area;
    size = cb.size;
@@ -191,9 +193,9 @@ CellBase::setStudyNumber(const int sn)
  * set the study metadata link.
  */
 void 
-CellBase::setStudyMetaDataLink(const StudyMetaDataLink smdl)
+CellBase::setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls)
 {
-   studyMetaDataLink = smdl;
+   studyMetaDataLinkSet = smdls;
    setModified();
 }
             
@@ -302,6 +304,70 @@ CellBase::setCellStructure(const Structure::STRUCTURE_TYPE cst)
 }
       
 /**
+ * set base element from text (used by SAX XML parser).
+ */
+void 
+CellBase::setBaseElementFromText(const QString& elementName,
+                                 const QString& textValue)
+{
+   if (elementName == tagXYZ) {
+      const QStringList sl = textValue.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+      const int numItems = sl.count();
+      if (numItems == 3) {
+         xyz[0] = sl.at(0).toFloat();
+         xyz[1] = sl.at(1).toFloat();
+         xyz[2] = sl.at(2).toFloat();
+      }
+   }
+   else if (elementName == tagSectionNumber) {
+      sectionNumber = textValue.toInt();
+   }
+   else if (elementName == tagName) {
+      name = textValue;
+   }
+   else if (elementName == tagStudyNumber) {
+      studyNumber = textValue.toInt();
+   }
+   else if (elementName == tagGeography) {
+      geography = textValue;
+   }
+   else if (elementName == tagArea) {
+      area = textValue;
+   }
+   else if (elementName == tagSize) {
+      size = textValue.toFloat();
+   }
+   else if (elementName == tagStatistic) {
+      statistic = textValue;
+   }
+   else if (elementName == tagComment) {
+      comment = textValue;
+   }
+   else if ((elementName == "hemisphere") ||
+            (elementName == tagStructure)) {
+      structure.setTypeFromString(textValue);
+   }
+   else if (elementName == tagClassName) {
+      className = textValue;
+      if (className == "???") {
+         className = "";
+      }
+   }
+   else if (elementName == tagSignedDistanceAboveSurface) {
+      signedDistanceAboveSurface = textValue.toFloat();
+   }
+   else if ((elementName == StudyMetaDataLink::tagStudyMetaDataLink) ||
+            (elementName == StudyMetaDataLinkSet::tagStudyMetaDataLinkSet)) {
+      //studyMetaDataLinkSet.readXML(node);
+   }
+   else {
+      std::cout << "WARNING: unrecognized CellBase element: "
+                << elementName.toAscii().constData()
+                << std::endl;
+   }
+}
+
+/**
  * called to read from an XML structure.
  */
 void 
@@ -314,7 +380,7 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
    if (elem.isNull()) {
       return;
    }
-   if (elem.tagName() != "CellBase") {
+   if (elem.tagName() != tagCellBase) {
       QString msg("Incorrect element type passed to CellData::readXML() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
@@ -326,7 +392,7 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
       if (elem.isNull() == false) {
          //std::cout << "CellBase: " << elem.tagName() << std::endl;
          
-         if (elem.tagName() == "xyz") {
+         if (elem.tagName() == tagXYZ) {
             const QString xyzString = AbstractFile::getXmlElementFirstChildAsString(elem);
             std::vector<QString> elems;
             StringUtilities::token(xyzString, " ", elems);
@@ -336,45 +402,46 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
                xyz[2] = StringUtilities::toFloat(elems[2]);
             }
          }
-         else if (elem.tagName() == "sectionNumber") {
+         else if (elem.tagName() == tagSectionNumber) {
             sectionNumber = StringUtilities::toInt(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "name") {
+         else if (elem.tagName() == tagName) {
             name = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "studyNumber") {
+         else if (elem.tagName() == tagStudyNumber) {
             studyNumber = StringUtilities::toInt(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "geography") {
+         else if (elem.tagName() == tagGeography) {
             geography = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "area") {
+         else if (elem.tagName() == tagArea) {
             area = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "size") {
+         else if (elem.tagName() == tagSize) {
             size = StringUtilities::toFloat(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "statistic") {
+         else if (elem.tagName() == tagStatistic) {
             statistic = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
-         else if (elem.tagName() == "comment") {
+         else if (elem.tagName() == tagComment) {
             comment = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if ((elem.tagName() == "hemisphere") ||
-                  (elem.tagName() == "structure")) {
+                  (elem.tagName() == tagStructure)) {
             structure.setTypeFromString(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == "className") {
+         else if (elem.tagName() == tagClassName) {
             className = AbstractFile::getXmlElementFirstChildAsString(elem);
             if (className == "???") {
                className = "";
             }
          }
-         else if (elem.tagName() == "signedDistanceAboveSurface") {
+         else if (elem.tagName() == tagSignedDistanceAboveSurface) {
             signedDistanceAboveSurface = AbstractFile::getXmlElementFirstChildAsString(elem).toFloat();
          }
-         else if (elem.tagName() == "StudyMetaDataLink") {
-            studyMetaDataLink.readXML(node);
+         else if ((elem.tagName() == StudyMetaDataLink::tagStudyMetaDataLink) ||
+                  (elem.tagName() == StudyMetaDataLinkSet::tagStudyMetaDataLinkSet)) {
+            studyMetaDataLinkSet.readXML(node);
          }
          else {
             std::cout << "WARNING: unrecognized CellBase element: "
@@ -396,7 +463,7 @@ CellBase::writeXML(QDomDocument& xmlDoc,
    //
    // Create the element for this class instance's data
    //
-   QDomElement cellBaseElement = xmlDoc.createElement("CellBase");
+   QDomElement cellBaseElement = xmlDoc.createElement(tagCellBase);
 
    //
    // XYZ coordinates
@@ -405,79 +472,79 @@ CellBase::writeXML(QDomDocument& xmlDoc,
    xyzVec.push_back(xyz[0]);
    xyzVec.push_back(xyz[1]);
    xyzVec.push_back(xyz[2]);
-   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement, "xyz",
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement, tagXYZ,
                      StringUtilities::combine(xyzVec, " "));
    
    //
    // section number
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
-                                   "sectionNumber", sectionNumber);
+                                   tagSectionNumber, sectionNumber);
    
    //
    // name of cell
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "name", name);
+                                    tagName, name);
    
    //
    // study number
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
-                                   "studyNumber", studyNumber);
+                                   tagStudyNumber, studyNumber);
    
    //
    // geography
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "geography", geography);
+                                    tagGeography, geography);
    
    //
    // area
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "area", area);
+                                    tagArea, area);
    
    //
    // size of cell
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
-                                   "size", size);
+                                   tagSize, size);
    
    //
    // statistic
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "statistic", statistic);
+                                    tagStatistic, statistic);
    
    //
    // comment
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "comment", comment);
+                                    tagComment, comment);
    
    //
    // class name
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "className", className);
+                                    tagClassName, className);
    
    //
    // signed distance above surface
    //
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
-                                    "signedDistanceAboveSurface", QString::number(signedDistanceAboveSurface, 'f', 6));
+                                    tagSignedDistanceAboveSurface, QString::number(signedDistanceAboveSurface, 'f', 6));
    
    //
    // structure
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
-                                   "structure", structure.getTypeAsString());
+                                   tagStructure, structure.getTypeAsString());
    
    //
    // study metadata
    //
-   studyMetaDataLink.writeXML(xmlDoc, cellBaseElement);
+   studyMetaDataLinkSet.writeXML(xmlDoc, cellBaseElement);
    
    //
    // Add class instance's data to the parent

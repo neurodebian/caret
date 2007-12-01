@@ -32,6 +32,7 @@
 #include "BrainModelAlgorithm.h"
 
 class BrainModelSurface;
+class BrainModelSurfaceROINodeSelection;
 class GeodesicDistanceFile;
 class MetricFile;
 
@@ -53,7 +54,7 @@ class BrainModelSurfaceGeodesic : public BrainModelAlgorithm {
                                 const int geodesicDistanceFileColumnIn,
                                 const QString& geodesicDistanceColumnName,
                                 const int rootNodeNumberIn,
-                                const std::vector<bool>* nodeInROIIn = NULL);
+                                BrainModelSurfaceROINodeSelection* surfaceROIIn = NULL);
       
       /// Destructor
       ~BrainModelSurfaceGeodesic();

@@ -30,13 +30,13 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QString>
 
 #include "BrainSet.h"
 #include "FociUncertaintyToRgbPaintConverter.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "QtUtilities.h"
 #include "RgbPaintFile.h"
@@ -191,7 +191,7 @@ GuiFociUncertaintyLimitsDialog::accept()
    QApplication::restoreOverrideCursor();
    
    if (error) {
-      GuiMessageBox::critical(this, "Error", errorMessage, "OK");
+      QMessageBox::critical(this, "Error", errorMessage);
       return;
    }
    

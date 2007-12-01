@@ -427,3 +427,39 @@ GuiNodeAttributeColumnSelectionComboBox::updateComboBox(GiftiNodeDataFile* gifti
       setCurrentIndex(item);
    //}
 }
+
+/**
+ * get all selected.
+ */
+bool 
+GuiNodeAttributeColumnSelectionComboBox::getAllSelected() const
+{
+   if (allowAllColumnSelection) {
+      return (getCurrentLabel() == allSelectionLabel);
+   }
+   return false;
+}
+
+/**
+ * get none selected.
+ */
+bool 
+GuiNodeAttributeColumnSelectionComboBox::getNoneSelected() const
+{
+   if (allowNoneColumnSelection) {
+      return (getCurrentLabel() == noneSelectionLabel);
+   }
+   return false;
+}
+
+/**
+ * get new selected.
+ */
+bool 
+GuiNodeAttributeColumnSelectionComboBox::getNewSelected() const
+{
+   if (allowNewColumnSelection) {
+      return (getCurrentLabel() == newSelectionLabel);
+   }
+   return false;
+}      

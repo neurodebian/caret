@@ -292,15 +292,12 @@ BrainModelSurfaceSulcalDepth::execute() throw (BrainModelAlgorithmException)
    // if creating smoothed depth, smooth it
    //
    if ((smoothedDepthColumn >= 0) && (depthSmoothingIterations > 0)) {
-      shapeFile->smooth(MetricFile::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
-                        smoothedDepthColumn,
-                        smoothedDepthColumn,
-                        shapeFile->getColumnName(smoothedDepthColumn),
-                        1.0, 
-                        depthSmoothingIterations,
-                        surface->getTopologyFile(),
-                        surface->getCoordinateFile(),
-                        NULL);
+      shapeFile->smoothAverageNeighbors(smoothedDepthColumn,
+                                        smoothedDepthColumn,
+                                        shapeFile->getColumnName(smoothedDepthColumn),
+                                        1.0, 
+                                        depthSmoothingIterations,
+                                        surface->getTopologyFile());
    }
    
    //

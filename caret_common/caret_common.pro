@@ -35,6 +35,8 @@ HEADERS += Basename.h \
 	   MathUtilities.h \
       NameIndexSort.h \
       PointLocator.h \
+      ProgramParameters.h \
+      ProgramParametersException.h \
       StatisticsUtilities.h \
       StringTable.h \
       Species.h \
@@ -58,6 +60,8 @@ SOURCES += Basename.cxx \
 	   MathUtilities.cxx \
       NameIndexSort.cxx \
       PointLocator.cxx \
+      ProgramParameters.cxx \
+      ProgramParametersException.cxx \
       StatisticsUtilities.cxx \
       StringTable.cxx \
       Species.cxx \

@@ -37,8 +37,11 @@
 #include "FileUtilities.h"
 #include "FreeSurferLabelFile.h"
 #include "GiftiCommon.h"
+#include "NameIndexSort.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
+#include "TopologyFile.h"
+#include "TopologyHelper.h"
 #include "VolumeFile.h"
 
 
@@ -48,7 +51,7 @@
 PaintFile::PaintFile(const QString& descriptiveName,
                      const QString& defaultExtensionIn)
    : GiftiNodeDataFile(descriptiveName, 
-                       GiftiCommon::categoryLabels,
+                       GiftiCommon::intentLabels,
                        GiftiDataArray::DATA_TYPE_INT32,
                        1,
                        defaultExtensionIn,
@@ -317,14 +320,116 @@ PaintFile::getPaintNameFromIndex(const int indexIn) const
 }
 
 /**
+ * delete a paint any nodes using paint become ???.
+ */
+void 
+PaintFile::deletePaintName(const int paintIndex)
+{
+   const int questPaintIndex = addPaintName("???");
+   const int numNodes = getNumberOfNodes();
+   const int numCols  = getNumberOfColumns();
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         const int indx = getPaint(i, j);
+         if (indx == paintIndex) {
+            setPaint(i, j, questPaintIndex);
+         }
+         else if (indx > paintIndex) {
+            //
+            // Move "higher" paint indices down one since "paintIndex" 
+            // will be removed.
+            //
+            setPaint(i, j, indx - 1);
+         }
+      }
+   }
+   
+   labelTable.deleteLabel(paintIndex);
+}
+
+/**
+ * deassign a paint any nodes in column using paint become ???
+ * if columnNumber is negative, operation is applied to all columns.
+ */
+void 
+PaintFile::deassignPaintName(const int columnNumber,
+                             const int paintIndex)
+{
+   const int questPaintIndex = addPaintName("???");
+   reassignPaintName(columnNumber, 
+                     paintIndex,
+                     questPaintIndex);
+}
+                   
+/**
+ * reassign a paint 
+ * if columnNumber is negative, operation is applied to all columns.
+ */
+void 
+PaintFile::reassignPaintName(const int columnNumber,
+                             const int oldPaintIndex,
+                             const int newPaintIndex)
+{
+   int colStart = 0;
+   int colEnd = getNumberOfColumns();
+   if ((columnNumber >= 0) &&
+       (columnNumber < getNumberOfColumns())) {
+      colStart = columnNumber;
+      colEnd   = columnNumber + 1;
+   }
+   else if (columnNumber >= getNumberOfColumns()) {
+      return;
+   }
+   
+   const int numNodes = getNumberOfNodes();
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = colStart; j < colEnd; j++) {
+         const int indx = getPaint(i, j);
+         if (indx == oldPaintIndex) {
+            setPaint(i, j, newPaintIndex);
+         }
+      }
+   }
+}
+                             
+/**
  * set the name of a paint at an index.
  */
 void 
 PaintFile::setPaintName(const int indexIn, const QString& name) 
 {
    labelTable.setLabel(indexIn, name);
+   setModified();
 }
 
+/**
+ * get paint enabled by index.
+ */
+bool 
+PaintFile::getPaintNameEnabled(const int paintIndex) const
+{
+   return labelTable.getLabelEnabled(paintIndex);
+}
+
+/**
+ * set paint enable by index.
+ */
+void 
+PaintFile::setPaintNameEnabled(const int paintIndex,
+                               const bool b)
+{
+   labelTable.setLabelEnabled(paintIndex, b);
+}
+                               
+/**
+ * set all paint names enabled.
+ */
+void 
+PaintFile::setAllPaintNamesEnabled(const bool b)
+{
+   labelTable.setAllLabelsEnabled(b);
+}
+      
 /**
  * get the number of paint names.
  */
@@ -334,6 +439,77 @@ PaintFile::getNumberOfPaintNames() const
    return labelTable.getNumberOfLabels();
 }
 
+/**
+ * get all paint names and indices sorted by name (may contain duplicate names).
+ */
+void 
+PaintFile::getAllPaintNamesAndIndices(std::vector<QString>& namesOut,
+                                      std::vector<int>& indicesOut) const
+{
+   namesOut.clear();
+   indicesOut.clear();
+
+   //
+   // Sort by name
+   //
+   NameIndexSort nis;
+   const int num = getNumberOfPaintNames();
+   for (int i = 0; i < num; i++) {
+      nis.add(i, getPaintNameFromIndex(i));
+   }
+   nis.sortByName();
+   
+   //
+   // Output sorted names/indices
+   //
+   const int numNames = nis.getNumberOfItems();
+   for (int i = 0; i < numNames; i++) {
+      int indx;
+      QString name;
+      nis.getNameAndIndex(i, indx, name);
+      namesOut.push_back(name);
+      indicesOut.push_back(indx);
+   }
+}
+                                      
+/**
+ * get all paint names (could be duplicates).
+ */
+void 
+PaintFile::getAllPaintNames(std::vector<QString>& namesOut) const
+{
+   namesOut.clear();
+   
+   const int num = getNumberOfPaintNames();
+   for (int i = 0; i < num; i++) {
+      namesOut.push_back(getPaintNameFromIndex(i));
+   }
+}
+
+/**
+ * get all paint count (# nodes using each paint).
+ */
+void 
+PaintFile::getAllPaintCounts(std::vector<int>& countsOut) const
+{
+   countsOut.clear();
+   const int num = getNumberOfPaintNames();
+   if (num <= 0) {
+      return;
+   }
+   
+   countsOut.resize(num, 0);
+   
+   const int numNodes = getNumberOfNodes();
+   const int numCols = getNumberOfColumns();
+   
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         countsOut[getPaint(i, j)]++;
+      }
+   }
+}
+                                     
 /** 
  * Get indices to all paint names used by a column.
  */
@@ -423,6 +599,278 @@ PaintFile::setPaint(const int nodeNumber, const int columnNumber,
    }
 }
 
+/**
+ * copy one paint column to another.
+ */
+void 
+PaintFile::copyColumns(const PaintFile* fromPaintFile,
+                       const int fromColumnNumber,
+                       const int newColumnNumberIn,
+                       const QString& newColumnName) throw (FileException)
+{
+   if (fromPaintFile == NULL) {
+      throw FileException("PaintFile::copyColumns()  fromPaintFile is NULL.");
+   }
+   //
+   // Validate column numbers
+   //
+   if ((fromColumnNumber < 0) ||
+       (fromColumnNumber >= fromPaintFile->getNumberOfColumns())) {
+      throw FileException("PaintFile::copyColumns() fromColumnNumber is invalid.");
+   }
+   int newColumnNumber = newColumnNumberIn;
+   if ((newColumnNumber < 0) ||
+       (newColumnNumber >= getNumberOfColumns())) {
+      addColumns(1, fromPaintFile->getNumberOfNodes());
+      newColumnNumber = getNumberOfColumns() - 1;
+   }
+   
+   //
+   // Copy the metadata
+   //
+   GiftiMetaData* newColMetaData = getDataArray(newColumnNumber)->getMetaData();
+   GiftiMetaData* oldColMetaData = (GiftiMetaData*)fromPaintFile->getDataArray(fromColumnNumber)->getMetaData();
+   *newColMetaData = *oldColMetaData;
+   
+   //
+   // Index for copying of paint names
+   //
+   std::vector<int> paintNameIndexTranslation(fromPaintFile->getNumberOfPaintNames(), -1);
+   const int numNodes = getNumberOfNodes();
+   for (int i = 0; i < numNodes; i++) {
+      const int paintIndex = fromPaintFile->getPaint(i, fromColumnNumber);
+      if (paintIndex >= 0) {
+         paintNameIndexTranslation[paintIndex] = -2;
+      }
+   }
+   for (int i = 0; i < static_cast<int>(paintNameIndexTranslation.size()); i++) {
+      if (paintNameIndexTranslation[i] == -2) {
+         paintNameIndexTranslation[i] = addPaintName(fromPaintFile->getPaintNameFromIndex(i));
+      }
+   }
+   
+   //
+   // Copy the paint data
+   //
+   for (int i = 0; i < numNodes; i++) {
+      setPaint(i, newColumnNumber, 
+                  paintNameIndexTranslation[fromPaintFile->getPaint(i, fromColumnNumber)]);
+   }
+   
+   if (newColumnName.isEmpty() == false) {
+      setColumnName(newColumnNumber, newColumnName);
+   }
+}
+
+/**
+ * dilate paint ID "paintIndex" if neighbors paint index >= 0 do only those.
+ */
+int 
+PaintFile::dilatePaintID(const TopologyFile* tf,
+                         const int columnNumber,
+                         const int iterations,
+                         const int paintIndex,
+                         const int neighborOnlyWithPaintIndex) throw (FileException)
+{
+   int numDilated = 0;
+   
+   //
+   // Validate column numbers
+   //
+   if ((columnNumber < 0) ||
+       (columnNumber >= getNumberOfColumns())) {
+      throw FileException("PaintFile::dilatePaintID() fromColumnNumber is invalid.");
+   }
+   if (iterations <= 0) {
+      return numDilated;
+   }
+   
+   const int numNodes = getNumberOfNodes();
+   if (numNodes <= 0) {
+      return numDilated;
+   }
+   
+   //
+   // Get topology helper for neighbor information
+   //
+   const TopologyHelper* th = tf->getTopologyHelper(false, true, false);
+   
+   //
+   // temporary and used to during dilation
+   //
+   int* outputPaints = new int[numNodes];
+   
+   //
+   // Do for specified number of iterations
+   //
+   for (int iter = 0; iter < iterations; iter++) {
+      //
+      // Copy current paints
+      //
+      for (int i = 0; i < numNodes; i++) {
+         outputPaints[i] = getPaint(i, columnNumber);
+      }
+      
+      //
+      // Check each node
+      //
+      for (int i = 0; i < numNodes; i++) {
+         //
+         // does node contain paint that is to be smoothed
+         //
+         const int paint = getPaint(i, columnNumber);
+         if (paint == paintIndex) {
+            //
+            // get neighbors and loop through them
+            //
+            int numNeighbors;
+            const int* neighbors = th->getNodeNeighbors(i, numNeighbors);
+            for (int j = 0; j < numNeighbors; j++) {
+               const int neighborNodeNum = neighbors[j];
+               //
+               // Limited to neighbors with specific paint index?
+               //
+               if (neighborOnlyWithPaintIndex >= 0) {
+                  if (getPaint(neighborNodeNum, columnNumber) == neighborOnlyWithPaintIndex) {
+                     outputPaints[neighborNodeNum] = paintIndex;
+                     numDilated++;
+                  }
+               }
+               else {
+                  outputPaints[neighborNodeNum] = paintIndex;
+                  numDilated++;
+               }
+            }
+         }
+      }
+
+      //
+      // Set current paints
+      //
+      for (int i = 0; i < numNodes; i++) {
+         setPaint(i, columnNumber, outputPaints[i]);
+      }
+   }
+   
+   delete[] outputPaints;
+   
+   return numDilated;
+}
+                         
+/**
+ * append most common column (if name empty, column is not created).
+ */
+void 
+PaintFile::appendMostCommon(const QString& mostCommonColumnName,
+                            const QString& mostCommonExcludeQuestionColumnName) throw (FileException)
+{
+   const int numNodes = getNumberOfNodes();
+   const int numCols = getNumberOfColumns();
+   if ((numNodes <= 0) ||
+       (numCols <= 0)) {
+      return;
+   }
+   
+   if ((mostCommonColumnName.isEmpty() == true) &&
+       (mostCommonExcludeQuestionColumnName.isEmpty() == true)) {
+      return;
+   }
+   
+   int mostCommonColumn = -1;
+   if (mostCommonColumnName.isEmpty() == false) {
+      addColumns(1);
+      mostCommonColumn = getNumberOfColumns() - 1;
+      setColumnName(mostCommonColumn, mostCommonColumnName);
+   }
+   
+   int mostCommonExcludeQuestionColumn = -1;
+   if (mostCommonExcludeQuestionColumnName.isEmpty() == false) {
+      addColumns(1);
+      mostCommonExcludeQuestionColumn = getNumberOfColumns() - 1;
+      setColumnName(mostCommonExcludeQuestionColumn, mostCommonExcludeQuestionColumnName);
+   }
+   
+   const int questionPaintIndex = getPaintIndexFromName("???");
+   
+   for (int i = 0; i < numNodes; i++) {
+      //
+      // Track use of paint indices for the node
+      //
+      std::map<int,int> indexCounterMap, indexCounterMapExcludeQuestion;
+      
+      for (int j = 0; j < numCols; j++) {
+         const int paintIndex = getPaint(i, j);
+         
+         //
+         // Doing most common?
+         //
+         if (mostCommonColumn >= 0) {
+            //
+            // Update count for paint index
+            //
+            std::map<int,int>::iterator iter = indexCounterMap.find(paintIndex);
+            if (iter != indexCounterMap.end()) {
+               iter->second++;
+            }
+            else {
+               indexCounterMap[paintIndex] = 1;
+            }
+         }
+         
+         //
+         // Doing most common but excluding ??? paints
+         //
+         if ((mostCommonExcludeQuestionColumn >= 0) &&
+             (paintIndex != questionPaintIndex)) {
+            //
+            // Update count for paint index
+            //
+            std::map<int,int>::iterator iter = indexCounterMapExcludeQuestion.find(paintIndex);
+            if (iter != indexCounterMapExcludeQuestion.end()) {
+               iter->second++;
+            }
+            else {
+               indexCounterMapExcludeQuestion[paintIndex] = 1;
+            }
+         }
+      }
+      
+      //
+      // set paint most common index
+      //
+      if (mostCommonColumn >= 0) {
+         int maxIndex = questionPaintIndex;
+         int maxCount = -1;
+         for (std::map<int,int>::iterator iter = indexCounterMap.begin();
+              iter != indexCounterMap.end(); iter++) {
+            if (iter->second > maxCount) {
+               maxIndex = iter->first;
+               maxCount = iter->second;
+            }
+         }
+
+         setPaint(i, mostCommonColumn, maxIndex);
+      }
+      
+      //
+      // set paint most common index
+      //
+      if (mostCommonExcludeQuestionColumn >= 0) {
+         int maxIndex = questionPaintIndex;
+         int maxCount = -1;
+         for (std::map<int,int>::iterator iter = indexCounterMapExcludeQuestion.begin();
+              iter != indexCounterMapExcludeQuestion.end(); iter++) {
+            if (iter->second > maxCount) {
+               maxIndex = iter->first;
+               maxCount = iter->second;
+            }
+         }
+
+         setPaint(i, mostCommonExcludeQuestionColumn, maxIndex);
+      }
+   }
+}
+                            
 /**
  * assign paints by intersecting with a volume file.
  * If a coordinate is within a non-zero voxel, the paintName is assigned for that coordinate.
@@ -563,9 +1011,9 @@ PaintFile::readFileDataVersion1(QFile& file,
       else if (tag == tagColumnStudyMetaData) {
          QString name;
          const int indx = splitTagIntoColumnAndValue(tagValue, name);
-         StudyMetaDataLink smdl;
-         smdl.setLinkFromCodedText(name);
-         setColumnStudyMetaDataLink(indx, smdl);
+         StudyMetaDataLinkSet smdls;
+         smdls.setLinkSetFromCodedText(name);
+         setColumnStudyMetaDataLinkSet(indx, smdls);
       }
       else if (tag == tagNumberOfPaintNames) {
          numPaintNames = tagValue.toInt();
@@ -788,7 +1236,7 @@ PaintFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStream) 
    }
    for (int k = 0; k < numberOfColumns; k++) {
       stream << tagColumnStudyMetaData << " " << k
-             << " " << getColumnStudyMetaDataLink(k).getLinkAsCodedText().toAscii().constData() << "\n";
+             << " " << getColumnStudyMetaDataLinkSet(k).getLinkSetAsCodedText().toAscii().constData() << "\n";
    }
    stream << tagBeginData << "\n";
       

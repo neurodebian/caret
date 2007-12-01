@@ -56,6 +56,7 @@
 #include "BorderFile.h"
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceCurvature.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainModelSurfacePointLocator.h"
 #include "BrainModelSurfacePointProjector.h"
 #include "BrainModelSurfaceSmoothing.h"
@@ -672,7 +673,7 @@ BrainModelSurface::readSurfaceFile(const QString& fileName,
       // see if there are normals in the surface file
       //
       const GiftiDataArray* normalsArray = 
-                          sf.getDataArrayWithCategory(GiftiCommon::categoryNormals);
+                          sf.getDataArrayWithIntent(GiftiCommon::intentNormals);
       if (normalsArray != NULL) {
          if (normalsArray->getDimension(0) == sf.getNumberOfCoordinates()) {
            normalsValidOut = true;
@@ -707,9 +708,20 @@ BrainModelSurface::readSurfaceFile(const QString& fileName,
       }
       
       //
+      // Transfer coordinate metaData
+      //
+      const GiftiMetaData* coordMetaData = sf.getCoordinateMetaData();
+      if (coordMetaData != NULL) {
+         coordMetaData->copyMetaDataToCaretFile(&coordinates);
+         //const GiftiMetaData::MetaDataContainer* data = coordMetaData->getMetaData();
+         //for (GiftiMetaData::ConstMetaDataIterator iter = data->begin(); iter != data->end(); iter++) {
+         //   coordinates.setHeaderTag(iter->first, iter->second);
+         //}   
+      }
+      //
       // Get the type of coordinates
       //
-      coordinates.setHeaderTag(AbstractFile::headerTagConfigurationID, sf.getCoordinateType());
+      //coordinates.setHeaderTag(AbstractFile::headerTagConfigurationID, sf.getCoordinateType());
       setSurfaceType(getSurfaceTypeFromConfigurationID(sf.getCoordinateType()));
       
       //
@@ -737,6 +749,18 @@ BrainModelSurface::readSurfaceFile(const QString& fileName,
             topoFile->setFileName(topoFileName);
          }
          
+         //
+         // Transfer topology metaData
+         //
+         const GiftiMetaData* topoMetaData = sf.getTopologyMetaData();
+         if (topoMetaData != NULL) {
+            topoMetaData->copyMetaDataToCaretFile(topoFile);
+            //const GiftiMetaData::MetaDataContainer* data = topoMetaData->getMetaData();
+            //for (GiftiMetaData::ConstMetaDataIterator iter = data->begin(); iter != data->end(); iter++) {
+            //   topoFile->setHeaderTag(iter->first, iter->second);
+            //}   
+         }
+
          //
          // Set the type of topology
          //
@@ -829,6 +853,18 @@ BrainModelSurface::writeSurfaceFile(const QString& filename,
    //
    for (int i = 0; i < numTriangles; i++) {
       sf.setTriangle(i, topology->getTile(i));
+   }
+   
+   //
+   // set the metadata
+   //
+   GiftiMetaData* coordMetaData = sf.getCoordinateMetaData();
+   if (coordMetaData != NULL) {
+      coordMetaData->copyMetaDataFromCaretFile(&coordinates);
+   }
+   GiftiMetaData* topoMetaData = sf.getTopologyMetaData();
+   if (topoMetaData != NULL) {
+      topoMetaData->copyMetaDataFromCaretFile(topology);
    }
    
    //
@@ -1729,16 +1765,6 @@ BrainModelSurface::smoothSurfaceUsingCurvature(const float strength,
                                 "");
          try {
             bmsc.execute();
-            /*
-            ssf.smooth(SurfaceShapeFile::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
-                       curvatureColumn,
-                       curvatureColumn,
-                       ssf.getColumnName(curvatureColumn),
-                       1.0,
-                       25,
-                       getTopologyFile(),
-                       getCoordinateFile());
-            */
          }
          catch (BrainModelAlgorithmException&) {
          }
@@ -2140,6 +2166,42 @@ BrainModelSurface::getSurfaceTypeName() const
 }
 
 /**
+ * Get all surface types and names.
+ */
+void 
+BrainModelSurface::getSurfaceTypesAndNames(std::vector<SURFACE_TYPES>& typesOut,
+                                           std::vector<QString>& typeNamesOut)
+{
+   typesOut.clear();
+   typeNamesOut.clear();
+   
+   typesOut.push_back(SURFACE_TYPE_RAW);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_RAW));
+   typesOut.push_back(SURFACE_TYPE_FIDUCIAL);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_FIDUCIAL));
+   typesOut.push_back(SURFACE_TYPE_INFLATED);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_INFLATED));
+   typesOut.push_back(SURFACE_TYPE_VERY_INFLATED);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_VERY_INFLATED));
+   typesOut.push_back(SURFACE_TYPE_SPHERICAL);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_SPHERICAL));
+   typesOut.push_back(SURFACE_TYPE_ELLIPSOIDAL);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_ELLIPSOIDAL));
+   typesOut.push_back(SURFACE_TYPE_COMPRESSED_MEDIAL_WALL);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_COMPRESSED_MEDIAL_WALL));
+   typesOut.push_back(SURFACE_TYPE_FLAT);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_FLAT));
+   typesOut.push_back(SURFACE_TYPE_FLAT_LOBAR);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_FLAT_LOBAR));
+   typesOut.push_back(SURFACE_TYPE_HULL);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_HULL));
+   typesOut.push_back(SURFACE_TYPE_UNKNOWN);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_UNKNOWN));
+   typesOut.push_back(SURFACE_TYPE_UNSPECIFIED);
+      typeNamesOut.push_back(getSurfaceConfigurationIDFromType(SURFACE_TYPE_UNSPECIFIED));
+}
+
+/**
  * Get the surface type for a surface type name
  */
 BrainModelSurface::SURFACE_TYPES
@@ -2245,7 +2307,6 @@ BrainModelSurface::getCoordSpecFileTagFromSurfaceType(const SURFACE_TYPES st)
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-         break;
          tag = SpecFile::unknownCoordFileMatchTag;
          break;
    }
@@ -2294,12 +2355,84 @@ BrainModelSurface::getSurfaceSpecFileTagFromSurfaceType(const SURFACE_TYPES st)
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-         break;
          tag = SpecFile::unknownSurfaceFileMatchTag;
          break;
    }
    
    return tag;
+}
+
+/**
+ * see if surface is a fiducial surface.
+ */
+bool 
+BrainModelSurface::getIsFiducialSurface() const
+{
+   switch(surfaceType) {
+      case BrainModelSurface::SURFACE_TYPE_RAW:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
+         return true;
+         break;
+      case BrainModelSurface::SURFACE_TYPE_INFLATED:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_FLAT:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_HULL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
+      case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
+         break;
+   }
+   
+   return false;
+}
+
+/**
+ * see if surface is a flat surface.
+ */
+bool 
+BrainModelSurface::getIsFlatSurface() const
+{
+   switch(surfaceType) {
+      case BrainModelSurface::SURFACE_TYPE_RAW:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_INFLATED:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_FLAT:
+         return true;
+         break;
+      case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
+         return true;
+         break;
+      case BrainModelSurface::SURFACE_TYPE_HULL:
+         break;
+      case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
+      case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
+         break;
+   }
+
+   return false;
 }
 
 /**
@@ -2961,6 +3094,53 @@ BrainModelSurface::getTileArea(const int n1, const int n2, const int n3) const
 }
 
 /**
+ * get the area of all tiles.
+ */
+void 
+BrainModelSurface::getAreaOfAllTiles(std::vector<float>& tileAreas) const
+{
+   tileAreas.clear();
+   if (topology != NULL) {
+      const int numTiles = topology->getNumberOfTiles();
+      tileAreas.resize(numTiles);
+      for (int i = 0; i < numTiles; i++) {
+         tileAreas[i] = getTileArea(i);
+      }
+   }
+}
+
+/**
+ * get the area of all nodes.
+ */
+void 
+BrainModelSurface::getAreaOfAllNodes(std::vector<float>& nodeAreas) const
+{
+   //
+   // Since each tile consists of three nodes, apply one third of the tile area
+   // to the node and sum these values
+   //
+   nodeAreas.clear();
+   const int numNodes = getNumberOfNodes();
+   if (numNodes >= 0) {
+      nodeAreas.resize(numNodes, 0.0);
+
+      std::vector<float> tileAreas;
+      getAreaOfAllTiles(tileAreas);
+
+      const int numTiles = static_cast<int>(tileAreas.size());
+      if (numTiles > 0) {
+         for (int i = 0; i < numTiles; i++) {
+            const int* nodes = topology->getTile(i);
+            const float oneThirdTileArea = tileAreas[i] * 0.33333;
+            nodeAreas[nodes[0]] += oneThirdTileArea;
+            nodeAreas[nodes[1]] += oneThirdTileArea;
+            nodeAreas[nodes[2]] += oneThirdTileArea;
+         }
+      }
+   }
+}
+      
+/**
  * Apply a transformation matrix to the surface.
  */
 void
@@ -2998,6 +3178,140 @@ BrainModelSurface::applyTransformationMatrix(TransformationMatrix& tm)
 */
 }
 
+/**
+ * apply a view (transformation) to the coordinates of the surface.
+ */
+void 
+BrainModelSurface::applyViewToCoordinates(const BrainModel::STANDARD_VIEWS surfaceView)
+{
+   if (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
+      switch (surfaceView) {
+         case BrainModel::VIEW_NONE:          
+            break;
+         case BrainModel::VIEW_RESET:
+            break;
+         case BrainModel::VIEW_ANTERIOR:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+               tm.identity();
+               tm.rotateY(180.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_DORSAL:
+            //
+            // Do nothing, dorsal is default view
+            //
+            break;
+         case BrainModel::VIEW_LATERAL:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+               tm.identity();
+               tm.rotateY(-90.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_MEDIAL:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+               tm.identity();
+               tm.rotateY(90.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_POSTERIOR:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_VENTRAL:
+            {
+               TransformationMatrix tm;
+               tm.rotateY(180.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_ROTATE_X_90:
+            break;
+         case BrainModel::VIEW_ROTATE_Y_90:
+            break;
+         case BrainModel::VIEW_ROTATE_Z_90:
+            break;
+      }
+   }
+   else if (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
+      switch (surfaceView) {
+         case BrainModel::VIEW_NONE:          
+            break;
+         case BrainModel::VIEW_RESET:
+            break;
+         case BrainModel::VIEW_ANTERIOR:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+               tm.identity();
+               tm.rotateY(180.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_DORSAL:
+            //
+            // Do nothing, dorsal is default view
+            //
+            break;
+         case BrainModel::VIEW_LATERAL:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+               tm.identity();
+               tm.rotateY(90.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_MEDIAL:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+               tm.identity();
+               tm.rotateY(-90.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_POSTERIOR:
+            {
+               TransformationMatrix tm;
+               tm.rotateX(-90.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_VENTRAL:
+            {
+               TransformationMatrix tm;
+               tm.rotateY(180.0);
+               applyTransformationMatrix(tm);
+            }
+            break;
+         case BrainModel::VIEW_ROTATE_X_90:
+            break;
+         case BrainModel::VIEW_ROTATE_Y_90:
+            break;
+         case BrainModel::VIEW_ROTATE_Z_90:
+            break;
+      }
+   }   
+}
+      
 /**
  * Apply current view to surface
  */
@@ -3289,16 +3603,15 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
  * Get the mean distance between the nodes
  */
 float
-BrainModelSurface::getMeanDistanceBetweenNodes(const std::vector<bool>* roiFlag) const
+BrainModelSurface::getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI) const
 {
    const TopologyHelper* helper = topology->getTopologyHelper(false, true, false);
    const float numNodes = helper->getNumberOfNodes();
    
    bool useRoiFlag = false;
-   if (roiFlag != NULL) {
-      if (roiFlag->size() == numNodes) {
-         useRoiFlag = true;
-      }
+   if (surfaceROI != NULL) {
+      surfaceROI->update();
+      useRoiFlag = true;
    }
    
    float meanDist = 0.0;
@@ -3306,7 +3619,7 @@ BrainModelSurface::getMeanDistanceBetweenNodes(const std::vector<bool>* roiFlag)
    for (int i = 0; i < numNodes; i++) {
       bool doNode = true;
       if (useRoiFlag) {
-         doNode = (*roiFlag)[i];
+         doNode = surfaceROI->getNodeSelected(i);
       }
       if (doNode) {
          std::vector<int> neighbors;
@@ -3319,7 +3632,7 @@ BrainModelSurface::getMeanDistanceBetweenNodes(const std::vector<bool>* roiFlag)
             const int neigh = neighbors[j];
             bool checkNeigh = true;
             if (useRoiFlag) {
-               checkNeigh = (*roiFlag)[neigh];
+               checkNeigh = surfaceROI->getNodeSelected(neigh);
             }
             if (checkNeigh) {
                neighCount++;
@@ -5282,7 +5595,8 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
 {
    if ((createInflated == false) &&
        (createVeryInflated == false) &&
-       (createEllipsoid == false)) {
+       (createEllipsoid == false) &&
+       (createSphere == false)) {
       return;
    }
    
@@ -6799,4 +7113,30 @@ BrainModelSurface::simplifySurface(const int maxPolygons) const
    }
    
    return NULL;
+}      
+
+/**
+ * get node closest to point.
+ */
+int 
+BrainModelSurface::getNodeClosestToPoint(const float pointXYZ[3]) const
+{
+   int nearestNodeNumber = -1;
+   float nearestNodeDistance = std::numeric_limits<float>::max();;
+   
+   const TopologyHelper* th = topology->getTopologyHelper(false, true, false);
+   const int num = coordinates.getNumberOfNodes();
+   for (int i = 0; i < num; i++) {
+      if (th->getNodeHasNeighbors(i)) {
+         const float* xyz = coordinates.getCoordinate(i);
+         const float dist = MathUtilities::distanceSquared3D(xyz,
+                                                             pointXYZ);
+         if (dist < nearestNodeDistance) {
+            nearestNodeNumber = i;
+            nearestNodeDistance = dist;
+         } 
+      }
+   }
+   
+   return nearestNodeNumber;
 }      

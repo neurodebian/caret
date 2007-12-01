@@ -30,6 +30,7 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QMessageBox>
 
 #include "BrainModelSurfaceCurvature.h"
 #include "BrainSet.h"
@@ -38,7 +39,6 @@
 #include "GuiFilesModified.h"
 #include "GuiGenerateSurfaceCurvatureDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "QtUtilities.h"
 #include "SurfaceShapeFile.h"
@@ -169,8 +169,8 @@ GuiGenerateSurfaceCurvatureDialog::done(int r)
       //
       BrainModelSurface* bms = surfaceComboBox->getSelectedBrainModelSurface();
       if (bms == NULL) {
-         GuiMessageBox::critical(this, "Error",
-                               "A surface must be selected.", "OK");
+         QMessageBox::critical(this, "Error",
+                               "A surface must be selected.");
          return;
       }
       
@@ -189,8 +189,8 @@ GuiGenerateSurfaceCurvatureDialog::done(int r)
       const QString meanCurvatureName(meanCurvatureNameLineEdit->text());
       if (meanCurvatureColumn != BrainModelSurfaceCurvature::CURVATURE_COLUMN_DO_NOT_GENERATE) {
          if (meanCurvatureName.isEmpty()) {
-            GuiMessageBox::critical(this, "Error",
-                                  "Name for mean curvature must be provided.", "OK");
+            QMessageBox::critical(this, "Error",
+                                  "Name for mean curvature must be provided.");
             return;
          }
       }
@@ -210,8 +210,8 @@ GuiGenerateSurfaceCurvatureDialog::done(int r)
       const QString gaussianCurvatureName(gaussianCurvatureNameLineEdit->text());
       if (gaussianCurvatureColumn != BrainModelSurfaceCurvature::CURVATURE_COLUMN_DO_NOT_GENERATE) {
          if (gaussianCurvatureName.isEmpty()) {
-            GuiMessageBox::critical(this, "Error",
-                                  "Name for gaussian curvature must be provided.", "OK");
+            QMessageBox::critical(this, "Error",
+                                  "Name for gaussian curvature must be provided.");
             return;
          }
       }
@@ -221,7 +221,7 @@ GuiGenerateSurfaceCurvatureDialog::done(int r)
       //
       if ((meanCurvatureColumn == BrainModelSurfaceCurvature::CURVATURE_COLUMN_DO_NOT_GENERATE) &&
           (gaussianCurvatureColumn == BrainModelSurfaceCurvature::CURVATURE_COLUMN_DO_NOT_GENERATE)) {
-         GuiMessageBox::critical(this, "Error", "No shape file columns selected", "OK");
+         QMessageBox::critical(this, "Error", "No shape file columns selected");
          return;
       }
       
@@ -249,7 +249,8 @@ GuiGenerateSurfaceCurvatureDialog::done(int r)
          GuiBrainModelOpenGL::updateAllGL();
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Error", e.whatQString());
          return;
       }
       

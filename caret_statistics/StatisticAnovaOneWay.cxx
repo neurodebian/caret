@@ -33,6 +33,7 @@
  * constructor.
  */
 StatisticAnovaOneWay::StatisticAnovaOneWay()
+   : StatisticAlgorithm("ANOVA One-Way")
 {
 }
 

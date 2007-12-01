@@ -83,6 +83,18 @@ class SurfaceFile : public GiftiDataArrayFile {
       // set the type of topology
       void setTopologyType(const QString& t);
       
+      // get the coordinate metadata (NULL If invalid) const method
+      const GiftiMetaData* getCoordinateMetaData() const;
+      
+      // get the topology metadata (NULL If invalid) const method
+      const GiftiMetaData* getTopologyMetaData() const;
+      
+      // get the coordinate metadata (NULL If invalid)
+      GiftiMetaData* getCoordinateMetaData();
+      
+      // get the topology metadata (NULL If invalid)
+      GiftiMetaData* getTopologyMetaData();
+      
    protected:
       // the copy helper used by copy constructor and assignement operator
       void copyHelperSurface(const SurfaceFile& sf);

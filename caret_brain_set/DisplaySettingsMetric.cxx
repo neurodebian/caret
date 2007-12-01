@@ -482,8 +482,7 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
       
       BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
       BrainModelVolumeVoxelColoring* bvvc = brainSet->getVoxelColoring();
-      if ((bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::UNDERLAY_METRIC,
-                                    BrainModelSurfaceNodeColoring::OVERLAY_METRIC) == false) &&
+      if ((bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_METRIC) == false) &&
           (bvvc->isUnderlayOrOverlay(BrainModelVolumeVoxelColoring::UNDERLAY_OVERLAY_FUNCTIONAL) == false)) {
          return;
       }

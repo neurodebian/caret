@@ -30,6 +30,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -41,7 +42,6 @@
 #include "GuiFilesModified.h"
 #include "GuiInterpolateSurfacesDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiTopologyFileComboBox.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
@@ -283,7 +283,7 @@ GuiInterpolateSurfacesDialog::slotApplyButton()
    //
    TopologyFile* topologyFile = topologyComboBox->getSelectedTopologyFile();
    if (topologyFile == NULL) {
-      GuiMessageBox::critical(this, "Error", "You must have a topology file.", "OK");
+      QMessageBox::critical(this, "Error", "You must have a topology file.");
       return;
    }
    
@@ -312,7 +312,7 @@ GuiInterpolateSurfacesDialog::slotApplyButton()
       }
       surfaces.clear();
 
-      GuiMessageBox::critical(this, "Error", "You must select at least two surfaces.", "OK");
+      QMessageBox::critical(this, "Error", "You must select at least two surfaces.");
       
       return;
    }

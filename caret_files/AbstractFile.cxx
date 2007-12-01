@@ -89,6 +89,7 @@
 #include "ImageFile.h"
 #include "LatLonFile.h"
 #include "MetricFile.h"
+#include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
 #include "PaletteFile.h"
 #include "ParamsFile.h"
@@ -131,6 +132,16 @@ AbstractFile::AbstractFile(const QString& descriptiveNameIn,
                            const FILE_IO supportsOtherFormat,
                            const FILE_IO supportsCsvfFormat)
 {
+   if (preferredWriteType.empty()) {
+      std::vector<AbstractFile::FILE_FORMAT> fileFormats;
+      std::vector<QString> fileFormatNames;
+      AbstractFile::getFileFormatTypesAndNames(fileFormats, fileFormatNames);
+      preferredWriteType.resize(fileFormats.size());
+      std::fill(preferredWriteType.begin(),
+                preferredWriteType.end(),
+                AbstractFile::FILE_FORMAT_BINARY);
+   }
+   
    writingQFile = NULL;
    
    //
@@ -159,49 +170,19 @@ AbstractFile::AbstractFile(const QString& descriptiveNameIn,
 
    enableAppendFileComment = true;
    
+   setXmlVersionReadWithSaxParser(false);
    readMetaDataOnlyFlag = false;
 
    //
    // Set write type and possibly override with the preferred write type
    //
+   // NOTE: This code is also in the GiftiDataArrayFile constructor
+   // since it may change the supported write types
    //fileWriteType = fileReadType;
-   if (preferredWriteType != fileWriteType) {
-      switch (preferredWriteType) {
-         case FILE_FORMAT_ASCII:
-            if (getCanWrite(FILE_FORMAT_ASCII)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_BINARY:
-            if (getCanWrite(FILE_FORMAT_BINARY)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_XML:
-            if (getCanWrite(FILE_FORMAT_XML)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_XML_BASE64:
-            if (getCanWrite(FILE_FORMAT_XML_BASE64)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_XML_GZIP_BASE64:
-            if (getCanWrite(FILE_FORMAT_XML_GZIP_BASE64)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_OTHER:
-            if (getCanWrite(FILE_FORMAT_OTHER)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-            if (getCanWrite(FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
+   for (unsigned int i = 0; i < preferredWriteType.size(); i++) {
+      if (getCanWrite(preferredWriteType[i])) {
+         fileWriteType = preferredWriteType[i];
+         break;
       }
    }
 }
@@ -245,7 +226,7 @@ AbstractFile::copyHelperAbstractFile(const AbstractFile& af)
    defaultFileName = af.defaultFileName;
    defaultExtension = af.defaultExtension;
    fileReadType        = af.fileReadType;
-   fileWriteType       = af.fileWriteType;
+   setFileWriteType(af.fileWriteType);
    fileSupportAscii  = af.fileSupportAscii;
    fileSupportBinary = af.fileSupportBinary;
    fileSupportXML    = af.fileSupportXML;
@@ -256,6 +237,7 @@ AbstractFile::copyHelperAbstractFile(const AbstractFile& af)
    enableAppendFileComment = af.enableAppendFileComment;
    readMetaDataOnlyFlag = af.readMetaDataOnlyFlag;
    rootXmlElementTagName = af.rootXmlElementTagName;
+   xmlVersionReadWithSaxParserFlag = af.xmlVersionReadWithSaxParserFlag;
 }
       
 /**
@@ -392,6 +374,8 @@ AbstractFile::getFileNameNoPath(const QString& description) const
 QString 
 AbstractFile::getFileName(const QString& description) const 
 { 
+   const bool useDateInFileName = false;
+   
    if (filename.isEmpty()) {
       if (defaultFileNamePrefix.isEmpty() == false) {
          filename.append(defaultFileNamePrefix);
@@ -408,9 +392,10 @@ AbstractFile::getFileName(const QString& description) const
          else {
             str << description.toAscii().constData();
          }
-         str << "."
-             << QDateTime::currentDateTime().toString("yyyy-MM-dd").toAscii().constData();
-         
+         if (useDateInFileName) {
+            str << "."
+                << QDateTime::currentDateTime().toString("yyyy-MM-dd").toAscii().constData();
+         }   
          if (defaultFileNameNumberOfNodes > 0) {
             bool showNumNodes = false;
 #ifdef CARET_FLAG
@@ -481,15 +466,52 @@ AbstractFile::getFileNamePath() const
 }
 
 /**
+ * get the study metadata link for this file.
+ */
+StudyMetaDataLinkSet 
+AbstractFile::getStudyMetaDataLinkSet() const
+{
+   StudyMetaDataLinkSet smdls;
+   const QString textLink = getHeaderTag(headerTagStudyMetaDataLinkSet);
+   if (textLink.isEmpty() == false) {
+      smdls.setLinkSetFromCodedText(textLink);
+   }
+   return smdls;
+}
+
+/**
+ * set the study metadata link for this file.
+ */
+void 
+AbstractFile::setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls)
+{
+   setHeaderTag(headerTagStudyMetaDataLinkSet,
+                smdls.getLinkSetAsCodedText());
+}
+      
+/**
  * Get a tag from the header.
  */
 QString
 AbstractFile::getHeaderTag(const QString& name) const
 {
+   const QString nameLower(name.toLower());
+   
+   for (AbstractFileHeaderContainer::const_iterator iter = header.begin();
+        iter != header.end();
+        iter++) {
+      if (nameLower == iter->first.toLower()) {
+         return iter->second;
+         break;
+      }
+   }
+
+/*
    const std::map<QString, QString>::const_iterator iter = header.find(name);
    if (iter != header.end()) {
       return iter->second;
    }
+*/
    return "";
 }
 
@@ -497,16 +519,34 @@ AbstractFile::getHeaderTag(const QString& name) const
  * Set a tag in the header.
  */
 void
-AbstractFile::setHeaderTag(const QString& nameIn, const QString& value)
+AbstractFile::setHeaderTag(const QString& name, const QString& value)
 {
+   const QString nameLower(name.toLower());
+   
    //
    // ignore "version_id"
    //
-   if (nameIn == headerTagVersionID) {
+   if (nameLower == headerTagVersionID) {
       return;
    }
    
-   const QString name(StringUtilities::makeLowerCase(nameIn));
+   //
+   // Since case may vary, remove matching item
+   //
+   for (AbstractFileHeaderContainer::iterator iter = header.begin();
+        iter != header.end();
+        iter++) {
+      const QString tagName(iter->first);
+      const QString tagNameLower(tagName.toLower());
+      if (nameLower == tagNameLower) {
+         header.erase(iter);
+         break;
+      }
+   }
+   
+   //
+   // Add to header
+   //
    header[name] = value;
    setModified();
 }
@@ -683,6 +723,115 @@ AbstractFile::getCanWrite(const FILE_FORMAT ff) const
    return b;
 }
       
+/**
+ * convert a format type to its name.
+ */
+QString 
+AbstractFile::convertFormatTypeToName(const FILE_FORMAT formatIn)
+{
+   QString s;
+   
+   switch (formatIn) {
+      case FILE_FORMAT_ASCII:
+         s = getHeaderTagEncodingValueAscii();
+         break;
+      case FILE_FORMAT_BINARY:
+         s = getHeaderTagEncodingValueBinary();
+         break;
+      case FILE_FORMAT_XML:
+         s = getHeaderTagEncodingValueXML();
+         break;
+      case FILE_FORMAT_XML_BASE64:
+         s = getHeaderTagEncodingValueXMLBase64();
+         break;
+      case FILE_FORMAT_XML_GZIP_BASE64:
+         s = getHeaderTagEncodingValueXMLGZipBase64();
+         break;
+      case FILE_FORMAT_OTHER:
+         s = getHeaderTagEncodingValueOther();
+         break;
+      case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
+         s = getHeaderTagEncodingValueCommaSeparatedValueFile();
+         break;
+   }
+   
+   return s;
+}
+      
+/**
+ * convert a file format name to its type.
+ */
+AbstractFile::FILE_FORMAT 
+AbstractFile::convertFormatNameToType(const QString& name,
+                                      bool* validNameOut)
+{
+   if (validNameOut != NULL) {
+      *validNameOut = true;
+   }
+   
+   FILE_FORMAT format = FILE_FORMAT_ASCII;
+   if (name == getHeaderTagEncodingValueAscii()) {
+      format = FILE_FORMAT_ASCII;
+   }
+   else if (name == getHeaderTagEncodingValueBinary()) {
+      format = FILE_FORMAT_BINARY;
+   }
+   else if (name == getHeaderTagEncodingValueXML()) {
+      format = FILE_FORMAT_XML;
+   }
+   else if (name == getHeaderTagEncodingValueXMLBase64()) {
+      format = FILE_FORMAT_XML_BASE64;
+   }
+   else if (name == getHeaderTagEncodingValueXMLGZipBase64()) {
+      format = FILE_FORMAT_XML_GZIP_BASE64;
+   }
+   else if (name == getHeaderTagEncodingValueOther()) {
+      format = FILE_FORMAT_OTHER;
+   }
+   else if (name == getHeaderTagEncodingValueCommaSeparatedValueFile()) {
+      format = FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE;
+   }
+   else {
+      if (validNameOut != NULL) {
+         *validNameOut = false;
+      }
+   }   
+   
+   return format;
+}
+
+/**
+ * get file format types and names.
+ */
+void 
+AbstractFile::getFileFormatTypesAndNames(std::vector<FILE_FORMAT>& typesOut,
+                                         std::vector<QString>& namesOut)
+{
+   typesOut.clear();
+   namesOut.clear();
+   
+   typesOut.push_back(FILE_FORMAT_ASCII);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_ASCII));
+   
+   typesOut.push_back(FILE_FORMAT_BINARY);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_BINARY));
+   
+   typesOut.push_back(FILE_FORMAT_XML);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_XML));
+   
+   typesOut.push_back(FILE_FORMAT_XML_BASE64);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_XML_BASE64));
+   
+   typesOut.push_back(FILE_FORMAT_XML_GZIP_BASE64);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_XML_GZIP_BASE64));
+   
+   typesOut.push_back(FILE_FORMAT_OTHER);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_OTHER));
+   
+   typesOut.push_back(FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE));
+}
+                                             
 /**
  * Set the file's title.
  */
@@ -929,7 +1078,8 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    // Gifti Node data files do not use DOM parser
    //
    if ((xmlFileFlag) && 
-       (giftiDataArrayFileFlag == false)) {
+       (giftiDataArrayFileFlag == false) &&
+       (getXmlVersionReadWithSaxParser() == false)) {
       //
       // Parse the file if it is an XML file
       //
@@ -969,13 +1119,16 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    if (giftiDataArrayFileFlag && xmlFileFlag) {
       fileReadType = FILE_FORMAT_XML;
    }
+   else if (getXmlVersionReadWithSaxParser() && xmlFileFlag) {
+      fileReadType = FILE_FORMAT_XML;
+   }
    else if (fileHasHeader) {
       if (xmlFileFlag) {
          readHeaderXML(rootElement);
-         setHeaderTag(headerTagEncoding, headerTagEncodingValueXML);
+         setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueXML());
       }
       else if (csvFileFlag) {
-         setHeaderTag(headerTagEncoding, headerTagEncodingValueCommaSeparatedValueFile);
+         setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueCommaSeparatedValueFile());
       }
       else {
          //std::cout << "File position/size/end/stream end (before header): " 
@@ -992,7 +1145,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
       //
       const QString encoding = 
                StringUtilities::makeUpperCase(getHeaderTag(headerTagEncoding));
-      if (encoding == headerTagEncodingValueAscii) {
+      if (encoding == getHeaderTagEncodingValueAscii()) {
          if (getCanRead(FILE_FORMAT_ASCII) == false) {
             throw FileException(getFileName(), 
                    "Ascii format file not supported for this type of file.\n"
@@ -1000,7 +1153,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
          }
          fileReadType = FILE_FORMAT_ASCII;
       }
-      else if (encoding == headerTagEncodingValueBinary) {
+      else if (encoding == getHeaderTagEncodingValueBinary()) {
          if (getCanRead(FILE_FORMAT_BINARY) == false) {
             throw FileException(getFileName(), 
                    "Binary format file not supported for this type of file.\n"
@@ -1022,7 +1175,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
                 "format (caret_file_convert -text *).");
 */
       }
-      else if (encoding == headerTagEncodingValueXML) {
+      else if (encoding == getHeaderTagEncodingValueXML()) {
          if (getCanRead(FILE_FORMAT_XML) == false) {
             throw FileException(getFileName(), 
                    "XML format file not supported for this type of file.\n"
@@ -1030,7 +1183,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
          }
          fileReadType = FILE_FORMAT_XML;
       }
-      else if (encoding == headerTagEncodingValueCommaSeparatedValueFile) {
+      else if (encoding == getHeaderTagEncodingValueCommaSeparatedValueFile()) {
          if (getCanRead(FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE) == false) {
             throw FileException(getFileName(), 
                    "Comma Separated Value format file not supported for this type of file.\n"
@@ -1038,7 +1191,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
          }
          fileReadType = FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE;
       }
-      else if (encoding == headerTagEncodingValueOther) {
+      else if (encoding == getHeaderTagEncodingValueOther()) {
          if (getCanRead(FILE_FORMAT_OTHER) == false) {
             throw FileException(getFileName(), 
                    "Other format file not supported for this type of file.\n"
@@ -1058,45 +1211,12 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    // Set write type and possibly override with the preferred write type
    //
    if (getCanWrite(fileReadType)) {
-      fileWriteType = fileReadType;
+      setFileWriteType(fileReadType);
    }
-   if (preferredWriteType != fileWriteType) {
-      switch (preferredWriteType) {
-         case FILE_FORMAT_ASCII:
-            if (getCanWrite(FILE_FORMAT_ASCII)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_BINARY:
-            if (getCanWrite(FILE_FORMAT_BINARY)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_XML:
-            if (getCanWrite(FILE_FORMAT_XML)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_XML_BASE64:
-            if (getCanWrite(FILE_FORMAT_XML_BASE64)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_XML_GZIP_BASE64:
-            if (getCanWrite(FILE_FORMAT_XML_GZIP_BASE64)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_OTHER:
-            if (getCanWrite(FILE_FORMAT_OTHER)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
-         case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-            if (getCanWrite(FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE)) {
-               fileWriteType = preferredWriteType;
-            }
-            break;
+   for (unsigned int i = 0; i < preferredWriteType.size(); i++) {
+      if (getCanWrite(preferredWriteType[i])) {
+         fileWriteType = preferredWriteType[i];
+         break;
       }
    }
 
@@ -2135,25 +2255,25 @@ AbstractFile::writeFileContents(QTextStream& stream, QDataStream& dataStream) th
       setHeaderTag(headerTagDate, QDateTime::currentDateTime().toString(Qt::TextDate));
       switch (fileWriteType) {
          case FILE_FORMAT_ASCII:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueAscii);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueAscii());
             break;
          case FILE_FORMAT_BINARY:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueBinary);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueBinary());
             break;
          case FILE_FORMAT_XML:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueXML);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueXML());
             break;
          case FILE_FORMAT_XML_BASE64:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueXML);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueXMLBase64());
             break;
          case FILE_FORMAT_XML_GZIP_BASE64:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueXML);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueXMLGZipBase64());
             break;
          case FILE_FORMAT_OTHER:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueOther);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueOther());
             break;
          case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-            setHeaderTag(headerTagEncoding, headerTagEncodingValueCommaSeparatedValueFile);
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueCommaSeparatedValueFile());
             break;
       }
       
@@ -2453,6 +2573,9 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    else if (ext == SpecFile::getMetricFileExtension()) {
       af = new MetricFile;
    }
+   else if (ext == SpecFile::getRegionOfInterestFileExtension()) {
+      af = new NodeRegionOfInterestFile;
+   }
    else if (ext == SpecFile::getPaintFileExtension()) {
       af = new PaintFile;
    }
@@ -2694,6 +2817,9 @@ AbstractFile::getAllFileTypeNamesAndExtensions(std::vector<QString>& typeNames,
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
    ext.append(SpecFile::getTransformationMatrixFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getRegionOfInterestFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
    ext.append(SpecFile::getPaintFileExtension());

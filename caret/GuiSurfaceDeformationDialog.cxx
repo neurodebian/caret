@@ -31,12 +31,13 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
-#include <QFileDialog>
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
@@ -52,7 +53,6 @@
 #include "GuiBorderAttributesDialog.h"
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiSurfaceDeformationDialog.h"
 #include "DeformationMapFile.h"
 #include "QtRadioButtonSelectionDialog.h"
@@ -513,7 +513,7 @@ void
 GuiSurfaceDeformationDialog::slotBordersEditIndividual()
 {
    if (indivDeformationFiles.borderFileSelected < 0) {
-      GuiMessageBox::critical(this, "ERROR", "There are no individual border files.", "OK");
+      QMessageBox::critical(this, "ERROR", "There are no individual border files.");
       return;
    }
    editBorderFile(indivSpecFileName,
@@ -533,11 +533,11 @@ GuiSurfaceDeformationDialog::editBorderFile(const QString& specFileName,
    // Check inputs
    //
    if (specFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Invalid spec file name", "OK");
+      QMessageBox::critical(this, "ERROR", "Invalid spec file name");
       return;
    }
    if (borderFileName.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Invalid border file name", "OK");
+      QMessageBox::critical(this, "ERROR", "Invalid border file name");
       return;
    }
    
@@ -565,7 +565,7 @@ GuiSurfaceDeformationDialog::editBorderFile(const QString& specFileName,
       case DeformationDataFiles::DATA_FILE_COORD_FLAT:
       case DeformationDataFiles::DATA_FILE_COORD_FLAT_LOBAR:
       case DeformationDataFiles::DATA_FILE_COORD_SPHERICAL:
-         GuiMessageBox::critical(this, "ERROR", "Border file type is invalid", "OK");
+         QMessageBox::critical(this, "ERROR", "Border file type is invalid");
          return;
          break;
    }
@@ -602,7 +602,7 @@ void
 GuiSurfaceDeformationDialog::slotBordersEditAtlas()
 {
    if (atlasDeformationFiles.borderFileSelected < 0) {
-      GuiMessageBox::critical(this, "ERROR", "There are no atlas border files.", "OK");
+      QMessageBox::critical(this, "ERROR", "There are no atlas border files.");
       return;
    }
    editBorderFile(atlasSpecFileName,
@@ -1349,7 +1349,7 @@ GuiSurfaceDeformationDialog::readSpecFile(const SELECTION_TYPE st)
          sf.readFile(sname);
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "Error Reading Spec", e.whatQString(), "OK");
+         QMessageBox::critical(this, "Error Reading Spec", e.whatQString());
          QDir::setCurrent(currentDirectory);
          return;
       }
@@ -1566,7 +1566,7 @@ GuiSurfaceDeformationDialog::done(int r)
       //
       if (errorMessages.size() > 0) {
          const QString msg = StringUtilities::combine(errorMessages, "\n");
-         GuiMessageBox::critical(this, "Files Missing", msg, "OK");
+         QMessageBox::critical(this, "Files Missing", msg);
          return;
       }
       
@@ -1606,7 +1606,8 @@ GuiSurfaceDeformationDialog::done(int r)
          }
       }
       catch (BrainModelAlgorithmException& e) {
-         GuiMessageBox::critical(this, "Deformation Error", e.whatQString(), "OK");
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "Deformation Error", e.whatQString());
          return;
       }
 
@@ -1628,8 +1629,9 @@ GuiSurfaceDeformationDialog::done(int r)
       }
       //
       // Let the user know that the deformation has completed
-      //      
-      GuiMessageBox::information(this, "Deformation Completed", msg, "OK");
+      //   
+      QApplication::restoreOverrideCursor();   
+      QMessageBox::information(this, "Deformation Completed", msg);
                                  
       //
       // Free memory
@@ -1788,7 +1790,7 @@ GuiSurfaceDeformationDialog::slotStandardParametersPushButton()
    if (files.empty()) {
       QString msg("No standard deformation map files were found in the directory\n");
       msg.append(templateDirectory);
-      GuiMessageBox::critical(this, "Files Not Found", msg, "OK");
+      QMessageBox::critical(this, "Files Not Found", msg);
       return;
    }
    
@@ -1829,7 +1831,7 @@ GuiSurfaceDeformationDialog::slotStandardParametersPushButton()
          loadParametersIntoDialog();
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "Open Error", e.whatQString(), "OK");
+         QMessageBox::critical(this, "Open Error", e.whatQString());
          return;
       }
       
@@ -1845,12 +1847,12 @@ GuiSurfaceDeformationDialog::loadDeformationMapFilePushButton()
    //
    // Create a spec file dialog to select the spec file.
    //
-   QFileDialog openDefMap(this);
+   WuQFileDialog openDefMap(this);
    openDefMap.setModal(true);
    openDefMap.setWindowTitle("Choose Deformation Map File");
-   openDefMap.setFileMode(QFileDialog::ExistingFile);
+   openDefMap.setFileMode(WuQFileDialog::ExistingFile);
    openDefMap.setDirectory(QDir::currentPath());
-   openDefMap.setAcceptMode(QFileDialog::AcceptOpen);
+   openDefMap.setAcceptMode(WuQFileDialog::AcceptOpen);
    QString filterString("DeformationMapFile (*");
    filterString.append(SpecFile::getDeformationMapFileExtension());
    filterString.append(")");
@@ -1864,7 +1866,7 @@ GuiSurfaceDeformationDialog::loadDeformationMapFilePushButton()
          }
       }
       catch (FileException& e) {
-         GuiMessageBox::critical(this, "Open Error", e.whatQString(), "OK");
+         QMessageBox::critical(this, "Open Error", e.whatQString());
          return;
       }
    }

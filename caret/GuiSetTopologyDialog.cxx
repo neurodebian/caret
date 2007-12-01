@@ -28,6 +28,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 
 #include "BrainSet.h"
@@ -36,7 +37,6 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "GuiSetTopologyDialog.h"
 #include "GuiTopologyFileComboBox.h"
 #include "global_variables.h"
@@ -151,7 +151,7 @@ GuiSetTopologyDialog::slotTopologySelection()
                 << ".\n  Topo file has tiles with node numbers exceeding \n"
                 << "the number of coordinates in the coordinate file.";
             bms->setTopologyFile(oldTopologyFile);
-            GuiMessageBox::critical(this, "ERROR", str.str().c_str(), "OK");
+            QMessageBox::critical(this, "ERROR", str.str().c_str());
             return;
          }
          GuiFilesModified fm;

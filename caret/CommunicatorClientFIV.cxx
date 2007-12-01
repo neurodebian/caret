@@ -28,12 +28,13 @@
 #include <sstream>
 #include <vector>
 
+#include <QMessageBox>
+
 #include "CommunicatorClientFIV.h"
 #include "DebugControl.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiIdentifyDialog.h"
 #include "GuiMainWindow.h"
-#include "GuiMessageBox.h"
 #include "StringUtilities.h"
 #include "global_variables.h"
 
@@ -124,11 +125,10 @@ CommunicatorClientFIV::processVoxelHighlightFromFIV(const int i, const int j, co
    
    BrainModelSurface* bms = theMainWindow->getBrainSet()->getActiveFiducialSurface();
    if (bms == NULL) {
-      GuiMessageBox::critical(theMainWindow, "FIV Comm Error", 
+      QMessageBox::critical(theMainWindow, "FIV Comm Error", 
                             "There is no Fiducial Coordinate file which is needed for\n"
                             "successful communication with FIV.  The coordinate file\n"
-                            "must be in Talairach Space.",
-                            "OK");
+                            "must be in Talairach Space.");
       return;
    }
    
@@ -150,11 +150,10 @@ CommunicatorClientFIV::sendNodeHighlightToFIV(const int nodeNumber)
    if (socket->state() == QTcpSocket::ConnectedState) {
       BrainModelSurface* bms = theMainWindow->getBrainSet()->getActiveFiducialSurface();
       if (bms == NULL) {
-         GuiMessageBox::critical(theMainWindow, "FIV Comm Error", 
+         QMessageBox::critical(theMainWindow, "FIV Comm Error", 
                               "There is no Fiducial Coordinate file which is needed for\n"
                               "successful communication with FIV.  The coordinate file\n"
-                              "must be in Talairach Space.",
-                              "OK");
+                              "must be in Talairach Space.");
          return;
       }
       

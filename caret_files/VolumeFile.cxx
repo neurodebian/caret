@@ -225,7 +225,7 @@ VolumeFile::copyVolumeData(const VolumeFile& vf,
    //
    volumeType = vf.volumeType;
    fileReadType = vf.fileReadType;
-   fileWriteType = vf.fileWriteType;
+   setFileWriteType(vf.fileWriteType);
    dataFileName = "";
    voxelDataType = vf.voxelDataType;
    niftiReadDataOffset = vf.niftiReadDataOffset;
@@ -278,10 +278,15 @@ VolumeFile::copyVolumeData(const VolumeFile& vf,
    
    descriptiveLabel = vf.descriptiveLabel;
    
-   niftiIntention = vf.niftiIntention;
+   niftiIntentCodeAndParamString = vf.niftiIntentCodeAndParamString;
+   niftiIntentCode = vf.niftiIntentCode;
+   niftiIntentName = vf.niftiIntentName;
+   niftiIntentParameter1 = vf.niftiIntentParameter1;
+   niftiIntentParameter2 = vf.niftiIntentParameter2;
+   niftiIntentParameter3 = vf.niftiIntentParameter3;
    niftiTR = vf.niftiTR;
    
-   studyMetaDataLink = vf.studyMetaDataLink;
+   //studyMetaDataLinkSet = vf.studyMetaDataLinkSet;
 
    allocateVoxelColoring();
    
@@ -609,11 +614,13 @@ VolumeFile::getAllVoxelDataTypesAndNames(std::vector<VOXEL_DATA_TYPE>& typesOut,
    typesOut.push_back(VOXEL_DATA_TYPE_INT_UNSIGNED);
    namesOut.push_back(voxelDataTypeHelper("Unsigned Int", sizeof(unsigned int)));
 
-   typesOut.push_back(VOXEL_DATA_TYPE_LONG);
-   namesOut.push_back(voxelDataTypeHelper("Long", sizeof(long)));
+   if (sizeof(long long) == 8) {
+      typesOut.push_back(VOXEL_DATA_TYPE_LONG);
+      namesOut.push_back(voxelDataTypeHelper("Long", sizeof(long long)));
 
-   typesOut.push_back(VOXEL_DATA_TYPE_LONG_UNSIGNED);
-   namesOut.push_back(voxelDataTypeHelper("Unsigned Long", sizeof(unsigned long)));
+      typesOut.push_back(VOXEL_DATA_TYPE_LONG_UNSIGNED);
+      namesOut.push_back(voxelDataTypeHelper("Unsigned Long", sizeof(unsigned long long)));
+   }
 
    typesOut.push_back(VOXEL_DATA_TYPE_FLOAT);
    namesOut.push_back(voxelDataTypeHelper("Float", sizeof(float)));
@@ -713,12 +720,12 @@ VolumeFile::getDataTypeMinMaxValues(const VOXEL_DATA_TYPE vdt,
          maxValueForDataType = std::numeric_limits<unsigned int>::max();
          break;
       case VOXEL_DATA_TYPE_LONG:
-         minValueForDataType = std::numeric_limits<long>::min();
-         maxValueForDataType = std::numeric_limits<long>::max();
+         minValueForDataType = std::numeric_limits<long long>::min();
+         maxValueForDataType = std::numeric_limits<long long>::max();
          break;
       case VOXEL_DATA_TYPE_LONG_UNSIGNED:
-         minValueForDataType = std::numeric_limits<unsigned long>::min();
-         maxValueForDataType = std::numeric_limits<unsigned long>::max();
+         minValueForDataType = std::numeric_limits<unsigned long long>::min();
+         maxValueForDataType = std::numeric_limits<unsigned long long>::max();
          break;
       case VOXEL_DATA_TYPE_FLOAT:
          minValueForDataType = -std::numeric_limits<float>::max();
@@ -1172,12 +1179,17 @@ VolumeFile::clear()
    minMaxTwoToNinetyEightPercentVoxelValuesValid = false;
    
    descriptiveLabel = "";
-   niftiIntention = "";
+   niftiIntentCodeAndParamString = "";
+   niftiIntentName = "";
+   niftiIntentCode = 0;
+   niftiIntentParameter1 = 0.0;
+   niftiIntentParameter2 = 0.0;
+   niftiIntentParameter3 = 0.0;
    niftiTR = 0.0;
    
    setVoxelDataType(VOXEL_DATA_TYPE_FLOAT);
    
-   studyMetaDataLink.clear();
+   //studyMetaDataLinkSet.clear();
 }
 
 /**
@@ -1318,6 +1330,46 @@ VolumeFile::getVoxelToSurfaceDistances()
       }
    }
    return voxelToSurfaceDistances;
+}
+
+/**
+ * get axis from string.
+ */
+VolumeFile::VOLUME_AXIS 
+VolumeFile::getAxisFromString(const QString& sIn)
+{
+   const QString& s = sIn.toUpper();
+   
+   if (s == "X") {
+      return VOLUME_AXIS_X;
+   }
+   else if (s == "Y") {
+      return VOLUME_AXIS_Y;
+   }
+   else if (s == "Z") {
+      return VOLUME_AXIS_Z;
+   }
+   else if (s == "ALL") {
+      return VOLUME_AXIS_ALL;
+   }
+   else if (s == "OBLIQUE") {
+      return VOLUME_AXIS_OBLIQUE;
+   }
+   else if (s == "X-OBLIQUE") {
+      return VOLUME_AXIS_OBLIQUE_X;
+   }
+   else if (s == "Y-OBLIQUE") {
+      return VOLUME_AXIS_OBLIQUE_Y;
+   }
+   else if (s == "Z-OBLIQUE") {
+      return VOLUME_AXIS_OBLIQUE_Z;
+   }
+   else if (s == "ALL-OBLIQUE") {
+      return VOLUME_AXIS_OBLIQUE_ALL;
+   }
+   else {
+      return VOLUME_AXIS_UNKNOWN;
+   }
 }
 
 /**
@@ -3227,7 +3279,7 @@ VolumeFile::resize(const int cropping[6],
 }
 
 /**
- * pad segmentation volume (first/last slice along axis is extended).
+ * pad segmentation volume (second/second to last slice along axis is extended).
  * In output volume first and last slices are all zeros.
  */
 void 
@@ -3256,9 +3308,9 @@ VolumeFile::padSegmentation(const int padding[6])
    //
    if (padding[0] > 0) {
       origVolume.fillSegmentationCavitiesInSingleSlice(VOLUME_AXIS_X, padding[0]);
-      for (int i = 1; i < padding[0]; i++) {
+      for (int i = 1; i <= padding[0]; i++) {
          copySlice(&origVolume,
-                   padding[0],
+                   padding[0] + 1,
                    VOLUME_AXIS_X,
                    i);
       }
@@ -3270,9 +3322,9 @@ VolumeFile::padSegmentation(const int padding[6])
    if (padding[1] > 0) {
       const int iStart = dimensions[0] - padding[1];
       origVolume.fillSegmentationCavitiesInSingleSlice(VOLUME_AXIS_X, iStart - 1);
-      for (int i = iStart; i < (dimensions[0] - 1); i++) {
+      for (int i = iStart - 1; i < (dimensions[0] - 1); i++) {
          copySlice(&origVolume,
-                   iStart - 1,
+                   iStart - 2,
                    VOLUME_AXIS_X,
                    i);
       }
@@ -3283,9 +3335,9 @@ VolumeFile::padSegmentation(const int padding[6])
    //
    if (padding[2] > 0) {
       origVolume.fillSegmentationCavitiesInSingleSlice(VOLUME_AXIS_Y, padding[2]);
-      for (int j = 1; j < padding[2]; j++) {
+      for (int j = 1; j <= padding[2]; j++) {
          copySlice(&origVolume,
-                   padding[2],
+                   padding[2] + 1,
                    VOLUME_AXIS_Y,
                    j);
       }
@@ -3297,9 +3349,9 @@ VolumeFile::padSegmentation(const int padding[6])
    if (padding[3] > 0) {
       const int jStart = dimensions[1] - padding[3];
       origVolume.fillSegmentationCavitiesInSingleSlice(VOLUME_AXIS_Y, jStart - 1);
-      for (int j = jStart; j < (dimensions[1] - 1); j++) {
+      for (int j = jStart - 1; j < (dimensions[1] - 1); j++) {
          copySlice(&origVolume,
-                   jStart - 1,
+                   jStart - 2,
                    VOLUME_AXIS_Y,
                    j);
       }
@@ -3326,9 +3378,9 @@ VolumeFile::padSegmentation(const int padding[6])
    //
    if (padding[4] > 0) {
       origVolume.fillSegmentationCavitiesInSingleSlice(VOLUME_AXIS_Z, padding[4]);
-      for (int k = 1; k < padding[4]; k++) {
+      for (int k = 1; k <= padding[4]; k++) {
          copySlice(&origVolume,
-                   padding[4],
+                   padding[4] + 1,
                    VOLUME_AXIS_Z,
                    k);
       }
@@ -3340,13 +3392,13 @@ VolumeFile::padSegmentation(const int padding[6])
    if (padding[5] > 0) {
       const int kStart = dimensions[2] - padding[5];
       origVolume.fillSegmentationCavitiesInSingleSlice(VOLUME_AXIS_Z, kStart - 1);
-      for (int k = kStart; k < (dimensions[2] - 1); k++) {
+      for (int k = kStart - 1; k < (dimensions[2] - 1); k++) {
          copySlice(&origVolume,
-                   kStart - 1,
+                   kStart - 2,
                    VOLUME_AXIS_Z,
                    k);
       }
-   }
+   }   
 }      
 
 /**
@@ -5416,6 +5468,9 @@ VolumeFile::performUnaryOperation(const UNARY_OPERATION operation,
                         value = std::sqrt(value);
                      }
                      break;
+                  case UNARY_OPERATION_SUBTRACT_FROM_ONE:
+                     value = 1.0 - value;
+                     break;
                   case UNARY_OPERATION_LOG2:  // use scalar as base
                      value = MathUtilities::log(scalar, value);
                      break;
@@ -5577,6 +5632,17 @@ VolumeFile::performMathematicalOperation(const VOLUME_MATH_OPERATION operation,
                         break;
                      case VOLUME_MATH_OPERATION_AVERAGE:
                         result = (valueA + valueB) * 0.5;
+                        break;
+                     case VOLUME_MATH_EXCLUSIVE_OR:
+                        if ((valueA != 0.0) && (valueB == 0.0)) {
+                           result = valueA;
+                        }
+                        else if ((valueA == 0.0) && (valueB != 0.0)) {
+                           result = valueB;
+                        }
+                        else {
+                           result = 0.0;
+                        }
                         break;
                   }
                   
@@ -5832,11 +5898,11 @@ VolumeFile::readUnsignedIntData(gzFile dataFile, const bool byteSwapData) throw 
  * Read data of the specified type.
  */
 void 
-VolumeFile::readLongData(gzFile dataFile, const bool byteSwapData) throw (FileException)
+VolumeFile::readLongLongData(gzFile dataFile, const bool byteSwapData) throw (FileException)
 {
    const int numVoxels = getTotalNumberOfVoxels();
-   const int length = numVoxels * sizeof(long);
-   long* data = new long[length];
+   const int length = numVoxels * sizeof(long long);
+   long long* data = new long long[length];
    
    const int numRead = gzread(dataFile, (char*)data, (unsigned)length);
    if (numRead != length) {
@@ -5861,11 +5927,11 @@ VolumeFile::readLongData(gzFile dataFile, const bool byteSwapData) throw (FileEx
  * Read data of the specified type.
  */
 void 
-VolumeFile::readUnsignedLongData(gzFile dataFile, const bool byteSwapData) throw (FileException)
+VolumeFile::readUnsignedLongLongData(gzFile dataFile, const bool byteSwapData) throw (FileException)
 {
    const int numVoxels = getTotalNumberOfVoxels();
-   const int length = numVoxels * sizeof(unsigned long);
-   unsigned long* data = new unsigned long[length];
+   const int length = numVoxels * sizeof(unsigned long long);
+   unsigned long long* data = new unsigned long long[length];
    
    const int numRead = gzread(dataFile, (char*)data, (unsigned)length);
    if (numRead != length) {
@@ -6895,7 +6961,7 @@ void
 VolumeFile::smearAxis(const VOLUME_AXIS axis, 
                          const int mag, 
                          const int sign, 
-                         const int core)
+                         const int core) throw (FileException)
 {
 	const int fliphem = 1; // for 1582
 
@@ -6984,6 +7050,7 @@ VolumeFile::smearAxis(const VOLUME_AXIS axis,
          case VOLUME_AXIS_OBLIQUE_Z:
          case VOLUME_AXIS_OBLIQUE_ALL:
          case VOLUME_AXIS_UNKNOWN:
+            throw FileException("VOLUME SMEAR: AXIS must be X, Y, or Z");
             break;
       }
 	   for (int i = 0; i < ncol*nrow*nslices; i++) {
@@ -8315,6 +8382,7 @@ VolumeFile::createCerebralHullVolume(VolumeFile& cerebralHullOut) const
    //
    // Change file's name and description
    //
+   cerebralHullOut.setFileWriteType(getFileWriteType());
    cerebralHullOut.makeDefaultFileName("CerebralHull");
    cerebralHullOut.setDescriptiveLabel("CerebralHull");
    
@@ -9277,7 +9345,7 @@ VolumeFile::getVolumeFileTypesAndNames(std::vector<FILE_READ_WRITE_TYPE>& fileTy
    //
    // Cause compilation warning if types updated
    //
-   FILE_READ_WRITE_TYPE frwt;
+   FILE_READ_WRITE_TYPE frwt = FILE_READ_WRITE_TYPE_RAW;
    switch (frwt) {
       case FILE_READ_WRITE_TYPE_RAW:
          break;
@@ -9401,15 +9469,19 @@ VolumeFile::readFile(const QString& fileNameIn,
       }
    }
    
+   FILE_READ_WRITE_TYPE fileTypeToWrite = FILE_READ_WRITE_TYPE_NIFTI;
+   
    //
    // Note that SPM and Analyze are the same file type
    //
    if (StringUtilities::endsWith(fileNameIn, SpecFile::getAnalyzeVolumeFileExtension())
        && (niftiFlag == false)) {
       readFileSpm(fileNameIn, readSelection, volumesReadOut, spmRightIsOnLeft);
+      fileTypeToWrite = FILE_READ_WRITE_TYPE_SPM_OR_MEDX;
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getAfniVolumeFileExtension())) {
       readFileAfni(fileNameIn, readSelection, volumesReadOut);
+      fileTypeToWrite = FILE_READ_WRITE_TYPE_AFNI;
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getMincVolumeFileExtension())) {
       VolumeFile* vf = new VolumeFile;
@@ -9422,14 +9494,17 @@ VolumeFile::readFile(const QString& fileNameIn,
          vf = NULL;
          throw e;
       }
+      fileTypeToWrite = FILE_READ_WRITE_TYPE_NIFTI;
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getNiftiVolumeFileExtension()) ||
             StringUtilities::endsWith(fileNameIn, SpecFile::getNiftiGzipVolumeFileExtension()) ||
             niftiFlag) {
       readFileNifti(fileNameIn, readSelection, volumesReadOut);
+      fileTypeToWrite = FILE_READ_WRITE_TYPE_NIFTI;
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getWustlVolumeFileExtension())) {
       readFileWuNil(fileNameIn, readSelection, volumesReadOut);
+      fileTypeToWrite = FILE_READ_WRITE_TYPE_WUNIL;
    }
    else if (StringUtilities::endsWith(fileNameIn, ".vtk")) {
       VolumeFile* vf = new VolumeFile;
@@ -9442,6 +9517,7 @@ VolumeFile::readFile(const QString& fileNameIn,
          vf = NULL;
          throw e;
       }
+      fileTypeToWrite = FILE_READ_WRITE_TYPE_NIFTI;
    }
    else {
       throw FileException(fileNameIn, "File extension not recognized as a volume\n"
@@ -9456,6 +9532,7 @@ VolumeFile::readFile(const QString& fileNameIn,
             break;
       }
       volumesReadOut[i]->clearModified();
+      volumesReadOut[i]->setFileWriteType(fileTypeToWrite);
    }
 }                          
 
@@ -9894,15 +9971,15 @@ VolumeFile::readFileAfni(const QString& fileNameIn,
    //
    // Get the study meta data
    //
-   std::vector<StudyMetaDataLink> studyMetaDataLinks;
+   std::vector<StudyMetaDataLinkSet> studyMetaDataLinkSets;
    const AfniAttribute* studyMetaDataAttr = afniHeader->getAttribute(AfniAttribute::NAME_CARET_METADATA_LINK);
    if (studyMetaDataAttr != NULL) {
       std::vector<QString> md;
       StringUtilities::token(studyMetaDataAttr->getValue(), "~", md);
       for (unsigned int i = 0; i < md.size(); i++) {
-         StudyMetaDataLink smdl;
-         smdl.setLinkFromCodedText(md[i]);
-         studyMetaDataLinks.push_back(smdl);
+         StudyMetaDataLinkSet smdls;
+         smdls.setLinkSetFromCodedText(md[i]);
+         studyMetaDataLinkSets.push_back(smdls);
       }
    }
 
@@ -9956,8 +10033,8 @@ VolumeFile::readFileAfni(const QString& fileNameIn,
       vf->copyVolumeData(volumeRead, false);
       vf->filename = volumeRead.filename;
       vf->dataFileName = volumeRead.dataFileName;
-      if (studyMetaDataLinks.empty() == false) {
-         vf->setStudyMetaDataLink(studyMetaDataLinks[0]);
+      if (studyMetaDataLinkSets.empty() == false) {
+         vf->setStudyMetaDataLinkSet(studyMetaDataLinkSets[0]);
       }
       volumesReadOut.push_back(vf);
       return;
@@ -10031,8 +10108,8 @@ VolumeFile::readFileAfni(const QString& fileNameIn,
                                       dataFile);
             }
             
-            if (i < static_cast<int>(studyMetaDataLinks.size())) {
-               vf->setStudyMetaDataLink(studyMetaDataLinks[i]);
+            if (i < static_cast<int>(studyMetaDataLinkSets.size())) {
+               vf->setStudyMetaDataLinkSet(studyMetaDataLinkSets[i]);
             }
             
             //
@@ -10579,10 +10656,22 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
          volumeRead.voxelDataType = VOXEL_DATA_TYPE_INT_UNSIGNED;
          break;
       case NIFTI_TYPE_INT64:
-         volumeRead.voxelDataType = VOXEL_DATA_TYPE_LONG;
+         if (sizeof(long long) == 8) {
+            volumeRead.voxelDataType = VOXEL_DATA_TYPE_LONG;
+         }
+         else {
+            throw FileException("Volume contains 64-bit long long data type which "
+                                "this computer does not support.");
+         }
          break;
       case NIFTI_TYPE_UINT64:
-         volumeRead.voxelDataType = VOXEL_DATA_TYPE_LONG_UNSIGNED;
+         if (sizeof(unsigned long long) == 8) {
+            volumeRead.voxelDataType = VOXEL_DATA_TYPE_LONG_UNSIGNED;
+         }
+         else {
+            throw FileException("Volume contains 64-bit unsigned long long data type which "
+                                "this computer does not support.");
+         }
          break;
       case NIFTI_TYPE_FLOAT32:
          volumeRead.voxelDataType = VOXEL_DATA_TYPE_FLOAT;
@@ -10657,6 +10746,14 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       volumeRead.scaleSlope[i]  = hdr.scl_slope;
    }
    
+   TransformationMatrix qformTM;
+   bool qformTMValid = false;
+   ORIENTATION qformOrientation[3] = {
+      ORIENTATION_UNKNOWN,
+      ORIENTATION_UNKNOWN,
+      ORIENTATION_UNKNOWN
+   };
+   
    //
    // Check qform_code
    //
@@ -10672,6 +10769,7 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
                                              hdr.pixdim[1], hdr.pixdim[2], hdr.pixdim[3],
                                              qfac);
                                              
+/*
       float x[2], y[2], z[2];
       for (int i = 0; i < 2; i++) {
          const int j = i;
@@ -10686,17 +10784,53 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       volumeRead.spacing[0] = x[1] - x[0];
       volumeRead.spacing[1] = y[1] - y[0];
       volumeRead.spacing[2] = z[1] - z[0];
+*/
+
+      qformTMValid = true;
+      for (int i = 0; i < 4; i++) {
+         for (int j = 0; j < 4; j++) {
+            qformTM.setMatrixElement(i, j, m.m[i][j]);
+         }
+      }
+      for (int j = 0; j < 3; j++) {
+         float f = qformTM.getMatrixElement(j, 3);
+         f = -f;
+         qformTM.setMatrixElement(j, 3, f);
+      }
+      qformTM.transpose();
+
+      
+      //
+      // Force correct sign for spacing
+      //
+      for (int i = 0; i < 3; i++) {
+         if (volumeRead.origin[i] < 0.0) {
+            volumeRead.spacing[i] = std::fabs(volumeRead.spacing[i]);
+         }
+         else {
+            volumeRead.spacing[i] = -std::fabs(volumeRead.spacing[i]);
+         }
+      }
+      
+      //
+      // Set orientation
+      //
+      volumeRead.orientation[0] = ORIENTATION_LEFT_TO_RIGHT;
+      volumeRead.orientation[1] = ORIENTATION_POSTERIOR_TO_ANTERIOR;
+      volumeRead.orientation[2] = ORIENTATION_INFERIOR_TO_SUPERIOR;
       
       NiftiHelper::mat44ToCaretOrientation(m,
-                                           volumeRead.orientation[0],
-                                           volumeRead.orientation[1],
-                                           volumeRead.orientation[2]);
+                                           qformOrientation[0],
+                                           qformOrientation[1],
+                                           qformOrientation[2]);
    }
    
    //
    // Check sform_code and let it override qform_code
    //
    if (hdr.sform_code > 0) {
+      qformTMValid = false;
+      
       float x[2], y[2], z[2];
       for (int i = 0; i < 2; i++) {
          const int j = i;
@@ -10791,12 +10925,18 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    //
    // Storage for study meta data links
    //
-   std::vector<StudyMetaDataLink> studyMetaDataLinks;
+   std::vector<StudyMetaDataLinkSet> studyMetaDataLinkSets;
    
    //
    // Intention string and TR
    //
-   volumeRead.niftiIntention = NiftiHelper::getNiftiIntentionInformation(hdr);
+   NiftiHelper::getNiftiIntentionInformation(hdr,
+                                             volumeRead.niftiIntentCodeAndParamString,
+                                             volumeRead.niftiIntentName);
+   volumeRead.niftiIntentCode = hdr.intent_code;
+   volumeRead.niftiIntentParameter1 = hdr.intent_p1;
+   volumeRead.niftiIntentParameter2 = hdr.intent_p2;
+   volumeRead.niftiIntentParameter3 = hdr.intent_p3;
    volumeRead.niftiTR = hdr.slice_duration;
    
    //
@@ -10926,12 +11066,12 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
                   //
                   const AfniAttribute* mdAttr = volumeRead.afniHeader.getAttribute(AfniAttribute::NAME_CARET_METADATA_LINK);
                   if (mdAttr != NULL) {
-                     StudyMetaDataLink smdl;
+                     StudyMetaDataLinkSet smdls;
                      std::vector<QString> md;
                      StringUtilities::token(mdAttr->getValue(), "~", md);
                      for (unsigned int m = 0; m < md.size(); m++) {
-                        smdl.setLinkFromCodedText(md[m]);
-                        studyMetaDataLinks.push_back(smdl);
+                        smdls.setLinkSetFromCodedText(md[m]);
+                        studyMetaDataLinkSets.push_back(smdls);
                      }
                   }
 
@@ -11058,8 +11198,15 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
                                       dataFile);
             }
             
-            if (i < static_cast<int>(studyMetaDataLinks.size())) {
-               vf->setStudyMetaDataLink(studyMetaDataLinks[i]);
+            if (i < static_cast<int>(studyMetaDataLinkSets.size())) {
+               vf->setStudyMetaDataLinkSet(studyMetaDataLinkSets[i]);
+            }
+            
+            //
+            // Apply qform transformation
+            //
+            if (qformTMValid) {
+               vf->applyTransformationMatrix(qformTM);
             }
             
             //
@@ -11420,9 +11567,9 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
    //
    WuNilAttribute* metaAttr = volumeRead.wunilHeader.getAttribute(WuNilAttribute::NAME_CARET_METADATA);
    if (metaAttr != NULL) {
-      StudyMetaDataLink smdl;
-      smdl.setLinkFromCodedText(metaAttr->getValue().trimmed());
-      volumeRead.setStudyMetaDataLink(smdl);
+      StudyMetaDataLinkSet smdls;
+      smdls.setLinkSetFromCodedText(metaAttr->getValue().trimmed());
+      volumeRead.setStudyMetaDataLinkSet(smdls);
    }
    
    //
@@ -12487,7 +12634,7 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    // Set the study metadata
    //
    WuNilAttribute md(WuNilAttribute::NAME_CARET_METADATA,
-                     firstVolume->getStudyMetaDataLink().getLinkAsCodedText());
+                     firstVolume->getStudyMetaDataLinkSet().getLinkSetAsCodedText());
    wunilHeader.addAttribute(md);
    
    //
@@ -12661,10 +12808,10 @@ VolumeFile::readVolumeFileData(const bool byteSwapNeeded,
             readUnsignedIntData(dataFile, byteSwapNeeded);
             break;
          case VOXEL_DATA_TYPE_LONG:
-            readLongData(dataFile, byteSwapNeeded);
+            readLongLongData(dataFile, byteSwapNeeded);
             break;
          case VOXEL_DATA_TYPE_LONG_UNSIGNED:
-            readUnsignedLongData(dataFile, byteSwapNeeded);
+            readUnsignedLongLongData(dataFile, byteSwapNeeded);
             break;
          case VOXEL_DATA_TYPE_FLOAT:
             readFloatData(dataFile, byteSwapNeeded);
@@ -12975,36 +13122,36 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          break;
       case VOXEL_DATA_TYPE_LONG:
          {
-            long* data = new long[numVoxels];
+            long long* data = new long long[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<long>(voxels[i]);
+               data[i] = static_cast<long long>(voxels[i]);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
             }
             if (compressDataWithZlib) {
-               gzwrite(zipStream, (void*)data, numVoxels * sizeof(long));
+               gzwrite(zipStream, (void*)data, numVoxels * sizeof(long long));
             }
             else {
-               cppStream->write((const char*)data, numVoxels * sizeof(long));
+               cppStream->write((const char*)data, numVoxels * sizeof(long long));
             }
             delete[] data;
          }
          break;
       case VOXEL_DATA_TYPE_LONG_UNSIGNED:
          {
-            unsigned long* data = new unsigned long[numVoxels];
+            unsigned long long* data = new unsigned long long[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<unsigned long>(voxels[i]);
+               data[i] = static_cast<unsigned long long>(voxels[i]);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
             }
             if (compressDataWithZlib) {
-               gzwrite(zipStream, (void*)data, numVoxels * sizeof(unsigned long));
+               gzwrite(zipStream, (void*)data, numVoxels * sizeof(unsigned long long));
             }
             else {
-               cppStream->write((const char*)data, numVoxels * sizeof(unsigned long));
+               cppStream->write((const char*)data, numVoxels * sizeof(unsigned long long));
             }
             delete[] data;
          }
@@ -13224,22 +13371,33 @@ VolumeFile::afniUniformityCorrection(const int grayMin,
 /**
  * set study meta data link.
  */
+/*
 void 
-VolumeFile::setStudyMetaDataLink(const StudyMetaDataLink& smdl) 
+VolumeFile::setStudyMetaDataLinkSet(const StudyMetaDataLinkSet& smdls) 
 { 
-   studyMetaDataLink = smdl; 
+   studyMetaDataLinkSet = smdls; 
    setModified();
 }
-      
+*/      
 
 /**
  * get NIFTI intention and tr.
  */
 void 
-VolumeFile::getNiftiInfo(QString& intentionOut,
-                         float &trOut) const
+VolumeFile::getNiftiInfo(QString& intentCodeAndParamStringOut,
+                        QString& intentNameOut,
+                        int& intentCodeOut,
+                        float& intentParameter1Out,
+                        float& intentParameter2Out,
+                        float& intentParameter3Out,
+                        float &trOut) const
 {
-   intentionOut = niftiIntention;
+   intentCodeAndParamStringOut = niftiIntentCodeAndParamString;
+   intentNameOut = niftiIntentName;
+   intentCodeOut = niftiIntentCode;
+   intentParameter1Out = niftiIntentParameter1;
+   intentParameter2Out = niftiIntentParameter2;
+   intentParameter3Out = niftiIntentParameter3;
    trOut = niftiTR;
 }
 

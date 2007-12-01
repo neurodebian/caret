@@ -30,11 +30,22 @@
  */
 /*LICENSE_END*/
 
+#include <QString>
+
 /// valid categories
 class Categories {
    public:
       // get a list of valid categories
       static void getAllCategories(std::vector<QString>& categories);
+      
+      // get the category values for an atlas
+      static QString getAtlasCategoryValue() { return "ATLAS"; }
+      
+      // get the category values for an individual
+      static QString getIndividualCategoryValue() { return "INDIVIDUAL"; }
+      
+      // get the category values for an tutorial
+      static QString getTutorialCategoryValue() { return "TUTORIAL"; }
       
    protected:
 };

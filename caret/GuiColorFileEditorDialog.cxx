@@ -36,6 +36,7 @@
 #include <QLayout>
 #include <QListWidget>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QSlider>
 #include <QSpinBox>
 #include <QToolTip>
@@ -51,8 +52,6 @@
 #define __COLOR_FILE_EDITOR_MAIN__
 #include "GuiColorFileEditorDialog.h"
 #undef __COLOR_FILE_EDITOR_MAIN__
-
-#include "GuiMessageBox.h"
 
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -324,6 +323,7 @@ GuiColorFileEditorDialog::GuiColorFileEditorDialog(QWidget* parent,
    
    float minPointSize, maxPointSize;
    GuiBrainModelOpenGL::getPointSizeRange(minPointSize, maxPointSize);
+   maxPointSize = 100000.0;
    QLabel* pointSizeLabel = new QLabel("Point Size");
    attsGridLayout->addWidget(pointSizeLabel, 1, 0);
    pointSizeSpinBox = new QDoubleSpinBox;
@@ -498,7 +498,7 @@ GuiColorFileEditorDialog::newColorButtonSlot()
          QString msg("Color ");
          msg.append(name);
          msg.append(" already exists.");
-         GuiMessageBox::warning(this, "Color Exists", msg, "OK");
+         QMessageBox::warning(this, "Color Exists", msg);
          return;
       }
       

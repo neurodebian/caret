@@ -21,11 +21,13 @@ HEADERS += AbstractFile.h \
       BorderProjectionFile.h \
 	   BrainVoyagerFile.h \
 	   ByteSwapping.h \
+      CaretScriptFile.h \
       CellBase.h \
       CellClass.h \
       CellColorFile.h \
       CellFile.h \
       CellProjectionFile.h \
+      CellProjectionFileSaxReader.h \ 
 	   CellStudyInfo.h \
       CocomacConnectivityFile.h \
       CommaSeparatedValueFile.h \
@@ -38,6 +40,7 @@ HEADERS += AbstractFile.h \
 	   DeformationFieldFile.h \
 	   DeformationMapFile.h \
 	   FileException.h \
+      FileFilters.h \
       FociColorFile.h \  
       FociFile.h \
       FociProjectionFile.h \
@@ -51,6 +54,7 @@ HEADERS += AbstractFile.h \
       GiftiDataArray.h \
       GiftiDataArrayFile.h \
       GiftiDataArrayFileSaxReader.h \
+      GiftiDataArrayFileStreamReader.h \
       GiftiLabelTable.h \
       GiftiMatrix.h \
       GiftiMetaData.h \
@@ -62,6 +66,7 @@ HEADERS += AbstractFile.h \
       NeurolucidaFile.h \
       NiftiHelper.h \
       NodeAttributeFile.h \
+      NodeRegionOfInterestFile.h \
       PaintFile.h \
       PaletteFile.h \
 	   ParamsFile.h \
@@ -77,6 +82,7 @@ HEADERS += AbstractFile.h \
       StudyMetaAnalysisFile.h \
       StudyMetaDataFile.h \
       StudyMetaDataLink.h \
+      StudyMetaDataLinkSet.h \
       StudyNamePubMedID.h \
 	   SumsFileListFile.h \
       SurfaceFile.h \
@@ -110,10 +116,12 @@ SOURCES += AbstractFile.cxx \
       BorderProjectionFile.cxx \
 	   BrainVoyagerFile.cxx \
 	   ByteSwapping.cxx \
+      CaretScriptFile.cxx \
       CellBase.cxx \
       CellColorFile.cxx \
       CellFile.cxx \
       CellProjectionFile.cxx \
+      CellProjectionFileSaxReader.cxx \ 
 	   CellStudyInfo.cxx \
       CocomacConnectivityFile.cxx \
       ColorFile.cxx \
@@ -126,6 +134,7 @@ SOURCES += AbstractFile.cxx \
 	   DeformationFieldFile.cxx \
 	   DeformationMapFile.cxx \
 	   FileException.cxx \
+      FileFilters.cxx \
       FociColorFile.cxx \
       FociFile.cxx \
       FociProjectionFile.cxx \
@@ -139,6 +148,7 @@ SOURCES += AbstractFile.cxx \
       GiftiDataArray.cxx \
       GiftiDataArrayFile.cxx \
       GiftiDataArrayFileSaxReader.cxx \
+      GiftiDataArrayFileStreamReader.cxx \
       GiftiLabelTable.cxx \
       GiftiMatrix.cxx \
       GiftiMetaData.cxx \
@@ -150,6 +160,7 @@ SOURCES += AbstractFile.cxx \
       NeurolucidaFile.cxx \
       NiftiHelper.cxx \
       NodeAttributeFile.cxx \
+      NodeRegionOfInterestFile.cxx \
       PaintFile.cxx \
       PaletteFile.cxx \
 	   ParamsFile.cxx \
@@ -165,6 +176,7 @@ SOURCES += AbstractFile.cxx \
       StudyMetaAnalysisFile.cxx \
       StudyMetaDataFile.cxx \
       StudyMetaDataLink.cxx \
+      StudyMetaDataLinkSet.cxx \
       StudyNamePubMedID.cxx \
 	   SumsFileListFile.cxx \
       SurfaceFile.cxx \

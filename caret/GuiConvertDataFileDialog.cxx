@@ -24,20 +24,22 @@
 /*LICENSE_END*/
 
 #include <QApplication>
-#include <QButtonGroup>
+#include <QComboBox>
+#include <QGridLayout>
 #include <QGroupBox>
+#include <QLabel>
 #include <QLayout>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QRadioButton>
 
 #include "AbstractFile.h"
-#include "GuiDataFileDialog.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiConvertDataFileDialog.h"
 #include "GuiFileDialogWithInstructions.h"
-#include "GuiMessageBox.h"
 #include "QtUtilities.h"
 #include "StringUtilities.h"
 
@@ -100,25 +102,41 @@ GuiConvertDataFileDialog::GuiConvertDataFileDialog(QWidget* parent)
    QtUtilities::makeButtonsSameSize(addFilesButton, removeFilesButton);
    
    //
+   // File formats and names
+   //
+   std::vector<AbstractFile::FILE_FORMAT> fileFormats;
+   std::vector<QString> fileFormatNames;
+   AbstractFile::getFileFormatTypesAndNames(fileFormats, fileFormatNames);
+   const int numberOfFormats = static_cast<int>(fileFormats.size());
+   
+   //
    // Button group for format buttons
    //
    QGroupBox* formatGroup = new QGroupBox("Convert to Format");
-   QVBoxLayout* formatLayout = new QVBoxLayout(formatGroup);
-   QButtonGroup* formatButtonGroup = new QButtonGroup(this);
+   QGridLayout* formatGridLayout = new QGridLayout(formatGroup);
    dialogLayout->addWidget(formatGroup);
    
    //
-   // binary format radio button
+   // Create the file format combo boxes
    //
-   formatBinaryRadioButton = new QRadioButton("Binary");
-   formatLayout->addWidget(formatBinaryRadioButton);
-   formatButtonGroup->addButton(formatBinaryRadioButton, 0);
-   
-   // text format radio button
-   //
-   formatTextRadioButton = new QRadioButton("Text");
-   formatLayout->addWidget(formatTextRadioButton);
-   formatButtonGroup->addButton(formatTextRadioButton, 1);
+   for (int i = 0; i < numberOfFormats; i++) {
+      QLabel* label = new QLabel("");
+      if (i == 0) {
+         label->setText("Highest Priority");
+      }
+      else if (i == (numberOfFormats - 1)) {
+         label->setText("Lowest Priority");
+      }
+      QComboBox* comboBox = new QComboBox;
+      formatGridLayout->addWidget(label, i, 0);
+      formatGridLayout->addWidget(comboBox, i, 1);
+      
+      for (int j = 0; j < numberOfFormats; j++) {
+         comboBox->addItem(fileFormatNames[j],
+                           QVariant(static_cast<int>(fileFormats[j])));
+      }
+      formatComboBoxes.push_back(comboBox);
+   }
    
    //
    // Horizontal layout for dialog buttons
@@ -181,16 +199,7 @@ void
 GuiConvertDataFileDialog::slotApplyButton()
 {
    if (dataFileNames.empty()) {
-      GuiMessageBox::critical(this, "ERROR", "No data files selected.", "OK");
-      return;
-   }
-   
-   const bool doText   = formatTextRadioButton->isChecked();
-   const bool doBinary = formatBinaryRadioButton->isChecked();
-   const bool doXML    = false;
-   
-   if ((doText == false) && (doBinary == false) && (doXML == false)) {
-      GuiMessageBox::critical(this, "ERROR", "Select conversion format.", "OK");
+      QMessageBox::critical(this, "ERROR", "No data files selected.");
       return;
    }
    
@@ -207,6 +216,16 @@ GuiConvertDataFileDialog::slotApplyButton()
    progressDialog.setWindowTitle("Convert Data Files");
    progressDialog.setLabelText("");
    progressDialog.show();
+   
+   //
+   // Get the desired formats
+   //
+   std::vector<AbstractFile::FILE_FORMAT> requestedFormats;
+   for (unsigned int i = 0; i < formatComboBoxes.size(); i++) {
+      const int indx = formatComboBoxes[i]->currentIndex();
+      requestedFormats.push_back(static_cast<AbstractFile::FILE_FORMAT>(
+                                   formatComboBoxes[i]->itemData(indx).toInt()));
+   }
    
    for (int i = 0; i < numFiles; i++) {
       const QString filename(dataFileNames[i]);
@@ -228,68 +247,72 @@ GuiConvertDataFileDialog::slotApplyButton()
       //
       AbstractFile* af = AbstractFile::readAnySubClassDataFile(filename, true, errorMessage);
 
+      QString progressLabel(FileUtilities::basename(filename) + " ");
+      
       if (af != NULL) {
+         
          if (af->getFileHasHeader()) {
             //
             // Get files current encoding
             //
             const QString formatString(af->getHeaderTag(AbstractFile::headerTagEncoding));
 
-            //
-            // Format to convert file into
-            //
-            AbstractFile::FILE_FORMAT outputFormat = 
-                              AbstractFile::FILE_FORMAT_OTHER;
-                            
-            //
-            // Are text files desired
-            //
-            if (doText) {
-               //
-               // Are these files not in text format but support text format
-               //
-               if ((formatString != AbstractFile::headerTagEncodingValueAscii) &&
-                   (af->getCanWrite(AbstractFile::FILE_FORMAT_ASCII))) {
-                  outputFormat = AbstractFile::FILE_FORMAT_ASCII;
-               }
-            }
-            else if (doBinary) {
-               //
-               // Are these files not in binary format but support binary format
-               //
-               if ((formatString != AbstractFile::headerTagEncodingValueBinary) &&
-                   (af->getCanWrite(AbstractFile::FILE_FORMAT_BINARY))) {
-                  outputFormat = AbstractFile::FILE_FORMAT_BINARY;
-               }
-            }
-            else if (doXML) {
-               //
-               // Are these files not in XML format but support XML format
-               //
-               if ((formatString != AbstractFile::headerTagEncodingValueXML) &&
-                   (af->getCanWrite(AbstractFile::FILE_FORMAT_XML))) {
-                  outputFormat = AbstractFile::FILE_FORMAT_XML;
-               }
-            }
-            
-            if (outputFormat != AbstractFile::FILE_FORMAT_OTHER) {
-               progressDialog.setLabelText("Converting: " + 
-                                           QString(FileUtilities::basename(filename)));
-         
+            bool validFormatNameFlag = false;
+            const AbstractFile::FILE_FORMAT currentFormat = AbstractFile::convertFormatNameToType(formatString,
+                                                                  &validFormatNameFlag);
+            if (validFormatNameFlag) {
+               bool doneFlag = false;
+               for (unsigned int j = 0; j < requestedFormats.size(); j++) {
+                  const AbstractFile::FILE_FORMAT newFormat = requestedFormats[j];
+                  const QString newFormatName(AbstractFile::convertFormatTypeToName(newFormat));
+                  if (currentFormat == newFormat) {
+                     progressLabel += ("already in "
+                                       + newFormatName
+                                       + " file format.");
+                     doneFlag = true;
+                  }
+                  else if (af->getCanWrite(newFormat)) {
                      try {
-                  af->readFile(filename);
-                  af->setFileWriteType(outputFormat);
-                  af->writeFile(filename);
-                  convertedCount++;
+                        af->readFile(filename);
+                        af->setFileWriteType(newFormat);
+                        af->writeFile(filename);
+                        progressLabel += ("converted to "
+                                          + newFormatName
+                                          + ".");
+                        convertedCount++;
+                     }
+                     catch (FileException& e) {
+                        progressLabel += ("error converting or writing.");
+                     }
+                     doneFlag = true;
+                  }
+                  
+                  if (doneFlag) {
+                     break;
+                  }
                }
-               catch (FileException& e) {
-                  errorMessage.append(FileUtilities::basename(filename));
-                  errorMessage.append(": error converting or writing.\n");
+               
+               if (doneFlag == false) {
+                  progressLabel += ("does not support the requested format(s).");
                }
+            }
+            else {
+               progressLabel += ("is of an unknown format.");
             }
          }
+         else {
+            progressLabel += ("is of an unknown format (has no header)");
+         }
+
          delete af;  // can't delete ?? compiler bug ??
       }
+      else {
+         progressLabel += ("read error: "
+                           + errorMessage);
+      }
+      
+      progressDialog.setLabelText(progressLabel);
+      progressDialog.show();
    }
    
    //
@@ -302,10 +325,10 @@ GuiConvertDataFileDialog::slotApplyButton()
    if (errorMessage.isEmpty()) {
       QString msg(StringUtilities::fromNumber(convertedCount));
       msg.append(" files were converted.");
-      GuiMessageBox::information(this, "INFO", msg, "OK");
+      QMessageBox::information(this, "INFO", msg);
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", errorMessage, "OK");
+      QMessageBox::critical(this, "ERROR", errorMessage);
    }
 }
 
@@ -321,15 +344,17 @@ GuiConvertDataFileDialog::slotAddFilesButton()
 
    GuiFileDialogWithInstructions dwi(this, instructions, "addDataFiles", true);
    QStringList caretFileFilters;
-   GuiDataFileDialog::getCaretFileFilters(caretFileFilters);
+   FileFilters::getAllCaretFileFilters(caretFileFilters);
    const QString allFilesFilter("All Files (*)");
-   dwi.setFilter(allFilesFilter);
+   QStringList filterList;
+   filterList.append(allFilesFilter);
    for (QStringList::Iterator it = caretFileFilters.begin(); it != caretFileFilters.end(); ++it) {
-      dwi.addFilter(*it);
+      filterList.append(*it);
    }
-   dwi.setFilter(allFilesFilter);
+   dwi.setFilters(filterList);
+   dwi.selectFilter(allFilesFilter);
    dwi.setWindowTitle("Choose Data File");
-   dwi.setMode(GuiFileDialogWithInstructions::ExistingFiles);
+   dwi.setFileMode(GuiFileDialogWithInstructions::ExistingFiles);
    if (dwi.exec() == QDialog::Accepted) {
       QStringList list = dwi.selectedFiles();
       QStringList::Iterator it = list.begin();

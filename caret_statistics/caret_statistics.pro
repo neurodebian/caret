@@ -30,8 +30,12 @@ HEADERS += \
       StatisticFalseDiscoveryRate.h \
       StatisticGeneratePValue.h \
       StatisticHistogram.h \
+      StatisticKruskalWallis.h \
       StatisticLeveneVarianceEquality.h \
+      StatisticLinearRegression.h \
+      StatisticMatrix.h \
       StatisticMeanAndDeviation.h \
+      StatisticMultipleRegression.h \
       StatisticNormalizeDistribution.h \
       StatisticPermutation.h \
       StatisticRandomNumber.h \
@@ -42,7 +46,8 @@ HEADERS += \
       StatisticTtestPaired.h \
       StatisticTtestTwoSample.h \
       StatisticUnitTesting.h \
-      StatisticValueIndexSort.h
+      StatisticValueIndexSort.h \
+      StatisticVtkMath.h 
 
 SOURCES += \
       StatisticAlgorithm.cxx \
@@ -58,8 +63,12 @@ SOURCES += \
       StatisticFalseDiscoveryRate.cxx \
       StatisticGeneratePValue.cxx \
       StatisticHistogram.cxx \
+      StatisticKruskalWallis.cxx \
       StatisticLeveneVarianceEquality.cxx \
+      StatisticLinearRegression.cxx \
+      StatisticMatrix.cxx \
       StatisticMeanAndDeviation.cxx \
+      StatisticMultipleRegression.cxx \
       StatisticNormalizeDistribution.cxx \
       StatisticPermutation.cxx \
       StatisticRandomNumber.cxx \
@@ -70,5 +79,6 @@ SOURCES += \
       StatisticTtestPaired.cxx \
       StatisticTtestTwoSample.cxx \
       StatisticUnitTesting.cxx \
-      StatisticValueIndexSort.cxx
+      StatisticValueIndexSort.cxx \
+      StatisticVtkMath.cxx
 

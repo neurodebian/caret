@@ -37,6 +37,7 @@
 #include "BorderFile.h"
 #include "ColorFile.h"
 #include "CoordinateFile.h"
+#include "DebugControl.h"
 #include "FileUtilities.h"
 #include "MathUtilities.h"
 #include "StatisticDataGroup.h"
@@ -204,6 +205,38 @@ Border::setLinkRadius(const int linkNumber, const float radius)
    }
 }      
 
+/**
+ * find first link in "this" border that is within "tolerance" distance
+ * of a link in "other border".
+ */
+bool 
+Border::intersection3D(const Border* otherBorder,
+                       const float intersectionTolerance,
+                       int& myLinkIntersect, 
+                       int& otherLinkIntersect) const
+{
+   const float intersectionToleranceSquared = intersectionTolerance
+                                              * intersectionTolerance;
+   myLinkIntersect    = -1;
+   otherLinkIntersect = -1;
+   
+   const int myNumLinks = getNumberOfLinks();
+   const int otherNumLinks = otherBorder->getNumberOfLinks();
+   for (int i = 0; i < myNumLinks; i++) {
+      for (int j = 0; j < otherNumLinks; j++) {
+         if (MathUtilities::distanceSquared3D(getLinkXYZ(i),
+                                              otherBorder->getLinkXYZ(j))
+               < intersectionToleranceSquared) {
+            myLinkIntersect = i;
+            otherLinkIntersect = j;
+            return true;
+         }
+      }
+   }
+   
+   return false;
+}
+      
 /**
  * find links where another border intersects this border (2D borders in X-Y plane).
  */
@@ -422,6 +455,69 @@ Border::removeLink(const int linkNumber)
    }
 }
 
+/**
+ * smooth the border links.
+ */
+void 
+Border::smoothBorderLinks(const int numberOfIterations,
+                          const bool closedBorderFlag,
+                          const std::vector<bool>* smoothTheseLinksOnlyIn)
+{
+   const int numLinks = getNumberOfLinks();
+   if (numLinks <= 2) {
+      return;
+   }
+   std::vector<bool> smoothFlags(numLinks, true);
+   if (smoothTheseLinksOnlyIn != NULL) {
+      if (static_cast<int>(smoothTheseLinksOnlyIn->size()) != numLinks) {
+         return;
+      }
+      smoothFlags = *smoothTheseLinksOnlyIn;
+   }
+   
+   int jStart = 1;
+   int jEnd   = numLinks - 1;
+   if (closedBorderFlag) {
+      jStart = 0;
+      jEnd = numLinks;
+   }
+  
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Smoothing: ";
+      for (int j = jStart; j < jEnd; j++) {
+         if (smoothFlags[j]) {
+            std::cout << j << " ";
+         }
+      }
+      std::cout << std::endl;
+   }
+   
+   for (int i = 0; i < numberOfIterations; i++) {
+      for (int j = jStart; j < jEnd; j++) {
+         if (smoothFlags[j]) {
+            int jPrev = j - 1;
+            if (jPrev < 0) {
+               jPrev = numLinks - 1;
+            }
+            int jNext = j + 1;
+            if (jNext >= numLinks) {
+               jNext = 0;
+            }
+            
+            const float* xyzPrev = getLinkXYZ(jPrev);
+            const float* xyzNext = getLinkXYZ(jNext);
+            float xyz[3];
+            getLinkXYZ(j, xyz);
+            for (int k = 0; k < 3; k++) {
+               xyz[k] = (xyzPrev[k] + xyzNext[k] + xyz[k]) / 3.0;
+            }
+            
+            setLinkXYZ(j, xyz);
+         }
+      }
+   }
+}
+                             
 /** 
  * Resample a border to a specified density.
  */
@@ -874,7 +970,8 @@ Border::pointsInsideBorder3D(const GLdouble* modelMatrix,
 void
 Border::pointsInsideBorder2D(const float* points, const int numPoints,
                              std::vector<bool>& insideFlags,
-                             const bool checkNonNegativeZPointsOnly) const
+                             const bool checkNonNegativeZPointsOnly,
+                             const float zMinimum) const
 {
    if (static_cast<int>(insideFlags.size()) < numPoints) {
       insideFlags.resize(numPoints);
@@ -926,9 +1023,10 @@ Border::pointsInsideBorder2D(const float* points, const int numPoints,
 
       bool checkIt = true;
       if (checkNonNegativeZPointsOnly) {
-         if (xyz[2] < 0.0) {
+         if (xyz[2] < zMinimum) {
             checkIt = false;
          }
+         xyz[2] = 0.0;
       }
       else {
          xyz[2] = 0.0;

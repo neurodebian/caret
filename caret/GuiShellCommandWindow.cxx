@@ -32,13 +32,13 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QProcess>
 #include <QPushButton>
 #include <QRegExp>
 #include <QTextCursor>
 #include <QTextEdit>
 
-#include "GuiMessageBox.h"
 #include "GuiShellCommandWindow.h"
 
 /**
@@ -178,7 +178,7 @@ GuiShellCommandWindow::slotCommandLineReturnPressed()
 {
    const QString userCommand(convertUnixToWindows(commandLineEdit->text()));
    if (userCommand.isEmpty()) {
-      GuiMessageBox::critical(this, "ERROR", "Command is empty.", "OK");
+      QMessageBox::critical(this, "ERROR", "Command is empty.");
       return;
    }
    
@@ -213,7 +213,7 @@ GuiShellCommandWindow::slotCommandLineReturnPressed()
    QProcess process;   
    process.start(processName, processArgs);
    if (!process.waitForStarted()) {
-      GuiMessageBox::critical(this, "ERROR", "Error starting process.", "OK");
+      QMessageBox::critical(this, "ERROR", "Error starting process.");
       return;
    }
    
@@ -232,7 +232,7 @@ GuiShellCommandWindow::slotCommandLineReturnPressed()
       commandOutputTextEdit->insertHtml(txt);
    }
    else {
-      GuiMessageBox::critical(this, "ERROR", "Error waiting for process to finish.", "OK");
+      QMessageBox::critical(this, "ERROR", "Error waiting for process to finish.");
       return;
    }
    
