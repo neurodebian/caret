@@ -1,3 +1,9 @@
+caret (5.51+20071130~dfsg.1-1) unstable; urgency=low
+
+  * New Upstream Version
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Sat, 01 Dec 2007 13:12:45 +0100
+
 caret (5.51~dfsg.1-2) unstable; urgency=low
 
   * Added a manpage.
