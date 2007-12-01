@@ -135,12 +135,12 @@ exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
    #
    #
    #
-   INCLUDEPATH += ../caret_vtk4_classes
+#   INCLUDEPATH += ../caret_vtk4_classes
 
    #
    # need by caret_vtk4_classes
    #
-   INCLUDEPATH += $(VTK_INC_DIR)/vtkmpeg2encode
+#   INCLUDEPATH += $(VTK_INC_DIR)/vtkmpeg2encode
 
    #
    # VTK Libraries for VTK 5.x
@@ -149,7 +149,7 @@ exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
       #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
    }
    !win32 {
-      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
+#      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
    }
    VTK_LIBS += \
               -L$(VTK_LIB_DIR) \
@@ -159,7 +159,6 @@ exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
               -lvtkImaging \
               -lvtkGraphics \
               -lvtkIO \
-              -lvtkMPEG2Encode \
               -lvtkFiltering \
               -lvtkCommon \
               -lvtkjpeg \

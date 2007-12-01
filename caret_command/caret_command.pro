@@ -93,7 +93,6 @@ unix:!macx {
    LIBS += \
            -L../caret_command_operations -lCaretCommandOperations \
            -L../caret_brain_set -lCaretBrainSet \
-           -L../caret_vtk4_classes -lCaretVtk4Classes \
            -L../caret_files -lCaretFiles \
            -L../caret_widgets -lCaretWidgets \
 	        -L../caret_uniformize -lCaretUniformize \
