@@ -1,5 +1,2 @@
-* caret_files does not compile as a shared lib with a weird error.
-
 * introduce main config in /etc/caret/caret.sh
-
 * write manpages

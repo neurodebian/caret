@@ -13,77 +13,81 @@ export NETCDF_INC_DIR=/usr/include
 export NETCDF_LIB_DIR=/usr/lib
 export QTDIR=/usr
 
-CARET_BINARIES="caret/caret5 caret_command/caret_command caret_copy_spec/caret_copy_spec caret_edit/caret_edit caret_file_convert/caret_file_convert caret_map_fmri/caret_map_fmri caret_metric/caret_metric caret_zip_spec/caret_zip_spec"
-
-CFLAGS = -Wall -g
+CARET_APPS="caret caret_command"
+CXXFLAGS = -Wall -g
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
+	CXXFLAGS += -O0
 else
-	CFLAGS += -O2
+	CXXFLAGS += -O2
 endif
 
 
+cfg-%:
+	echo "Configuring: '$*'"
+	cd $* && qmake-qt4 "CONFIG+=dll" \
+	                   "QMAKE_CXXFLAGS_RELEASE=$(CXXFLAGS)" \
+	                   "QMAKE_LFLAGS_RELEASE += -Wl,--as-needed --no-undefined"
+
+
+build-%:
+	echo "Building: '$*'"
+	cd $* && make
+
+
 configure: configure-stamp
-configure-stamp:
+configure-stamp: cfg-caret_statistics cfg-caret_common cfg-caret_brain_set \
+                 cfg-caret_command_operations cfg-caret_files \
+                 cfg-caret_uniformize cfg-caret_widgets cfg-caret \
+                 cfg-caret_command
 	dh_testdir
-
-	$(MAKE) qmake-dynamic
-
-	touch configure-stamp
+	touch $@
 
 
 build: build-stamp
-
-build-stamp: configure
+build-stamp: configure \
+             build-caret_statistics build-caret_common \
+             build-caret_uniformize build-caret_files build-caret_widgets \
+             build-caret_brain_set build-caret_command_operations \
+             build-caret build-caret_command
 	dh_testdir
-
-	# Add here commands to compile the package.
-	$(MAKE) build
-	#docbook-to-man debian/caret.sgml > caret.1
-
 	touch $@
+
 
 clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp configure-stamp
-
-	# proper cleaning is available only for patched sources
-	if [ -f patch-stamp ]; then $(MAKE) clean; fi
-
+	
 	# clean internal libs
 	-find $(CURDIR) -name '*.so' -exec rm \{\} \;
-	-find $(CURDIR) -name '*.a' -exec rm \{\} \;
-	-find $(CURDIR) -mindepth 2 -name Makefile -exec rm \{\} \;
-
+	
 	# clean binaries
-	-for b in $(CARET_BINARIES); do \
-		rm $$b ;\
-	done
-
+	-rm caret/caret5 caret_command/caret_command
+	
 	dh_clean
+
 
 install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-
+	
 	# install internal libs
 	find $(CURDIR) -name '*.so' -exec cp \{\} $(CURDIR)/debian/caret/usr/lib/caret/lib \;
-
+	
 	# install binaries
-	for b in $(CARET_BINARIES); do \
-		cp $$b $(CURDIR)/debian/caret/usr/lib/caret/bin; \
-	done
-
+	cp caret/caret5 caret_command/caret_command $(CURDIR)/debian/caret/usr/lib/caret/bin
+	
 	# ensure executable permissions for wrapper script
 	chmod +x debian/caret_app_wrapper
+
 
 # Build architecture-independent files here.
 binary-indep: build install
 # We have nothing to do by default.
+
 
 # Build architecture-dependent files here.
 binary-arch: build install
@@ -104,6 +108,7 @@ binary-arch: build install
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
+
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install configure
