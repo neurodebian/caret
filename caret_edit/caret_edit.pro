@@ -36,6 +36,8 @@ macx {
 unix:!macx {
    LIBS += -L../caret_widgets -lCaretWidgets \
            -L../caret_common  -lCaretCommon \
+           -L../caret_files  -lCaretFiles \
+           -L../caret_command_operations  -lCaretCommandOperations \
            -L../caret_statistics -lCaretStatistics 
 
    # for SGI systems
