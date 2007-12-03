@@ -1,18 +1,7 @@
 /usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret5
 /usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_command
-/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_copy_spec
-/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_edit
-/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_file_convert
-/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_map_fmri
-/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_metric
-/usr/lib/caret/bin/caret_app_wrapper /usr/bin/caret_zip_spec
 /usr/lib/caret/bin /usr/share/caret/bin
 /usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret5.1.gz
-/usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_copy_spec.1.gz
-/usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_file_convert.1.gz
-/usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_metric.1.gz
 /usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_command.1.gz
 /usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_edit.1.gz
-/usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_map_fmri.1.gz
-/usr/share/man/man1/caret.1.gz /usr/share/man/man1/caret_zip_spec.1.gz
 

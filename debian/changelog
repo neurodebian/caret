@@ -1,8 +1,22 @@
-caret (5.51+20071130~dfsg.1-1) unstable; urgency=low
+caret (5.51.2~dfsg.1-1) unstable; urgency=low
 
-  * New Upstream Version
+  * New Upstream Version. Build-depends on Qt >= 4.3. Merged most commandline
+    tools into 'caret_command'.
+  * Package now honours DEB_BUILD_OPTIONS setting 'noopt'.
+  * Build with debug symbols by default.
+  * Debian packaging does not use upstream Makefile wrapper to qmake anymore,
+    as it might hide build-failures. Calling qmake from debian/rules directly
+    instead.
+  * Simplified Debian diff to minimize conflicts between upstream changes and
+    Debian packaging.
+  * Set linker flags -Wl,--as-needed and --no-undefined to reduce the number
+    of package dependencies and ensure proper internal shared libraries.
+  * Do not build 'caret_edit' anymore as it caused problems with the internal
+    shared libraries. This should be no problem, as it is a very simple
+    editor and all of the 1000 editors in Debian should be able to do what
+    'caret_edit' does/did.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Sat, 01 Dec 2007 13:12:45 +0100
+ -- Michael Hanke <michael.hanke@gmail.com>  Sun,  2 Dec 2007 20:33:10 +0100
 
 caret (5.51~dfsg.1-2) unstable; urgency=low
 
