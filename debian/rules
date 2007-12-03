@@ -37,7 +37,8 @@ build-%:
 
 clean-%:
 	@echo "Cleaning: '$*'"
-	cd $* && make clean
+	# ignore when there is no Makefile
+	-cd $* && make clean
 	-cd $* && rm Makefile
 
 
