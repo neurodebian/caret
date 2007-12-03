@@ -24,15 +24,21 @@ endif
 
 
 cfg-%:
-	echo "Configuring: '$*'"
+	@echo "Configuring: '$*'"
 	cd $* && qmake-qt4 "CONFIG+=dll" \
 	                   "QMAKE_CXXFLAGS_RELEASE=$(CXXFLAGS)" \
 	                   "QMAKE_LFLAGS_RELEASE += -Wl,--as-needed --no-undefined"
 
 
 build-%:
-	echo "Building: '$*'"
+	@echo "Building: '$*'"
 	cd $* && make
+
+
+clean-%:
+	@echo "Cleaning: '$*'"
+	cd $* && make clean
+	-cd $* && rm Makefile
 
 
 configure: configure-stamp
@@ -47,23 +53,20 @@ configure-stamp: cfg-caret_statistics cfg-caret_common cfg-caret_brain_set \
 build: build-stamp
 build-stamp: configure \
              build-caret_statistics build-caret_common \
-             build-caret_uniformize build-caret_files build-caret_widgets \
+             build-caret_uniformize build-caret_widgets build-caret_files \
              build-caret_brain_set build-caret_command_operations \
              build-caret build-caret_command
 	dh_testdir
 	touch $@
 
 
-clean:
+clean: clean-caret_statistics clean-caret_common clean-caret_brain_set \
+       clean-caret_command_operations clean-caret_files \
+       clean-caret_uniformize clean-caret_widgets clean-caret \
+       clean-caret_command
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp configure-stamp
-	
-	# clean internal libs
-	-find $(CURDIR) -name '*.so' -exec rm \{\} \;
-	
-	# clean binaries
-	-rm caret/caret5 caret_command/caret_command
 	
 	dh_clean
 
