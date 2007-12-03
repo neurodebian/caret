@@ -3,9 +3,11 @@
 ######################################################################
 
 TARGET	 = CaretWidgets
-CONFIG	 += plugin
+CONFIG	 += staticlib
 INCLUDEPATH += . \
                ../caret_common
+
+LIBS += -L../caret_common -lCaretCommon
 
 include(../caret_qmake_include.pro)
 

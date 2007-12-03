@@ -368,4 +368,19 @@ unix:!macx {
 }
 
 
+# Debian specific build configuration
+# always perform release build, debug symbols are taken care of in
+# debian/rules
+CONFIG -= debug
+CONFIG += release
 
+# compile all internal static libs as shared libraries instead
+CONFIG(staticlib, plugin|staticlib): {
+	message("Compile as shared library in Debian build.")
+	CONFIG -= staticlib
+	CONFIG *= plugin
+}
+
+# link everything against VTK -- does not hurt as -Wl,--as-needed is
+# used for Debian build
+LIBS *= $$VTK_LIBS

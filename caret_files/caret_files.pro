@@ -4,10 +4,16 @@
 
 TARGET   = CaretFiles
 TEMPLATE = lib
-CONFIG  += staticlib # has to remain static because of unclear FTBFS
+CONFIG  += staticlib
 INCLUDEPATH += .
 
 include(../caret_qmake_include.pro)
+
+LIBS += -lminc \
+        -L../caret_uniformize -lCaretUniformize \
+        -L../caret_statistics -lCaretStatistics \
+        -L../caret_common -lCaretCommon \
+        -L../caret_widgets -lCaretWidgets
 
 # Input
 HEADERS += AbstractFile.h \

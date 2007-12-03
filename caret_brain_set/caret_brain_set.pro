@@ -3,8 +3,9 @@
 ######################################################################
 
 TARGET       = CaretBrainSet
-CONFIG  += plugin
+CONFIG  += staticlib 
 INCLUDEPATH += .
+LIBS += -L../caret_files -lCaretFiles
 
 include(../caret_qmake_include.pro)
 
