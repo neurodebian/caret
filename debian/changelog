@@ -1,3 +1,9 @@
+caret (5.6~dfsg.1-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Mon, 30 Jun 2008 19:40:31 +0200
+
 caret (5.5.2~dfsg.1-1) unstable; urgency=low
 
   * New Upstream Version. Build-depends on Qt >= 4.3. Merged most commandline
@@ -15,8 +21,9 @@ caret (5.5.2~dfsg.1-1) unstable; urgency=low
     shared libraries. This should be no problem, as it is a very simple
     editor and all of the 1000 editors in Debian should be able to do what
     'caret_edit' does/did.
+  * -
 
- -- Michael Hanke <michael.hanke@gmail.com>  Sun,  2 Dec 2007 20:33:10 +0100
+ -- Michael Hanke <michael.hanke@gmail.com>  Mon, 30 Jun 2008 19:40:29 +0200
 
 caret (5.5.1~dfsg.1-2) unstable; urgency=low
 
