@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
 
 #include <QApplication>
 #include <QDoubleSpinBox>

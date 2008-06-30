@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>

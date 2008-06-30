@@ -25,6 +25,8 @@
 
 #include <QGlobalStatic>
 
+#include <limits>
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>

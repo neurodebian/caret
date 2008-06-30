@@ -28,6 +28,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 #include "AreaColorFile.h"
 #include "BrainModelSurface.h"

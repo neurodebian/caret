@@ -27,6 +27,8 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <limits>
+#include <algorithm>
 
 #include "BrainModelVolumeRegionOfInterest.h"
 #include "BrainModelVolumeVoxelColoring.h"

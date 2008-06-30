@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <cmath>
+#include <limits>
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceMetricClustering.h"

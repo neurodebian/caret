@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <sstream>
+#include <limits>
 
 #include <QDateTime>
 

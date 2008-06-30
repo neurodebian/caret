@@ -25,6 +25,7 @@
 
 
 #include <iostream>
+#include <limits>
 #include <QGlobalStatic>
 #include <QProcess>
 

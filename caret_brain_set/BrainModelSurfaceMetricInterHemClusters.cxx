@@ -26,6 +26,7 @@
 
 #include <cmath>
 #include <sstream>
+#include <limits>
 
 #include <QDateTime>
 #include <QFile>
