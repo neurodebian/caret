@@ -24,6 +24,8 @@
  */
 /*LICENSE_END*/
 
+#include <cstdlib>
+
 #include <QApplication>
 #include <QDir>
 #include "WuQFileDialog.h"

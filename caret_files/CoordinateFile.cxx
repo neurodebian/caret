@@ -31,6 +31,7 @@
 #include <cmath>
 #include <limits>
 #include <sstream>
+#include <algorithm>
 
 #include <QDomDocument>
 #include <QDomElement>

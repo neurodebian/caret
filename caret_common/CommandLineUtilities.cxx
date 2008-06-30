@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <iostream>
+#include <cstdlib>
 
 #include "CommandLineUtilities.h"
 #include "StringUtilities.h"

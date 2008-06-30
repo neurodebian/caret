@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 #include <QGridLayout>
 #include <QGroupBox>

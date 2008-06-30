@@ -34,10 +34,11 @@
 //#include <crtdbg.h>
 #endif
 
-#include <vector.h>
+#include <vector>
 #include <exception>
 #include <iostream>
 #include <sstream>
+#include <cstdlib>
 
 #include <QApplication>
 #include <QDateTime>

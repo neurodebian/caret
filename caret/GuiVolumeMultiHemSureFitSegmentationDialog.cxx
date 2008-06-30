@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
