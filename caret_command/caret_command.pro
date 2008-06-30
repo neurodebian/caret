@@ -80,15 +80,14 @@ macx {
 
 unix {
    PRE_TARGETDEPS +=  \
-           ../caret_command_operations/libCaretCommandOperations.a \
-           ../caret_brain_set/libCaretBrainSet.a \
-           ../caret_vtk4_classes/libCaretVtk4Classes.a \
-           ../caret_files/libCaretFiles.a \
-           ../caret_widgets/libCaretWidgets.a \
-           ../caret_uniformize/libCaretUniformize.a \
-           ../caret_statistics/libCaretStatistics.a \
-           ../caret_common/libCaretCommon.a \
-           ../caret_widgets/libCaretWidgets.a
+           ../caret_command_operations/libCaretCommandOperations.so \
+           ../caret_brain_set/libCaretBrainSet.so \
+           ../caret_files/libCaretFiles.so \
+           ../caret_widgets/libCaretWidgets.so \
+           ../caret_uniformize/libCaretUniformize.so \
+           ../caret_statistics/libCaretStatistics.so \
+           ../caret_common/libCaretCommon.so \
+           ../caret_widgets/libCaretWidgets.so
 
 }
 
