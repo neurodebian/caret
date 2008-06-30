@@ -38,6 +38,7 @@
 #include "FreeSurferLabelFile.h"
 #include "GiftiCommon.h"
 #include "NameIndexSort.h"
+#include "NodeRegionOfInterestFile.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
 #include "TopologyFile.h"
@@ -274,6 +275,46 @@ PaintFile::deformFile(const DeformationMapFile& dmf,
 }
 
 /**
+ * assign paint from an ROI file.
+ */
+void 
+PaintFile::assignNodesFromROIFile(const int columnNumber,
+                                    const NodeRegionOfInterestFile& roiFile,
+                                    const QString& paintName,
+                                    const bool assignNodesInRoiOnlyFlag) throw (FileException)
+{
+   if ((columnNumber < 0) ||
+       (columnNumber >= getNumberOfColumns())) {
+      throw FileException("Column number for ROI paint assignment is invalid.");
+   }
+   
+   const int numNodes = getNumberOfNodes();
+   if (roiFile.getNumberOfNodes() != numNodes) {
+      throw FileException("ROI paint number of nodes does not match.");
+   }
+   
+   const int paintNameIndex = addPaintName(paintName);
+   if (assignNodesInRoiOnlyFlag) {
+      for (int i = 0; i < numNodes; i++) {
+         if (roiFile.getNodeSelected(i)) {
+            setPaint(i, columnNumber, paintNameIndex);
+         }
+      }
+   }
+   else {
+      const int questionNameIndex = addPaintName("???");
+      for (int i = 0; i < numNodes; i++) {
+         if (roiFile.getNodeSelected(i)) {
+            setPaint(i, columnNumber, paintNameIndex);
+         }
+         else {
+            setPaint(i, columnNumber, questionNameIndex);
+         }
+      }
+   }
+}                                  
+
+/**
  * Get the index of the column named "geography"
  */
 int 
@@ -457,7 +498,7 @@ PaintFile::getAllPaintNamesAndIndices(std::vector<QString>& namesOut,
    for (int i = 0; i < num; i++) {
       nis.add(i, getPaintNameFromIndex(i));
    }
-   nis.sortByName();
+   nis.sortByNameCaseSensitive();
    
    //
    // Output sorted names/indices
@@ -466,7 +507,7 @@ PaintFile::getAllPaintNamesAndIndices(std::vector<QString>& namesOut,
    for (int i = 0; i < numNames; i++) {
       int indx;
       QString name;
-      nis.getNameAndIndex(i, indx, name);
+      nis.getSortedNameAndIndex(i, indx, name);
       namesOut.push_back(name);
       indicesOut.push_back(indx);
    }
@@ -667,10 +708,12 @@ PaintFile::copyColumns(const PaintFile* fromPaintFile,
  */
 int 
 PaintFile::dilatePaintID(const TopologyFile* tf,
+                         const CoordinateFile* cf,
                          const int columnNumber,
                          const int iterations,
                          const int paintIndex,
-                         const int neighborOnlyWithPaintIndex) throw (FileException)
+                         const int neighborOnlyWithPaintIndex,
+                         const float maximumExtent[6]) throw (FileException)
 {
    int numDilated = 0;
    
@@ -721,24 +764,35 @@ PaintFile::dilatePaintID(const TopologyFile* tf,
          const int paint = getPaint(i, columnNumber);
          if (paint == paintIndex) {
             //
-            // get neighbors and loop through them
+            // Check extent
             //
-            int numNeighbors;
-            const int* neighbors = th->getNodeNeighbors(i, numNeighbors);
-            for (int j = 0; j < numNeighbors; j++) {
-               const int neighborNodeNum = neighbors[j];
+            const float* nodeXYZ = cf->getCoordinate(i);
+            if ((nodeXYZ[0] >= maximumExtent[0]) &&
+                (nodeXYZ[0] <= maximumExtent[1]) &&
+                (nodeXYZ[1] >= maximumExtent[2]) &&
+                (nodeXYZ[1] <= maximumExtent[3]) &&
+                (nodeXYZ[2] >= maximumExtent[4]) &&
+                (nodeXYZ[2] <= maximumExtent[5])) {
                //
-               // Limited to neighbors with specific paint index?
+               // get neighbors and loop through them
                //
-               if (neighborOnlyWithPaintIndex >= 0) {
-                  if (getPaint(neighborNodeNum, columnNumber) == neighborOnlyWithPaintIndex) {
+               int numNeighbors;
+               const int* neighbors = th->getNodeNeighbors(i, numNeighbors);
+               for (int j = 0; j < numNeighbors; j++) {
+                  const int neighborNodeNum = neighbors[j];
+                  //
+                  // Limited to neighbors with specific paint index?
+                  //
+                  if (neighborOnlyWithPaintIndex >= 0) {
+                     if (getPaint(neighborNodeNum, columnNumber) == neighborOnlyWithPaintIndex) {
+                        outputPaints[neighborNodeNum] = paintIndex;
+                        numDilated++;
+                     }
+                  }
+                  else {
                      outputPaints[neighborNodeNum] = paintIndex;
                      numDilated++;
                   }
-               }
-               else {
-                  outputPaints[neighborNodeNum] = paintIndex;
-                  numDilated++;
                }
             }
          }

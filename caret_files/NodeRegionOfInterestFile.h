@@ -51,7 +51,13 @@ class NodeRegionOfInterestFile : public PaintFile {
       // set node selected
       void setNodeSelected(const int nodeNumber,
                            const bool status);
-                           
+            
+      // get the ROI description
+      QString getRegionOfInterestDescription() const;
+      
+      // set the ROI description (number of nodes must have been set)
+      void setRegionOfInterestDescription(const QString& s);
+      
       // assign nodes in ROI by intersecting with a volume file
       void assignSelectedNodesWithVolumeFile(const VolumeFile* vf,
                                              const CoordinateFile* cf,

@@ -56,8 +56,9 @@ GuiMapFmriAtlasDialog::GuiMapFmriAtlasDialog(QWidget* parent,
                                   const bool showOutputSpecFileSelection,
                                   const bool enableMetricFiducialOptionsIn,
                                   const bool enablePaintFiducialOptionsIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    preferencesFile = pf;
    allAtlases = atlasesIn;
    

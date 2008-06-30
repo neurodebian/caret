@@ -98,9 +98,10 @@ GuiFlattenHemisphereInstructionsDialog::GuiFlattenHemisphereInstructionsDialog(
                                  QWidget* parent,
                                  BrainModelSurfaceFlattenFullHemisphere* algorithmIn,
                                  const DIALOG_MODE dialogModeIn,
-                                 Qt::WFlags f)
-   : QtDialog(parent, false, f)
+                                 Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(false);
    dialogMode = dialogModeIn;
    algorithm = algorithmIn;
    
@@ -185,7 +186,7 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                // Do the remaining part of hemisphere flattening
                //
                doFlattenFullHemispherePart2();
-               
+               showCrossovers();
                QApplication::restoreOverrideCursor();
       
                //
@@ -207,6 +208,7 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                // Do the remaining part of hemisphere flattening
                //
                doFlattenFullHemispherePart2();
+               showCrossovers();
                
                QApplication::restoreOverrideCursor();
 
@@ -226,6 +228,7 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                //
                // Popup multiresolution morphing dialog to morph flat surface.
                //
+               showCrossovers();
                QApplication::restoreOverrideCursor();
                GuiMultiresolutionMorphingDialog mmd(this, 
                            theMainWindow->getSurfaceActions()->getFlatMultiresolutionMorphingObject(),
@@ -238,6 +241,7 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                //
                // Popup multiresolution morphing dialog to morph flat surface.
                //
+               showCrossovers();
                QApplication::restoreOverrideCursor();
                GuiMultiresolutionMorphingDialog mmd(this, 
                            theMainWindow->getSurfaceActions()->getFlatMultiresolutionMorphingObject(),
@@ -357,7 +361,6 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                }
                const float sphericalElapsedTime = sphericalTimer.elapsed() * 0.001;
                
-               
                QApplication::restoreOverrideCursor();
                
                //
@@ -397,6 +400,8 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                   theMainWindow->getBrainSet()->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_FLAT);
                theMainWindow->displayBrainModelInMainWindow(flatSurface);
                
+               showCrossovers(flatSurface);
+               
                QApplication::restoreOverrideCursor();
 
                theMainWindow->speakText("Ready to align surfaces.", false);
@@ -424,6 +429,38 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
    QDialog::done(r);
 }
 
+/**
+ * show crossovers on surface.
+ */
+void 
+GuiFlattenHemisphereInstructionsDialog::showCrossovers(BrainModelSurface* bmsIn)
+{
+   //
+   // Do crossover check and set overlay node coloring to crossovers
+   //
+   BrainModelSurface* bms = bmsIn;
+   if (bms == NULL) {
+      bms = theMainWindow->getBrainSet()->getBrainModelSurface(
+                                 theMainWindow->getBrainSet()->getNumberOfBrainModels() - 1);
+   }
+   if (bms != NULL) {
+      int numTileCrossovers, numNodeCrossovers;
+      bms->crossoverCheck(numTileCrossovers, numNodeCrossovers,
+                          BrainModelSurface::SURFACE_TYPE_FLAT);
+   }
+   int modelIndex = -1;  // -1 -> all models
+   BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
+   theMainWindow->getBrainSet()->getSecondarySurfaceOverlay()->setOverlay(modelIndex, BrainModelSurfaceOverlay::OVERLAY_NONE);
+   theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(modelIndex, BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS);
+   bsnc->assignColors();
+
+   //
+   // update display control dialog and update graphics
+   //
+   theMainWindow->updateDisplayControlDialog();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+}
+      
 void
 GuiFlattenHemisphereInstructionsDialog::doFlattenFullHemispherePart2()
 {
@@ -463,10 +500,12 @@ GuiFlattenHemisphereInstructionsDialog::doFlattenFullHemispherePart2()
    }
    BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
    bsnc->assignColors();
-   if (bsnc->getPrimaryOverlay(modelIndex) != 
-      BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS) {
-      bsnc->setSecondaryOverlay(modelIndex, bsnc->getPrimaryOverlay(modelIndex));
-      bsnc->setPrimaryOverlay(modelIndex, BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS);
+   if (theMainWindow->getBrainSet()->isASurfaceOverlay(modelIndex,
+               BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS) == false) {
+      theMainWindow->getBrainSet()->getSecondarySurfaceOverlay()->setOverlay(modelIndex, 
+                     theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->getOverlay(modelIndex));
+      theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(modelIndex, 
+                     BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS);
    }
    
    //

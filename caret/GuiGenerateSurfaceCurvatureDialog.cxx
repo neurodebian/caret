@@ -48,8 +48,9 @@
  * Constructor
  */
 GuiGenerateSurfaceCurvatureDialog::GuiGenerateSurfaceCurvatureDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Generate Curvature");
    
    //

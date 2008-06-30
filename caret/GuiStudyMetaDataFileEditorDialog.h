@@ -31,9 +31,8 @@
 
 #include <QGroupBox>
 
-#include "QtDialogModal.h"
-#include "QtDialogNonModal.h"
 #include "StudyMetaDataFile.h"
+#include "WuQDialog.h"
 
 class QButtonGroup;
 class QCheckBox;
@@ -56,7 +55,7 @@ class StudySubHeaderWidget;
 class StudyWidget;
 
 /// class for a GUI used to edit StudyMetaDataFile
-class GuiStudyMetaDataFileEditorDialog : public QtDialogNonModal {
+class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -128,6 +127,9 @@ class GuiStudyMetaDataFileEditorDialog : public QtDialogNonModal {
       // called when delete studies by name button pressed
       void slotDeleteStudiesByNamePushButton();
       
+      // called when delete unlinked studies button pressed
+      void slotDeleteUnlinkedStudiesPushButton();
+      
       // called to create new studies out of a study's meta-analysis studies
       void slotCreateStudiesFromMetaAnalysisStudies();
       
@@ -191,6 +193,9 @@ class GuiStudyMetaDataFileEditorDialog : public QtDialogNonModal {
       
       /// fetch all studies push button
       QPushButton* fetchAllStudiesPushButton;
+      
+      /// delete unlinked studies push button
+      QPushButton* deleteUnlinkedStudiesPushButton;
       
       /// delete studies by name push button
       QPushButton* deleteStudiesByNamePushButton;
@@ -447,6 +452,9 @@ class StudySubHeaderWidget : public QGroupBox {
       
       // called when delete this sub header button is pressed
       void slotDeleteThisSubHeader();
+      
+      // called when short name to foci class button pressed
+      void slotSubHeaderToFociClass();
       
       // called when sub header number changed
       void slotSubHeaderNumberLineEditChanged();
@@ -959,7 +967,7 @@ class StudyMetaAnalysisWidget : public QGroupBox {
 };
 
 /// new study dialog
-class GuiStudyMetaDataNewDialog : public QtDialogModal {
+class GuiStudyMetaDataNewDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -27,12 +27,12 @@
 #ifndef __VE_GUI_BORDER_PROJECTION_DIALOG_H__
 #define __VE_GUI_BORDER_PROJECTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QRadioButton;
 
 /// This class creates the border projection dialog.
-class GuiBorderProjectionDialog : public QtDialog {
+class GuiBorderProjectionDialog : public WuQDialog {
    
    Q_OBJECT
    

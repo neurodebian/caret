@@ -35,6 +35,7 @@
 #include "CoordinateFile.h"
 #include "MathUtilities.h"
 #include "SpecFile.h"
+#include "TopologyHelper.h"
 
 /**
  * Constructor.
@@ -134,6 +135,50 @@ BorderProjectionLink::unprojectLink(const CoordinateFile* unprojectCoordFile,
 }
 
 /**
+ * get center of gravity.
+ */
+void 
+BorderProjection::getCenterOfGravity(const CoordinateFile* coordFile,
+                                     float centerOfGravityOut[3]) const
+{
+   centerOfGravityOut[0] = 0.0;
+   centerOfGravityOut[1] = 0.0;
+   centerOfGravityOut[2] = 0.0;
+   
+   if (coordFile == NULL) {
+      return;
+   }
+   
+   const int numLinks = getNumberOfLinks();
+   if (numLinks <= 0) {
+      return;
+   }
+   
+   //
+   // Loop through links and compute center of gravity
+   //
+   double sum[3] = { 0.0, 0.0, 0.0 };
+   for (int i = 0; i < numLinks; i++) {
+      //
+      // Get link XYZ
+      //
+      float linkXYZ[3];
+      links[i].unprojectLink(coordFile,
+                             linkXYZ);
+      sum[0] += linkXYZ[0];
+      sum[1] += linkXYZ[1];
+      sum[2] += linkXYZ[2];
+   }
+                         
+   //
+   // Set COG
+   //
+   centerOfGravityOut[0] = sum[0] / numLinks;
+   centerOfGravityOut[1] = sum[1] / numLinks;
+   centerOfGravityOut[2] = sum[2] / numLinks;
+}      
+
+/**
  * remove links from border that are not within the specified extent.
  */
 void 
@@ -182,11 +227,119 @@ BorderProjection::removeLinksOutsideExtent(const CoordinateFile* unprojectCoordF
 }
 
 /**
+ * get the link number nearest to a coordinate.
+ */
+int 
+BorderProjection::getLinkNumberNearestToCoordinate(const CoordinateFile* cf,
+                                                   const float xyz[3]) const
+{
+   int nearestLinkNumber = -1;
+   float nearestDistanceSQ = std::numeric_limits<float>::max();
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      float pos[3];
+      getBorderProjectionLink(i)->unprojectLink(cf, pos);
+      const float distSQ = MathUtilities::distanceSquared3D(xyz, pos);
+      if (distSQ < nearestDistanceSQ) {
+         nearestDistanceSQ = distSQ;
+         nearestLinkNumber = i;
+      }
+   }
+   
+   return nearestLinkNumber;
+}
+
+/**
+ * get the link number furthest from a coordinate.
+ */
+int 
+BorderProjection::getLinkNumberFurthestFromCoordinate(const CoordinateFile* cf,
+                                                      const float xyz[3]) const
+{
+   int furthestLinkNumber = -1;
+   float furthestDistanceSQ = -1.0;
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < (numLinks - 1); i++) {
+      float pos[3];
+      getBorderProjectionLink(i)->unprojectLink(cf, pos);
+      const float distSQ = MathUtilities::distanceSquared3D(xyz, pos);
+      if (distSQ > furthestDistanceSQ) {
+         furthestDistanceSQ = distSQ;
+         furthestLinkNumber = i;
+      }
+   }
+   
+   return furthestLinkNumber;
+}
+
+/**
+ * split a border that is approximately linear in shape.
+ * Returns true if successful.
+ */
+bool 
+BorderProjection::splitClosedBorderProjection(const CoordinateFile* cf,
+                                              const int startingLinkNumber,
+                                              const QString& newNameSuffix,
+                                              BorderProjection& halfOneOut,
+                                              BorderProjection& halfTwoOut,
+                                              const int endingLinkNumber)
+{  
+   const int numLinks = getNumberOfLinks();
+   if (numLinks < 3) {
+      return false;
+   }
+   
+   //
+   // Get coordinate of starting link
+   //
+   float startXYZ[3];
+   getBorderProjectionLink(startingLinkNumber)->unprojectLink(cf, startXYZ);
+   
+   //
+   // Get the border link furthest from the starting link
+   //
+   const int splitLinkNumber = 
+      ((endingLinkNumber >= 0) ?
+         endingLinkNumber:
+         getLinkNumberFurthestFromCoordinate(cf, startXYZ));
+   
+   //
+   // Set indices for splitting
+   //
+   int oneEnd = splitLinkNumber - 1;
+   if (oneEnd < 0) {
+      oneEnd = getNumberOfLinks() - 1;
+   }
+   int twoEnd = startingLinkNumber - 1;
+   if (twoEnd < 0) {
+      twoEnd = getNumberOfLinks() - 1;
+   }
+   
+   //
+   // Create the new borders
+   //
+   halfOneOut = getSubSetOfBorderProjectionLinks(startingLinkNumber, 
+                                                 oneEnd);
+   halfTwoOut = getSubSetOfBorderProjectionLinks(splitLinkNumber, 
+                                                 twoEnd);
+   
+   //
+   // Set the names of the output projections
+   //
+   halfOneOut.setName(getName() + newNameSuffix);
+   halfTwoOut.setName(getName() + newNameSuffix);
+   
+   return true;
+}                                       
+
+/**
  * unproject a border.
  */
 void 
 BorderProjection::unprojectBorderProjection(const CoordinateFile* cf,
-                                            Border& borderOut)
+                                            Border& borderOut) const
 {
    borderOut.clearLinks();
    borderOut.setName(getName());
@@ -199,6 +352,51 @@ BorderProjection::unprojectBorderProjection(const CoordinateFile* cf,
       borderOut.addBorderLink(xyz);
    }
 }
+                           
+/**
+ * unproject a border.
+ */
+void 
+BorderProjection::unprojectBorderProjection(const CoordinateFile* cf,
+                                            const TopologyHelper* th,
+                                            Border& borderOut) const
+{
+   borderOut.clearLinks();
+   borderOut.setName(getName());
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      const BorderProjectionLink* bpl = getBorderProjectionLink(i);
+      if (th->getNodeHasNeighbors(bpl->vertices[0]) &&
+          th->getNodeHasNeighbors(bpl->vertices[1]) &&
+          th->getNodeHasNeighbors(bpl->vertices[2])) {
+         float xyz[3];
+         bpl->unprojectLink(cf, xyz);
+         borderOut.addBorderLink(xyz);
+      }
+   }
+}
+
+/**
+ * get the center of gravity for a border.
+ */
+bool 
+BorderProjection::getCenterOfGravity(const CoordinateFile* cf,
+                                     const TopologyHelper* th,
+                                     float cogXYZOut[3]) const
+{
+   //
+   // Unproject to get border
+   //
+   Border border;
+   unprojectBorderProjection(cf, th, border);
+   
+   //
+   // get border's COG
+   //
+   const bool valid = border.getCenterOfGravity(cogXYZOut);
+   return valid;
+}                           
                            
 /**
  * change the starting link of a closed border so it is close to a point.
@@ -405,6 +603,20 @@ BorderProjection::removeBorderProjectionLink(const int linkNumber)
    }
 }
 
+/**
+ * reverse the order of the border projection links.
+ */
+void 
+BorderProjection::reverseOrderOfBorderProjectionLinks()
+{
+   if (links.empty() == false) {
+      std::reverse(links.begin(), links.end());
+      if (borderProjectionFile != NULL) {
+         borderProjectionFile->setModified();
+      }
+   }
+}
+      
 /** 
  * Constructor.
  */
@@ -540,6 +752,66 @@ BorderProjection::addBorderProjectionLink(const BorderProjectionLink& bl)
       links[indx].borderProjectionFile = borderProjectionFile;
    }
 }
+
+/**
+ * insert a border projection link before the specified link number (use number of links for end).
+ */
+void 
+BorderProjection::insertBorderProjectionLink(const int linkIndex,
+                                             const BorderProjectionLink& bl)
+{
+   if (linkIndex >= getNumberOfLinks()) {
+      addBorderProjectionLink(bl);
+   }
+   else if (linkIndex < getNumberOfLinks()) {
+      links.insert(links.begin() + linkIndex,
+                   bl);
+      links[linkIndex].borderProjectionFile = borderProjectionFile;
+   }
+}
+
+/**
+ * get a subset of the links as a border projection.
+ */
+BorderProjection
+BorderProjection::getSubSetOfBorderProjectionLinks(const int startLinkNumber,
+                                                  const int endLinkNumber) const
+{
+   BorderProjection bp("Subset of " + getName());
+   
+   if (startLinkNumber < endLinkNumber) {
+      for (int i = startLinkNumber; i <= endLinkNumber; i++) {
+         bp.addBorderProjectionLink(*getBorderProjectionLink(i));
+      }
+   }
+   else {
+      const int numLinks = getNumberOfLinks() - 1;
+      for (int i = startLinkNumber; i < numLinks; i++) {
+         bp.addBorderProjectionLink(*getBorderProjectionLink(i));
+      }
+      for (int i = 0; i <= endLinkNumber; i++) {
+         bp.addBorderProjectionLink(*getBorderProjectionLink(i));
+      }
+   }
+   
+   return bp;
+}                                                        
+                                 
+/**
+ * insert a border projection link before the specified link number (use number of links for end).
+ */
+void 
+BorderProjection::insertBorderProjectionLinkOnNode(const int linkIndex,
+                                                   const int nodeNumber)
+{
+   const int nodes[3] = { nodeNumber, nodeNumber, nodeNumber };
+   const float areas[3] = { 0.333, 0.333, 0.334 };
+   BorderProjectionLink bpl(0,
+                            nodes,
+                            areas,
+                            1.0);
+   insertBorderProjectionLink(linkIndex, bpl);
+}                                       
 
 /**
  * remove duplicate border projection links.
@@ -838,6 +1110,20 @@ BorderProjectionFile::getBorderProjectionWithLargestNumberOfLinks()
    return mostLinksBJ;
 }
    
+/**
+ * reverse order of links in all border projections.
+ */
+void 
+BorderProjectionFile::reverseOrderOfAllBorderProjections()
+{
+   const int num = getNumberOfBorderProjections();
+   for (int i = 0; i < num; i++) {
+      BorderProjection* bp = getBorderProjection(i);
+      bp->reverseOrderOfBorderProjectionLinks();
+   }
+   setModified();
+}
+      
 /**
  * remove borders with the specified name.
  */

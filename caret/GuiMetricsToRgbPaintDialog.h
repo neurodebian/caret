@@ -27,13 +27,13 @@
 #ifndef __GUI_METRICS_TO_RGB_PAINT_DIALOG_H__
 #define __GUI_METRICS_TO_RGB_PAINT_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiNodeAttributeColumnSelectionComboBox;
 class QLineEdit;
 
 /// This dialog is used to enter parameters for converting a metric file to RGB paint
-class GuiMetricsToRgbPaintDialog : public QtDialog {
+class GuiMetricsToRgbPaintDialog : public WuQDialog {
    Q_OBJECT
    
    public:

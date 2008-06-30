@@ -38,7 +38,7 @@ GuiMorphingMeasurementsDialog::GuiMorphingMeasurementsDialog(
                         const float totalTime,
                         const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingType,
                         QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    if (morphingType == BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL) {
       setWindowTitle("Spherical Morphing Measurements");

@@ -152,6 +152,12 @@ class Border {
       /// add a border link
       void addBorderLink(const float xyz[3], const int section = 0, const float radius = 0.0);
 
+      /// insert a border link before the specified link number (use number of links for end)
+      void insertBorderLink(const int linkIndex,
+                            const float xyz[3], 
+                            const int section = 0, 
+                            const float radius = 0.0);
+                            
       /// find links where another border intersects this border (2D borders in X-Y plane)
       bool intersection2D(const Border* otherBorder,
                           const bool thisBorderIsClosed, const bool otherBorderIsClosed,
@@ -227,12 +233,24 @@ class Border {
       /// get the bounds of border
       void getBounds(float bounds[6]) const;
       
+      /// get the center of gravity of the border (returns true if valid)
+      bool getCenterOfGravity(float cogXYZOut[3]) const;
+      
+      /// get the link number nearest to a coordinate
+      int getLinkNumberNearestToCoordinate(const float xyz[3]) const;
+      
+      /// get the link number furthest from a coordinate
+      int getLinkNumberFurthestFromCoordinate(const float xyz[3]) const;
+      
       /// remove links on negative side of plane
       void removePointsOnNegativeSideOfPlane(const float planeNormal[3],
                                              const float pointInPlane[3]);
       
       /// orient the links clockwise
       void orientLinksClockwise();
+      
+      /// orient the links counter-clockwise
+      void orientLinksCounterClockwise();
       
       /// See if points are inside a border (border assumed flat in X-Y plane)
       void pointsInsideBorder2D(const float* points, const int numPoints,
@@ -273,7 +291,10 @@ class Border {
       void smoothBorderLinks(const int numberOfIterations,
                              const bool closedBorderFlag,
                              const std::vector<bool>* smoothTheseLinksOnly = NULL);
-                             
+      
+      /// remove intersecting loops in a border
+      void removeIntersectingLoops(const char axisXYZ) throw (FileException);
+      
       /// compare the name of two landmark borders
       /// only compares text before the semi-colon in the name
       static bool compareLandmarkBorderNames(const QString& name1, const QString& name2);

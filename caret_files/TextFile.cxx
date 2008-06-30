@@ -35,7 +35,13 @@ TextFile::TextFile()
                   SpecFile::getTextFileExtension(),
                   false,
                   FILE_FORMAT_ASCII,
-                  FILE_IO_READ_AND_WRITE)
+                  FILE_IO_READ_AND_WRITE,
+                  FILE_IO_READ_ONLY,
+                  FILE_IO_READ_ONLY,
+                  FILE_IO_READ_ONLY,
+                  FILE_IO_READ_ONLY,
+                  FILE_IO_READ_ONLY,
+                  FILE_IO_READ_ONLY)
 {
    clear();
 }
@@ -102,6 +108,16 @@ TextFile::appendLine(const QString& s)
    setModified();
 }
 
+/**
+ * append text to the file (no newline is added).
+ */
+void 
+TextFile::appendText(const QString& s)
+{
+   text += s;
+   setModified();
+}
+      
 /**
  * get the text.
  */

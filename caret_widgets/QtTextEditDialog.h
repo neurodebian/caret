@@ -29,12 +29,12 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QTextEdit;
 
 /// Dialog that displays a scrolling text widget
-class QtTextEditDialog : public QtDialog {
+class QtTextEditDialog : public WuQDialog {
    Q_OBJECT
    
    public:

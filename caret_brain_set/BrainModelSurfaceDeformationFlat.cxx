@@ -28,7 +28,7 @@
 #include <QDir>
 
 #include "BorderFile.h"
-#include "BrainModelRunCaretUtilityProgram.h"
+#include "BrainModelRunExternalProgram.h"
 #include "BrainModelSurfaceDeformationFlat.h"
 #include "BrainModelSurfaceFlatHexagonalSubsample.h"
 #include "BrainModelSurfacePointProjector.h"
@@ -169,38 +169,32 @@ BrainModelSurfaceDeformationFlat::executeDeformation() throw (BrainModelAlgorith
    //
    // Assemble arguments for flat_fluid program
    //
-   std::ostringstream str;
-   str << targetBorderResampledName.toAscii().constData()
-       << " "
-       << sourceBorderResampledName.toAscii().constData()
-       << " "
-       << coordsAsBorderFileName.toAscii().constData()
-       << " "
-       << QString::number(beta, 'f', 6).toAscii().constData()
-       << " "
-       << QString::number(varMult, 'f', 6).toAscii().constData()
-       << " "
-       << numberOfIterations
-       << " "
+   QStringList str;
+   str << targetBorderResampledName
+       << sourceBorderResampledName
+       << coordsAsBorderFileName
+       << QString::number(beta, 'f', 6)
+       << QString::number(varMult, 'f', 6)
+       << QString::number(numberOfIterations)
        << "junk.image"
-       << " "
-       << 0
-       << " "
-       << 0
-       << std::ends;
+       << QString::number(0)
+       << QString::number(0);
      
    if (DebugControl::getDebugOn()) {
       std::cout << std::endl;
       std::cout << "flat_fluid will be executed with the parameters: " << std::endl;
-      std::cout << "   " << str.str() << std::endl;
+      std::cout << "   " << str.join(" ").toAscii().constData() << std::endl;
       std::cout << std::endl;
    }
    
    //
    // Execute flat_fluid 
    //
-   BrainModelRunCaretUtilityProgram cup("flat_fluid", str.str().c_str(), false, true);
+   BrainModelRunExternalProgram cup("flat_fluid", 
+                                    str, 
+                                    true);
    cup.execute();
+   outputOfFlatFluid = cup.getOutputText();
    
    //
    // Keep track of files created by flat fluid

@@ -76,6 +76,12 @@ GuiMainWindowHelpActions::GuiMainWindowHelpActions(QWidget* parent)
    QObject::connect(caretHelpAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuCaretHelp()));
 
+   caretOnlineHelpAction = new QAction(parent);
+   caretOnlineHelpAction->setText("Caret Help (Online)...");
+   caretOnlineHelpAction->setObjectName("caretOnlineHelpAction");
+   QObject::connect(caretOnlineHelpAction, SIGNAL(triggered(bool)),
+                    this, SLOT(helpMenuOnlineCaretHelp()));
+
    caretTipsAction = new QAction(parent);
    caretTipsAction->setText("Caret Tips...");
    caretTipsAction->setObjectName("caretTipsAction");
@@ -127,6 +133,15 @@ void
 GuiMainWindowHelpActions::helpMenuCaretHelp()
 {
    theMainWindow->showHelpViewerDialog();
+}
+
+/**
+ * display online caret help.
+ */
+void 
+GuiMainWindowHelpActions::helpMenuOnlineCaretHelp()
+{
+   theMainWindow->displayWebPage("http://brainvis.wustl.edu/CaretHelpAccount/caret5_help/");
 }
 
 /**
@@ -317,7 +332,7 @@ GuiMainWindowHelpActions::helpMenuCaretSearchWebSite()
 void 
 GuiMainWindowHelpActions::helpMenuSumsWebSite()
 {
-   theMainWindow->displayWebPage("http://brainmap.wustl.edu/sums/index.jsp");
+   theMainWindow->displayWebPage("http://sumsdb.wustl.edu/sums/index.jsp");
 }
 
 /**

@@ -28,6 +28,7 @@
 
 #include "BrainSet.h"
 #include "DisplaySettingsStudyMetaData.h"
+#include "NameIndexSort.h"
 #include "StudyMetaDataFile.h"
 
 /**
@@ -64,6 +65,50 @@ DisplaySettingsStudyMetaData::update()
    updateSubHeaderNames();
 }
    
+/**
+ * get keyword indices sorted by name case insensitive.
+ */
+void 
+DisplaySettingsStudyMetaData::getKeywordIndicesSortedByName(
+                                   std::vector<int>& indicesSortedByNameOut,
+                                   const bool reverseOrderFlag,
+                                   const bool limitToDisplayedFociFlag) const
+{
+   NameIndexSort nis;
+   
+   int numKeywords = 0;
+   if (limitToDisplayedFociFlag) {
+      std::vector<QString> subsetOfKeywords;
+      brainSet->getStudyMetaDataFile()->getAllKeywordsUsedByDisplayedFoci(
+                                             brainSet->getFociProjectionFile(),
+                                             subsetOfKeywords);
+      numKeywords = static_cast<int>(subsetOfKeywords.size());
+      for (int i = 0; i < numKeywords; i++) {
+         //
+         // Need to use index of ALL keywords
+         //
+         nis.add(getKeywordIndexByName(subsetOfKeywords[i]), subsetOfKeywords[i]);
+      }
+   }
+   else {
+      numKeywords = getNumberOfKeywords();
+      for (int i = 0; i < numKeywords; i++) {
+         nis.add(i, getKeywordNameByIndex(i));
+      }
+   }
+   
+   nis.sortByNameCaseInsensitive();
+   
+   indicesSortedByNameOut.resize(numKeywords, 0);
+   for (int i = 0; i < numKeywords; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+
 /**
  * update the keywords.
  */
@@ -209,6 +254,49 @@ DisplaySettingsStudyMetaData::getStudiesWithSelectedKeywords(
    }
 }
 
+/**
+ * get subheader indices sorted by name case insensitive.
+ */
+void 
+DisplaySettingsStudyMetaData::getSubHeaderIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                            const bool reverseOrderFlag,
+                                            const bool limitToDisplayedFociFlag) const
+{
+   NameIndexSort nis;
+   int numSubHeaderNames = 0;
+   
+   if (limitToDisplayedFociFlag) {
+      std::vector<QString> subsetOfSubHeaderNames;
+      brainSet->getStudyMetaDataFile()->getAllTableSubHeaderShortNamesUsedByDisplayedFoci(
+                                             brainSet->getFociProjectionFile(),
+                                             subsetOfSubHeaderNames);
+      numSubHeaderNames = static_cast<int>(subsetOfSubHeaderNames.size());
+      for (int i = 0; i < numSubHeaderNames; i++) {
+         //
+         // Need to use index of ALL subheaders
+         //
+         nis.add(getSubHeaderIndexByName(subsetOfSubHeaderNames[i]), subsetOfSubHeaderNames[i]);
+      }
+   }
+   else {
+      numSubHeaderNames = getNumberOfSubHeaderNames();
+      for (int i = 0; i < numSubHeaderNames; i++) {
+         nis.add(i, getSubHeaderNameByIndex(i));
+      }
+   }
+   
+   nis.sortByNameCaseInsensitive();
+   
+   indicesSortedByNameOut.resize(numSubHeaderNames, 0);
+   for (int i = 0; i < numSubHeaderNames; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+       
 /**
  * update the subheaders names.
  */
@@ -392,7 +480,8 @@ DisplaySettingsStudyMetaData::showScene(const SceneFile::Scene& scene, QString& 
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsStudyMetaData::saveScene(SceneFile::Scene& scene, const bool /*onlyIfSelected*/)
+DisplaySettingsStudyMetaData::saveScene(SceneFile::Scene& scene, const bool /*onlyIfSelected*/,
+                             QString& /*errorMessage*/)
 {
    SceneFile::SceneClass sc("DisplaySettingsStudyMetaData");
    const int num = getNumberOfKeywords();

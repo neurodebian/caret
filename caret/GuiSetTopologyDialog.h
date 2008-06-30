@@ -29,13 +29,13 @@
 
 #include <vector>
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiTopologyFileComboBox;
 
 /// dialog for setting the topology file for surfaces
-class GuiSetTopologyDialog : public QtDialogNonModal {
+class GuiSetTopologyDialog : public WuQDialog {
    Q_OBJECT
    
    public:

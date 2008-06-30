@@ -152,6 +152,18 @@ Structure::convertStringToType(const QString& sin)
             (s == "b")) {
       st = STRUCTURE_TYPE_CORTEX_BOTH;
    }
+   else if (s == getCerebellumOrLeftCerebralAsString()) {
+      st = STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT;
+   }
+   else if (s == getCerebellumOrRightCerebralAsString()) {
+      st = STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT;
+   }
+   else if (s == getLeftCerebralOrCerebellumAsString()) {
+      st = STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM;
+   }
+   else if (s == getRightCerebralOrCerebellumAsString()) {
+      st = STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM;
+   }
    
    return st;
 }
@@ -179,6 +191,18 @@ Structure::convertTypeToString(const STRUCTURE_TYPE st)
          break;
       case STRUCTURE_TYPE_CEREBELLUM:
          s = getCerebellumAsString();
+         break;
+      case STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+         s = getCerebellumOrLeftCerebralAsString();
+         break;
+      case STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+         s = getCerebellumOrRightCerebralAsString();
+         break;
+      case STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+         s = getLeftCerebralOrCerebellumAsString();
+         break;
+      case STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+         s = getRightCerebralOrCerebellumAsString();
          break;
    }
    
@@ -209,6 +233,18 @@ Structure::convertTypeToAbbreviatedString(const STRUCTURE_TYPE st)
       case STRUCTURE_TYPE_CEREBELLUM:
          s = "C";
          break;
+      case STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+         s = "CL";
+         break;
+      case STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+         s = "CR";
+         break;
+      case STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+         s = "LC";
+         break;
+      case STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+         s = "RC";
+         break;
    }
    
    return s;
@@ -220,13 +256,22 @@ Structure::convertTypeToAbbreviatedString(const STRUCTURE_TYPE st)
 void 
 Structure::getAllTypesAndNames(std::vector<STRUCTURE_TYPE>& types,
                                std::vector<QString>& names,
-                               const bool includeInvalid)
+                               const bool includeInvalid,
+                               const bool includeAmbiguousCerebralOrCerebellum)
 {
    types.clear();
    names.clear();
    
    types.push_back(STRUCTURE_TYPE_CEREBELLUM);
    names.push_back(getCerebellumAsString());
+   
+   if (includeAmbiguousCerebralOrCerebellum) {
+      types.push_back(STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT);
+      names.push_back(getCerebellumOrLeftCerebralAsString());
+      
+      types.push_back(STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT);
+      names.push_back(getCerebellumOrRightCerebralAsString());
+   }
    
    types.push_back(STRUCTURE_TYPE_CORTEX_LEFT);
    names.push_back(getCortextLeftAsString());
@@ -236,6 +281,14 @@ Structure::getAllTypesAndNames(std::vector<STRUCTURE_TYPE>& types,
    
    types.push_back(STRUCTURE_TYPE_CORTEX_RIGHT);
    names.push_back(getCortexRightAsString());
+   
+   if (includeAmbiguousCerebralOrCerebellum) {
+      types.push_back(STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM);
+      names.push_back(getLeftCerebralOrCerebellumAsString());
+      
+      types.push_back(STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM);
+      names.push_back(getRightCerebralOrCerebellumAsString());
+   }
    
    if (includeInvalid) {
       types.push_back(STRUCTURE_TYPE_INVALID);

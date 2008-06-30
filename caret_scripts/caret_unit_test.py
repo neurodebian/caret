@@ -246,8 +246,9 @@ def renderSceneToImage(specFileName, sceneFileName, sceneNumber, imageName) :
        + sceneFileName    \
        + " "              \
        + str(sceneNumber) \
-       + " "              \
-       + imageName;
+       + " -image-file "  \
+       + imageName        \
+       + " 1"
    print "cmd: %s" % (cmd)
 
    #

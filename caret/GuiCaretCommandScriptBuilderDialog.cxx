@@ -53,7 +53,7 @@
  */
 GuiCaretCommandScriptBuilderDialog::GuiCaretCommandScriptBuilderDialog(QWidget* parent,
                                                        const QString& caretHomeDirectory)
-   : QtDialog(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Caret Command Script Builder");
    
@@ -64,7 +64,7 @@ GuiCaretCommandScriptBuilderDialog::GuiCaretCommandScriptBuilderDialog(QWidget* 
    if (caretHomeDirectory.isEmpty() == false) {
       caretCommandProgramName = caretHomeDirectory;
       caretCommandProgramName.append("/");
-      caretCommandProgramName.append("bin");
+      caretCommandProgramName.append(BrainSet::getBinDirectoryName());
       caretCommandProgramName.append("/");
    }  
    caretCommandProgramName.append("caret_command");

@@ -2,14 +2,14 @@
 #ifndef __GUI_ALIGN_SURFACE_TO_STANDARD_ORIENTATION_DIALOG_H__
 #define __GUI_ALIGN_SURFACE_TO_STANDARD_ORIENTATION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class QCheckBox;
 class QLabel;
 
 /// class for dialog used to align a surface to standard orientation
-class GuiAlignSurfaceToStandardOrientationDialog : public QtDialog {
+class GuiAlignSurfaceToStandardOrientationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

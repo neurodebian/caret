@@ -48,7 +48,7 @@
  * Constructor.
  */
 GuiVolumeSegmentationEditorDialog::GuiVolumeSegmentationEditorDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    editMode = EDIT_MODE_TURN_VOXELS_ON;
    setWindowTitle("Segmentation Volume Editor");
@@ -314,7 +314,7 @@ GuiVolumeSegmentationEditorDialog::show()
 {
    clearUndoStack();
    
-   QtDialog::show();
+   WuQDialog::show();
    theMainWindow->getBrainModelOpenGL()->setMouseMode(
                   GuiBrainModelOpenGL::MOUSE_MODE_VOLUME_SEGMENTATION_EDIT);
 }

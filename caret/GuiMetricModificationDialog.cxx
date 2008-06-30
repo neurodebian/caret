@@ -61,7 +61,7 @@
  */
 GuiMetricModificationDialog::GuiMetricModificationDialog(QWidget* parent, 
                                                          const FILE_TYPE_MODE fileTypeModeIn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    fileTypeMode = fileTypeModeIn;
    

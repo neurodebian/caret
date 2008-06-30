@@ -30,7 +30,7 @@
 #include <vector>
 
 #include "MapFmriAtlasSpecFileInfo.h"
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class PreferencesFile;
 class QCheckBox;
@@ -39,7 +39,7 @@ class QLineEdit;
 class QGroupBox;
 
 /// Class for selecting coordinate files from an atlas spec file
-class GuiMapFmriAtlasDialog : public QtDialog {
+class GuiMapFmriAtlasDialog : public WuQDialog {
    Q_OBJECT
    
    public:

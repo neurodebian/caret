@@ -63,13 +63,13 @@
 #include "GuiVolumeSelectionControl.h"
 #include "StatisticHistogram.h"
 #include "ParamsFile.h"
-#include "QtCheckBoxSelectionDialog.h"
 #include "QtListBoxSelectionDialog.h"
 #include "QtUtilities.h"
 #include "SpecFile.h"
 #include "Species.h"
 #include "StringUtilities.h"
 #include "VolumeFile.h"
+#include "WuQDataEntryDialog.h"
 
 #include "global_variables.h"
 
@@ -77,7 +77,7 @@
  * Constructor.
  */
 GuiVolumeSureFitSegmentationDialog::GuiVolumeSureFitSegmentationDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    initializeGraphScaleFlag = true;
@@ -204,7 +204,7 @@ GuiVolumeSureFitSegmentationDialog::slotCloseButton()
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    dsv->setAnatomyThresholdValid(false);
    GuiBrainModelOpenGL::updateAllGL();
-   QtDialog::close();
+   WuQDialog::close();
 }
       
 /**
@@ -214,7 +214,7 @@ void
 GuiVolumeSureFitSegmentationDialog::show()
 {
    showPage(pagesStackedWidget->widget(0));
-   QtDialog::show();
+   WuQDialog::show();
    slotEnableDisablePushButtons();
 }
 
@@ -1537,6 +1537,31 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
       }
       
       //
+      // If about to show volume selection page
+      //
+      if (page == volumeSelectionPage) {
+         //
+         // anatomy selected and no anatomy files but have segmentation files
+         //
+         if ((volumeSelectionControl->getSelectedVolumeType() 
+                == VolumeFile::VOLUME_TYPE_ANATOMY) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles() <= 0) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles() > 0)) {
+            volumeSelectionControl->setSelectedVolumeType(VolumeFile::VOLUME_TYPE_SEGMENTATION);
+         }
+         
+         //
+         // segmentation selected and no segmentation files but have anatomy files
+         //
+         if ((volumeSelectionControl->getSelectedVolumeType() 
+                == VolumeFile::VOLUME_TYPE_SEGMENTATION) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles() <= 0) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles() > 0)) {
+                  volumeSelectionControl->setSelectedVolumeType(VolumeFile::VOLUME_TYPE_ANATOMY);
+         }
+      }
+      
+      //
       // If the page about to be shown is the gray white peaks page
       //
       if (page == grayWhitePeaksPage) {
@@ -1968,35 +1993,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
         generateRawAndFiducialSurfaceCheckBox->isEnabled()) &&
        (generateEllipsoidSurfaceCheckBox->isChecked() &&
         generateEllipsoidSurfaceCheckBox->isEnabled())) {
-      std::vector<QString> cutFaceLabels;
-      switch (hemisphere) {
-         case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-            cutFaceLabels.push_back("Negative X (Lateral)");
-            cutFaceLabels.push_back("Positive X (Medial)");
-            break;
-         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-            cutFaceLabels.push_back("Negative X (Medial)");
-            cutFaceLabels.push_back("Positive X (Lateral)");
-            break;
-         case Structure::STRUCTURE_TYPE_CEREBELLUM:
-            cutFaceLabels.push_back("Negative X");
-            cutFaceLabels.push_back("Positive X");
-            break;
-         case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-            cutFaceLabels.push_back("Negative X");
-            cutFaceLabels.push_back("Positive X");
-            break;
-         case Structure::STRUCTURE_TYPE_INVALID:
-            cutFaceLabels.push_back("Negative X");
-            cutFaceLabels.push_back("Positive X");
-            break;
-      }
-      cutFaceLabels.push_back("Negative Y (Posterior)");
-      cutFaceLabels.push_back("Positive Y (Anterior)");
-      cutFaceLabels.push_back("Negative Z (Inferior)");
-      cutFaceLabels.push_back("Positive Z (Superior)");
-      std::vector<bool> defaultChecks(cutFaceLabels.size(), false);
-      
+        
       //
       // Check parameters file for padding from previous runs
       //
@@ -2008,17 +2005,15 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
       pf->getParameter(ParamsFile::keyOldPadPosY, posY);
       pf->getParameter(ParamsFile::keyOldPadNegZ, negZ);
       pf->getParameter(ParamsFile::keyOldPadPosZ, posZ);
-      defaultChecks[0] = (negX != 0);
-      defaultChecks[1] = (posX != 0);
-      defaultChecks[2] = (negY != 0);
-      defaultChecks[3] = (posY != 0);
-      defaultChecks[4] = (negZ != 0);
-      defaultChecks[5] = (posZ != 0);
       
       QApplication::beep();
-      QtCheckBoxSelectionDialog pad(this,
-                  "Partial Hemisphere Padding",
-                  "If the volume being reconstructed is a full hemisphere,\n"
+      
+      //
+      // Dialog for optional padding
+      //
+      WuQDataEntryDialog pad(this);
+      pad.setWindowTitle("Partial Hemisphere Padding");
+      pad.setTextAtTop("If the volume being reconstructed is a full hemisphere,\n"
                   "no padding is needed.  In this case, leave all checkboxes\n"
                   "unchecked and press the \"OK\" button.\n"
                   "\n"
@@ -2027,15 +2022,58 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
                   "reconstructing the surface, the volume will be padded where\n"
                   "cuts have been made.  This padding is necessary so that \n"
                   "the surface can be flattened in Caret.  After identifying\n"
-                  "the cuts, press the \"OK\" button to continue.\n"
-                  "\n",
-                  cutFaceLabels,
-                  defaultChecks);
+                  "the cuts, press the \"OK\" button to continue.",
+                  false);
+      QCheckBox* negxCheckBox = pad.addCheckBox("Negative X", negX != 0);
+      QCheckBox* posxCheckBox = pad.addCheckBox("Positive X", posX != 0);
+      QCheckBox* negyCheckBox = pad.addCheckBox("Negative Y (Posterior)", negY != 0);
+      QCheckBox* posyCheckBox = pad.addCheckBox("Positive Y (Anterior)", posY != 0);
+      QCheckBox* negzCheckBox = pad.addCheckBox("Negative Z (Inferior)", negZ != 0);
+      QCheckBox* poszCheckBox = pad.addCheckBox("Positive Z (Superior)", posZ != 0);
+      switch (hemisphere) {
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+            negxCheckBox->setText("Negative X (Lateral)");
+            posxCheckBox->setText("Positive X (Medial)");
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+            negxCheckBox->setText("Negative X (Medial)");
+            posxCheckBox->setText("Positive X (Lateral)");
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+            break;
+         case Structure::STRUCTURE_TYPE_INVALID:
+            break;
+      }
+      QSpinBox* paddingAmountSpinBox = pad.addSpinBox("Padding Slices",
+                                                       30, 1, 500, 1);     
       if (pad.exec() == QDialog::Accepted) {
-         for (int i = 0; i < 6; i++) {
-            if (pad.getCheckBoxStatus(i)) {
-               paddingAmount[i] = 30;
-            }
+         if (negxCheckBox->isChecked()) {
+            paddingAmount[0] = paddingAmountSpinBox->value();
+         }
+         if (posxCheckBox->isChecked()) {
+            paddingAmount[1] = paddingAmountSpinBox->value();
+         }
+         if (negyCheckBox->isChecked()) {
+            paddingAmount[2] = paddingAmountSpinBox->value();
+         }
+         if (posyCheckBox->isChecked()) {
+            paddingAmount[3] = paddingAmountSpinBox->value();
+         }
+         if (negzCheckBox->isChecked()) {
+            paddingAmount[4] = paddingAmountSpinBox->value();
+         }
+         if (poszCheckBox->isChecked()) {
+            paddingAmount[5] = paddingAmountSpinBox->value();
          }
          
          //
@@ -2049,7 +2087,6 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
          pf->setParameter(ParamsFile::keyOldPadPosZ, paddingAmount[5]);
          try {
             theMainWindow->getBrainSet()->writeParamsFile(pf->getFileName());
-            //pf->writeFile(pf->getFileName());
          }
          catch (FileException&) {
          }
@@ -2114,7 +2151,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    segmentationTime = 0.0;
    try {
       bmvs.execute();
-      QtDialog::show();  // use this otherwise initial page gets shown
+      WuQDialog::show();  // use this otherwise initial page gets shown
       segmentationTime = algorithmTimer.elapsed() * 0.001;
       
       //
@@ -2138,7 +2175,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    catch (BrainModelAlgorithmException& e) {
       QApplication::restoreOverrideCursor();
       QMessageBox::critical(this, "ERROR", e.whatQString());
-      QtDialog::show();  // use this otherwise initial page gets shown
+      WuQDialog::show();  // use this otherwise initial page gets shown
       segmentationTime = algorithmTimer.elapsed() * 0.001;
       return true;
    }
@@ -2177,7 +2214,7 @@ GuiVolumeSureFitSegmentationDialog::updateDialog()
       //
       // clear entries on first page and close dialog
       //
-      QtDialog::close();
+      WuQDialog::close();
    }
 }
 

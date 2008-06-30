@@ -335,6 +335,10 @@ class BrainModelBorder {
       /// set highlight flag
       void setHighlightFlag(const bool hf)  { highlightFlag = hf; }
       
+      /// get the link nearest the coordinate (returns -1 if found)
+      int getLinkNearestCoordinate(const int brainModelIndex,
+                                   const float xyz[3]) const;
+                                    
    protected:
       /// initialize variables in this object
       void initialize(BrainSet* bs);
@@ -574,8 +578,17 @@ class BrainModelBorderSet {
       void reverseDisplayedBorders(const BrainModel* bm);
    
       /// get the unique names of all borders
-      void getAllBorderNames(std::vector<QString>& names);
+      void getAllBorderNames(std::vector<QString>& names,
+                             const bool reverseOrderFlag);
       
+      /// get indeces of borders with name
+      void getAllBordersWithName(const QString& nameIn,
+                                 std::vector<int>& indicesOut) const;
+                                 
+      /// copy a border
+      void copyBorder(const int borderToCopyIndex,
+                      const QString& nameForCopiedBorder);
+                      
       /// See if a surface's borders are modified.
       bool getSurfaceBordersModified(const BrainModelSurface* bms) const; 
       
@@ -631,6 +644,32 @@ class BrainModelBorderSet {
       /// set default file names if they are empty
       void setDefaultFileNames();
       
+      /// find border and links nearest 3D coordinate (returns true if found)
+      bool findBorderAndLinkNearestCoordinate(const BrainModelSurface* bms,
+                                              const float xyz[3],
+                                              int& borderNumberOut,
+                                              int& borderLinkOut) const;
+      
+      /// update border mode
+      enum UPDATE_BORDER_MODE {
+         /// update border mode none
+         UPDATE_BORDER_MODE_NONE,
+         /// update border mode replace segment in middle of border
+         UPDATE_BORDER_MODE_REPLACE_SEGMENT_IN_MIDDLE_OF_BORDER,
+         /// update border erase
+         UPDATE_BORDER_MODE_ERASE,
+         /// update border mode extend border from end
+         UPDATE_BORDER_MODE_EXTEND_BORDER_FROM_END
+      };
+      
+      /// update a border with a new segment 
+      void updateBorder(const BrainModelSurface* bms,
+                        const UPDATE_BORDER_MODE updateMode,
+                        Border* newBorderSegment,
+                        const float samplingDensity,
+                        const bool projectBorderFlag,
+                        QString& errorMessageOut);
+                        
    protected:
       /// brain set using this object
       BrainSet* brainSet;

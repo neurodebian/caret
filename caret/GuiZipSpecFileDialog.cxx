@@ -25,8 +25,8 @@
 
 #include <sstream>
 
+#include <QDialogButtonBox>
 #include <QFile>
-#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
@@ -39,13 +39,14 @@
 #include "GuiZipSpecFileDialog.h"
 #include "SpecFileUtilities.h"
 #include "StringUtilities.h"
+#include "WuQFileDialog.h"
 
 /**
  * constructor.
  */
 GuiZipSpecFileDialog::GuiZipSpecFileDialog(QWidget* parent,
                                            PreferencesFile* pref)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    preferencesFile = pref;
    
@@ -54,7 +55,7 @@ GuiZipSpecFileDialog::GuiZipSpecFileDialog(QWidget* parent,
    //
    // Get the layout
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    
    //
    // Grid layout for dialog items
@@ -112,11 +113,15 @@ GuiZipSpecFileDialog::GuiZipSpecFileDialog(QWidget* parent,
    grid->addWidget(unzipDirLineEdit, 2, 1);
    
    //
-   // Connect slots
+   // Dialog buttons
    //
-   QObject::connect(this, SIGNAL(signalApplyButtonPressed()),
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Apply 
+                                                      | QDialogButtonBox::Close);
+   dialogLayout->addWidget(buttonBox);
+   QPushButton* applyButton = buttonBox->button(QDialogButtonBox::Apply);
+   QObject::connect(applyButton, SIGNAL(clicked()),
                     this, SLOT(slotApplyButton()));
-   QObject::connect(this, SIGNAL(signalCloseButtonPressed()),
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
 }
 

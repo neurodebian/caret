@@ -26,7 +26,7 @@
 #ifndef __QT_RADIO_BUTTON_SELELCTION_DIALOG_H__
 #define __QT_RADIO_BUTTON_SELELCTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include <QString>
 #include <vector>
@@ -34,7 +34,7 @@
 class QButtonGroup;
 
 /// class that creates a dialog for choosing mutually exlusive items
-class QtRadioButtonSelectionDialog : public QtDialog {
+class QtRadioButtonSelectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

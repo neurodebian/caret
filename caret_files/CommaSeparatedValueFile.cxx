@@ -145,8 +145,8 @@ CommaSeparatedValueFile::getDataSectionByName(const QString& name)
  * read the file.
  */
 void 
-CommaSeparatedValueFile::readFileData(QFile& file,
-                                      QTextStream& /*stream*/, 
+CommaSeparatedValueFile::readFileData(QFile& /*file*/,
+                                      QTextStream& stream, 
                                       QDataStream& /*binStream*/,
                                       QDomElement& /* rootElement */) throw (FileException)
 {
@@ -162,7 +162,7 @@ CommaSeparatedValueFile::readFileData(QFile& file,
    //    by double quotes
    //
    const qint64 bufferSize = 4096;
-   char buffer[bufferSize];
+   QString buffer;
 
    //
    // Some flags for reading file
@@ -170,7 +170,7 @@ CommaSeparatedValueFile::readFileData(QFile& file,
    bool endOfItem = false;
    bool endOfRecord = false;
    bool inString = false;
-   char nextCharacter = 0;
+   QChar nextCharacter = 0;
    bool firstRecordFlag = true;
    int recordCount = 0;
    
@@ -189,12 +189,20 @@ CommaSeparatedValueFile::readFileData(QFile& file,
    //
    // Read until done
    //
+   QString nextBuffer;
    bool done = false;
    while (done == false) {
       //
       // read some data
       //
-      const qint64 numRead = file.read(buffer, bufferSize);
+      if (nextBuffer.isEmpty() == false) {
+         buffer = nextBuffer;
+         nextBuffer.clear();
+      }
+      else {
+         buffer = stream.read(bufferSize);
+      }
+      const qint64 numRead = buffer.length();
       
       if (numRead <= 0) {
          done = true;
@@ -207,7 +215,7 @@ CommaSeparatedValueFile::readFileData(QFile& file,
             //
             // get character from the buffer
             //
-            char ch = buffer[i];
+            const QChar ch = buffer[i];
             
             //
             // Also want to know the next character
@@ -216,8 +224,19 @@ CommaSeparatedValueFile::readFileData(QFile& file,
             if (i < (numRead - 1)) {
                nextCharacter = buffer[i+1];
             }
-            else if (file.atEnd() == false) {
-               file.peek(&nextCharacter, 1);
+            else if (stream.atEnd() == false) {
+               nextBuffer = stream.read(bufferSize);
+               if (nextBuffer.isEmpty() == false) {
+                  nextCharacter = nextBuffer[0];
+               }
+              /*
+               const qint64 oldPos = stream.pos();
+               const QString temp = stream.read(1);
+               if (temp.isEmpty() == false) {
+                  nextCharacter = temp[0];
+               }
+               stream.seek(oldPos);
+              */
             }
             
             //
@@ -233,69 +252,65 @@ CommaSeparatedValueFile::readFileData(QFile& file,
             //
             // Check for characters that delineate lines or elements
             //
-            switch (ch) {
-               case '"':  // double quotes denote beginning and end of a string
-                  //         double quotes in a string are two consecutive double quotes
-                  // If currently reading the contents of a string
+            if (ch.toAscii() == QChar('"')) {
+               //         double quotes in a string are two consecutive double quotes
+               // If currently reading the contents of a string
+               //
+               if (inString) {
                   //
-                  if (inString) {
-                     //
-                     // If Double quotes within a string then do not need two of them so skip next 
-                     //
-                     if (nextCharacter == '"') {
-                        skipNextCharacter = true;
-                     }
-                     else {
-                        //
-                        // Just a single quote so at end of the string
-                        //
-                        inString = false;
-                     }
+                  // If Double quotes within a string then do not need two of them so skip next 
+                  //
+                  if (nextCharacter.toAscii() == QChar('"')) {
+                     skipNextCharacter = true;
                   }
                   else {
                      //
-                     // Starting a string
+                     // Just a single quote so at end of the string
                      //
-                     inString = true;
+                     inString = false;
                   }
-                  break;
-               case ',':  // comma
+               }
+               else {
                   //
-                  // Commas not within a string delineate elements
+                  // Starting a string
                   //
-                  if (inString == false) {
-                     endOfItem = true;
-                     useCharacter = false;
-                  }
-                  break;
-               case '\r':  // carriage return 0x0d 
-                  if (inString == false) {
-                     //
-                     // carriage return not in a string denotes end of element and end of line
-                     //
-                     endOfItem = true;
-                     endOfRecord = true;
-                     useCharacter = false;
-                  }
+                  inString = true;
+               }
+            }
+            else if (ch.toAscii() == QChar(',')) {  // comma
+               //
+               // Commas not within a string delineate elements
+               //
+               if (inString == false) {
+                  endOfItem = true;
+                  useCharacter = false;
+               }
+            }
+            else if (ch.toAscii() == QChar('\r')) {  // carriage return 0x0d 
+               if (inString == false) {
                   //
-                  // Some operating systems follow a carriage return with a newline
+                  // carriage return not in a string denotes end of element and end of line
                   //
-                  if (nextCharacter == '\n') {
-                     skipNextCharacter = true;
-                  }
-                  break;
-               case '\n':  // line feed 0x0a 
-                  if (inString == false) {
-                     //
-                     // Line feed not in a string denotes end of element and end of line
-                     //
-                     endOfItem = true;
-                     endOfRecord = true;
-                     useCharacter = false;
-                  }
-                  break;
-               default:
-                  break;
+                  endOfItem = true;
+                  endOfRecord = true;
+                  useCharacter = false;
+               }
+               //
+               // Some operating systems follow a carriage return with a newline
+               //
+               if (nextCharacter.toAscii() == QChar('\n')) {
+                  skipNextCharacter = true;
+               }
+            }
+            else if (ch.toAscii() == QChar('\n')) {  // line feed 0x0a 
+               if (inString == false) {
+                  //
+                  // Line feed not in a string denotes end of element and end of line
+                  //
+                  endOfItem = true;
+                  endOfRecord = true;
+                  useCharacter = false;
+               }
             }
             
             //
@@ -330,6 +345,12 @@ CommaSeparatedValueFile::readFileData(QFile& file,
                   //
                   const int numItems = static_cast<int>(currentRecord.size());
                   if (numItems > 0) {
+                     if (DebugControl::getDebugOn()) {
+                        if (currentRecord[0] == "305") {
+                           std::cout << "At focus 305" << std::endl;
+                        }
+                     }
+                  
                      //
                      // The first record must be the CSVF identifier
                      //
@@ -421,7 +442,13 @@ CommaSeparatedValueFile::readFileData(QFile& file,
                   }
                   
                   if (DebugControl::getDebugOn()) {
-                     std::cout << "CSVF: Read record with count items: " << currentRecord.size() << std::endl;
+                     const int numItems = static_cast<int>(currentRecord.size());
+                     std::cout << "CSVF: Read record with count items: " << numItems << std::endl;
+                     //QStringList sl;
+                     //for (int mm = 0; mm < numItems; mm++) {
+                     //   sl << currentRecord[mm];
+                     //}
+                     //std::cout << sl.join("|").toAscii().constData() << std::endl;
                   }
                   currentRecord.clear();
                   endOfRecord = false;
@@ -440,8 +467,7 @@ CommaSeparatedValueFile::readFileData(QFile& file,
                   //
                   // Read and ignore one character
                   //
-                  char dummy;
-                  file.read(&dummy, 1);
+                  (void)stream.read(1);
                }
                else {
                   //

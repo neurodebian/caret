@@ -579,7 +579,7 @@ BrainModelContourToSurfaceConverter::execute() throw (BrainModelAlgorithmExcepti
       const int numContourCells = contourCellFile->getNumberOfCells();
       if (numContourCells > 0) {
          brainSet->deleteAllCells(true, false);
-         brainSet->getCellProjectionFile()->append(*contourCellFile);
+         brainSet->getCellProjectionFile()->appendFiducialCellFile(*contourCellFile);
          
          ContourCellColorFile* contourCellColorFile = brainSet->getContourCellColorFile();
          if (contourCellColorFile->getNumberOfColors() > 0) {

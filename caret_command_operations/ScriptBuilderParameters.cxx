@@ -92,11 +92,14 @@ ScriptBuilderParameters::addString(const QString& descriptionIn,
  */
 void 
 ScriptBuilderParameters::addFile(const QString& descriptionIn,
-                                 const QStringList& fileFiltersIn)
+                                 const QStringList& fileFiltersIn,
+                                 const QString& defaultFileName,
+                                 const QString& optionalSwitchIn)
 {
    Parameter p(Parameter::TYPE_FILE,
-               descriptionIn);
-   p.setFileFilters(fileFiltersIn);
+               descriptionIn,
+               optionalSwitchIn);
+   p.setFileParameters(fileFiltersIn, defaultFileName);
    parameters.push_back(p);
 }
                  
@@ -116,11 +119,14 @@ ScriptBuilderParameters::addDirectory(const QString& descriptionIn)
  */
 void 
 ScriptBuilderParameters::addFile(const QString& descriptionIn,
-                                 const QString& fileFilterIn)
+                                 const QString& fileFilterIn,
+                                 const QString& defaultFileName,
+                                 const QString& optionalSwitchIn)
 {
    Parameter p(Parameter::TYPE_FILE,
-               descriptionIn);
-   p.setFileFilters(QStringList(fileFilterIn));
+               descriptionIn,
+               optionalSwitchIn);
+   p.setFileParameters(QStringList(fileFilterIn), defaultFileName);
    parameters.push_back(p);
 }
                  
@@ -129,11 +135,12 @@ ScriptBuilderParameters::addFile(const QString& descriptionIn,
  */
 void 
 ScriptBuilderParameters::addMultipleFiles(const QString& descriptionIn,
-                                          const QStringList& fileFiltersIn)
+                                          const QStringList& fileFiltersIn,
+                                 const QString& defaultFileName)
 {
    Parameter p(Parameter::TYPE_FILE_MULTIPLE,
                descriptionIn);
-   p.setFileFilters(fileFiltersIn);
+   p.setFileParameters(fileFiltersIn, defaultFileName);
    parameters.push_back(p);
 }
                       
@@ -142,11 +149,12 @@ ScriptBuilderParameters::addMultipleFiles(const QString& descriptionIn,
  */
 void 
 ScriptBuilderParameters::addMultipleFiles(const QString& descriptionIn,
-                                          const QString& fileFilterIn)
+                                          const QString& fileFilterIn,
+                                          const QString& defaultFileName)
 {
    Parameter p(Parameter::TYPE_FILE_MULTIPLE,
                descriptionIn);
-   p.setFileFilters(QStringList(fileFilterIn));
+   p.setFileParameters(QStringList(fileFilterIn), defaultFileName);
    parameters.push_back(p);
 }
                       

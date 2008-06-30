@@ -54,9 +54,10 @@
 
 /// Constructor
 GuiContourReconstructionDialog::GuiContourReconstructionDialog(QWidget* parent,
-                                                               bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                                               bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    setWindowTitle("Contour Reconstruction Into Surface");
    
    //

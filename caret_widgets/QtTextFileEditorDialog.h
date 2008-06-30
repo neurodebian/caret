@@ -28,17 +28,19 @@
 #define __QT_TEXT_FILE_EDITOR_DIALOG_H__
 
 #include <QStringList>
-#include "QtDialog.h"
+#include <QTextEdit>
+#include "WuQDialog.h"
 
 class QCheckBox;
+class QKeyEvent;
 class QLineEdit;
 class QPushButton;
-class QTextEdit;
 class QToolButton;
+class QtTextFileEditor;
 class QtTextFileEditorSearchDialog;
 
 /// Dialog for editing text files
-class QtTextFileEditorDialog : public QtDialog {
+class QtTextFileEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -94,7 +96,7 @@ class QtTextFileEditorDialog : public QtDialog {
       QtTextFileEditorSearchDialog* findReplaceDialog;
       
       /// the text display
-      QTextEdit* textEditor;
+      QtTextFileEditor* textEditor;
       
       /// the wrap tool button
       QToolButton* wrapToolButton;
@@ -125,6 +127,27 @@ class QtTextFileEditorDialog : public QtDialog {
       
       /// previous Go To Line Number
       int previousLineNumber;
+};
+
+/// text editor
+class QtTextFileEditor : public QTextEdit {
+   Q_OBJECT
+   
+   public:
+      // constructor
+      QtTextFileEditor(QWidget* parent = 0);
+      
+      // destructor
+      ~QtTextFileEditor();
+   
+   signals:
+      // find command requested
+      void signalFindCommand();
+      
+   protected:
+      // called when keys pressed
+      void keyPressEvent(QKeyEvent* event);
+      
 };
 
 /// search dialog

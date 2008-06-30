@@ -30,7 +30,7 @@
 #include <set>
 
 #include "AbstractFile.h"
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class AbstractFileHeaderUpdater;
 class BrainModelBorderFileInfo;
@@ -44,7 +44,7 @@ class QTextEdit;
 class VolumeFile;
 
 /// Dialog that displays a scrolling text widget
-class GuiDataFileCommentDialog : public QtDialog {
+class GuiDataFileCommentDialog : public WuQDialog {
    Q_OBJECT
    
    public:

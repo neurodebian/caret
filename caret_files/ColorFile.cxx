@@ -39,6 +39,7 @@
 #include "CommaSeparatedValueFile.h"
 #include "ContourCellColorFile.h"
 #include "FociColorFile.h"
+#include "NameIndexSort.h"
 #include "StringTable.h"
 
 /**
@@ -202,6 +203,35 @@ ColorFile::addColor(const QString& name,
 }
 
 /**
+ * get color indices sorted by name case insensitive.
+ */
+void 
+ColorFile::getColorIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                       const bool reverseOrderFlag) const
+{
+   indicesSortedByNameOut.clear();
+   const int num = getNumberOfColors();
+   
+   //
+   // Sort indices by name
+   //
+   NameIndexSort nis;
+   for (int i = 0; i < num; i++) {
+      nis.add(i, getColorNameByIndex(i));
+   }
+   nis.sortByNameCaseInsensitive();
+   
+   indicesSortedByNameOut.resize(num, 0);
+   for (int i = 0; i < num; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+      
+/**
  * Get a color by its index (no validity check is made for the index).
  */
 void
@@ -256,6 +286,15 @@ ColorFile::getColorNameByIndex(const int indx) const
    return colors[indx].getName();
 }
 
+/**
+ * set color name by index.
+ */
+void 
+ColorFile::setColorNameByIndex(const int indx, const QString& name)
+{
+   colors[indx].setName(name);
+}
+                           
 /**
  * get the symbol by the color index.
  */

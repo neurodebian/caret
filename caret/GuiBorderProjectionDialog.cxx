@@ -47,8 +47,9 @@
  * Constructor
  */
 GuiBorderProjectionDialog::GuiBorderProjectionDialog(QWidget* parent) 
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Border Projection");
    
    QVBoxLayout* dialogLayout = new QVBoxLayout(this);

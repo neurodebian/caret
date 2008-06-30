@@ -25,16 +25,20 @@
 
 
 #include <QApplication>
+#include <QDoubleSpinBox>
 #include <QGridLayout>
+#include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QMessageBox>
 #include <QString>
+#include <QTime>
 
+#include "GuiBrainModelSelectionComboBox.h"
+#include "BrainModelSurfaceFociUncertaintyToRgbPaint.h"
 #include "BrainSet.h"
-#include "FociUncertaintyToRgbPaintConverter.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
@@ -49,97 +53,17 @@
  * Constructor.
  */
 GuiFociUncertaintyLimitsDialog::GuiFociUncertaintyLimitsDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : QDialog(parent)
 {
-   setAttribute(Qt::WA_DeleteOnClose);
+   setModal(true);
    setWindowTitle("Uncertainty Limits to RGB Paint");
    
    //
-   // Vertical box layout of all items
+   // Create the surfaces and limits widgets
    //
-   QVBoxLayout* rows = new QVBoxLayout(this);
-   rows->setMargin(2);
-   rows->setSpacing(3);
-   
-   //
-   // Grid for uncertainty limits
-   //
-   QGridLayout* ulGrid = new QGridLayout;
-   ulGrid->setMargin(2);
-   ulGrid->setSpacing(5);
-   rows->addLayout(ulGrid);
-   
-   //
-   // lower limit
-   //
-   ulGrid->addWidget(new QLabel("Lower Limit (mm)"), 0, 0, Qt::AlignLeft);
-   lowerLimitLineEdit = new QLineEdit;
-   ulGrid->addWidget(lowerLimitLineEdit, 0, 1, Qt::AlignLeft);
-   
-   //
-   // middle limit
-   //
-   ulGrid->addWidget(new QLabel("Middle Limit (mm)"), 1, 0, Qt::AlignLeft);
-   middleLimitLineEdit = new QLineEdit;
-   ulGrid->addWidget(middleLimitLineEdit, 1, 1, Qt::AlignLeft);
-   
-   //
-   // upper limit
-   //
-   ulGrid->addWidget(new QLabel("Upper Limit (mm)"), 2, 0, Qt::AlignLeft);
-   upperLimitLineEdit = new QLineEdit;
-   ulGrid->addWidget(upperLimitLineEdit, 2, 1, Qt::AlignLeft);
-
-   //
-   // RGB Paint column selection Layout
-   //
-   QHBoxLayout* rgbLayout = new QHBoxLayout;
-   rows->addLayout(rgbLayout);
-   rgbLayout->setSpacing(5);
-   
-   //
-   // RGB Label and column selection
-   //
-   rgbLayout->addWidget(new QLabel("RGB Paint"));
-   rgbPaintSelectionComboBox = new GuiNodeAttributeColumnSelectionComboBox(
-                                                GUI_NODE_FILE_TYPE_RGB_PAINT,
-                                                true,
-                                                false,
-                                                false);
-   rgbLayout->addWidget(rgbPaintSelectionComboBox);
-   
-   //
-   // New column name
-   //
-   const QString columnName("Foci Uncertainty");
-   rgbPaintColumnNewName = new QLineEdit;
-   rgbPaintColumnNewName->setText(columnName);
-   rgbLayout->addWidget(rgbPaintColumnNewName);
-   
-   //
-   // Initialize RGB Paint column selection 
-   //
-   rgbPaintSelectionComboBox->setCurrentIndex(rgbPaintSelectionComboBox->count() - 1);
-   for (int i = 0; i < rgbPaintSelectionComboBox->count(); i++) {
-      if (rgbPaintSelectionComboBox->itemText(i) == columnName) {
-         rgbPaintSelectionComboBox->setCurrentIndex(i);
-         break;
-      }
-   }
-   
-   //
-   // Initialize uncertainty line edits
-   //
-   lowerLimitLineEdit->setText(QString::number(lowerLimit, 'f', 1));
-   middleLimitLineEdit->setText(QString::number(middleLimit, 'f', 1));
-   upperLimitLineEdit->setText(QString::number(upperLimit, 'f', 1));
-
-   //
-   //
-   // Dialog Buttons
-   //
-   QHBoxLayout* buttonsLayout = new QHBoxLayout;
-   rows->addLayout(buttonsLayout);
+   leftSurfaceGroupBox = createLeftSurfaceWidgets();
+   rightSurfaceGroupBox = createRightSurfaceWidgets();
+   QWidget* limitsWidget = createLimitsWidgets();
    
    //
    // OK button
@@ -148,7 +72,6 @@ GuiFociUncertaintyLimitsDialog::GuiFociUncertaintyLimitsDialog(QWidget* parent)
    okButton->setAutoDefault(true);
    QObject::connect(okButton, SIGNAL(clicked()),
                   this, SLOT(accept()));
-   buttonsLayout->addWidget(okButton);
    
    //
    // Close button
@@ -157,9 +80,25 @@ GuiFociUncertaintyLimitsDialog::GuiFociUncertaintyLimitsDialog(QWidget* parent)
    cancelButton->setAutoDefault(false);
    QObject::connect(cancelButton, SIGNAL(clicked()),
                   this, SLOT(reject()));
-   buttonsLayout->addWidget(cancelButton);
    
    QtUtilities::makeButtonsSameSize(okButton, cancelButton);
+   
+   //
+   //
+   // Layout Dialog Buttons
+   //
+   QHBoxLayout* buttonsLayout = new QHBoxLayout;
+   buttonsLayout->addWidget(okButton);
+   buttonsLayout->addWidget(cancelButton);
+   
+   //
+   // Layout dialog
+   //
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
+   dialogLayout->addWidget(leftSurfaceGroupBox);
+   dialogLayout->addWidget(rightSurfaceGroupBox);
+   dialogLayout->addWidget(limitsWidget);
+   dialogLayout->addLayout(buttonsLayout);   
 }
 
 /**
@@ -170,37 +109,251 @@ GuiFociUncertaintyLimitsDialog::~GuiFociUncertaintyLimitsDialog()
 }
 
 /**
- * Called when OK button pressed.
+ * create the limits widgets.
+ */
+QWidget* 
+GuiFociUncertaintyLimitsDialog::createLimitsWidgets()
+{
+   //
+   // lower limit
+   //
+   QLabel* lowerLabel = new QLabel("Lower Limit (mm)");
+   lowerLimitDoubleSpinBox = new QDoubleSpinBox;
+   lowerLimitDoubleSpinBox->setMinimum(0.0);
+   lowerLimitDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   lowerLimitDoubleSpinBox->setSingleStep(1.0);
+   lowerLimitDoubleSpinBox->setDecimals(3);
+   lowerLimitDoubleSpinBox->setValue(lowerLimit);
+   
+   //
+   // middle limit
+   //
+   QLabel* middleLabel = new QLabel("Middle Limit (mm)");
+   middleLimitDoubleSpinBox = new QDoubleSpinBox;
+   middleLimitDoubleSpinBox->setMinimum(0.0);
+   middleLimitDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   middleLimitDoubleSpinBox->setSingleStep(1.0);
+   middleLimitDoubleSpinBox->setDecimals(3);
+   middleLimitDoubleSpinBox->setValue(middleLimit);
+   
+   //
+   // upper limit
+   //
+   QLabel* upperLabel = new QLabel("Upper Limit (mm)");
+   upperLimitDoubleSpinBox = new QDoubleSpinBox;
+   upperLimitDoubleSpinBox->setMinimum(0.0);
+   upperLimitDoubleSpinBox->setMaximum(std::numeric_limits<float>::max());
+   upperLimitDoubleSpinBox->setSingleStep(1.0);
+   upperLimitDoubleSpinBox->setDecimals(3);
+   upperLimitDoubleSpinBox->setValue(upperLimit);
+   
+   //
+   // Groupbox and layouts for limits
+   //
+   QGroupBox* limitsGroupBox = new QGroupBox("Foci Limits");
+   QGridLayout* limitsLayout = new QGridLayout(limitsGroupBox);
+   limitsLayout->addWidget(lowerLabel, 0, 0);
+   limitsLayout->addWidget(lowerLimitDoubleSpinBox, 0, 1);
+   limitsLayout->addWidget(middleLabel, 1, 0);
+   limitsLayout->addWidget(middleLimitDoubleSpinBox, 1, 1);
+   limitsLayout->addWidget(upperLabel, 2, 0);
+   limitsLayout->addWidget(upperLimitDoubleSpinBox, 2, 1);
+   limitsLayout->setColumnStretch(0, 0);
+   limitsLayout->setColumnStretch(1, 0);
+   limitsLayout->setColumnStretch(1, 100);
+   
+   return limitsGroupBox;
+}      
+
+/**
+ * create the left surface widgets.
+ */
+QGroupBox*
+GuiFociUncertaintyLimitsDialog::createLeftSurfaceWidgets()      
+{
+   //
+   // Surface selection
+   //
+   QLabel* surfaceLabel = new QLabel("Left Surface");
+   leftSurfaceComboBox =
+      new GuiBrainModelSelectionComboBox(
+         GuiBrainModelSelectionComboBox::OPTION_SHOW_SURFACES_ALL |
+            GuiBrainModelSelectionComboBox::OPTION_SHOW_ADD_NEW,
+         "NONE");
+   leftSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(
+      BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+      Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+
+   //
+   // RGB Label and column selection
+   //
+   QLabel* rgbLabel = new QLabel("RGB Paint Column");
+   rgbPaintLeftSelectionComboBox = new GuiNodeAttributeColumnSelectionComboBox(
+                                                GUI_NODE_FILE_TYPE_RGB_PAINT,
+                                                true,
+                                                false,
+                                                false);
+   const QString columnName("Left Foci Uncertainty");
+   rgbPaintLeftColumnNewNameLineEdit = new QLineEdit;
+   rgbPaintLeftColumnNewNameLineEdit->setText(columnName);
+   
+   //
+   // Initialize RGB Paint column selection 
+   //
+   rgbPaintLeftSelectionComboBox->setCurrentIndex(rgbPaintLeftSelectionComboBox->count() - 1);
+   for (int i = 0; i < rgbPaintLeftSelectionComboBox->count(); i++) {
+      if (rgbPaintLeftSelectionComboBox->itemText(i) == columnName) {
+         rgbPaintLeftSelectionComboBox->setCurrentIndex(i);
+         break;
+      }
+   }
+   rgbPaintLeftColumnNewNameLineEdit->setText(rgbPaintLeftSelectionComboBox->currentText());
+   QObject::connect(rgbPaintLeftSelectionComboBox, SIGNAL(activated(const QString&)),
+                    rgbPaintLeftColumnNewNameLineEdit, SLOT(setText(const QString&)));
+ 
+   //
+   // Group box and layout for left surface
+   //  
+   QGroupBox* groupBox = new QGroupBox("Left Surface");
+   QGridLayout* leftLayout = new QGridLayout(groupBox);
+   leftLayout->addWidget(surfaceLabel, 0, 0);
+   leftLayout->addWidget(leftSurfaceComboBox, 0, 1, 1, 2);
+   leftLayout->addWidget(rgbLabel, 1, 0);
+   leftLayout->addWidget(rgbPaintLeftSelectionComboBox, 1, 1);
+   leftLayout->addWidget(rgbPaintLeftColumnNewNameLineEdit, 1, 2);
+
+   groupBox->setCheckable(true);
+   groupBox->setChecked(true);
+      
+   return groupBox;
+}
+
+/**
+ * create the right surface widgets.
+ */
+QGroupBox*
+GuiFociUncertaintyLimitsDialog::createRightSurfaceWidgets()      
+{
+   //
+   // Surface selection
+   //
+   QLabel* surfaceLabel = new QLabel("Right Surface");
+   rightSurfaceComboBox =
+      new GuiBrainModelSelectionComboBox(
+         GuiBrainModelSelectionComboBox::OPTION_SHOW_SURFACES_ALL |
+            GuiBrainModelSelectionComboBox::OPTION_SHOW_ADD_NEW,
+         "NONE");
+   rightSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(
+      BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+      Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+
+   //
+   // RGB Label and column selection
+   //
+   QLabel* rgbLabel = new QLabel("RGB Paint Column");
+   rgbPaintRightSelectionComboBox = new GuiNodeAttributeColumnSelectionComboBox(
+                                                GUI_NODE_FILE_TYPE_RGB_PAINT,
+                                                true,
+                                                false,
+                                                false);
+   const QString columnName("Right Foci Uncertainty");
+   rgbPaintRightColumnNewNameLineEdit = new QLineEdit;
+   rgbPaintRightColumnNewNameLineEdit->setText(columnName);
+   
+   //
+   // Initialize RGB Paint column selection 
+   //
+   rgbPaintRightSelectionComboBox->setCurrentIndex(rgbPaintRightSelectionComboBox->count() - 1);
+   for (int i = 0; i < rgbPaintRightSelectionComboBox->count(); i++) {
+      if (rgbPaintRightSelectionComboBox->itemText(i) == columnName) {
+         rgbPaintRightSelectionComboBox->setCurrentIndex(i);
+         break;
+      }
+   }
+   rgbPaintRightColumnNewNameLineEdit->setText(rgbPaintRightSelectionComboBox->currentText());
+   QObject::connect(rgbPaintRightSelectionComboBox, SIGNAL(activated(const QString&)),
+                    rgbPaintRightColumnNewNameLineEdit, SLOT(setText(const QString&)));
+ 
+   //
+   // Group box and layout for right surface
+   //  
+   QGroupBox* groupBox = new QGroupBox("Right Surface");
+   QGridLayout* rightLayout = new QGridLayout(groupBox);
+   rightLayout->addWidget(surfaceLabel, 0, 0);
+   rightLayout->addWidget(rightSurfaceComboBox, 0, 1, 1, 2);
+   rightLayout->addWidget(rgbLabel, 1, 0);
+   rightLayout->addWidget(rgbPaintRightSelectionComboBox, 1, 1);
+   rightLayout->addWidget(rgbPaintRightColumnNewNameLineEdit, 1, 2);
+   
+   groupBox->setCheckable(true);
+   groupBox->setChecked(true);
+
+   return groupBox;
+}
+
+/**
+ * Called when OK or cancelbutton pressed.
  */
 void
-GuiFociUncertaintyLimitsDialog::accept()
+GuiFociUncertaintyLimitsDialog::done(int r)
 {
-   const int rgbColumn = rgbPaintSelectionComboBox->currentIndex();
-   const QString columnName(rgbPaintColumnNewName->text());
-   lowerLimit  = lowerLimitLineEdit->text().toFloat();
-   middleLimit = middleLimitLineEdit->text().toFloat();
-   upperLimit  = upperLimitLineEdit->text().toFloat();
+   QTime timer;
+   timer.start();
    
-   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-   
-   QString errorMessage;
-   FociUncertaintyToRgbPaintConverter fuc;
-   const bool error = fuc.convert(theMainWindow->getBrainSet(), lowerLimit, middleLimit, upperLimit,
-                                  rgbColumn, columnName, this, errorMessage);
-                                  
-   QApplication::restoreOverrideCursor();
-   
-   if (error) {
-      QMessageBox::critical(this, "Error", errorMessage);
-      return;
+   if (r == QDialog::Accepted) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+
+      BrainSet* brainSet = theMainWindow->getBrainSet();
+      
+      lowerLimit  = lowerLimitDoubleSpinBox->value();
+      middleLimit = middleLimitDoubleSpinBox->value();
+      upperLimit  = upperLimitDoubleSpinBox->value();
+
+      BrainModelSurface* leftSurface = NULL;
+      if (leftSurfaceGroupBox->isChecked()) {
+         leftSurface = leftSurfaceComboBox->getSelectedBrainModelSurface();
+      }
+      BrainModelSurface* rightSurface = NULL;
+      if (rightSurfaceGroupBox->isChecked()) {
+         rightSurface = rightSurfaceComboBox->getSelectedBrainModelSurface();
+      }
+      
+      BrainModelSurfaceFociUncertaintyToRgbPaint furp(brainSet,
+                              leftSurface,
+                              rightSurface,
+                              brainSet->getRgbPaintFile(),
+                              rgbPaintLeftSelectionComboBox->currentIndex(),
+                              rgbPaintLeftColumnNewNameLineEdit->text(),
+                              rgbPaintRightSelectionComboBox->currentIndex(),
+                              rgbPaintRightColumnNewNameLineEdit->text(),
+                              brainSet->getFociProjectionFile(),
+                              brainSet->getFociColorFile(),
+                              lowerLimit,
+                              middleLimit,
+                              upperLimit);
+      QString errorMessage;
+      try {
+         furp.execute();
+      }
+      catch (BrainModelAlgorithmException& e) {
+         errorMessage = e.whatQString();
+      }
+                              
+      QApplication::restoreOverrideCursor();
+      
+      GuiFilesModified fm;
+      fm.setRgbPaintModified();
+      
+      theMainWindow->fileModificationUpdate(fm);
+      if (errorMessage.isEmpty() == false) {
+         QMessageBox::critical(this, "Error", errorMessage);
+         return;
+      }
    }
    
-   GuiFilesModified fm;
-   fm.setRgbPaintModified();
-   theMainWindow->fileModificationUpdate(fm);
+   QDialog::done(r);
    
-   theMainWindow->speakText("Uncertainty limits completed.", false);
-   
-   QDialog::accept();
+   //const float elapsedTime = (static_cast<float>(timer.elapsed()) * 0.001);
+   //std::cout << "Elapsed time: " << elapsedTime << std::endl;
 }
 

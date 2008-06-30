@@ -115,6 +115,19 @@ CellFileProjector::projectFile(CellProjectionFile* cpf,
          CellProjection* cp = cpf->getCellProjection(i);
          projectCell(*cp, projectionType, 
                      projectOntoSurfaceAboveDistance, projectOntoSurface);
+                     
+         //
+         // Set search position to projected position
+         //
+         float xyz[3];
+         if (cp->getProjectedPosition(coordinateFile,
+                                      topologyFile,
+                                      true,
+                                      false,
+                                      false,
+                                      xyz)) {
+            cp->setSearchXYZ(xyz);
+         }
          if (progressDialog != NULL) {
             progressDialog->setValue(i + 1);
          }

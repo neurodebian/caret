@@ -60,6 +60,7 @@ CommandImageCompare::getScriptBuilderParameters(ScriptBuilderParameters& paramsO
    paramsOut.clear();
    paramsOut.addFile("Image File Name 1", fileFilters);
    paramsOut.addFile("Image File Name 2", fileFilters);
+   paramsOut.addVariableListOfParameters("Options");
 }
 
 /**
@@ -73,9 +74,11 @@ CommandImageCompare::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<image-file-name-1>  \n"
        + indent9 + "<image-file-name-2> \n"
+       + indent9 + "[-tol  pixel-tolerance] \n"
        + indent9 + "\n"
        + indent9 + "Compare two image files to determine if the pixels are\n"
-       + indent9 + "an exact match.\n"
+       + indent9 + "different.  The default value for \"pixel-tolerance\" \n"
+       + indent9 + "is zero, in which cse the pixels must match exactly.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -98,7 +101,20 @@ CommandImageCompare::executeCommand() throw (BrainModelAlgorithmException,
       parameters->getNextParameterAsString("Image File Name 1");
    const QString imageFileName2 =
       parameters->getNextParameterAsString("Image File Name 2");
-                                          
+   float pixelTolerance = 0.0;
+   while (parameters->getParametersAvailable()) {
+      const QString paramName =
+         parameters->getNextParameterAsString("Optional parameter");
+      if (paramName == "-tol") {
+         pixelTolerance = parameters->getNextParameterAsFloat("Pixel Tolerance");
+      }
+      else {
+         throw CommandException("Unrecognized parameter = \""
+                                + paramName
+                                + "\".");      
+      }
+   }
+      
    //
    // Make sure that are no more parameters
    //
@@ -116,7 +132,7 @@ CommandImageCompare::executeCommand() throw (BrainModelAlgorithmException,
    //
    QString comparisonMessage;
    const bool theSame = imageFile1.compareFileForUnitTesting(&imageFile2,
-                                                             1.0,
+                                                             pixelTolerance,
                                                              comparisonMessage);
    std::cout << "IMAGE COMPARISON for "
              << FileUtilities::basename(imageFileName1).toAscii().constData()

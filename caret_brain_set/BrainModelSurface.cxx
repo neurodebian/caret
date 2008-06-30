@@ -54,6 +54,7 @@
 #include "vtkUnstructuredGrid.h"
 
 #include "BorderFile.h"
+#include "BorderProjectionFile.h"
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceCurvature.h"
 #include "BrainModelSurfaceROINodeSelection.h"
@@ -66,6 +67,7 @@
 #include "FileUtilities.h"
 #include "LatLonFile.h"
 #include "MathUtilities.h"
+#include "MniObjSurfaceFile.h"
 #include "PaintFile.h"
 #include "RgbPaintFile.h"
 #include "StringUtilities.h"
@@ -652,11 +654,8 @@ BrainModelSurface::crossoverCheck(int& numberOfTileCrossovers,
  * read the specified surface file.
  */
 void 
-BrainModelSurface::readSurfaceFile(const QString& fileName,
-                                   bool& normalsValidOut) throw(FileException)
+BrainModelSurface::readSurfaceFile(const QString& fileName) throw(FileException)
 {
-   normalsValidOut = false;
-   
    SurfaceFile sf;
    try {
       //
@@ -670,17 +669,6 @@ BrainModelSurface::readSurfaceFile(const QString& fileName,
       const QString fileNameNoExt = FileUtilities::filenameWithoutExtension(fileName);
 
       //
-      // see if there are normals in the surface file
-      //
-      const GiftiDataArray* normalsArray = 
-                          sf.getDataArrayWithIntent(GiftiCommon::intentNormals);
-      if (normalsArray != NULL) {
-         if (normalsArray->getDimension(0) == sf.getNumberOfCoordinates()) {
-           normalsValidOut = true;
-         }
-      }
-      
-      //
       // copy coordinates to coordinate file and process normals
       // allocate normals once number of coordinates is set
       //
@@ -689,13 +677,6 @@ BrainModelSurface::readSurfaceFile(const QString& fileName,
       initializeNormals(numCoords);
       for (int i = 0; i < numCoords; i++) {
          coordinates.setCoordinate(i, sf.getCoordinate(i));
-         
-         //
-         // Set normals if they are available
-         //
-         if (normalsValidOut) {
-            setNormal(i, sf.getNormal(i));
-         }
       }
       
       //
@@ -845,7 +826,6 @@ BrainModelSurface::writeSurfaceFile(const QString& filename,
    //
    for (int i = 0; i < numCoords; i++) {
       sf.setCoordinate(i, coordinates.getCoordinate(i));
-      sf.setNormal(i, getNormal(i));
    }
    
    //
@@ -1017,6 +997,13 @@ BrainModelSurface::setTopologyFile(TopologyFile* topologyIn)
    }
    coordinates.clearDisplayList();
    
+   const QString topoFileName = FileUtilities::basename(topology->getFileName());
+   if (topoFileName.isEmpty() == false) {
+      const unsigned long modifiedStatus = coordinates.getModified();
+      coordinates.setHeaderTag(SpecFile::unknownTopoFileMatchTag, topoFileName);
+      coordinates.setModifiedCounter(modifiedStatus);
+   }
+   
    return tooManyNodesInTopology;
 }
 
@@ -1109,7 +1096,35 @@ BrainModelSurface::convertToVtkPolyData() const
    return NULL;
 }
 
-/// import from a brain voyager file
+/**
+ * import from a MNI OBJ Surface File.
+ */
+void 
+BrainModelSurface::importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException)
+{
+   try {
+      coordinates.importFromMniObjSurfaceFile(mni);
+      initializeNormals();
+      const int num = mni.getNumberOfPoints();
+      for (int i = 0; i < num; i++) {
+         const float* nv = mni.getNormal(i);
+         normals[i*3]   = nv[0];
+         normals[i*3+1] = nv[1];
+         normals[i*3+2] = nv[2];
+      }
+      appendToCoordinateFileComment("Imported from ");
+      appendToCoordinateFileComment(mni.getFileName());
+      appendToCoordinateFileComment("\n");
+   }
+   catch (FileException& e) {
+      reset();
+      throw e;
+   }
+}
+      
+/**
+ * import from a brain voyager file.
+ */
 void 
 BrainModelSurface::importFromBrainVoyagerFile(const BrainVoyagerFile& bvf) throw (FileException)
 {
@@ -5583,6 +5598,8 @@ BrainModelSurface::inflate(const int smoothingIterations,
 /**
  * Create the inflated and ellipsoid surfaces starting from a fiducial surface.
  * The inflated and ellipsoid surfaces are added to the brain set.
+ * Use iteration scaling when the surface contains a large number of nodes.  
+ * If the surface contains 150,000 nodes, try an iterations scale of 2.5.
  */
 void
 BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInflated,
@@ -5591,6 +5608,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
                                                           const bool createSphere,
                                                           const bool enableFingerSmoothing,
                                                           const bool scaleToMatchFiducialArea,
+                                                          const float iterationsScaleIn,
                                                           MetricFile* metricMeasurementsFileOut) const
 {
    if ((createInflated == false) &&
@@ -5603,7 +5621,17 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
    const int numNodes = getNumberOfNodes();
    
    //
+   // Free surfer surfaces have lots of nodes (150,000) versus Caret (75,000)
+   // so the number of iterations may need to be increased
+   //
+   float iterationScale = 1.0;
+   if (iterationsScaleIn != 0.0) {
+      iterationScale = iterationsScaleIn;
+   }
+   
+   //
    // Fiducial surface is "this" surface
+   //
    const BrainModelSurface* fiducialSurface = this;
    const float fiducialSurfaceArea = fiducialSurface->getSurfaceArea();
    
@@ -5619,7 +5647,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
    lowSmoothSurface->inflateSurfaceAndSmoothFingers(fiducialSurface,
                                                    1,     // number of cycles
                                                    0.2,   // regular smoothing strength
-                                                   50,    // regular smoothing iterations
+                                  static_cast<int>(50 * iterationScale),    // regular smoothing iterations
                                                    1.0,   // inflation factor
                                                    3.0,   // finger compress/stretch threshold
                                                    1.0,   // finger smoothing strength
@@ -5674,13 +5702,13 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
    //
    int fingerSmoothingIterations = 0;
    if (enableFingerSmoothing) {
-      fingerSmoothingIterations = 30;
+      fingerSmoothingIterations = static_cast<int>(30 * iterationScale);
    }
    MetricFile metricMeasureFile2;
    inflatedSurface->inflateSurfaceAndSmoothFingers(fiducialSurface,
                                                    2,     // number of cycles
                                                    1.0,   // regular smoothing strength
-                                                   30,    // regular smoothing iterations
+                                  static_cast<int>(30 * iterationScale),    // regular smoothing iterations
                                                    1.4,   // inflation factor
                                                    3.0,   // finger compress/stretch threshold
                                                    1.0,   // finger smoothing strength
@@ -5710,7 +5738,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       veryInflatedSurface->inflateSurfaceAndSmoothFingers(fiducialSurface,
                                                       4,     // number of cycles
                                                       1.0,   // regular smoothing strength
-                                                      30,    // regular smoothing iterations
+                                     static_cast<int>(30 * iterationScale),    // regular smoothing iterations
                                                       1.1,   // inflation factor
                                                       3.0,   // finger compress/stretch threshold
                                                       1.0,   // finger smoothing strength
@@ -5737,13 +5765,13 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       //
       int fingerSmoothingIterations = 0;
       if (enableFingerSmoothing) {
-         fingerSmoothingIterations = 60;
+         fingerSmoothingIterations = static_cast<int>(60 * iterationScale);
       }
       MetricFile metricMeasureFile4;
       highSmoothSurface->inflateSurfaceAndSmoothFingers(fiducialSurface,
                                                       6,     // number of cycles
                                                       1.0,   // regular smoothing strength
-                                                      60,    // regular smoothing iterations
+                                     static_cast<int>(60 * iterationScale),    // regular smoothing iterations
                                                       1.6,   // inflation factor
                                                       3.0,   // finger compress/stretch threshold
                                                       1.0,   // finger smoothing strength
@@ -5785,7 +5813,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       ellipsoidSurface->inflateSurfaceAndSmoothFingers(fiducialSurface,
                                                       6,     // number of cycles
                                                       1.0,   // regular smoothing strength
-                                                      50,    // regular smoothing iterations
+                                     static_cast<int>(50 * iterationScale),    // regular smoothing iterations
                                                       1.4,   // inflation factor
                                                       4.0,   // finger compress/stretch threshold
                                                       1.0,   // finger smoothing strength
@@ -6424,7 +6452,8 @@ BrainModelSurface::getSphericalSurfaceRadius() const
  * on the negative Z axis.  Returns true if matching nodes are NOT found.
  */
 bool
-BrainModelSurface::orientPaintedNodesToNegativeZAxis(const std::vector<QString> paintNames,
+BrainModelSurface::orientPaintedNodesToNegativeZAxis(const PaintFile* pf,
+                                                     const std::vector<QString> paintNames,
                                                      const int paintColumn,
                                                      QString& errorMessage)
 {
@@ -6433,7 +6462,6 @@ BrainModelSurface::orientPaintedNodesToNegativeZAxis(const std::vector<QString> 
    //
    // Make sure paint column is valid
    //
-   const PaintFile* pf = brainSet->getPaintFile();
    if ((paintColumn < 0) && (paintColumn >= pf->getNumberOfColumns())) {
       errorMessage = "Paint column number is invalid.";
       return false;
@@ -6543,6 +6571,25 @@ BrainModelSurface::orientPointToNegativeZAxis(const float pIn[3])
 }
 
 /**
+ * orient a sphere so that the point is placed on the positive Z axis.
+ */
+void 
+BrainModelSurface::orientPointToPositiveZAxis(const float p[3])
+{
+   //
+   // Put on negative Z
+   //
+   orientPointToNegativeZAxis(p);
+   
+   //
+   // Rotate 180 about Y so point on positive Z-Axis
+   //
+   TransformationMatrix tm;
+   tm.rotate(TransformationMatrix::ROTATE_Y_AXIS, 180.0);
+   applyTransformationMatrix(tm);
+}
+
+/**
  * push (save) the coordinates
  */
 void 
@@ -6623,6 +6670,67 @@ BrainModelSurface::projectCoordinatesToPlane(const COORDINATE_PLANE plane)
  * Align to standard orientation (flat or spherical).
  */
 void 
+BrainModelSurface::alignToStandardOrientation(const BrainModelSurface* fiducialSurface,
+                                              const BorderProjection* centralSulcusBorderProjection,
+                                              const bool generateSphericalLatitudeLongitude,
+                                              const bool scaleToFiducialArea)
+{
+   if (fiducialSurface == NULL) {
+      return;
+   }
+   if (centralSulcusBorderProjection == NULL) {
+      return;
+   }
+   
+   //
+   // Unproject the central sulcus border to the fiducial surface
+   //
+   const CoordinateFile* fiducialCoordinateFile = fiducialSurface->getCoordinateFile();
+   Border centralSulcusBorder;
+   centralSulcusBorderProjection->unprojectBorderProjection(
+      fiducialCoordinateFile,
+      getTopologyFile()->getTopologyHelper(false, true, false),
+      centralSulcusBorder);
+   
+   const int numLinks = centralSulcusBorder.getNumberOfLinks();
+   if (numLinks < 2) {
+      return;
+   }
+
+   //
+   // Get position of first link on the FIDUCIAL surface
+   //
+   const float* firstLinkXYZ = centralSulcusBorder.getLinkXYZ(0);
+                                                                  
+   //
+   // Get position of last link on the FIDUCIAL surface
+   //
+   const float* lastLinkXYZ = centralSulcusBorder.getLinkXYZ(numLinks - 1);
+                                                
+   //
+   // Determine ventral and dorsal ends of central sulcus
+   // 
+   int ventralNodeNumber = 
+      fiducialCoordinateFile->getCoordinateIndexClosestToPoint(firstLinkXYZ);
+   int dorsalNodeNumber =
+      fiducialCoordinateFile->getCoordinateIndexClosestToPoint(lastLinkXYZ);
+   if (firstLinkXYZ[2] > lastLinkXYZ[2]) {
+      std::swap(ventralNodeNumber, dorsalNodeNumber);
+   }  
+   
+   //
+   // Align the surface
+   //
+   alignToStandardOrientation(ventralNodeNumber,
+                              dorsalNodeNumber,
+                              generateSphericalLatitudeLongitude,
+                              scaleToFiducialArea);
+}
+      
+/**
+ * Align to standard orientation (flat or spherical).
+ */
+void 
 BrainModelSurface::alignToStandardOrientation(const int ventralTipCentralSulcusNode, 
                                               const int dorsalMedialTipCentralSulcusNode,
                                               const bool generateSphericalLatitudeLongitude,
@@ -6669,8 +6777,31 @@ BrainModelSurface::alignToStandardOrientation(const int ventralTipCentralSulcusN
          //
          TransformationMatrix tm;
          tm.translate(-ventralTipPos[0], -ventralTipPos[1], 0.0f);
+         applyTransformationMatrix(tm);
+         const float* transVentralTipPos = coordinates.getCoordinate(ventralTipCentralSulcusNode);
+         tm.identity();
          tm.rotate(TransformationMatrix::ROTATE_Z_AXIS, rotateAngle);
          applyTransformationMatrix(tm);
+         
+         if (DebugControl::getDebugOn()) {
+            std::cout << "Surface Alignment: " << std::endl;
+            std::cout << "   Ventral Node: " << ventralTipCentralSulcusNode << std::endl;
+            std::cout << "   Ventral Pos: " << ventralTipPos[0] << " "
+                                 << ventralTipPos[1] << " "
+                                 << ventralTipPos[2] << std::endl;
+            std::cout << "   Dorsal Node: " << dorsalMedialTipCentralSulcusNode << std::endl;
+            std::cout << "   Dorsal Pos: " << medialTipPos[0] << " "
+                                 << medialTipPos[1] << " "
+                                 << medialTipPos[2] << std::endl;
+            std::cout << "   Rotate Angle: " << rotateAngle << std::endl;
+            std::cout << "   Ventral Pos After Translate: " << transVentralTipPos[0] << " "
+                                 << transVentralTipPos[1] << " "
+                                 << transVentralTipPos[2] << std::endl;
+            const float* newVentralTipPos = coordinates.getCoordinate(ventralTipCentralSulcusNode);
+            std::cout << "   Ventral Pos After Rotate: " << newVentralTipPos[0] << " "
+                                 << newVentralTipPos[1] << " "
+                                 << newVentralTipPos[2] << std::endl;
+         }
          
          //
          // If surface should be scaled to match the area of the fiducial surface
@@ -6678,6 +6809,9 @@ BrainModelSurface::alignToStandardOrientation(const int ventralTipCentralSulcusN
          if (scaleToFiducialArea) {
             if (brainSet != NULL) {
                const BrainModelSurface* fiducial = brainSet->getActiveFiducialSurface();
+               if (fiducial == NULL) {
+                  fiducial = brainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_FIDUCIAL);
+               }
                if (fiducial != NULL) {
                   const float fiducialArea = fiducial->getSurfaceArea(getTopologyFile());
                   scaleSurfaceToArea(fiducialArea, true);

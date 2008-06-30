@@ -26,7 +26,7 @@
 #ifndef __GUI_GENERATE_SULCAL_DEPTH_DIALOG_H__
 #define __GUI_GENERATE_SULCAL_DEPTH_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -35,7 +35,7 @@ class QLineEdit;
 class QSpinBox;
 
 /// Class for dialog that generates sulcal depth
-class GuiGenerateSulcalDepthDialog : public QtDialog {
+class GuiGenerateSulcalDepthDialog : public WuQDialog {
    Q_OBJECT
    
    public:

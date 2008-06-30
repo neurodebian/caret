@@ -244,6 +244,10 @@ class ColorFile : public AbstractFile {
       /// Get a color (const method)
       const ColorStorage* getColor(const int indx) const { return &colors[indx]; }
 
+      /// get color indices sorted by name case insensitive
+      void getColorIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                       const bool reverseOrderFlag) const;
+      
       /// get color by index
       void getColorByIndex(const int index,
                            unsigned char& red, unsigned char& green, unsigned char& blue) const;
@@ -262,6 +266,9 @@ class ColorFile : public AbstractFile {
       
       /// get color name by index
       QString getColorNameByIndex(const int index) const;
+                           
+      /// set color name by index
+      void setColorNameByIndex(const int index, const QString& name);
                            
       /// get color index by name
       int getColorIndexByName(const QString& name, bool& exactMatch) const;

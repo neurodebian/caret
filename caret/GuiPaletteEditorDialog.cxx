@@ -58,7 +58,7 @@
  * constructor.
  */
 GuiPaletteEditorDialog::GuiPaletteEditorDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    paletteBeingEdited = NULL;
    loadingPalette = false;

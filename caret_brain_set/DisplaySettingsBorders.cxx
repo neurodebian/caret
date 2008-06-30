@@ -234,7 +234,8 @@ DisplaySettingsBorders::showScene(const SceneFile::Scene& scene, QString& errorM
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsBorders::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsBorders::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    if (onlyIfSelected) {
       if (displayBorders == false) {

@@ -70,8 +70,9 @@
 GuiNodeAttributeFileClearResetDialog::GuiNodeAttributeFileClearResetDialog(
                                            QWidget* parent,
                                            const GUI_NODE_FILE_TYPE nodeFileTypeIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    nodeFileType = nodeFileTypeIn;
    
    QString caption;

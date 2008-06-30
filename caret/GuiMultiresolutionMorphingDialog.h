@@ -26,7 +26,7 @@
 #ifndef __GUI_MULTIRESOLUTION_MORPHING_DIALOG_H__
 #define __GUI_MULTIRESOLUTION_MORPHING_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BrainModelSurfaceMorphing.h"
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
@@ -37,9 +37,10 @@ class QLineEdit;
 class QCheckBox;
 class QSpinBox;
 class QDoubleSpinBox;
+class QTextEdit;
 
 /// Dialog for multiresolution morphing
-class GuiMultiresolutionMorphingDialog : public QtDialog {
+class GuiMultiresolutionMorphingDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -140,6 +141,12 @@ class GuiMultiresolutionMorphingDialog : public QtDialog {
       
       /// point spherical tiles outward check box
       QCheckBox* pointSphericalTilesOutwardCheckBox;
+      
+      /// align to central sulcus check box
+      QCheckBox* alignSurfaceCheckBox;
+      
+      /// name of central sulcus for alignment
+      QLineEdit* cesLandmarkNameLineEdit;
       
       /// only display and process parameters with no morphing
       bool parametersOnlyMode;      

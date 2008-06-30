@@ -26,7 +26,7 @@
 #ifndef __GUI_VOLUME_ATTRIBUTES_DIALOG_H__
 #define __GUI_VOLUME_ATTRIBUTES_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiVolumeFileOrientationComboBox;
 class QComboBox;
@@ -38,12 +38,12 @@ class QDoubleSpinBox;
 class VolumeFile;
 
 /// Dialog for viewing and editing volume attributes
-class GuiVolumeAttributesDialog : public QtDialog {
+class GuiVolumeAttributesDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       /// Constructor
-      GuiVolumeAttributesDialog(QWidget* parent, const bool modal = false, Qt::WFlags f = 0);
+      GuiVolumeAttributesDialog(QWidget* parent, const bool modal = false, Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiVolumeAttributesDialog();
@@ -205,6 +205,9 @@ class GuiVolumeAttributesDialog : public QtDialog {
       
       /// the resampling page
       QWidget* resamplingPage;
+      
+      /// resampling method combo box
+      QComboBox* resamplingMethodComboBox;
       
       /// resampling  float spin box
       QDoubleSpinBox* resamplingXDoubleSpinBox;

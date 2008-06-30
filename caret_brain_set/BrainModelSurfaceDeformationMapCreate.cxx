@@ -38,14 +38,14 @@
  */
 BrainModelSurfaceDeformationMapCreate::BrainModelSurfaceDeformationMapCreate(
                                       BrainSet* bs,
-                                      BrainModelSurface* sourceSurfaceIn,
-                                      BrainModelSurface* targetSurfaceIn,
+                                      const BrainModelSurface* sourceSurfaceIn,
+                                      const BrainModelSurface* targetSurfaceIn,
                                       DeformationMapFile* deformationMapFileIn,
                                       const DEFORMATION_SURFACE_TYPE deformationSurfaceTypeIn)
-   : BrainModelAlgorithm(bs)
+   : BrainModelAlgorithm(bs),
+     sourceSurface(sourceSurfaceIn),
+     targetSurface(targetSurfaceIn)
 {
-   sourceSurface = sourceSurfaceIn;
-   targetSurface = targetSurfaceIn;
    deformationMapFile = deformationMapFileIn;
    deformationSurfaceType = deformationSurfaceTypeIn;
 }
@@ -129,6 +129,8 @@ BrainModelSurfaceDeformationMapCreate::execute() throw (BrainModelAlgorithmExcep
       case DEFORMATION_SURFACE_TYPE_SPHERE:
          deformationMapFile->setSourceSphericalCoordFileName(
             FileUtilities::basename(sourceCoord->getFileName()));
+         deformationMapFile->setSourceDeformedSphericalCoordFileName(
+            FileUtilities::basename(sourceCoord->getFileName()));
          deformationMapFile->setSourceClosedTopoFileName(
             FileUtilities::basename(sourceTopologyFile->getFileName()));
          deformationMapFile->setTargetSphericalCoordFileName(
@@ -148,18 +150,19 @@ BrainModelSurfaceDeformationMapCreate::createSphericalDeformationMap()
    //
    // Make sure source surface is same radius as target sphere
    //
-   sourceSurface->convertToSphereWithRadius(targetSurface->getSphericalSurfaceRadius());
+   BrainModelSurface sphereSurface(*sourceSurface);
+   sphereSurface.convertToSphereWithRadius(targetSurface->getSphericalSurfaceRadius());
       
    //
    // Get the coordinate files for the surfaces
    //
-   CoordinateFile* targetCoords = targetSurface->getCoordinateFile();
+   const CoordinateFile* targetCoords = targetSurface->getCoordinateFile();
    const int numCoords = targetCoords->getNumberOfCoordinates();
        
    //
    // Create a Point Projector source surface.
    //
-   BrainModelSurfacePointProjector bspp(sourceSurface,
+   BrainModelSurfacePointProjector bspp(&sphereSurface,
                            BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_SPHERE,
                            false);
    

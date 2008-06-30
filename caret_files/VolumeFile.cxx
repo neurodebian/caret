@@ -286,6 +286,8 @@ VolumeFile::copyVolumeData(const VolumeFile& vf,
    niftiIntentParameter3 = vf.niftiIntentParameter3;
    niftiTR = vf.niftiTR;
    
+   regionNameHighlighted = vf.regionNameHighlighted;
+   
    //studyMetaDataLinkSet = vf.studyMetaDataLinkSet;
 
    allocateVoxelColoring();
@@ -455,6 +457,19 @@ VolumeFile::setVoxelDataType(const VOXEL_DATA_TYPE vdt)
          break;
    }
 }
+
+/**
+ * get the sub volume names.
+ */
+void 
+VolumeFile::getSubVolumeNames(std::vector<QString>& names) const 
+{ 
+   names = subVolumeNames;
+   if (names.empty()) {
+      names.resize(std::max(1, numberOfSubVolumes), FileUtilities::basename(getFileName()));
+   }
+}
+
 /**
  * Initialize - creates a volume and allocates memory for the specified dimensions.
  */
@@ -1189,6 +1204,8 @@ VolumeFile::clear()
    
    setVoxelDataType(VOXEL_DATA_TYPE_FLOAT);
    
+   clearRegionHighlighting();
+   
    //studyMetaDataLinkSet.clear();
 }
 
@@ -1308,6 +1325,104 @@ VolumeFile::addRegionName(const QString& name)
 
    
    return (regionNames.size() - 1);
+}      
+
+/**
+ * set highlight a region name.
+ */
+void 
+VolumeFile::setHighlightRegionName(const QString& name,
+                                   const bool highlightItFlag)
+{
+   const int indx = getRegionIndexFromName(name);
+   if (indx >= 0) {
+      std::vector<int>::iterator iter = std::find(regionNameHighlighted.begin(),
+                                                  regionNameHighlighted.end(),
+                                                  indx);
+      if (highlightItFlag) {
+         if (iter == regionNameHighlighted.end()) {
+            regionNameHighlighted.push_back(indx);
+         }
+      }
+      else {
+         if (iter != regionNameHighlighted.end()) {
+            regionNameHighlighted.erase(iter);
+         }
+      }
+      
+      setVoxelColoringInvalid();
+   }
+}
+
+/**
+ * get a region is highlighted.
+ */
+bool 
+VolumeFile::getHighlightRegionNameByIndex(const int indx) const
+{
+   const bool exists = (std::find(regionNameHighlighted.begin(),
+                                  regionNameHighlighted.end(),
+                                  indx) != regionNameHighlighted.end());
+   return exists;
+}
+
+/**
+ * clear region highlighting.
+ */
+void 
+VolumeFile::clearRegionHighlighting()
+{
+   regionNameHighlighted.clear();
+   setVoxelColoringInvalid();
+}
+
+/**
+ * synchronize the region names in the volumes (index X is always region Y).
+ */
+void 
+VolumeFile::synchronizeRegionNames(std::vector<VolumeFile*>& volumeFiles)
+{
+   const int numVolumes = static_cast<int>(volumeFiles.size());
+   if (numVolumes <= 1) {
+      return;
+   }
+   
+   VolumeFile* firstVolume = volumeFiles[0];
+   firstVolume->clearRegionHighlighting();
+   
+   //
+   // Use region table from first volume file
+   //
+   for (int i = 1; i < numVolumes; i++) {
+      //
+      // Add region names for volume "i" to the first volume and build
+      // translation from volume "i" to first volume region names
+      //
+      VolumeFile* vf = volumeFiles[i];
+      const int numRegionNames = vf->getNumberOfRegionNames();
+      std::vector<int> regionIndexUpdater(numRegionNames, 0);
+      for (int j = 0; j < numRegionNames; j++) {
+         regionIndexUpdater[j] = firstVolume->addRegionName(vf->getRegionNameFromIndex(j));
+      }
+      
+      //
+      // Update volume "i" voxels with new region indices
+      //
+      const int numVoxels = vf->getTotalNumberOfVoxels();
+      for (int k = 0; k < numVoxels; k++) {
+         vf->voxels[k] = regionIndexUpdater[static_cast<int>(vf->voxels[k])];
+      }
+      
+      vf->clearRegionHighlighting();
+   }
+   
+   //
+   // replace the region names and invalidate coloring
+   //
+   for (int i = 1; i < numVolumes; i++) {
+      volumeFiles[i]->regionNames = firstVolume->regionNames;
+      volumeFiles[i]->setVoxelColoringInvalid();
+   }
 }      
 
 /**
@@ -1705,8 +1820,8 @@ VolumeFile::rotate(const VOLUME_AXIS axis)
    // APPEAR "UPSIDE DOWN".  THIS MAY BE CORRECTED BY FLIPPING THE SIGNS OF THE
    // ORIGIN AND SPACING FOR ONE OF THE AXIS.
    //
-   int newDim[3];
-   float newSpacing[3];
+   int newDim[3] = { dimensions[0], dimensions[1], dimensions[2] };
+   float newSpacing[3] = { oldSpacing[0], oldSpacing[1], oldSpacing[2] };
    float newOrigin[3] = { oldOrigin[0], oldOrigin[1], oldOrigin[2] };
    ORIENTATION newOrientation[3] = { oldOrientation[0], oldOrientation[1], oldOrientation[2] };
    switch (axis) {
@@ -2336,27 +2451,29 @@ VolumeFile::getVoxelAllComponents(const int ijk[3], float* voxelValue) const
    return false;
 }
 
-/**
+/*
  * compute a voxel index.
- */
+ *
 int 
 VolumeFile::getVoxelDataIndex(const VoxelIJK& v, const int component) const
 {
    return getVoxelDataIndex(v.getI(), v.getJ(), v.getK(), component);
 }
+*/
 
-/**
+/*
  * compute a voxel index.
- */
+ *
 int 
 VolumeFile::getVoxelDataIndex(const int ijk[3], const int component) const
 {
    return getVoxelDataIndex(ijk[0], ijk[1], ijk[2], component);
 }
+*/
 
-/**
+/*
  * compute a voxel index.
- */
+ *
 int 
 VolumeFile::getVoxelDataIndex(const int i, const int j, const int k, 
                              const int component) const
@@ -2365,6 +2482,7 @@ VolumeFile::getVoxelDataIndex(const int i, const int j, const int k,
    const int compIndex = indx * numberOfComponentsPerVoxel + component;
    return compIndex;
 }
+*/
       
 /**
  * get the index of this voxel ignoring the components).
@@ -3283,8 +3401,16 @@ VolumeFile::resize(const int cropping[6],
  * In output volume first and last slices are all zeros.
  */
 void 
-VolumeFile::padSegmentation(const int padding[6])
+VolumeFile::padSegmentation(const int padding[6],
+                            const bool erodePaddingFlag)
 {
+   //
+   // used for padding erosion
+   //
+   const int dilateIterations = 0;
+   const int erodeIterations = 1;
+   const int sliceStep = 5;
+
    //
    // Enlarge "this" volume
    //
@@ -3314,6 +3440,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    VOLUME_AXIS_X,
                    i);
       }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = padding[0] - 1; iSlice > 0; iSlice -= sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               iSlice,
+               0,
+               dimensions[1] - 1,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
+      }
    }   
    
    //
@@ -3328,6 +3468,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    VOLUME_AXIS_X,
                    i);
       }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = iStart + 1; iSlice < dimensions[0]; iSlice += sliceStep) {
+            const int erodeExtent[6] = {
+               iSlice,
+               dimensions[0] - 1,
+               0,
+               dimensions[1] - 1,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
+      }
    }
    
    //
@@ -3340,6 +3494,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    padding[2] + 1,
                    VOLUME_AXIS_Y,
                    j);
+      }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = padding[2] - 1; iSlice > 0; iSlice -= sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               0,
+               iSlice,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
    }   
    
@@ -3355,22 +3523,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    VOLUME_AXIS_Y,
                    j);
       }
-/*
-      unsigned char rgb[4] = { 0, 0, 0, VOXEL_COLOR_STATUS_VALID_DO_NOT_SHOW_VOXEL } ;
-      const int jMax = std::min(padding[3], 6);
-      const int jIndex = dimensions[1] - 2;
-      for (int j = 0; j < 1; j++) {
-         const int ijkMin[3] = { 0, jIndex, 0 };
-         const int ijkMax[3] = { dimensions[0], jIndex, dimensions[2] };
-         performSegmentationOperation(SEGMENTATION_OPERATION_ERODE,
-                                      VOLUME_AXIS_Y,
-                                      false,
-                                      ijkMin,
-                                      ijkMax,
-                                      0,
-                                      rgb);
+  
+      if (erodePaddingFlag) {
+         for (int iSlice = jStart + 1; iSlice < dimensions[1]; iSlice += sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               iSlice,
+               dimensions[1] - 1,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
-*/
    }
    
    //
@@ -3383,6 +3549,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    padding[4] + 1,
                    VOLUME_AXIS_Z,
                    k);
+      }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = padding[4] - 1; iSlice > 0; iSlice -= sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               0,
+               dimensions[1] - 1,
+               0,
+               iSlice,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
    }   
    
@@ -3397,6 +3577,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    kStart - 2,
                    VOLUME_AXIS_Z,
                    k);
+      }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = kStart + 1; iSlice < dimensions[2]; iSlice += sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               0,
+               dimensions[1] - 1,
+               iSlice,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
    }   
 }      
@@ -4043,7 +4237,8 @@ VolumeFile::applyTransformationMatrix(vtkTransform* transform)
  * resample the image to the specified spacing.
  */
 void 
-VolumeFile::resampleToSpacing(const float newSpacing[3])
+VolumeFile::resampleToSpacing(const float newSpacing[3],
+                              const INTERPOLATION_TYPE interpolationType)
 {  
    vtkStructuredPoints* spInput = convertToVtkStructuredPoints();
 
@@ -4055,6 +4250,17 @@ VolumeFile::resampleToSpacing(const float newSpacing[3])
    resample->SetAxisOutputSpacing(2, newSpacing[2]);
    resample->SetDimensionality(3);
    resample->SetInterpolationModeToCubic();
+   switch (interpolationType) {
+      case INTERPOLATION_TYPE_CUBIC:
+         resample->SetInterpolationModeToCubic();
+         break;
+      case INTERPOLATION_TYPE_LINEAR:
+         resample->SetInterpolationModeToLinear();
+         break;
+      case INTERPOLATION_TYPE_NEAREST_NEIGHBOR:
+         resample->SetInterpolationModeToNearestNeighbor();
+         break;
+   }
    resample->Update();
    
    convertFromVtkImageData(resample->GetOutput());
@@ -6028,6 +6234,7 @@ VolumeFile::writeFile(const QString& filenameIn) throw (FileException)
    std::vector<VolumeFile*> volumes;
    volumes.push_back(this);
    writeFile(filenameIn,
+             getVolumeType(),
              getVoxelDataType(),
              volumes,
              false);
@@ -6108,6 +6315,7 @@ VolumeFile::writeVolumeFile(VolumeFile* vf,
    std::vector<VolumeFile*> theFiles;
    theFiles.push_back(vf);
    vf->writeFile(fileNameOut,
+                 vf->getVolumeType(),
                  vf->getVoxelDataType(),
                  theFiles,
                  zipAfniFlag);
@@ -6213,6 +6421,17 @@ VolumeFile::inverseThresholdVolume(const float thresholdValue)
 }
 
 /**
+ * clamp a voxel dimensions to within valid values (0 to dim).
+ */
+void 
+VolumeFile::clampVoxelDimension(int voxelIJK[3]) const
+{
+   clampVoxelDimension(VOLUME_AXIS_X, voxelIJK[0]);
+   clampVoxelDimension(VOLUME_AXIS_Y, voxelIJK[1]);
+   clampVoxelDimension(VOLUME_AXIS_Z, voxelIJK[2]);
+}
+
+/**
  * clamp a voxel dimension to within valid values (0 to dim).
  */
 void 
@@ -6245,6 +6464,17 @@ VolumeFile::clampVoxelDimension(const VOLUME_AXIS axis,
 }                          
 
 
+/**
+ * clamp a voxel index to within valid values (0 to dim-1).
+ */
+void 
+VolumeFile::clampVoxelIndex(int voxelIJK[3]) const
+{
+   clampVoxelIndex(VOLUME_AXIS_X, voxelIJK[0]);
+   clampVoxelIndex(VOLUME_AXIS_Y, voxelIJK[1]);
+   clampVoxelIndex(VOLUME_AXIS_Z, voxelIJK[2]);
+}
+      
 /**
  * clamp a voxel index to within valid values (0 to dim-1).
  */
@@ -6706,7 +6936,7 @@ VolumeFile::floodFillSliceWithVTK(const VolumeFile::VOLUME_AXIS axis,
                              const int unconnectedValueOut,
                              VolumeModification* modifiedVoxels)
 {
-   int sliceNum;
+   int sliceNum = 0;
    switch (axis) {
       case VOLUME_AXIS_X:
          sliceNum = seed[0];
@@ -7639,7 +7869,7 @@ void
 VolumeFile::doVolMorphOpsWithinMask(const int extent[6], const int nDilation, const int nErosion) 
 {
    VolumeFile vf(*this);
-   vf.maskVolume(extent);
+   //vf.maskVolume(extent);
    vf.doVolMorphOps(nDilation, nErosion);
    unsigned char rgb[4];
    copySubVolume(&vf, extent, rgb, rgb);
@@ -9541,12 +9771,37 @@ VolumeFile::readFile(const QString& fileNameIn,
  */
 void 
 VolumeFile::writeFile(const QString& fileNameIn,
+                      const VOLUME_TYPE volumeType,
                       const VOXEL_DATA_TYPE writeVoxelDataType,
                       std::vector<VolumeFile*>& volumesToWrite,
                       const bool zipAfniBrikFile) throw (FileException)
 {
    if (volumesToWrite.size() == 0) {
       throw FileException(fileNameIn, "No volume data to write.");
+   }
+   
+   switch (volumeType) {
+      case VOLUME_TYPE_ANATOMY:
+         break;
+      case VOLUME_TYPE_FUNCTIONAL:
+         break;
+      case VOLUME_TYPE_PAINT:
+         if (volumesToWrite.size() > 1) {
+            synchronizeRegionNames(volumesToWrite);
+         }
+         break;
+      case VOLUME_TYPE_PROB_ATLAS:
+         break;
+      case VOLUME_TYPE_RGB:
+         break;
+      case VOLUME_TYPE_SEGMENTATION:
+         break;
+      case VOLUME_TYPE_VECTOR:
+         break;
+      case VOLUME_TYPE_ROI:
+         break;
+      case VOLUME_TYPE_UNKNOWN:
+         break;
    }
    
    //
@@ -11505,7 +11760,7 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
    //
    // Set spacing based upon volume's orientation code
    //
-   float space[3];
+   float space[3] = { 0.0, 0.0, 0.0 };
    switch (ifhOrientation) {
       case 2: // transverse
          space[0] = -mmppix[0];
@@ -11590,12 +11845,22 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
    }
    
    //
+   // WU NIL files are big endian by default
+   //
+   bool bigEndianDataFlag = true;
+   WuNilAttribute* endianAttr = volumeRead.wunilHeader.getAttribute(WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER);
+   if (endianAttr != NULL) {
+      if (endianAttr->getValue().trimmed() == "littleendian") {
+         bigEndianDataFlag = false;
+      }
+   }
+   
+   //
    // WU NIL files normally created on sun workstations which are big endian
    //
-   //int wordSize;
-   bool bigEndian = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
-   //qSysInfo(&wordSize, &bigEndian);
-   const bool byteSwapFlag = (bigEndian == false);
+   bool bigEndianComputerFlag = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
+   //const bool byteSwapFlag = (bigEndianComputerFlag == false);
+   const bool byteSwapFlag = (bigEndianComputerFlag != bigEndianDataFlag);
 
    //
    // Create the volume data file name
@@ -11825,6 +12090,13 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    file.close();
    
    //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->filename, getFileWritePermissions());
+   }
+
+   //
    // Create the name of the data file
    //
    firstVolume->dataFileName = FileUtilities::filenameWithoutExtension(firstVolume->filename);
@@ -11856,6 +12128,7 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          volumesToWrite[i]->writeVolumeFileData(firstVolume->voxelDataType,
@@ -11865,7 +12138,7 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->dataFileName, e.whatQString());
+         writeErrorMessage = e.whatQString();
       }
    }
    
@@ -11878,6 +12151,17 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    else {
       cppFile->close();
       delete cppFile;
+   }
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->dataFileName, writeErrorMessage);
+   }
+   
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->dataFileName, getFileWritePermissions());
    }
 }                          
                       
@@ -12251,6 +12535,7 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          volumesToWrite[i]->writeVolumeFileData(firstVolume->voxelDataType,
@@ -12260,7 +12545,8 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->filename, e.whatQString());
+         writeErrorMessage = e.whatQString();
+         break;
       }
    }
    
@@ -12273,6 +12559,10 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    else {
       cppFile->close();
       delete cppFile;
+   }
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->filename, writeErrorMessage);
    }
 }                          
                       
@@ -12496,6 +12786,13 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    headerFile.close();
    
    //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->filename, getFileWritePermissions());
+   }
+
+   //
    // Create the name of the data file
    //
    firstVolume->dataFileName = FileUtilities::filenameWithoutExtension(firstVolume->filename);
@@ -12513,6 +12810,7 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          volumesToWrite[i]->writeVolumeFileData(firstVolume->voxelDataType,
@@ -12522,7 +12820,8 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->dataFileName, e.whatQString());
+         writeErrorMessage = e.whatQString();
+         break;
       }
    }
    
@@ -12531,6 +12830,17 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    //
    cppFile->close();
    delete cppFile;
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->dataFileName, writeErrorMessage);
+   }
+   
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->dataFileName, getFileWritePermissions());
+   }
 }                          
                       
 /**
@@ -12618,6 +12928,16 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    WuNilAttribute m4(WuNilAttribute::NAME_MATRIX_SIZE_4, 1);
    wunilHeader.addAttribute(m4);
    
+   const bool bigEndianFlag = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
+   if (bigEndianFlag) {
+      WuNilAttribute byteOrder(WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER, "bigendian");
+      wunilHeader.addAttribute(byteOrder);
+   }
+   else {
+      WuNilAttribute byteOrder(WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER, "littleendian");
+      wunilHeader.addAttribute(byteOrder);
+   }
+   
    float org[3];
    org[0] = fabs(firstVolume->origin[0]);
    org[1] = -firstVolume->dimensions[1]*firstVolume->spacing[1] 
@@ -12660,6 +12980,13 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    file.close();
    
    //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->filename, getFileWritePermissions());
+   }
+
+   //
    // Create the name of the data file
    //
    firstVolume->dataFileName = FileUtilities::filenameWithoutExtension(firstVolume->filename);
@@ -12677,14 +13004,17 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    //
    // WU NIL files normally created on sun workstations which are big endian
    //
-   //int wordSize;
-   bool bigEndian = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
-   //qSysInfo(&wordSize, &bigEndian);
-   const bool byteSwapFlag = (bigEndian == false);
-
+   //bool bigEndian = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
+   //const bool byteSwapFlag = (bigEndian == false);
+   //
+   // WU NIL volumes now support both big and little endian
+   //
+   const bool byteSwapFlag = false;
+   
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          //
@@ -12700,7 +13030,8 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->dataFileName, e.whatQString());
+         writeErrorMessage = e.whatQString();
+         break;
       }
    }
    
@@ -12709,6 +13040,17 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    //
    cppFile->close();
    delete cppFile;
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->dataFileName, writeErrorMessage);
+   }
+
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->dataFileName, getFileWritePermissions());
+   }
 }                          
                       
 /**
@@ -13302,6 +13644,7 @@ VolumeFile::afniUniformityCorrection(const int grayMin,
    std::vector<VolumeFile*> volumes;
    volumes.push_back(&volumeCopy);
    VolumeFile::writeFile(inputName,
+                         getVolumeType(),
                          VolumeFile::VOXEL_DATA_TYPE_SHORT,
                          volumes);
    

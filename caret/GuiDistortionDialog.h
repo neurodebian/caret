@@ -26,7 +26,7 @@
 #ifndef __GUI_DISTORTION_DIALOG_H__
 #define __GUI_DISTORTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class BrainModelSurface;
@@ -34,7 +34,7 @@ class GuiNodeAttributeColumnSelectionComboBox;
 class QLineEdit;
 
 /// Dialog for generating surface distortion measurements
-class GuiDistortionDialog : public QtDialog {
+class GuiDistortionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

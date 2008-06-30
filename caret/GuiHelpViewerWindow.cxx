@@ -29,7 +29,9 @@
 #include <QApplication>
 #include <QFile>
 #include <QFileInfo>
+#include <QInputDialog>
 #include <QLayout>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QPrintDialog>
 #include <QPrinter>
@@ -37,6 +39,7 @@
 #include <QTextBrowser>
 #include <QPixmap>
 #include <QSplitter>
+#include <QTabWidget>
 #include <QToolBar>
 #include <QToolButton>
 #include <QToolTip>
@@ -44,6 +47,7 @@
 #include <QTreeWidgetItem>
 
 #include "BrainSet.h"
+#include "FileUtilities.h"
 #include "GuiHelpViewerWindow.h"
 #include "GuiMainWindow.h"
 #include "GuiTextBrowser.h"
@@ -54,8 +58,9 @@
  * Constructor (non-modal full navigation controls)
  */
 GuiHelpViewerWindow::GuiHelpViewerWindow(QWidget* parent)
-   : QtDialog(parent, false)  // QT4, Qt::WGroupLeader)
+   : WuQDialog(parent)
 {
+   setModal(false);
    setWindowTitle("Caret Help");
    
    //
@@ -68,8 +73,7 @@ GuiHelpViewerWindow::GuiHelpViewerWindow(QWidget* parent)
    //
    // main window containing text browser
    //
-   helpMainWindow = new GuiHelpViewerMainWindow(true);
-   dialogLayout->addWidget(helpMainWindow);
+   dialogLayout->addWidget(createHelpBrowser(true));
    
    //
    // Buttons layout.
@@ -78,12 +82,25 @@ GuiHelpViewerWindow::GuiHelpViewerWindow(QWidget* parent)
    dialogLayout->addLayout(buttonsLayout);
    
    QPushButton* closeButton = new QPushButton("Close");
+   closeButton->setAutoDefault(false);
    closeButton->setFixedSize(closeButton->sizeHint());
    QObject::connect(closeButton, SIGNAL(clicked()),
                     this, SLOT(close()));
    buttonsLayout->addWidget(closeButton);
    
-   helpMainWindow->loadPage();
+   loadPage();
+
+/*   
+   QVector<QPair<QString,QString> > pages;
+   getAllWebPages(pages);
+   for (int i = 0; i < pages.count(); i++) {
+      std::cout << "Page: "
+                << pages[i].first.toAscii().constData()
+                << ", "
+                << pages[i].second.toAscii().constData()
+                << std::endl;
+   }
+*/
 }
 
 /**
@@ -91,8 +108,9 @@ GuiHelpViewerWindow::GuiHelpViewerWindow(QWidget* parent)
  */
 GuiHelpViewerWindow::GuiHelpViewerWindow(QDialog* parent,
                                          const QString& helpPageIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Caret Help");
    
    //
@@ -105,8 +123,7 @@ GuiHelpViewerWindow::GuiHelpViewerWindow(QDialog* parent,
    //
    // main window containing text browser
    //
-   helpMainWindow = new GuiHelpViewerMainWindow(false);
-   dialogLayout->addWidget(helpMainWindow);
+   dialogLayout->addWidget(createHelpBrowser(false));
    
    //
    // Buttons layout.
@@ -120,7 +137,7 @@ GuiHelpViewerWindow::GuiHelpViewerWindow(QDialog* parent,
                     this, SLOT(reject()));
    buttonsLayout->addWidget(cancelButton);
    
-   helpMainWindow->loadPage(helpPageIn);
+   loadPage(helpPageIn);
 }
                           
 /**
@@ -131,72 +148,60 @@ GuiHelpViewerWindow::~GuiHelpViewerWindow()
 }
 
 /**
- * Load a page into the main window's help browser.
- */
-void
-GuiHelpViewerWindow::loadPage(const QString& page)
-{
-   helpMainWindow->loadPage(page);
-}
-
-//-------------------------------------------------------------------------------------
-
-/**
  * Main Window Constructor
  */
-GuiHelpViewerMainWindow::GuiHelpViewerMainWindow(const bool showNavigationControlsFlag)
-                      : QMainWindow(0)
+QWidget*
+GuiHelpViewerWindow::createHelpBrowser(const bool showNavigationControlsFlag)
 {
-   //
-   // Widget and layout for this main window
-   //
-   QWidget* mainWidget = new QWidget(this);
-   QVBoxLayout* mainLayout = new QVBoxLayout(mainWidget);
-   setCentralWidget(mainWidget);
-   
    //
    // create the help browser
    //
    helpBrowser = new GuiTextBrowser;
    helpBrowser->setMinimumWidth(400);
    helpBrowser->setMinimumHeight(200);
-   if (showNavigationControlsFlag == false) {
-      mainLayout->addWidget(helpBrowser);
-   }
+
+   //
+   // Layout for widget
+   //
+   QWidget* theHelpWidget = new QWidget;
+   QVBoxLayout* widgetLayout = new QVBoxLayout(theHelpWidget);
    
    if (showNavigationControlsFlag) {
       //
-      // Create the toolbar
-      //
-      QToolBar* toolbar = new QToolBar(this);
-      addToolBar(toolbar);
-      
-      //
       // Create the tree widget for the indices
       //
-      QStringList headerLabels;
-      headerLabels << "Help Page Index" << "Location";
+      QStringList indexTreeHeaderLabels;
+      indexTreeHeaderLabels << "Help Page Index" << "Location";
       indexTreeWidget = new QTreeWidget;
       indexTreeWidget->setColumnCount(2);
-      indexTreeWidget->setHeaderLabels(headerLabels);
+      indexTreeWidget->setHeaderLabels(indexTreeHeaderLabels);
       indexTreeWidget->setColumnHidden(0, false);
       indexTreeWidget->setColumnHidden(1, true);
       QObject::connect(indexTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)),
-                       this, SLOT(treeIndexItemSelected(QTreeWidgetItem*,int)));
+                       this, SLOT(indexTreeItemSelected(QTreeWidgetItem*,int)));
       loadIndexTree();
       
       //
-      // Create the splitter and add the widgets to the splitter
+      // Search line edit and list widget
       //
-      splitter = new QSplitter;
-      splitter->setOrientation(Qt::Horizontal);
-      splitter->addWidget(indexTreeWidget);
-      splitter->addWidget(helpBrowser);
-      QList<int> sizeList;
-      sizeList << 125 << 375;
-      splitter->setSizes(sizeList);
-      mainLayout->addWidget(splitter);
-
+      searchLineEdit = new QLineEdit;
+      searchLineEdit->setText("Enter search here");
+      QObject::connect(searchLineEdit, SIGNAL(returnPressed()),
+                       this, SLOT(slotSearchLineEdit()));
+      QStringList searchTreeHeaderLabels;
+      searchTreeHeaderLabels << "Matching Help Pages" << "Location";
+      searchTreeWidget = new QTreeWidget;
+      searchTreeWidget->setColumnCount(2);
+      searchTreeWidget->setHeaderLabels(searchTreeHeaderLabels);
+      searchTreeWidget->setColumnHidden(0, false);
+      searchTreeWidget->setColumnHidden(1, true);
+      QObject::connect(searchTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)),
+                       this, SLOT(searchTreeItemSelected(QTreeWidgetItem*,int)));
+      QWidget* searchWidget = new QWidget;
+      QVBoxLayout* searchLayout = new QVBoxLayout(searchWidget);
+      searchLayout->addWidget(searchLineEdit);
+      searchLayout->addWidget(searchTreeWidget);
+                       
       //
       // create the back toolbar button
       //
@@ -207,7 +212,6 @@ GuiHelpViewerMainWindow::GuiHelpViewerMainWindow(const bool showNavigationContro
               helpBrowser, SLOT(backward()));
       QToolButton* backwardButton = new QToolButton;
       backwardButton->setDefaultAction(backwardAction);
-      toolbar->addWidget(backwardButton);
       
       //
       // Create the forward toolbar button
@@ -221,7 +225,6 @@ GuiHelpViewerMainWindow::GuiHelpViewerMainWindow(const bool showNavigationContro
       connect(helpBrowser, SIGNAL(forwardAvailable(bool)), 
               forwardButton, SLOT(setEnabled(bool)));
       forwardButton->setDefaultAction(forewardAction);
-      toolbar->addWidget(forwardButton);
       
       //
       // Create the home toolbar button
@@ -231,7 +234,6 @@ GuiHelpViewerMainWindow::GuiHelpViewerMainWindow(const bool showNavigationContro
               helpBrowser, SLOT(home()));
       QToolButton* homeButton = new QToolButton;
       homeButton->setDefaultAction(homeAction);
-      toolbar->addWidget(homeButton);
       
       //
       // Create the print toolbar button
@@ -241,27 +243,119 @@ GuiHelpViewerMainWindow::GuiHelpViewerMainWindow(const bool showNavigationContro
               this, SLOT(slotPrint()));
       QToolButton* printButton = new QToolButton;
       printButton->setDefaultAction(printAction);
-      toolbar->addWidget(printButton);
+      
+      //
+      // Find button
+      //
+      QToolButton* findPushButton = new QToolButton;
+      findPushButton->setText("Find");
+      QObject::connect(findPushButton, SIGNAL(clicked()),
+                       this, SLOT(slotFindInBrowser()));
+                       
+      //
+      // Next button
+      //
+      findNextPushButton = new QToolButton;
+      findNextPushButton->setText("Next");
+      findNextPushButton->setEnabled(false);
+      QObject::connect(findNextPushButton, SIGNAL(clicked()),
+                       this, SLOT(slotFindNextInBrowser()));
+                       
+      //
+      // Layout for toolbuttons
+      //
+      QHBoxLayout* toolButtonLayout = new QHBoxLayout;
+      toolButtonLayout->addWidget(homeButton);
+      toolButtonLayout->addWidget(backwardButton);
+      toolButtonLayout->addWidget(forwardButton);
+      toolButtonLayout->addWidget(printButton);
+      toolButtonLayout->addWidget(findPushButton);
+      toolButtonLayout->addWidget(findNextPushButton);
+      toolButtonLayout->addStretch();
+      
+      //
+      // Layout for help browser and buttons
+      //
+      QWidget* helpBrowserWidgets = new QWidget;
+      QVBoxLayout* helpBrowserLayout = new QVBoxLayout(helpBrowserWidgets);
+      helpBrowserLayout->addLayout(toolButtonLayout);
+      helpBrowserLayout->addWidget(helpBrowser);
+      
+      //
+      // Tab widget for index and search
+      //
+      QTabWidget* indexSearchTabWidget = new QTabWidget;
+      indexSearchTabWidget->addTab(indexTreeWidget, "Index");
+      indexSearchTabWidget->addTab(searchWidget, "Search");
+      
+      //
+      // Create the splitter and add the widgets to the splitter
+      //
+      splitter = new QSplitter;
+      splitter->setOrientation(Qt::Horizontal);
+      splitter->addWidget(indexSearchTabWidget);
+      splitter->addWidget(helpBrowserWidgets);
+      QList<int> sizeList;
+      sizeList << 175 << 375;
+      splitter->setSizes(sizeList);
+      
+      widgetLayout->addWidget(splitter);
+
+   }
+   else {
+      widgetLayout->addWidget(helpBrowser);
    }
    
    //
    // Load the default page
    //
    loadPage();
+   
+   return theHelpWidget;
 }
 
 /**
- * Main Window Destructor
+ * called to find in browser window.
  */
-GuiHelpViewerMainWindow::~GuiHelpViewerMainWindow()
+void 
+GuiHelpViewerWindow::slotFindInBrowser()
 {
+   bool ok = false;
+   const QString txt = QInputDialog::getText(this,
+                                             "Find",
+                                             "Find Text",
+                                             QLineEdit::Normal,
+                                             findInBrowserText,
+                                             &ok);
+   if (ok) {
+      findNextPushButton->setEnabled(false);
+      findInBrowserText = txt.trimmed();
+      if (findInBrowserText.isEmpty() == false) {
+         helpBrowser->moveCursor(QTextCursor::Start);
+         if (helpBrowser->find(findInBrowserText)) {
+            findNextPushButton->setEnabled(true);
+         }
+      }
+   }
+}
+
+/**
+ * called to find next in browser window.
+ */
+void 
+GuiHelpViewerWindow::slotFindNextInBrowser()
+{
+   if (helpBrowser->find(findInBrowserText) == false) {
+      helpBrowser->moveCursor(QTextCursor::Start);
+      helpBrowser->find(findInBrowserText);
+   }
 }
 
 /**
  * called to print currently displayed page.
  */
 void 
-GuiHelpViewerMainWindow::slotPrint()
+GuiHelpViewerWindow::slotPrint()
 {
    QPrinter printer;
    QPrintDialog* printDialog = new QPrintDialog(&printer, this);
@@ -274,7 +368,7 @@ GuiHelpViewerMainWindow::slotPrint()
  * load the index tree.
  */
 void 
-GuiHelpViewerMainWindow::loadIndexTree()
+GuiHelpViewerWindow::loadIndexTree()
 {
    QTreeWidgetItem* mainItem = createTreeItem("Main Page", "index.html");
    indexTreeWidget->addTopLevelItem(mainItem);
@@ -304,13 +398,19 @@ GuiHelpViewerMainWindow::loadIndexTree()
 
    QTreeWidgetItem* dialogsItem = createTreeItem("Dialogs");
    indexTreeWidget->addTopLevelItem(dialogsItem);
+   dialogsItem->addChild(createTreeItem("Capture Image of Window", "dialogs/capture_image_of_window_dialog.html"));
    dialogsItem->addChild(createTreeItem("Display Control", "dialogs/display_control_dialog.html"));
    dialogsItem->addChild(createTreeItem("Draw Border", "dialogs/draw_border_dialog.html"));
+   dialogsItem->addChild(createTreeItem("File Dialogs", "dialogs/file_dialogs.html"));
    dialogsItem->addChild(createTreeItem("Metric Smoothing", "dialogs/metric_smoothing_dialog.html"));
    dialogsItem->addChild(createTreeItem("Project Cells/Foci", "dialogs/project_cells_foci_dialog.html"));
+   dialogsItem->addChild(createTreeItem("Project Foci to PALS", "dialogs/project_foci_to_pals_dialog.html"));
    dialogsItem->addChild(createTreeItem("Record Main Window Images as Movie", "dialogs/record_as_mpeg_dialog.html"));
+   dialogsItem->addChild(createTreeItem("Study Metadata", "dialogs/study_metadata.html"));
    dialogsItem->addChild(createTreeItem("Surface Region of Interest", "dialogs/surface_roi_dialog.html"));
+   dialogsItem->addChild(createTreeItem("Surface to Volume", "dialogs/Surface_To_Volume_Dialog.html"));
 
+   
    QTreeWidgetItem* statsItem = createTreeItem("Statistics");
    indexTreeWidget->addTopLevelItem(statsItem);
    statsItem->addChild(createTreeItem("Interhemispheric Clusters", "statistics/interhemispheric_clusters.html"));
@@ -358,19 +458,31 @@ GuiHelpViewerMainWindow::loadIndexTree()
  * Create an list tree widget item
  */
 QTreeWidgetItem* 
-GuiHelpViewerMainWindow::createTreeItem(const QString& label, const QString& helpPage)
+GuiHelpViewerWindow::createTreeItem(const QString& label, const QString& helpPage)
 {
+   QString pageName = helpPage;
+   
+   QFileInfo fileInfo(pageName);
+   if (fileInfo.isAbsolute() == false) {
+      QString defaultPage(theMainWindow->getBrainSet()->getCaretHomeDirectory());
+      defaultPage.append("/");
+      defaultPage.append("caret5_help");
+      defaultPage.append("/");
+      defaultPage.append(helpPage);
+      pageName = defaultPage;
+   }
+      
    QTreeWidgetItem* item = new QTreeWidgetItem(QStringList(label));
    item->setText(0, label);
-   item->setText(1, helpPage);
+   item->setText(1, pageName);
    return item;
 }
 
 /**
- * called when an tree index item is clicked.
+ * called when an index tree item is clicked.
  */
 void 
-GuiHelpViewerMainWindow::treeIndexItemSelected(QTreeWidgetItem* item, int /*column*/)
+GuiHelpViewerWindow::indexTreeItemSelected(QTreeWidgetItem* item, int /*column*/)
 {
    const QString webPage(item->text(1));
    
@@ -382,10 +494,26 @@ GuiHelpViewerMainWindow::treeIndexItemSelected(QTreeWidgetItem* item, int /*colu
 }
       
 /**
+ * called when a search tree item is clicked.
+ */
+void 
+GuiHelpViewerWindow::searchTreeItemSelected(QTreeWidgetItem* item, int /*column*/)
+{
+   const QString webPage(item->text(1));
+   
+   //std::cout << "Item selected is: " << webPage.toAscii().constData() << std::endl;
+   
+   if (webPage.isEmpty() == false) {
+      loadPage(webPage);
+      slotFindNextInBrowser();
+   }
+}
+      
+/**
  * Load a page into the help browser.
  */
 void
-GuiHelpViewerMainWindow::loadPage(const QString& pageNameIn)
+GuiHelpViewerWindow::loadPage(const QString& pageNameIn)
 {
    //
    // If no page name then default to main page
@@ -425,3 +553,68 @@ GuiHelpViewerMainWindow::loadPage(const QString& pageNameIn)
    helpBrowser->setSource(QUrl::fromLocalFile(pageName));
 }
 
+/**
+ * get all web page names and titles.
+ */
+void 
+GuiHelpViewerWindow::getAllWebPages(QVector<QPair<QString,QString> >& pagesOut) const
+{
+   pagesOut.clear();
+   
+   //
+   // Search through the tree widget to find all items with URLs
+   //
+   const int numItems = indexTreeWidget->topLevelItemCount();
+   for (int i = 0; i < numItems; i++) {
+      const QTreeWidgetItem* topItem = indexTreeWidget->topLevelItem(i);
+      if (topItem->text(1).isEmpty() == false) {
+         const QString pageName = topItem->text(0);
+         const QString pageURL  = topItem->text(1);
+         pagesOut.push_back(qMakePair(pageName, pageURL));
+      }
+         
+      //
+      // Search children of this item
+      //
+      const int numSubItems = topItem->childCount();
+      for (int j = 0; j < numSubItems; j++) {
+         const QTreeWidgetItem* subItem = topItem->child(j);
+         if (subItem->text(1).isEmpty() == false) {
+            const QString pageName = subItem->text(0);
+            const QString pageURL  = subItem->text(1);
+            pagesOut.push_back(qMakePair(pageName, pageURL));
+         }
+      }
+   }
+}
+
+/**
+ * called to search all help pages.
+ */
+void 
+GuiHelpViewerWindow::slotSearchLineEdit()
+{
+   searchTreeWidget->clear();
+   
+   const QString searchText = searchLineEdit->text();
+   if (searchText.isEmpty() == false) {
+      QVector<QPair<QString,QString> > pages;
+      getAllWebPages(pages);
+      for (int i = 0; i < pages.count(); i++) {
+         const QString pageTitle = pages[i].first.toAscii().constData();
+         const QString pageURL   = pages[i].second.toAscii().constData();
+                   
+         //std::cout << "Searching: "
+         //          << pageTitle.toAscii().constData()
+         //          << std::endl;
+         if (FileUtilities::findTextInFile(pageURL, searchText, false)) {
+            //std::cout << "   Page matches " 
+            //          << std::endl;                      
+            searchTreeWidget->addTopLevelItem(createTreeItem(pageTitle, pageURL));
+         }      
+      }
+      
+      findInBrowserText = searchText;
+      findNextPushButton->setEnabled(true);
+   }   
+}

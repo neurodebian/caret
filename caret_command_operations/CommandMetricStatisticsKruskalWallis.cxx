@@ -34,7 +34,7 @@
  * constructor.
  */
 CommandMetricStatisticsKruskalWallis::CommandMetricStatisticsKruskalWallis()
-   : CommandBase("-metric-stat-kruskal-wallis",
+   : CommandBase("-metric-statistics-kruskal-wallis",
                  "METRIC STATISTICS KRUSKAL-WALLIS")
 {
 }

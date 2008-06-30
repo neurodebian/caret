@@ -40,6 +40,7 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
+#include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiSectionControlDialog.h"
 #include "SectionFile.h"
 
@@ -49,7 +50,7 @@
  * Constructor.
  */
 GuiSectionControlDialog::GuiSectionControlDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Section Control");
    
@@ -63,10 +64,12 @@ GuiSectionControlDialog::GuiSectionControlDialog(QWidget* parent)
    //
    // column selection combo box
    //
-   sectionFileColumnComboBox = new QComboBox(this);
-   sectionFileColumnComboBox->addItem("                                          ");
-   sectionFileColumnComboBox->setFixedSize(sectionFileColumnComboBox->sizeHint());
-   QObject::connect(sectionFileColumnComboBox, SIGNAL(activated(int)),
+   sectionFileColumnComboBox = 
+      new GuiNodeAttributeColumnSelectionComboBox(GUI_NODE_FILE_TYPE_SECTION,
+                                                  false,
+                                                  false,
+                                                  false);
+   QObject::connect(sectionFileColumnComboBox, SIGNAL(itemSelected(int)),
                     this, SLOT(fileColumnComboBoxSlot(int)));
    dialogLayout->addWidget(sectionFileColumnComboBox);
       
@@ -195,7 +198,7 @@ GuiSectionControlDialog::fileColumnComboBoxSlot(int item)
    if (sf->getNumberOfColumns() == 0) {
       return;
    }
-   dss->setSelectedColumn(item);
+   dss->setSelectedDisplayColumn(-1, -1, item);
    updateDialog();
    //GuiFilesModified fm;
    //fm.setSectionModified();
@@ -289,16 +292,12 @@ GuiSectionControlDialog::updateDialog()
       return;
    }
    DisplaySettingsSection* dss = theMainWindow->getBrainSet()->getDisplaySettingsSection();
-   const int column = dss->getSelectedColumn();
+   const int column = dss->getSelectedDisplayColumn(-1, -1);
    
    //
    // Load the column selection combo box
    //
-   sectionFileColumnComboBox->clear();
-   for (int i = 0; i < sf->getNumberOfColumns(); i++) {
-      sectionFileColumnComboBox->addItem(sf->getColumnName(i));
-   }
-   sectionFileColumnComboBox->setCurrentIndex(column);
+   sectionFileColumnComboBox->updateComboBox(sf);
    
    //
    // Set the selection type radio buttons
@@ -359,7 +358,7 @@ GuiSectionControlDialog::sectionTypeSlot(int item)
       return;
    }
    DisplaySettingsSection* dss = theMainWindow->getBrainSet()->getDisplaySettingsSection();
-   const int column = dss->getSelectedColumn();
+   const int column = dss->getSelectedDisplayColumn(-1, -1);
  
    DisplaySettingsSection::SELECTION_TYPE selType = static_cast<DisplaySettingsSection::SELECTION_TYPE>(item);
    dss->setSelectionType(selType);

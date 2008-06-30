@@ -107,7 +107,7 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
 
       /// Constructor
       BrainModelSurfaceMetricClustering(BrainSet* bs,
-                                        BrainModelSurface* bmsIn,
+                                        const BrainModelSurface* bmsIn,
                                         MetricFile* metricFileIn,
                                         const CLUSTER_ALGORITHM algorithmIn,
                                         const int columnIn, 
@@ -147,7 +147,7 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
       void setClustersCenterOfGravityAndArea() throw (BrainModelAlgorithmException);
       
       /// surface for clustering
-      BrainModelSurface* bms;
+      const BrainModelSurface* bms;
       
       /// metric file being clustered
       MetricFile* metricFile;
@@ -181,15 +181,15 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
       
       /// cluster positive maximum threshold
       float clusterPositiveMaximumThreshold;
-      
+            
+      /// output all clusters including those that do not meet cluster area/number of nodes
+      bool outputAllClustersFlag;
+
       /// marks nodes whose metric is within the threshold values
       std::vector<int> nodeWithinThresholds;
       
       /// the clusters
       std::vector<Cluster> clusters;
-      
-      /// output all clusters including those that do not meet cluster area/number of nodes
-      bool outputAllClustersFlag;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_METRIC_CLUSTERING_H__

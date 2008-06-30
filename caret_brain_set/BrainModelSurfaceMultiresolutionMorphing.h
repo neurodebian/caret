@@ -37,6 +37,7 @@
 #include "StatisticsUtilities.h"
 #include "SurfaceShapeFile.h"
 
+class BorderProjection;
 class BrainModelSurface;
 class CoordinateFile;
 class TopologyFile;
@@ -90,7 +91,8 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       BrainModelSurfaceMultiresolutionMorphing(BrainSet* brainSetIn,
                                           BrainModelSurface* referenceSurfaceIn,
                                           BrainModelSurface* morphingSurfaceIn,
-                  const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn);
+                  const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn,
+                  const BorderProjection* centralSulcusBorderProjectionIn = NULL);
       
       /// Destructor
       virtual ~BrainModelSurfaceMultiresolutionMorphing();
@@ -238,7 +240,10 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       BrainModelSurface* morphingSurface;
       
       /// type of surface being morphed
-      BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceType;
+      const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceType;
+      
+      /// central sulcus border projection for alignment
+      const BorderProjection* centralSulcusBorderProjection;
       
       /// surface shape file used for distortion measurements
       SurfaceShapeFile shapeMeasurementsFile;

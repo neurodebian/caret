@@ -74,6 +74,8 @@ GuiMainWindowSurfaceMenu::GuiMainWindowSurfaceMenu(GuiMainWindow* parent) :
    
    createProjectToPlaneSubMenu(surfaceActions);
    
+   addAction(surfaceActions->getRegionOfInterestActionOLD());
+
    addAction(surfaceActions->getRegionOfInterestAction());
               
    createSectionsSubMenu(surfaceActions);

@@ -228,7 +228,7 @@ CommandSurfaceBorderIntersection::executeCommand() throw (BrainModelAlgorithmExc
    // Project the focus
    //
    CellProjectionFile tempFociProjFile;
-   tempFociProjFile.append(fociFile);
+   tempFociProjFile.appendFiducialCellFile(fociFile);
    CellFileProjector fociProjector(bms);
    fociProjector.projectFile(&tempFociProjFile,
                              0,

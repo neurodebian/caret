@@ -33,7 +33,9 @@
 #include "CoordinateFile.h"
 #include "BorderProjectionFile.h"
 #include "FileFilters.h"
+#include "FileUtilities.h"
 #include "FociProjectionFile.h"
+#include "FreeSurferSurfaceFile.h"
 #include "GiftiDataArrayFile.h"
 #include "MetricFile.h"
 #include "PreferencesFile.h"
@@ -42,6 +44,7 @@
 #include "SpecFile.h"
 #include "SurfaceShapeFile.h"
 #include "TopologyFile.h"
+#include "VtkModelFile.h"
 
 /**
  * constructor.
@@ -170,6 +173,7 @@ CommandFileReadTime::executeCommand() throw (BrainModelAlgorithmException,
          throw CommandException("Unrecognized parameter: " + paramName);
       }
    }
+   const QString fileNameNoPath = FileUtilities::basename(fileName);
    
    //
    // Create a file based upon the file name extension
@@ -188,7 +192,11 @@ CommandFileReadTime::executeCommand() throw (BrainModelAlgorithmException,
       FociProjectionFile fpf;
       readFileForTiming(&fpf, fileName, timeInSeconds, fileSizeInMB);
    }
-   else if (fileName.endsWith(SpecFile::getGiftiFileExtension())) {
+   else if (fileName.endsWith(SpecFile::getFreeSurferAsciiSurfaceFileExtension())) {
+      FreeSurferSurfaceFile fs;
+      readFileForTiming(&fs, fileName, timeInSeconds, fileSizeInMB);
+   }
+   else if (fileName.endsWith(SpecFile::getGiftiGenericFileExtension())) {
       GiftiDataArrayFile gifti;
       readFileForTiming(&gifti, fileName, timeInSeconds, fileSizeInMB);
    }
@@ -227,15 +235,23 @@ CommandFileReadTime::executeCommand() throw (BrainModelAlgorithmException,
       TopologyFile tf;
       readFileForTiming(&tf, fileName, timeInSeconds, fileSizeInMB);
    }
+   else if (fileName.endsWith(SpecFile::getVtkModelFileExtension())) {
+      VtkModelFile vmf;
+      readFileForTiming(&vmf, fileName, timeInSeconds, fileSizeInMB);
+   }
    else  {
       throw CommandException("Unsupported file type for timing.");
    }
    
-   std::cout << "Average time to read file was "
+   std::cout << "------ "
+             << fileNameNoPath.toAscii().constData()
+             << " ------"
+             << std::endl;
+   std::cout << "   Average time to read: "
              << timeInSeconds
              << " seconds." << std::endl;
    if (fileSizeInMB > 0) {
-      std::cout << "File Size (MB): "
+      std::cout << "   File Size (MB): "
                 << fileSizeInMB
                 << std::endl;
    }

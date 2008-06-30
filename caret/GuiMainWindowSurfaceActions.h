@@ -131,6 +131,9 @@ class GuiMainWindowSurfaceActions : public QObject {
       /// slot for region of interest dialog
       QAction* getRegionOfInterestAction() { return regionOfInterestAction; }
       
+      /// slot for region of interest dialog OLD
+      QAction* getRegionOfInterestActionOLD() { return regionOfInterestActionOLD; }
+      
       /// called when surface information menu item is selected
       QAction* getSurfaceInformationAction() { return surfaceInformationAction; }
       
@@ -362,6 +365,9 @@ class GuiMainWindowSurfaceActions : public QObject {
       
       /// slot for region of interest dialog
       void slotRegionOfInterest();
+      
+      /// slot for region of interest dialog OLD
+      void slotRegionOfInterestOLD();
       
       /// called when surface information menu item is selected
       void slotSurfaceInformation();
@@ -620,6 +626,9 @@ class GuiMainWindowSurfaceActions : public QObject {
       
       /// action for region of interest dialog
       QAction* regionOfInterestAction;
+      
+      /// action for region of interest dialog OLD
+      QAction* regionOfInterestActionOLD;
       
       /// action when surface information menu item is selected
       QAction* surfaceInformationAction;

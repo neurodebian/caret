@@ -56,6 +56,7 @@
 
 #include "BrainModelBorderSet.h"
 #include "BrainModelContours.h"
+#include "BrainModelIdentification.h"
 #include "BrainModelSurfaceAndVolume.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainSet.h"
@@ -75,6 +76,7 @@
 #include "GuiAddCellsDialog.h"
 #include "GuiAlignSurfaceToStandardOrientationDialog.h"
 #include "GuiBordersCreateInterpolatedDialog.h"
+#include "GuiBorderDrawUpdateDialog.h"
 #include "GuiBrainModelOpenGLKeyEvent.h"
 #include "GuiBrainModelOpenGLMouseEvent.h"
 #include "GuiBrainModelOpenGLPopupMenu.h"
@@ -89,9 +91,9 @@
 #include "GuiIdentifyDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowVolumeActions.h"
-#include "BrainModelIdentification.h"
 #include "GuiRecordingDialog.h"
 #include "GuiSurfaceRegionOfInterestDialog.h"
+#include "GuiSurfaceRegionOfInterestDialogOLD.h"
 #include "GuiToolBar.h"
 #include "GuiTransformationMatrixDialog.h"
 #include "GuiVolumePaintEditorDialog.h"
@@ -652,12 +654,10 @@ GuiBrainModelOpenGL::selectBrainModelItem(const int selectionX,
             */                
             DisplaySettingsMetric* dsm = theMainWindow->getBrainSet(getModelViewNumber())->getDisplaySettingsMetric();
             if (dsm->getMDataPlotOnNodeID() != DisplaySettingsMetric::METRIC_DATA_PLOT_OFF) {
-               BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet(getModelViewNumber())->getNodeColoring();
-               if ((bsnc->getPrimaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-                   (bsnc->getSecondaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-                   (bsnc->getUnderlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC)) {
+               if (theMainWindow->getBrainSet()->isASurfaceOverlayForAnySurface(
+                        BrainModelSurfaceOverlay::OVERLAY_METRIC)) {
                   const MetricFile* mf = theMainWindow->getBrainSet(getModelViewNumber())->getMetricFile();
-                  const int col = dsm->getSelectedDisplayColumn(modelIndex);
+                  const int col = dsm->getFirstSelectedColumnForBrainModel(modelIndex);
                   const int numCols = mf->getNumberOfColumns();
                   if ((col >= 0) && (col < numCols)) {
                      GuiGraphWidgetDialog* graphDialog = new GuiGraphWidgetDialog("Metric Plot",
@@ -2139,6 +2139,8 @@ GuiBrainModelOpenGL::keyPressEvent(QKeyEvent* ke)
             break;
          case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_REVERSE:
             break;
+         case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE:
+            break;
          case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_RENAME:
             break;
          case GuiBrainModelOpenGL::MOUSE_MODE_CUT_DRAW:
@@ -2305,6 +2307,8 @@ GuiBrainModelOpenGL::keyPressEvent(QKeyEvent* ke)
 void
 GuiBrainModelOpenGL::setMouseMode(const GuiBrainModelOpenGL::MOUSE_MODES mm)
 {
+   bool needReDrawFlag = false;
+
    newTileNodeNumbers[0] = -1;
    newTileNodeNumbers[1] = -1;
    newTileNodeNumbers[2] = -1;
@@ -2316,17 +2320,20 @@ GuiBrainModelOpenGL::setMouseMode(const GuiBrainModelOpenGL::MOUSE_MODES mm)
       QApplication::restoreOverrideCursor(); 
    }
    mouseMode = mm;
+   if (linearObjectBeingDrawn.getNumberOfLinks() > 0) {
+      needReDrawFlag = true;
+   }
    resetLinearObjectBeingDrawn();
    theMainWindow->getToolBar()->updateMouseModeComboBox();
    theMainWindow->updateStatusBarLabel();
 
    if (mouseMode == MOUSE_MODE_TRANSFORMATION_MATRIX_AXES) {
-      updateAllGL();
+      needReDrawFlag = true;
    }
    else if (oldMouseMode == MOUSE_MODE_TRANSFORMATION_MATRIX_AXES) {
       TransformationMatrixFile* tmf = theMainWindow->getBrainSet(getModelViewNumber())->getTransformationMatrixFile();
       tmf->setSelectedTransformationAxesIndex(-1);
-      updateAllGL();
+      needReDrawFlag = true;
    }
    
    if (mouseMode != MOUSE_MODE_IMAGE_SUBREGION) {
@@ -2334,6 +2341,10 @@ GuiBrainModelOpenGL::setMouseMode(const GuiBrainModelOpenGL::MOUSE_MODES mm)
    }
    else if (mouseMode == MOUSE_MODE_IMAGE_SUBREGION) {
       imageSubRegionBoxValid = getCaptureImageSubRegionValid();
+   }
+   
+   if (needReDrawFlag) {
+      updateAllGL();
    }
 }
 
@@ -3092,6 +3103,9 @@ GuiBrainModelOpenGL::routeMouseEvent(const GuiBrainModelOpenGLMouseEvent& me)
          case MOUSE_MODE_BORDER_RENAME:
             mouseBorderRename(me);
             break;
+         case MOUSE_MODE_BORDER_UPDATE:
+            mouseBorderUpdate(me);
+            break;
          case MOUSE_MODE_CUT_DRAW:
             mouseCutDraw(me);
             break;
@@ -3622,6 +3636,169 @@ GuiBrainModelOpenGL::mouseSurfaceView(const GuiBrainModelOpenGLMouseEvent& me)
          }
          updateAllGL(this);
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_ALT_MOVE:
+         break;
+   }
+}
+
+/**
+ * mouse processing for border update
+ */
+void  
+GuiBrainModelOpenGL::mouseBorderUpdate(const GuiBrainModelOpenGLMouseEvent& me)
+{
+   BrainModelSurface* bms = getDisplayedBrainModelSurface();
+   if (bms == NULL) {
+      return;
+   }
+   GuiBorderDrawUpdateDialog* borderDrawUpdateDialog = 
+      theMainWindow->getDrawBorderUpdateDialog();
+   if (borderDrawUpdateDialog == NULL) {
+      return;
+   }
+
+   switch(me.event) {
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_PRESS:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_SHIFT_PRESS:
+         if (linearObjectBeingDrawn.getNumberOfLinks() > 1) {
+            const int numLinks = linearObjectBeingDrawn.getNumberOfLinks();
+            if (numLinks > 1) {
+               BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+               QString errorMessage;
+               bmbs->updateBorder(bms,
+                                  borderDrawUpdateDialog->getBorderUpdateMode(),
+                                  &linearObjectBeingDrawn,
+                                  borderDrawUpdateDialog->getResampling(),
+                                  borderDrawUpdateDialog->getAutoProjectBorder(),
+                                  errorMessage);
+               if (errorMessage.isEmpty() == false) {
+                  QMessageBox::critical(this, "ERROR", errorMessage);
+               }
+            }
+         }
+         resetLinearObjectBeingDrawn();
+         theMainWindow->getBrainSet()->assignBorderColors();
+         updateAllGL();
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CONTROL_PRESS:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_MOVE:
+         {
+            float modelXYZ[3];
+            bool modelXYZValid = false;
+            
+            bool doThreeD = borderDrawUpdateDialog->getThreeDimensional();
+            if (doThreeD) {
+               //
+               // Interpolate point within a tile
+               //
+               int viewport[4] = { 0, 0, windowWidth[viewingWindowIndex], 
+                                         windowHeight[viewingWindowIndex] };
+               float tilePos[3];
+
+               BrainSet* bs = bms->getBrainSet();
+               if (bs == NULL) {
+                  bs = theMainWindow->getBrainSet(getModelViewNumber());
+               }
+
+               if (openGL->getSurfacePointAtDisplayXY(bs,
+                                                  bms,
+                                                  viewingWindowIndex,
+                                                  viewport,
+                                                  me.x,
+                                                  me.y,
+                                                  tilePos)) {
+                  if (DebugControl::getDebugOn()) {
+                     std::cout << "Pos in tile: " 
+                               << tilePos[0] << " "
+                               << tilePos[1] << " "
+                               << tilePos[2] << std::endl;
+                  }
+                  
+                  modelXYZ[0] = tilePos[0];
+                  modelXYZ[1] = tilePos[1];
+                  modelXYZ[2] = tilePos[2];
+                  modelXYZValid = true;
+               }
+            }
+            else {
+               //
+               // Convert the window coordinate to a surface coordinate
+               //
+               convertWindowToModelCoords(me.x, me.y, false, modelXYZ[0], modelXYZ[1], modelXYZ[2]);
+               if (DebugControl::getDebugOn()) {
+                  std::cout << "Window: (" << me.x << ", " << me.y << ")"
+                           << " Model: (" << modelXYZ[0] << ", " << modelXYZ[1] << ", " 
+                           << modelXYZ[2] << ")" << std::endl;
+               }
+               modelXYZ[2] = 0.0;
+               modelXYZValid = true;
+            }
+                     
+            if (modelXYZValid) {
+               linearObjectBeingDrawn.addBorderLink(modelXYZ, 0);
+               if (linearObjectBeingDrawn.getNumberOfLinks() > 2) {
+                  //int dummy = 0;
+                  //linearObjectBeingDrawn.resampleBorderToDensity(dbd->getResampling(), 2, dummy);
+               }
+            }
+            
+            if (doThreeD) {
+               drawLinearObjectOnly = false;
+            }
+            else {
+               drawLinearObjectOnly = true;
+            }
+            updateGL();
+            drawLinearObjectOnly = false;
+         }
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_SHIFT_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CONTROL_MOVE:
+         break;
+      case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_ALT_MOVE:
+         {
+            //
+            // Allow rotation but only if drawing border in 3D mode
+            //
+            bool doThreeD = borderDrawUpdateDialog->getThreeDimensional();
+            if ((bms != NULL) &&
+                doThreeD) {
+               vtkTransform* matrix = bms->getRotationTransformMatrix(viewingWindowIndex);
+            
+               //
+               // Biggest change in mouse axis
+               //
+               const int biggestChange = (abs(me.dy) > abs(me.dx)) ? me.dy : me.dx;
+
+               switch(rotationAxis) {
+                  case BRAIN_MODEL_ROTATION_AXIS_X:
+                     matrix->RotateX(biggestChange); //me.dy);
+                     break;
+                  case BRAIN_MODEL_ROTATION_AXIS_Y:
+                     matrix->RotateY(-biggestChange); //-me.dx);
+                     break;
+                  case BRAIN_MODEL_ROTATION_AXIS_Z:
+                     matrix->RotateZ(-biggestChange); //-me.dx);
+                     break;
+                  case BRAIN_MODEL_ROTATION_AXIS_XY:
+                     matrix->RotateX(me.dy);
+                     matrix->RotateY(-me.dx);
+                     break;
+                  case BRAIN_MODEL_ROTATION_AXIS_OFF:
+                     break;
+               }
+               if (viewingWindowIndex == BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW) {
+                  theMainWindow->updateTransformationMatrixEditor(NULL);
+               }
+               updateAllGL(this);
+            }
+         }
          break;
    }
 }
@@ -4608,6 +4785,12 @@ GuiBrainModelOpenGL::mouseSurfaceRoiBorderSelect(const GuiBrainModelOpenGLMouseE
                BrainModelBorder* b = bmbs->getBorder(selectedBorder1.getItemIndex2());
                roi->setBorderNameForQuery(b->getName());
             }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {
+               BrainModelBorderSet* bmbs = theMainWindow->getBrainSet(getModelViewNumber())->getBorderSet();
+               BrainModelBorder* b = bmbs->getBorder(selectedBorder1.getItemIndex2());
+               roiOLD->setBorderNameForQuery(b->getName());
+            }
          }
          break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
@@ -4647,6 +4830,14 @@ GuiBrainModelOpenGL::mouseSurfaceRoiPaintSelect(const GuiBrainModelOpenGLMouseEv
                   roi->setPaintIndexForQuery(pf->getPaint(selectedNode.getItemIndex1(), index));
                }
             }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {               
+               PaintFile* pf = theMainWindow->getBrainSet(getModelViewNumber())->getPaintFile();
+               const int index = roiOLD->getQueryPaintColumn();
+               if ((index >= 0) && (index < pf->getNumberOfColumns())) {
+                  roiOLD->setPaintIndexForQuery(pf->getPaint(selectedNode.getItemIndex1(), index));
+               }
+            }
          }
          break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
@@ -4681,6 +4872,10 @@ GuiBrainModelOpenGL::mouseSurfaceRoiMetricSelect(const GuiBrainModelOpenGLMouseE
             GuiSurfaceRegionOfInterestDialog* roi = theMainWindow->getSurfaceRegionOfInterestDialog(false);
             if (roi != NULL) {               
                roi->setMetricNodeForQuery(selectedNode.getItemIndex1());
+            }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {               
+               roiOLD->setMetricNodeForQuery(selectedNode.getItemIndex1());
             }
          }
          break;
@@ -4717,6 +4912,10 @@ GuiBrainModelOpenGL::mouseSurfaceRoiShapeSelect(const GuiBrainModelOpenGLMouseEv
             if (roi != NULL) {               
                roi->setShapeNodeForQuery(selectedNode.getItemIndex1());
             }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {               
+               roiOLD->setShapeNodeForQuery(selectedNode.getItemIndex1());
+            }
          }
          break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
@@ -4751,6 +4950,10 @@ GuiBrainModelOpenGL::mouseSurfaceRoiGeodesicNodeSelect(const GuiBrainModelOpenGL
             GuiSurfaceRegionOfInterestDialog* roi = theMainWindow->getSurfaceRegionOfInterestDialog(false);
             if (roi != NULL) {               
                roi->setNodeForGeodesicQuery(selectedNode.getItemIndex1());
+            }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {               
+               roiOLD->setNodeForGeodesicQuery(selectedNode.getItemIndex1());
             }
          }
          break;
@@ -5991,7 +6194,11 @@ GuiBrainModelOpenGL::mouseSurfaceROISulcalBorderNodeStart(const GuiBrainModelOpe
          if (selectedNode.getItemIndex1() >= 0) {
             GuiSurfaceRegionOfInterestDialog* roi = theMainWindow->getSurfaceRegionOfInterestDialog(false);
             if (roi != NULL) {               
-               roi->setCreateBorderOpenStartNode(selectedNode.getItemIndex1());
+               roi->setCreateLinearBorderStartNode(selectedNode.getItemIndex1());
+            }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {               
+               roiOLD->setCreateBorderOpenStartNode(selectedNode.getItemIndex1());
             }
          }
          break;
@@ -6026,7 +6233,11 @@ GuiBrainModelOpenGL::mouseSurfaceROISulcalBorderNodeEnd(const GuiBrainModelOpenG
          if (selectedNode.getItemIndex1() >= 0) {
             GuiSurfaceRegionOfInterestDialog* roi = theMainWindow->getSurfaceRegionOfInterestDialog(false);
             if (roi != NULL) {               
-               roi->setCreateBorderOpenEndNode(selectedNode.getItemIndex1());
+               roi->setCreateLinearBorderEndNode(selectedNode.getItemIndex1());
+            }
+            GuiSurfaceRegionOfInterestDialogOLD* roiOLD = theMainWindow->getSurfaceRegionOfInterestDialogOLD(false);
+            if (roiOLD != NULL) {               
+               roiOLD->setCreateBorderOpenEndNode(selectedNode.getItemIndex1());
             }
          }
          break;
@@ -6852,6 +7063,24 @@ GuiBrainModelOpenGL::getLineWidthRange(float& minSize, float& maxSize)
    maxSize = maxLineSize;
 }
        
+/**
+ * get caption displayed in main window.
+ */
+QString 
+GuiBrainModelOpenGL::getMainWindowCaption()
+{
+   return openGL->getMainWindowCaption();
+}
+
+/**
+ * set caption displayed in main window.
+ */
+void 
+GuiBrainModelOpenGL::setMainWindowCaption(const QString& s)
+{
+   openGL->setMainWindowCaption(s);
+}
+
 /**
  * get main window center model coordinate (returns true if valid).
  */

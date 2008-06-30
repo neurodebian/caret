@@ -116,7 +116,7 @@ CommandVolumeNearToPlane::executeCommand() throw (BrainModelAlgorithmException,
    const float offset =
       parameters->getNextParameterAsFloat("Offset");
    const int gradSign =
-      parameters->getNextParameterAsFloat("Grad Sign");
+      parameters->getNextParameterAsInt("Grad Sign");
    const bool downFlag =
       parameters->getNextParameterAsFloat("Down Flag");
    const bool maskFlag =

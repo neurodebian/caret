@@ -27,12 +27,12 @@
 #ifndef __GUI_SPEC_FILE_DIALOG_H__
 #define __GUI_SPEC_FILE_DIALOG_H__
 
-#include "QtDialog.h"
-#include "QtMainWindow.h"
+#include <QMainWindow>
 
 #include "BrainModelSurface.h"
 #include "SpecFile.h"
 #include "TransformationMatrixFile.h"
+#include "WuQDialog.h"
 
 //
 // forward declarations to avoid include files
@@ -50,7 +50,7 @@ class QVBoxLayout;
 class GuiSpecFileDialogMainWindow;
 
 /// Dialog for making selections from the specification file.
-class GuiSpecFileDialog : public QtDialog {
+class GuiSpecFileDialog : public WuQDialog {
  
    Q_OBJECT
    
@@ -102,7 +102,7 @@ class GuiSpecFileDialog : public QtDialog {
 };
 
 /// MainWindow placed in the Spec File Dialog
-class GuiSpecFileDialogMainWindow : public QtMainWindow {
+class GuiSpecFileDialogMainWindow : public QMainWindow {
    Q_OBJECT
 
    public:
@@ -367,14 +367,14 @@ class GuiSpecFileDialogMainWindow : public QtMainWindow {
       /// group box containing  files
       QGroupBox* fociGroup;
       
-      /// group box containing volume foci files
-      QGroupBox* fociVolumeGroup;
-      
       /// group box containing  files
       QGroupBox* fociColorGroup;
       
       /// group box containing  files
       QGroupBox* fociProjGroup;
+      
+      /// group box containing files
+      QGroupBox* fociSearchGroup;
       
       /// group box containing image files
       QGroupBox* imagesGroup;

@@ -72,9 +72,10 @@
  * Constructor.
  */
 GuiVolumeAttributesDialog::GuiVolumeAttributesDialog(QWidget* parent, 
-                                                     const bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                                     const bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    setWindowTitle("Volume Attributes Editor");
    
    //
@@ -600,6 +601,22 @@ void
 GuiVolumeAttributesDialog::createResamplingPage()
 {
    //
+   // Resampling method
+   //
+   QLabel* resamplingMethodLabel = new QLabel("Interpolation Method");
+   resamplingMethodComboBox = new QComboBox;
+   resamplingMethodComboBox->addItem("Cubic (Best Quality)",
+                               static_cast<int>(VolumeFile::INTERPOLATION_TYPE_CUBIC));
+   resamplingMethodComboBox->addItem("Linear",
+                               static_cast<int>(VolumeFile::INTERPOLATION_TYPE_LINEAR));
+   resamplingMethodComboBox->addItem("Nearest Neighbor (use for Paint and Atlas)",
+                               static_cast<int>(VolumeFile::INTERPOLATION_TYPE_NEAREST_NEIGHBOR));
+   QHBoxLayout* resamplingLayout = new QHBoxLayout;
+   resamplingLayout->addWidget(resamplingMethodLabel);
+   resamplingLayout->addWidget(resamplingMethodComboBox);
+   resamplingLayout->addStretch();
+   
+   //
    // spin boxes for resampling
    //
    QLabel* voxelSizeLabel = new QLabel("Voxel Size ");
@@ -631,6 +648,7 @@ GuiVolumeAttributesDialog::createResamplingPage()
    resamplingPage = new QWidget;
    QVBoxLayout* resamplePageLayout = new QVBoxLayout(resamplingPage);
    resamplePageLayout->addLayout(resampleLayout);
+   resamplePageLayout->addLayout(resamplingLayout);
    resamplePageLayout->addStretch();
    tabWidget->addTab(resamplingPage, "Resample");
    
@@ -687,7 +705,13 @@ GuiVolumeAttributesDialog::resampleVolume()
                                  "all be positive for resampling to function correctly.");
          return;
       }
-      vf->resampleToSpacing(spacing);
+      
+      const int methodIndex = resamplingMethodComboBox->currentIndex();
+      const VolumeFile::INTERPOLATION_TYPE interpolationType =
+         static_cast<VolumeFile::INTERPOLATION_TYPE>(
+            resamplingMethodComboBox->itemData(methodIndex).toInt());
+            
+      vf->resampleToSpacing(spacing, interpolationType);
       loadVolumeParameters();
       loadVolumeResampling();
    }

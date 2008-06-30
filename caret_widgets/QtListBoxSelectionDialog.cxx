@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QLabel>
 #include <QLayout>
 #include <QListWidget>
@@ -40,7 +41,7 @@ QtListBoxSelectionDialog::QtListBoxSelectionDialog(QWidget* parent,
                                                    const std::vector<QString>& items,
                                                    const QString& selectAllButtonLabel,
                                                    const int defaultItem)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
    createDialog(title, selectAllButtonLabel, instructions);
    setListBoxContents(items, defaultItem);
@@ -54,7 +55,7 @@ QtListBoxSelectionDialog::QtListBoxSelectionDialog(QWidget* parent,
                                                    const QString& instructions,
                                                    const std::vector<QString>& items,
                                                    const int defaultItem)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
    createDialog(title, "", instructions);
    setListBoxContents(items, defaultItem);
@@ -68,7 +69,7 @@ QtListBoxSelectionDialog::QtListBoxSelectionDialog(QWidget* parent,
                                                    const QString& instructions,
                                                    const QStringList& itemList,
                                                    const int defaultItem)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
    
    std::vector<QString> items;
@@ -82,7 +83,7 @@ QtListBoxSelectionDialog::QtListBoxSelectionDialog(QWidget* parent,
 
 QtListBoxSelectionDialog::QtListBoxSelectionDialog(QWidget* parent, 
                                                    const QString& title)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
    createDialog(title, "", "");
 }
@@ -140,21 +141,16 @@ QtListBoxSelectionDialog::createDialog(const QString& title,
       layout->addWidget(selectAllPushButton);
    }
    
-   
-   QHBoxLayout* buttonsLayout = new QHBoxLayout;
-   layout->addLayout(buttonsLayout);
-   buttonsLayout->setSpacing(5);
-   QPushButton* okButton = new QPushButton("OK");
-   buttonsLayout->addWidget(okButton);
-   QObject::connect(okButton, SIGNAL(clicked()),
+   //
+   // Dialog buttons
+   //
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok 
+                                                      | QDialogButtonBox::Cancel);
+   layout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(accepted()),
                     this, SLOT(accept()));
-
-   QPushButton* cancelButton = new QPushButton("Cancel");
-   buttonsLayout->addWidget(cancelButton);
-   QObject::connect(cancelButton, SIGNAL(clicked()),
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(reject()));
-                    
-   QtUtilities::makeButtonsSameSize(okButton, cancelButton);
 }
 
 /**

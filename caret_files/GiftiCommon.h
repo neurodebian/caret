@@ -197,6 +197,9 @@ class GiftiCommon {
       /// intent for time series
       static const QString intentTimeSeries;
       
+      /// intent for node index
+      static const QString intentNodeIndex;
+      
       /// intent for normals
       static const QString intentNormals;
       
@@ -357,6 +360,7 @@ class GiftiCommon {
    const QString GiftiCommon::intentPrefix = "NIFTI_INTENT";
    const QString GiftiCommon::intentCoordinates = "NIFTI_INTENT_POINTSET";
    const QString GiftiCommon::intentTimeSeries = "NIFTI_INTENT_TIME_SERIES";
+   const QString GiftiCommon::intentNodeIndex = "NIFTI_INTENT_NODE_INDEX";
    const QString GiftiCommon::intentNormals = "NIFTI_INTENT_VECTOR";
    const QString GiftiCommon::intentLabels = "NIFTI_INTENT_LABEL";
    const QString GiftiCommon::intentRGB = "NIFTI_INTENT_RGB_VECTOR";

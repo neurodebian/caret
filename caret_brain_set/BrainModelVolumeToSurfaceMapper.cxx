@@ -87,6 +87,7 @@ BrainModelVolumeToSurfaceMapper::BrainModelVolumeToSurfaceMapper(
    metricFile = NULL;
    paintFile  = NULL;
    
+   volumeFile = NULL;
    volumeMode = MODE_VOLUME_ON_DISK;
    surface    = surfaceIn;
    volumeFileName = volumeFileNameIn;
@@ -109,13 +110,6 @@ BrainModelVolumeToSurfaceMapper::~BrainModelVolumeToSurfaceMapper()
 void 
 BrainModelVolumeToSurfaceMapper::execute() throw (BrainModelAlgorithmException)
 {
-   //
-   // Get volume information
-   //
-   if (volumeFile == NULL) {
-      throw BrainModelAlgorithmException("No volume provided.");
-   }
-   
    //
    // Get surface stuff
    //   
@@ -218,6 +212,10 @@ BrainModelVolumeToSurfaceMapper::execute() throw (BrainModelAlgorithmException)
          }
          break;
       case MODE_VOLUME_IN_MEMORY:
+         if (volumeFile == NULL) {
+            throw BrainModelAlgorithmException("No volume provided.");
+         }
+   
          if (dataFileColumn < 0) {
             columnsToAdd = 1;
             dataFileColumnNumber = dataFile->getNumberOfColumns();

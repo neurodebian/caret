@@ -42,7 +42,7 @@ GuiBorderNamesListBoxSelectionDialog::GuiBorderNamesListBoxSelectionDialog(QWidg
 {
    std::vector<QString> names;
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
-   bmbs->getAllBorderNames(names);
+   bmbs->getAllBorderNames(names, false);
    QString nameToFind(defaultBorderName);
    std::vector<QString>::iterator iter = std::find(names.begin(), names.end(), 
                                                       defaultBorderName);

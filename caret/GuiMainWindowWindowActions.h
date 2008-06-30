@@ -71,6 +71,9 @@ class GuiMainWindowWindowActions : public QObject {
       /// window 10 action
       QAction* getWindow10Action() { return window10Action; }
       
+      /// resize viewing windows action
+      QAction* getResizeViewWindowsAction() { return resizeViewWindowsAction; }
+      
       /// display control window action
       QAction* getDisplayControlAction() { return displayControlAction; }
       
@@ -138,6 +141,9 @@ class GuiMainWindowWindowActions : public QObject {
       /// Called when window 10 action selected
       void window10Popup();
                  
+      /// Called when resize viewing window action selected
+      void slotResizeViewingWindowsAction();
+      
       /// text editor action
       void slotTextFileEditor();
       
@@ -184,6 +190,9 @@ class GuiMainWindowWindowActions : public QObject {
       
       /// window 10 action
       QAction* window10Action;
+      
+      /// resize viewing windows action
+      QAction* resizeViewWindowsAction;
       
       /// display control window action
       QAction* displayControlAction;

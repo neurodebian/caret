@@ -323,55 +323,35 @@ BrainModelVolumeVoxelColoring::getVoxelColoring(VolumeFile* vf,
             const Palette* palette = pf->getPalette(dsm->getSelectedPaletteIndex());
             
             //
-            // Get the minimum and maximum metric from in this order
-            //   * user scale
-            //   * current metric node file column
-            //   * the voxel
+            // Get the minimum and maximum metric 
             //
             float posMinMetric = 0.0, posMaxMetric = 0.0, negMinMetric = 0.0, negMaxMetric = 0.0;
-            float thresholdNegativeValue = 0.0, thresholdPositiveValue = 0.0;
-            const int metricViewIndex = dsm->getSelectedDisplayColumn(-1);
-            const int metricThreshIndex = dsm->getSelectedThresholdColumn(-1);
-            DisplaySettingsMetric::METRIC_OVERLAY_SCALE overlayScale =
-                                                     dsm->getSelectedOverlayScale();
-            if (overlayScale == DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC) {
-               if (mf->getNumberOfColumns() == 0) {
-                  //
-                  // Since no metrics default to volume control
-                  //
-                  overlayScale = DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME;
-               }
-            }
-            switch (overlayScale) {
-               case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC:
-                  if ((metricViewIndex >= 0) && (metricViewIndex < mf->getNumberOfColumns())) {
-                     mf->getDataColumnMinMax(metricViewIndex, negMaxMetric, posMaxMetric);
-                  }
-                  break;
-               case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
-                  vf->getMinMaxVoxelValues(negMaxMetric, posMaxMetric);
-                  break;
-               case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER:
-                  dsm->getUserScaleMinMax(posMinMetric, posMaxMetric, negMinMetric, negMaxMetric);
-                  break;
-            }
-            
+            int metricDisplayColumnNumber, metricThresholdColumnNumber;
+            dsm->getMetricsForColoringAndPalette(metricDisplayColumnNumber,
+                                                metricThresholdColumnNumber,
+                                                negMaxMetric,
+                                                negMinMetric,
+                                                posMinMetric,
+                                                posMaxMetric,
+                                                true);                                          
+
             //
             // Get thresholding
             //
+            float thresholdNegativeValue = 0.0, thresholdPositiveValue = 0.0;
             dsm->getUserThresholdingValues(thresholdNegativeValue,
                                            thresholdPositiveValue);
             switch (dsm->getMetricThresholdingType()) {
                case DisplaySettingsMetric::METRIC_THRESHOLDING_TYPE_FILE_COLUMN:
-                  if ((metricThreshIndex >= 0) && (metricThreshIndex < mf->getNumberOfColumns())) {
-                     mf->getColumnThresholding(metricThreshIndex,
+                  if ((metricThresholdColumnNumber >= 0) && (metricThresholdColumnNumber < mf->getNumberOfColumns())) {
+                     mf->getColumnThresholding(metricThresholdColumnNumber,
                                       thresholdNegativeValue,
                                       thresholdPositiveValue);
                   }
                   break;
                case DisplaySettingsMetric::METRIC_THRESHOLDING_TYPE_FILE_COLUMN_AVERAGE:
-                  if ((metricThreshIndex >= 0) && (metricThreshIndex < mf->getNumberOfColumns())) {
-                     mf->getColumnAverageThresholding(metricThreshIndex,
+                  if ((metricThresholdColumnNumber >= 0) && (metricThresholdColumnNumber < mf->getNumberOfColumns())) {
+                     mf->getColumnAverageThresholding(metricThresholdColumnNumber,
                                          thresholdNegativeValue,
                                          thresholdPositiveValue);
                   }
@@ -533,16 +513,26 @@ BrainModelVolumeVoxelColoring::getVoxelColoring(VolumeFile* vf,
                AreaColorFile* cf = brainSet->getAreaColorFile();
                
                //
+               // Get first volume
+               //
+               VolumeFile* firstVolumeFile = brainSet->getVolumePaintFile(0);
+               
+               //
                // Assing colors to the voxels
                //
                rgb[3] = VolumeFile::VOXEL_COLOR_STATUS_VALID_DO_NOT_SHOW_VOXEL;
                if (voxel > 0) {
-                  const QString name = vf->getRegionNameFromIndex(
-                                                      static_cast<int>(voxel));
+                  const int paintIndex = static_cast<int>(voxel);
+                  const QString name = vf->getRegionNameFromIndex(paintIndex);
                   bool match;
                   const int colorFileIndex = cf->getColorIndexByName(name, match);
                   if (colorFileIndex >= 0) {
                      cf->getColorByIndex(colorFileIndex, rgb[0], rgb[1], rgb[2]);
+                     if (firstVolumeFile->getHighlightRegionNameByIndex(paintIndex)) {
+                        rgb[0] = 0;
+                        rgb[1] = 255;
+                        rgb[2] = 0;
+                     }
                      rgb[3] = VolumeFile::VOXEL_COLOR_STATUS_VALID;
                   }
                }
@@ -643,7 +633,7 @@ BrainModelVolumeVoxelColoring::assignNormalProbAtlasColor(const int iv,
    const int numberOfVolumes = brainSet->getNumberOfVolumeProbAtlasFiles();
    const int numSelectedChannels = dspa->getNumberOfChannelsSelected();
 
-   BrainModelVolume* bmv = brainSet->getBrainModelVolume();
+   //BrainModelVolume* bmv = brainSet->getBrainModelVolume();
    
    //
    // Initialize to background color
@@ -652,52 +642,75 @@ BrainModelVolumeVoxelColoring::assignNormalProbAtlasColor(const int iv,
    rgb[1] = 0;
    rgb[2] = 0;
    
+   bool highlightFlag = false;
+   
    if (numSelectedChannels > 0) {
       int* paintIndices = new int[numberOfVolumes];
       int count = 0;
+      VolumeFile* firstVolumeFile = NULL;
       for (int fileNum = 0; fileNum < numberOfVolumes; fileNum++) {
+         VolumeFile* vf = brainSet->getVolumeProbAtlasFile(fileNum);
+         if (fileNum == 0) {
+            firstVolumeFile = vf;
+         }
          if (dspa->getChannelSelected(fileNum)) {
-            VolumeFile* vf = brainSet->getVolumeProbAtlasFile(fileNum);
             const int voxel = static_cast<int>(vf->getVoxel(iv, jv, kv));
             
             //
             // Convert voxel into its place in the prob atlas name table
             //
-            const int paintIndex = bmv->getProbAtlasNameTableIndex(fileNum, voxel);
+            const int paintIndex = voxel; //vf->getRegionNameFromIndex(voxel);
             
             // check > 0 since ??? is always first and is not a valid atlas index
             if ((paintIndex > 0) && 
-                (paintIndex < bmv->getNumberOfProbAtlasNames())) {
+                (paintIndex < vf->getNumberOfRegionNames())) {
                if (dspa->getAreaSelected(paintIndex)) {            
                   paintIndices[count] = paintIndex;
                   count++;
+               }
+               
+               if (firstVolumeFile->getHighlightRegionNameByIndex(paintIndex)) {
+                  highlightFlag = true;
                }
             }
          }
       }
       
       if (count > 0) {
+         const VolumeFile* firstVolumeFile = brainSet->getVolumeProbAtlasFile(0);
          // clear colors since we have probabilistic data for this voxel
          rgb[0] = 0; 
          rgb[1] = 0; 
          rgb[2] = 0; 
-         for (int m = 0; m < count; m++) {
-            QString colorName(bmv->getProbAtlasNameFromIndex(paintIndices[m]));
-            if (dspa->getTreatQuestColorAsUnassigned()) {
-               if (colorName == "???") {
-                  colorName = "Unassigned";
+         
+         if (highlightFlag) {
+            rgb[1] = 255;
+         }
+         else {
+            for (int m = 0; m < count; m++) {
+               QString colorName(firstVolumeFile->getRegionNameFromIndex(paintIndices[m]));
+               if (dspa->getTreatQuestColorAsUnassigned()) {
+                  if (colorName == "???") {
+                     colorName = "Unassigned";
+                  }
+               }
+               bool exactMatch;
+               const int areaColorIndex = cf->getColorIndexByName(colorName, exactMatch);
+               if (areaColorIndex >= 0) {
+                  unsigned char r, g, b;
+                  cf->getColorByIndex(areaColorIndex, r, g, b);
+                  rgb[0] += (unsigned char)((r / (float)(numSelectedChannels)));
+                  rgb[1] += (unsigned char)((g / (float)(numSelectedChannels)));
+                  rgb[2] += (unsigned char)((b / (float)(numSelectedChannels)));
                }
             }
-            bool exactMatch;
-            const int areaColorIndex = cf->getColorIndexByName(colorName, exactMatch);
-            if (areaColorIndex >= 0) {
-               unsigned char r, g, b;
-               cf->getColorByIndex(areaColorIndex, r, g, b);
-               rgb[0] += (unsigned char)((r / (float)(numSelectedChannels)));
-               rgb[1] += (unsigned char)((g / (float)(numSelectedChannels)));
-               rgb[2] += (unsigned char)((b / (float)(numSelectedChannels)));
-            }
          }
+      }
+      
+      if (highlightFlag) {
+         rgb[0] = 0.0;
+         rgb[1] = 255; 
+         rgb[2] = 0;
       }
       delete[] paintIndices;
    }
@@ -718,9 +731,13 @@ BrainModelVolumeVoxelColoring::assignThresholdProbAtlasColor(const int iv,
 
    DisplaySettingsProbabilisticAtlas* dspa = brainSet->getDisplaySettingsProbabilisticAtlasVolume();
    AreaColorFile* cf = brainSet->getAreaColorFile();
-   BrainModelVolume* bmv = brainSet->getBrainModelVolume();
+   //BrainModelVolume* bmv = brainSet->getBrainModelVolume();
    
    const int numberOfVolumes = brainSet->getNumberOfVolumeProbAtlasFiles();
+   if (numberOfVolumes < 0) {
+      return;
+   }
+   const VolumeFile* firstVolumeFile = brainSet->getVolumeProbAtlasFile(0);
    const int numSelectedChannels = dspa->getNumberOfChannelsSelected();
 
    unsigned char anyAreaColor[3] = { 100, 100, 100 };
@@ -730,14 +747,17 @@ BrainModelVolumeVoxelColoring::assignThresholdProbAtlasColor(const int iv,
    if (numSelectedChannels > 0) {
       std::map<int,int> indexCounterMap;
       
-      const int numPaintNames = bmv->getNumberOfProbAtlasNames();
+      const int numPaintNames = firstVolumeFile->getNumberOfRegionNames();
       bool atLeastOneNonZero = false;
       for (int volNum = 0; volNum < numberOfVolumes; volNum++) {
          VolumeFile* vf = brainSet->getVolumeProbAtlasFile(volNum);
+         if (volNum == 0) {
+            firstVolumeFile = vf;
+         }
          int cntIndex = 0;
          if (dspa->getChannelSelected(volNum)) {
             const int voxel = static_cast<int>(vf->getVoxel(iv, jv, kv));
-            cntIndex = bmv->getProbAtlasNameTableIndex(volNum, voxel);
+            cntIndex = voxel; //bmv->getProbAtlasNameTableIndex(volNum, voxel);
          }
          if ((cntIndex > 0) && (cntIndex < numPaintNames)) {
             if (dspa->getAreaSelected(cntIndex) == false) {
@@ -749,9 +769,9 @@ BrainModelVolumeVoxelColoring::assignThresholdProbAtlasColor(const int iv,
             // Skip non-sulci
             //
             bool useIt = true;
-            if ((bmv->getProbAtlasNameFromIndex(cntIndex) == "???") ||
-                (bmv->getProbAtlasNameFromIndex(cntIndex) == "GYRAL") ||
-                (bmv->getProbAtlasNameFromIndex(cntIndex) == "GYRUS")) {
+            if ((vf->getRegionNameFromIndex(cntIndex) == "???") ||
+                (vf->getRegionNameFromIndex(cntIndex) == "GYRAL") ||
+                (vf->getRegionNameFromIndex(cntIndex) == "GYRUS")) {
                useIt = false;
             }
             
@@ -791,7 +811,7 @@ BrainModelVolumeVoxelColoring::assignThresholdProbAtlasColor(const int iv,
       }
 
       if (paintColIndex >= 0) {
-         const QString paintName = bmv->getProbAtlasNameFromIndex(paintColIndex);
+         const QString paintName = firstVolumeFile->getRegionNameFromIndex(paintColIndex);
          bool match = false;
          const int areaColorIndex = cf->getColorIndexByName(paintName, match);
          if (areaColorIndex >= 0) {
@@ -800,6 +820,12 @@ BrainModelVolumeVoxelColoring::assignThresholdProbAtlasColor(const int iv,
             rgb[0] = r;
             rgb[1] = g;
             rgb[2] = b;
+            
+            if (firstVolumeFile->getHighlightRegionNameByIndex(paintColIndex)) {
+               rgb[0] = 0;
+               rgb[1] = 255;
+               rgb[2] = 0;
+            }
          }
          else {
              rgb[0] = anyAreaColor[0];

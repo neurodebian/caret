@@ -29,14 +29,14 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLineEdit;
 class QListWidget;
 
 /// class for creating average coordinate files
-class GuiAverageCoordinateDialog : public QtDialog {
+class GuiAverageCoordinateDialog : public WuQDialog {
    Q_OBJECT
    
    public:

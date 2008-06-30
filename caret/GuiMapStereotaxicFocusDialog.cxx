@@ -27,6 +27,7 @@
 
 #include <QApplication>
 #include <QButtonGroup>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QGridLayout>
@@ -69,7 +70,7 @@ static const QString noneStudyName("None");
  * Constructor
  */
 GuiMapStereotaxicFocusDialog::GuiMapStereotaxicFocusDialog(QWidget* parent)
-                          : QtDialog(parent, false)
+                          : WuQDialog(parent)
 {
    palsProjector = NULL;
    
@@ -169,6 +170,18 @@ GuiMapStereotaxicFocusDialog::createEnterFociTabPage(QVBoxLayout* fociPageLayout
    projectionPalsAtlasRadioButton = new QRadioButton("PALS Atlas Surface in Correct Stereotaxic Space");
    
    //
+   // Allow projection to PALS cerebellum
+   //
+   projectionPalsCerebellumCheckBox = new QCheckBox("Allow Projection to Cerebellum");
+   projectionPalsCerebellumCheckBox->setChecked(true);
+   QHBoxLayout* palsCerebellumLayout = new QHBoxLayout;
+   palsCerebellumLayout->addWidget(new QLabel("    "));
+   palsCerebellumLayout->addWidget(projectionPalsCerebellumCheckBox);
+   QObject::connect(projectionPalsAtlasRadioButton, SIGNAL(toggled(bool)),
+                    projectionPalsCerebellumCheckBox, SLOT(setEnabled(bool)));
+   projectionPalsCerebellumCheckBox->setEnabled(projectionPalsAtlasRadioButton->isChecked());
+   
+   //
    // Button group to keep radio buttons mutually exclusive
    //
    QButtonGroup* buttGroup = new QButtonGroup(this);
@@ -184,6 +197,7 @@ GuiMapStereotaxicFocusDialog::createEnterFociTabPage(QVBoxLayout* fociPageLayout
    QVBoxLayout* projectionLayout = new QVBoxLayout(automaticProjectionGroupBox);
    projectionLayout->addWidget(projectionMainWindowFiducialRadioButton);
    projectionLayout->addWidget(projectionPalsAtlasRadioButton);
+   projectionLayout->addLayout(palsCerebellumLayout);
    fociPageLayout->addWidget(automaticProjectionGroupBox);
    
    //
@@ -339,6 +353,16 @@ GuiMapStereotaxicFocusDialog::createEnterFociTabPage(QVBoxLayout* fociPageLayout
    //focusGeographyLineEdit->setMinimumWidth(minWidth);
    
    //
+   // region of interest label and line edit
+   //
+   QPushButton* focusRegionOfInterestPushButton = new QPushButton("ROI...");
+   focusRegionOfInterestPushButton->setAutoDefault(false);
+   QObject::connect(focusRegionOfInterestPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotRegionOfInterestPushButton()));
+   focusRegionOfInterestLineEdit = new QLineEdit;    
+   focusRegionOfInterestLineEdit->setMinimumWidth(minWidth);
+               
+   //
    // size label and line edit
    //
    QLabel* focusSizeLabel = new QLabel("Extent");
@@ -375,6 +399,7 @@ GuiMapStereotaxicFocusDialog::createEnterFociTabPage(QVBoxLayout* fociPageLayout
    const int STUDY_ROW       = numRows++;
    const int STUDY_METADATA_ROW = numRows++;
    const int AREA_GEOGRAPHY_ROW        = numRows++;
+   const int REGION_OF_INTEREST_ROW    = numRows++;
    const int SIZE_STATISTIC_ROW        = numRows++;
    const int COMMENT_ROW   = numRows++;
    //const int COMMENT_ROW_2   = numRows++;
@@ -400,6 +425,8 @@ GuiMapStereotaxicFocusDialog::createEnterFociTabPage(QVBoxLayout* fociPageLayout
    focusGrid->addWidget(focusAreaLineEdit, AREA_GEOGRAPHY_ROW, 1, 1, 1, Qt::AlignLeft);
    focusGrid->addWidget(focusGeographyPushButton, AREA_GEOGRAPHY_ROW, 2, 1, 1, Qt::AlignRight);
    focusGrid->addWidget(focusGeographyLineEdit, AREA_GEOGRAPHY_ROW, 3, 1, 1, Qt::AlignLeft);
+   focusGrid->addWidget(focusRegionOfInterestPushButton, REGION_OF_INTEREST_ROW, 0, 1, 1, Qt::AlignRight);
+   focusGrid->addWidget(focusRegionOfInterestLineEdit, REGION_OF_INTEREST_ROW, 1, 1, 3, Qt::AlignLeft);
    focusGrid->addWidget(focusSizeLabel, SIZE_STATISTIC_ROW, 0, 1, 1, Qt::AlignRight);
    focusGrid->addWidget(focusSizeDoubleSpinBox, SIZE_STATISTIC_ROW, 1, 1, 1, Qt::AlignLeft);
    focusGrid->addWidget(focusStatisticLabel, SIZE_STATISTIC_ROW, 2, 1, 1, Qt::AlignRight);
@@ -450,10 +477,11 @@ GuiMapStereotaxicFocusDialog::slotCorticalAreaPushButton()
 {
    GuiNameSelectionDialog nsd(this,
                               (GuiNameSelectionDialog::LIST_AREA_COLORS_ALPHA |
-                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA),
+                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA |
+                               GuiNameSelectionDialog::LIST_VOCABULARY_ALPHA),
                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA);
    if (nsd.exec() == QDialog::Accepted) {
-      const QString name(nsd.getName());
+      const QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          focusAreaLineEdit->setText(name);
       }
@@ -468,12 +496,32 @@ GuiMapStereotaxicFocusDialog::slotGeographyPushButton()
 {
    GuiNameSelectionDialog nsd(this,
                               (GuiNameSelectionDialog::LIST_AREA_COLORS_ALPHA |
-                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA),
+                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA |
+                               GuiNameSelectionDialog::LIST_VOCABULARY_ALPHA),
                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA);
    if (nsd.exec() == QDialog::Accepted) {
-      const QString name(nsd.getName());
+      const QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          focusGeographyLineEdit->setText(name);
+      }
+   }
+}
+
+/**
+ * called when Region of Interest button selected..
+ */
+void 
+GuiMapStereotaxicFocusDialog::slotRegionOfInterestPushButton()
+{
+   GuiNameSelectionDialog nsd(this,
+                              (GuiNameSelectionDialog::LIST_AREA_COLORS_ALPHA |
+                               GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA |
+                               GuiNameSelectionDialog::LIST_VOCABULARY_ALPHA),
+                              GuiNameSelectionDialog::LIST_VOCABULARY_ALPHA);
+   if (nsd.exec() == QDialog::Accepted) {
+      const QString name(nsd.getNameSelected());
+      if (name.isEmpty() == false) {
+         focusRegionOfInterestLineEdit->setText(name);
       }
    }
 }
@@ -512,6 +560,7 @@ GuiMapStereotaxicFocusDialog::loadFocusSlot()
    focusZCoordDoubleSpinBox->setValue(xyz[2]);
    focusAreaLineEdit->setText(cd->getArea());
    focusGeographyLineEdit->setText(cd->getGeography());
+   focusRegionOfInterestLineEdit->setText(cd->getRegionOfInterest());
    focusSizeDoubleSpinBox->setValue(cd->getSize());
    focusStatisticLineEdit->setText(cd->getStatistic());
    focusCommentTextEdit->setPlainText(cd->getComment());
@@ -653,12 +702,12 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
    }
       
    QString msg;
-   const QString nameValue = focusNameLineEdit->text();
+   const QString nameValue = focusNameLineEdit->text().trimmed();
    if (nameValue.isEmpty()) {
       msg.append("You must enter a foci name.\n");
    }
    
-   const QString classNameValue = focusClassNameLineEdit->text();
+   const QString classNameValue = focusClassNameLineEdit->text().trimmed();
    if (classNameValue.isEmpty()) {
       //msg.append("You must enter a class name.\n");
    }
@@ -779,6 +828,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
       cd.setComment(focusCommentTextEdit->toPlainText());
       cd.setArea(focusAreaLineEdit->text());
       cd.setGeography(focusGeographyLineEdit->text());
+      cd.setRegionOfInterest(focusRegionOfInterestLineEdit->text());
       cd.setSize(focusSizeDoubleSpinBox->text().toFloat());
       cd.setStatistic(focusStatisticLineEdit->text());
       cd.setStudyMetaDataLinkSet(studyMetaDataLinkSet);
@@ -797,6 +847,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
          cd->setComment(focusCommentTextEdit->toPlainText());
          cd->setArea(focusAreaLineEdit->text());
          cd->setGeography(focusGeographyLineEdit->text());
+         cd->setRegionOfInterest(focusRegionOfInterestLineEdit->text());
          cd->setSize(focusSizeDoubleSpinBox->value());
          cd->setStatistic(focusStatisticLineEdit->text());
          cd->setStudyMetaDataLinkSet(studyMetaDataLinkSet);
@@ -833,10 +884,14 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
          palsProjector = new FociFileToPalsProjector(theMainWindow->getBrainSet(),
                                                      ff,
                                                      focusNumber,
+                                                     focusNumber,
                                                      0.0,
-                                                     false);
+                                                     false,
+                                                     projectionPalsCerebellumCheckBox->isChecked(),
+                                                     1.0,
+                                                     2.0);
       }
-      palsProjector->setFirstFocusIndex(focusNumber);
+      palsProjector->setFirstFocusIndex(focusNumber, focusNumber);
       try {
          palsProjector->execute();
       }
@@ -932,7 +987,7 @@ GuiMapStereotaxicFocusDialog::nameButtonSlot()
                               GuiNameSelectionDialog::LIST_ALL,
                               GuiNameSelectionDialog::LIST_FOCI_NAMES_ALPHA);
    if (nsd.exec() == QDialog::Accepted) {
-      const QString name(nsd.getName());
+      const QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          focusNameLineEdit->setText(name);
       }

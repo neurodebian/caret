@@ -35,6 +35,7 @@
 #include <QPushButton>
 
 #include "AreaColorFile.h"
+#include "ArealEstimationFile.h"
 #include "BorderColorFile.h"
 #include "BorderFile.h"
 #include "BrainModelContours.h"
@@ -114,7 +115,7 @@ GuiDataFileOpenDialog::GuiDataFileOpenDialog(QWidget* parent,
    filterNames << FileFilters::getFociFileFilter();
    filterNames << FileFilters::getFociColorFileFilter();
    filterNames << FileFilters::getFociProjectionFileFilter();
-   filterNames << FileFilters::getFociVolumeFileFilter();
+   filterNames << FileFilters::getFociSearchFileFilter();
    filterNames << FileFilters::getGeodesicDistanceFileFilter();
    if (GiftiDataArrayFile::getGiftiXMLEnabled()) {
       filterNames << FileFilters::getGiftiCoordinateFileFilter();
@@ -169,6 +170,7 @@ GuiDataFileOpenDialog::GuiDataFileOpenDialog(QWidget* parent,
 #ifdef HAVE_MINC
    filterNames << FileFilters::getMincVolumeFileFilter();
 #endif // HAVE_MINC
+   filterNames << FileFilters::getMniObjSurfaceFileFilter();
    filterNames << FileFilters::getNeurolucidaFileFilter();
    filterNames << FileFilters::getRawVolumeFileFilter();
    filterNames << FileFilters::getStlSurfaceFileFilter();
@@ -663,8 +665,8 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
    else if (filterName == FileFilters::getFociProjectionFileFilter()) {
       error = openDataFile(this, SpecFile::fociProjectionFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
-   else if (filterName == FileFilters::getFociVolumeFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeFociFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+   else if (filterName == FileFilters::getFociSearchFileFilter()) {
+      error = openDataFile(this, SpecFile::fociSearchFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getGeodesicDistanceFileFilter()) {
       error = openDataFile(this, SpecFile::geodesicDistanceFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
@@ -847,6 +849,8 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
    else {
       std::cerr << "PROGRAM ERROR: unhandled file type at " << __LINE__
                << " in " << __FILE__ << std::endl;
+      std::cerr << "   File: " << fileName.toAscii().constData() << std::endl;
+      std::cerr << "   Filter: " << filterName.toAscii().constData() << std::endl;
       QApplication::restoreOverrideCursor(); 
       return;
    }
@@ -870,429 +874,469 @@ GuiDataFileOpenDialog::importFile(const QString& fileName,
 
    QApplication::restoreOverrideCursor();
    
-   if (filterName == FileFilters::getAnalyzeVolumeFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         VolumeFile::VOLUME_TYPE volumeType;
-         int dimensions[3];
-         VolumeFile::VOXEL_DATA_TYPE voxelDataType;
-         bool byteSwap;
-         iod.getVolumeOptions(volumeType,
-                              dimensions,
-                              voxelDataType,
-                              byteSwap);
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importAnalyzeVolumeFile(fileName,
-                                           volumeType);
-         fm.setVolumeModified();
+   try {
+      if (filterName == FileFilters::getAnalyzeVolumeFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            VolumeFile::VOLUME_TYPE volumeType;
+            int dimensions[3];
+            VolumeFile::VOXEL_DATA_TYPE voxelDataType;
+            bool byteSwap;
+            iod.getVolumeOptions(volumeType,
+                                 dimensions,
+                                 voxelDataType,
+                                 byteSwap);
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importAnalyzeVolumeFile(fileName,
+                                              volumeType);
+            fm.setVolumeModified();
+         }
       }
-   }
-   else if (filterName == FileFilters::getBrainVoyagerFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
+      else if (filterName == FileFilters::getBrainVoyagerFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
+            }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importBrainVoyagerFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             importColorsAsPaint,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setPaintModified();
+            fm.setAreaColorModified();
+            fm.setTopologyModified();
+         }
+      }
+      else if (filterName == FileFilters::getByuSurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
+            }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importByuSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setTopologyModified();
+         }
+      }
+      else if (filterName == FileFilters::getFreeSurferAsciiSurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
+            }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importFreeSurferSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             AbstractFile::FILE_FORMAT_ASCII,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setTopologyModified();
+         }
+      }
+      else if (filterName == FileFilters::getFreeSurferBinarySurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
+            }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importFreeSurferSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             AbstractFile::FILE_FORMAT_BINARY,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setTopologyModified();
+         }
+      }
+      else if (filterName == FileFilters::getFreeSurferAsciiCurvatureFileFilter()) {
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
+         ssf->importFreeSurferCurvatureFile(brainSet->getNumberOfNodes(),
+                                            fileName,
+                                            AbstractFile::FILE_FORMAT_ASCII);
+         fm.setSurfaceShapeModified();
+      }
+      else if (filterName == FileFilters::getFreeSurferBinaryCurvatureFileFilter()) {
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
+         ssf->importFreeSurferCurvatureFile(brainSet->getNumberOfNodes(),
+                                            fileName,
+                                            AbstractFile::FILE_FORMAT_BINARY);
+         fm.setSurfaceShapeModified();
+      }
+      else if (filterName == FileFilters::getFreeSurferAsciiFunctionalFileFilter()) {
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         MetricFile* mf = brainSet->getMetricFile();
+         mf->importFreeSurferFunctionalFile(brainSet->getNumberOfNodes(),
+                                            fileName,
+                                            AbstractFile::FILE_FORMAT_ASCII);
+         fm.setMetricModified();
+      }
+      else if (filterName == FileFilters::getFreeSurferBinaryFunctionalFileFilter()) {
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         MetricFile* mf = brainSet->getMetricFile();
+         mf->importFreeSurferFunctionalFile(brainSet->getNumberOfNodes(),
+                                            fileName,
+                                            AbstractFile::FILE_FORMAT_BINARY);
+         fm.setMetricModified();
+      }
+      else if (filterName == FileFilters::getFreeSurferAsciiLabelFileFilter()) {
+         bool importAll = false;
+         if (QMessageBox::question(this, "Import All",
+                                   "Import all label files in directory ?",
+                                   (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes) {
+            importAll = true;
          }
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importBrainVoyagerFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          importColorsAsPaint,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
+         PaintFile* pf = brainSet->getPaintFile();
+         pf->importFreeSurferAsciiLabelFile(brainSet->getNumberOfNodes(),
+                                            fileName,
+                                            brainSet->getAreaColorFile(),
+                                            importAll);
          fm.setPaintModified();
          fm.setAreaColorModified();
-         fm.setTopologyModified();
       }
-   }
-   else if (filterName == FileFilters::getByuSurfaceFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
-         }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importByuSurfaceFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
-         fm.setTopologyModified();
-      }
-   }
-   else if (filterName == FileFilters::getFreeSurferAsciiSurfaceFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
-         }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importFreeSurferSurfaceFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          AbstractFile::FILE_FORMAT_ASCII,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
-         fm.setTopologyModified();
-      }
-   }
-   else if (filterName == FileFilters::getFreeSurferBinarySurfaceFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
-         }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importFreeSurferSurfaceFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          AbstractFile::FILE_FORMAT_BINARY,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
-         fm.setTopologyModified();
-      }
-   }
-   else if (filterName == FileFilters::getFreeSurferAsciiCurvatureFileFilter()) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
-      ssf->importFreeSurferCurvatureFile(brainSet->getNumberOfNodes(),
-                                         fileName,
-                                         AbstractFile::FILE_FORMAT_ASCII);
-      fm.setSurfaceShapeModified();
-   }
-   else if (filterName == FileFilters::getFreeSurferBinaryCurvatureFileFilter()) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
-      ssf->importFreeSurferCurvatureFile(brainSet->getNumberOfNodes(),
-                                         fileName,
-                                         AbstractFile::FILE_FORMAT_BINARY);
-      fm.setSurfaceShapeModified();
-   }
-   else if (filterName == FileFilters::getFreeSurferAsciiFunctionalFileFilter()) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      MetricFile* mf = brainSet->getMetricFile();
-      mf->importFreeSurferFunctionalFile(brainSet->getNumberOfNodes(),
-                                         fileName,
-                                         AbstractFile::FILE_FORMAT_ASCII);
-      fm.setMetricModified();
-   }
-   else if (filterName == FileFilters::getFreeSurferBinaryFunctionalFileFilter()) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      MetricFile* mf = brainSet->getMetricFile();
-      mf->importFreeSurferFunctionalFile(brainSet->getNumberOfNodes(),
-                                         fileName,
-                                         AbstractFile::FILE_FORMAT_BINARY);
-      fm.setMetricModified();
-   }
-   else if (filterName == FileFilters::getFreeSurferAsciiLabelFileFilter()) {
-      bool importAll = false;
-      if (QMessageBox::question(this, "Import All",
-                                "Import all label files in directory ?",
-                                (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes) {
-         importAll = true;
-      }
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      PaintFile* pf = brainSet->getPaintFile();
-      pf->importFreeSurferAsciiLabelFile(brainSet->getNumberOfNodes(),
-                                         fileName,
-                                         brainSet->getAreaColorFile(),
-                                         importAll);
-      fm.setPaintModified();
-      fm.setAreaColorModified();
-   }
-   else if (filterName == FileFilters::getMdPlotFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         bool importContourCells;
-         bool importContours;
-         iod.getContourOptions(importContours, importContourCells);
-         const BrainModelContours* bmc = brainSet->getBrainModelContours();
-         bool appendContoursFlag = false;
-         bool appendCellsFlag = false;
-         if (importContours) {
-            if (bmc != NULL) {
-               const ContourFile* cf = bmc->getContourFile();
+      else if (filterName == FileFilters::getMdPlotFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            bool importContourCells;
+            bool importContours;
+            iod.getContourOptions(importContours, importContourCells);
+            const BrainModelContours* bmc = brainSet->getBrainModelContours();
+            bool appendContoursFlag = false;
+            bool appendCellsFlag = false;
+            if (importContours) {
+               if (bmc != NULL) {
+                  const ContourFile* cf = bmc->getContourFile();
+                  if (cf->empty() == false) {
+                     appendContoursFlag = (QMessageBox::question(this, "Import MD Plot",
+                                                 "Append to existing contours?",
+                                                 (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes);
+                  }
+               }
+            }
+            if (importContourCells) {
+               const ContourCellFile* cf = brainSet->getContourCellFile();
                if (cf->empty() == false) {
-                  appendContoursFlag = (QMessageBox::question(this, "Import MD Plot",
-                                              "Append to existing contours?",
+                  appendCellsFlag = (QMessageBox::question(this, "Import MD Plot",
+                                              "Append to existing contour cells?",
                                               (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes);
                }
             }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importMDPlotFile(fileName, 
+                                    importContourCells,
+                                    importContours,
+                                    appendContoursFlag,
+                                    appendCellsFlag);
+            fm.setContourModified();
+            fm.setContourCellModified();
+            fm.setContourCellColorModified();
          }
-         if (importContourCells) {
-            const ContourCellFile* cf = brainSet->getContourCellFile();
-            if (cf->empty() == false) {
-               appendCellsFlag = (QMessageBox::question(this, "Import MD Plot",
-                                           "Append to existing contour cells?",
-                                           (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes);
+      }
+   #ifdef HAVE_MINC
+      else if (filterName == FileFilters::getMincVolumeFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            VolumeFile::VOLUME_TYPE volumeType;
+            int dimensions[3];
+            VolumeFile::VOXEL_DATA_TYPE voxelDataType;
+            bool byteSwap;
+            iod.getVolumeOptions(volumeType,
+                                 dimensions,
+                                 voxelDataType,
+                                 byteSwap);
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importMincVolumeFile(fileName,
+                                           volumeType);
+            fm.setVolumeModified();
+         }
+      }
+   #endif // HAVE_MINC
+      else if (filterName == FileFilters::getMniObjSurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
             }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importMniObjSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             importColorsAsRgbPaint,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setRgbPaintModified();
+            fm.setTopologyModified();
          }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importMDPlotFile(fileName, 
-                                 importContourCells,
-                                 importContours,
-                                 appendContoursFlag,
-                                 appendCellsFlag);
-         fm.setContourModified();
-         fm.setContourCellModified();
-         fm.setContourCellColorModified();
       }
-   }
-#ifdef HAVE_MINC
-   else if (filterName == FileFilters::getMincVolumeFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         VolumeFile::VOLUME_TYPE volumeType;
-         int dimensions[3];
-         VolumeFile::VOXEL_DATA_TYPE voxelDataType;
-         bool byteSwap;
-         iod.getVolumeOptions(volumeType,
-                              dimensions,
-                              voxelDataType,
-                              byteSwap);
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importMincVolumeFile(fileName,
-                                        volumeType);
-         fm.setVolumeModified();
-      }
-   }
-#endif // HAVE_MINC
-   else if (filterName == FileFilters::getNeurolucidaFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         bool importContourCells;
-         bool importContours;
-         iod.getContourOptions(importContours, importContourCells);
-         const BrainModelContours* bmc = brainSet->getBrainModelContours();
-         bool appendContoursFlag = false;
-         bool appendCellsFlag = false;
-         if (importContours) {
-            if (bmc != NULL) {
-               const ContourFile* cf = bmc->getContourFile();
+      else if (filterName == FileFilters::getNeurolucidaFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            bool importContourCells;
+            bool importContours;
+            iod.getContourOptions(importContours, importContourCells);
+            const BrainModelContours* bmc = brainSet->getBrainModelContours();
+            bool appendContoursFlag = false;
+            bool appendCellsFlag = false;
+            if (importContours) {
+               if (bmc != NULL) {
+                  const ContourFile* cf = bmc->getContourFile();
+                  if (cf->empty() == false) {
+                     appendContoursFlag = (QMessageBox::question(this, "Import Neurolucida",
+                                                 "Append to existing contours?",
+                                                 (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes);
+                  }
+               }
+            }
+            if (importContourCells) {
+               const ContourCellFile* cf = brainSet->getContourCellFile();
                if (cf->empty() == false) {
-                  appendContoursFlag = (QMessageBox::question(this, "Import Neurolucida",
-                                              "Append to existing contours?",
+                  appendCellsFlag = (QMessageBox::question(this, "Import Neurolucida",
+                                              "Append to existing contour cells?",
                                               (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes);
                }
             }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importNeurolucidaFile(fileName, 
+                                    importContourCells,
+                                    importContours,
+                                    appendContoursFlag,
+                                    appendCellsFlag);
+            fm.setContourModified();
+            fm.setContourCellModified();
+            fm.setContourCellColorModified();
          }
-         if (importContourCells) {
-            const ContourCellFile* cf = brainSet->getContourCellFile();
-            if (cf->empty() == false) {
-               appendCellsFlag = (QMessageBox::question(this, "Import Neurolucida",
-                                           "Append to existing contour cells?",
-                                           (QMessageBox::Yes | QMessageBox::No)) == QMessageBox::Yes);
+      }
+      else if (filterName == FileFilters::getRawVolumeFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            VolumeFile::VOLUME_TYPE volumeType;
+            int dimensions[3];
+            VolumeFile::VOXEL_DATA_TYPE voxelDataType;
+            bool byteSwap;
+            iod.getVolumeOptions(volumeType,
+                                 dimensions,
+                                 voxelDataType,
+                                 byteSwap);
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importRawVolumeFile(fileName,
+                                          volumeType,
+                                          dimensions,
+                                          voxelDataType,
+                                          byteSwap);
+            fm.setVolumeModified();
+         }
+      }
+      else if (filterName == FileFilters::getStlSurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
             }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importStlSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setTopologyModified();
          }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importNeurolucidaFile(fileName, 
-                                 importContourCells,
-                                 importContours,
-                                 appendContoursFlag,
-                                 appendCellsFlag);
-         fm.setContourModified();
-         fm.setContourCellModified();
-         fm.setContourCellColorModified();
       }
-   }
-   else if (filterName == FileFilters::getRawVolumeFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         VolumeFile::VOLUME_TYPE volumeType;
-         int dimensions[3];
-         VolumeFile::VOXEL_DATA_TYPE voxelDataType;
-         bool byteSwap;
-         iod.getVolumeOptions(volumeType,
-                              dimensions,
-                              voxelDataType,
-                              byteSwap);
+      else if (filterName == FileFilters::getSumaRgbFileFilter()) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importRawVolumeFile(fileName,
-                                       volumeType,
-                                       dimensions,
-                                       voxelDataType,
-                                       byteSwap);
-         fm.setVolumeModified();
-      }
-   }
-   else if (filterName == FileFilters::getStlSurfaceFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
-         }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importStlSurfaceFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
-         fm.setTopologyModified();
-      }
-   }
-   else if (filterName == FileFilters::getSumaRgbFileFilter()) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      RgbPaintFile* rgb = brainSet->getRgbPaintFile();
-      rgb->importFromSuma(fileName);
-      fm.setRgbPaintModified();
-   }
-   else if (filterName == FileFilters::getVtkSurfaceFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
-         }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importVtkSurfaceFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          importColorsAsRgbPaint,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
+         RgbPaintFile* rgb = brainSet->getRgbPaintFile();
+         rgb->importFromSuma(fileName);
          fm.setRgbPaintModified();
-         fm.setTopologyModified();
       }
-   }
-   else if (filterName == FileFilters::getVtkXmlSurfaceFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         Structure::STRUCTURE_TYPE structureType;
-         bool importTopology;
-         TopologyFile::TOPOLOGY_TYPES topologyType;
-         bool importCoordinates;
-         BrainModelSurface::SURFACE_TYPES coordinateType;
-         bool importColorsAsPaint;
-         bool importColorsAsRgbPaint;
-         iod.getSurfaceOptions(structureType,
-                               importTopology,
-                               topologyType,
-                               importCoordinates,
-                               coordinateType,
-                               importColorsAsPaint,
-                               importColorsAsRgbPaint);
-         if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
-            brainSet->setStructure(structureType);
+      else if (filterName == FileFilters::getVtkSurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
+            }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importVtkSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             importColorsAsRgbPaint,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setRgbPaintModified();
+            fm.setTopologyModified();
          }
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importVtkXmlSurfaceFile(fileName,
-                                          importCoordinates,
-                                          importTopology,
-                                          importColorsAsRgbPaint,
-                                          coordinateType,
-                                          topologyType);
-         fm.setCoordinateModified();
-         fm.setRgbPaintModified();
-         fm.setTopologyModified();
+      }
+      else if (filterName == FileFilters::getVtkXmlSurfaceFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            Structure::STRUCTURE_TYPE structureType;
+            bool importTopology;
+            TopologyFile::TOPOLOGY_TYPES topologyType;
+            bool importCoordinates;
+            BrainModelSurface::SURFACE_TYPES coordinateType;
+            bool importColorsAsPaint;
+            bool importColorsAsRgbPaint;
+            iod.getSurfaceOptions(structureType,
+                                  importTopology,
+                                  topologyType,
+                                  importCoordinates,
+                                  coordinateType,
+                                  importColorsAsPaint,
+                                  importColorsAsRgbPaint);
+            if (brainSet->getStructure().getType() == Structure::STRUCTURE_TYPE_INVALID) {
+               brainSet->setStructure(structureType);
+            }
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importVtkXmlSurfaceFile(fileName,
+                                             importCoordinates,
+                                             importTopology,
+                                             importColorsAsRgbPaint,
+                                             coordinateType,
+                                             topologyType);
+            fm.setCoordinateModified();
+            fm.setRgbPaintModified();
+            fm.setTopologyModified();
+         }
+      }
+      else if (filterName == FileFilters::getVtkVolumeFileFilter()) {
+         GuiDataFileImportOptionsDialog iod(this, filterName);
+         if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
+            VolumeFile::VOLUME_TYPE volumeType;
+            int dimensions[3];
+            VolumeFile::VOXEL_DATA_TYPE voxelDataType;
+            bool byteSwap;
+            iod.getVolumeOptions(volumeType,
+                                 dimensions,
+                                 voxelDataType,
+                                 byteSwap);
+            QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+            brainSet->importVtkStructuredPointsVolumeFile(fileName,
+                                          volumeType);
+            fm.setVolumeModified();
+         }
+      }
+      else {
+         return false;
       }
    }
-   else if (filterName == FileFilters::getVtkVolumeFileFilter()) {
-      GuiDataFileImportOptionsDialog iod(this, filterName);
-      if (iod.exec() == GuiDataFileImportOptionsDialog::Accepted) {
-         VolumeFile::VOLUME_TYPE volumeType;
-         int dimensions[3];
-         VolumeFile::VOXEL_DATA_TYPE voxelDataType;
-         bool byteSwap;
-         iod.getVolumeOptions(volumeType,
-                              dimensions,
-                              voxelDataType,
-                              byteSwap);
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         brainSet->importVtkStructuredPointsVolumeFile(fileName,
-                                       volumeType);
-         fm.setVolumeModified();
-      }
-   }
-   else {
+   catch (FileException& e) {
+      QApplication::restoreOverrideCursor(); 
+      QMessageBox::critical(this, "ERROR",
+                            e.whatQString());
       return false;
    }
    
@@ -1374,9 +1418,27 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          fm.setAreaColorModified();
       }
       else if (specFileTag == SpecFile::arealEstimationFileTag) {
-         theMainWindow->getBrainSet()->readArealEstimationFile(name, append, update);
-         fm.setArealEstimationModified();;
-         areaColorWarning = needAreaColors;
+         ArealEstimationFile* aef = theMainWindow->getBrainSet()->getArealEstimationFile();
+         ArealEstimationFile newFile;
+         newFile.readFileMetaDataOnly(name);
+         QApplication::restoreOverrideCursor();
+         GuiLoadNodeAttributeFileColumnSelectionDialog fcsd(theMainWindow,
+                                                      &newFile,
+                                                      aef);
+         const int result = fcsd.exec(); 
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         if (result == QDialog::Accepted) {
+            if (fcsd.getEraseAllExistingColumns()) {
+               theMainWindow->getBrainSet()->clearArealEstimationFile();
+            }
+            theMainWindow->getBrainSet()->readArealEstimationFile(name, 
+                                 fcsd.getDestinationColumns(), 
+                                 fcsd.getNewFileColumnNames(),
+                                 fcsd.getAppendFileCommentSelection(),
+                                 update);
+            fm.setArealEstimationModified();;
+            areaColorWarning = needAreaColors;
+         }
       }
       else if (specFileTag == SpecFile::rawBorderFileTag) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_RAW, append, update);
@@ -1668,10 +1730,9 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          fm.setFociProjectionModified();
          fociColorWarning = needFociColors;
       }
-      else if (specFileTag == SpecFile::volumeFociFileTag) {
-         theMainWindow->getBrainSet()->readVolumeFociFile(name, append, update);
-         fm.setFociModified();
-         fociColorWarning = needFociColors;
+      else if (specFileTag == SpecFile::fociSearchFileTag) {
+         theMainWindow->getBrainSet()->readFociSearchFile(name, append, update);
+         fm.setFociSearchModified();
       }
       else if (specFileTag == SpecFile::geodesicDistanceFileTag) {
          GeodesicDistanceFile* gdf = theMainWindow->getBrainSet()->getGeodesicDistanceFile();

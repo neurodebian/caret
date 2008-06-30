@@ -42,8 +42,9 @@
  * Constructor.
  */
 GuiUserViewSaveDialog::GuiUserViewSaveDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Set Surface View");
    
    //

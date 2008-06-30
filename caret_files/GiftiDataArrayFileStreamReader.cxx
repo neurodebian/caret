@@ -448,7 +448,9 @@ GiftiDataArrayFileStreamReader::readDataArray()
             }
          }
          else if (elemName == GiftiCommon::tagMatrix) {
-            readCoordinateTransformMatrix(dataArray->getMatrix());
+            dataArray->addMatrix(GiftiMatrix());
+            GiftiMatrix* matrix = dataArray->getMatrix(dataArray->getNumberOfMatrices() - 1);
+            readCoordinateTransformMatrix(matrix);
          }
          else {
             raiseError("Unrecognized element ("

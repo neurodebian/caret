@@ -27,13 +27,14 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogModal.h"
+#include "WuQDialog.h"
 #include "StudyMetaDataFile.h"
 #include "StudyMetaDataLinkSet.h"
 
 class QAction;
 class QComboBox;
 class QButtonGroup;
+class QDialogButtonBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -44,7 +45,7 @@ class QToolButton;
 class WuQWidgetGroup;
 
 /// class for creating a link to a study in a study meta data file
-class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
+class GuiStudyMetaDataLinkCreationDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -233,6 +234,9 @@ class GuiStudyMetaDataLinkCreationDialog : public QtDialogModal {
       
       /// add link push button
       QPushButton* addNewLinkPushButton;
+      
+      /// the dialog buttons
+      QDialogButtonBox* buttonBox;
 };
 
 #endif // __GUI_STUDY_META_DATA_LINK_CREATION_DIALOG_H__

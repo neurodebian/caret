@@ -28,12 +28,12 @@
 #define __GUI_MORPHING_MEASUREMENTS_DIALOG_H__
 
 #include <vector>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
 
 /// Dialog for displaying morphing measurements
-class GuiMorphingMeasurementsDialog : public QtDialog {
+class GuiMorphingMeasurementsDialog : public WuQDialog {
    Q_OBJECT
    
    public:

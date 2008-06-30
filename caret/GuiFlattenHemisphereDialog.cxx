@@ -32,8 +32,9 @@
  * Constructor
  */
 GuiFlattenHemisphereDialog::GuiFlattenHemisphereDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Flatten Full or Partial Hemisphere");
    
    //
@@ -533,7 +534,28 @@ GuiFlattenHemisphereDialog::done(int r)
             }
          }
          
-         theMainWindow->speakText("The initial flat surface is ready.", false);
+         //
+         // Do crossover check and set overlay node coloring to crossovers
+         //
+         BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(
+                                    theMainWindow->getBrainSet()->getNumberOfBrainModels() - 1);
+         if (bms != NULL) {
+            int numTileCrossovers, numNodeCrossovers;
+            bms->crossoverCheck(numTileCrossovers, numNodeCrossovers,
+                                           BrainModelSurface::SURFACE_TYPE_FLAT);
+         }
+         int modelIndex = -1;  // -1 -> all models
+         BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
+         theMainWindow->getBrainSet()->getSecondarySurfaceOverlay()->setOverlay(modelIndex, BrainModelSurfaceOverlay::OVERLAY_NONE);
+         theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(modelIndex, BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS);
+         bsnc->assignColors();
+
+         //
+         // update display control dialog and update graphics
+         //
+         theMainWindow->updateDisplayControlDialog();
+         
+         GuiBrainModelOpenGL::updateAllGL(NULL);
          
          //
          // Do not delete the flattening algorithm for the full
@@ -615,8 +637,8 @@ GuiFlattenHemisphereDialog::done(int r)
       }
       int modelIndex = -1;  // -1 -> all models
       BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-      bsnc->setSecondaryOverlay(modelIndex, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-      bsnc->setPrimaryOverlay(modelIndex, BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS);
+      theMainWindow->getBrainSet()->getSecondarySurfaceOverlay()->setOverlay(modelIndex, BrainModelSurfaceOverlay::OVERLAY_NONE);
+      theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(modelIndex, BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS);
       bsnc->assignColors();
 
       //

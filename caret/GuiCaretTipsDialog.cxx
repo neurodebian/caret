@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <QCheckBox>
+#include <QDialogButtonBox>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
@@ -42,7 +43,7 @@
  * constructor.
  */
 GuiCaretTipsDialog::GuiCaretTipsDialog(QWidget* parent)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    //
    // Set title of dialog
@@ -113,15 +114,17 @@ GuiCaretTipsDialog::GuiCaretTipsDialog(QWidget* parent)
    //
    // Get the layout and add widgets to it
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(tipsGroupBox);
    dialogLayout->addWidget(showTipsAtCaretStartupCheckBox);
    
    //
-   // Connect slots for QtDialogNonModal buttons
+   // Dialog buttons
    //
-   getApplyPushButton()->hide();
-   QObject::connect(this, SIGNAL(signalCloseButtonPressed()),
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
+   buttonBox->button(QDialogButtonBox::Close)->setAutoDefault(false);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
 
    slotNextTipPushButton();

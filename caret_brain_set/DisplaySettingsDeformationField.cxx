@@ -232,7 +232,8 @@ DisplaySettingsDeformationField::showScene(const SceneFile::Scene& scene, QStrin
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsDeformationField::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsDeformationField::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    DeformationFieldFile* dff = brainSet->getDeformationFieldFile();
    

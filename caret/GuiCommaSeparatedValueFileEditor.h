@@ -30,7 +30,7 @@
 
 #include "CommaSeparatedValueFile.h"
 #include "GuiFilesModified.h"
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class QComboBox;
 class QStackedWidget;
@@ -110,7 +110,7 @@ class GuiCommaSeparatedValueFileEditorMainWindow : public QMainWindow {
 };
 
 /// dialog for editing a comma separated values file
-class GuiCommaSeparatedValueFileEditor : public QtDialogNonModal {
+class GuiCommaSeparatedValueFileEditor : public WuQDialog {
    Q_OBJECT
    
    public:

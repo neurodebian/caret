@@ -2,13 +2,14 @@
 #ifndef __GUI_FLATTEN_HEMISPHERE_INSTRUCTIONS_DIALOG_H__
 #define __GUI_FLATTEN_HEMISPHERE_INSTRUCTIONS_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
+class BrainModelSurface;
 class BrainModelSurfaceFlattenFullHemisphere;
 class QTextEdit;
 
 /// Dialog for continuing flattening 
-class GuiFlattenHemisphereInstructionsDialog : public QtDialog {
+class GuiFlattenHemisphereInstructionsDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -25,7 +26,7 @@ class GuiFlattenHemisphereInstructionsDialog : public QtDialog {
       GuiFlattenHemisphereInstructionsDialog(QWidget* parent,
                                  BrainModelSurfaceFlattenFullHemisphere* algorithmIn,
                                  const DIALOG_MODE dialogModeIn,
-                                 Qt::WFlags f = 0);
+                                 Qt::WindowFlags f = 0);
                      
       /// destructor
       ~GuiFlattenHemisphereInstructionsDialog();
@@ -37,6 +38,9 @@ class GuiFlattenHemisphereInstructionsDialog : public QtDialog {
    private:
       /// do second half of flattening
       void doFlattenFullHemispherePart2();
+      
+      // show crossovers on surface
+      void showCrossovers(BrainModelSurface* bms = NULL);
       
       /// Mode of the dialog
       DIALOG_MODE dialogMode;

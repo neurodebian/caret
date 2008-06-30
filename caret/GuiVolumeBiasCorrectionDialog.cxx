@@ -48,7 +48,7 @@
  * constructor.
  */
 GuiVolumeBiasCorrectionDialog::GuiVolumeBiasCorrectionDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Anatomy Volume Bias Correction");
    
@@ -187,7 +187,7 @@ GuiVolumeBiasCorrectionDialog::show()
 {
    slotMinGrayValueSpinBox(minGrayValueSpinBox->value());
    slotMaxWhiteValueSpinBox(maxWhiteValueSpinBox->value());
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**

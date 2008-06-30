@@ -488,7 +488,7 @@ GuiVolumeRegionOfInterestDialog::slotSelectionPaintVoxelIdPushButton()
                                   GuiNameSelectionDialog::LIST_VOLUME_PAINT_NAMES_ALPHA);
       if (gnsd.exec() == GuiNameSelectionDialog::Accepted) {
          slotClearSelectedVoxels();
-         selectionPaintNameLabel->setText(gnsd.getName());
+         selectionPaintNameLabel->setText(gnsd.getNameSelected());
       }
    }
    else {
@@ -687,7 +687,7 @@ GuiVolumeRegionOfInterestDialog::slotPaintAssignmentNamePushButton()
                                GuiNameSelectionDialog::LIST_ALL,
                                GuiNameSelectionDialog::LIST_VOLUME_PAINT_NAMES_ALPHA);
    if (gnsd.exec() == GuiNameSelectionDialog::Accepted) {
-      paintVolumeAssignmentLineEdit->setText(gnsd.getName());
+      paintVolumeAssignmentLineEdit->setText(gnsd.getNameSelected());
    }
 }
       

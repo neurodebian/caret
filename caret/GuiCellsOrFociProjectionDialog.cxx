@@ -45,14 +45,16 @@
 #include "GuiCellsOrFociProjectionDialog.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
+#include "WuQDialog.h"
 #include "global_variables.h"
 
 /**
  * Constructor.
  */
 GuiCellsOrFociProjectionDialog::GuiCellsOrFociProjectionDialog(QWidget* parent, FILE_TYPE fileTypeIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    fileType = fileTypeIn;
    
    switch (fileType) {

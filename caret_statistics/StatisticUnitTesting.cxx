@@ -2246,7 +2246,92 @@ StatisticUnitTesting::testMatrixOperations()
                            m2CorrectInverse);
       }
       catch (StatisticException& e) {
-         std::cout << "FAILED: Matrix m1 inverse failed " 
+         std::cout << "FAILED: Matrix m2 inverse failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test pseudo inverse matrix inverse 2x2
+   //
+   {
+      const float m1Data[4] = {  3.0, -13.0, 
+                                -2.0,   9.0 };
+      const float m1InverseData[4] = {  9.0, 13.0,
+                                        2.0, 3 };
+      StatisticMatrix m1(2, 2);
+      m1.setMatrixFromOneDimensionalArray(m1Data);
+      StatisticMatrix m1Inverse;
+      StatisticMatrix m1CorrectInverse(2,2);
+      m1CorrectInverse.setMatrixFromOneDimensionalArray(m1InverseData);
+      try {
+         m1Inverse = m1.inversePseudo();
+         problem |= verify("Matrix Pseudo Inverse (m3)",
+                           m1Inverse,
+                           m1CorrectInverse);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix m3 inverse failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test matrix pseudo inverse 2x2 of with linear dependent matrix
+   // Inverse values are taken from using Matlab's pinv() on the input matrix
+   //
+   {
+      const float m1Data[4] = { 2, 1, 
+                                4, 2 };
+      const float m1InverseData[4] = {  0.08, 0.16, 
+                                        0.04, 0.08 };
+      StatisticMatrix m1(2, 2);
+      m1.setMatrixFromOneDimensionalArray(m1Data);
+      StatisticMatrix m1Inverse;
+      StatisticMatrix m1CorrectInverse(2,2);
+      m1CorrectInverse.setMatrixFromOneDimensionalArray(m1InverseData);
+      try {
+         m1Inverse = m1.inversePseudo();
+         problem |= verify("Matrix Pseudo Inverse (m4)",
+                           m1Inverse,
+                           m1CorrectInverse);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix m4 pseudo inverse failed " 
+                   << e.whatStdString()
+                   << std::endl;
+         problem = true;
+      }
+   }
+   
+   //
+   // Test matrix pseudo inverse 3x3 of with linear dependent matrix
+   // Inverse values are taken from using Matlab's pinv() on the input matrix
+   //
+   {
+      const float m1Data[9] = { 1, 2, 3, 
+                                7, 4, 7,
+                                2, 4, 6 };
+      const float m1InverseData[9] = {  -0.0920,  0.2067, -0.1840,
+                                         0.0560, -0.0533,  0.1120,
+                                         0.0600, -0.0333,  0.1200 };
+      StatisticMatrix m1(3, 3);
+      m1.setMatrixFromOneDimensionalArray(m1Data);
+      StatisticMatrix m1Inverse;
+      StatisticMatrix m1CorrectInverse(3,3);
+      m1CorrectInverse.setMatrixFromOneDimensionalArray(m1InverseData);
+      try {
+         m1Inverse = m1.inversePseudo();
+         problem |= verify("Matrix Pseudo Inverse (m5)",
+                           m1Inverse,
+                           m1CorrectInverse);
+      }
+      catch (StatisticException& e) {
+         std::cout << "FAILED: Matrix m5 pseudo inverse failed " 
                    << e.whatStdString()
                    << std::endl;
          problem = true;
