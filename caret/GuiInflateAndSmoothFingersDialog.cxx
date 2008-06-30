@@ -47,9 +47,10 @@
  * Constructor.
  */
 GuiInflateAndSmoothFingersDialog::GuiInflateAndSmoothFingersDialog(QWidget* parent, 
-                                                                   const bool modal)
-   : QtDialog(parent, modal)
+                                                                   const bool modalFlag)
+   : WuQDialog(parent)
 {
+   setModal(modalFlag);
    setWindowTitle("Inflate Surface And Smooth Fingers");
    
    //

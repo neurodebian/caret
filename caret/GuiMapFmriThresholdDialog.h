@@ -26,12 +26,12 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QDoubleSpinBox;
 
 /// dialog for obtaining volume thresholding
-class GuiMapFmriThresholdDialog : public QtDialog {
+class GuiMapFmriThresholdDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -13,7 +13,7 @@ class BrainModelSurfaceConnectedSearch : public BrainModelAlgorithm {
    public:
       /// Constructor
       BrainModelSurfaceConnectedSearch(BrainSet* bs, 
-                                       BrainModelSurface* bmsIn,
+                                       const BrainModelSurface* bmsIn,
                                        const int startNodeIn,
                                        const std::vector<int>* limitToTheseNodesIn = NULL);
       
@@ -31,7 +31,16 @@ class BrainModelSurfaceConnectedSearch : public BrainModelAlgorithm {
       virtual bool acceptNode(const int nodeNumber);
       
       /// the brain model surface for searching
-      BrainModelSurface* bms;
+      const BrainModelSurface* bms;
+      
+      /// starting node for search
+      int startNode;
+      
+      /// limit the search to these nodes
+      const std::vector<int>* limitToTheseNodes;
+      
+      /// number of nodes in the surface
+      int numNodes;
       
       /// node visited flag used during search
       std::vector<int> visited;
@@ -39,14 +48,6 @@ class BrainModelSurfaceConnectedSearch : public BrainModelAlgorithm {
       /// node connected flag queried by user after search
       std::vector<int> nodeConnected;
       
-      /// number of nodes in the surface
-      int numNodes;
-      
-      /// starting node for search
-      int startNode;
-      
-      /// limit the search to these nodes
-      const std::vector<int>* limitToTheseNodes;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_CONNECTED_SEARCH_H__

@@ -124,13 +124,14 @@ class DisplaySettingsCells : public DisplaySettings {
       void determineDisplayedCells(const bool fociFlag = false);
       
       /// determine which volume cells should be displayed (set's cell display flags)
-      void determineDisplayedVolumeCells(const bool fociFlag = false);
+      void determineDisplayedVolumeCells();
       
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                  
       /// get the coloring mode
       CellBase::CELL_COLOR_MODE getColorMode() const { return cellColorMode; }
@@ -162,6 +163,14 @@ class DisplaySettingsCells : public DisplaySettings {
       void setDisplayCellsWithoutLinkToStudyWithKeywords(const bool b)
            { displayCellsWithoutLinkToStudyWithKeywords = b; }
       
+      /// get display only keywords for displayed cells
+      //bool getDisplayKeywordsForOnlyDisplayedCells() const 
+      //      { return displayKeywordsForOnlyDisplayedCells; }
+            
+      /// set display only keywords for displayed cells
+      //void setDisplayKeywordsForOnlyDisplayedCells(const bool b) 
+      //      { displayKeywordsForOnlyDisplayedCells = b; }
+            
       /// get display cells without a link to a table subheader
       bool getDisplayCellsWithoutLinkToStudyWithTableSubHeader() const 
            { return displayCellsWithoutLinkToStudyWithTableSubHeader; }
@@ -170,6 +179,12 @@ class DisplaySettingsCells : public DisplaySettings {
       void setDisplayCellsWithoutLinkToStudyWithTableSubHeader(const bool b)
            { displayCellsWithoutLinkToStudyWithTableSubHeader = b; }
 
+      /// get only show cells that are in the search
+      bool getDislayCellsOnlyIfInSearch() const { return displayCellsOnlyIfInSearch; }
+      
+      /// set only show cells that are in the search
+      bool setDisplayCellsOnlyIfInSearch(const bool b) { return displayCellsOnlyIfInSearch = b; }
+      
    protected:
       /// display cells
       bool displayCells;
@@ -213,8 +228,14 @@ class DisplaySettingsCells : public DisplaySettings {
       /// display cells without a link to a study with keywords
       bool displayCellsWithoutLinkToStudyWithKeywords;
       
+      /// display keywords for only cells that are displayed
+      //bool displayKeywordsForOnlyDisplayedCells;
+      
       /// display cells without a link to a table subheader
       bool displayCellsWithoutLinkToStudyWithTableSubHeader;
+
+      // show only cells that are in the search
+      bool displayCellsOnlyIfInSearch;
 };
 
 #endif

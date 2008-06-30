@@ -46,8 +46,10 @@ GuiVolumeRescaleDialog::GuiVolumeRescaleDialog(QWidget* parent,
                                                const QString& message,
                                                VolumeFile* volumeFileIn,
                                                const float* outputMinMaxValues)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
+   
    volumeFile = volumeFileIn;
    setWindowTitle("Rescale Voxels");
 

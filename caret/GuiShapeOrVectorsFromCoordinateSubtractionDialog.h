@@ -28,14 +28,14 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogModal.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
 class QLineEdit;
 
 /// dialog for creating vectors by subracting coordinate files
-class GuiShapeOrVectorsFromCoordinateSubtractionDialog : public QtDialogModal {
+class GuiShapeOrVectorsFromCoordinateSubtractionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

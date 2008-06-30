@@ -60,15 +60,23 @@
 FociFileToPalsProjector::FociFileToPalsProjector(BrainSet* brainSetIn,
                                                  FociProjectionFile* fociProjectionFileIn,
                                                  const int firstFocusIndexIn,
+                                                 const int lastFocusIndexIn,
                                                  const float projectOntoSurfaceAboveDistanceIn,
-                                                 const bool projectOntoSurfaceFlagIn)
+                                                 const bool projectOntoSurfaceFlagIn,
+                                                 const bool projectToCerebellumFlagIn,
+                                                 const float cerebralCutoffIn,
+                                                 const float cerebellumCutoffIn)
  : BrainModelAlgorithm(brainSetIn)
 {
    fociProjectionFile = fociProjectionFileIn;
    firstFocusIndex = firstFocusIndexIn;
+   lastFocusIndex  = lastFocusIndexIn;
    projectOntoSurfaceAboveDistance = projectOntoSurfaceAboveDistanceIn;
    projectOntoSurfaceFlag = projectOntoSurfaceFlagIn;
    atlasesDirectoryLoadedFlag = false;
+   projectToCerebellumFlag = projectToCerebellumFlagIn;
+   cerebralCutoff = cerebralCutoffIn;
+   cerebellumCutoff = cerebellumCutoffIn;
 }
 
 /**
@@ -83,12 +91,14 @@ FociFileToPalsProjector::~FociFileToPalsProjector()
 }
 
 /**
- * set the index of the first focus to project.
+ * set the index of the first focus and last to project.
  */
 void 
-FociFileToPalsProjector::setFirstFocusIndex(const int firstFocusIndexIn)
+FociFileToPalsProjector::setFirstFocusIndex(const int firstFocusIndexIn,
+                                            const int lastFocusIndexIn)
 {
    firstFocusIndex = firstFocusIndexIn;
+   lastFocusIndex  = lastFocusIndexIn;
 }
       
 /**
@@ -121,12 +131,20 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
       if (fociProjectionFile == NULL) {
          throw BrainModelAlgorithmException("Invalid file for projecting.");
       }
+
+      // Remove all duplicates (cerebellar or cerebral)
+      //
+      if (lastFocusIndex < 0) {
+         fociProjectionFile->deleteAllDuplicateCellProjections();
+      }
+         
       const int numFoci = fociProjectionFile->getNumberOfCellProjections();
       if ((numFoci <= 0) ||
           (firstFocusIndex >= numFoci)) {
          throw BrainModelAlgorithmException("No foci for projecting.");
       }
       
+      //
       const StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
       
       //
@@ -141,17 +159,63 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
       if (numFoci > 0) {
          focusSpace.resize(numFoci, "");
       }
-      for (int i = firstFocusIndex; i < numFoci; i++) {
+     
+      //
+      // Always load the FLIRT atlas which is used for setting search XYZ
+      //
+      const QString flirtSpaceName("FLIRT");
+      { 
+         PointProjector pp1(flirtSpaceName, Structure::STRUCTURE_TYPE_CORTEX_LEFT, 
+                           NULL, NULL, NULL);
+         if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp1) ==
+             projectorsNeeded.end()) {
+            projectorsNeeded.push_back(pp1);
+         }
+         PointProjector pp2(flirtSpaceName, Structure::STRUCTURE_TYPE_CORTEX_RIGHT, 
+                           NULL, NULL, NULL);
+         if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp2) ==
+             projectorsNeeded.end()) {
+            projectorsNeeded.push_back(pp2);
+         }
+         
+         if (projectToCerebellumFlag) {
+            PointProjector pp3(flirtSpaceName, Structure::STRUCTURE_TYPE_CEREBELLUM, 
+                              NULL, NULL, NULL);
+            if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp3) ==
+                projectorsNeeded.end()) {
+               projectorsNeeded.push_back(pp3);
+            }
+         }
+      }
+      
+      //
+      // Determine last focus to project
+      //
+      int lastFocusToProject = numFoci;
+      if (lastFocusIndex >= 0) {
+         lastFocusToProject = lastFocusIndex + 1;
+      }
+      
+      //
+      // Determine the needed stereotaxic spaces
+      //
+      for (int i = firstFocusIndex; i < lastFocusToProject; i++) {
          CellProjection* cp = fociProjectionFile->getCellProjection(i);
          const float* xyz = cp->getXYZ();
          const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
-         if (smdls.getNumberOfStudyMetaDataLinks() > 0) {
-            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(0);
-            const int studyMetaDataIndex = smdf->getStudyIndexFromLink(smdl);
-            if ((studyMetaDataIndex >= 0) &&
-                (studyMetaDataIndex < smdf->getNumberOfStudyMetaData())) {
-               const StudyMetaData* smd = smdf->getStudyMetaData(studyMetaDataIndex);
-               focusSpace[i] = smd->getStereotaxicSpace();
+         const int numStudyMetaDataLinks = smdls.getNumberOfStudyMetaDataLinks();
+         if (numStudyMetaDataLinks > 0) {
+            for (int m = 0; m < numStudyMetaDataLinks; m++) {
+               const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(m);
+               const int studyMetaDataIndex = smdf->getStudyIndexFromLink(smdl);
+               if ((studyMetaDataIndex >= 0) &&
+                   (studyMetaDataIndex < smdf->getNumberOfStudyMetaData())) {
+                  const StudyMetaData* smd = smdf->getStudyMetaData(studyMetaDataIndex);
+                  if (smd->getStereotaxicSpace().isEmpty() == false) {
+                     focusSpace[i] = smd->getStereotaxicSpace();
+                     break;
+                  }
+               }
             }
          }
          else {
@@ -171,19 +235,37 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
             }
          }
          else {
+            /* 28 feb 2008
             Structure::STRUCTURE_TYPE structure = Structure::STRUCTURE_TYPE_CORTEX_LEFT;
             if (xyz[0] > 0) {
                structure = Structure::STRUCTURE_TYPE_CORTEX_RIGHT;
             }
             cp->setCellStructure(structure);
-         
+            */
+            
             //
-            // See if a new point projector is needed
+            // See if a new point projector is needed for left, right, and cerebellum
             //
-            PointProjector pp(focusSpace[i], structure, NULL, NULL, NULL);
-            if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp) ==
+            PointProjector pp1(focusSpace[i], Structure::STRUCTURE_TYPE_CORTEX_LEFT, 
+                              NULL, NULL, NULL);
+            if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp1) ==
                 projectorsNeeded.end()) {
-               projectorsNeeded.push_back(pp);
+               projectorsNeeded.push_back(pp1);
+            }
+            PointProjector pp2(focusSpace[i], Structure::STRUCTURE_TYPE_CORTEX_RIGHT, 
+                              NULL, NULL, NULL);
+            if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp2) ==
+                projectorsNeeded.end()) {
+               projectorsNeeded.push_back(pp2);
+            }
+            
+            if (projectToCerebellumFlag) {
+               PointProjector pp3(focusSpace[i], Structure::STRUCTURE_TYPE_CEREBELLUM, 
+                                 NULL, NULL, NULL);
+               if (std::find(projectorsNeeded.begin(), projectorsNeeded.end(), pp3) ==
+                   projectorsNeeded.end()) {
+                  projectorsNeeded.push_back(pp3);
+               }
             }
          }
          
@@ -221,7 +303,7 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
       //
       // Number of foci to project
       //
-      const int totalSteps = numFoci - firstFocusIndex + 1;
+      const int totalSteps = lastFocusToProject - firstFocusIndex + 1;
       
       //
       // Create the progress dialog
@@ -236,22 +318,40 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
       loadNeededPointProjectors(projectorsNeeded);
       
       //
+      // Find the flirt surfaces for unprojection
+      //
+      BrainModelSurface* leftSearchSurface =
+         findSearchSurface(flirtSpaceName,
+                           Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+      if (leftSearchSurface == NULL) {
+         throw BrainModelAlgorithmException(
+            "Unable to find left hemisphere search surface for "
+            + flirtSpaceName);
+      }
+      BrainModelSurface* rightSearchSurface =
+         findSearchSurface(flirtSpaceName,
+                           Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+      if (rightSearchSurface == NULL) {
+         throw BrainModelAlgorithmException(
+            "Unable to find right hemisphere search surface for "
+            + flirtSpaceName);
+      }
+      BrainModelSurface* cerebellumSearchSurface =
+         findSearchSurface(flirtSpaceName,
+                           Structure::STRUCTURE_TYPE_CEREBELLUM);
+      if (cerebellumSearchSurface == NULL) {
+         throw BrainModelAlgorithmException(
+            "Unable to find cerebellum search surface for "
+            + flirtSpaceName);
+      }
+      
+      //
       // Loop through the foci and project them
       //
-      for (int i = firstFocusIndex; i < numFoci; i++) {
+      for (int i = firstFocusIndex; i < lastFocusToProject; i++) {
          updateProgressDialog("Mapping Focus " + QString::number(i), i + 1);
          
          CellProjection* cp = fociProjectionFile->getCellProjection(i);
-/*
-         QString space;
-         const int studyNumber = cp->getStudyNumber();
-         if ((studyNumber >= 0) && 
-             (studyNumber < fociProjectionFile->getNumberOfStudyInfo())) {
-            const CellStudyInfo* csi = fociProjectionFile->getStudyInfo(studyNumber);
-            space = csi->getStereotaxicSpace();
-            spaceNameConvert(space);
-         }
-*/
          spaceNameConvert(focusSpace[i]);
          Structure::STRUCTURE_TYPE structure = cp->getCellStructure();
          
@@ -263,14 +363,145 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
          }
          
          //
+         // Get Left, Right, and Cerebellum point projectors
+         //
+         const PointProjector* leftProjector = 
+            getPointProjector(focusSpace[i],
+                              Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+         if (leftProjector == NULL) {
+            throw BrainModelAlgorithmException(
+               "Unable to find left hemisphere point projector for "
+               + focusSpace[i]);
+         }
+         const PointProjector* rightProjector = 
+            getPointProjector(focusSpace[i],
+                              Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+         if (rightProjector == NULL) {
+            throw BrainModelAlgorithmException(
+               "Unable to find right hemisphere point projector for "
+               + focusSpace[i]);
+         }
+         PointProjector* cerebellumProjector = NULL;
+         if (projectToCerebellumFlag) {
+            cerebellumProjector = getPointProjector(focusSpace[i],
+                                         Structure::STRUCTURE_TYPE_CEREBELLUM);
+            if (cerebellumProjector == NULL) {
+               throw BrainModelAlgorithmException(
+                  "Unable to find cerebellum hemisphere point projector for "
+                  + focusSpace[i]);
+            }
+         }
+         
+         //
+         // Get distance to cerebellum and surface
+         //
+         float cerebellumDistance = 1000000.0;
+         if (projectToCerebellumFlag) {
+            cerebellumDistance = getDistanceToSurface(cp, cerebellumProjector);
+         }
+         float cerebralDistance = 10000000.0;
+         float focusXYZ[3];
+         cp->getXYZ(focusXYZ);
+         if (focusXYZ[0] > 0) {
+            cerebralDistance = getDistanceToSurface(cp, rightProjector);
+         }
+         else {
+            cerebralDistance = getDistanceToSurface(cp, leftProjector);
+         }
+         
+         //
+         // Determine to which structure foci should be projected
+         //
+         Structure::STRUCTURE_TYPE projectionStructure = 
+            Structure::STRUCTURE_TYPE_INVALID;
+         Structure::STRUCTURE_TYPE cerebellumStructure = 
+            Structure::STRUCTURE_TYPE_INVALID;
+         structure = Structure::STRUCTURE_TYPE_INVALID;
+         if (projectToCerebellumFlag == false) {
+            if (focusXYZ[0] < 0.0) {
+               structure = Structure::STRUCTURE_TYPE_CORTEX_LEFT;
+            }
+            else {
+               structure = Structure::STRUCTURE_TYPE_CORTEX_RIGHT;
+            }
+            projectionStructure = structure;
+         }
+         else {
+            if (cerebellumDistance > 0.0) {
+               //
+               // Use ratios
+               //
+               const float focusRatio = cerebralDistance / cerebellumDistance;
+               if (focusRatio <= cerebralCutoff) {
+                  if (focusXYZ[0] < 0.0) {
+                     structure = Structure::STRUCTURE_TYPE_CORTEX_LEFT;
+                  }
+                  else {
+                     structure = Structure::STRUCTURE_TYPE_CORTEX_RIGHT;
+                  }
+                  projectionStructure = structure;
+               }
+               else if (focusRatio > cerebellumCutoff) {
+                  structure = Structure::STRUCTURE_TYPE_CEREBELLUM;
+                  projectionStructure = structure;
+               }
+               else {
+                  if (focusXYZ[0] < 0.0) {
+                     structure = Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM;
+                     projectionStructure = Structure::STRUCTURE_TYPE_CORTEX_LEFT;
+                     cerebellumStructure = Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT;
+                  }
+                  else {
+                     structure = Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM;
+                     projectionStructure = Structure::STRUCTURE_TYPE_CORTEX_RIGHT;
+                     cerebellumStructure = Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT;
+                  }
+               }
+            }
+            else {
+               structure = Structure::STRUCTURE_TYPE_CEREBELLUM;
+            }
+         }
+         cp->setCellStructure(structure);
+         
+         //
+         // Set the search surface
+         //
+         BrainModelSurface* searchSurface = NULL;
+         switch (projectionStructure) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               searchSurface = leftSearchSurface;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               searchSurface = rightSearchSurface;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               searchSurface = cerebellumSearchSurface;
+               break;
+            case Structure::STRUCTURE_TYPE_INVALID:
+               break;
+         }
+         
+         //
          // Find the point projector
          //
          PointProjector *pp = NULL;
+         PointProjector *cerebellumPP = NULL;
          for (unsigned int j = 0; j < pointProjectors.size(); j++) {
             if ((pointProjectors[j]->spaceName == focusSpace[i]) &&
-                (pointProjectors[j]->structureType == structure)) {
+                (pointProjectors[j]->structureType == projectionStructure)) {
                pp = pointProjectors[j];
-               break;
+            }
+            if (cerebellumStructure != Structure::STRUCTURE_TYPE_INVALID) {
+               if ((pointProjectors[j]->spaceName == focusSpace[i]) &&
+                   (pointProjectors[j]->structureType == Structure::STRUCTURE_TYPE_CEREBELLUM)) {
+                  cerebellumPP = pointProjectors[j];
+               }
             }
          }
          if (pp == NULL) {
@@ -286,7 +517,31 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
          //
          projectFocus(*cp,
                       pp->bms,
-                      pp->pointProjector);
+                      pp->pointProjector,
+                      searchSurface);
+                      
+         //
+         // If also projecting to the cerebellum
+         //
+         if (cerebellumPP != NULL) {
+            //
+            // Copy focus and add it to file
+            //
+            fociProjectionFile->addCellProjection(CellProjection(*cp));
+            CellProjection* cerebellumFocus = 
+               fociProjectionFile->getCellProjection(
+                  fociProjectionFile->getNumberOfCellProjections() - 1);
+                  
+            //
+            // Set the structure, duplicate flag, and project it
+            //
+            cerebellumFocus->setCellStructure(cerebellumStructure);
+            cerebellumFocus->setDuplicateFlag(true);
+            projectFocus(*cerebellumFocus,
+                         cerebellumPP->bms,
+                         cerebellumPP->pointProjector,
+                         cerebellumSearchSurface);
+         }
       }
    }
    catch (BrainModelAlgorithmException& e) {
@@ -297,6 +552,42 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
    removeProgressDialog();
 }
 
+/**
+ * get point projector for space and structure.
+ */
+FociFileToPalsProjector::PointProjector* 
+FociFileToPalsProjector::getPointProjector(const QString& spaceName,
+                                        const Structure::STRUCTURE_TYPE structure)
+{
+   for (unsigned int m = 0; m < pointProjectors.size(); m++) {
+      PointProjector* pp = pointProjectors[m];
+      if ((pp->structureType == structure) &&
+          (pp->spaceName == spaceName)) {
+         return pp;
+      }
+   }
+   
+   return NULL;
+}
+                                              
+/**
+ * Find surface for space and structure.
+ */
+BrainModelSurface* 
+FociFileToPalsProjector::findSearchSurface(const QString& spaceName,
+                                           const Structure::STRUCTURE_TYPE structure)
+{
+   for (unsigned int m = 0; m < pointProjectors.size(); m++) {
+      PointProjector* pp = pointProjectors[m];
+      if ((pp->structureType == structure) &&
+          (pp->spaceName == spaceName)) {
+         return pp->bms;
+      }
+   }
+   
+   return NULL;
+}
+                                              
 /**
  * load the needed point projectors.
  */
@@ -334,8 +625,10 @@ FociFileToPalsProjector::loadNeededPointProjectors(const std::vector<PointProjec
          // No atlas available ??
          //
          if (matchingAtlas == NULL) {
-            QString msg("Unable to find atlas in space ");
-            msg.append(projectorsNeeded[i].originalSpaceName);
+            QString msg("Unable to find atlas in space "
+                        + projectorsNeeded[i].originalSpaceName
+                        + " for structure "
+                        + Structure::convertTypeToString(projectorsNeeded[i].structureType));
             throw BrainModelAlgorithmException(msg);
          }
          
@@ -427,15 +720,48 @@ FociFileToPalsProjector::spaceNameConvert(QString& spaceName)
 }
 
 /**
+ * get distance of focus from a surface.
+ */
+float 
+FociFileToPalsProjector::getDistanceToSurface(const CellProjection* cp,
+                                              const PointProjector* pp) const
+{
+   float distance;
+   
+   //
+   // Get the position of the focus
+   //
+   float xyz[3];
+   cp->getXYZ(xyz);
+   
+   //
+   // Project to nearest node
+   //
+   const int nodeNum = pp->pointProjector->projectToNearestNode(xyz);
+   if (nodeNum >= 0) {
+      const CoordinateFile* cf = pp->bms->getCoordinateFile();
+      distance = cf->getDistanceToPoint(nodeNum, xyz);
+   }
+   
+   return distance;
+}
+                                 
+/**
  * Project a focus.  Returns true if the focus was projected.
  */
 void 
 FociFileToPalsProjector::projectFocus(CellProjection& cp, 
                                       BrainModelSurface* bms,
-                                      BrainModelSurfacePointProjector* pointProjector) 
+                                      BrainModelSurfacePointProjector* pointProjector,
+                                      const BrainModelSurface* searchSurface) 
 {
    CoordinateFile* coordinateFile = bms->getCoordinateFile();
    TopologyFile* topologyFile = bms->getTopologyFile();
+   
+   //
+   // Initialize search position
+   //
+   cp.setSearchXYZ(0.0, 0.0, 0.0);
    
    //
    // Get the position of the focus
@@ -738,6 +1064,18 @@ FociFileToPalsProjector::projectFocus(CellProjection& cp,
       cp.vertex[0] = iR;
       cp.vertex[1] = jR;
 
+   }
+   
+   //
+   // Set the search position
+   //
+   if (searchSurface != NULL) {
+      cp.getProjectedPosition(searchSurface->getCoordinateFile(),
+                              searchSurface->getTopologyFile(),
+                              true,
+                              false,
+                              false,
+                              cp.searchXYZ);
    }
 }
 

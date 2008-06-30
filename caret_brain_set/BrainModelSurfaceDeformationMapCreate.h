@@ -43,8 +43,8 @@ class BrainModelSurfaceDeformationMapCreate : public BrainModelAlgorithm {
       
       // constructor
       BrainModelSurfaceDeformationMapCreate(BrainSet* bs,
-                                            BrainModelSurface* sourceSurfaceIn,
-                                            BrainModelSurface* targetSurfaceIn,
+                                            const BrainModelSurface* sourceSurfaceIn,
+                                            const BrainModelSurface* targetSurfaceIn,
                                             DeformationMapFile* deformationMapFileIn,
                                             const DEFORMATION_SURFACE_TYPE deformationSurfaceTypeIn);
       
@@ -59,10 +59,10 @@ class BrainModelSurfaceDeformationMapCreate : public BrainModelAlgorithm {
       void createSphericalDeformationMap();
       
       /// source surface
-      BrainModelSurface* sourceSurface;
+      const BrainModelSurface* sourceSurface;
       
       /// target surface
-      BrainModelSurface* targetSurface;
+      const BrainModelSurface* targetSurface;
       
       /// deformation map 
       DeformationMapFile* deformationMapFile;

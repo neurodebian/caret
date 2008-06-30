@@ -25,13 +25,17 @@
 
 #include <iostream>
 
+#include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
+#include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QSpinBox>
 #include "WuQDataEntryDialog.h"
 
 /**
@@ -39,7 +43,7 @@
  */
 WuQDataEntryDialog::WuQDataEntryDialog(QWidget* parent,
                                        Qt::WindowFlags f)
-   : QDialog(parent, f)
+   : WuQDialog(parent, f)
 {
    //
    // Layout for user's widgets
@@ -50,7 +54,6 @@ WuQDataEntryDialog::WuQDataEntryDialog(QWidget* parent,
    // Labels for text at top
    //
    textAtTopLabel = new QLabel;
-   textAtTopLabel->setWordWrap(true);
    
    //
    // Button box for dialog's buttons
@@ -115,11 +118,115 @@ WuQDataEntryDialog::dataEnteredIsValid()
  * set text at top of dialog (text is automatically wrapped).
  */
 void 
-WuQDataEntryDialog::setTextAtTop(const QString& s)
+WuQDataEntryDialog::setTextAtTop(const QString& s,
+                                 const bool wrapTheText)
 {
    textAtTopLabel->setText(s);
+   textAtTopLabel->setWordWrap(wrapTheText);
 }
       
+/**
+ * add widgets to the next available row in the dialog.
+ */
+void 
+WuQDataEntryDialog::addWidgetsToNextRow(QWidget* leftColumnWidget,
+                                        QWidget* rightColumnWidget)
+{
+   //
+   // add widgets to the next row
+   //
+   const int rowNumber = widgetGridLayout->rowCount();
+   if (leftColumnWidget != NULL) {
+      widgetGridLayout->addWidget(leftColumnWidget, rowNumber, 0);
+   }
+   if (rightColumnWidget != NULL) {
+      widgetGridLayout->addWidget(rightColumnWidget, rowNumber, 1);
+   }
+}
+
+/**
+ * add widget to next available row in the dialog.
+ */
+QWidget* 
+WuQDataEntryDialog::addWidget(const QString& labelText,
+                              QWidget* widget)
+{
+   //
+   // Create the label
+   //
+   QLabel* label = new QLabel(labelText);
+   
+   //
+   // Keep pointer to widget
+   //
+   widgets.push_back(widget);
+   
+   //
+   // add widget to layout
+   //
+   addWidgetsToNextRow(label, widget);
+   
+   return widget;
+}
+                     
+/**
+ * add a check box.
+ */
+QCheckBox* 
+WuQDataEntryDialog::addCheckBox(const QString& text,
+                                const bool defaultValue)
+{
+   //
+   // Create check box
+   //
+   QCheckBox* cb = new QCheckBox(text);
+   cb->setChecked(defaultValue);
+
+   //
+   // Keep pointer to widget
+   //
+   widgets.push_back(cb);
+   
+   //
+   // add widget to both columns of layout
+   //
+   const int rowNumber = widgetGridLayout->rowCount();
+   widgetGridLayout->addWidget(cb, rowNumber, 0, 1, 2, Qt::AlignLeft);
+   
+   return cb;
+}
+                             
+/**
+ * add a combo box.
+ */
+QComboBox* 
+WuQDataEntryDialog::addComboBox(const QString& labelText,
+                                const QStringList& comboBoxItems,
+                                const QList<QVariant>* comboBoxItemsUserData)
+{
+   //
+   // Create combo box
+   //
+   QComboBox* comboBox = new QComboBox;
+   for (int i = 0; i < comboBoxItems.size(); i++) {
+      QVariant userData;
+      if (comboBoxItemsUserData != NULL) {
+         if (i < comboBoxItemsUserData->size()) {
+            userData = (*comboBoxItemsUserData).at(i);
+         }
+      }
+      comboBox->addItem(comboBoxItems.at(i), 
+                        userData);
+   }
+   
+   //
+   // Add to dialog
+   //
+   addWidget(labelText, comboBox);
+   
+   return comboBox;
+}
+                       
 /**
  * add line edit.
  */
@@ -134,16 +241,9 @@ WuQDataEntryDialog::addLineEditWidget(const QString& labelText,
    le->setText(defaultText);
 
    //
-   // Keep pointer to widget
+   // Add to dialog
    //
-   widgets.push_back(le);
-   
-   //
-   // add widget to layout
-   //
-   const int rowNumber = widgetGridLayout->rowCount();
-   widgetGridLayout->addWidget(new QLabel(labelText), rowNumber, 0);
-   widgetGridLayout->addWidget(le, rowNumber, 1);
+   addWidget(labelText, le);
    
    return le;
 }
@@ -160,18 +260,70 @@ WuQDataEntryDialog::addListWidget(const QString& labelText,
    //
    QListWidget* lw = new QListWidget;
    lw->addItems(listBoxItems);
+   if (listBoxItems.count() > 0) {
+      lw->setCurrentRow(0);
+   }
    
    //
-   // Keep pointer to widget
+   // Add to dialog
    //
-   widgets.push_back(lw);
-   
-   //
-   // add widget to layout
-   //
-   const int rowNumber = widgetGridLayout->rowCount();
-   widgetGridLayout->addWidget(new QLabel(labelText), rowNumber, 0);
-   widgetGridLayout->addWidget(lw, rowNumber, 1);
-   
+   addWidget(labelText, lw);
+      
    return lw;
 }
+
+/**
+ * add spin box.
+ */
+QSpinBox* 
+WuQDataEntryDialog::addSpinBox(const QString& labelText,
+                               const int defaultValue,
+                               const int minimumValue,
+                               const int maximumValue,
+                               const int singleStep)
+{
+   //
+   // Create spin box
+   //
+   QSpinBox* sb = new QSpinBox;
+   sb->setMinimum(minimumValue);
+   sb->setMaximum(maximumValue);
+   sb->setSingleStep(singleStep);
+   sb->setValue(defaultValue);
+   
+   //
+   // Add to dialog
+   //
+   addWidget(labelText, sb);
+   
+   return sb;
+}                            
+
+/**
+ * add double spin box.
+ */
+QDoubleSpinBox* 
+WuQDataEntryDialog::addDoubleSpinBox(const QString& labelText,
+                                     const float defaultValue,
+                                     const float minimumValue,
+                                     const float maximumValue,
+                                     const float singleStep,
+                                     const int numberOfDecimals)
+{
+   //
+   // Create spin box
+   //
+   QDoubleSpinBox* sb = new QDoubleSpinBox;
+   sb->setMinimum(minimumValue);
+   sb->setMaximum(maximumValue);
+   sb->setSingleStep(singleStep);
+   sb->setValue(defaultValue);
+   sb->setDecimals(numberOfDecimals);
+   
+   //
+   // Add to dialog
+   //
+   addWidget(labelText, sb);
+   
+   return sb;
+}                                     

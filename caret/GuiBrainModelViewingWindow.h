@@ -27,8 +27,9 @@
 #ifndef __GUI_BRAIN_VIEWING_WINDOW_H__
 #define __GUI_BRAIN_VIEWING_WINDOW_H__
 
-#include "QtMainWindow.h"
-#include "QtDialog.h"
+#include <QMainWindow>
+
+#include "WuQDialog.h"
 
 class GuiMainWindow;
 class GuiToolBar;
@@ -36,7 +37,7 @@ class GuiToolBar;
 #include "GuiBrainModelOpenGL.h"
 
 /// Main Window that is placed in the dialog to allow a toolbar
-class GuiBrainModelViewingMainWindow : public QtMainWindow {
+class GuiBrainModelViewingMainWindow : public QMainWindow {
    Q_OBJECT
    
    public:
@@ -55,6 +56,9 @@ class GuiBrainModelViewingMainWindow : public QtMainWindow {
       /// get the toolbar
       GuiToolBar* getToolBar() { return toolBar; }
       
+      /// get the brain model OpenGL
+      GuiBrainModelOpenGL* getBrainModelOpenGL() { return brainModelOpenGL; }
+      
    private:
       /// the toolbar
       GuiToolBar* toolBar;
@@ -62,12 +66,13 @@ class GuiBrainModelViewingMainWindow : public QtMainWindow {
       /// OpenGL Renderer
       GuiBrainModelOpenGL* brainModelOpenGL;
       
+   friend class GuiBrainModelViewingWindow;
 };
 
 ///
 /// Dialog used to display additional brain models
 ///
-class GuiBrainModelViewingWindow : public QtDialog {
+class GuiBrainModelViewingWindow : public WuQDialog {
    
    Q_OBJECT
    
@@ -85,6 +90,13 @@ class GuiBrainModelViewingWindow : public QtDialog {
       
       /// display the brain model in the window
       void displayBrainModelInWindow(BrainModel* bm);
+      
+      /// Get the Brain Model OpenGL widget in the main window
+      GuiBrainModelOpenGL* getBrainModelOpenGL() 
+         { return viewingMainWindow->brainModelOpenGL; }
+      
+      /// Get the toolbar
+      GuiToolBar* getToolBar() { return viewingMainWindow->getToolBar(); }
       
    private:
       /// the viewing main window

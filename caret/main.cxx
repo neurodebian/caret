@@ -45,6 +45,7 @@
 #include <QDir>
 #include <QGLWidget>
 #include <QImageIOPlugin>
+#include <QMessageBox>
 #include <QPluginLoader>
 #include <QStringList>
 #include <QStyleFactory>
@@ -58,7 +59,6 @@
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
 #include "GuiMainWindowFileMenu.h"
-#include "GuiMessageBox.h"
 #include "GiftiDataArrayFile.h"
 #include "SpecFile.h"
 #include "SpecFileUtilities.h"
@@ -138,9 +138,6 @@ printHelp(const QString& programNameIn)
    << "         Automatically loads all of the data files in each of the spec" << std::endl
    << "         files at startup." << std::endl
    << "" << std::endl
-   << "      -giftiXML" << std::endl
-   << "         Enable prototype GIFTI Node Attribute files." << std::endl
-   << "" << std::endl
    << "      -notext" << std::endl
    << "         Inhibits use of text in OpenGL drawing such as the text" << std::endl
    << "         shown on volume slices indicating stereotaxic coordinates." << std::endl
@@ -177,8 +174,6 @@ static void
 processCommandLineOptions(int argc, char* argv[])
 {
    const QString programName(FileUtilities::basename(QString(argv[0])));
-   
-   GiftiDataArrayFile::setGiftiXMLEnabled(false);
    
    for (int i = 1; i < argc; i++) {
       const QString arg(argv[i]);
@@ -230,9 +225,6 @@ processCommandLineOptions(int argc, char* argv[])
       }
       else if (arg == "-gl-timing") {
          glTimingFlag = true;
-      }
-      else if (arg == "-giftiXML") {
-         GiftiDataArrayFile::setGiftiXMLEnabled(true);
       }
       else if (arg == "-notext") {
          BrainModelOpenGL::setOpenGLTextEnabled(false);
@@ -408,7 +400,15 @@ initializeFileDialog()
    typeMap[SpecFile::getWustlRegionFileExtension()] = "WUSTL Region";
    typeMap[SpecFile::getLimitsFileExtension()] = "Limits";
    typeMap[SpecFile::getMDPlotFileExtension()] = "MD Plot";
-   typeMap[SpecFile::getGiftiFileExtension()] = "GIFTI";
+   typeMap[SpecFile::getGiftiCoordinateFileExtension()] = "GIFTI Coordinate";
+   typeMap[SpecFile::getGiftiFunctionalFileExtension()] = "GIFTI Functional";
+   typeMap[SpecFile::getGiftiLabelFileExtension()] = "GIFTI Label";
+   typeMap[SpecFile::getGiftiRgbaFileExtension()] = "GIFTI RGBA";
+   typeMap[SpecFile::getGiftiShapeFileExtension()] = "GIFTI Shape";
+   typeMap[SpecFile::getGiftiSurfaceFileExtension()] = "GIFTI Surface";
+   typeMap[SpecFile::getGiftiTensorFileExtension()] = "GIFTI Tensor";
+   typeMap[SpecFile::getGiftiTopologyFileExtension()] = "GIFTI Topology";
+   typeMap[SpecFile::getGiftiGenericFileExtension()] = "GIFTI Generic";
    typeMap[SpecFile::getCommaSeparatedValueFileExtension()] = "Comma Separated Value";
    typeMap[SpecFile::getVocabularyFileExtension()] = "Vocabulary";
    typeMap[SpecFile::getStudyMetaDataFileExtension()] = "Study Metadata";
@@ -529,7 +529,7 @@ main(int argc, char* argv[])
    
    processCommandLineOptions(argc, argv);
       
-   std::cout << "Set the environment variable CARET_DEBUG for debugging information." << std::endl;
+   std::cout << "INFO: Set the environment variable CARET_DEBUG for debugging information." << std::endl;
    DebugControl::setDebugOnWithEnvironmentVariable("CARET_DEBUG");
    if (debugFlag) {
       DebugControl::setDebugOn(true);

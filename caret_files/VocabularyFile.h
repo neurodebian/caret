@@ -48,6 +48,8 @@ class VocabularyFile : public AbstractFile {
                             const QString& classNameIn = "",
                             const QString& vocabularyIDIn = "",
                             const QString& descriptionIn = "",
+                            const QString& ontologySourceIn = "",
+                            const QString& termIDIn = "",
                             const int studyNumberIn = -1);
               
             // copy constructor
@@ -59,8 +61,8 @@ class VocabularyFile : public AbstractFile {
             // destructor
             ~VocabularyEntry();
             
-            /// get full description of all fields for display to user
-            QString getFullDescriptionForDisplayToUser(const bool useHTML) const;
+            // get full description of all fields for display to user
+            //QString getFullDescriptionForDisplayToUser(const bool useHTML) const;
             
             /// get the abbreviation
             QString getAbbreviation() const { return abbreviation; }
@@ -85,6 +87,21 @@ class VocabularyFile : public AbstractFile {
             
             // set the class name
             void setClassName(const QString& s);
+            
+            /// get the ontology source
+            QString getOntologySource() const { return ontologySource; }
+            
+            /// set the ontology source
+            void setOntologySource(const QString& s);
+            
+            // get ontology source values
+            static void getOntologySourceValues(std::vector<QString>& ontologySourceValues);
+            
+            /// get the term id
+            QString getTermID() const { return termID; }
+            
+            /// set the term id
+            void setTermID(const QString& s);
             
             /// get the vocabulary ID
             QString getVocabularyID() const { return vocabularyID; }
@@ -140,6 +157,12 @@ class VocabularyFile : public AbstractFile {
             
             /// the class name
             QString className;
+            
+            /// ontology source
+            QString ontologySource;
+            
+            /// term id
+            QString termID;
             
             /// the vocabulary ID
             QString vocabularyID;
@@ -244,6 +267,9 @@ class VocabularyFile : public AbstractFile {
       /// set a study info
       void setStudyInfo(const int index, const CellStudyInfo& csi);
             
+      /// get PubMedID's of all linked studies
+      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const;
+      
    protected:
       // Read the contents of the file (header has already been read)
       void readFileData(QFile& file,

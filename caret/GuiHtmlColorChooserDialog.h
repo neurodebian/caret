@@ -29,12 +29,12 @@
 /*LICENSE_END*/
 
 #include <vector>
-#include "QtDialogModal.h"
+#include "WuQDialog.h"
 
 class QListWidget;
 
 /// class for a dialog that selects HTML standard colors
-class GuiHtmlColorChooserDialog : public QtDialogModal {
+class GuiHtmlColorChooserDialog : public WuQDialog {
    public:
       // constructor
       GuiHtmlColorChooserDialog(QWidget* parent = 0);

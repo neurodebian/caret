@@ -27,14 +27,14 @@
 #ifndef __VE_GUI_AUTOMATIC_ROTATION_DIALOG_H__
 #define __VE_GUI_AUTOMATIC_ROTATION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QPushButton;
 class QRadioButton;
 class QDoubleSpinBox;
 
 /// Dialog for automatic rotation
-class GuiAutomaticRotationDialog : public QtDialog {
+class GuiAutomaticRotationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

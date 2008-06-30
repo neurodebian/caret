@@ -73,6 +73,7 @@
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
+#include "FociSearchFile.h"
 #include "GeodesicDistanceFile.h"
 #include "GuiDataFileOpenDialog.h"
 #include "GuiStructureComboBox.h"
@@ -110,7 +111,7 @@
 GuiSpecFileDialog::GuiSpecFileDialog(QWidget* parent,
                                      SpecFile& sfin,
                                      const SPEC_DIALOG_MODE dialogModeIn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    dialogMode = dialogModeIn;
@@ -336,7 +337,7 @@ GuiSpecFileDialog::show()
    //
    // Popup the dialog first
    //
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -376,7 +377,7 @@ GuiSpecFileDialog::slotCloseDialog()
 GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
                                                          SpecFile& sf,
                                                          const GuiSpecFileDialog::SPEC_DIALOG_MODE dialogModeIn)
-   : QtMainWindow(parent)
+   : QMainWindow(parent)
 {
    specFile = sf;
    dialogMode = dialogModeIn,
@@ -541,11 +542,6 @@ GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
                          bs->getFociProjectionFile(),  // NOTE: All foci are stored in foci projection file
                          SpecFile::fociFileTag, 
                          specFile.fociFile);
-   fociVolumeGroup = listFiles(filesLayout, 
-                               "Foci Files (Volume)", 
-                              bs->getVolumeFociFile(),
-                               SpecFile::volumeFociFileTag, 
-                               specFile.volumeFociFile);
    fociColorGroup = listFiles(filesLayout, 
                               "Foci Color File", 
                               bs->getFociColorFile(),
@@ -556,6 +552,11 @@ GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
                               bs->getFociProjectionFile(),
                              SpecFile::fociProjectionFileTag, 
                              specFile.fociProjectionFile);
+   fociSearchGroup = listFiles(filesLayout, 
+                             "Foci Search File", 
+                              bs->getFociSearchFile(),
+                             SpecFile::fociSearchFileTag, 
+                             specFile.fociSearchFile);
    geodesicGroup = listFiles(filesLayout, 
                              "Geodesic Distance File", 
                               bs->getGeodesicDistanceFile(),
@@ -1058,9 +1059,9 @@ GuiSpecFileDialogMainWindow::disableToolBarButtons()
       cellAction->setEnabled(false);
    }
    if ((fociGroup == NULL) &&
-       (fociVolumeGroup == NULL) &&
        (fociColorGroup == NULL) &&
        (fociProjGroup == NULL) &&
+       (fociSearchGroup == NULL) &&
        (studyMetaDataGroup == NULL)) {
       fociAction->setEnabled(false);
    }
@@ -1286,14 +1287,14 @@ GuiSpecFileDialogMainWindow::setToolBarButtons()
    if (fociGroup != NULL) {
       fociGroup->setHidden(!showFoci);
    }
-   if (fociVolumeGroup != NULL) {
-      fociVolumeGroup->setHidden(!showFoci);
-   }
    if (fociColorGroup != NULL) {
       fociColorGroup->setHidden(!showFoci);
    }
    if (fociProjGroup != NULL) {
       fociProjGroup->setHidden(!showFoci);
+   }
+   if (fociSearchGroup != NULL) {
+      fociSearchGroup->setHidden(!showFoci);
    }
    if (geodesicGroup != NULL) {
       geodesicGroup->setHidden(!showMisc);
@@ -3006,7 +3007,8 @@ GuiSpecFileDialogMainWindow::fastOpenButtonSlot(int buttonNumber)
       //
       // Paint, Metric, and Surface shape get special dialog for appending
       //
-      else if ((s.specFileTag == SpecFile::paintFileTag) ||
+      else if ((s.specFileTag == SpecFile::arealEstimationFileTag) ||
+               (s.specFileTag == SpecFile::paintFileTag) ||
                (s.specFileTag == SpecFile::metricFileTag) ||
                (s.specFileTag == SpecFile::surfaceShapeFileTag) ||
                (s.specFileTag == SpecFile::surfaceVectorFileTag)) {

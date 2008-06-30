@@ -212,6 +212,25 @@ NodeAttributeFile::prependToColumnComment(const int col, const QString& comm)
 }
 
 /**
+ * get indices to all linked studies.
+ */
+void 
+NodeAttributeFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const
+{
+   std::set<QString> pmidSet;
+   const int numColumns= getNumberOfColumns();
+   for (int i = 0; i < numColumns; i++) {
+      const StudyMetaDataLinkSet smdl = getColumnStudyMetaDataLinkSet(i);
+      std::vector<QString> pmids;
+      smdl.getAllLinkedPubMedIDs(pmids);
+      pmidSet.insert(pmids.begin(), pmids.end());
+   }
+   studyPMIDs.clear();
+   studyPMIDs.insert(studyPMIDs.end(),
+                     pmidSet.begin(), pmidSet.end());
+}
+
+/**
  * get the study metadata link set for a column.
  */
 StudyMetaDataLinkSet

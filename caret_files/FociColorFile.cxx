@@ -23,9 +23,12 @@
  */
 /*LICENSE_END*/
 
+#include <algorithm>
+#include <set>
 
 #include "FociColorFile.h"
 #include "FociProjectionFile.h"
+#include "NameIndexSort.h"
 #include "SpecFile.h"
 
 /**
@@ -124,3 +127,61 @@ FociColorFile::removeNonMatchingColors(const FociProjectionFile* fpf)
       setModified();
    }
 }      
+
+/**
+ * get color indices sorted by name case insensitive.
+ */
+void 
+FociColorFile::getColorIndicesSortedByName(const FociProjectionFile* fpf,
+                                 std::vector<int>& indicesSortedByNameOut,
+                                 const bool reverseOrderFlag,
+                                 const bool limitToColorsUsedByDisplayedFociFlag) const
+{
+   indicesSortedByNameOut.clear();
+  
+   //
+   // Sort indices by name
+   //
+   NameIndexSort nis;
+   
+   if (limitToColorsUsedByDisplayedFociFlag) {
+      const int numFoci = fpf->getNumberOfCellProjections();
+      const int numColors = getNumberOfColors();
+      std::vector<bool> colorIndexUsed(numColors, false);
+      
+      for (int i = 0; i < numFoci; i++) {
+         const CellProjection* focus = fpf->getCellProjection(i);
+         if (focus->getDisplayFlag()) {
+            const int colorIndex = focus->getColorIndex();
+            if (colorIndex >= 0) {
+               colorIndexUsed[colorIndex] = true;
+            }
+         }
+      }
+      
+      for (int i = 0; i < numColors; i++) {
+         if (colorIndexUsed[i]) {
+            nis.add(i, getColorNameByIndex(i));
+         }
+      }
+   }
+   else {
+      const int num = getNumberOfColors();
+      for (int i = 0; i < num; i++) {
+         nis.add(i, getColorNameByIndex(i));
+      }
+   }
+
+   nis.sortByNameCaseInsensitive();
+   const int numItems = nis.getNumberOfItems();
+   
+   indicesSortedByNameOut.resize(numItems, 0);
+   for (int i = 0; i < numItems; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+      

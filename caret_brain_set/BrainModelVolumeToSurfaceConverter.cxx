@@ -25,10 +25,12 @@
 
 #include "vtkCellArray.h"
 #include "vtkCleanPolyData.h"
+#include "vtkClipPolyData.h"
 #include "vtkDecimatePro.h"
 #include "vtkImageGaussianSmooth.h"
 #include "vtkImageShrink3D.h"
 #include "vtkMarchingCubes.h"
+#include "vtkPlane.h"
 #include "vtkPolyDataNormals.h"
 #include "vtkPolyDataWriter.h"
 #include "vtkSmoothPolyDataFilter.h"
@@ -55,8 +57,8 @@ BrainModelVolumeToSurfaceConverter::BrainModelVolumeToSurfaceConverter(
                                     const bool createHypersmoothSurfaceFlagIn)
    : BrainModelAlgorithm(bs)
 {
-   reconstructionMode = reconstructionModeIn;
    segmentationVolumeFile = new VolumeFile(*segmentationVolumeFileIn);
+   reconstructionMode = reconstructionModeIn;
    rightHemisphereFlag = rightHemisphereFlagIn;
    leftHemisphereFlag  = leftHemisphereFlagIn;
    createHypersmoothSurfaceFlag = createHypersmoothSurfaceFlagIn;
@@ -67,7 +69,10 @@ BrainModelVolumeToSurfaceConverter::BrainModelVolumeToSurfaceConverter(
  */
 BrainModelVolumeToSurfaceConverter::~BrainModelVolumeToSurfaceConverter()
 {
-   delete segmentationVolumeFile;
+   if (segmentationVolumeFile != NULL) {
+      delete segmentationVolumeFile;
+      segmentationVolumeFile = NULL;
+   }
 }
 
 /**
@@ -82,7 +87,7 @@ BrainModelVolumeToSurfaceConverter::execute() throw (BrainModelAlgorithmExceptio
    // slice around all edges to prevent holes.
    //
    const int padAroundEdges[6] = { 1, 1, 1, 1, 1, 1 };
-   segmentationVolumeFile->padSegmentation(padAroundEdges);
+   segmentationVolumeFile->padSegmentation(padAroundEdges, false);
    
    switch (reconstructionMode) {
       case RECONSTRUCTION_MODE_SUREFIT_SURFACE:
@@ -97,6 +102,61 @@ BrainModelVolumeToSurfaceConverter::execute() throw (BrainModelAlgorithmExceptio
       case RECONSTRUCTION_MODE_VTK_MODEL_MAXIMUM_POLYGONS:
          generateVtkModel(true);
          break;
+      case RECONSTRUCTION_MODE_SOLID_STRUCTURE:
+         generateSolidStructure();
+         break;
+   }
+}
+
+/**
+ * generate a solid structure model.
+ */
+void 
+BrainModelVolumeToSurfaceConverter::generateSolidStructure() throw (BrainModelAlgorithmException)
+{
+   //
+   // Reconstruct as a VTK model
+   //
+   generateVtkModel(false);
+   
+   //
+   // Find the reconstructed vtk model
+   //
+   const int numVtkModels = brainSet->getNumberOfVtkModelFiles();
+   if (numVtkModels <= 0) {
+      throw BrainModelAlgorithmException("No VTK models were reconstructed.");
+   }
+   VtkModelFile* vtkModel = brainSet->getVtkModelFile(numVtkModels - 1);
+      
+   //
+   // Copy the segmentation
+   //
+   VolumeFile segmentation(*segmentationVolumeFile);
+   
+   //
+   // Erode the segmentation volume to remove the outer layer of voxels
+   //
+   segmentation.doVolMorphOps(0, 1);
+   
+   //
+   // Get the dimensions of the volume
+   //
+   int dim[3];
+   segmentation.getDimensions(dim);
+   
+   //
+   // Create a point for each non-zero voxel
+   //
+   for (int i = 0; i < dim[0]; i++) {
+      for (int j = 0; j < dim[1]; j++) {
+         for (int k = 0; k < dim[2]; k++) {
+            if (segmentation.getVoxel(i, j, k, 0) != 0.0) {
+               float xyz[3];
+               segmentation.getVoxelCoordinate(i, j, k, true, xyz);
+               vtkModel->addCoordinate(xyz);
+            }
+         }
+      }
    }
 }
 
@@ -174,7 +234,7 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
       decimater->SetInput(triangleFilter->GetOutput());
       decimater->SetTargetReduction(0.90);
       decimater->PreserveTopologyOn();
-      decimater->SetFeatureAngle(30);
+      decimater->SetFeatureAngle(30.0);  //45.0); //1);   // orig == 30
       decimater->SplittingOff();
       decimater->PreSplitMeshOff();
       decimater->SetMaximumError(errorVal);
@@ -366,6 +426,27 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
    vtkPolyData* polyDataSurface = normals->GetOutput();
    
    //
+   // Test to clip a surface DO NOT USE THIS AS IT CHANGES TOPOLOGY
+   //
+   bool testFlag = false;
+   if (testFlag) {
+      vtkPlane* plane = vtkPlane::New();
+      plane->SetOrigin(37.0, -42.0, 59.0);
+      plane->SetNormal(0.0, -1.0, 0.0);
+      vtkClipPolyData* clipper = vtkClipPolyData::New();
+      clipper->SetClipFunction(plane);
+      clipper->SetInput(polyDataSurface);
+      clipper->Update();
+      vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
+      writer->SetInput(clipper->GetOutput());
+      writer->SetFileName("surface_cut.vtk");
+      writer->Write();
+      writer->Delete();
+      clipper->Delete();
+      plane->Delete();
+   }
+   
+   //
    // Convert to vtk file to a brain model surface
    //
    try {
@@ -530,10 +611,22 @@ BrainModelVolumeToSurfaceConverter::generateVtkModel(const bool maxPolygonsFlag)
    }
    
    //
+   // Smooth the surface
+   //
+   vtkSmoothPolyDataFilter* smooth = vtkSmoothPolyDataFilter::New();
+   smooth->SetInput(clean2->GetOutput());
+   smooth->SetNumberOfIterations(10);
+   smooth->SetRelaxationFactor(0.2);
+   smooth->SetFeatureAngle(180.0);
+   smooth->FeatureEdgeSmoothingOff();
+   smooth->BoundarySmoothingOff();
+   smooth->SetConvergence(0);
+   
+   //
    // Compute normals on the surface
    //
    vtkPolyDataNormals* rawNormals = vtkPolyDataNormals::New();
-   rawNormals->SetInput(clean2->GetOutput());
+   rawNormals->SetInput(smooth->GetOutput());
    rawNormals->SplittingOff();
    rawNormals->ConsistencyOn();
    rawNormals->ComputePointNormalsOn();
@@ -557,6 +650,8 @@ BrainModelVolumeToSurfaceConverter::generateVtkModel(const bool maxPolygonsFlag)
    vtkModelFile->setModified();
    
    rawNormals->Delete();
+   smooth->Delete();
+   clean2->Delete();
    if (decimater != NULL) {
       decimater->Delete();
    }

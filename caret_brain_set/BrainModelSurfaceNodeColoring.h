@@ -43,47 +43,6 @@ class PaintFile;
 /// Class for coloring nodes in a "BrainModelSurface"
 class BrainModelSurfaceNodeColoring {
    public:
-      /// Primary Overlay Underlay Selections
-      enum OVERLAY_SELECTIONS {
-         OVERLAY_NONE,
-         OVERLAY_AREAL_ESTIMATION,
-         OVERLAY_COCOMAC,
-         OVERLAY_METRIC,
-         OVERLAY_PAINT,
-         OVERLAY_PROBABILISTIC_ATLAS,
-         OVERLAY_RGB_PAINT,
-         OVERLAY_SECTIONS,
-         OVERLAY_SHOW_CROSSOVERS,
-         OVERLAY_SHOW_EDGES,
-         OVERLAY_SURFACE_SHAPE,
-         OVERLAY_TOPOGRAPHY,
-         OVERLAY_GEOGRAPHY_BLENDING
-      };
-
-/*
-      /// Primary Overlay Underlay Selections
-      enum UNDERLAY_SELECTIONS {
-         UNDERLAY_NONE,
-         UNDERLAY_AREAL_ESTIMATION,
-         UNDERLAY_COCOMAC,
-         UNDERLAY_METRIC,
-         UNDERLAY_PAINT,
-         UNDERLAY_PROBABILISTIC_ATLAS,
-         UNDERLAY_RGB_PAINT,
-         UNDERLAY_SURFACE_SHAPE,
-         UNDERLAY_TOPOGRAPHY,
-         UNDERLAY_GEOGRAPHY_BLENDING
-      };
-*/
-
-      /// Color source for node
-      enum NODE_COLOR_SOURCE {
-         NODE_COLOR_SOURCE_MEDIAL_WALL_OVERRIDE,
-         NODE_COLOR_SOURCE_PRIMARY_OVERLAY,
-         NODE_COLOR_SOURCE_SECONDARY_OVERLAY,
-         NODE_COLOR_SOURCE_UNDERLAY
-      };
-      
       /// Constructor
       BrainModelSurfaceNodeColoring(BrainSet* bs);
       
@@ -100,65 +59,8 @@ class BrainModelSurfaceNodeColoring {
       void setNodeColor(const int model, const int index, const unsigned char rgb[3]);
       
       /// get the color source for a node
-      NODE_COLOR_SOURCE getNodeColorSource(const int model, const int index) const;
+      int getNodeColorSource(const int model, const int index) const;
             
-      /// get the geography blending
-      float getGeographyBlending() const { return geographyBlending; }
-      
-      /// set the geography blending
-      void setGeographyBlending(const float gb) { geographyBlending = gb; }
-      
-      /// get the opacity
-      float getOpacity() const { return opacity; }
-      
-      /// set the opacity
-      void setOpacity(const float op) { opacity = op; }
-      
-      /// get the primary overlay selection
-      OVERLAY_SELECTIONS getPrimaryOverlay(const int model) const;
-      
-      /// Set the primary overlay selection.
-      /// For the change to take place, updateNodeColors() must also be called.
-      void setPrimaryOverlay(const int model, const OVERLAY_SELECTIONS os);
-            
-      /// get the secondary overlay selection
-      OVERLAY_SELECTIONS getSecondaryOverlay(const int model) const;
-      
-      /// set the secondary overlay selection
-      /// For the change to take place, updateNodeColors() must also be called.
-      void setSecondaryOverlay(const int model, const OVERLAY_SELECTIONS os);
-      
-      /// get the underlay selection
-      OVERLAY_SELECTIONS getUnderlay(const int model) const;
-      
-      /// set the underlay selection
-      /// For the change to take place, updateNodeColors() must also be called.
-      void setUnderlay(const int model, const OVERLAY_SELECTIONS us);
-            
-      /// get overall lighting on
-      bool getLightingOn() const { return lightingOn; }
-      
-      /// set overall lighting on
-      void setLightingOn(const bool l) { lightingOn = l; }
-      
-      /// get primary overlay lighting on
-      bool getPrimaryOverlayLightingOn() const { return primaryOverlayLightingOn; }
-      
-      /// set primary overlay lighting on
-      void setPrimaryOverlayLightingOn(const bool l) { primaryOverlayLightingOn = l; }
-      
-      /// get secondary overlay lighting on
-      bool getSecondaryOverlayLightingOn() const { return secondaryOverlayLightingOn; }
-      
-      /// set secondary overlay lighting on
-      void setSecondaryOverlayLightingOn(const bool l) { secondaryOverlayLightingOn = l; }
-      
-      /// get underlay lighting on
-      bool getUnderlayLightingOn() const { return underlayLightingOn; }
-      
-      /// set underlay lighting on
-      void setUnderlayLightingOn(const bool l) { underlayLightingOn = l; }
-      
       /// match paint file names to node colors
       static void matchPaintNamesToNodeColorFile(BrainSet* bs, int paintsNodeColorIndex[],
                                           std::vector<QString>& paintNames);
@@ -178,9 +80,6 @@ class BrainModelSurfaceNodeColoring {
       /// create a scene (read display settings)
       void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
                
-      /// see if an overlay or underlay is of a specific type
-      bool isUnderlayOrOverlay(const OVERLAY_SELECTIONS  ol) const;
-                               
    private:
       /// class for storing colors associated with a node
       class NodeColor {
@@ -193,18 +92,8 @@ class BrainModelSurfaceNodeColoring {
             void reset() { r = g = b = -1; }
       };
 
-      /// coloring applied to node by primary overlay
-      NodeColor* overlayPrimaryNodeColors;
-      
-      /// coloring applied to nodes by secondary overlay
-      NodeColor* overlaySecondaryNodeColors;
-      
-      /// coloring applied to nodes by underlay
-      NodeColor* underlayNodeColors;
-      
       /// used to help apply colors to nodes
-      NodeColor* nodeColors;
-
+      std::vector<NodeColor> nodeColors;
 
       /// brain set being colored (DO NOT "delete" IT !)
       BrainSet* brainSet;
@@ -215,44 +104,17 @@ class BrainModelSurfaceNodeColoring {
       /// default color
       unsigned char defaultColor[3];
       
-      /// geography blending
-      float geographyBlending;
-      
       /// node colors
       std::vector<unsigned char> nodeColoring;
       
       /// node color source
-      std::vector<NODE_COLOR_SOURCE> nodeColorSource;
-      
-      /// opacity
-      float opacity;
-      
-      /// primary overlay
-      std::vector<OVERLAY_SELECTIONS> primaryOverlay;
-      
-      /// secondary overlay
-      std::vector<OVERLAY_SELECTIONS> secondaryOverlay;
-      
-      /// underlay
-      std::vector<OVERLAY_SELECTIONS> underlay;
+      std::vector<int> nodeColorSource;
       
       /// paint file for saving prob atlas paint assignment
       PaintFile* probAtlasThreshPaintFile;
       
       /// paint file column for saving prob atlas paint assignment
       int probAtlasThreshPaintColumn;
-      
-      /// overlay lighting on
-      bool lightingOn;
-      
-      /// lighting for primary overlay
-      bool primaryOverlayLightingOn;
-      
-      /// lighting for secondary overlay
-      bool secondaryOverlayLightingOn;
-      
-      /// lighting for underlay
-      bool underlayLightingOn;
       
       /// color palette for topography polar angle
       PaletteFile polarAngleTopographyPaletteFile;
@@ -280,7 +142,7 @@ class BrainModelSurfaceNodeColoring {
                                             const int sourceOffset);
       
       /// Assign areal estimation coloring
-      void assignArealEstimationColoring();
+      void assignArealEstimationColoring(const int overlayNumber);
       
       /// Assign cocomac coloring
       void assignCocomacColoring();
@@ -295,13 +157,14 @@ class BrainModelSurfaceNodeColoring {
       void assignEdgesColoring();
       
       /// Assign metric coloring
-      void assignMetricColoring();
+      void assignMetricColoring(const int overlayNumber);
       
       /// Assign none coloring
-      void assignNoneColoring();
+      void assignNoneColoring(const int nodeColoringOffset,
+                              const int nodeColorSourceOffset);
       
       /// assign paint coloring
-      void assignPaintColoring();
+      void assignPaintColoring(const int overlayNumber);
       
       /// Assign probabilistic coloring to a node.
       void assignProbabilisticColorToNode(const int n, const int paintsAreaColorIndex[]);
@@ -316,16 +179,17 @@ class BrainModelSurfaceNodeColoring {
       void assignProbabilisticColoring(const BrainModelSurface* bms);
 
       /// Assign RGB Paint coloring
-      void assignRgbPaintColoring(const bool underlayFlag);
+      void assignRgbPaintColoring(const int overlayNumber,
+                                  const bool underlayFlag);
       
       /// Assign section coloring
-      void assignSectionColoring();
+      void assignSectionColoring(const int overlayNumber);
       
       /// Surface shape coloring
-      void assignSurfaceShapeColoring();
+      void assignSurfaceShapeColoring(const int overlayNumber);
       
       /// Assign topography coloring
-      void assignTopographyColoring();
+      void assignTopographyColoring(const int overlayNumber);
       
       /// Assign topography polar angle coloring palette
       void assignTopographyPolarAnglePalette();

@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QComboBox;
@@ -39,7 +39,7 @@ class QSpinBox;
 class WuQWidgetGroup;
 
 /// Dialog used to set user preferences
-class GuiPreferencesDialog : public QtDialog {
+class GuiPreferencesDialog : public WuQDialog {
    Q_OBJECT
    
    public:

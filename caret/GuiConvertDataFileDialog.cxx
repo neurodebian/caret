@@ -47,7 +47,7 @@
  * constructor.
  */
 GuiConvertDataFileDialog::GuiConvertDataFileDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Convert Data Files");
    

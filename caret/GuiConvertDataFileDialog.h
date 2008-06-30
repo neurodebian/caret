@@ -30,13 +30,13 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QComboBox;
 class QListWidget;
 
 /// dialog for converting data files between various formats
-class GuiConvertDataFileDialog : public QtDialog {
+class GuiConvertDataFileDialog : public WuQDialog {
    Q_OBJECT
    
    public:

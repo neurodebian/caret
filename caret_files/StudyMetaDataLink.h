@@ -185,7 +185,6 @@ class StudyMetaDataLink {
       static const QString tagPageReferenceSubHeaderNumber;
       
    friend class CellBase;
-   friend class CellProjectionFileSaxReader;
    friend class StudyMetaDataLinkSet;
 };
 

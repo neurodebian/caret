@@ -193,7 +193,8 @@ DisplaySettingsWustlRegion::showScene(const SceneFile::Scene& scene, QString& /*
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsWustlRegion::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsWustlRegion::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    const WustlRegionFile* wrf = brainSet->getWustlRegionFile();
    

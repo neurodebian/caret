@@ -55,8 +55,9 @@
  * constructor.
  */
 GuiVolumeCreateDialog::GuiVolumeCreateDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Create Volume");
    
    //
@@ -430,7 +431,8 @@ GuiVolumeCreateDialog::done(int r)
                      true,
                      true);
       vf->setVolumeType(static_cast<VolumeFile::VOLUME_TYPE>(volumeTypeComboBox->currentIndex()));
-      if (vf->getVolumeType() == VolumeFile::VOLUME_TYPE_PAINT) {
+      if ((vf->getVolumeType() == VolumeFile::VOLUME_TYPE_PAINT) ||
+          (vf->getVolumeType() == VolumeFile::VOLUME_TYPE_PROB_ATLAS)) {
          vf->addRegionName("???");
       }
       vf->setFileName(name);
@@ -443,6 +445,9 @@ GuiVolumeCreateDialog::done(int r)
                            name,
                            true,
                            false);
+      if (vf->getVolumeType() == VolumeFile::VOLUME_TYPE_PROB_ATLAS) {
+         theMainWindow->getBrainSet()->synchronizeProbAtlasVolumeRegionNames();
+      }
                            
       //
       // Update GUI

@@ -28,6 +28,7 @@
 
 #include <QGlobalStatic>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLayout>
@@ -45,7 +46,7 @@
  * constructor.
  */
 GuiShellCommandWindow::GuiShellCommandWindow(QWidget* parent)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Shell Command Window");
    
@@ -77,15 +78,17 @@ GuiShellCommandWindow::GuiShellCommandWindow(QWidget* parent)
    //
    // layout for dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(commandOutputTextEdit);
    dialogLayout->addLayout(commandLayout);
    
    //
-   // turn off apply button and connect close button
-   //   
-   getApplyPushButton()->hide();
-   QObject::connect(getClosePushButton(), SIGNAL(clicked()),
+   // Dialog buttons
+   //
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
+   buttonBox->button(QDialogButtonBox::Close)->setAutoDefault(false);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
                     
    //

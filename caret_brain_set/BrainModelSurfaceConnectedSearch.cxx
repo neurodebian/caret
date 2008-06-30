@@ -11,14 +11,15 @@
  * Constructor.
  */
 BrainModelSurfaceConnectedSearch::BrainModelSurfaceConnectedSearch(BrainSet* bs, 
-                                       BrainModelSurface* bmsIn,
+                                       const BrainModelSurface* bmsIn,
                                        const int startNodeIn,
                                        const std::vector<int>* limitToTheseNodesIn)
-   : BrainModelAlgorithm(bs), limitToTheseNodes(limitToTheseNodesIn)
+   : BrainModelAlgorithm(bs), 
+     bms(bmsIn),
+     startNode(startNodeIn),
+     limitToTheseNodes(limitToTheseNodesIn),
+     numNodes(0)
 {
-   bms = bmsIn;
-   startNode = startNodeIn;
-   numNodes = 0;
 }
 
 /**

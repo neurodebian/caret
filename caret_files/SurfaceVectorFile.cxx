@@ -448,7 +448,7 @@ SurfaceVectorFile::setVector(const int node,
  * Read the contents of the file (header has already been read).
  */
 void 
-SurfaceVectorFile::readFileData(QFile& /*file*/, 
+SurfaceVectorFile::readFileData(QFile& file, 
                           QTextStream& stream,
                           QDataStream& binStream,
                           QDomElement& /*rootElement*/) throw (FileException)
@@ -512,6 +512,7 @@ SurfaceVectorFile::readFileData(QFile& /*file*/,
       }
    }
    
+
    switch (getFileReadType()) {
       case FILE_FORMAT_ASCII:
          for (int i = 0; i < numberOfNodes; i++) {
@@ -527,9 +528,17 @@ SurfaceVectorFile::readFileData(QFile& /*file*/,
          break;
       case FILE_FORMAT_BINARY:
          {
-            const int num = numberOfNodes * numberOfColumns * numberOfItemsPerColumn;
-            for (int i = 0; i < num; i++) {
-               binStream >> vectors[i];
+            //
+            // Needed for QT 4.2.2.
+            //
+            file.seek(stream.pos());
+            
+            for (int i = 0; i < numberOfNodes; i++) {
+               for (int j = 0; j < numberOfColumns; j++) {
+                  float xyz[3];
+                  binStream >> xyz[0] >> xyz[1] >> xyz[2];
+                  setVector(i, j, xyz);
+               }
             }
          }
          break;

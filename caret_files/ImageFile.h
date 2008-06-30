@@ -66,6 +66,12 @@ class ImageFile : public AbstractFile {
       void insertImage(const QImage& otherImage,
                        const int x,
                        const int y) throw (FileException);
+      
+      /// insert an image into another image
+      static void insertImage(const QImage& insertThisImage,
+                             QImage& intoThisImage,
+                             const int positionX,
+                             const int positionY) throw (FileException);
                        
       /// set the image
       void setImage(const QImage img) { image = img; }
@@ -76,6 +82,33 @@ class ImageFile : public AbstractFile {
       /// write the volume file
       void writeFile(const QString& filenameIn) throw (FileException);
       
+      /// crop an image by removing the background from the image
+      static void cropImageRemoveBackground(QImage& image,
+                                            const int marginSize,
+                                            const int backgroundColor[3]);
+                                            
+      /// find inclusive bounds (Left, top, right, bottom) of image object (pixel not background color)
+      static void findImageObject(const QImage& image,
+                                  const int backgroundColor[3],
+                                  int objectBoundsOut[4]); 
+      
+      /// add a margin to an image
+      static void addMargin(QImage& image,
+                            const int marginSize,
+                            const int backgroundColor[3]);
+                           
+      /// add a margin to an image
+      static void addMargin(QImage& image,
+                            const int marginSizeX,
+                            const int marginSizeY,
+                            const int backgroundColor[3]);
+                           
+      /// combine images retaining aspect and stretching and filling if needed
+      static void combinePreservingAspectAndFillIfNeeded(const std::vector<QImage>& images,
+                                                         const int numImagesPerRow,
+                                                         const int backgroundColor[3],
+                                                         QImage& imageOut);
+                                                        
    protected:
       /// Read the spec file data (should never be called)
       void readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,

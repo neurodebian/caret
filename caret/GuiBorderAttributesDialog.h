@@ -32,13 +32,13 @@
 
 #include "BorderFile.h"
 #include "BorderProjectionFile.h"
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLineEdit;
 
 /// This class creates the border attributes editor dialog
-class GuiBorderAttributesDialog : public QtDialog {
+class GuiBorderAttributesDialog : public WuQDialog {
    Q_OBJECT
     
    public:

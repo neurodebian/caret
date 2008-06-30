@@ -47,8 +47,12 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       FociFileToPalsProjector(BrainSet* brainSetIn,
                               FociProjectionFile* fociProjectionFileIn,
                               const int firstFocusIndexIn,
+                              const int lastFocusIndexIn,
                               const float projectOntoSurfaceAboveDistanceIn,
-                              const bool projectOntoSurfaceFlagIn);
+                              const bool projectOntoSurfaceFlagIn,
+                              const bool projectToCerebellumFlagIn,
+                              const float cerebralCutoffIn,
+                              const float cerebellumCutoffIn);
                           
       /// Destructor
       ~FociFileToPalsProjector();
@@ -57,7 +61,8 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       void execute() throw (BrainModelAlgorithmException);
               
       /// set the index of the first focus to project
-      void setFirstFocusIndex(const int firstFocusIndexIn);
+      void setFirstFocusIndex(const int firstFocusIndexIn,
+                              const int lastFocusIndexIn);
       
    protected:
       //
@@ -104,10 +109,11 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
             
       };
       
-      /// project a single cell 
+      // project a single cell 
       void projectFocus(CellProjection& cp,
                         BrainModelSurface* bms,
-                        BrainModelSurfacePointProjector* pointProjector);
+                        BrainModelSurfacePointProjector* pointProjector,
+                        const BrainModelSurface* searchSurface);
 
       // convert space names to identical spaces
       static void spaceNameConvert(QString& spaceName);
@@ -115,6 +121,18 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       // load the needed point projectors
       void loadNeededPointProjectors(const std::vector<PointProjector>& projectorsNeeded) throw (BrainModelAlgorithmException);
 
+      // find the surface for the specified space and structure
+      BrainModelSurface* findSearchSurface(const QString& spaceName,
+                                           const Structure::STRUCTURE_TYPE structure);
+                                           
+      // get distance of focus from a surface
+      float getDistanceToSurface(const CellProjection* cp,
+                                 const PointProjector* pp) const;
+                                 
+      // get point projector for space and structure
+      PointProjector* getPointProjector(const QString& spaceName,
+                                        const Structure::STRUCTURE_TYPE structure);
+                                              
       // spaces currently loaded
       std::vector<PointProjector*> pointProjectors;
       
@@ -123,6 +141,9 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       
       // the first focus that is to be projected
       int firstFocusIndex;
+      
+      // the last focus that is to be projected (if -1 do all)
+      int lastFocusIndex;
       
       // project onto surface distance
       float projectOntoSurfaceAboveDistance;
@@ -133,6 +154,15 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       /// atlases available for mapping foci
       std::vector<MapFmriAtlasSpecFileInfo> availableAtlases;
 
+      /// project to cerebellum flag
+      bool projectToCerebellumFlag;
+                                    
+      /// cerebral cortext cutoff
+      float cerebralCutoff;
+      
+      /// cerebellum cutoff
+      float cerebellumCutoff;
+      
       /// atlases need to be loaded flag
       bool atlasesDirectoryLoadedFlag;
 

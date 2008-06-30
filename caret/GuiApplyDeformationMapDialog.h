@@ -28,7 +28,7 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "DeformationMapFile.h"
 
@@ -43,12 +43,12 @@ class QRadioButton;
 class QDoubleSpinBox;
 
 /// Class for dialog that applies a deformation map
-class GuiApplyDeformationMapDialog : public QtDialog {
+class GuiApplyDeformationMapDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       /// Constructor
-      GuiApplyDeformationMapDialog(QWidget* parent, Qt::WFlags = 0);
+      GuiApplyDeformationMapDialog(QWidget* parent, Qt::WindowFlags = 0);
       
       /// Destructor
       ~GuiApplyDeformationMapDialog();

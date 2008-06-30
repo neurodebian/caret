@@ -67,6 +67,7 @@ GuiFilesModified::getAllFilesModified() const
       foci &&
       fociColor &&
       fociProjection &&
+      fociSearch &&
       geodesic &&
       images &&
       latLon &&
@@ -116,6 +117,7 @@ GuiFilesModified::setStatusForAll(const bool status)
    foci = status;
    fociColor = status;
    fociProjection = status;
+   fociSearch = status;
    geodesic = status;
    images = status;
    latLon = status;

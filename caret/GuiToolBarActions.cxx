@@ -41,9 +41,10 @@
  * mainWindowFlag is set if this tool bar is being added to Caret's main window.
  */
 GuiToolBarActions::GuiToolBarActions(GuiBrainModelOpenGL* brainModelOpenGLIn,
-                                     QWidget* parent)
-   : QObject(parent)
+                                     GuiToolBar* myParentToolBarIn)
+   : QObject(myParentToolBarIn)
 {
+    parentToolBar = myParentToolBarIn;
     brainModelOpenGL = brainModelOpenGLIn;
     
     viewModeAction = new QAction(this);
@@ -133,6 +134,14 @@ GuiToolBarActions::GuiToolBarActions(GuiBrainModelOpenGL* brainModelOpenGLIn,
     QObject::connect(yokeAction, SIGNAL(triggered(bool)),
                      this, SLOT(yokeSlot(bool)));
 
+    swapAction = new QAction(this);
+    swapAction->setText("Swap");
+    swapAction->setToolTip("Swap the brain model in this \n"
+                           "viewing window with the brain \n"
+                           "model in the main window.");
+    QAction::connect(swapAction, SIGNAL(triggered()),
+                     this, SLOT(swapSlot()));
+                     
     volumeUnderlayOnlyAction = new QAction(this);
     volumeUnderlayOnlyAction->setText("UO");
     volumeUnderlayOnlyAction->setCheckable(true);
@@ -262,6 +271,84 @@ GuiToolBarActions::yokeSlot(bool selected)
    GuiBrainModelOpenGL::updateAllGL(brainModelOpenGL);
 }
 
+/**
+ * called when swap button set.
+ */
+void 
+GuiToolBarActions::swapSlot()
+{
+   //
+   // Get brain model and transform from viewing window
+   //
+   BrainModel* myBrainModel = brainModelOpenGL->getDisplayedBrainModel();
+   if (myBrainModel == NULL) {
+      return;
+   }
+   const BrainModel::BRAIN_MODEL_VIEW_NUMBER myWindowNumber = 
+                                    parentToolBar->getViewWindowNumber();
+   const QString myViewTransformation = 
+      myBrainModel->getTransformationsAsString(myWindowNumber);
+   VolumeFile::VOLUME_AXIS myVolumeAxis;
+   int myVolumeSlices[3];
+   BrainModelVolume* myBrainModelVolume = dynamic_cast<BrainModelVolume*>(myBrainModel);
+   if (myBrainModelVolume != NULL) {
+      myVolumeAxis = myBrainModelVolume->getSelectedAxis(myWindowNumber);
+      myBrainModelVolume->getSelectedOrthogonalSlices(myWindowNumber, myVolumeSlices);
+   }
+     
+   //
+   // Get info about brain model in main window
+   //
+   const int mainWindowBrainModelIndex = theMainWindow->getBrainModelIndex();
+   BrainModel* mainWindowBrainModel = theMainWindow->getBrainModel();
+   if (mainWindowBrainModel == NULL) {
+      return;
+   }
+   const QString mainWindowTransformation =
+      mainWindowBrainModel->getTransformationsAsString(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
+   VolumeFile::VOLUME_AXIS mainWindowVolumeAxis;
+   int mainWindowVolumeSlices[3];
+   BrainModelVolume* mainWindowBrainModelVolume = dynamic_cast<BrainModelVolume*>(mainWindowBrainModel);
+   if (mainWindowBrainModelVolume != NULL) {
+      mainWindowVolumeAxis = mainWindowBrainModelVolume->getSelectedAxis(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
+      mainWindowBrainModelVolume->getSelectedOrthogonalSlices(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW, mainWindowVolumeSlices);
+   }
+      
+   //
+   // Put brain model in main window
+   //
+   if (myBrainModel != NULL) {
+      theMainWindow->displayBrainModelInMainWindow(myBrainModel);
+      myBrainModel->setTransformationsAsString(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW,
+                                               myViewTransformation);
+      if (myBrainModelVolume != NULL) {
+         myBrainModelVolume->setSelectedOrthogonalSlices(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW,
+                                                   myVolumeSlices);
+         myBrainModelVolume->setSelectedAxis(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW,
+                                             myVolumeAxis);
+      }
+   }
+   
+   //
+   // Put brain model in viewing window
+   //
+   if (parentToolBar != NULL) {
+      if (mainWindowBrainModelIndex >= 0) {
+         parentToolBar->setModelSelection(mainWindowBrainModelIndex);
+         mainWindowBrainModel->setTransformationsAsString(myWindowNumber,
+                                                         mainWindowTransformation);
+         if (mainWindowBrainModelVolume != NULL) {
+            mainWindowBrainModelVolume->setSelectedOrthogonalSlices(myWindowNumber,
+                                                             mainWindowVolumeSlices);
+            mainWindowBrainModelVolume->setSelectedAxis(myWindowNumber,
+                                                        mainWindowVolumeAxis);
+         }
+      }
+   }
+   
+   GuiBrainModelOpenGL::updateAllGL();
+}
+      
 /**
  * called when underlay only button toggled.
  */

@@ -27,6 +27,7 @@
 #ifdef Q_OS_WIN32
 #define NOMINMAX  // needed for min/max in algorithm & numeric_limits
 #endif
+#include <QTextStream>
 
 #include <limits>
 #include <set>
@@ -66,6 +67,8 @@ DisplaySettingsCells::DisplaySettingsCells(BrainSet* bs)
    displayCellsWithoutMatchingColor = true;
    displayCellsWithoutLinkToStudyWithKeywords = true;
    displayCellsWithoutLinkToStudyWithTableSubHeader = true;
+   displayCellsOnlyIfInSearch = true;
+   //displayKeywordsForOnlyDisplayedCells = false;
    
    reset();
 }
@@ -98,24 +101,12 @@ DisplaySettingsCells::update()
  * determine which volume cells should be displayed (set's cell display flags).
  */
 void 
-DisplaySettingsCells::determineDisplayedVolumeCells(const bool fociFlag)
+DisplaySettingsCells::determineDisplayedVolumeCells()
 {
-   ColorFile* colorFile = NULL;
-   if (fociFlag) {
-      colorFile = brainSet->getFociColorFile();
-   }
-   else {
-      colorFile = brainSet->getCellColorFile();
-   }
+   const ColorFile* colorFile = brainSet->getCellColorFile();
    const int numColors = colorFile->getNumberOfColors();
    
-   CellFile* cf = NULL;
-   if (fociFlag) {
-      cf = brainSet->getVolumeFociFile();
-   }
-   else {
-      cf = brainSet->getVolumeCellFile();
-   }
+   CellFile* cf = brainSet->getVolumeCellFile();
 
    const int numCells = cf->getNumberOfCells();
    
@@ -179,7 +170,9 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
 {
    DisplaySettingsSection* dss = brainSet->getDisplaySettingsSection();
    
-   determineDisplayedVolumeCells(fociFlag);
+   if (fociFlag == false) {
+      determineDisplayedVolumeCells();
+   }
     
    ColorFile* colorFile = NULL;
    if (fociFlag) {
@@ -210,7 +203,7 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
       SectionFile* sectionFile = brainSet->getSectionFile();
       if (sectionFile != NULL) {
          bool checkSections = false;
-         const int col = dss->getSelectedColumn();
+         const int col = dss->getSelectedDisplayColumn(-1, -1);
          if ((col >= 0) && (col < sectionFile->getNumberOfColumns())) {
             switch (dss->getSelectionType()) {
                case DisplaySettingsSection::SELECTION_TYPE_SINGLE:
@@ -352,11 +345,28 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
       }
       
       //
+      // Check foci search
+      //
+      bool inSearchFlag = true;
+      if (fociFlag) {
+         if (displayCellsOnlyIfInSearch) {
+            inSearchFlag = cp->getInSearchFlag();
+         }
+      }
+      
+      //
       // Check foci keywords
       //
       bool keywordDisplayFlag = true;
       if (fociFlag) {
+         //
+         // Initially set as if study has not keywords
+         //
          keywordDisplayFlag = displayCellsWithoutLinkToStudyWithKeywords;
+         
+         //
+         // Get links
+         //
          const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
          bool done = false;
          for (int mm = 0; mm < smdls.getNumberOfStudyMetaDataLinks(); mm++) {
@@ -373,7 +383,7 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
                      keywordDisplayFlag = false;
                      break;
                   case DisplaySettingsStudyMetaData::KEYWORD_STATUS_HAS_NO_KEYWORDS:
-                     keywordDisplayFlag = true;
+                     keywordDisplayFlag = displayCellsWithoutLinkToStudyWithKeywords;
                      break;
                }
             }
@@ -388,6 +398,9 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
       //
       bool subHeaderDisplayFlag = true;
       if (fociFlag) {
+         //
+         // Initially set as if study has no table subheader
+         //
          subHeaderDisplayFlag = displayCellsWithoutLinkToStudyWithTableSubHeader;
          const StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
          for (int mm = 0; mm < smdls.getNumberOfStudyMetaDataLinks(); mm++) {
@@ -421,6 +434,7 @@ DisplaySettingsCells::determineDisplayedCells(const bool fociFlag)
                          colorDisplayFlag &&
                          classDisplayFlag &&
                          nameDisplayFlag &&
+                         inSearchFlag &&
                          sectionDisplayFlag &&
                          keywordDisplayFlag &&
                          subHeaderDisplayFlag);
@@ -530,6 +544,12 @@ DisplaySettingsCells::showScene(const SceneFile::Scene& scene, QString& errorMes
             else if (infoName == "displayCellsWithoutLinkToStudyWithTableSubHeader") {
                displayCellsWithoutLinkToStudyWithTableSubHeader = si->getValueAsBool();
             }
+            else if (infoName == "displayCellsOnlyIfInSearch") {
+               displayCellsOnlyIfInSearch = si->getValueAsBool();
+            }
+            else if (infoName == "displayKeywordsForOnlyDisplayedCells") {
+               //displayKeywordsForOnlyDisplayedCells = si->getValueAsBool();
+            }
             else if (infoName == "color") {
                if (fociFlag) {
                   showSceneColorFile(*si, brainSet->getFociColorFile(),
@@ -612,6 +632,32 @@ DisplaySettingsCells::showScene(const SceneFile::Scene& scene, QString& errorMes
                   }
                }
             }
+            else if (infoName == "CellNumbersInSearch") {
+               QString cellsInSearchString = si->getValueAsString();
+               QTextStream stream(&cellsInSearchString);
+               int numCellsInSearch;
+               stream >> numCellsInSearch;
+               if (numCellsInSearch == numCellProj) {
+                  //
+                  // Initially, declare all cells NOT in search
+                  //
+                  for (int m = 0; m < numCellProj; m++) {
+                     CellProjection* cp = fidCells->getCellProjection(m);
+                        cp->setInSearchFlag(false);
+                  }
+                  
+                  //
+                  // Identify all cells in search
+                  //
+                  while (stream.atEnd() == false) {
+                     int cellNum = -1;
+                     stream >> cellNum;
+                     if (cellNum >= 0) {
+                        fidCells->getCellProjection(cellNum)->setInSearchFlag(true);
+                     }
+                  }
+               }
+            }
          }
       }
    }
@@ -621,7 +667,8 @@ DisplaySettingsCells::showScene(const SceneFile::Scene& scene, QString& errorMes
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsCells::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsCells::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    const bool fociFlag = (dynamic_cast<DisplaySettingsFoci*>(this) != NULL);
    
@@ -658,7 +705,8 @@ DisplaySettingsCells::saveScene(SceneFile::Scene& scene, const bool onlyIfSelect
    sc.addSceneInfo(SceneFile::SceneInfo("displayCellsWithoutMatchingColor", displayCellsWithoutMatchingColor));     
    sc.addSceneInfo(SceneFile::SceneInfo("displayCellsWithoutLinkToStudyWithKeywords", displayCellsWithoutLinkToStudyWithKeywords));     
    sc.addSceneInfo(SceneFile::SceneInfo("displayCellsWithoutLinkToStudyWithTableSubHeader", displayCellsWithoutLinkToStudyWithTableSubHeader));     
-
+   sc.addSceneInfo(SceneFile::SceneInfo("displayCellsOnlyIfInSearch", displayCellsOnlyIfInSearch));
+   //sc.addSceneInfo(SceneFile::SceneInfo("displayKeywordsForOnlyDisplayedCells", displayKeywordsForOnlyDisplayedCells));
    if (fociFlag) {
       saveSceneColorFile(sc, "color", brainSet->getFociColorFile());
    }
@@ -713,6 +761,39 @@ DisplaySettingsCells::saveScene(SceneFile::Scene& scene, const bool onlyIfSelect
          sc.addSceneInfo(SceneFile::SceneInfo("HighlightName",
                                               *iter,
                                               *iter));
+      }
+   }
+   
+   //
+   // Cell in search flags
+   //
+   if (fociFlag && (fidCells != NULL)) {
+      //
+      // Only add to scene if there are cells that are NOT in the search
+      //
+      bool allInSearch = true;
+      const int num = fidCells->getNumberOfCellProjections();
+      for (int i = 0; i < num; i++) {
+         const CellProjection* cp = fidCells->getCellProjection(i);
+         if (cp->getInSearchFlag() == false) {
+            allInSearch = false;
+            break;
+         }
+      }
+      
+      if (allInSearch == false) {
+         // 
+         // Create a string containing the TOTAL number of cells followed
+         // by a list of cell numbers in the search
+         //
+         QString s(QString::number(num));
+         for (int i = 0; i < num; i++) {
+            const CellProjection* cp = fidCells->getCellProjection(i);
+            if (cp->getInSearchFlag()) {
+               s += (" " + QString::number(i));
+            }
+         }
+         sc.addSceneInfo(SceneFile::SceneInfo("CellNumbersInSearch", s));
       }
    }
    

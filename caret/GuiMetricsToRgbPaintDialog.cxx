@@ -48,7 +48,7 @@
  * Constructor
  */
 GuiMetricsToRgbPaintDialog::GuiMetricsToRgbPaintDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Metrics to RGB Paint");
    inhibitUpdate = false;

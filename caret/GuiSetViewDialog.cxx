@@ -43,8 +43,9 @@
 GuiSetViewDialog::GuiSetViewDialog(QWidget* parent, 
                                    BrainModel* brainModelIn,
                                    const int viewNumberIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    creatingDialog = true;
    
    brainModel = brainModelIn;

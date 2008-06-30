@@ -39,6 +39,42 @@
 #undef __STRING_UTILITIES_MAIN_H__
 
 /**
+ * sort elements case insensitive.
+ */
+static bool
+lessThanCaseInsensitive(const QString& s1, const QString& s2) 
+{
+   return (QString::compare(s1, s2, Qt::CaseInsensitive) < 0);
+}
+static bool
+compareCaseInsensitive(const QString& s1, const QString& s2) 
+{
+   return (QString::compare(s1, s2, Qt::CaseInsensitive) == 0);
+}
+void 
+StringUtilities::sortCaseInsensitive(std::vector<QString>& elements,
+                                     const bool reverseOrderFlag,
+                                     const bool removeDuplicatesFlag)
+{
+   std::sort(elements.begin(), 
+             elements.end(), 
+             lessThanCaseInsensitive);
+   
+   if (removeDuplicatesFlag) {
+      std::vector<QString>::iterator it = std::unique(elements.begin(), 
+                                                      elements.end(),
+                                                      compareCaseInsensitive);
+      if (it != elements.end()) {
+         elements.resize(it - elements.begin());
+      }
+   }
+
+   if (reverseOrderFlag) {
+      std::reverse(elements.begin(), elements.end());
+   }   
+}
+
+/**
  * replace part of a string
  */
 QString

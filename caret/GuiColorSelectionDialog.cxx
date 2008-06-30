@@ -53,9 +53,10 @@ GuiColorSelectionDialog::GuiColorSelectionDialog(QWidget* parent,
                                                  const bool showPointSize,
                                                  const bool showLineSize,
                                                  const bool showSymbol) :
-   QtDialog(parent, true)
+   WuQDialog(parent)
 
 {
+   setModal(true);
    setWindowTitle(title);
    
    //

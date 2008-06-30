@@ -46,8 +46,9 @@ GuiCommunicatorClientConnectDialog::GuiCommunicatorClientConnectDialog(QWidget* 
                                                            const bool defaultRequestUpdates,
                                                            const bool allowUserToEditDataPort,
                                                            const bool allowUserToEditRequestUpdates)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    QString caption("Connect to ");
    caption.append(programName);
    setWindowTitle(caption);

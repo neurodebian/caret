@@ -70,44 +70,52 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::~BrainModelSurfaceROICreateBorder
 void 
 BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainModelAlgorithmException)
 {
-   const int numNodesInROI = surfaceROI->getNumberOfNodesSelected();
-   
-   if (numNodesInROI == 1) {
-      throw BrainModelAlgorithmException("There is only one node, the starting node, in the ROI.");
-   }
-   
-   const int numNodes = bms->getNumberOfNodes();
-   
-   border.clearLinks();
-   
    //
    // Check Inputs
    //
    if (borderName.isEmpty()) {
       throw BrainModelAlgorithmException("Name for border is empty.");
    }
+
+   const int numNodesInROI = operationSurfaceROI->getNumberOfNodesSelected();
+   
+   if (numNodesInROI == 1) {
+      throw BrainModelAlgorithmException("There is only one node, the starting node, in the ROI "
+                                         " border named " + borderName);
+   }
+   
+   const int numNodes = bms->getNumberOfNodes();
+   
+   border.clearLinks();
+   
    
    if (borderStartNode >= 0) {
       if (borderStartNode >= numNodes) {
-         throw BrainModelAlgorithmException("Starting node is invalid.");
+         throw BrainModelAlgorithmException("Starting node is invalid for "
+                                            + borderName + ".");
       }
-      if (surfaceROI->getNodeSelected(borderStartNode) == false) {
-         throw BrainModelAlgorithmException("Starting node is not in the ROI.");
+      if (operationSurfaceROI->getNodeSelected(borderStartNode) == false) {
+         throw BrainModelAlgorithmException("Starting node is not in the ROI for "
+                                            + borderName + ".");
       }
    }
    
    if (borderEndNode >= 0) {
       if (borderEndNode >= numNodes) {
-         throw BrainModelAlgorithmException("Ending node is invalid.");
+         throw BrainModelAlgorithmException("Ending node is invalid for "
+                                            + borderName + ".");
       }
-      if (surfaceROI->getNodeSelected(borderEndNode) == false) {
-         throw BrainModelAlgorithmException("Ending node is not in the ROI.");
+      if (operationSurfaceROI->getNodeSelected(borderEndNode) == false) {
+         throw BrainModelAlgorithmException("Ending node is not in the ROI for "
+                                            + borderName + ".");
       }
       if (borderStartNode < 0) {
-         throw BrainModelAlgorithmException("If the end node is specified, the start node must also be specified");
+         throw BrainModelAlgorithmException("If the end node is specified, the start node must also be specified for "
+                                            + borderName + ".");
       }
       if (borderStartNode == borderEndNode) {
-         throw BrainModelAlgorithmException("Starting and ending node are the same.");
+         throw BrainModelAlgorithmException("Starting and ending node are the same for "
+                                            + borderName + ".");
       }
    }
    
@@ -125,7 +133,7 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainMo
       // Just pick the first selected node to use as the starting node
       //
       for (int i = 0; i < numNodes; i++) {
-         if (surfaceROI->getNodeSelected(i)) {
+         if (operationSurfaceROI->getNodeSelected(i)) {
             borderStartNode = i;
             break;
          }
@@ -155,7 +163,7 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainMo
                                          -2,
                                          "geodesic-column-name",
                                          borderStartNode,
-                                         surfaceROI);
+                                         operationSurfaceROI);
       geodesic.execute();
       
       //
@@ -163,7 +171,8 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainMo
       //
       if ((geodesicFile.getNumberOfNodes() != numNodes) ||
           (geodesicFile.getNumberOfColumns() != 1)) {
-         throw BrainModelAlgorithmException("PROGRAM ERROR: Geodesic distance file was not properly created.");
+         throw BrainModelAlgorithmException("PROGRAM ERROR: Geodesic distance file was not properly created for "
+                                            + borderName + ".");
       }
       
       //
@@ -185,7 +194,8 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainMo
       if (iter == 1) {
          borderStartNode = furthestNode;
          if (borderStartNode < 0) {
-            throw BrainModelAlgorithmException("Unable to determine starting node for sulcus.");
+            throw BrainModelAlgorithmException("Unable to determine starting node for "
+                                            + borderName + ".");
          }
          if (DebugControl::getDebugOn()) {
             std::cout << "Starting node is " << borderStartNode << std::endl;
@@ -203,7 +213,8 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainMo
             borderEndNode = furthestNode;
             
             if (borderEndNode < 0) {
-               throw BrainModelAlgorithmException("Unable to determine the ending node for the border.");
+               throw BrainModelAlgorithmException("Unable to determine the ending node for "
+                                            + borderName + ".");
             }
             
             if (DebugControl::getDebugOn()) {
@@ -217,7 +228,8 @@ BrainModelSurfaceROICreateBorderUsingGeodesic::executeOperation() throw (BrainMo
          if (geodesicFile.getNodeParent(borderEndNode, 0) < 0) {
             throw BrainModelAlgorithmException(
                     "CREATE BORDER ERROR: Start and end nodes are not "
-                                               "connected in the ROI.");
+                                               "connected in the ROI for "
+                                            + borderName + ".");
          }
          
          //

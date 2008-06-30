@@ -29,7 +29,7 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QComboBox;
@@ -37,7 +37,7 @@ class QLineEdit;
 class QTextEdit;
 
 /// Dialog for adding cells to a surface
-class GuiAddCellsDialog : public QtDialog {
+class GuiAddCellsDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -48,7 +48,7 @@ class GuiAddCellsDialog : public QtDialog {
       };
       
       /// Constructor
-      GuiAddCellsDialog(const DIALOG_MODE dm, QWidget* parent = 0, bool modal = false, Qt::WFlags f = 0);
+      GuiAddCellsDialog(const DIALOG_MODE dm, QWidget* parent = 0, bool modalFlag = false, Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiAddCellsDialog();

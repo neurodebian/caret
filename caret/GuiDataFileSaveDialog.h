@@ -66,8 +66,14 @@ class GuiDataFileSaveDialog : public QDialog {
       // select the image file for saving
       void selectImageFile(const ImageFile* imageFile);
       
+      // select a file
+      void selectFile(AbstractFile* af);
+      
       // get the file filter
       QString getFileTypeFilter() const;
+      
+      // get the selected file name
+      QString getSelectedFileName() const;
       
    protected slots:
       // called when file name line edit changed
@@ -299,6 +305,9 @@ class GuiDataFileSaveDialog : public QDialog {
       
       /// foci right surface selection combo box
       GuiBrainModelSelectionComboBox* fociRightSurfaceSelectionComboBox;
+      
+      /// foci cerebellum surface selection combo box
+      GuiBrainModelSelectionComboBox* fociCerebellumSurfaceSelectionComboBox;
       
       /// image selection combo box
       QComboBox* imageSelectionComboBox;

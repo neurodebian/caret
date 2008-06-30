@@ -35,6 +35,7 @@
 #include <QFileInfo>
 #include <QRegExp>
 #include <QStringList>
+#include <QTextStream>
 
 #include "Basename.h"
 #include "DebugControl.h"
@@ -1208,5 +1209,68 @@ FileUtilities::temporaryDirectory()
    return tempDir;
    
 */
+}
+
+/**
+ * see if a file contains the specified text.
+ */
+bool 
+FileUtilities::findTextInFile(const QString& fileName,
+                              const QString& searchText,
+                              const bool caseSensitiveFlag) 
+{
+   Qt::CaseSensitivity caseSensative = Qt::CaseInsensitive;
+   if (caseSensitiveFlag) {
+      caseSensative = Qt::CaseSensitive;
+   }
+   
+   const int searchLen = searchText.length();
+   if (searchLen <= 0) {
+      return false;
+   }
+   
+   QFile file(fileName);
+   if (file.open(QFile::ReadOnly)) {
+      const int numChars = 4096;
+      QString lastText;
+      
+      QTextStream stream(&file);
+      while (true) {
+         //
+         // Done ?
+         //
+         if (stream.atEnd()) {
+            return false;
+         }
+         
+         //
+         // Read from file
+         //
+         const QString someText = stream.read(numChars);
+         
+         //
+         // Done if no more data to read
+         //
+         if (someText.length() <= 0) {
+            return false;
+         }
+         
+         //
+         // Need to add in some previous text in case search text straddles old and new
+         //
+         const QString allText = lastText + someText;
+         if (allText.contains(searchText, caseSensative)) {
+            file.close();
+            return true;
+         }
+         
+         //
+         // text in case search text straddles old and newly read data
+         //
+         lastText = someText.right(searchLen);
+      }
+   }
+   
+   return false;
 }
 

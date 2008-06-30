@@ -108,7 +108,7 @@ BrainModelIdentification::getIdentificationTextForCell(BrainModelOpenGL* openGL,
    //
    // Turn on all but node
    //
-   idFilter.allOff();
+   idFilter.allOff(false);
    setDisplayCellInformation(true);
    
    //
@@ -144,7 +144,7 @@ BrainModelIdentification::getIdentificationTextForFocus(BrainModelOpenGL* openGL
    //
    // Turn on all but node
    //
-   idFilter.allOff();
+   idFilter.allOff(false);
    setDisplayFociInformation(true);
    
    //
@@ -180,7 +180,7 @@ BrainModelIdentification::getIdentificationTextForBorder(BrainModelOpenGL* openG
    //
    // Turn on all but node
    //
-   idFilter.allOff();
+   idFilter.allOff(false);
    setDisplayBorderInformation(true);
    
    //
@@ -295,6 +295,16 @@ BrainModelIdentification::getIdentificationText(BrainModelOpenGL* openGLIn,
    
    QString idString;
    
+   if (getDisplayFociInformation()) {
+      idString += getIdentificationTextForFoci();
+      idString += getIdentificationTextForTransformFoci();
+   }
+
+   if (getDisplayCellInformation()) {
+      idString += getIdentificationTextForCellProjection();
+      idString += getIdentificationTextForTransformCell();
+   }   
+   
    if (getDisplayNodeInformation()) {
       idString += getIdentificationTextForNode();
    }
@@ -303,22 +313,7 @@ BrainModelIdentification::getIdentificationText(BrainModelOpenGL* openGLIn,
       idString += getIdentificationTextForSurfaceBorder();
    }
    
-   if (getDisplayCellInformation()) {
-      idString += getIdentificationTextForCellProjection();
-      idString += getIdentificationTextForTransformCell();
-   }   
-   
-   if (getDisplayFociInformation()) {
-      idString += getIdentificationTextForFoci();
-      idString += getIdentificationTextForTransformFoci();
-   }
    idString += getIdentificationTextForVtkModel();
-   
-   if (getDisplayContourInformation()) {
-      idString += getIdentificationTextForContour();
-      idString += getIdentificationTextForContourCell();
-   }
-   idString += getIdentificationTextForTransformContourCell();
    
    if (getDisplayVoxelInformation()) {
       idString += getIdentificationTextForVoxel();
@@ -331,6 +326,24 @@ BrainModelIdentification::getIdentificationText(BrainModelOpenGL* openGLIn,
    idString += getIdentificationTextForPalette(true);   
    idString += getIdentificationTextForPalette(false);   
    
+   if (getDisplayContourInformation()) {
+      idString += getIdentificationTextForContour();
+      idString += getIdentificationTextForContourCell();
+   }
+   
+   idString += getIdentificationTextForTransformContourCell();
+   
+/*
+   if (idString.isEmpty() == false) {
+      if (enableHtml) {
+         idString.insert(0, "<hr><br>");
+      }
+      else {
+         idString.insert(0, QString(60, '-') + "\n");
+      }
+   }
+*/
+
    return idString;
 }
 
@@ -512,12 +525,14 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
          const int numCols = aef->getNumberOfColumns();
          if (numCols > 0) {
             DisplaySettingsArealEstimation* dsae = brainSet->getDisplaySettingsArealEstimation();
-            const int selectedColumn = dsae->getSelectedColumn(brainModelIndex);
+            //const int selectedColumn = dsae->getSelectedDisplayColumn(brainModelIndex);
+            std::vector<bool> selectedColumnFlags;
+            dsae->getSelectedColumnFlags(brainModelIndex, selectedColumnFlags);
             
             for (int i = 0; i < numCols; i++) {
                idString += (tagIndentation
                             + "Areal Estimation: ");
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldStart;
                }
                idString += (aef->getColumnName(i)
@@ -531,22 +546,23 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                                + QString::number(prob[j], 'f', significantDigits)
                                + "  ");
                }
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldEnd;
                }
                idString += tagNewLine;
             }
 
-            if ((selectedColumn >= 0) &&
-                (selectedColumn < aef->getNumberOfColumns())) {
-               //
-               // Study Meta Data from Study Metadata File
-               //
-               const StudyMetaDataLinkSet smdls = aef->getColumnStudyMetaDataLinkSet(selectedColumn);
-               StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
-               idString += getIdentificationTextForStudies(smdf,
-                                                           smdls,
-                                                           true);
+            for (int i = 0; i < numCols; i++) {
+               if (selectedColumnFlags[i]) {
+                  //
+                  // Study Meta Data from Study Metadata File
+                  //
+                  const StudyMetaDataLinkSet smdls = aef->getColumnStudyMetaDataLinkSet(i);
+                  StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+                  idString += getIdentificationTextForStudies(smdf,
+                                                              smdls,
+                                                              true);
+               }
             }
          }
       }
@@ -554,10 +570,8 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
       //
       // CoCoMac Information
       //
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if ((bsnc->getPrimaryOverlay(brainModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
-          (bsnc->getSecondaryOverlay(brainModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
-          (bsnc->getUnderlay(brainModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC)) {
+      if (brainSet->isASurfaceOverlay(brainModelIndex,
+                        BrainModelSurfaceOverlay::OVERLAY_COCOMAC)) {
          DisplaySettingsCoCoMac* dsc = brainSet->getDisplaySettingsCoCoMac();
          dsc->setSelectedNode(nodeNumber);
          idString += htmlTranslate(dsc->getIDInfo());
@@ -624,44 +638,36 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
          const int numCols = mf->getNumberOfColumns();
          if (numCols > 0) {
             DisplaySettingsMetric* dsm = brainSet->getDisplaySettingsMetric();
-            const int selectedColumn = dsm->getSelectedDisplayColumn(brainModelIndex);
+            //const int selectedColumn = dsm->getSelectedDisplayColumn(brainModelIndex);
+            std::vector<bool> selectedColumnFlags;
+            dsm->getSelectedColumnFlags(brainModelIndex, selectedColumnFlags);
             
             idString += (tagIndentation
                          + "Metric: ");
             for (int i = 0; i < mf->getNumberOfColumns(); i++) {
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldStart;
                }
                idString += (QString::number(mf->getValue(nodeNumber, i), 'f', significantDigits)
                             + " ");
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldEnd;
                }
             }
             idString += tagNewLine;
             
-            if ((selectedColumn >= 0) &&
-                (selectedColumn < mf->getNumberOfColumns()) &&
-                (mf->getValue(nodeNumber, selectedColumn) != 0.0)) {
-               //
-               // Study Meta Data from Study Metadata File
-               //
-               const StudyMetaDataLinkSet smdls = mf->getColumnStudyMetaDataLinkSet(selectedColumn);
-               StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
-               idString += getIdentificationTextForStudies(smdf,
-                                                           smdls,
-                                                           true);
-/*
-               const int smdIndex = smdf->getStudyIndexFromLink(smdl);
-               if ((smdIndex >= 0) &&
-                   (smdIndex < smdf->getNumberOfStudyMetaData())) {
-                  const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
-                  if (smd != NULL) {
-                     idString += getIdentificationTextForStudy(smd, smdIndex, &smdl);
-                     idString += getIdentificationTextForMetaAnalysisStudies(smd);
-                  }
+            for (int i = 0; i < numCols; i++) {
+               if ((selectedColumnFlags[i]) &&
+                   (mf->getValue(nodeNumber, i) != 0.0)) {
+                  //
+                  // Study Meta Data from Study Metadata File
+                  //
+                  const StudyMetaDataLinkSet smdls = mf->getColumnStudyMetaDataLinkSet(i);
+                  StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+                  idString += getIdentificationTextForStudies(smdf,
+                                                              smdls,
+                                                              true);
                }
-*/
             }
          }
       }
@@ -674,59 +680,51 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
          const int numCols = pf->getNumberOfColumns();
          if (numCols > 0) {
             DisplaySettingsPaint* dsp = brainSet->getDisplaySettingsPaint();
-            const int selectedPaintColumn = dsp->getSelectedColumn(brainModelIndex);
+            //const int selectedPaintColumn = dsp->getSelectedDisplayColumn(brainModelIndex);
+            std::vector<bool> selectedColumnFlags;
+            dsp->getSelectedColumnFlags(brainModelIndex, selectedColumnFlags);
             
             idString += (tagIndentation
                          + "Paint: ");
             for (int i = 0; i < numCols; i++) {
                const int paintIndex = pf->getPaint(nodeNumber, i);
-               if (i == selectedPaintColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldStart;
                }
                idString += linkToVocabulary(brainSet, pf->getPaintNameFromIndex(paintIndex));
-               if (i == selectedPaintColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldEnd;
                }
                idString += " ";
             }
             idString += tagNewLine;
             
-            if ((selectedPaintColumn >= 0) &&
-                (selectedPaintColumn < pf->getNumberOfColumns())) {
-               //
-               // Is this an "unassigned" paint
-               //
-               bool showMetaDataFlag = true;
-               const int paintIndex = pf->getPaint(nodeNumber, selectedPaintColumn);
-               if ((paintIndex >= 0) &&
-                   (paintIndex < pf->getNumberOfPaintNames())) {
-                  const QString paintName = pf->getPaintNameFromIndex(paintIndex);
-                  if (paintName.startsWith("?")) {
-                     showMetaDataFlag = false;
+            for (int i = 0; i < numCols; i++) {
+               if (selectedColumnFlags[i]) {
+                  //
+                  // Is this an "unassigned" paint
+                  //
+                  bool showMetaDataFlag = true;
+                  const int paintIndex = pf->getPaint(nodeNumber, i);
+                  if ((paintIndex >= 0) &&
+                      (paintIndex < pf->getNumberOfPaintNames())) {
+                     const QString paintName = pf->getPaintNameFromIndex(paintIndex);
+                     if (paintName.startsWith("?")) {
+                        showMetaDataFlag = false;
+                     }
+                  }
+                  
+                  //
+                  // Study Meta Data from Study Metadata File
+                  //
+                  if (showMetaDataFlag) {
+                     const StudyMetaDataLinkSet smdls = pf->getColumnStudyMetaDataLinkSet(i);
+                     StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+                     idString += getIdentificationTextForStudies(smdf,
+                                                                 smdls,
+                                                                 true);
                   }
                }
-               
-               //
-               // Study Meta Data from Study Metadata File
-               //
-               if (showMetaDataFlag) {
-                  const StudyMetaDataLinkSet smdls = pf->getColumnStudyMetaDataLinkSet(selectedPaintColumn);
-                  StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
-                  idString += getIdentificationTextForStudies(smdf,
-                                                              smdls,
-                                                              true);
-               }
-/*
-               const int smdIndex = smdf->getStudyIndexFromLink(smdl);
-               if ((smdIndex >= 0) &&
-                   (smdIndex < smdf->getNumberOfStudyMetaData())) {
-                  const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
-                  if (smd != NULL) {
-                     idString += getIdentificationTextForStudy(smd, smdIndex, &smdl);
-                     idString += getIdentificationTextForMetaAnalysisStudies(smd);
-                  }
-               }
-*/
             }
          }
       }
@@ -767,11 +765,14 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
          const int numCols = rpf->getNumberOfColumns();
          if (numCols > 0) {
             DisplaySettingsRgbPaint* dsrp = brainSet->getDisplaySettingsRgbPaint();
-            const int selectedColumn = dsrp->getSelectedColumn(brainModelIndex);
+            //const int selectedColumn = dsrp->getSelectedDisplayColumn(brainModelIndex);
+            std::vector<bool> selectedColumnFlags;
+            dsrp->getSelectedColumnFlags(brainModelIndex, selectedColumnFlags);
+            
             for (int i = 0; i < numCols; i++) {
                idString += (tagIndentation
                             + "RGB Paint: ");
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString + tagBoldStart;
                }
                float r, g, b;
@@ -779,9 +780,11 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                idString += (htmlTranslate(rpf->getColumnName(i))
                             + " "
                             + QString::number(r, 'f', significantDigits)
+                            + " "
                             + QString::number(g, 'f', significantDigits)
+                            + " "
                             + QString::number(b, 'f', significantDigits));
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldEnd;
                }
                idString += tagNewLine;
@@ -814,43 +817,35 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
          const int numCols = ssf->getNumberOfColumns();
          if (numCols > 0) {
             DisplaySettingsSurfaceShape* dss = brainSet->getDisplaySettingsSurfaceShape();
-            const int selectedColumn = dss->getSelectedDisplayColumn(brainModelIndex);
+            //const int selectedColumn = dss->getSelectedDisplayColumn(brainModelIndex);
+            std::vector<bool> selectedColumnFlags;
+            dss->getSelectedColumnFlags(brainModelIndex, selectedColumnFlags);
             
             idString += (tagIndentation
                          + "Shape: ");
             for (int i = 0; i < ssf->getNumberOfColumns(); i++) {
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldStart;
                }
                idString += (QString::number(ssf->getValue(nodeNumber, i), 'f', significantDigits)
                             + " ");
-               if (i == selectedColumn) {
+               if (selectedColumnFlags[i]) {
                   idString += tagBoldEnd;
                }
             }
             idString += tagNewLine;
             
-            if ((selectedColumn >= 0) &&
-                (selectedColumn < ssf->getNumberOfColumns())) {
-               //
-               // Study Meta Data from Study Metadata File
-               //
-               const StudyMetaDataLinkSet smdls = ssf->getColumnStudyMetaDataLinkSet(selectedColumn);
-               StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
-               idString += getIdentificationTextForStudies(smdf,
-                                                           smdls,
-                                                           true);
-/*
-               const int smdIndex = smdf->getStudyIndexFromLink(smdl);
-               if ((smdIndex >= 0) &&
-                   (smdIndex < smdf->getNumberOfStudyMetaData())) {
-                  const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
-                  if (smd != NULL) {
-                     idString += getIdentificationTextForStudy(smd, smdIndex, &smdl);
-                     idString += getIdentificationTextForMetaAnalysisStudies(smd);
-                  }
+            for (int i = 0; i < ssf->getNumberOfColumns(); i++) {
+               if (selectedColumnFlags[i]) {
+                  //
+                  // Study Meta Data from Study Metadata File
+                  //
+                  const StudyMetaDataLinkSet smdls = ssf->getColumnStudyMetaDataLinkSet(i);
+                  StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+                  idString += getIdentificationTextForStudies(smdf,
+                                                              smdls,
+                                                              true);
                }
-*/
             }
          }
       }
@@ -863,7 +858,10 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
          const int numCols = tf->getNumberOfColumns();
          if (numCols > 0) {
             DisplaySettingsTopography* dst = brainSet->getDisplaySettingsTopography();
-            const int selectedColumn = dst->getSelectedColumn(brainModelIndex);
+            //const int selectedColumn = dst->getSelectedDisplayColumn(brainModelIndex);
+            std::vector<bool> selectedColumnFlags;
+            dst->getSelectedColumnFlags(brainModelIndex, selectedColumnFlags);
+
             for (int i = 0; i < numCols; i++) {
                const NodeTopography nt = tf->getNodeTopography(nodeNumber, i);       
                float eMean, eLow, eHigh, pMean, pLow, pHigh;
@@ -871,7 +869,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                nt.getData(eMean, eLow, eHigh, pMean, pLow,
                               pHigh, areaName);
                if (areaName.isEmpty() == false) {
-                  if (i == selectedColumn) {
+                  if (selectedColumnFlags[i]) {
                      idString += tagBoldStart;
                   }                  
                   idString += (tagIndentation
@@ -882,12 +880,12 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                                + QString::number(eLow, 'f', significantDigits)
                                + " to "
                                + QString::number(eHigh, 'f', significantDigits));
-                  if (i == selectedColumn) {
+                  if (selectedColumnFlags[i]) {
                      idString += tagBoldEnd;
                   }                  
 
 
-                  if (i == selectedColumn) {
+                  if (selectedColumnFlags[i]) {
                      idString += tagBoldStart;
                   }                  
                   idString += (tagIndentation
@@ -898,7 +896,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                                + QString::number(pLow, 'f', significantDigits)
                                + " to "
                                + QString::number(pHigh, 'f', significantDigits));
-                  if (i == selectedColumn) {
+                  if (selectedColumnFlags[i]) {
                      idString += tagBoldEnd;
                   }   
                   idString += tagNewLine;               
@@ -1129,8 +1127,31 @@ BrainModelIdentification::getIdentificationTextForFoci()
       }
       
       CellProjection* focus = ff->getCellProjection(focusNumber);
-      
-      idString = (tagBoldStart
+      idString += getIdentificationTextForSingleFocus(focusID,
+                                                      focus,
+                                                      ff,
+                                                      false);
+   }
+   return idString;
+}
+
+/**
+ * get identification text for a focus.
+ */
+QString 
+BrainModelIdentification::getIdentificationTextForSingleFocus(
+                                            BrainModelOpenGLSelectedItem focusID,
+                                            CellProjection* focus,
+                                            FociProjectionFile* fociProjectionFile,
+                                            const bool volumeFlag)                                            
+{
+   QString idString;
+   
+   const int focusNumber = focusID.getItemIndex1();
+   BrainSet* brainSet = focusID.getBrainSet();
+
+   if (focus != NULL) {
+      idString += (tagBoldStart
                   + "Focus "
                   + tagBoldEnd
                   + QString::number(focusNumber)
@@ -1142,7 +1163,7 @@ BrainModelIdentification::getIdentificationTextForFoci()
                          + tagBoldStart
                          + "Area: "
                          + tagBoldEnd
-                         + htmlTranslate(focus->getArea())
+                         + linkStringToVocabulary(brainSet, focus->getArea())
                          + tagNewLine);
          }
       }
@@ -1175,7 +1196,7 @@ BrainModelIdentification::getIdentificationTextForFoci()
                          + tagBoldStart
                          + "Geography: "
                          + tagBoldEnd
-                         + htmlTranslate(focus->getGeography())
+                         + linkStringToVocabulary(brainSet, focus->getGeography())
                          + tagNewLine);
          }
       }
@@ -1193,7 +1214,7 @@ BrainModelIdentification::getIdentificationTextForFoci()
       focus->getXYZ(xyz);
       QString spaceName;
       const int studyNumber = focus->getStudyNumber();
-      const CellStudyInfo* csi = ff->getStudyInfo(studyNumber);
+      const CellStudyInfo* csi = fociProjectionFile->getStudyInfo(studyNumber);
       if (csi != NULL) {
          spaceName = csi->getStereotaxicSpace();
          if (spaceName.isEmpty() == false) {
@@ -1210,6 +1231,44 @@ BrainModelIdentification::getIdentificationTextForFoci()
                          + tagBoldEnd
                          + QString::number(focus->getSize(), 'f', significantDigits)
                          + tagNewLine);
+         }
+      }
+      
+      if (getDisplayFociRegionOfInterestInformation()) {
+         if (focus->getRegionOfInterest().isEmpty() == false) {
+            idString += (tagIndentation
+                         + tagBoldStart
+                         + "RegionOfInterest: "
+                         + tagBoldEnd
+                         + linkStringToVocabulary(brainSet, focus->getRegionOfInterest())
+                         + tagNewLine);
+         }
+      }
+      Structure focusStructure;
+      if (getDisplayFociOriginalStereotaxicPositionInformation()) {
+         float volumeXYZ[3];
+         focus->getVolumeXYZ(volumeXYZ);
+         if ((volumeFlag) ||
+             (volumeXYZ[0] != 0.0)) {
+            idString += (tagIndentation 
+                         + tagBoldStart
+                         + "Volume Position"
+                         + tagBoldEnd
+                         + spaceName
+                         + ": ("
+                         + QString::number(volumeXYZ[0], 'f', significantDigits)
+                         + ", "
+                         + QString::number(volumeXYZ[1], 'f', significantDigits)
+                         + ", "
+                         + QString::number(volumeXYZ[2], 'f', significantDigits)
+                         + ")"
+                         + tagNewLine);
+            if (volumeXYZ[0] > 0) {
+               focusStructure.setType(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+            }
+            else if (volumeXYZ[1] < 0) {
+               focusStructure.setType(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+            }
          }
       }
       
@@ -1231,11 +1290,14 @@ BrainModelIdentification::getIdentificationTextForFoci()
       
       if (getDisplayFociStereotaxicPositionInformation()) {
          const BrainModelSurface* bms = focusID.getBrainModelSurface();
+         if (bms != NULL) {
+            focusStructure = bms->getStructure();
+         }
          for (int i = 0; i < brainSet->getNumberOfBrainModels(); i++) {
             const BrainModelSurface* surface = brainSet->getBrainModelSurface(i);
             if (surface != NULL) {
                if (surface->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
-                  if (surface->getStructure() == bms->getStructure()) {
+                  if (surface->getStructure() == focusStructure) {
                      const CoordinateFile* cf = surface->getCoordinateFile();
                      QString surfaceSpaceName = cf->getHeaderTag(AbstractFile::headerTagCoordFrameID);
                      
@@ -1249,27 +1311,30 @@ BrainModelIdentification::getIdentificationTextForFoci()
                      }
                      if (doIt) {
                         float projPos[3];
-                        if (focus->getProjectedPosition(cf, 
-                                                    surface->getTopologyFile(),
-                                                    false,
-                                                    false,
-                                                    false,
-                                                    projPos)) {
-                                                       
-                           idString += (tagIndentation
-                                        + tagBoldStart
-                                        + "Stereotaxic Position"
-                                        + tagBoldEnd
-                                        + " ("
-                                        + surfaceSpaceName
-                                        + "): ("
-                                        + QString::number(projPos[0], 'f', significantDigits)
-                                        + ", "
-                                        + QString::number(projPos[1], 'f', significantDigits)
-                                        + ", "
-                                        + QString::number(projPos[2], 'f', significantDigits)
-                                        + ")"
-                                        + tagNewLine);
+                        CellProjection* cp = dynamic_cast<CellProjection*>(focus);
+                        if (cp != NULL) {
+                           if (cp->getProjectedPosition(cf, 
+                                                       surface->getTopologyFile(),
+                                                       false,
+                                                       false,
+                                                       false,
+                                                       projPos)) {
+                                                          
+                              idString += (tagIndentation
+                                           + tagBoldStart
+                                           + "Stereotaxic Position"
+                                           + tagBoldEnd
+                                           + " ("
+                                           + surfaceSpaceName
+                                           + "): ("
+                                           + QString::number(projPos[0], 'f', significantDigits)
+                                           + ", "
+                                           + QString::number(projPos[1], 'f', significantDigits)
+                                           + ", "
+                                           + QString::number(projPos[2], 'f', significantDigits)
+                                           + ")"
+                                           + tagNewLine);
+                           }
                         }
                      }
                   }
@@ -1288,7 +1353,18 @@ BrainModelIdentification::getIdentificationTextForFoci()
                          + tagNewLine);
          }
       }
-
+      
+      if (getDisplayFociStructureInformation()) {
+         if (Structure::convertTypeToString(focus->getCellStructure()).isEmpty() == false) {
+            idString += (tagIndentation
+                         + tagBoldStart
+                         + "Structure: "
+                         + tagBoldEnd
+                         + Structure::convertTypeToString(focus->getCellStructure())
+                         + tagNewLine);
+         }
+      }
+      
       //
       // Study Meta Data from Study Metadata File
       //
@@ -1312,8 +1388,12 @@ BrainModelIdentification::getIdentificationTextForFoci()
       //
       // Old Study Info
       //
-      if ((studyNumber >= 0) && (studyNumber < ff->getNumberOfStudyInfo())) {
-         const CellStudyInfo* csi = ff->getStudyInfo(studyNumber);
+      if ((studyNumber >= 0) && 
+          (studyNumber < fociProjectionFile->getNumberOfStudyInfo())) {
+         csi = fociProjectionFile->getStudyInfo(studyNumber);
+      }
+      
+      if (csi != NULL) {
          if (csi->getTitle().isEmpty() == false) {
             idString += (tagIndentation
                          + tagBoldStart
@@ -1649,8 +1729,8 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
                   case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
                      {
                         const int voxel = static_cast<int>(files[n]->getVoxel(ijk));
-                        if ((voxel >= 0) && (voxel < bmv->getNumberOfProbAtlasNames())) {
-                           idString += linkToVocabulary(brainSet, bmv->getProbAtlasNameFromIndex(voxel));
+                        if ((voxel >= 0) && (voxel < files[n]->getNumberOfRegionNames())) {
+                           idString += linkToVocabulary(brainSet, files[n]->getRegionNameFromIndex(voxel));
                         }
                         else {
                            idString += "bad-index";
@@ -1808,12 +1888,18 @@ BrainModelIdentification::getIdentificationTextForVolumeFoci()
    const int focusNumber = volumeFociID.getItemIndex1();
    if ((brainSet != NULL) &&
        (focusNumber >= 0)) {
-      FociFile* ff = brainSet->getVolumeFociFile();
-      if (ff == NULL) {
+      FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+      if (fpf == NULL) {
          return "";
       }
       
-      CellData* focus = ff->getCell(focusNumber);
+      CellProjection* focus = fpf->getCellProjection(focusNumber);
+      
+      idString += getIdentificationTextForSingleFocus(volumeFociID,
+                                                      focus,
+                                                      fpf,
+                                                      true);
+/*
       idString += (tagBoldStart
                    + "Volume Focus"
                    + tagBoldEnd
@@ -1837,6 +1923,7 @@ BrainModelIdentification::getIdentificationTextForVolumeFoci()
                    + QString::number(xyz[2], 'f', significantDigits)
                    + ")"
                    + tagNewLine);
+*/
    }
    
    return idString;
@@ -2012,7 +2099,7 @@ BrainModelIdentification::getIdentificationTextForPalette(const bool metricFlag)
    BrainSet* brainSet = paletteID.getBrainSet();
    const int paletteNumber = paletteID.getItemIndex1();
    const int entryIndex = paletteID.getItemIndex2();
-   const int windowNumber = paletteID.getViewingWindowNumber();
+   //const int windowNumber = paletteID.getViewingWindowNumber();
    
    PaletteFile* pf = brainSet->getPaletteFile();
    if ((paletteNumber < 0) || 
@@ -2020,6 +2107,7 @@ BrainModelIdentification::getIdentificationTextForPalette(const bool metricFlag)
       return "";
    }
    DisplaySettingsMetric* dsm = brainSet->getDisplaySettingsMetric();
+   //MetricFile* mf = brainSet->getMetricFile();
    
    const Palette* palette = pf->getPalette(paletteNumber);
    if (entryIndex >= palette->getNumberOfPaletteEntries()) {
@@ -2046,23 +2134,31 @@ BrainModelIdentification::getIdentificationTextForPalette(const bool metricFlag)
       PaletteEntry* pe = (PaletteEntry*)palette->getPaletteEntry(nextPaletteEntryIndex);
       valueNext = pe->getValue();
    }
+
+   BrainModelOpenGLSelectedItem nodeID = openGL->getSelectedNode();
    
    float posMinMetric = 0.0, posMaxMetric = 0.0, negMinMetric = 0.0, negMaxMetric = 0.0;
    if (metricFlag) {
-      if (dsm->getSelectedOverlayScale() == DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER) {
-         dsm->getUserScaleMinMax(posMinMetric, posMaxMetric, negMinMetric, negMaxMetric);
-      }
-      else {
-         MetricFile* mf = brainSet->getMetricFile();
-         const int col = dsm->getSelectedDisplayColumn(windowNumber);
-         mf->getDataColumnMinMax(col, negMaxMetric, posMaxMetric);
-      }
+      int displayColumn, thresholdColumn;
+      dsm->getMetricsForColoringAndPalette(displayColumn,
+                                          thresholdColumn,
+                                          negMaxMetric,
+                                          negMinMetric,
+                                          posMinMetric,
+                                          posMaxMetric);                                          
    }
    else {
       DisplaySettingsSurfaceShape* dsss = brainSet->getDisplaySettingsSurfaceShape();
+      const int col = dsss->getShapeColumnForPaletteAndColorMapping();
       SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
-      const int col = dsss->getSelectedDisplayColumn(windowNumber);
-      ssf->getColumnColorMappingMinMax(col, negMaxMetric, posMaxMetric);
+      if (col >= 0) {
+         ssf->getColumnColorMappingMinMax(col, negMaxMetric, posMaxMetric);
+      }
+      else {
+         return "";
+      }
+     //const int col = dsss->getSelectedDisplayColumn(windowNumber);
+      //ssf->getColumnColorMappingMinMax(col, negMaxMetric, posMaxMetric);
    }
       
    if (value >= 0.0) {
@@ -2143,33 +2239,69 @@ BrainModelIdentification::getIdentificationTextForVtkModel()
    BrainModelOpenGLSelectedItem vtkID = openGL->getSelectedVtkModel();
    BrainSet* brainSet = vtkID.getBrainSet();
    const int modelNum = vtkID.getItemIndex1();
-   const int tileNum = vtkID.getItemIndex2();
+   const int openGLType = vtkID.getItemIndex2();
+   const int itemNum    = vtkID.getItemIndex3();
    if ((brainSet != NULL) &&
        (modelNum >= 0) &&
-       (tileNum >= 0)) {
+       (itemNum >= 0)) {
       if ((modelNum >= 0) && (modelNum < brainSet->getNumberOfVtkModelFiles())) {
          const VtkModelFile* vmf = brainSet->getVtkModelFile(modelNum);
-         float xyz[3];
-         vmf->getTriangleCoordinate(tileNum, xyz);
-         
-         const TransformationMatrixFile* tmf = brainSet->getTransformationMatrixFile();
-         const TransformationMatrix* tm = vmf->getAssociatedTransformationMatrix();
-         if (tmf->getMatrixValid(tm)) {
-            tm->multiplyPoint(xyz);
+         if (openGLType == GL_TRIANGLES) {
+            float xyz[3];
+            vmf->getTriangleCoordinate(itemNum, xyz);
+            
+            const TransformationMatrixFile* tmf = brainSet->getTransformationMatrixFile();
+            const TransformationMatrix* tm = vmf->getAssociatedTransformationMatrix();
+            if (tmf->getMatrixValid(tm)) {
+               tm->multiplyPoint(xyz);
+            }
+            
+            const int* tv = vmf->getTriangle(itemNum);
+            idString += ("VTK Model "
+                         + FileUtilities::basename(vmf->getFileName())
+                         + ", Triangle "
+                         + QString::number(itemNum)
+                         + " ("
+                         + QString::number(tv[0])
+                         + ", "
+                         + QString::number(tv[1])
+                         + ", "
+                         + QString::number(tv[2])
+                         + ") "
+                         + ": ("
+                         + QString::number(xyz[0], 'f', significantDigits)
+                         + ", "
+                         + QString::number(xyz[1], 'f', significantDigits)
+                         + ", "
+                         + QString::number(xyz[2], 'f', significantDigits)
+                         + ")"
+                         + tagNewLine);
          }
-         
-         idString += ("VTK Model "
-                      + QString::number(modelNum)
-                      + ": "
-                      + FileUtilities::basename(vmf->getFileName())
-                      + " ("
-                      + QString::number(xyz[0], 'f', significantDigits)
-                      + ", "
-                      + QString::number(xyz[1], 'f', significantDigits)
-                      + ", "
-                      + QString::number(xyz[2], 'f', significantDigits)
-                      + ")"
-                      + tagNewLine);
+         else if (openGLType == GL_POINTS) {
+            const int pointNumber = *vmf->getVertex(itemNum);
+            const float* xyz = vmf->getCoordinateFile()->getCoordinate(pointNumber);
+            const unsigned char* rgba = vmf->getPointColor(pointNumber);
+            idString += ("VTK Model "
+                         + FileUtilities::basename(vmf->getFileName())
+                         + ", Vertex "
+                         + QString::number(itemNum)
+                         + ": ("
+                         + QString::number(xyz[0], 'f', significantDigits)
+                         + ", "
+                         + QString::number(xyz[1], 'f', significantDigits)
+                         + ", "
+                         + QString::number(xyz[2], 'f', significantDigits)
+                         + ")  Color ("
+                         + QString::number(rgba[0])
+                         + ", "
+                         + QString::number(rgba[1])
+                         + ", "
+                         + QString::number(rgba[2])
+                         + ", "
+                         + QString::number(rgba[3])
+                         + ")"
+                         + tagNewLine);
+         }
       }
    }
    return idString;
@@ -2328,6 +2460,24 @@ BrainModelIdentification::getIdentificationTextForVocabulary(const bool enableHt
       idString += tagBoldEnd;
       idString += ": ";
       idString += ve->getVocabularyID();
+      idString += tagNewLine;
+   } 
+   
+   if (ve->getOntologySource().isEmpty() == false) {
+      idString += tagBoldStart;
+      idString += "Ontology Source";
+      idString += tagBoldEnd;
+      idString += ": ";
+      idString += ve->getOntologySource();
+      idString += tagNewLine;
+   } 
+   
+   if (ve->getTermID().isEmpty() == false) {
+      idString += tagBoldStart;
+      idString += "Term ID";
+      idString += tagBoldEnd;
+      idString += ": ";
+      idString += ve->getTermID();
       idString += tagNewLine;
    } 
    
@@ -2748,7 +2898,10 @@ BrainModelIdentification::getIdentificationTextForStudy(const StudyMetaData* smd
             idString += "Study PubMed URL";
             idString += tagBoldEnd;
             idString += ": ";
-            idString += StringUtilities::convertURLsToHyperlinks(pubURL);
+            idString += ("<a href=\"" + pubURL + "\">"
+                         + smd->getPubMedID().trimmed()
+                         + "</a>");
+            //idString += StringUtilities::convertURLsToHyperlinks(pubURL);
             idString += tagNewLine;
          }
       }
@@ -3235,8 +3388,14 @@ BrainModelIdentification::showScene(const SceneFile::Scene& scene,
             else if (infoName == "displayFociGeographyInformation") {
                setDisplayFociGeographyInformation(si->getValueAsBool());
             }
+            else if (infoName == "displayFociRegionOfInterestInformation") {
+               setDisplayFociRegionOfInterestInformation(si->getValueAsBool());
+            }
             else if (infoName == "displayFociSizeInformation") {
                setDisplayFociSizeInformation(si->getValueAsBool());
+            }
+            else if (infoName == "displayFociStructureInformation") {
+               setDisplayFociStructureInformation(si->getValueAsBool());
             }
             else if (infoName == "displayFociStatisticInformation") {
                setDisplayFociStatisticInformation(si->getValueAsBool());
@@ -3535,8 +3694,10 @@ BrainModelIdentification::saveScene(SceneFile::Scene& scene)
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociOriginalStereotaxicPositionInformation", getDisplayFociOriginalStereotaxicPositionInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociStereotaxicPositionInformation", getDisplayFociStereotaxicPositionInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociAreaInformation", getDisplayFociAreaInformation()));
+   sc.addSceneInfo(SceneFile::SceneInfo("displayFociRegionOfInterestInformation", getDisplayFociRegionOfInterestInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociGeographyInformation", getDisplayFociGeographyInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociSizeInformation", getDisplayFociSizeInformation()));
+   sc.addSceneInfo(SceneFile::SceneInfo("displayFociStructureInformation", getDisplayFociStructureInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociStatisticInformation", getDisplayFociStatisticInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayFociCommentInformation", getDisplayFociCommentInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayVoxelInformation", getDisplayVoxelInformation()));
@@ -3611,6 +3772,24 @@ BrainModelIdentification::toggleAllIdentificationOnOff()
    idFilter.toggleAllOnOff();
 }
       
+/**
+ * all identification on.
+ */
+void 
+BrainModelIdentification::setAllIdentificationOn()
+{
+   idFilter.allOn();
+}
+
+/**
+ * all identification off.
+ */
+void 
+BrainModelIdentification::setAllIdentificationOff()
+{
+   idFilter.allOff();
+}
+
 /** 
  * make name a link to vocabulary file if it matches a vocabulary file entry.
  */
@@ -3634,6 +3813,25 @@ BrainModelIdentification::linkToVocabulary(BrainSet* brainSet,
    return name;
 }
 
+/**
+ * make a list of names separated by semicolon possible links to vocabulary.
+ */
+QString 
+BrainModelIdentification::linkStringToVocabulary(BrainSet* brainSet,
+                                                 const QString& s)
+{
+   QString stringOut;
+   
+   const QStringList sl = s.split(';', QString::SkipEmptyParts);
+   for (int i = 0; i < sl.count(); i++) {
+      if (i > 0) {
+         stringOut += "; ";
+      }
+      stringOut += linkToVocabulary(brainSet, sl.at(i).trimmed());
+   }
+   
+   return stringOut;
+}                                     
 
 //==================================================================================
 
@@ -3656,85 +3854,93 @@ BrainModelIdentification::IdFilter::~IdFilter()
  * turn all off.
  */
 void 
-BrainModelIdentification::IdFilter::allOff()
+BrainModelIdentification::IdFilter::allOff(const bool turnSubFlagsOff)
 {
    displayBorderInformation = false;
    displayCellInformation = false;
    displayFociInformation = false;
-   displayFociNameInformation = false;
-   displayFociClassInformation = false;
-   displayFociOriginalStereotaxicPositionInformation = false;
-   displayFociStereotaxicPositionInformation = false;
-   displayFociAreaInformation = false;
-   displayFociGeographyInformation = false;
-   displayFociSizeInformation = false;
-   displayFociStatisticInformation = false;
-   displayFociCommentInformation = false;
+   if (turnSubFlagsOff) {
+      displayFociNameInformation = false;
+      displayFociClassInformation = false;
+      displayFociOriginalStereotaxicPositionInformation = false;
+      displayFociStereotaxicPositionInformation = false;
+      displayFociAreaInformation = false;
+      displayFociGeographyInformation = false;
+      displayFociRegionOfInterestInformation = false;
+      displayFociSizeInformation = false;
+      displayFociStructureInformation = false;
+      displayFociStatisticInformation = false;
+      displayFociCommentInformation = false;
+   }
    displayVoxelInformation = false;
    displayContourInformation = false;
    displayNodeInformation = false;
-   displayNodeCoordInformation = false;
-   displayNodeLatLonInformation = false;
-   displayNodePaintInformation = false;
-   displayNodeProbAtlasInformation = false;
-   displayNodeRgbPaintInformation = false;
-   displayNodeMetricInformation = false;
-   displayNodeShapeInformation = false;
-   displayNodeSectionInformation = false;
-   displayNodeArealEstInformation = false;
-   displayNodeTopographyInformation = false;
-   displayStudyInformation = false;
-   displayStudyTitleInformation = false;
-   displayStudyAuthorsInformation = false;
-   displayStudyCitationInformation = false;
-   displayStudyCommentInformation = false;
-   displayStudyDataFormatInformation = false;
-   displayStudyDataTypeInformation = false;
-   displayStudyDOIInformation = false;
-   displayStudyKeywordsInformation = false;
-   displayStudyMedicalSubjectHeadingsInformation = false;
-   displayStudyMetaAnalysisInformation = false;
-   displayStudyMetaAnalysisNameInformation = false;
-   displayStudyMetaAnalysisTitleInformation = false;
-   displayStudyMetaAnalysisAuthorsInformation = false;
-   displayStudyMetaAnalysisCitationInformation = false;
-   displayStudyMetaAnalysisDoiUrlInformation = false;
-   displayStudyNameInformation = false;
-   displayStudyPartSchemeAbbrevInformation = false;
-   displayStudyPartSchemeFullInformation = false;
-   displayStudyPubMedIDInformation = false;
-   displayStudyProjectIDInformation = false;
-   displayStudyStereotaxicSpaceInformation = false;
-   displayStudyStereotaxicSpaceDetailsInformation = false;
-   displayStudyURLInformation = false;
-   displayStudyTableInformation = false;
-   displayStudyTableHeaderInformation = false;
-   displayStudyTableFooterInformation = false;
-   displayStudyTableSizeUnitsInformation = false;
-   displayStudyTableVoxelSizeInformation = false;
-   displayStudyTableStatisticInformation = false;
-   displayStudyTableStatisticDescriptionInformation = false;
-   displayStudyFigureInformation = false;
-   displayStudyFigureLegendInformation = false;
-   displayStudyFigurePanelInformation = false;
-   displayStudyFigurePanelDescriptionInformation = false;
-   displayStudyFigurePanelTaskDescriptionInformation = false;
-   displayStudyFigurePanelTaskBaselineInformation = false;
-   displayStudyFigurePanelTestAttributesInformation = false;
-   displayStudySubHeaderInformation = false;
-   displayStudySubHeaderNameInformation = false;
-   displayStudySubHeaderShortNameInformation = false;
-   displayStudySubHeaderTaskDescriptionInformation = false;
-   displayStudySubHeaderTaskBaselineInformation = false;
-   displayStudySubHeaderTestAttributesInformation = false;
-   displayStudyPageReferenceInformation = false;
-   displayStudyPageReferenceHeaderInformation = false;
-   displayStudyPageReferenceCommentInformation = false;
-   displayStudyPageReferenceSizeUnitsInformation = false;
-   displayStudyPageReferenceVoxelSizeInformation = false;
-   displayStudyPageReferenceStatisticInformation = false;
-   displayStudyPageReferenceStatisticDescriptionInformation = false;
-   displayStudyPageNumberInformation = false;
+   if (turnSubFlagsOff) {
+      displayNodeCoordInformation = false;
+      displayNodeLatLonInformation = false;
+      displayNodePaintInformation = false;
+      displayNodeProbAtlasInformation = false;
+      displayNodeRgbPaintInformation = false;
+      displayNodeMetricInformation = false;
+      displayNodeShapeInformation = false;
+      displayNodeSectionInformation = false;
+      displayNodeArealEstInformation = false;
+      displayNodeTopographyInformation = false;
+   }
+   if (turnSubFlagsOff) {
+      displayStudyInformation = false;
+      displayStudyTitleInformation = false;
+      displayStudyAuthorsInformation = false;
+      displayStudyCitationInformation = false;
+      displayStudyCommentInformation = false;
+      displayStudyDataFormatInformation = false;
+      displayStudyDataTypeInformation = false;
+      displayStudyDOIInformation = false;
+      displayStudyKeywordsInformation = false;
+      displayStudyMedicalSubjectHeadingsInformation = false;
+      displayStudyMetaAnalysisInformation = false;
+      displayStudyMetaAnalysisNameInformation = false;
+      displayStudyMetaAnalysisTitleInformation = false;
+      displayStudyMetaAnalysisAuthorsInformation = false;
+      displayStudyMetaAnalysisCitationInformation = false;
+      displayStudyMetaAnalysisDoiUrlInformation = false;
+      displayStudyNameInformation = false;
+      displayStudyPartSchemeAbbrevInformation = false;
+      displayStudyPartSchemeFullInformation = false;
+      displayStudyPubMedIDInformation = false;
+      displayStudyProjectIDInformation = false;
+      displayStudyStereotaxicSpaceInformation = false;
+      displayStudyStereotaxicSpaceDetailsInformation = false;
+      displayStudyURLInformation = false;
+      displayStudyTableInformation = false;
+      displayStudyTableHeaderInformation = false;
+      displayStudyTableFooterInformation = false;
+      displayStudyTableSizeUnitsInformation = false;
+      displayStudyTableVoxelSizeInformation = false;
+      displayStudyTableStatisticInformation = false;
+      displayStudyTableStatisticDescriptionInformation = false;
+      displayStudyFigureInformation = false;
+      displayStudyFigureLegendInformation = false;
+      displayStudyFigurePanelInformation = false;
+      displayStudyFigurePanelDescriptionInformation = false;
+      displayStudyFigurePanelTaskDescriptionInformation = false;
+      displayStudyFigurePanelTaskBaselineInformation = false;
+      displayStudyFigurePanelTestAttributesInformation = false;
+      displayStudySubHeaderInformation = false;
+      displayStudySubHeaderNameInformation = false;
+      displayStudySubHeaderShortNameInformation = false;
+      displayStudySubHeaderTaskDescriptionInformation = false;
+      displayStudySubHeaderTaskBaselineInformation = false;
+      displayStudySubHeaderTestAttributesInformation = false;
+      displayStudyPageReferenceInformation = false;
+      displayStudyPageReferenceHeaderInformation = false;
+      displayStudyPageReferenceCommentInformation = false;
+      displayStudyPageReferenceSizeUnitsInformation = false;
+      displayStudyPageReferenceVoxelSizeInformation = false;
+      displayStudyPageReferenceStatisticInformation = false;
+      displayStudyPageReferenceStatisticDescriptionInformation = false;
+      displayStudyPageNumberInformation = false;
+   }
 }
 
 /**
@@ -3752,7 +3958,9 @@ BrainModelIdentification::IdFilter::allOn()
    displayFociStereotaxicPositionInformation = true;
    displayFociAreaInformation = true;
    displayFociGeographyInformation = true;
+   displayFociRegionOfInterestInformation = true;
    displayFociSizeInformation = true;
+   displayFociStructureInformation = true;
    displayFociStatisticInformation = true;
    displayFociCommentInformation = true;
    displayVoxelInformation = true;
@@ -3840,7 +4048,9 @@ BrainModelIdentification::IdFilter::toggleAllOnOff()
       displayFociStereotaxicPositionInformation ||
       displayFociAreaInformation ||
       displayFociGeographyInformation ||
+      displayFociRegionOfInterestInformation ||
       displayFociSizeInformation ||
+      displayFociStructureInformation ||
       displayFociStatisticInformation ||
       displayFociCommentInformation ||
 */
@@ -3904,8 +4114,10 @@ BrainModelIdentification::IdFilter::anyFociDataOn() const
        displayFociStereotaxicPositionInformation ||
        displayFociAreaInformation ||
        displayFociGeographyInformation ||
+       displayFociRegionOfInterestInformation ||
        displayFociSizeInformation ||
        displayFociStatisticInformation ||
+       displayFociStructureInformation ||
        displayFociCommentInformation;
    return anyOn;
 }

@@ -60,7 +60,7 @@
  * constructor.
  */
 GuiVolumeHandleFinderDialog::GuiVolumeHandleFinderDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Volume Handle Finder");
    
@@ -243,7 +243,7 @@ void
 GuiVolumeHandleFinderDialog::show()
 {
    clearHandles();
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -641,14 +641,16 @@ GuiVolumeHandleFinderDialog::slotFindHandlesPushButton()
          //
          DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
          RgbPaintFile* rgbPaint = theMainWindow->getBrainSet()->getRgbPaintFile();
-         dsrp->setSelectedColumn(-1, rgbPaint->getNumberOfColumns() - 1);
+         dsrp->setSelectedDisplayColumn(-1, -1, rgbPaint->getNumberOfColumns() - 1);
          
          //
          // Set primary overlay to RGB Paint and Underlay to shape
          //
          BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-         bsnc->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT);
-         bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
+         theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(-1, 
+                                   BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT);
+         theMainWindow->getBrainSet()->getSurfaceUnderlay()->setOverlay(-1, 
+                                   BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE);
          bsnc->assignColors();
       }
                

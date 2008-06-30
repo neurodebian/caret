@@ -104,6 +104,9 @@ class GuiFilesModified {
       /// set foci projection has been modified
       void setFociProjectionModified() { fociProjection = true; }
       
+      /// set foci search has been modified
+      void setFociSearchModified() { fociSearch = true; }
+      
       /// set geodesic has been modified
       void setGeodesicModified() { geodesic = true; }
       
@@ -207,6 +210,7 @@ class GuiFilesModified {
       bool foci;
       bool fociColor;
       bool fociProjection;
+      bool fociSearch;
       bool geodesic;
       bool images;
       bool latLon;

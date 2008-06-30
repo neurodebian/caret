@@ -36,7 +36,12 @@
  * The constructor.
  */
 DisplaySettingsArealEstimation::DisplaySettingsArealEstimation(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      NULL,
+                                      bs->getArealEstimationFile(),
+                                      BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION,
+                                      true,
+                                      false)
 {
    reset();
 }
@@ -54,7 +59,7 @@ DisplaySettingsArealEstimation::~DisplaySettingsArealEstimation()
 void
 DisplaySettingsArealEstimation::reset()
 {
-   selectedColumn.clear();
+   DisplaySettingsNodeAttributeFile::reset();
 }
 
 /**
@@ -63,40 +68,9 @@ DisplaySettingsArealEstimation::reset()
 void
 DisplaySettingsArealEstimation::update()
 {
-   updateSelectedColumnIndices(brainSet->getArealEstimationFile(), selectedColumn);   
+   DisplaySettingsNodeAttributeFile::update();
 }
 
-/**
- * Get the selected column.
- */
-int 
-DisplaySettingsArealEstimation::getSelectedColumn(const int modelIn) const 
-{ 
-   if (selectedColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return selectedColumn[model]; 
-}
-
-/**
- * Set the selected file index.
- */
-void 
-DisplaySettingsArealEstimation::setSelectedColumn(const int model, const int col) 
-{ 
-   if (model < 0) {
-      std::fill(selectedColumn.begin(), selectedColumn.end(), col);
-   }
-   else {
-      selectedColumn[model] = col; 
-   }
-}
 
 static const QString arealEstimationID("areal-estimation-column");
 
@@ -110,12 +84,11 @@ DisplaySettingsArealEstimation::showScene(const SceneFile::Scene& scene, QString
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsArealEstimation") {
-         showSceneNodeAttribute(*sc,
-                                arealEstimationID,
-                                brainSet->getArealEstimationFile(),
-                                "Areal Estimation File",
-                                selectedColumn,
-                                errorMessage);
+         showSceneSelectedColumns(*sc,
+                                  "Areal Estimation File",
+                                  arealEstimationID,
+                                  "",
+                                  errorMessage);
       }
    }
 }
@@ -124,7 +97,8 @@ DisplaySettingsArealEstimation::showScene(const SceneFile::Scene& scene, QString
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsArealEstimation::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsArealEstimation::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    ArealEstimationFile* aef = brainSet->getArealEstimationFile();
    if (onlyIfSelected) {
@@ -132,31 +106,15 @@ DisplaySettingsArealEstimation::saveScene(SceneFile::Scene& scene, const bool on
          return;
       }
       
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION) == false) {
+      if (brainSet->isASurfaceOverlayForAnySurface(
+                BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION) == false) {
          return;
       }
    }
    
    SceneFile::SceneClass sc("DisplaySettingsArealEstimation");
    
-   saveSceneNodeAttribute(sc,
-                          arealEstimationID,
-                          aef,
-                          selectedColumn);
+   saveSceneSelectedColumns(sc);
 
    scene.addSceneClass(sc);
 }
-
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-bool 
-DisplaySettingsArealEstimation::columnSelectionsAreTheSame(const int bm1, const int bm2) const
-{
-   return (selectedColumn[bm1] == selectedColumn[bm2]);
-}      
-

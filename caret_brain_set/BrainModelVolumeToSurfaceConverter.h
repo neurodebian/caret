@@ -43,7 +43,9 @@ class BrainModelVolumeToSurfaceConverter : public BrainModelAlgorithm {
          /// generate a VTK model surface
          RECONSTRUCTION_MODE_VTK_MODEL,
          /// generate a VTK model surface with no polygon reduction
-         RECONSTRUCTION_MODE_VTK_MODEL_MAXIMUM_POLYGONS
+         RECONSTRUCTION_MODE_VTK_MODEL_MAXIMUM_POLYGONS,
+         /// generate a model that creates a point for every voxel
+         RECONSTRUCTION_MODE_SOLID_STRUCTURE
       };
       
       /// Constructor
@@ -72,6 +74,9 @@ class BrainModelVolumeToSurfaceConverter : public BrainModelAlgorithm {
       
       /// generate a vtk model
       void generateVtkModel(const bool maxPolygonsFlag) throw (BrainModelAlgorithmException);
+      
+      /// generate a solid structure model
+      void generateSolidStructure() throw (BrainModelAlgorithmException);
       
       /// the segmentation volume for converting to a surface
       VolumeFile* segmentationVolumeFile;

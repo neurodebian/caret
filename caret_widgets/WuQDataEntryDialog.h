@@ -27,17 +27,23 @@
  */
 /*LICENSE_END*/
 
-#include <QDialog>
 #include <QStringList>
+#include <QVariant>
 
+#include "WuQDialog.h"
+
+class QCheckBox;
+class QComboBox;
 class QDialogButtonBox;
+class QDoubleSpinBox;
 class QGridLayout;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QSpinBox;
 
 /// class for a modal data entry dialog
-class WuQDataEntryDialog : public QDialog {
+class WuQDataEntryDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -48,6 +54,23 @@ class WuQDataEntryDialog : public QDialog {
       // destructor
       ~WuQDataEntryDialog();
       
+      // add widget to next available row in the dialog
+      QWidget* addWidget(const QString& labelText,
+                         QWidget* widget);
+                     
+      // add widgets to the next available row in the dialog
+      void addWidgetsToNextRow(QWidget* leftColumnWidget,
+                               QWidget* rightColumnWidget);
+                               
+      // add a check box
+      QCheckBox* addCheckBox(const QString& text,
+                             const bool defaultValue = false);
+      
+      // add a combo box
+      QComboBox* addComboBox(const QString& labelText,
+                             const QStringList& comboBoxItems,
+                             const QList<QVariant>* comboBoxItemsUserData = NULL);
+                       
       // add line edit
       QLineEdit* addLineEditWidget(const QString& labelText,
                                      const QString& defaultText = "");
@@ -56,11 +79,27 @@ class WuQDataEntryDialog : public QDialog {
       QListWidget* addListWidget(const QString& labelText,
                                  const QStringList& listBoxItems);
       
+      // add spin box
+      QSpinBox* addSpinBox(const QString& labelText,
+                           const int defaultValue,
+                           const int minimumValue = -10000,
+                           const int maximumValue =  10000,
+                           const int singleStep = 1);
+                            
+      // add double spin box
+      QDoubleSpinBox* addDoubleSpinBox(const QString& labelText,
+                                       const float defaultValue,
+                                       const float minimumValue = -10000000.0,
+                                       const float maximumValue =  10000000.0,
+                                       const float singleStep = 1.0,
+                                       const int numberOfDecimals = 3);
+                            
       // hide the cancel button
       void hideCancelButton();
       
-      // set text at top of dialog (text is automatically wrapped)
-      void setTextAtTop(const QString& s);
+      // set text at top of dialog 
+      void setTextAtTop(const QString& s,
+                        const bool wrapTheText);
       
    protected:
       // override to verify data after OK button pressed if subclassing this dialog

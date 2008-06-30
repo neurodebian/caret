@@ -30,6 +30,7 @@
 #include "BrainVoyagerFile.h"
 #include "FreeSurferSurfaceFile.h"
 #include "GiftiDataArrayFile.h"
+#include "MniObjSurfaceFile.h"
 
 class PaintFile;
 class NodeRegionOfInterestFile;
@@ -123,6 +124,9 @@ class TopologyFile : public GiftiDataArrayFile {
       
       // get the topology from a brain voyager file
       void importFromBrainVoyagerFile(const BrainVoyagerFile& bvf);
+      
+      /// get the topology from a MNI OBJ surface file
+      void importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException);
       
       // import from a VTK surface file
       void importFromVtkFile(vtkPolyData* polyData);

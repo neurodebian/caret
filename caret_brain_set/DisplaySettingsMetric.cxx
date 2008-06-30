@@ -25,7 +25,9 @@
 
 #include <algorithm>
 
+#include "BrainModelSurface.h"
 #include "BrainModelSurfaceNodeColoring.h"
+#include "BrainModelVolume.h"
 #include "BrainModelVolumeVoxelColoring.h"
 #include "BrainSet.h"
 #include "DisplaySettingsMetric.h"
@@ -36,9 +38,13 @@
  * The constructor.
  */
 DisplaySettingsMetric::DisplaySettingsMetric(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      bs->getMetricFile(),
+                                      NULL,
+                                      BrainModelSurfaceOverlay::OVERLAY_METRIC,
+                                      true,
+                                      true)
 {
-   applySelectionToLeftAndRightStructuresFlag = false;
    reset();
 }
 
@@ -55,9 +61,8 @@ DisplaySettingsMetric::~DisplaySettingsMetric()
 void
 DisplaySettingsMetric::reset()
 {
-   displayColumn.clear();
-   thresholdColumn.clear();
-   overlayScale = METRIC_OVERLAY_SCALE_AUTO_METRIC;
+   DisplaySettingsNodeAttributeFile::reset();
+   overlayScale = METRIC_OVERLAY_SCALE_AUTO;
    userScaleNegativeMaximum = -1.0;
    userScaleNegativeMinimum =  0.0;
    userScalePositiveMinimum =  0.0;
@@ -74,6 +79,122 @@ DisplaySettingsMetric::reset()
    userNegativeThreshold = 0.0;
    userPositiveThreshold = 0.0;
    thresholdType = METRIC_THRESHOLDING_TYPE_USER_VALUES;
+   overlayScaleSpecifiedColumnNumber = 0;
+}
+
+/**
+ * get the display and threshold columns for palette (negative if invalid).
+ */
+void
+DisplaySettingsMetric::getMetricsForColoringAndPalette(int& displayColumnOut,
+                                                  int& thresholdColumnOut,
+                                                  float& negMaxValue,
+                                                  float& negMinValue,
+                                                  float& posMinValue,
+                                                  float& posMaxValue,
+                                                  const bool volumeFlag) const
+{
+   displayColumnOut = -1;
+   thresholdColumnOut = -1;
+   negMaxValue = 0.0;
+   negMinValue = 0.0;
+   posMinValue = 0.0;
+   posMaxValue = 0.0;
+
+   bool doUpdateFlag = true;
+   if (volumeFlag) {
+      doUpdateFlag = false;
+   }
+   
+   //
+   // Find the first displayed surface with metric as an overlay
+   //
+   for (int iw = 0; iw < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; iw++) {
+      const int brainModelIndex = brainSet->getDisplayedModelIndexForWindow(
+         static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(iw));
+      if ((brainModelIndex >= 0) &&
+          (brainModelIndex < brainSet->getNumberOfBrainModels())) {
+         const BrainModelSurface* bms = brainSet->getBrainModelSurface(brainModelIndex);
+         if (bms != NULL) {
+            for (int j = (brainSet->getNumberOfSurfaceOverlays() - 1); j >= 0; j--) {
+               const BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(j);
+               if (bmsOverlay->getOverlay(brainModelIndex, doUpdateFlag) ==
+                        BrainModelSurfaceOverlay::OVERLAY_METRIC) {
+                  displayColumnOut = bmsOverlay->getDisplayColumnSelected(brainModelIndex);
+                  thresholdColumnOut = bmsOverlay->getThresholdColumnSelected(brainModelIndex);
+                  break;
+               }
+            }
+         }
+      }
+      
+      if (displayColumnOut >= 0) {
+         break;
+      }
+   }
+   
+   MetricFile* mf = brainSet->getMetricFile();
+   bool useFunctionalVolumeFlag = false;
+   
+   switch (getSelectedOverlayScale()) {
+      case METRIC_OVERLAY_SCALE_AUTO:
+         if (displayColumnOut >= 0) {
+            float minValue, maxValue;
+            mf->getDataColumnMinMax(displayColumnOut, minValue, maxValue);
+            if (minValue < 0.0) {
+               negMaxValue = minValue;
+            }
+            if (maxValue > 0.0) {
+               posMaxValue = maxValue;
+            }
+         }
+         break;
+      case METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
+         if (getOverlayScaleSpecifiedColumnNumber() >= 0) {
+            float minValue, maxValue;
+            mf->getDataColumnMinMax(getOverlayScaleSpecifiedColumnNumber(), minValue, maxValue);
+            if (minValue < 0.0) {
+               negMaxValue = minValue;
+            }
+            if (maxValue > 0.0) {
+               posMaxValue = maxValue;
+            }
+         }
+         break;
+      case METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
+         useFunctionalVolumeFlag = true;
+         break;
+      case METRIC_OVERLAY_SCALE_USER:
+         getUserScaleMinMax(posMinValue,
+                            posMaxValue,
+                            negMinValue,
+                            negMaxValue);
+         break;
+   }
+   
+   //
+   // Use volume for min/max values if no metrics
+   //
+   if (mf->getNumberOfColumns() <= 0) {
+      useFunctionalVolumeFlag = true;
+   }
+   
+   if (useFunctionalVolumeFlag) {
+      BrainModelVolume* bmv = brainSet->getBrainModelVolume();
+      if (bmv != NULL) {
+         VolumeFile* vf = bmv->getSelectedVolumeFunctionalViewFile();
+         if (vf != NULL) {
+            float minValue, maxValue;
+            vf->getMinMaxVoxelValues(minValue, maxValue);
+            if (minValue < 0.0) {
+               negMaxValue = minValue;
+            }
+            if (maxValue > 0.0) {
+               posMaxValue = maxValue;
+            }
+         }
+      }
+   }
 }
 
 /**
@@ -105,189 +226,14 @@ DisplaySettingsMetric::setDataPlotManualScaling(const bool b, const float minPlo
 void
 DisplaySettingsMetric::update()
 {
-   updateSelectedColumnIndices(brainSet->getMetricFile(), displayColumn);
-   updateSelectedColumnIndices(brainSet->getMetricFile(), thresholdColumn);
+   DisplaySettingsNodeAttributeFile::update();
    if (paletteIndex >= brainSet->getPaletteFile()->getNumberOfPalettes()) {
       paletteIndex = 0;
    }
+   updateSelectedColumnIndex(brainSet->getMetricFile(), 
+                             overlayScaleSpecifiedColumnNumber);
 }
 
-/**
- * Get the column selected for display.
- * Returns -1 if there are no metric columns available.
- */
-int
-DisplaySettingsMetric::getSelectedDisplayColumn(const int modelIn)
-{
-   if (displayColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-
-   return displayColumn[model];
-}
-
-/**
- * set column for display.
- */
-void 
-DisplaySettingsMetric::setSelectedDisplayColumn(const int model,
-                                                const int sdc) 
-{ 
-   if (applySelectionToLeftAndRightStructuresFlag) {
-      MetricFile* mf = brainSet->getMetricFile();
-      if ((sdc >= 0) && (sdc < mf->getNumberOfColumns())) {
-         int leftCol = -1;
-         int rightCol = -1;
-         QString name = mf->getColumnName(sdc).toLower().trimmed();
-         if (name.indexOf("left") >= 0) {
-            leftCol = sdc;
-            const QString rightName = name.replace("left", "right");
-            for (int i = 0; i < mf->getNumberOfColumns(); i++) {
-               if (mf->getColumnName(i).toLower().trimmed() == rightName) {
-                  rightCol = i;
-                  break;
-               }
-            }
-         }
-         else if (name.indexOf("right") >= 0) {
-            rightCol = sdc;
-            const QString leftName = name.replace("right", "left");
-            for (int i = 0; i < mf->getNumberOfColumns(); i++) {
-               if (mf->getColumnName(i).toLower().trimmed() == leftName) {
-                  leftCol = i;
-                  break;
-               }
-            }
-         }
-         
-         for (int i = 0; i < brainSet->getNumberOfBrainModels(); i++) {
-            const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-            if (bms != NULL) {
-               switch (bms->getStructure().getType()) {
-                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-                     if (leftCol >= 0) {
-                        displayColumn[i] = leftCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-                     if (rightCol >= 0) {
-                        displayColumn[i] = rightCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-                     break;
-                  case Structure::STRUCTURE_TYPE_CEREBELLUM:
-                     break;
-                  case Structure::STRUCTURE_TYPE_INVALID:
-                     break;
-               }
-            }
-         }
-      }
-   }
-   else {
-      if (model < 0) {
-         std::fill(displayColumn.begin(), displayColumn.end(), sdc);
-      }
-      else {
-         displayColumn[model] = sdc; 
-      }
-   }
-}
-      
-/**
- * Get the column selected for threshold.
- * Returns -1 if there are no metric columns available.
- */
-int
-DisplaySettingsMetric::getSelectedThresholdColumn(const int modelIn)
-{
-   if (thresholdColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-
-   return thresholdColumn[model];
-}
-
-/**
- * set column for thresholding.
- */
-void 
-DisplaySettingsMetric::setSelectedThresholdColumn(const int model,
-                                                  const int sdc) 
-{
-   if (applySelectionToLeftAndRightStructuresFlag) {
-      MetricFile* mf = brainSet->getMetricFile();
-      if ((sdc >= 0) && (sdc < mf->getNumberOfColumns())) {
-         int leftCol = -1;
-         int rightCol = -1;
-         QString name = mf->getColumnName(sdc).toLower().trimmed();
-         if (name.indexOf("left") >= 0) {
-            leftCol = sdc;
-            const QString rightName = name.replace("left", "right");
-            for (int i = 0; i < mf->getNumberOfColumns(); i++) {
-               if (mf->getColumnName(i).toLower().trimmed() == rightName) {
-                  rightCol = i;
-                  break;
-               }
-            }
-         }
-         else if (name.indexOf("right") >= 0) {
-            rightCol = sdc;
-            const QString leftName = name.replace("right", "left");
-            for (int i = 0; i < mf->getNumberOfColumns(); i++) {
-               if (mf->getColumnName(i).toLower().trimmed() == leftName) {
-                  leftCol = i;
-                  break;
-               }
-            }
-         }
-         
-         for (int i = 0; i < brainSet->getNumberOfBrainModels(); i++) {
-            const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-            if (bms != NULL) {
-               switch (bms->getStructure().getType()) {
-                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-                     if (leftCol >= 0) {
-                        thresholdColumn[i] = leftCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-                     if (rightCol >= 0) {
-                        thresholdColumn[i] = rightCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-                     break;
-                  case Structure::STRUCTURE_TYPE_CEREBELLUM:
-                     break;
-                  case Structure::STRUCTURE_TYPE_INVALID:
-                     break;
-               }
-            }
-         }
-      }
-   }
-   else {
-      if (model < 0) {
-         std::fill(thresholdColumn.begin(), thresholdColumn.end(), sdc);
-      }
-      else {
-         thresholdColumn[model] = sdc; 
-      }
-   }
-}
-      
 /**
  * Get the user scale minimum and maximum values.
  */
@@ -356,6 +302,11 @@ DisplaySettingsMetric::setUserThresholdingValues(const float negThresh, const fl
 static const QString metricViewID("metric-view-column");
 static const QString metricThreshID("metric-thresh-column");
 
+static const QString metricOverlayScaleAutoPriorityColumn("overlay-scale-priority-column");
+static const QString metricOverlayScaleAutoSpecifiedColumn("overlay-scale-specified-column");
+static const QString metricOverlayScaleAutoFunctionalVolume("overlay-scale-functional-volume");
+static const QString metricOverlayScaleUser("overlay-scale-user");
+
 /**
  * apply a scene (set display settings).
  */
@@ -366,18 +317,11 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsMetric") {
-         showSceneNodeAttribute(*sc,
-                                metricViewID,
-                                brainSet->getMetricFile(),
-                                "Metric File",
-                                displayColumn,
-                                errorMessage);
-         showSceneNodeAttribute(*sc,
-                                metricThreshID,
-                                brainSet->getMetricFile(),
-                                "Metric File",
-                                thresholdColumn,
-                                errorMessage);
+         showSceneSelectedColumns(*sc,
+                                  "Metric File",
+                                  metricViewID,
+                                  metricThreshID,
+                                  errorMessage);
                                 
          const int num = sc->getNumberOfSceneInfo();
          for (int i = 0; i < num; i++) {
@@ -389,9 +333,6 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
                si->getValue(val);
                thresholdType = static_cast<METRIC_THRESHOLDING_TYPE>(val);
             }
-            else if (infoName == "applySelectionToLeftAndRightStructuresFlag") {
-               si->getValue(applySelectionToLeftAndRightStructuresFlag);
-            }
             else if (infoName == "userNegativeThreshold") {
                si->getValue(userNegativeThreshold);
             }
@@ -399,9 +340,37 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
                si->getValue(userPositiveThreshold);
             }
             else if (infoName == "overlayScale") {
-               int val;
-               si->getValue(val);
-               overlayScale = static_cast<METRIC_OVERLAY_SCALE>(val);
+               if (si->getValueAsString() == metricOverlayScaleAutoPriorityColumn) {
+                  overlayScale = METRIC_OVERLAY_SCALE_AUTO;
+               }
+               else if (si->getValueAsString() == metricOverlayScaleAutoSpecifiedColumn) {
+                  overlayScale = METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN;
+               }
+               else if (si->getValueAsString() == metricOverlayScaleAutoFunctionalVolume) {
+                  overlayScale = METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME;
+               }
+               else if (si->getValueAsString() == metricOverlayScaleUser) {
+                  overlayScale = METRIC_OVERLAY_SCALE_USER;
+               }
+               else {
+                  overlayScale = METRIC_OVERLAY_SCALE_AUTO;
+                  
+                  //
+                  // Old scene had 3 types stored as int
+                  //
+                  const int val = si->getValueAsInt();
+                  switch (val) {
+                     case 0:
+                        overlayScale = METRIC_OVERLAY_SCALE_AUTO;
+                        break;
+                     case 1:
+                        overlayScale = METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME;
+                        break;
+                     case 2:
+                        overlayScale = METRIC_OVERLAY_SCALE_USER;
+                        break;
+                  }
+               }
             }
             else if (infoName == "userScalePositiveMinimum") {
                si->getValue(userScalePositiveMinimum);
@@ -471,7 +440,8 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    MetricFile* mf = brainSet->getMetricFile();
    
@@ -480,9 +450,9 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
          return;
       }
       
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
       BrainModelVolumeVoxelColoring* bvvc = brainSet->getVoxelColoring();
-      if ((bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_METRIC) == false) &&
+      if ((brainSet->isASurfaceOverlayForAnySurface(
+                           BrainModelSurfaceOverlay::OVERLAY_METRIC) == false) &&
           (bvvc->isUnderlayOrOverlay(BrainModelVolumeVoxelColoring::UNDERLAY_OVERLAY_FUNCTIONAL) == false)) {
          return;
       }
@@ -490,25 +460,32 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
    
    SceneFile::SceneClass sc("DisplaySettingsMetric");
    
-   saveSceneNodeAttribute(sc,
-                          metricViewID,
-                          mf,
-                          displayColumn);
-   saveSceneNodeAttribute(sc,
-                          metricThreshID,
-                          mf,
-                          thresholdColumn);
+   saveSceneSelectedColumns(sc);
 
-   sc.addSceneInfo(SceneFile::SceneInfo("applySelectionToLeftAndRightStructuresFlag",
-                                        applySelectionToLeftAndRightStructuresFlag));
    sc.addSceneInfo(SceneFile::SceneInfo("thresholdType",
                                         thresholdType));
    sc.addSceneInfo(SceneFile::SceneInfo("userNegativeThreshold",
                                         userNegativeThreshold));
    sc.addSceneInfo(SceneFile::SceneInfo("userPositiveThreshold",
                                         userPositiveThreshold));
-   sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
-                                        overlayScale));
+   switch (overlayScale) {
+      case METRIC_OVERLAY_SCALE_AUTO:
+         sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
+                                              metricOverlayScaleAutoPriorityColumn));
+         break;
+      case METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
+         sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
+                                              metricOverlayScaleAutoSpecifiedColumn));
+         break;
+      case METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
+         sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
+                                              metricOverlayScaleAutoFunctionalVolume));
+         break;
+      case METRIC_OVERLAY_SCALE_USER:
+         sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
+                                              metricOverlayScaleUser));
+         break;
+   }
    sc.addSceneInfo(SceneFile::SceneInfo("userScalePositiveMinimum",
                                         userScalePositiveMinimum));
    sc.addSceneInfo(SceneFile::SceneInfo("userScalePositiveMaximum",
@@ -542,19 +519,4 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
    
    scene.addSceneClass(sc);
 }
-                       
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-bool 
-DisplaySettingsMetric::columnSelectionsAreTheSame(const int bm1, const int bm2) const
-{
-   if (displayColumn[bm1] != displayColumn[bm2]) {
-      return false;
-   }
-   return (thresholdColumn[bm1] == thresholdColumn[bm2]);
-}      
-
+ 

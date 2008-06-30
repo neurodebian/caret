@@ -27,7 +27,7 @@
 #ifndef __GUI_CONTOUR_SECTION_CONTROL_DIALOG_H__
 #define __GUI_CONTOUR_SECTION_CONTROL_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QRadioButton;
 class QSpinBox;
@@ -35,7 +35,7 @@ class QSlider;
 class WuQWidgetGroup;
 
 /// Dialog for controlling selected sections.
-class GuiContourSectionControlDialog : public QtDialog {
+class GuiContourSectionControlDialog : public WuQDialog {
    Q_OBJECT
    
    public:

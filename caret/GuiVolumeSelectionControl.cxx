@@ -437,6 +437,22 @@ GuiVolumeSelectionControl::getSelectedVolumeType() const
 }
       
 /**
+ * set the selected volume type.
+ */
+void 
+GuiVolumeSelectionControl::setSelectedVolumeType(const VolumeFile::VOLUME_TYPE vt)
+{
+   for (unsigned int i = 0; i < volumeTypesToDisplay.size(); i++) {
+      if (vt == volumeTypesToDisplay[i]) {
+         volumeTypeComboBox->blockSignals(true);
+         volumeTypeComboBox->setCurrentIndex(i);
+         volumeTypeComboBox->blockSignals(false);
+         updateControl();
+      }
+   }
+}
+
+/**
  * get the selected volume file.
  */
 VolumeFile* 

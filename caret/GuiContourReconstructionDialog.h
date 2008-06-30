@@ -26,20 +26,20 @@
 #ifndef __GUI_CONTOUR_RECONSTRUCTION_DIALOG_H__
 #define __GUI_CONTOUR_RECONSTRUCTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiStructureComboBox;
 class QCheckBox;
 class QSpinBox;
 
 /// Dialog for constructing a surface from contours
-class GuiContourReconstructionDialog : public QtDialog {
+class GuiContourReconstructionDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       
       /// Constructor
-      GuiContourReconstructionDialog(QWidget* parent, bool modal = true, Qt::WFlags f = 0);
+      GuiContourReconstructionDialog(QWidget* parent, bool modal = true, Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiContourReconstructionDialog();

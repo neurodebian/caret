@@ -63,9 +63,10 @@
 /**
  * Constructor.
  */
-GuiAddCellsDialog::GuiAddCellsDialog(const DIALOG_MODE dm, QWidget* parent, bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+GuiAddCellsDialog::GuiAddCellsDialog(const DIALOG_MODE dm, QWidget* parent, bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    dialogMode = dm;
    
    cellNameChanged = true;
@@ -401,7 +402,7 @@ GuiAddCellsDialog::addCellAtNodeNumber(const int nodeNumber)
    SectionFile* sectionFile = theMainWindow->getBrainSet()->getSectionFile();
    DisplaySettingsSection* dss = theMainWindow->getBrainSet()->getDisplaySettingsSection();
    if (sectionFile != NULL) {
-      const int column = dss->getSelectedColumn();
+      const int column = dss->getSelectedDisplayColumn(-1, -1);
       if ((column >= 0) && (column < sectionFile->getNumberOfColumns())) {
          sectionNumber = sectionFile->getSection(nodeNumber, column);
       }
@@ -706,7 +707,7 @@ GuiAddCellsDialog::slotNameButton()
 {
    GuiNameSelectionDialog nsd(this);
    if (nsd.exec() == QDialog::Accepted) {
-      const QString name(nsd.getName());
+      const QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          nameLineEdit->setText(name);
          cellNameChanged = true;

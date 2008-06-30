@@ -49,10 +49,12 @@
 ** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 **
 ****************************************************************************/
-#include <QDialog>
+
 #include <QDir>
 #include <QMap>
 #include <QUrl>
+
+#include "WuQDialog.h"
 
 class QAbstractButton;
 class QAction;
@@ -74,7 +76,7 @@ class QTreeWidgetItem;
 class QVBoxLayout;
 
 /// class for a useful, extendable file selection dialog
-class WuQFileDialog : public QDialog {
+class WuQFileDialog : public WuQDialog {
    Q_OBJECT
    
    public:

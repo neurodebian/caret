@@ -23,12 +23,15 @@
  */
 /*LICENSE_END*/
 
+#include <iostream>
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QFile>
 #include <QFontDialog>
 #include <QGridLayout>
 #include <QInputDialog>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLayout>
 #include <QMessageBox>
@@ -44,13 +47,14 @@
 #include "QtMultipleInputDialog.h"
 #include "QtTextFileEditorDialog.h"
 #include "QtUtilities.h"
+#include "TextFile.h"
 #include "WuQFileDialog.h"
 
 /**
  * The constructor.
  */
 QtTextFileEditorDialog::QtTextFileEditorDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    findReplaceDialog = NULL;
    setAttribute(Qt::WA_DeleteOnClose);
@@ -70,7 +74,7 @@ QtTextFileEditorDialog::QtTextFileEditorDialog(QWidget* parent)
    //
    // Create the text editor
    //
-   textEditor = new QTextEdit;
+   textEditor = new QtTextFileEditor;
    rows->addWidget(textEditor);
    textEditor->setWordWrapMode(QTextOption::NoWrap);
    
@@ -196,7 +200,9 @@ QtTextFileEditorDialog::QtTextFileEditorDialog(QWidget* parent)
                  "Find in Text.");
    QObject::connect(findToolButton, SIGNAL(clicked()),
                     this, SLOT(slotFind()));
-   
+   QObject::connect(textEditor, SIGNAL(signalFindCommand()),
+                    this, SLOT(slotFind()));
+                    
    //
    // Goto toolbar button
    //
@@ -417,31 +423,26 @@ void
 QtTextFileEditorDialog::loadFile(const QString& fileNameIn,
                                  const bool richTextFlag)
 {
-   QFile file(fileNameIn);
-   if (file.open(QIODevice::ReadOnly) == false) {
-      QString msg;
-      msg = "Unable to open: " + fileNameIn;
-      QMessageBox::critical(this, "ERROR", msg, "OK");
+   TextFile textFile;
+   try {
+      textFile.readFile(fileNameIn);
+   }
+   catch (FileException& e) {
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
-   else {
-      QTextStream stream(&file);
       
-      textEditor->clear();
-      if (richTextFlag) {
-         textEditor->setHtml(stream.readAll());
-      }
-      else {
-         textEditor->setPlainText(stream.readAll());
-      }
-      
-      
-      file.close();
-      
-      textEditor->document()->setModified(false);
-      
-      filename = fileNameIn;
+   textEditor->clear();
+   if (richTextFlag) {
+      textEditor->setHtml(textFile.getText());
    }
+   else {
+      textEditor->setPlainText(textFile.getText());
+   }
+   
+   textEditor->document()->setModified(false);
+   
+   filename = fileNameIn;
    
    QString caption("Text File Editor - ");
    caption.append(FileUtilities::basename(filename));
@@ -491,21 +492,17 @@ QtTextFileEditorDialog::slotFileSaveAs()
 void 
 QtTextFileEditorDialog::saveFile(const QString& name)
 {
-   QFile file(name);
-   if (file.open(QIODevice::WriteOnly) == false) {
-      QString msg;
-      msg = "Unable to open for writing: " + name;
-      QApplication::beep();
-      QMessageBox::critical(this, "ERROR", msg, "OK");
+   TextFile textFile;
+   textFile.setText(textEditor->toPlainText());
+   try {
+      textFile.writeFile(name);
+   }
+   catch (FileException& e) {
+      QMessageBox::critical(this, "ERROR", e.whatQString());
       return;
    }
-   else {
-      QTextStream stream(&file);
-      stream << textEditor->toPlainText();
-      file.close();
       
-      textEditor->document()->setModified(false);
-   }
+   textEditor->document()->setModified(false);
 }
 
 /**
@@ -521,7 +518,7 @@ QtTextFileEditorDialog::slotFileSave()
    
    if (QFile::exists(filename)) {
       QString msg(FileUtilities::basename(filename));
-      msg += "already exists.\n"
+      msg += " already exists.\n"
              "Do you want to replace it?";
       if (QMessageBox::warning(this, "Confirm", msg, "Yes", "No") != 0) {
          return;
@@ -547,6 +544,39 @@ QtTextFileEditorDialog::slotClose()
    }
    
    QDialog::close();
+}
+
+//=====================================================================================
+// Text Editor Widget
+//=====================================================================================
+
+/**
+ * constructor.
+ */
+QtTextFileEditor::QtTextFileEditor(QWidget* parent)
+   : QTextEdit(parent)
+{
+}
+
+/**
+ * destructor.
+ */
+QtTextFileEditor::~QtTextFileEditor()
+{
+}
+
+/**
+ * called when keys pressed.
+ */
+void 
+QtTextFileEditor::keyPressEvent(QKeyEvent* event)
+{
+   if (event->matches(QKeySequence::Find)) {
+      emit signalFindCommand();
+   }
+   else {
+      QTextEdit::keyPressEvent(event);
+   }
 }
 
 //=====================================================================================
@@ -580,7 +610,7 @@ QtTextFileEditorSearchDialog::QtTextFileEditorSearchDialog(QTextEdit* editorIn,
    // next push button
    //
    QPushButton* nextPushButton = new QPushButton("Next");
-   nextPushButton->setAutoDefault(false);
+   nextPushButton->setAutoDefault(true);
    QObject::connect(nextPushButton, SIGNAL(clicked()),
                     this, SLOT(slotNextPushButton()));
    

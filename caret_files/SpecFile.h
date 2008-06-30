@@ -170,6 +170,9 @@ class SpecFile : public AbstractFile {
             // make sure all files exist and are readable
             void validate(QString& errorMessage) const;
             
+            // clean up this entry (remove entries for files that do not exist)
+            bool cleanup();
+            
             // set all file selections
             void setAllSelections(const SPEC_FILE_BOOL selStatus);
             
@@ -233,6 +236,9 @@ class SpecFile : public AbstractFile {
       
       /// get the version of the spec file
       int getFileVersion() const { return fileVersion; }
+      
+      // clean the spec file (remove entries for files that do not exist)
+      bool cleanSpecFile();
       
       // remove files from the spec file and possibly the files themselves on the disk
       void clearFiles(const bool clearVolumeFiles, 
@@ -418,6 +424,7 @@ class SpecFile : public AbstractFile {
       static QString getFociFileExtension() { return ".foci"; }
       static QString getFociColorFileExtension() { return ".focicolor"; }
       static QString getFociProjectionFileExtension() { return ".fociproj"; }
+      static QString getFociSearchFileExtension() { return ".focisearch"; }
       static QString getParamsFileExtension() { return ".params"; }
       static QString getDeformationMapFileExtension() { return ".deform_map"; }
       static QString getDeformationFieldFileExtension() { return ".deform_field"; }
@@ -448,7 +455,16 @@ class SpecFile : public AbstractFile {
       static QString getWustlRegionFileExtension() { return ".wustl_txt"; }
       static QString getLimitsFileExtension() { return ".limits"; }
       static QString getMDPlotFileExtension() { return ".mdo"; }
-      static QString getGiftiFileExtension() { return ".gii"; }
+      static QString getGiftiGenericFileExtension() { return ".gii"; }
+      static QString getGiftiCoordinateFileExtension() { return ".coord.gii"; }
+      static QString getGiftiFunctionalFileExtension() { return ".func.gii"; }
+      static QString getGiftiLabelFileExtension() { return ".label.gii"; }
+      static QString getGiftiRgbaFileExtension() { return ".rgba.gii"; }
+      static QString getGiftiShapeFileExtension() { return ".shape.gii"; }
+      static QString getGiftiSurfaceFileExtension() { return ".surf.gii"; }
+      static QString getGiftiTensorFileExtension() { return ".tensor.gii"; }
+      static QString getGiftiTimeSeriesFileExtension() { return ".time.gii"; }
+      static QString getGiftiTopologyFileExtension() { return ".topo.gii"; }
       static QString getCommaSeparatedValueFileExtension() { return ".csv"; }
       static QString getVocabularyFileExtension() { return ".vocabulary"; }
       static QString getStudyMetaDataFileExtension() { return ".study"; }
@@ -457,6 +473,7 @@ class SpecFile : public AbstractFile {
       static QString getTextFileExtension() { return ".txt"; }
       static QString getNeurolucidaFileExtension() { return ".xml"; }
       static QString getCaretScriptFileExtension() { return ".script"; }
+      static QString getMniObjeSurfaceFileExtension() { return ".obj"; }
       
       /// all spec file "Entry" DO NOT CLEAR
       std::vector<Entry*> allEntries;
@@ -572,7 +589,7 @@ class SpecFile : public AbstractFile {
       Entry fociFile;
       Entry fociColorFile;
       Entry fociProjectionFile;
-      Entry volumeFociFile;
+      Entry fociSearchFile;
       
       Entry paramsFile;
       Entry deformationMapFile;
@@ -729,7 +746,7 @@ class SpecFile : public AbstractFile {
       static const QString fociFileTag;
       static const QString fociColorFileTag;
       static const QString fociProjectionFileTag;
-      static const QString volumeFociFileTag;
+      static const QString fociSearchFileTag;
 
       static const QString paramsFileTag;
 
@@ -956,7 +973,7 @@ class SpecFile : public AbstractFile {
    const QString SpecFile::fociFileTag           = "foci_file";
    const QString SpecFile::fociColorFileTag      = "foci_color_file";
    const QString SpecFile::fociProjectionFileTag = "fociproj_file";
-   const QString SpecFile::volumeFociFileTag     = "volume_foci_file";
+   const QString SpecFile::fociSearchFileTag     = "foci_search_file";
    
    const QString SpecFile::atlasFileTag = "atlas_file";
    

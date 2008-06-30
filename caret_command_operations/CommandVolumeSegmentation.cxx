@@ -201,8 +201,8 @@ CommandVolumeSegmentation::executeCommand() throw (BrainModelAlgorithmException,
       writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_WUNIL;
    }
    else  {
-      throw CommandException("Invalid volume file write type: " +
-                             + writeVolumeType);
+      throw CommandException("Invalid volume file write type: "
+                             + writeVolumeTypeString);
    }
    //
    // Check the operation code

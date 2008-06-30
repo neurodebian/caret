@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLabel;
@@ -38,7 +38,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// Dialog for surface smoothing.
-class GuiInflateAndSmoothFingersDialog : public QtDialog {
+class GuiInflateAndSmoothFingersDialog : public WuQDialog {
    Q_OBJECT
    
    public:

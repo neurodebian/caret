@@ -97,6 +97,8 @@ GuiMainWindowLayersMenu::createFociSubMenu(GuiMainWindowLayersActions* layersAct
    fociSubMenu->addAction(layersActions->getFociAttributeAssignmentAction());
    fociSubMenu->addSeparator();
    
+   fociSubMenu->addAction(layersActions->getFociDensityToMetricAction());
+   fociSubMenu->addAction(layersActions->getFociDensityToVolumeAction());
    fociSubMenu->addAction(layersActions->getFociUncertaintyLimitsAction());
    fociSubMenu->addAction(layersActions->getFociConvertToVtkModelAction());
    fociSubMenu->addSeparator();
@@ -116,6 +118,7 @@ GuiMainWindowLayersMenu::createFociSubMenu(GuiMainWindowLayersActions* layersAct
    
    fociSubMenu->addAction(layersActions->getFociProjectAction());
    fociSubMenu->addAction(layersActions->getFociPalsProjectAction());
+   fociSubMenu->addAction(layersActions->getFociProjectToVolumeAction());
    fociSubMenu->addSeparator();
    
    fociSubMenu->addAction(layersActions->getFociDeleteAllAction());
@@ -148,6 +151,8 @@ GuiMainWindowLayersMenu::createBordersSubMenu(GuiMainWindowLayersActions* layers
    bordersSubMenu->addAction(layersActions->getBordersCreateInterpolatedAction());
    bordersSubMenu->addAction(layersActions->getBordersCreateSphericalAction()); 
    bordersSubMenu->addAction(layersActions->getBordersDrawAction());
+   bordersSubMenu->addAction(layersActions->getBorderDrawUpdateAction());
+   bordersSubMenu->addAction(layersActions->getCopyBorderByNameAction());
    bordersSubMenu->addSeparator();
 
    bordersSubMenu->addAction(layersActions->getBordersEditAttributesAction());

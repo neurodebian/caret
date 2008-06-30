@@ -96,6 +96,11 @@ GuiMouseModePopupMenu::slotMenuItemSelected(QAction* action)
          QAction* action = layersActions->getBordersDrawAction();
          action->trigger();
       }
+      else if (name == getActionBorderDrawUpdateName()) {
+         brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE);
+         QAction* action = layersActions->getBorderDrawUpdateAction();
+         action->trigger();
+      }
       else if (name == getActionBorderDeleteName()) {
          brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE);
       }
@@ -211,6 +216,7 @@ GuiMouseModePopupMenu::slotAboutToShow()
             addAction(getActionBorderDrawName());
             if ((bs->getBorderSet()->getNumberOfBorders() > 0) &&
                 (bs->getDisplaySettingsBorders()->getDisplayBorders())) {
+               addAction(getActionBorderDrawUpdateName());
                addAction(getActionBorderDeleteName());
                addAction(getActionBorderRenameName());
                addAction(getActionBorderReversePointOrderName());

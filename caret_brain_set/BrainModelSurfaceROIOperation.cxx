@@ -36,17 +36,20 @@
 #include "FileUtilities.h"
 #include "MathUtilities.h"
 #include "StringUtilities.h"
+#include "TopologyFile.h"
+#include "TopologyHelper.h"
 
 /**
  * constructor.
  */
 BrainModelSurfaceROIOperation::BrainModelSurfaceROIOperation(BrainSet* bs,
-                                           BrainModelSurface* bmsIn,
-                                           BrainModelSurfaceROINodeSelection* surfaceROIIn)
-   : BrainModelAlgorithm(bs)
+                                           const BrainModelSurface* bmsIn,
+                                           const BrainModelSurfaceROINodeSelection* inputSurfaceROIIn)
+   : BrainModelAlgorithm(bs),
+     bms(bmsIn),
+     inputSurfaceROI(inputSurfaceROIIn)
 {
-   bms = bmsIn;
-   surfaceROI = surfaceROIIn;
+   operationSurfaceROI = NULL;
 }                                  
 
 /**
@@ -54,6 +57,10 @@ BrainModelSurfaceROIOperation::BrainModelSurfaceROIOperation(BrainSet* bs,
  */
 BrainModelSurfaceROIOperation::~BrainModelSurfaceROIOperation()
 {
+   if (operationSurfaceROI != NULL) {
+      delete operationSurfaceROI;
+      operationSurfaceROI = NULL;
+   }
 }
 
 /**
@@ -63,17 +70,45 @@ void
 BrainModelSurfaceROIOperation::execute() throw (BrainModelAlgorithmException)
 {
    if (bms == NULL) {
-      throw BrainModelAlgorithmException("Surface is NULL.");
+      throw BrainModelAlgorithmException("Surface is invalid (NULL).");
    }
-   if (bms->getNumberOfNodes() <= 0) {
+   if (bms->getTopologyFile() == NULL) {
+      throw BrainModelAlgorithmException("Surface has no topology.");
+   }
+   const int numNodes = bms->getNumberOfNodes();
+   if (numNodes <= 0) {
       throw BrainModelAlgorithmException("Surface contains no nodes.");
    }
-   const int numNodesInROI = surfaceROI->getNumberOfNodesSelected();
-   if (numNodesInROI <= 0) {
-      throw BrainModelAlgorithmException("No nodes are selected.");
+   if (inputSurfaceROI == NULL) {
+      throw BrainModelAlgorithmException("The input ROI is invalid.");
+   }
+   if (inputSurfaceROI->getNumberOfNodes() != numNodes) {
+      throw BrainModelAlgorithmException("The surface and the ROI contain a different number of nodes.");
+   }
+   const int numberOfSelectedNodes = inputSurfaceROI->getNumberOfNodesSelected();
+   if (numberOfSelectedNodes <= 0) {
+      throw BrainModelAlgorithmException("No nodes are selected in the ROI.");
    }
    
    reportText = "";
+   
+   //
+   // Copy the input ROI to the operation ROI
+   //
+   operationSurfaceROI = new BrainModelSurfaceROINodeSelection(*inputSurfaceROI);
+   
+   //
+   // Remove any nodes from the operation ROI if they are not connected
+   //
+   const TopologyHelper* th = getTopologyHelper();
+   if (th == NULL) {
+      throw BrainModelAlgorithmException("Operation surface topology invalid.");
+   }
+   for (int i = 0; i < numNodes; i++) {
+      if (th->getNodeHasNeighbors(i) == false) {
+         operationSurfaceROI->setNodeSelected(i, false);
+      }
+   }
    
    executeOperation();
 }
@@ -87,8 +122,9 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
    //
    // Add the header describing the node selection
    //
-   reportText.append(nodeSelectionText);
-   reportText.append("\n");
+   reportText.append("Node Selection: "
+                     + inputSurfaceROI->getSelectionDescription());
+   reportText.append("\n\n");
    
    const TopologyFile* tf = bms->getTopologyFile();
    
@@ -117,9 +153,9 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
       totalArea += tileArea[i];
       
       double numMarked = 0.0;
-      if (surfaceROI->getNodeSelected(nodes[0])) numMarked += 1.0;
-      if (surfaceROI->getNodeSelected(nodes[1])) numMarked += 1.0;
-      if (surfaceROI->getNodeSelected(nodes[2])) numMarked += 1.0;
+      if (operationSurfaceROI->getNodeSelected(nodes[0])) numMarked += 1.0;
+      if (operationSurfaceROI->getNodeSelected(nodes[1])) numMarked += 1.0;
+      if (operationSurfaceROI->getNodeSelected(nodes[2])) numMarked += 1.0;
       
       if (tileArea[i] > 0.0) {
          roiAreaOut += (numMarked / 3.0) * tileArea[i];
@@ -128,7 +164,7 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
    }
    
    for (int m = 0; m < numNodes; m++) {
-      if (surfaceROI->getNodeSelected(m)) {
+      if (operationSurfaceROI->getNodeSelected(m)) {
          const float* xyz = cf->getCoordinate(m);
          centerOfGravity[0] += xyz[0];
          centerOfGravity[1] += xyz[1];
@@ -138,7 +174,7 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
       
    if (headerText.isEmpty() == false) {
       reportText.append(headerText);
-      reportText.append("\n");
+      reportText.append("\n\n");
    }
    QString surf("Surface: ");
    surf.append(bms->getDescriptiveName());
@@ -153,7 +189,7 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
    reportText.append("\n");
    
    reportText.append("\n");
-   const int count = surfaceROI->getNumberOfNodesSelected();
+   const int count = operationSurfaceROI->getNumberOfNodesSelected();
    QStringList sl;
    sl << QString::number(count) << " of " << QString::number(numNodes) << " nodes in region of interest\n";
    reportText.append(sl.join(""));
@@ -182,20 +218,11 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
    
    sl.clear();
    sl << "Region Mean Distance Between Nodes: "
-       << QString::number(bms->getMeanDistanceBetweenNodes(surfaceROI), 'f', 5);
+       << QString::number(bms->getMeanDistanceBetweenNodes(operationSurfaceROI), 'f', 5);
    reportText.append(sl.join(""));
    reportText.append("\n");
    reportText.append(" \n");
 }                                                     
-
-/**
- * set node selection information.
- */
-void 
-BrainModelSurfaceROIOperation::setNodeSelectionInformation(const QString& nodeSelectionTextIn)
-{
-   nodeSelectionText = nodeSelectionTextIn;
-}
 
 /**
  * set the header text.
@@ -204,4 +231,24 @@ void
 BrainModelSurfaceROIOperation::setHeaderText(const QString& headerTextIn)
 {
    headerText = headerTextIn;
-}      
+} 
+
+/**
+ * get the topology helper.
+ */
+const TopologyHelper* 
+BrainModelSurfaceROIOperation::getTopologyHelper() const
+{
+   if (bms == NULL) {
+      return NULL;
+   }
+   
+   const TopologyFile* tf = bms->getTopologyFile();
+   if (tf == NULL) {
+      return NULL;
+   }
+   
+   const TopologyHelper* th = tf->getTopologyHelper(false, true, false);
+   return th;
+}
+     

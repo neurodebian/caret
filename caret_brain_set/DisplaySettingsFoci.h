@@ -57,7 +57,6 @@ class DisplaySettingsFoci : public DisplaySettingsCells {
       //virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
                        
    private:
-      
 };
 
 #endif

@@ -30,12 +30,12 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QLineEdit;
 
 /// This dialog contains multiple rows of label and line edit boxes
-class GuiMultipleInputDialog : public QtDialog {
+class GuiMultipleInputDialog : public WuQDialog {
    Q_OBJECT
    
    public:

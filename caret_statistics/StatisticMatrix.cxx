@@ -23,11 +23,13 @@
  */
 /*LICENSE_END*/
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 
 #include "StatisticAlgorithm.h"
 #include "StatisticMatrix.h"
+#include "StatisticNumericalRecipes.h"
 #include "StatisticVtkMath.h"
 
 #define MATRIX_DEBUG_FLAG 1
@@ -346,6 +348,118 @@ StatisticMatrix::inverse() const throw (StatisticException)
   delete [] column;
   
   return inverseMatrixOut;
+}
+
+/**
+ * get the pseudo inverse of a matrix.
+ */
+StatisticMatrix 
+StatisticMatrix::inversePseudo() const throw (StatisticException)
+{
+   if ((numberOfRows != numberOfColumns)) {
+      throw StatisticException("ERROR: Matrix must be square for pseudo inverse operation.");
+   }
+   const int n = numberOfRows;
+   if (n <= 0) {
+      throw StatisticException("ERROR: Matrix is empty for pseudo inverse operation.");
+   }
+  
+   //
+   // Allocate for numerical recipes
+   //
+   float** au = StatisticNumericalRecipes::matrix(1, n, 1, n);
+   float*  w = StatisticNumericalRecipes::vector(1, n);
+   float** v = StatisticNumericalRecipes::matrix(1, n, 1, n);
+  
+   //
+   // Load the input for numerical recipes
+   //
+   //for (int i = 0; i < n; i++) {
+   for (int i = (n - 1); i >= 0; i--) {
+      for (int j = 0; j < n; j++) {
+         au[i+1][j+1] = getElement(i, j);
+      }
+   }
+   
+   //
+   // Do singular value decomposition
+   //
+   StatisticNumericalRecipes::svdcmp(au, n, n, w, v);
+   
+   //
+   // Make the W+ matrix
+   //
+   const float VERY_SMALL_NUMBER = 0.001;
+   StatisticMatrix wplus(n, n);
+   wplus.setAllElements(0.0);
+   for (int i = 0; i < n; i++) {
+      const float wi = w[i+1];
+      if (std::fabs(wi) < VERY_SMALL_NUMBER) {
+         wplus.setElement(i, i, 0.0);
+      }
+      else {
+         wplus.setElement(i, i, (1.0 / wi));
+      }
+   }
+   if (StatisticAlgorithm::getDebugOn()) {
+      std::cout << "W-vector: ";
+      for (int i = 1; i <= n; i++) {
+         std::cout << w[i] << ", ";
+      }
+      std::cout << std::endl;
+      wplus.print(std::cout,
+                  "",
+                  "W-Plus");
+   }
+   
+   //
+   // Create the U-Transpose matrix
+   //
+   StatisticMatrix umatrix(n, n);
+   for (int i = (n - 1); i >= 0; i--) {
+      for (int j = 0; j < n; j++) {
+         umatrix.setElement(i, j, au[i+1][j+1]);
+      }
+   }
+   if (StatisticAlgorithm::getDebugOn()) {
+      umatrix.print(std::cout,
+                    "",
+                    "U");
+   }
+   const StatisticMatrix uTranspose = umatrix.transpose();
+   
+   //
+   // Create the V-Matrix
+   //   
+   StatisticMatrix vmatrix(n, n);
+   for (int i = (n - 1); i >= 0; i--) {
+      for (int j = 0; j < n; j++) {
+         vmatrix.setElement(i, j, v[i+1][j+1]);
+      }
+   }
+   if (StatisticAlgorithm::getDebugOn()) {
+      vmatrix.print(std::cout,
+                    "",
+                    "V");
+   }
+   
+   //
+   // Pseudo inverse is [V][W+][UT]
+   //
+   const StatisticMatrix inverseMatrixOut = vmatrix.multiply(wplus).multiply(uTranspose);
+   if ((inverseMatrixOut.getNumberOfRows() != n) ||
+       (inverseMatrixOut.getNumberOfColumns() != n)) {
+      throw StatisticException("Pseudo inverse matrix is not same size as input matrix.");
+   }
+   
+   //
+   // Free numerical recipes memory
+   //
+   StatisticNumericalRecipes::free_matrix(au, 1, n, 1, n);
+   StatisticNumericalRecipes::free_matrix(v, 1, n, 1, n);
+   StatisticNumericalRecipes::free_vector(w, 1, n);
+   
+   return inverseMatrixOut;
 }
 
 /**

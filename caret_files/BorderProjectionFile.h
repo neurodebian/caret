@@ -34,6 +34,7 @@ class Border;
 class BorderProjectionFile;
 class ColorFile;
 class CoordinateFile;
+class TopologyHelper;
 
 /// Class for storing a border projection link.
 class BorderProjectionLink {
@@ -90,7 +91,8 @@ class BorderProjectionLink {
 class BorderProjection {
    public:
       /// constructor
-      BorderProjection(const QString& nameIn, const float* centerIn3 = NULL, 
+      BorderProjection(const QString& nameIn = "_no_name_",
+                       const float* centerIn3 = NULL, 
                        const float samplingDensityIn = 25.0,
                        const float varianceIn = 1.0, 
                        const float topographyIn = 0.0,
@@ -148,9 +150,51 @@ class BorderProjection {
       /// get the unique ID
       int getUniqueID() const { return uniqueID; }
       
+      /// get center of gravity
+      void getCenterOfGravity(const CoordinateFile* coordFile,
+                              float centerOfGravityOut[3]) const;
+      
+      /// insert a border projection link before the specified link number (use number of links for end)
+      void insertBorderProjectionLink(const int linkIndex,
+                                      const BorderProjectionLink& bl);
+                                       
+      /// insert a border projection link before the specified link number (use number of links for end)
+      void insertBorderProjectionLinkOnNode(const int linkIndex,
+                                            const int nodeNumber);
+      
+      /// get a subset of the links as a border projection
+      BorderProjection getSubSetOfBorderProjectionLinks(const int startLinkNumber,
+                                                        const int endLinkNumber) const;
+                                                        
       /// unproject a border
       void unprojectBorderProjection(const CoordinateFile* cf,
-                                     Border& borderOut);
+                                     Border& borderOut) const;
+                           
+      /// unproject a border
+      void unprojectBorderProjection(const CoordinateFile* cf,
+                                     const TopologyHelper* th,
+                                     Border& borderOut) const;
+      
+      /// get the link number nearest to a coordinate
+      int getLinkNumberNearestToCoordinate(const CoordinateFile* cf,
+                                           const float xyz[3]) const;
+      
+      /// get the link number furthest from a coordinate
+      int getLinkNumberFurthestFromCoordinate(const CoordinateFile* cf,
+                                              const float xyz[3]) const;
+      
+      /// split a border that is approximately linear in shape
+      bool splitClosedBorderProjection(const CoordinateFile* cf,
+                                       const int startingLinkNumber,
+                                       const QString& newNameSuffix,
+                                       BorderProjection& halfOneOut,
+                                       BorderProjection& halfTwoOut,
+                                       const int endingLinkNumber = -1);
+                                       
+      /// get the center of gravity for a border (returns true if valid)
+      bool getCenterOfGravity(const CoordinateFile* cf,
+                              const TopologyHelper* th,
+                              float cogXYZOut[3]) const;
                            
       /// change the starting link of a closed border so it is close to a point
       void changeStartingLinkOfClosedBorderToBeNearPoint(const CoordinateFile* cf,
@@ -183,6 +227,9 @@ class BorderProjection {
       
       /// remove the last border projection link
       void removeLastBorderProjectionLink();
+      
+      /// reverse the order of the border projection links
+      void reverseOrderOfBorderProjectionLinks();
       
    private:
       /// border projection file this border projection belongs to
@@ -294,6 +341,9 @@ class BorderProjectionFile : public AbstractFile {
       /// remove borders with the specified name.
       void removeBordersWithName(const QString& nameIn);
 
+      /// reverse order of links in all border projections
+      void reverseOrderOfAllBorderProjections();
+      
       /// read the file's data
       void readFileData(QFile& file, QTextStream& stream, QDataStream&,
                         QDomElement& /* rootElement */) throw (FileException);

@@ -497,8 +497,8 @@ BrainSetDataFileReader::execute() throw (BrainModelAlgorithmException)
                      true,
                      true);
       }
-      else if (specFileTag == SpecFile::volumeFociFileTag) {
-         brainSet->readVolumeFociFile(fileName,
+      else if (specFileTag == SpecFile::fociSearchFileTag) {
+         brainSet->readFociSearchFile(fileName,
                      true,
                      true);
       }

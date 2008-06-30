@@ -30,7 +30,7 @@
 #include <QString>
 
 #include <QColor>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "ColorFile.h"
 
@@ -40,7 +40,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// This modal dialog is used to select a single color.
-class GuiColorSelectionDialog : public QtDialog {
+class GuiColorSelectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

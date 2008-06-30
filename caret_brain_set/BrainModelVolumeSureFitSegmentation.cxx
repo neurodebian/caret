@@ -343,6 +343,10 @@ BrainModelVolumeSureFitSegmentation::executeIdentifySulci() throw (BrainModelAlg
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
       case Structure::STRUCTURE_TYPE_INVALID:
          QString msg("Struture must be either \"");
          msg += Structure::convertTypeToString(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
@@ -815,7 +819,7 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
                   //
                   // Pad the segmentation
                   //
-                  segmentVolumeForProcessing->padSegmentation(partialHemispherePadding);
+                  segmentVolumeForProcessing->padSegmentation(partialHemispherePadding, true);
                   segmentVolumeForProcessing->clearModified();
                   
                   //
@@ -1074,7 +1078,12 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    if (autoSaveFilesFlag) {
       if (areaColorFile->getModified()) {
          try {
-            brainSet->writeAreaColorFile(areaColorFile->getFileName());
+            if (QFile::exists(areaColorFile->getFileName())) {
+               brainSet->writeAreaColorFile(areaColorFile->getFileName());
+            }
+            else {
+               brainSet->writeAreaColorFile(areaColorFile->makeDefaultFileName("Initial"));
+            }
          }
          catch (FileException& e) {
             addToWarningMessages(e.whatQString()); 
@@ -1164,7 +1173,12 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    //
    if (autoSaveFilesFlag) {
       try {
-         brainSet->writeSurfaceShapeFile(ssf->getFileName());
+         if (QFile::exists(ssf->getFileName())) {
+            brainSet->writeSurfaceShapeFile(ssf->getFileName());
+         }
+         else {
+            brainSet->writeSurfaceShapeFile(ssf->makeDefaultFileName("Initial"));
+         }
       }
       catch (FileException& e) {
          addToWarningMessages(e.whatQString());
@@ -1259,235 +1273,254 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    if (rawBMS == NULL) {
       throw BrainModelAlgorithmException("Unable to find raw surface for sulci ID");
    }
+   
+   const bool identifyCalcarineAndCentralFlag = false;
+   int numPaintColumns = 0;
+   int sulciIDColumnNumber = -1;
+   if (identifyCalcarineAndCentralFlag) {
+      sulciIDColumnNumber = numPaintColumns++;
+   }
+   const int geographyColumnNumber = numPaintColumns++;
    const CoordinateFile* rawCoordFile = rawBMS->getCoordinateFile();
    PaintFile* pf = brainSet->getPaintFile();
-   pf->setNumberOfNodesAndColumns(brainSet->getNumberOfNodes(), 2);
-   pf->setColumnName(0, "Sulci ID");
-   pf->setColumnName(1, "Geography");
+   pf->setNumberOfNodesAndColumns(brainSet->getNumberOfNodes(), numPaintColumns);
+   if (sulciIDColumnNumber >= 0) {
+      pf->setColumnName(sulciIDColumnNumber, "Sulci ID");
+   }
+   pf->setColumnName(geographyColumnNumber, "Geography");
+   if (sulciIDColumnNumber >= 0) {
+      pf->assignPaintColumnWithVolumeFile(&cerebralHullErode3, //&data,
+                                          rawCoordFile,
+                                          sulciIDColumnNumber,
+                                          "SUL");
+   }
    pf->assignPaintColumnWithVolumeFile(&cerebralHullErode3, //&data,
                                        rawCoordFile,
-                                       0,
-                                       "SUL");
-   pf->assignPaintColumnWithVolumeFile(&cerebralHullErode3, //&data,
-                                       rawCoordFile,
-                                       1,
+                                       geographyColumnNumber,
                                        "SUL");
                                        
    //
    // Set CUT.FACE paint ID for padded volumes
    //
-   assignPaddedCutFaceNodePainting(fiducialSurface->getCoordinateFile(), //rawCoordFile,
+   assignPaddedCutFaceNodePainting(rawCoordFile,
                                    segmentVol,
                                    pf,
-                                   1);
+                                   geographyColumnNumber);
 
-   //  #CombineVols.py subrect CerebralHull.erode.4.mnc $Segment_file BuriedCortex.4deep
-   //  vol = volume.Volume (che4fname)
-   //  data = vol.VoxData3D
-   //  SureFitOps.CombineVols ("subrect", data, segdata, segdata)
-   //  bc4fname = "%s/%s" % (SulDirectory, "BuriedCortex.4deep.mnc")
-   //  WriteNetCDFFile (bc4fname, data, xdim, ydim, zdim)
-   data = cerebralHullErode4;
-   VolumeFile::performMathematicalOperation(VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
-                                            &data,
-                                            &segData,
-                                            &segData,
-                                            &data);
-   data.stretchVoxelValues();
-   writeDebugVolume(data, "BuriedCortex.4deep");
-   VolumeFile buriedCortex4Deep(data);
-   
-   //if (acIJK[1] > (yDim - oldPadPosY)) {
-   if (acIJK[1] > (yDim - partialHemispherePadding[3])) { 
-      if (DebugControl::getDebugOn()) {
-         std::cout << "AC forward of anterior wall; skipping central sulcus." << std::endl;
+   if (identifyCalcarineAndCentralFlag) {
+      //  #CombineVols.py subrect CerebralHull.erode.4.mnc $Segment_file BuriedCortex.4deep
+      //  vol = volume.Volume (che4fname)
+      //  data = vol.VoxData3D
+      //  SureFitOps.CombineVols ("subrect", data, segdata, segdata)
+      //  bc4fname = "%s/%s" % (SulDirectory, "BuriedCortex.4deep.mnc")
+      //  WriteNetCDFFile (bc4fname, data, xdim, ydim, zdim)
+      data = cerebralHullErode4;
+      VolumeFile::performMathematicalOperation(VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
+                                               &data,
+                                               &segData,
+                                               &segData,
+                                               &data);
+      data.stretchVoxelValues();
+      writeDebugVolume(data, "BuriedCortex.4deep");
+      VolumeFile buriedCortex4Deep(data);
+      
+      //if (acIJK[1] > (yDim - oldPadPosY)) {
+      if (acIJK[1] > (yDim - partialHemispherePadding[3])) { 
+         if (DebugControl::getDebugOn()) {
+            std::cout << "AC forward of anterior wall; skipping central sulcus." << std::endl;
+         }
       }
-   }
-   else {
-      const int xAC_CeSlat = acIJK[0] + Hem3 * 40;
-      const int xAC_CeSmed = acIJK[1] + Hem3 * 10;
-      const int CeSxlow = xAC_CeSlat * Hem2 + xAC_CeSmed * Hem;
-      const int CeSxhigh = xAC_CeSlat * Hem + xAC_CeSmed * Hem2;
-      const int CeSymin = acIJK[1] - 40;
-      const int CeSymax = acIJK[1] - 5;
-      const int CeSzmin = acIJK[2] + 40;
-      const int CeSzmax = acIJK[2] + 80;
-      // #FillBiggestObject.py BuriedCortex.4deep.mnc CentralSulcus.4below $CeSxlow $CeSxhigh $CeSymin $CeSymax $CeSzmin $CeSzmax 
-      // x1 = CeSxlow
-      // x2 = CeSxhigh
-      // y1 = CeSymin
-      // y2 = CeSymax
-      // z1 = CeSzmin
-      // z2 = CeSzmax
-      // fboseed, data = FillBiggestObject (data, x1, x2, y1, y2, z1, z2)
-      // fname = "%s/%s" % (SulDirectory, "CentralSulcus.4below.mnc")
-      // WriteNetCDFFile (fname, data, xdim, ydim, zdim)
-      data.fillBiggestObjectWithinMask(CeSxlow, CeSxhigh, CeSymin, CeSymax, CeSzmin, CeSzmax, 255, 255);
-      writeDebugVolume(data, "CentralSulcus.4below");
+      else {
+         const int xAC_CeSlat = acIJK[0] + Hem3 * 40;
+         const int xAC_CeSmed = acIJK[1] + Hem3 * 10;
+         const int CeSxlow = xAC_CeSlat * Hem2 + xAC_CeSmed * Hem;
+         const int CeSxhigh = xAC_CeSlat * Hem + xAC_CeSmed * Hem2;
+         const int CeSymin = acIJK[1] - 40;
+         const int CeSymax = acIJK[1] - 5;
+         const int CeSzmin = acIJK[2] + 40;
+         const int CeSzmax = acIJK[2] + 80;
+         // #FillBiggestObject.py BuriedCortex.4deep.mnc CentralSulcus.4below $CeSxlow $CeSxhigh $CeSymin $CeSymax $CeSzmin $CeSzmax 
+         // x1 = CeSxlow
+         // x2 = CeSxhigh
+         // y1 = CeSymin
+         // y2 = CeSymax
+         // z1 = CeSzmin
+         // z2 = CeSzmax
+         // fboseed, data = FillBiggestObject (data, x1, x2, y1, y2, z1, z2)
+         // fname = "%s/%s" % (SulDirectory, "CentralSulcus.4below.mnc")
+         // WriteNetCDFFile (fname, data, xdim, ydim, zdim)
+         data.fillBiggestObjectWithinMask(CeSxlow, CeSxhigh, CeSymin, CeSymax, CeSzmin, CeSzmax, 255, 255);
+         writeDebugVolume(data, "CentralSulcus.4below");
 
-      // #Sculpt.py 0 5 0 $ncol 0 $nrow 0 $nslices CentralSulcus.4below.mnc BuriedCortex.3deep.mnc CentralSulcus
-      // x1 = 0
-      // x2 = xdim
-      // y1 = 0
-      // y2 = ydim
-      // z1 = 0
-      // z2 = zdim
-      // SureFitOps.Sculpt (0, 5, 0, 0, 0, x1, x2, y1, y2, z1, z2, data, bc3vol.VoxData3D)
-      // fname = "%s/%s.CentralSulcus.mnc" % 
-      //         (SulDirectory, ReadParams.GetFilePrefix ())
-      // WriteNetCDFFile (fname, data, xdim, ydim, zdim)
-      // if refreshslice == 1:
-      //         SureSliceFcn.SetSecondVolume (data)
-      int seed[3] = { 0, 0, 0 };
-      int extent[6] = { 0, xDim, 0, yDim, 0, zDim };
-      data.sculptVolume(0, &bc3vol, 5, seed, extent);
-      writeDebugVolume(data, "CentralSulcus");
-      
-      // #FindLimits.py CentralSulcus.mnc Limits.CeS
-      // fname = "%s/%s.Limits.CeS" % 
-      //         (SulDirectory, ReadParams.GetFilePrefix ())
-      // CesLim = SureFitOps.FindLimits (fname, data)
-      data.findLimits("CentralSulculs.limits", extent);
-      
-      // #VolMorphOps.py 1 0 CentralSulcus.mnc CentralSulcus.dilate
-      // SureFitOps.VolMorphOps (1, 0, data)
-      // csdfname = "%s/%s.CentralSulcus.dilate.mnc" % 
-      // (SulDirectory, ReadParams.GetFilePrefix ())
-      // WriteNetCDFFile (csdfname, data, xdim, ydim, zdim)
+         // #Sculpt.py 0 5 0 $ncol 0 $nrow 0 $nslices CentralSulcus.4below.mnc BuriedCortex.3deep.mnc CentralSulcus
+         // x1 = 0
+         // x2 = xdim
+         // y1 = 0
+         // y2 = ydim
+         // z1 = 0
+         // z2 = zdim
+         // SureFitOps.Sculpt (0, 5, 0, 0, 0, x1, x2, y1, y2, z1, z2, data, bc3vol.VoxData3D)
+         // fname = "%s/%s.CentralSulcus.mnc" % 
+         //         (SulDirectory, ReadParams.GetFilePrefix ())
+         // WriteNetCDFFile (fname, data, xdim, ydim, zdim)
+         // if refreshslice == 1:
+         //         SureSliceFcn.SetSecondVolume (data)
+         int seed[3] = { 0, 0, 0 };
+         int extent[6] = { 0, xDim, 0, yDim, 0, zDim };
+         data.sculptVolume(0, &bc3vol, 5, seed, extent);
+         writeDebugVolume(data, "CentralSulcus");
+         
+         // #FindLimits.py CentralSulcus.mnc Limits.CeS
+         // fname = "%s/%s.Limits.CeS" % 
+         //         (SulDirectory, ReadParams.GetFilePrefix ())
+         // CesLim = SureFitOps.FindLimits (fname, data)
+         data.findLimits("CentralSulculs.limits", extent);
+         
+         // #VolMorphOps.py 1 0 CentralSulcus.mnc CentralSulcus.dilate
+         // SureFitOps.VolMorphOps (1, 0, data)
+         // csdfname = "%s/%s.CentralSulcus.dilate.mnc" % 
+         // (SulDirectory, ReadParams.GetFilePrefix ())
+         // WriteNetCDFFile (csdfname, data, xdim, ydim, zdim)
+         data.doVolMorphOps(1, 0);
+         writeDebugVolume(data, "CentralSulcus.dilate");
+
+         // #IntersectVolumeWithSurface.py $fname CentralSulcus.dilate.mnc CENTRAL 1 -0.5 -0.5 -0.5
+         // paintstring = "CENTRAL"
+         // col_number = 0
+         // SureFitOps.IntersectVolumeWithSurface (specfname, data, paintstring, col_number, xoffset, yoffset, zoffset)
+         // oldpaintfile = "%s.paint" % paintstring
+         // os.rename (oldpaintfile, paintfile)
+         pf->assignPaintColumnWithVolumeFile(&data,
+                                          rawCoordFile,
+                                          sulciIDColumnNumber,
+                                          "CENTRAL");
+      }
+      //  #CombineVols.py subrect CerebralHull.erode.10.mnc $Segment_file BuriedCortex.10deep
+      //  vol = volume.Volume (che10fname)
+      //  data = vol.VoxData3D
+      //  SureFitOps.CombineVols ("subrect", data, segdata, segdata)
+      //  bc10fname = "%s/%s.BuriedCortex.10deep.mnc" % 
+      //          (SulDirectory, ReadParams.GetFilePrefix ())
+      //  WriteNetCDFFile (bc10fname, data, xdim, ydim, zdim)
+      data = cerebralHullErode10;
+      VolumeFile::performMathematicalOperation(VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
+                                               &data,
+                                               &segData,
+                                               &segData,
+                                               &data);
+      data.stretchVoxelValues();
+      writeDebugVolume(data, "BuriedCortex.10deep");
+
+      //  #VolMorphOps.py 1 0 BuriedCortex.10deep.mnc Sulci.10.dilate
+      //  SureFitOps.VolMorphOps (1, 0, data)
+      //  s10dfname = "%s/%s" % (SulDirectory, "Sulci.10.dilate.mnc")
+      //  WriteNetCDFFile (s10dfname, data, xdim, ydim, zdim)
       data.doVolMorphOps(1, 0);
-      writeDebugVolume(data, "CentralSulcus.dilate");
+      writeDebugVolume(data, "Sulci.10.dilate");
+      
+      //     #MaskVol.py  BuriedCortex.4deep.mnc BuriedCortex.4deep.CaSmask $CaSxlow $CaSxhigh $CaSymin $CaSymax $CaSzmin $CaSzmax
+      //     x1 = CaSxlow     
+      //     x2 = CaSxhigh
+      //     y1 = CaSymin
+      //     y2 = CaSymax
+      //     z1 = CaSzmin
+      //     z2 = CaSzmax
+      //     vol = volume.Volume (bc4fname)
+      //     data = vol.VoxData3D
+      //     SureFitOps.MaskVol (x1, x2, y1, y2, z1, z2, data)
+      //     fname = "%s/%s" % (SulDirectory, "BuriedCortex.4deep.CaSmask.mnc") 
+      //     WriteNetCDFFile (fname, data, xdim, ydim, zdim)
+      const int xAC_CaSlat = acIJK[0] + Hem3 * 30;
+      const int xAC_CaSmed = acIJK[0];
+      const int CaSxlow  = xAC_CaSlat * Hem2 + xAC_CaSmed * Hem;
+      const int CaSxhigh = xAC_CaSlat * Hem  + xAC_CaSmed * Hem2;
+      const int CaSymin  = acIJK[1] - 100;
+      const int CaSymax  = acIJK[1] - 70;
+      const int CaSzmin  = acIJK[2];
+      const int CaSzmax  = acIJK[2] + 30;
+      data = buriedCortex4Deep;
+      int extent[6];
+      extent[0] = CaSxlow;
+      extent[1] = CaSxhigh;
+      extent[2] = CaSymin;
+      extent[3] = CaSymax;
+      extent[4] = CaSzmin;
+      extent[5] = CaSzmax;
+      data.maskVolume(extent);
+      writeDebugVolume(data, "BuriedCortex.4deep.CaSmask");
+           
+      //  #FillBiggestObject.py BuriedCortex.4deep.CaSmask.mnc CalcarineSulcus.4below $CaSxlow $CaSxhigh $CaSymin $CaSymax $CaSzmin $CaSzmax 
+      //  fboseed, data = FillBiggestObject (data, x1, x2, y1, y2, z1, z2)
+      //  fname = "%s/%s" % (SulDirectory, "CalcarineSulcus.4below.mnc")
+      //  WriteNetCDFFile (fname, data, xdim, ydim, zdim)
+      data.fillBiggestObjectWithinMask(extent, 255, 255);
+      writeDebugVolume(data, "CalcarineSulcus.4below");
 
-      // #IntersectVolumeWithSurface.py $fname CentralSulcus.dilate.mnc CENTRAL 1 -0.5 -0.5 -0.5
-      // paintstring = "CENTRAL"
-      // col_number = 0
-      // SureFitOps.IntersectVolumeWithSurface (specfname, data, paintstring, col_number, xoffset, yoffset, zoffset)
-      // oldpaintfile = "%s.paint" % paintstring
-      // os.rename (oldpaintfile, paintfile)
+      //  #Sculpt.py 0 8 0 $ncol 0 $nrow 0 $nslices CalcarineSulcus.4below.mnc BuriedCortex.3deep.mnc CalcarineSulcus
+      //  x1 = 0
+      //  x2 = xdim
+      //  y1 = 0
+      //  y2 = ydim
+      //  z1 = 0
+      //  z2 = zdim
+      //  SureFitOps.Sculpt (0, 8, 0, 0, 0, x1, x2, y1, y2, z1, z2, data, bc3vol.VoxData3D)
+      //  fname = "%s/%s.CalcarineSulcus.mnc" % 
+      //          (SulDirectory, ReadParams.GetFilePrefix ())
+      //  WriteNetCDFFile (fname, data, xdim, ydim, zdim)
+      extent[0] = 0;
+      extent[1] = xDim;
+      extent[2] = 0;
+      extent[3] = yDim;
+      extent[4] = 0;
+      extent[5] = zDim;
+      int seed[3];
+      seed[0] = 0;
+      seed[1] = 0;
+      seed[2] = 0; //hghjhj
+      data.sculptVolume(0, &bc3vol, 8, seed, extent);
+      writeDebugVolume(data, "CalcarineSulcus");
+      
+      //  #FindLimits.py CalcarineSulcus.mnc Limits.CaS
+      //  fname = "%s/%s.Limits.CaS" % 
+      //          (SulDirectory, ReadParams.GetFilePrefix ())
+      //  CesLim = SureFitOps.FindLimits (fname, data)
+      data.findLimits("Cas.Limits", extent);
+
+      //     #VolMorphOps.py 1 0 CalcarineSulcus.mnc CalcarineSulcus.dilate
+      //     SureFitOps.VolMorphOps (1, 0, data)
+      //     fname = "%s/%s.CalcarineSulcus.dilate.mnc" % 
+      //             (SulDirectory, ReadParams.GetFilePrefix ())
+      //     WriteNetCDFFile (fname, data, xdim, ydim, zdim)
+      data.doVolMorphOps(1, 0);
+      writeDebugVolume(data, "CalcarineSulcus.dilate");
+
+      //  #IntersectVolumeWithSurface.py $fname CalcarineSulcus.dilate.mnc CALCARINE 1 -0.5 -0.5 -0.5
+      //  paintstring = "CALCARINE"
+      //  col_number = 0
+      //  SureFitOps.IntersectVolumeWithSurface (specfname, data, paintstring, col_number, xoffset, yoffset, zoffset)
+      //  oldpaintfile = "%s.paint" % paintstring
+      //  os.rename (oldpaintfile, paintfile)
+      //  geographyfname = re.sub(".Surface.", ".geography.", specfname)
+      //  geographyfname = re.sub(".spec", ".paint", geographyfname)
+      //  os.rename (paintfile, geographyfname)
       pf->assignPaintColumnWithVolumeFile(&data,
-                                       rawCoordFile,
-                                       0,
-                                       "CENTRAL");
+                                          rawCoordFile,
+                                          sulciIDColumnNumber,
+                                          "CALCARINE");   
    }
-   //  #CombineVols.py subrect CerebralHull.erode.10.mnc $Segment_file BuriedCortex.10deep
-   //  vol = volume.Volume (che10fname)
-   //  data = vol.VoxData3D
-   //  SureFitOps.CombineVols ("subrect", data, segdata, segdata)
-   //  bc10fname = "%s/%s.BuriedCortex.10deep.mnc" % 
-   //          (SulDirectory, ReadParams.GetFilePrefix ())
-   //  WriteNetCDFFile (bc10fname, data, xdim, ydim, zdim)
-   data = cerebralHullErode10;
-   VolumeFile::performMathematicalOperation(VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
-                                            &data,
-                                            &segData,
-                                            &segData,
-                                            &data);
-   data.stretchVoxelValues();
-   writeDebugVolume(data, "BuriedCortex.10deep");
-
-   //  #VolMorphOps.py 1 0 BuriedCortex.10deep.mnc Sulci.10.dilate
-   //  SureFitOps.VolMorphOps (1, 0, data)
-   //  s10dfname = "%s/%s" % (SulDirectory, "Sulci.10.dilate.mnc")
-   //  WriteNetCDFFile (s10dfname, data, xdim, ydim, zdim)
-   data.doVolMorphOps(1, 0);
-   writeDebugVolume(data, "Sulci.10.dilate");
    
-   //     #MaskVol.py  BuriedCortex.4deep.mnc BuriedCortex.4deep.CaSmask $CaSxlow $CaSxhigh $CaSymin $CaSymax $CaSzmin $CaSzmax
-   //     x1 = CaSxlow     
-   //     x2 = CaSxhigh
-   //     y1 = CaSymin
-   //     y2 = CaSymax
-   //     z1 = CaSzmin
-   //     z2 = CaSzmax
-   //     vol = volume.Volume (bc4fname)
-   //     data = vol.VoxData3D
-   //     SureFitOps.MaskVol (x1, x2, y1, y2, z1, z2, data)
-   //     fname = "%s/%s" % (SulDirectory, "BuriedCortex.4deep.CaSmask.mnc") 
-   //     WriteNetCDFFile (fname, data, xdim, ydim, zdim)
-   const int xAC_CaSlat = acIJK[0] + Hem3 * 30;
-   const int xAC_CaSmed = acIJK[0];
-   const int CaSxlow  = xAC_CaSlat * Hem2 + xAC_CaSmed * Hem;
-   const int CaSxhigh = xAC_CaSlat * Hem  + xAC_CaSmed * Hem2;
-   const int CaSymin  = acIJK[1] - 100;
-   const int CaSymax  = acIJK[1] - 70;
-   const int CaSzmin  = acIJK[2];
-   const int CaSzmax  = acIJK[2] + 30;
-   data = buriedCortex4Deep;
-   int extent[6];
-   extent[0] = CaSxlow;
-   extent[1] = CaSxhigh;
-   extent[2] = CaSymin;
-   extent[3] = CaSymax;
-   extent[4] = CaSzmin;
-   extent[5] = CaSzmax;
-   data.maskVolume(extent);
-   writeDebugVolume(data, "BuriedCortex.4deep.CaSmask");
-        
-   //  #FillBiggestObject.py BuriedCortex.4deep.CaSmask.mnc CalcarineSulcus.4below $CaSxlow $CaSxhigh $CaSymin $CaSymax $CaSzmin $CaSzmax 
-   //  fboseed, data = FillBiggestObject (data, x1, x2, y1, y2, z1, z2)
-   //  fname = "%s/%s" % (SulDirectory, "CalcarineSulcus.4below.mnc")
-   //  WriteNetCDFFile (fname, data, xdim, ydim, zdim)
-   data.fillBiggestObjectWithinMask(extent, 255, 255);
-   writeDebugVolume(data, "CalcarineSulcus.4below");
-
-   //  #Sculpt.py 0 8 0 $ncol 0 $nrow 0 $nslices CalcarineSulcus.4below.mnc BuriedCortex.3deep.mnc CalcarineSulcus
-   //  x1 = 0
-   //  x2 = xdim
-   //  y1 = 0
-   //  y2 = ydim
-   //  z1 = 0
-   //  z2 = zdim
-   //  SureFitOps.Sculpt (0, 8, 0, 0, 0, x1, x2, y1, y2, z1, z2, data, bc3vol.VoxData3D)
-   //  fname = "%s/%s.CalcarineSulcus.mnc" % 
-   //          (SulDirectory, ReadParams.GetFilePrefix ())
-   //  WriteNetCDFFile (fname, data, xdim, ydim, zdim)
-   extent[0] = 0;
-   extent[1] = xDim;
-   extent[2] = 0;
-   extent[3] = yDim;
-   extent[4] = 0;
-   extent[5] = zDim;
-   int seed[3];
-   seed[0] = 0;
-   seed[1] = 0;
-   seed[2] = 0; //hghjhj
-   data.sculptVolume(0, &bc3vol, 8, seed, extent);
-   writeDebugVolume(data, "CalcarineSulcus");
-   
-   //  #FindLimits.py CalcarineSulcus.mnc Limits.CaS
-   //  fname = "%s/%s.Limits.CaS" % 
-   //          (SulDirectory, ReadParams.GetFilePrefix ())
-   //  CesLim = SureFitOps.FindLimits (fname, data)
-   data.findLimits("Cas.Limits", extent);
-
-   //     #VolMorphOps.py 1 0 CalcarineSulcus.mnc CalcarineSulcus.dilate
-   //     SureFitOps.VolMorphOps (1, 0, data)
-   //     fname = "%s/%s.CalcarineSulcus.dilate.mnc" % 
-   //             (SulDirectory, ReadParams.GetFilePrefix ())
-   //     WriteNetCDFFile (fname, data, xdim, ydim, zdim)
-   data.doVolMorphOps(1, 0);
-   writeDebugVolume(data, "CalcarineSulcus.dilate");
-
-   //  #IntersectVolumeWithSurface.py $fname CalcarineSulcus.dilate.mnc CALCARINE 1 -0.5 -0.5 -0.5
-   //  paintstring = "CALCARINE"
-   //  col_number = 0
-   //  SureFitOps.IntersectVolumeWithSurface (specfname, data, paintstring, col_number, xoffset, yoffset, zoffset)
-   //  oldpaintfile = "%s.paint" % paintstring
-   //  os.rename (oldpaintfile, paintfile)
-   //  geographyfname = re.sub(".Surface.", ".geography.", specfname)
-   //  geographyfname = re.sub(".spec", ".paint", geographyfname)
-   //  os.rename (paintfile, geographyfname)
-   pf->assignPaintColumnWithVolumeFile(&data,
-                                       rawCoordFile,
-                                       0,
-                                       "CALCARINE");   
-               
    //
    // Should the paint file be saved
    //
    if (autoSaveFilesFlag) {
       PaintFile* pf = brainSet->getPaintFile();
       try {
-         brainSet->writePaintFile(pf->getFileName());
+         if (QFile::exists(pf->getFileName())) {
+            brainSet->writePaintFile(pf->getFileName());
+         }
+         else {
+            brainSet->writePaintFile(pf->makeDefaultFileName("Initial"));
+         }
       }
       catch (FileException& e) {
          addToWarningMessages(e.whatQString());
@@ -1671,6 +1704,7 @@ BrainModelVolumeSureFitSegmentation::generateInflatedAndEllipsoidSurfaces() thro
                                                            false,
                                                            true,
                                                            true,
+                                                           1.0,
                                                            NULL);
 }
       

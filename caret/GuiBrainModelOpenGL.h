@@ -76,6 +76,7 @@ class GuiBrainModelOpenGLMouseEvent;
          MOUSE_MODE_BORDER_MOVE_POINT,
          MOUSE_MODE_BORDER_REVERSE,
          MOUSE_MODE_BORDER_RENAME,
+         MOUSE_MODE_BORDER_UPDATE,
          MOUSE_MODE_CUT_DRAW,
          MOUSE_MODE_CUT_DELETE,
          MOUSE_MODE_FOCI_DELETE,
@@ -175,6 +176,12 @@ class GuiBrainModelOpenGLMouseEvent;
        /// get the minimum and maximum line width
        static void getLineWidthRange(float& minSize, float& maxSize);
        
+       /// get caption displayed in main window
+       static QString getMainWindowCaption();
+
+       /// set caption displayed in main window
+       static void setMainWindowCaption(const QString& s);
+
        /// Get the displayed brain model index
        int getDisplayedBrainModelIndex() const;
        
@@ -331,6 +338,9 @@ class GuiBrainModelOpenGLMouseEvent;
        
        /// mouse processing for border rename
        void mouseBorderRename(const GuiBrainModelOpenGLMouseEvent& me);
+       
+       /// mouse processing for border update
+       void mouseBorderUpdate(const GuiBrainModelOpenGLMouseEvent& me);
        
        /// mouse processing for draw cut mode
        void mouseCutDraw(const GuiBrainModelOpenGLMouseEvent& me);

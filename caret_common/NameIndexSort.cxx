@@ -44,7 +44,7 @@ NameIndexSort::NameIndexSort(const std::vector<int>& indicesIn,
       add(indicesIn[i], namesIn[i]);
    }
    
-   sortByName();
+   sortByNameCaseSensitive();
 }
               
 /**
@@ -65,12 +65,21 @@ NameIndexSort::add(const int indx,
 }
          
 /**
- * sort by name.
+ * sort by name case sensitive.
  */
 void 
-NameIndexSort::sortByName()
+NameIndexSort::sortByNameCaseSensitive()
 {
    std::sort(names.begin(), names.end());
+}
+
+/**
+ * sort by name case insensitive.
+ */
+void 
+NameIndexSort::sortByNameCaseInsensitive()
+{
+   std::sort(names.begin(), names.end(), NameIndexPair::lessThanCaseInsensitive);
 }
 
 /**
@@ -83,17 +92,35 @@ NameIndexSort::getNumberOfItems() const
 }
 
 /**
- * get name and index for an item.
+ * get name and index for an item after sorting.
  */
 void 
-NameIndexSort::getNameAndIndex(const int itemNum,
-                               int& indexOut,
-                               QString& nameOut) const
+NameIndexSort::getSortedNameAndIndex(const int itemNum,
+                                     int& indexOut,
+                                     QString& nameOut) const
 {
    indexOut = names[itemNum].indx;
    nameOut  = names[itemNum].name;
 }
                            
+/**
+ * get index for an item after sorting.
+ */
+int 
+NameIndexSort::getSortedIndex(const int itemNum) const
+{
+   return names[itemNum].indx;
+}
+      
+/**
+ * get name for an item after sorting.
+ */
+QString 
+NameIndexSort::getSortedName(const int itemNum) const
+{
+   return names[itemNum].name;
+}
+      
 /**
  * constructor.
  */
@@ -113,4 +140,15 @@ NameIndexSort::NameIndexPair::operator<(const NameIndexPair& nip) const
       return (indx < nip.indx);
    }
    return (name < nip.name);
+}
+
+//=================================================================
+/**
+ * compare case insensitive.
+ */
+bool 
+NameIndexSort::NameIndexPair::lessThanCaseInsensitive(const NameIndexPair& nip1,
+                                                      const NameIndexPair& nip2)
+{
+   return (QString::compare(nip1.name, nip2.name, Qt::CaseInsensitive) < 0);
 }

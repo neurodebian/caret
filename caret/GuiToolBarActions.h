@@ -32,6 +32,7 @@
 #include "BrainModel.h"
 
 class GuiBrainModelOpenGL;
+class GuiToolBar;
 class QAction;
 
 /// ToolBar actions
@@ -41,7 +42,7 @@ class GuiToolBarActions : public QObject {
    public:
       /// Constructor
       GuiToolBarActions(GuiBrainModelOpenGL* brainModelOpenGLIn,
-                        QWidget* parent = 0);
+                        GuiToolBar* myParentToolbarIn = 0);
       
       /// Destructor
       ~GuiToolBarActions();
@@ -88,6 +89,9 @@ class GuiToolBarActions : public QObject {
       /// action for yoke
       QAction* getYokeAction() { return yokeAction; }
       
+      /// action for swap with main window
+      QAction* getSwapAction() { return swapAction; }
+      
       // action for volume underlay only
       QAction* getUnderlayVolumeOnlyAction() { return volumeUnderlayOnlyAction; }
       
@@ -133,6 +137,9 @@ class GuiToolBarActions : public QObject {
       
       // called when yoke button toggled
       void yokeSlot(bool b);
+      
+      // called when swap button set
+      void swapSlot();
       
       // Called when a standard view is selected.
       void setViewSelection(const BrainModel::STANDARD_VIEWS standardView);
@@ -189,8 +196,14 @@ class GuiToolBarActions : public QObject {
       /// action for yoking
       QAction* yokeAction;
       
+      /// action for swap with main window
+      QAction* swapAction;
+      
       /// action for volume underlay only
       QAction* volumeUnderlayOnlyAction;
+      
+      /// my parent toolbar
+      GuiToolBar* parentToolBar;
 };
 
 #endif // __GUI_TOOLBAR_ACTIONS_H__

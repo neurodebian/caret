@@ -33,11 +33,25 @@
 /// class for structure information
 class Structure {
    public:
+      /// anatomical structure
       enum STRUCTURE_TYPE {
+         /// left cerebral cortex
          STRUCTURE_TYPE_CORTEX_LEFT,
+         /// right cerebral cortex
          STRUCTURE_TYPE_CORTEX_RIGHT,
+         /// left and right cerebral cortex
          STRUCTURE_TYPE_CORTEX_BOTH,
+         /// cerebrellum
          STRUCTURE_TYPE_CEREBELLUM,
+         /// cerebellum or left cerebral cortex (used with foci that could be associated with either)
+         STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT,
+         /// cerebellum or right cerebral cortex (used with foci that could be associated with either)
+         STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT,
+         /// left cerebral cortex or cerebellum (used with foci that could be associated with either)
+         STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM,
+         /// right cerebral cortex or cerebellum (used with foci that could be associated with either)
+         STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM,
+         /// invalid
          STRUCTURE_TYPE_INVALID
       };
       
@@ -80,6 +94,14 @@ class Structure {
       // is cerebellum structure
       bool isCerebellum() const { return (structure == STRUCTURE_TYPE_CEREBELLUM); }
       
+      // is cerebellum or left cerebral structure
+      bool isCerebellumOrLeftCerebral() const { return ((structure == STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT) ||
+                                                        (structure == STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM)); }
+      
+      // is cerebellum or right cerebral structure
+      bool isCerebellumOrRightCerebral() const { return ((structure == STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT) ||
+                                                         (structure == STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM)); }
+      
       // is invalid structure
       bool isInvalid() const { return (structure == STRUCTURE_TYPE_INVALID); }
       
@@ -110,6 +132,18 @@ class Structure {
       /// get the string value for cerebellum structure
       static QString getCerebellumAsString() { return "cerebellum"; }
       
+      /// get the string value for cerebellum or left cerebral structure
+      static QString getCerebellumOrLeftCerebralAsString() { return "cerebellum_or_left_cerebral"; }
+      
+      /// get the string value for cerebellum or right cerebral structure
+      static QString getCerebellumOrRightCerebralAsString() { return "cerebellum_or_right_cerebral"; }
+      
+      /// get the string value for cerebellum or left cerebral structure
+      static QString getLeftCerebralOrCerebellumAsString() { return "left_cerebral_or_cerebellum"; }
+      
+      /// get the string value for cerebellum or right cerebral structure
+      static QString getRightCerebralOrCerebellumAsString() { return "right_cerebral_or_cerebellum"; }
+      
       /// get the string value for both (right&left) cortex structure
       static QString getCortexBothAsString() { return "both"; }
       
@@ -119,7 +153,8 @@ class Structure {
       /// get all structure types and names
       static void getAllTypesAndNames(std::vector<STRUCTURE_TYPE>& types,
                                       std::vector<QString>& names,
-                                      const bool includeInvalid);
+                                      const bool includeInvalid,
+                                      const bool includeAmbiguousCerebralOrCerebellum = false);
                                       
    protected:
       /// the structure

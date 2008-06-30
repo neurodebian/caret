@@ -70,7 +70,7 @@ GuiMainWindowFileMenu::GuiMainWindowFileMenu(GuiMainWindow* parent,
    addAction(fileActions->getZipSpecFileAction());
    addSeparator();
    
-   addAction(fileActions->getViewCurrentFilesAction());
+   addAction(fileActions->getLoadedFileManagementAction());
    addSeparator();
    
    addAction(fileActions->getAddDocumentToSpecFileAction());

@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class BrainModelSurface;
 class GuiBrainModelSelectionComboBox;
@@ -41,7 +41,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// dialog for interpolating surfaces
-class GuiInterpolateSurfacesDialog : public QtDialog {
+class GuiInterpolateSurfacesDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -187,7 +187,7 @@ CommandSurfaceCellProjection::executeCommand() throw (BrainModelAlgorithmExcepti
    else {
       cellProjectionFile = new CellProjectionFile;
    }
-   cellProjectionFile->append(*cellFile);
+   cellProjectionFile->appendFiducialCellFile(*cellFile);
    CellFileProjector projector(bms);
    projector.projectFile(cellProjectionFile, 
                          0,

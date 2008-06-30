@@ -27,19 +27,22 @@
 #ifndef __GUI_HELP_VIEWER_DIALOG_H__
 #define __GUI_HELP_VIEWER_DIALOG_H__
 
-#include <QMainWindow>
+#include <QPair>
+#include <QVector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiTextBrowser;
+class QLineEdit;
 class QSplitter;
+class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
 
 class GuiHelpViewerMainWindow;
 
 /// dialog for showing help in a browser window
-class GuiHelpViewerWindow : public QtDialog {
+class GuiHelpViewerWindow : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -56,39 +59,37 @@ class GuiHelpViewerWindow : public QtDialog {
       // load a page into the help browser
       void loadPage(const QString& page = "");
       
-   private slots:
-   
-   private:
-      GuiHelpViewerMainWindow* helpMainWindow;
-};
-
-/// main window that is placed inside of help viewer dialog
-class GuiHelpViewerMainWindow : public QMainWindow {
-   Q_OBJECT
-   
-   public:
-      // Constructor
-      GuiHelpViewerMainWindow(const bool showNavigationControlsFlag);
+   protected slots:
+      // called when an index tree item is clicked
+      void indexTreeItemSelected(QTreeWidgetItem* item, int column);
       
-      // Destructor
-      ~GuiHelpViewerMainWindow();
+      // called when a search tree item is clicked
+      void searchTreeItemSelected(QTreeWidgetItem* item, int column);
       
-      // load a page into the help browser
-      void loadPage(const QString& page = "");
-      
-   private slots:
-      // called when an tree index item is clicked
-      void treeIndexItemSelected(QTreeWidgetItem* item, int column);
-      
-      /// called to print currently displayed page
+      // called to print currently displayed page
       void slotPrint();
       
-   private:
+      // called to find in browser window
+      void slotFindInBrowser();
+      
+      // called to find next in browser window
+      void slotFindNextInBrowser();
+         
+      // called to search all help pages
+      void slotSearchLineEdit();
+      
+   protected:
+      // create the help widget
+      QWidget* createHelpBrowser(const bool showNavigationControlsFlag);
+       
       // load the index tree
       void loadIndexTree();
       
       // create a tree widget item
       QTreeWidgetItem* createTreeItem(const QString& label, const QString& helpPage = "");
+      
+      // get all web page names and titles
+      void getAllWebPages(QVector<QPair<QString,QString> >& pagesOut) const;
       
       /// the help browser
       GuiTextBrowser* helpBrowser;
@@ -96,8 +97,20 @@ class GuiHelpViewerMainWindow : public QMainWindow {
       /// the splitter
       QSplitter* splitter;
       
-      /// the tree widget
+      /// the index tree widget
       QTreeWidget* indexTreeWidget;
+      
+      /// the search tree widget
+      QTreeWidget* searchTreeWidget;
+      
+      /// text when searching browser
+      QString findInBrowserText;
+      
+      /// find next toolbutton
+      QToolButton* findNextPushButton;
+      
+      /// line edit for searching web pages
+      QLineEdit* searchLineEdit;
 };
 
 #endif // __GUI_HELP_VIEWER_DIALOG_H__

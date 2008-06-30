@@ -50,6 +50,7 @@
 #include "CellStudyInfo.h"
 #include "CommaSeparatedValueFile.h"
 #include "FileUtilities.h"
+#include "FociProjectionFile.h"
 #include "PubMedArticleFile.h"
 #include "SpecFile.h"
 #include "StudyMetaAnalysisFile.h"
@@ -1372,6 +1373,23 @@ StudyMetaData::setModified()
 }      
 
 /**
+ * get medical subject headings.
+ */
+void 
+StudyMetaData::getMedicalSubjectHeadings(std::vector<QString>& meshOut) const
+{
+   meshOut.clear();
+   
+   const QStringList sl = getMedicalSubjectHeadings().split(';', QString::SkipEmptyParts);
+   for (int k = 0; k < sl.size(); k++) {
+      const QString m = sl.at(k).trimmed();
+      if (m.isEmpty() == false) {
+         meshOut.push_back(m);
+      }
+   }
+}
+      
+/**
  * get the keywords.
  */
 void 
@@ -1406,6 +1424,24 @@ StudyMetaData::getAllTableSubHeaderShortNames(std::vector<QString>& tableSubHead
          if (shortName.isEmpty() == false) {
             tableSubHeaderShortNamesOut.push_back(shortName);
          }
+      }
+   }
+}
+      
+/**
+ * get all table headers.
+ */
+void 
+StudyMetaData::getAllTableHeaders(std::vector<QString>& headersOut) const
+{
+   headersOut.clear();
+   
+   const int numTables = getNumberOfTables();
+   for (int i = 0; i < numTables; i++) {
+      const Table* table = getTable(i);
+      const QString h = table->getHeader().trimmed();
+      if (h.isEmpty() == false) {
+         headersOut.push_back(h);
       }
    }
 }
@@ -3939,6 +3975,28 @@ StudyMetaDataFile::getCommaSeparatedFileSupport(bool& readFromCSV,
 }
 
 /**
+ * get all medical subject headings.
+ */
+void 
+StudyMetaDataFile::getAllMedicalSubjectHeadings(std::vector<QString>& meshOut) const
+{
+   meshOut.clear();
+   
+   std::set<QString> meshSet;
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      std::vector<QString> mesh;
+      smd->getMedicalSubjectHeadings(mesh);
+      meshSet.insert(mesh.begin(), mesh.end());
+   }
+   
+   meshOut.insert(meshOut.end(),
+                  meshSet.begin(), meshSet.end());
+}
+      
+/**
  * get all keywords.
  */
 void 
@@ -3959,7 +4017,210 @@ StudyMetaDataFile::getAllKeywords(std::vector<QString>& allKeywords) const
    allKeywords.insert(allKeywords.end(),
                       keywordSet.begin(), keywordSet.end());
 }
+
+/**
+ * get all citations.
+ */
+void 
+StudyMetaDataFile::getAllCitations(std::vector<QString>& allCitations) const
+{
+   allCitations.clear();
+   
+   //
+   // Get keywords from studies used by displayed foci
+   //
+   const int numStudies = getNumberOfStudyMetaData();
+   std::set<QString> citationSet;
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString citation = smd->getCitation();
+      if (citation.isEmpty() == false) {
+         citationSet.insert(citation);
+      }
+   }
+   
+   allCitations.insert(allCitations.end(),
+                       citationSet.begin(), citationSet.end());
+}
+
+/**
+ * get all data formats.
+ */
+void 
+StudyMetaDataFile::getAllDataFormats(std::vector<QString>& allDataFormats) const
+{
+   allDataFormats.clear();
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   std::set<QString> dataFormatSet;
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString dataFormat = smd->getStudyDataFormat();
+      if (dataFormat.isEmpty() == false) {
+         dataFormatSet.insert(dataFormat);
+      }
+   }
+   
+   allDataFormats.insert(allDataFormats.end(),
+                         dataFormatSet.begin(), dataFormatSet.end());
+}
+
+/**
+ * get all data types.
+ */
+void 
+StudyMetaDataFile::getAllDataTypes(std::vector<QString>& allDataTypes) const
+{
+   allDataTypes.clear();
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   std::set<QString> dataTypeSet;
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString dataType = smd->getStudyDataType();
+      if (dataType.isEmpty() == false) {
+         dataTypeSet.insert(dataType);
+      }
+   }
+   
+   allDataTypes.insert(allDataTypes.end(),
+                       dataTypeSet.begin(), dataTypeSet.end());
+}
  
+/**
+ * get all keywords used by displayed foci.
+ */
+void 
+StudyMetaDataFile::getAllKeywordsUsedByDisplayedFoci(const FociProjectionFile* fpf,
+                                            std::vector<QString>& keywordsOut) const
+{
+   keywordsOut.clear();
+   
+   //
+   // Get studies used by foci
+   //
+   std::vector<bool> studyIsUsedByFocus;
+   getStudiesLinkedByDisplayedFoci(fpf, studyIsUsedByFocus);
+   const int numStudies = static_cast<int>(studyIsUsedByFocus.size());
+   
+   //
+   // Get keywords from studies used by displayed foci
+   //
+   std::set<QString> keywordSet;
+   for (int i = 0; i < numStudies; i++) {
+      if (studyIsUsedByFocus[i]) {
+         const StudyMetaData* smd = getStudyMetaData(i);
+         std::vector<QString> studyKeywords;
+         smd->getKeywords(studyKeywords);
+         keywordSet.insert(studyKeywords.begin(), studyKeywords.end());
+      }
+   }
+   
+   keywordsOut.insert(keywordsOut.end(),
+                      keywordSet.begin(), keywordSet.end());
+   
+/*   
+   const int numStudies = getNumberOfStudyMetaData();
+   std::vector<bool> studyIsUsedByFocus(numStudies, false);
+   
+   //
+   // Find studies used by displayed foci
+   //
+   const int numFoci = fpf->getNumberOfCellProjections();
+   for (int i = 0; i < numFoci; i++) {
+      const CellProjection* focus = fpf->getCellProjection(i);
+      if (focus->getDisplayFlag()) {
+         //
+         // Loop through studies used by focus
+         //      
+         const StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
+         const int numLinks = smdls.getNumberOfStudyMetaDataLinks();
+         for (int j = 0; j < numLinks; j++) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+            const int studyIndex = getStudyIndexFromLink(smdl);
+            if ((studyIndex >= 0) && 
+                (studyIndex < numStudies)) {
+               studyIsUsedByFocus[studyIndex] = true;
+            }
+         }
+      }
+   }
+
+   //
+   // Get keywords from studies used by displayed foci
+   //
+   std::set<QString> keywordSet;
+   for (int i = 0; i < numStudies; i++) {
+      if (studyIsUsedByFocus[i]) {
+         const StudyMetaData* smd = getStudyMetaData(i);
+         std::vector<QString> studyKeywords;
+         smd->getKeywords(studyKeywords);
+         keywordSet.insert(studyKeywords.begin(), studyKeywords.end());
+      }
+   }
+   
+   keywordsOut.insert(keywordsOut.end(),
+                      keywordSet.begin(), keywordSet.end());
+*/
+}
+      
+/**
+ * get studies that are linked by displayed foci.
+ */
+void 
+StudyMetaDataFile::getStudiesLinkedByDisplayedFoci(const FociProjectionFile* fpf,
+                                                std::vector<bool>& studyLinkedByFocusOut) const
+{
+   const int numStudies = getNumberOfStudyMetaData();
+   studyLinkedByFocusOut.resize(numStudies);
+   std::fill(studyLinkedByFocusOut.begin(), studyLinkedByFocusOut.end(), false);
+   
+   //
+   // Find studies used by displayed foci
+   //
+   const int numFoci = fpf->getNumberOfCellProjections();
+   for (int i = 0; i < numFoci; i++) {
+      const CellProjection* focus = fpf->getCellProjection(i);
+      if (focus->getDisplayFlag()) {
+         //
+         // Loop through studies used by focus
+         //      
+         const StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
+         const int numLinks = smdls.getNumberOfStudyMetaDataLinks();
+         for (int j = 0; j < numLinks; j++) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+            const int studyIndex = getStudyIndexFromLink(smdl);
+            if ((studyIndex >= 0) && 
+                (studyIndex < numStudies)) {
+               studyLinkedByFocusOut[studyIndex] = true;
+            }
+         }
+      }
+   }
+}
+      
+/**
+ * get all table headers.
+ */
+void 
+StudyMetaDataFile::getAllTableHeaders(std::vector<QString>& headersOut) const
+{
+   headersOut.clear();
+
+   std::set<QString> headerSet;
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      std::vector<QString> tableHeaders;
+      smd->getAllTableHeaders(tableHeaders);
+      headerSet.insert(tableHeaders.begin(), tableHeaders.end());
+   }
+   
+   headersOut.insert(headersOut.end(),
+                     headerSet.begin(), headerSet.end());
+}
+      
 /**
  * get all table subheader short names.
  */
@@ -3982,6 +4243,41 @@ StudyMetaDataFile::getAllTableSubHeaderShortNames(std::vector<QString>& allShort
                         shortNameSet.begin(), shortNameSet.end());
 }
 
+/**
+ * get all table subheader short names used by displayed foci.
+ */
+void 
+StudyMetaDataFile::getAllTableSubHeaderShortNamesUsedByDisplayedFoci(
+                                          const FociProjectionFile* fpf,
+                                          std::vector<QString>& allShortNamesOut) const
+{
+   allShortNamesOut.clear();
+   
+   //
+   // Get studies used by foci
+   //
+   std::vector<bool> studyIsUsedByFocus;
+   getStudiesLinkedByDisplayedFoci(fpf, studyIsUsedByFocus);
+   const int numStudies = static_cast<int>(studyIsUsedByFocus.size());
+   
+   std::set<QString> shortNameSet;
+   
+   //
+   // Get names used by displayed foci
+   //
+   for (int i = 0; i < numStudies; i++) {
+      if (studyIsUsedByFocus[i]) {
+         const StudyMetaData* smd = getStudyMetaData(i);
+         std::vector<QString> studyTableSubHeaderShortNames;
+         smd->getAllTableSubHeaderShortNames(studyTableSubHeaderShortNames);
+         shortNameSet.insert(studyTableSubHeaderShortNames.begin(), studyTableSubHeaderShortNames.end());
+      }
+   }
+   
+   allShortNamesOut.insert(allShortNamesOut.end(),
+                           shortNameSet.begin(), shortNameSet.end());
+}
+      
 /**
  * clear study meta data modified (prevents date and time stamp updates).
  */

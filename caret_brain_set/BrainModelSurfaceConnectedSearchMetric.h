@@ -12,7 +12,7 @@ class BrainModelSurfaceConnectedSearchMetric : public BrainModelSurfaceConnected
    public:
       /// Constructor
       BrainModelSurfaceConnectedSearchMetric(BrainSet* bs, 
-                           BrainModelSurface* bmsIn,
+                           const BrainModelSurface* bmsIn,
                            const int startNodeIn,
                            const MetricFile* metricFileIn,
                            const int metricColumnIn,
@@ -31,13 +31,13 @@ class BrainModelSurfaceConnectedSearchMetric : public BrainModelSurfaceConnected
       const MetricFile* metricFile;
       
       /// metric column for connection search
-      int metricColumn;
+      const int metricColumn;
       
       /// minimum value for search
-      float metricMinimum;
+      const float metricMinimum;
       
       /// maximum value for search
-      float metricMaximum;
+      const float metricMaximum;
       
 };
 

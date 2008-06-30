@@ -27,13 +27,13 @@
 #ifndef __GUI_CURRENT_COLORING_TO_RGB_PAINT_DIALOG_H__
 #define __GUI_CURRENT_COLORING_TO_RGB_PAINT_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiNodeAttributeColumnSelectionComboBox;
 class QLineEdit;
 
 /// Dialog for copying current coloring to RGB paint
-class GuiCurrentColoringToRgbPaintDialog : public QtDialog {
+class GuiCurrentColoringToRgbPaintDialog : public WuQDialog {
    Q_OBJECT
    
    public:

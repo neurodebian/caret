@@ -26,14 +26,14 @@
 #ifndef __GUI_GENERATE_SURFACE_CURVATURE_DIALOG_H__
 #define __GUI_GENERATE_SURFACE_CURVATURE_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
 class QLineEdit;
 
 /// Class for dialog that generates surface curvature
-class GuiGenerateSurfaceCurvatureDialog : public QtDialog {
+class GuiGenerateSurfaceCurvatureDialog : public WuQDialog {
    Q_OBJECT
    
    public:

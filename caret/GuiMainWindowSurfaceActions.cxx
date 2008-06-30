@@ -29,7 +29,9 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
 #include <QDateTime>
+#include <QDoubleSpinBox>
 #include <QInputDialog>
 #include <QMessageBox>
 
@@ -87,13 +89,13 @@
 #include "MetricFile.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
-#include "QtCheckBoxSelectionDialog.h"
 #include "QtMultipleInputDialog.h"
 #include "QtRadioButtonSelectionDialog.h"
 #include "SectionFile.h"
 #include "StringUtilities.h"
 #include "TopologyHelper.h"
 #include "TransformationMatrixFile.h"
+#include "WuQDataEntryDialog.h"
 #include "global_variables.h"
 
 /**
@@ -252,6 +254,12 @@ GuiMainWindowSurfaceActions::GuiMainWindowSurfaceActions(GuiMainWindow* parent) 
    regionOfInterestAction->setText("Region Of Interest Operations...");
    QObject::connect(regionOfInterestAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotRegionOfInterest()));
+   
+   regionOfInterestActionOLD = new QAction(parent);
+   regionOfInterestActionOLD->setObjectName("regionOfInterestAction");
+   regionOfInterestActionOLD->setText("Region Of Interest Operations (OLD)...");
+   QObject::connect(regionOfInterestActionOLD, SIGNAL(triggered(bool)),
+                    this, SLOT(slotRegionOfInterestOLD()));
    
    surfaceInformationAction = new QAction(parent);
    surfaceInformationAction->setObjectName("surfaceInformationAction");
@@ -629,7 +637,8 @@ GuiMainWindowSurfaceActions::slotSurfaceToSegmentationVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                                             BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES);
+                                             BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES,
+                                             svd.getIntersectionMode());
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
 
@@ -912,7 +921,8 @@ GuiMainWindowSurfaceActions::slotMeasurementsCrossoverCheck()
 */
          BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
          if ((numNodeCrossovers > 0) || (numTileCrossovers > 0)) {
-            bsnc->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS);
+            theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(-1,
+                                    BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS);
             theMainWindow->updateDisplayControlDialog();
          }
          bsnc->assignColors();
@@ -1016,6 +1026,15 @@ GuiMainWindowSurfaceActions::slotRegionOfInterest()
 }
 
 /**
+ * Called to display the region of interest dialog
+ */
+void
+GuiMainWindowSurfaceActions::slotRegionOfInterestOLD()
+{
+   theMainWindow->getSurfaceRegionOfInterestDialogOLD(true);
+}
+
+/**
  * Called when show cuts is selected
  */
 void
@@ -1112,10 +1131,12 @@ GuiMainWindowSurfaceActions::slotCutsDraw()
 void
 GuiMainWindowSurfaceActions::slotMultiresolutionMorphFlat()
 {
-   GuiMultiresolutionMorphingDialog mmd(theMainWindow, 
-                                        getFlatMultiresolutionMorphingObject(), 
-                                        false);
-   mmd.exec();
+   if (theMainWindow->getBrainModelSurface() != NULL) {
+      GuiMultiresolutionMorphingDialog mmd(theMainWindow, 
+                                           getFlatMultiresolutionMorphingObject(), 
+                                           false);
+      mmd.exec();
+   }
 }
 
 /**
@@ -1124,10 +1145,12 @@ GuiMainWindowSurfaceActions::slotMultiresolutionMorphFlat()
 void
 GuiMainWindowSurfaceActions::slotMultiresolutionMorphSphere()
 {
-   GuiMultiresolutionMorphingDialog mmd(theMainWindow, 
-                                        getSphericalMultiresolutionMorphingObject(), 
-                                        false);
-   mmd.exec();
+   if (theMainWindow->getBrainModelSurface() != NULL) {
+      GuiMultiresolutionMorphingDialog mmd(theMainWindow, 
+                                           getSphericalMultiresolutionMorphingObject(), 
+                                           false);
+      mmd.exec();
+   }
 }
 
 /**
@@ -1366,24 +1389,19 @@ GuiMainWindowSurfaceActions::slotTransformApplyCurrentView()
 {
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms != NULL) {
-      std::vector<QString> labels;
-      labels.push_back("Apply Translation");
-      labels.push_back("Apply Rotation");
-      labels.push_back("Apply Scaling");
-      std::vector<bool> labelsChecked;
-      labelsChecked.push_back(true);
-      labelsChecked.push_back(true);
-      labelsChecked.push_back(true);
-      QtCheckBoxSelectionDialog cbsd(theMainWindow,
-                                     "Apply Current View",
-                                     "",
-                                     labels,
-                                     labelsChecked);
-      if (cbsd.exec() == QDialog::Accepted) {
+      WuQDataEntryDialog at(theMainWindow);
+      at.setWindowTitle("Apply Current View");
+      QCheckBox* applyTranslationCheckBox = at.addCheckBox("Apply Translation",
+                                                           true);
+      QCheckBox* applyRotationCheckBox = at.addCheckBox("Apply Rotation",
+                                                           true);
+      QCheckBox* applyScalingCheckBox = at.addCheckBox("Apply Scaling",
+                                                           true);
+      if (at.exec() == QDialog::Accepted) {
          bms->applyCurrentView(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW,
-                               cbsd.getCheckBoxStatus(0),
-                               cbsd.getCheckBoxStatus(1),
-                               cbsd.getCheckBoxStatus(2));
+                               applyTranslationCheckBox->isChecked(),
+                               applyRotationCheckBox->isChecked(),
+                               applyScalingCheckBox->isChecked());
          theMainWindow->getBrainSet()->applyAllProjectedFiles();
          GuiBrainModelOpenGL::updateAllGL();
       }
@@ -1578,6 +1596,8 @@ GuiMainWindowSurfaceActions::slotTopologyClassifyEdges()
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms != NULL) {
       theMainWindow->getBrainSet()->classifyNodes(bms->getTopologyFile());
+      GuiFilesModified fm;
+      theMainWindow->fileModificationUpdate(fm);
       theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
       GuiBrainModelOpenGL::updateAllGL(NULL);
    }
@@ -1820,34 +1840,45 @@ GuiMainWindowSurfaceActions::slotGeometryInflatedAndEllipsoidFromFiducial()
 {
    const BrainModelSurface* fiducial = theMainWindow->getBrainSet()->getActiveFiducialSurface();
    if (fiducial != NULL) {
-      std::vector<QString> labels;
-      labels.push_back("Create Inflated Surface");
-      labels.push_back("Create Very Inflated Surface");
-      labels.push_back("Create Ellipsoid Surface");
-      labels.push_back("Create Spherical Surface");
-      labels.push_back("Enable Finger Smoothing (Use if Topological Defects)");
-      labels.push_back("Scale Surface to Match Area of Fiducial Surface.");
-      labels.push_back("Generate Metric Measurements");
-      std::vector<bool> defaults(labels.size(), true);
-      defaults[4] = false;
-      defaults[6] = false;
-      QtCheckBoxSelectionDialog cbsd(theMainWindow,
-                                     "Choose Surfaces To Create",
-                                     "",
-                                     labels,
-                                     defaults);
-      if (cbsd.exec() == QDialog::Accepted) {
+      WuQDataEntryDialog ded(theMainWindow);
+      ded.setWindowTitle("Choose Surfaces To Create");
+      QCheckBox* createInflatedSurfaceCheckBox = ded.addCheckBox("Create Inflated Surface",
+                                                                 true);
+      QCheckBox* createVeryInflatedSurfaceCheckBox = ded.addCheckBox("Create Very Inflated Surface",
+                                                                     true);
+      QCheckBox* createEllipsoidSurfaceCheckBox = ded.addCheckBox("Create Ellipsoid Surface",
+                                                                  true);
+      QCheckBox* createSphericalSurfaceCheckBox = ded.addCheckBox("Create Spherical Surface",
+                                                                  true);
+      QCheckBox* enableFingerSmoothingCheckBox = ded.addCheckBox("Enable Finger Smoothing (Use if Topological Defects)",
+                                                                 false);
+      QCheckBox* scaleSurfaceCheckBox = ded.addCheckBox("Scale Surface to Match Area of Fiducial Surface",
+                                                        true);
+      QDoubleSpinBox* iterationScaleDoubleSpinBox = ded.addDoubleSpinBox("Iterations Scale",
+                                                                         1.0);
+      iterationScaleDoubleSpinBox->setToolTip(
+               "Use the \"Iterations Scale\" to scale the iterations\n"
+               "during the inflation processes.  In most cases, it is\n"
+               "not necessary to use this option such as when the \n"
+               "surface has been generated using Caret.  However, \n"
+               "surfaces produced by FreeSurfer often contain a large\n"
+               "number of nodes, 150,000 or more.  In this case, try\n"
+               "an \"Iterations Scale\" of 2.5.");
+      QCheckBox* generateMetricMeasurementsCheckBox = ded.addCheckBox("Generate Metric Measurements",
+                                                                      false);
+      if (ded.exec() == QDialog::Accepted) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          MetricFile* mf = NULL;
-         if (cbsd.getCheckBoxStatus(6)) {
+         if (generateMetricMeasurementsCheckBox->isChecked()) {
             mf = theMainWindow->getBrainSet()->getMetricFile();
          }
-         fiducial->createInflatedAndEllipsoidFromFiducial(cbsd.getCheckBoxStatus(0),
-                                                          cbsd.getCheckBoxStatus(1),
-                                                          cbsd.getCheckBoxStatus(2),
-                                                          cbsd.getCheckBoxStatus(3),
-                                                          cbsd.getCheckBoxStatus(4),
-                                                          cbsd.getCheckBoxStatus(5),
+         fiducial->createInflatedAndEllipsoidFromFiducial(createInflatedSurfaceCheckBox->isChecked(),
+                                                          createVeryInflatedSurfaceCheckBox->isChecked(),
+                                                          createEllipsoidSurfaceCheckBox->isChecked(),
+                                                          createSphericalSurfaceCheckBox->isChecked(),
+                                                          enableFingerSmoothingCheckBox->isChecked(),
+                                                          scaleSurfaceCheckBox->isChecked(),
+                                                          iterationScaleDoubleSpinBox->value(),
                                                           mf);
          GuiFilesModified fm;
          fm.setCoordinateModified();
@@ -2032,7 +2063,10 @@ GuiMainWindowSurfaceActions::slotGeometrySphereToFlatThroughHole()
             // orient the surface so that the hole is on the negative Z axis
             //
             QString msg;
-            bms->orientPaintedNodesToNegativeZAxis(names, geographyColumn, msg);
+            bms->orientPaintedNodesToNegativeZAxis(pf,
+                                                   names, 
+                                                   geographyColumn, 
+                                                   msg);
             
             //
             // disconnect the nodes that identify the hole
@@ -2432,6 +2466,9 @@ GuiMainWindowSurfaceActions::updateActions()
          tilesDisplayed = true;
          break;
       case DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT:
+         tilesDisplayed = true;
+         break;
+      case DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT_NO_BACK:
          tilesDisplayed = true;
          break;
       case DisplaySettingsSurface::DRAW_MODE_TILES_LINKS_NODES:

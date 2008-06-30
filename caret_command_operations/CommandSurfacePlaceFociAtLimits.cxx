@@ -350,7 +350,7 @@ CommandSurfacePlaceFociAtLimits::executeCommand() throw (BrainModelAlgorithmExce
                      name,
                      xyz);
                      
-         fociProjectionFile.append(fociFile);
+         fociProjectionFile.appendFiducialCellFile(fociFile);
          
          CellFileProjector projector(fiducialSurface);
          projector.projectFile(&fociProjectionFile,

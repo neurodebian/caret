@@ -84,6 +84,7 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "[-inner  inner-boundary]\n"
        + indent9 + "[-outer  outer-boundary]\n"
        + indent9 + "[-step   intersection-step]\n"
+       + indent9 + "[-intersection   intersection-mode]\n"
        + indent9 + "\n"
        + indent9 + "Intersect a surface with a volume and assign the specified\n"
        + indent9 + "column's data of the metric, paint, or shape file to the\n"
@@ -91,7 +92,8 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "The output volume file must exist and it must be in the \n"
        + indent9 + "same stereotaxic space as the surface.  A volume file may\n"
-       + indent9 + "be created by using the \"-volume-create\" command.\n"
+       + indent9 + "be created by using the \"-volume-create\" or \n"
+       + indent9 + "\"-volume-create-in-stereotaxic-space\" commands.\n"
        + indent9 + "\n"
        + indent9 + "The default inner boundary, outer boundar, and step size\n"
        + indent9 + "are -1.5, 1.5, and 0.5 respectively.\n"
@@ -100,6 +102,10 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "number of the column, which starts at one, or the name of\n"
        + indent9 + "the column.  If a name contains spaces, it must be \n"
        + indent9 + "enclosed in double quotes.  Name has priority over number.\n"
+       + indent9 + "\n"
+       + indent9 + "\"intersection-mode\" is one of:\n"
+       + indent9 + "   TILE_INTERSECTION \n"
+       + indent9 + "   VOXEL_PROJECTION\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -132,6 +138,12 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
    splitOutputVolumeNameIntoNameAndLabel(outputVolumeFileName, outputVolumeFileLabel);
    
    //
+   // Intersection mode
+   //
+   BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE intersectionMode = 
+      BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS;
+   
+   //
    // Optional parameters
    //
    float innerBoundary = -1.5;
@@ -147,6 +159,20 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       }
       else if (paramName == "-step") {
          intersectionStep = parameters->getNextParameterAsFloat("Intersection Step Size");
+      }
+      else if (paramName == "-intersection") {
+         const QString intersectionName = parameters->getNextParameterAsString("Intersection Mode Name");
+         if (intersectionName == "TILE_INTERSECTION") {
+            intersectionMode = 
+                  BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS;         
+         }
+         else if (intersectionName == "VOXEL_PROJECTION") {
+            intersectionMode = 
+                  BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_PROJECT_VOXELS_TO_SURFACE;
+         }
+         else {
+            throw CommandException("Invalid intersection mode: " + intersectionName);
+         }
       }
       else {
          throw CommandException("Unrecognized option: " + paramName);
@@ -240,7 +266,8 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
                                            innerBoundary,
                                            outerBoundary,
                                            intersectionStep,
-                                           conversionMode);
+                                           conversionMode,
+                                           intersectionMode);
    bmsv.setNodeAttributeColumn(inputDataFileColumnNumber);
    bmsv.execute();
       

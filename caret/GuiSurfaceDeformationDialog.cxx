@@ -70,8 +70,9 @@ static const QString continuationAndNewLine = " \\\n";
 GuiSurfaceDeformationDialog::GuiSurfaceDeformationDialog(
                               QWidget* parent,
                               const DeformationMapFile::DEFORMATION_TYPE deformationTypeIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    deformationType = deformationTypeIn;
    
    switch (deformationType) {

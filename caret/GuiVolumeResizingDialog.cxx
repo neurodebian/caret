@@ -50,7 +50,7 @@
  * Constructor.
  */
 GuiVolumeResizingDialog::GuiVolumeResizingDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {   
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    int slices[6];
@@ -231,7 +231,7 @@ void
 GuiVolumeResizingDialog::show()
 {
    updateDialog(false);
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**

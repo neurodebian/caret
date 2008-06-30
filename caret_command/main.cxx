@@ -28,13 +28,16 @@
 #include <iostream>
 
 #include <QApplication>
+#include <QDir>
 #include <QImageIOPlugin>
 
 #include "BrainSet.h"
 #include "CaretVersion.h"
 #include "CommandBase.h"
+#include "CommandHelpGlobalOptions.h"
 #include "CommandHelp.h"
 #include "DebugControl.h"
+#include "FileUtilities.h"
 #include "ProgramParameters.h"
 
 /*----------------------------------------------------------------------------------------
@@ -76,6 +79,8 @@ void newHandler()
 int
 main(int argc, char* argv[])
 {
+   //QApplication::setApplicationName(FileUtilities::basename(argv[0]));
+   
    //
    // Create a brain set
    // NEED to do this here so that static members are initialized
@@ -102,31 +107,13 @@ main(int argc, char* argv[])
       std::set_new_handler(newHandler);
 
       //
-      // Check for debugging
-      //
-      DebugControl::setDebugFlagsFromEnvironmentVariables();
-      //DebugControl::setDebugOnWithEnvironmentVariable("CARET_DEBUG");
-      const bool testFlag1IsOn = DebugControl::getTestFlag1();
-      const bool testFlag2IsOn = DebugControl::getTestFlag2();
-      const bool debugIsOn = DebugControl::getDebugOn();
-      if (debugIsOn) {
-         int i = 1;
-         while (params.getParametersAvailable()) {
-            std::cout << "arg " << i << ": " 
-                      << params.getNextParameterAsString("").toAscii().constData() << std::endl;
-            i++;
-         }
-         params.resetParametersIndex();
-      }
-
-      //
       // Get image plugins so JPEGs can be loaded
       //
       //Q_IMPORT_PLUGIN(QJpegPlugin)
       //Q_IMPORT_PLUGIN(QGifPlugin)
 
       //
-      // Store the commands
+      // Get all of the available commands
       //
       std::vector<CommandBase*> commands;
       CommandBase::getAllCommandsSortedBySwitch(commands);
@@ -185,12 +172,28 @@ main(int argc, char* argv[])
       }
       QApplication app(argc, argv, guiFlag);
       myApplication = &app;
+      QApplication::setApplicationName(FileUtilities::basename(argv[0]));
 
+      //
+      // process the global options
+      //
+      CommandHelpGlobalOptions::processGlobalOptions(params);
+            
       //
       // Create the brain set
       //
+      BrainSet::initializeStaticStuff();
       BrainSet brain;
       
+      //
+      // Check for debugging
+      //
+      DebugControl::setDebugFlagsFromEnvironmentVariables();
+      //DebugControl::setDebugOnWithEnvironmentVariable("CARET_DEBUG");
+      const bool testFlag1IsOn = DebugControl::getTestFlag1();
+      const bool testFlag2IsOn = DebugControl::getTestFlag2();
+      const bool debugIsOn = DebugControl::getDebugOn();
+
       //
       // Brain set may turn debugging on via preferences file but do not let this happen
       //
@@ -198,6 +201,14 @@ main(int argc, char* argv[])
       DebugControl::setTestFlag1(testFlag1IsOn);
       DebugControl::setTestFlag2(testFlag2IsOn);
 
+      if (debugIsOn) {
+         for (int i = 1; i < argc; i++) {
+            std::cout << "arg " << i << ": " 
+                      << argv[i] << std::endl;
+            i++;
+         }
+      }
+      
       //
       // execute the command
       //
@@ -253,6 +264,9 @@ main(int argc, char* argv[])
                    << std::endl;
          std::exit(-1);
       }
+   }
+   catch (CommandException& ce) {
+      std::cout << ce.whatQString().toAscii().constData() << std::endl;
    }
    catch (ProgramParametersException& ppe) {
       std::cout << ppe.whatQString().toAscii().constData() << std::endl;

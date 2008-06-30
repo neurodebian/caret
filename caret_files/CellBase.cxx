@@ -61,12 +61,16 @@ CellBase::initialize()
    xyz[0] = 0.0;
    xyz[1] = 0.0;
    xyz[2] = 0.0;
+   searchXYZ[0] = 0.0;
+   searchXYZ[1] = 0.0;
+   searchXYZ[2] = 0.0;
    sectionNumber = -1;
    name = "";
    studyNumber = -1;
    studyMetaDataLinkSet.clear();
    geography = "";
    area = "";
+   regionOfInterest = "";
    size = 0.0;
    statistic = "";
    comment = "";
@@ -74,10 +78,14 @@ CellBase::initialize()
    colorIndex = -1;
    className = "";  // "???";
    classIndex = -1;
+   inSearchFlag = true;
    specialFlag = false;
    signedDistanceAboveSurface = 0.0;
    structure.setType(Structure::STRUCTURE_TYPE_INVALID);
    highlightFlag = false;
+   sumsIDNumber = "-1";
+   sumsRepeatNumber = "-1";
+   sumsParentCellBaseID = "-1";
 }
 
 /**
@@ -89,12 +97,16 @@ CellBase::copyData(const CellBase& cb)
    xyz[0] = cb.xyz[0];
    xyz[1] = cb.xyz[1];
    xyz[2] = cb.xyz[2];
+   searchXYZ[0] = cb.searchXYZ[0];
+   searchXYZ[1] = cb.searchXYZ[1];
+   searchXYZ[2] = cb.searchXYZ[2];
    sectionNumber = cb.sectionNumber;
    name = cb.name;
    studyNumber = cb.studyNumber;
    studyMetaDataLinkSet = cb.studyMetaDataLinkSet;
    geography = cb.geography;
    area = cb.area;
+   regionOfInterest = cb.regionOfInterest;
    size = cb.size;
    statistic = cb.statistic;
    comment = cb.comment;
@@ -102,10 +114,14 @@ CellBase::copyData(const CellBase& cb)
    colorIndex = cb.colorIndex;
    className = cb.className;
    classIndex = cb.classIndex;
+   inSearchFlag = cb.inSearchFlag;
    specialFlag = cb.specialFlag;
    signedDistanceAboveSurface = cb.signedDistanceAboveSurface;
    structure = cb.structure;
    highlightFlag = cb.highlightFlag;
+   sumsIDNumber = cb.sumsIDNumber;
+   sumsRepeatNumber = cb.sumsRepeatNumber;
+   sumsParentCellBaseID = cb.sumsParentCellBaseID;
 }
 
 /**
@@ -143,6 +159,71 @@ CellBase::setXYZ(const float x, const float y, const float z)
    setModified();
 }
 
+/**
+ * get search xyz.
+ */
+void 
+CellBase::getSearchXYZ(float xyzOut[3]) const
+{
+   xyzOut[0] = searchXYZ[0];
+   xyzOut[1] = searchXYZ[1];
+   xyzOut[2] = searchXYZ[2];
+}
+
+/**
+ * set search xyz.
+ */
+void 
+CellBase::setSearchXYZ(const float xyzIn[3])
+{
+   searchXYZ[0] = xyzIn[0];
+   searchXYZ[1] = xyzIn[1];
+   searchXYZ[2] = xyzIn[2];
+   setModified();
+}
+
+/**
+ * set search xyz.
+ */
+void 
+CellBase::setSearchXYZ(const float x, const float y, const float z)
+{
+   searchXYZ[0] = x;
+   searchXYZ[1] = y;
+   searchXYZ[2] = z;
+   setModified();
+}      
+
+/**
+ * set the SuMS ID number.
+ */
+void 
+CellBase::setSumsIDNumber(const QString& s)
+{
+   sumsIDNumber = s;
+   setModified();
+}
+
+/**
+ * set the SuMS repeat number.
+ */
+void 
+CellBase::setSumsRepeatNumber(const QString& s)
+{
+   sumsRepeatNumber = s;
+   setModified();
+}
+
+/**
+ * set the SuMS parent cell base ID.
+ */
+void 
+CellBase::setSumsParentCellBaseID(const QString& s)
+{
+   sumsParentCellBaseID = s;
+   setModified();
+}
+      
 /**
  * update the cell's invalid structure using the X coordinate if it is not zero.
  */
@@ -199,6 +280,16 @@ CellBase::setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls)
    setModified();
 }
             
+/**
+ * set region of interest.
+ */
+void 
+CellBase::setRegionOfInterest(const QString& roi)
+{
+   regionOfInterest = roi;
+   setModified();
+}
+      
 /**
  * set geography.
  */
@@ -280,17 +371,25 @@ CellBase::copyCellBaseData(const CellBase& cb, const bool copyXYZ)
       xyz[1] = cb.xyz[1];
       xyz[2] = cb.xyz[2];
    }
+   searchXYZ[0]  = searchXYZ[0];
+   searchXYZ[1]  = searchXYZ[1];
+   searchXYZ[2]  = searchXYZ[2];
    sectionNumber = cb.sectionNumber;
    name          = cb.name;
    studyNumber   = cb.studyNumber;
    geography     = cb.geography;
    area          = cb.area;
+   regionOfInterest = cb.regionOfInterest;
    size          = cb.size;
    statistic     = cb.statistic;
    comment       = cb.comment;
    displayFlag   = cb.displayFlag;
    colorIndex    = cb.colorIndex;
    structure     = cb.structure;
+   highlightFlag = cb.highlightFlag;
+   sumsIDNumber  = cb.sumsIDNumber;
+   sumsRepeatNumber = cb.sumsRepeatNumber;
+   sumsParentCellBaseID = cb.sumsParentCellBaseID;
 }      
 
 /**
@@ -304,74 +403,10 @@ CellBase::setCellStructure(const Structure::STRUCTURE_TYPE cst)
 }
       
 /**
- * set base element from text (used by SAX XML parser).
+ * called to read from an XML DOM structure.
  */
 void 
-CellBase::setBaseElementFromText(const QString& elementName,
-                                 const QString& textValue)
-{
-   if (elementName == tagXYZ) {
-      const QStringList sl = textValue.split(QRegExp("\\s+"), QString::SkipEmptyParts);
-      const int numItems = sl.count();
-      if (numItems == 3) {
-         xyz[0] = sl.at(0).toFloat();
-         xyz[1] = sl.at(1).toFloat();
-         xyz[2] = sl.at(2).toFloat();
-      }
-   }
-   else if (elementName == tagSectionNumber) {
-      sectionNumber = textValue.toInt();
-   }
-   else if (elementName == tagName) {
-      name = textValue;
-   }
-   else if (elementName == tagStudyNumber) {
-      studyNumber = textValue.toInt();
-   }
-   else if (elementName == tagGeography) {
-      geography = textValue;
-   }
-   else if (elementName == tagArea) {
-      area = textValue;
-   }
-   else if (elementName == tagSize) {
-      size = textValue.toFloat();
-   }
-   else if (elementName == tagStatistic) {
-      statistic = textValue;
-   }
-   else if (elementName == tagComment) {
-      comment = textValue;
-   }
-   else if ((elementName == "hemisphere") ||
-            (elementName == tagStructure)) {
-      structure.setTypeFromString(textValue);
-   }
-   else if (elementName == tagClassName) {
-      className = textValue;
-      if (className == "???") {
-         className = "";
-      }
-   }
-   else if (elementName == tagSignedDistanceAboveSurface) {
-      signedDistanceAboveSurface = textValue.toFloat();
-   }
-   else if ((elementName == StudyMetaDataLink::tagStudyMetaDataLink) ||
-            (elementName == StudyMetaDataLinkSet::tagStudyMetaDataLinkSet)) {
-      //studyMetaDataLinkSet.readXML(node);
-   }
-   else {
-      std::cout << "WARNING: unrecognized CellBase element: "
-                << elementName.toAscii().constData()
-                << std::endl;
-   }
-}
-
-/**
- * called to read from an XML structure.
- */
-void 
-CellBase::readXML(QDomNode& nodeIn) throw (FileException)
+CellBase::readXMLWithDOM(QDomNode& nodeIn) throw (FileException)
 {
    if (nodeIn.isNull()) {
       return;
@@ -381,7 +416,7 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
       return;
    }
    if (elem.tagName() != tagCellBase) {
-      QString msg("Incorrect element type passed to CellData::readXML() ");
+      QString msg("Incorrect element type passed to CellData::readXMLWithDOM() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
    }
@@ -402,6 +437,16 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
                xyz[2] = StringUtilities::toFloat(elems[2]);
             }
          }
+         else if (elem.tagName() == tagSearchXYZ) {
+            const QString xyzString = AbstractFile::getXmlElementFirstChildAsString(elem);
+            std::vector<QString> elems;
+            StringUtilities::token(xyzString, " ", elems);
+            if (elems.size() >= 3) {
+               searchXYZ[0] = StringUtilities::toFloat(elems[0]);
+               searchXYZ[1] = StringUtilities::toFloat(elems[1]);
+               searchXYZ[2] = StringUtilities::toFloat(elems[2]);
+            }
+         }
          else if (elem.tagName() == tagSectionNumber) {
             sectionNumber = StringUtilities::toInt(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
@@ -416,6 +461,9 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
          }
          else if (elem.tagName() == tagArea) {
             area = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == tagRegionOfInterest) {
+            regionOfInterest = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == tagSize) {
             size = StringUtilities::toFloat(AbstractFile::getXmlElementFirstChildAsString(elem));
@@ -442,6 +490,15 @@ CellBase::readXML(QDomNode& nodeIn) throw (FileException)
          else if ((elem.tagName() == StudyMetaDataLink::tagStudyMetaDataLink) ||
                   (elem.tagName() == StudyMetaDataLinkSet::tagStudyMetaDataLinkSet)) {
             studyMetaDataLinkSet.readXML(node);
+         }
+         else if (elem.tagName() == tagSumsIDNumber) {
+            sumsIDNumber = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == tagSumsRepeatNumber) {
+            sumsRepeatNumber = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == tagSumsParentCellBaseID) {
+            sumsParentCellBaseID = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else {
             std::cout << "WARNING: unrecognized CellBase element: "
@@ -476,6 +533,16 @@ CellBase::writeXML(QDomDocument& xmlDoc,
                      StringUtilities::combine(xyzVec, " "));
    
    //
+   // Search XYZ coordinates
+   //
+   xyzVec.clear();
+   xyzVec.push_back(searchXYZ[0]);
+   xyzVec.push_back(searchXYZ[1]);
+   xyzVec.push_back(searchXYZ[2]);
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement, tagSearchXYZ,
+                     StringUtilities::combine(xyzVec, " "));
+   
+   //
    // section number
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
@@ -506,6 +573,12 @@ CellBase::writeXML(QDomDocument& xmlDoc,
                                     tagArea, area);
    
    //
+   // region of interest
+   //
+   AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
+                                    tagRegionOfInterest, regionOfInterest);
+                                    
+   //
    // size of cell
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
@@ -535,6 +608,16 @@ CellBase::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, cellBaseElement,
                                     tagSignedDistanceAboveSurface, QString::number(signedDistanceAboveSurface, 'f', 6));
    
+   //
+   // SuMS ID, repeat number and parent cell base ID
+   //
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
+                                   tagSumsIDNumber, sumsIDNumber);
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
+                                   tagSumsRepeatNumber, sumsRepeatNumber);
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
+                                   tagSumsParentCellBaseID, sumsParentCellBaseID);
+
    //
    // structure
    //

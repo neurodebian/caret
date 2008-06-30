@@ -28,11 +28,11 @@
 #define __VE_GUI_IDENTIFY_DIALOG_H__
 
 #include <QAction>
-#include "QtDialog.h"
-#include "QtMainWindow.h"
+#include <QMainWindow>
 
 #include "BrainModel.h"
 #include "BrainSet.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QGroupBox;
@@ -43,7 +43,7 @@ class QSpinBox;
 class BrainModelOpenGLSelectedItem;
 
 /// Dialog that displays a scrolling text area containing identification information
-class GuiIdentifyDialog : public QtDialog {
+class GuiIdentifyDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -94,7 +94,7 @@ class GuiIdentifyDialog : public QtDialog {
 };
 
 /// Main Window that is placed in dialog to allow toolbars
-class GuiIdentifyMainWindow : public QtMainWindow {
+class GuiIdentifyMainWindow : public QMainWindow {
    Q_OBJECT
    
    public:
@@ -117,8 +117,11 @@ class GuiIdentifyMainWindow : public QtMainWindow {
       void updateFilteringSelections();
       
    private slots:
-      ///  all on/off button 
-      void slotAllOnOff();
+      ///  all on button 
+      void slotAllOn();
+      
+      ///  all off button 
+      void slotAllOff();
       
       /// clear all node ID symbols
       void clearNodeID();
@@ -150,11 +153,17 @@ class GuiIdentifyMainWindow : public QtMainWindow {
       /// display foci geography information toolbar button
       void slotFociGeographyAction(bool val);    
       
+      /// display foci region of interest information toolbar button
+      void slotFociRegionOfInterestAction(bool val);    
+      
       /// display foci size information toolbar button
       void slotFociSizeAction(bool val);    
       
       /// display foci Statistic information toolbar button
       void slotFociStatisticAction(bool val);    
+      
+      /// display foci Structure information toolbar button
+      void slotFociStructureAction(bool val);    
       
       /// display foci comment information toolbar button
       void slotFociCommentAction(bool val);    
@@ -442,11 +451,17 @@ class GuiIdentifyMainWindow : public QtMainWindow {
       /// show foci geography info check box;
       QCheckBox* showFociGeographyInfoCheckBox;
       
+      /// show foci region of interest info check box;
+      QCheckBox* showFociRegionOfInterestInfoCheckBox;
+      
       /// show foci size info check box;
       QCheckBox* showFociSizeInfoCheckBox;
       
       /// show foci statistic info check box;
       QCheckBox* showFociStatisticInfoCheckBox;
+      
+      /// show foci structure info check box
+      QCheckBox* showFociStructureInfoCheckBox;
       
       /// show foci comment info check box;
       QCheckBox* showFociCommentInfoCheckBox;
