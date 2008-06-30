@@ -26,13 +26,13 @@
 #ifndef __GUI_USER_VIEW_SAVE_DIALOG_H__
 #define __GUI_USER_VIEW_SAVE_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLineEdit;
 
 /// class for saving user views
-class GuiUserViewSaveDialog : public QtDialog {
+class GuiUserViewSaveDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -27,10 +27,11 @@
 #ifndef __VE_GUI_MAP_STEREOTAXIC_FOCUS_DIALOG_H__
 #define __VE_GUI_MAP_STEREOTAXIC_FOCUS_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class FociFileToPalsProjector;
 class GuiStudyInfoEditorWidget;
+class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
 class QGroupBox;
@@ -44,7 +45,7 @@ class QTextEdit;
 class QVBoxLayout;
 
 /// Dialog for entering Foci.
-class GuiMapStereotaxicFocusDialog : public QtDialog {
+class GuiMapStereotaxicFocusDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -88,6 +89,9 @@ class GuiMapStereotaxicFocusDialog : public QtDialog {
       /// called when Geography button selected.
       void slotGeographyPushButton();
 
+      /// called when Region of Interest button selected.
+      void slotRegionOfInterestPushButton();
+
       /// update the study number combo box.
       void slotUpdateStudyNumberComboBox();
       
@@ -127,6 +131,9 @@ class GuiMapStereotaxicFocusDialog : public QtDialog {
       
       /// focus geography
       QLineEdit* focusGeographyLineEdit;
+      
+      /// focus region of interest
+      QLineEdit* focusRegionOfInterestLineEdit;
       
       /// focus size
       QDoubleSpinBox* focusSizeDoubleSpinBox;
@@ -169,6 +176,9 @@ class GuiMapStereotaxicFocusDialog : public QtDialog {
       
       /// project to PALS atlas surfaces
       QRadioButton* projectionPalsAtlasRadioButton;
+      
+      /// allow PALS cerebellum projection
+      QCheckBox* projectionPalsCerebellumCheckBox;
       
       /// projector for PALS atlas
       FociFileToPalsProjector* palsProjector;

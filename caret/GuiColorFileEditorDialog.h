@@ -30,7 +30,7 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class ColorFile;
 
@@ -66,7 +66,7 @@ class ColorSorter {
 
 
 /// This dialog is used edit a ColorFile.
-class GuiColorFileEditorDialog : public QtDialog {
+class GuiColorFileEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -120,6 +120,9 @@ class GuiColorFileEditorDialog : public QtDialog {
       
       /// called when symbol combo box is selected
       void symbolComboBoxSlot(int value);
+      
+      /// called when change color name button is pressed
+      void changeColorNameButtonSlot();
       
       /// called when delete color button is pressed
       void deleteColorButtonSlot();

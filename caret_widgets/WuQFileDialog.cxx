@@ -88,7 +88,7 @@ static const qint32 WUQFileDialogVersion = 1;
  */
 WuQFileDialog::WuQFileDialog(QWidget* parent,
                                  Qt::WindowFlags f)
-   : QDialog(parent, f)
+   : WuQDialog(parent, f)
 {
    initializeDialog();
 }
@@ -100,7 +100,7 @@ WuQFileDialog::WuQFileDialog(QWidget* parent,
                                  const QString& caption,
                                  const QString& directoryName,
                                  const QString& filter)
-   : QDialog(parent, 0)
+   : WuQDialog(parent, 0)
 {
    initializeDialog();
    
@@ -1057,6 +1057,14 @@ WuQFileDialog::loadCommonDirectorySection()
                              + QDir::separator()
                              + "Documents");
    addToCommonDirectory(documentsPath, tr("Documents"));
+
+   //
+   // Add Downloads
+   //
+   const QString downloadsPath(homeDir 
+                             + QDir::separator()
+                             + "Downloads");
+   addToCommonDirectory(downloadsPath, tr("Downloads"));
 #endif // Q_OS_MACX
 
 #ifdef Q_OS_WIN32
@@ -1077,6 +1085,21 @@ WuQFileDialog::loadCommonDirectorySection()
    addToCommonDirectory(documentsPath, tr("My Documents"));
 #endif // Q_OS_WIN32
 
+   //
+   // Add drives
+   //
+   QFileInfoList drivesList = QDir::drives();
+   for (int i = 0; i < drivesList.count(); i++) {
+      const QFileInfo fi = drivesList.at(i);
+      const QString driveName = fi.absoluteFilePath();
+#ifdef Q_OS_MACX   
+      if (driveName == "/") {
+         continue;
+      }
+#endif // Q_OS_MACX
+      addToCommonDirectory(driveName, driveName);
+   }
+   
    //
    // Anything else will be sidebar URLS
    //
@@ -1540,9 +1563,17 @@ WuQFileDialog::setReadOnly(const bool enabled)
  * set the directory path.
  */
 void 
-WuQFileDialog::setDirectory(const QString& dirPath,
+WuQFileDialog::setDirectory(const QString& dirPathIn,
                               const bool selectionFromHistoryFlag)
 {
+   //
+   // Convert from ".", if needed
+   //
+   QString dirPath = dirPathIn;
+   if (dirPath == ".") {
+      dirPath = QDir::currentPath();
+   }
+   
    //
    // Set the directory
    //

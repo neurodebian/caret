@@ -26,17 +26,17 @@
 #ifndef __GUI_CONTOUR_ALIGNMENT_DIALOG_H__
 #define __GUI_CONTOUR_ALIGNMENT_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QSpinBox;
 
 /// Dialog for drawing contours
-class GuiContourAlignmentDialog : public QtDialog {
+class GuiContourAlignmentDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       /// Constructor
-      GuiContourAlignmentDialog(QWidget* parent = 0, bool modal = false, Qt::WFlags f = 0);
+      GuiContourAlignmentDialog(QWidget* parent = 0, bool modalFlag = false, Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiContourAlignmentDialog();

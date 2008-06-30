@@ -23,7 +23,7 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class BrainSet;
 class GuiVolumeFileOrientationComboBox;
@@ -43,7 +43,7 @@ class QStackedWidget;
 class VolumeFile;
 
 /// dialog for segmentating multiple hemispheres
-class GuiVolumeMultiHemSureFitSegmentationDialog : public QtDialog {
+class GuiVolumeMultiHemSureFitSegmentationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

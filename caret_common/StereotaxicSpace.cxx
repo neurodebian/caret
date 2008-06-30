@@ -97,6 +97,12 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
                                1.0, 1.0, 1.0,
                                -90.0, -126.0, -72.0);
          break;
+      case SPACE_FLIRT_222:
+         setData("FLIRT-222",
+                               91, 109, 91,
+                               2.0, 2.0, 2.0,
+                               -90.0, -126.0, -72.0);
+         break;
       case SPACE_MACAQUE_F99:
          setData("MACAQUE-F99",
                                143, 187, 118,
@@ -161,13 +167,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2B",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112B_111:
          setData("711-2B-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112B_222:
          setData("711-2B-222",
@@ -185,13 +191,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2C",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112C_111:
          setData("711-2C-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -89.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-89.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112C_222:
          setData("711-2C-222",
@@ -209,13 +215,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2O",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -89.0, -124.0, -75.0);
+                               -89.0, -124.0, -75.0);  //-89.0, -124.0, -75.0);
          break;
       case SPACE_WU_7112O_111:
          setData("711-2O-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -89.0, -124.0, -75.0);
+                               -89.0, -124.0, -75.0);  //-89.0, -124.0, -75.0);
          break;
       case SPACE_WU_7112O_222:
          setData("711-2O-222",
@@ -233,13 +239,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2Y",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112Y_111:
          setData("711-2Y-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112Y_222:
          setData("711-2Y-222",

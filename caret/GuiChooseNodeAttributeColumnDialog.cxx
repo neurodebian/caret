@@ -43,8 +43,10 @@ GuiChooseNodeAttributeColumnDialog::GuiChooseNodeAttributeColumnDialog(
                                          const QString& noneColumnLabel,
                                          const bool addNewSelection,
                                          const bool addNoneSelection)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
+   
    setWindowTitle("Choose Column");
    
    //

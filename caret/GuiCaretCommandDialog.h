@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 #include "ScriptBuilderParameters.h"
 
@@ -44,7 +44,7 @@ class QTextEdit;
 
 //=============================================================================
 /// dialog for constructing a caret command operation
-class GuiCaretCommandDialog : public QtDialog {
+class GuiCaretCommandDialog : public WuQDialog {
    Q_OBJECT
    
    public:

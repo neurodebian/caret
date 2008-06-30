@@ -192,7 +192,6 @@ class CellStudyInfo {
       
    friend class CellFile;
    friend class CellProjectionFile;
-   friend class CellProjectionFileSaxReader;
    friend class VocabularyFile;
 
 };

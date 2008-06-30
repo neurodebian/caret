@@ -29,7 +29,7 @@
 #include <QString>
 
 #include "GuiNodeFileType.h"
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiNodeAttributeColumnSelectionComboBox;
 class GiftiNodeDataFile;
@@ -37,7 +37,7 @@ class NodeAttributeFile;
 class QLineEdit;
 
 /// class for dialog for choosing a node attribute file column and column name
-class GuiChooseNodeAttributeColumnDialog : public QtDialog {
+class GuiChooseNodeAttributeColumnDialog : public WuQDialog {
    Q_OBJECT
    
    public:

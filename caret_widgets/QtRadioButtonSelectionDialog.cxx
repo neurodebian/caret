@@ -40,8 +40,9 @@ QtRadioButtonSelectionDialog::QtRadioButtonSelectionDialog(QWidget* parent,
                                    const QString& message,
                                    const std::vector<QString>& itemLabels,
                                    const int defaultItem)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle(title);
 
    //

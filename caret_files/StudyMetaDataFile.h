@@ -38,6 +38,7 @@ class CellStudyInfo;
 class QDomDocument;
 class QDomElement;
 class QDomNode;
+class FociProjectionFile;
 class StringTable;
 class StudyMetaAnalysisFile;
 class StudyMetaDataFile;
@@ -882,6 +883,9 @@ class StudyMetaData {
       // get the keywords
       void getKeywords(std::vector<QString>& keywordsOut) const;
       
+      // get all table headers
+      void getAllTableHeaders(std::vector<QString>& namesOut) const;
+      
       // get all table sub header short names in this study
       void getAllTableSubHeaderShortNames(std::vector<QString>& tableSubHeaderShortNamesOut) const;
       
@@ -890,6 +894,9 @@ class StudyMetaData {
       
       /// get medical subject headings
       QString getMedicalSubjectHeadings() const { return medicalSubjectHeadings; }
+      
+      /// get medical subject headings
+      void getMedicalSubjectHeadings(std::vector<QString>& meshOut) const;
       
       /// set medical subject headings
       void setMedicalSubjectHeadings(const QString& s);
@@ -1167,11 +1174,39 @@ class StudyMetaDataFile : public AbstractFile {
       // clear study meta data modified (prevents date and time stamp updates)
       void clearAllStudyMetaDataElementsModified();
       
+      // get all medical subject headings
+      void getAllMedicalSubjectHeadings(std::vector<QString>& meshOut) const;
+      
       // get all keywords
       void getAllKeywords(std::vector<QString>& allKeywords) const;
       
+      // get all citations
+      void getAllCitations(std::vector<QString>& allCitations) const;
+      
+      // get all data formats
+      void getAllDataFormats(std::vector<QString>& allDataFormats) const;
+      
+      // get all data types
+      void getAllDataTypes(std::vector<QString>& allDataTypes) const;
+      
+      // get all keywords used by displayed foci
+      void getAllKeywordsUsedByDisplayedFoci(const FociProjectionFile* fpf,
+                                             std::vector<QString>& keywordsOut) const;
+      
+      // get studies that are linked by displayed foci.  Output is sized by number
+      // of studies and true if study is linked by a focus
+      void getStudiesLinkedByDisplayedFoci(const FociProjectionFile* fpf,
+                                           std::vector<bool>& studyLinkedByFocusOut) const;
+      
+      // get all table headers
+      void getAllTableHeaders(std::vector<QString>& namesOut) const;
+      
       // get all table subheader short names
       void getAllTableSubHeaderShortNames(std::vector<QString>& allShortNames) const;
+      
+      // get all table subheader short names used by displayed foci
+      void getAllTableSubHeaderShortNamesUsedByDisplayedFoci(const FociProjectionFile* fpf,
+                                             std::vector<QString>& allShortNamesOut) const;
       
       // retrieve data from PubMed using PubMed ID for all studies
       void updateAllStudiesWithDataFromPubMedDotCom() throw (FileException);

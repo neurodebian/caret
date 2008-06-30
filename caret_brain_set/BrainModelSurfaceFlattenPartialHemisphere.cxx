@@ -201,7 +201,8 @@ BrainModelSurfaceFlattenPartialHemisphere::execute() throw (BrainModelAlgorithmE
    std::vector<QString> paintNames;
    paintNames.push_back("CUT.FACE");
    QString errorMessage;
-   if (partialHemisphereSurface->orientPaintedNodesToNegativeZAxis(paintNames,
+   if (partialHemisphereSurface->orientPaintedNodesToNegativeZAxis(brainSet->getPaintFile(),
+                                                                   paintNames,
                                                                      geographyColumn,
                                                                      errorMessage)) {
       throw BrainModelAlgorithmException(errorMessage);

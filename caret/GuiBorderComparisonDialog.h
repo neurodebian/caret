@@ -27,12 +27,12 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QLineEdit;
 
 /// dialog for comparing borders
-class GuiBorderComparisonDialog : public QtDialog {
+class GuiBorderComparisonDialog : public WuQDialog {
    Q_OBJECT
    
    public:

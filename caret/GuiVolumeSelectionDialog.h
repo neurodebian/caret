@@ -23,12 +23,12 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "GuiVolumeSelectionControl.h"
 
 /// dialog for selecting a volume file
-class GuiVolumeSelectionDialog : public QtDialog {
+class GuiVolumeSelectionDialog : public WuQDialog {
    public:
       /// Constructor
       GuiVolumeSelectionDialog(QWidget* parent,

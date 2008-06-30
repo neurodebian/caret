@@ -35,6 +35,7 @@
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "GiftiCommon.h"
+#include "MniObjSurfaceFile.h"
 #include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
 #include "SpecFile.h"
@@ -1425,6 +1426,28 @@ TopologyFile::importFromVtkFile(vtkPolyData* polyDataIn)
    }
 }
 
+/**
+ * get the topology from a MNI OBJ surface file.
+ */
+void 
+TopologyFile::importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException)
+{
+   clear();
+   
+   const int numberOfTriangles = mni.getNumberOfTriangles();
+   if (numberOfTriangles > 0) {
+      setNumberOfTiles(numberOfTriangles);
+      for (int i = 0; i < numberOfTriangles; i++) {
+         const int* triangle = mni.getTriangle(i);
+         setTile(i, triangle[0], triangle[1], triangle[2]);
+      }
+   }
+   appendToFileComment(" Imported from ");
+   appendToFileComment(FileUtilities::basename(mni.getFileName()));
+   setModified();
+   topologyHelperNeedsRebuild = true;
+}
+      
 /**
  * get the topology from a brain voyager file
  */

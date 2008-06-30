@@ -110,7 +110,7 @@ CommandDeformationMapApply::getHelpInformation() const
        + indent9 + "Note:  \"source-topology-file-name\", \n"
        + indent9 + "\"source-deformed-topology-file-name\",\n"
        + indent9 + "and \"target-topology-file-name\" are only required when\n"
-       + indent9 + "deforming coordinate files.\n"
+       + indent9 + "deforming coordinate FLAT files.\n"
        + indent9 + "\n"
        + indent9 + "\"data-file-type\" is one of:\n"
        + indent9 + "   AREAL_ESTIMATION \n"

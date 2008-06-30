@@ -25,12 +25,13 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
+#include <QLineEdit>
 #include <QMessageBox>
 
 #include "AreaColorFile.h"
 #include "BorderToTopographyConverter.h"
 #include "BrainModelBorderSet.h"
-#include "BrainModelRunCaretUtilityProgram.h"
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainSet.h"
@@ -56,12 +57,12 @@
 #include "PaintFile.h"
 #include "ProbabilisticAtlasFile.h"
 #include "QtTableDialog.h"
-#include "QtCheckBoxSelectionLineEditDialog.h"
 #include "RgbPaintFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
 #include "VocabularyFile.h"
+#include "WuQDataEntryDialog.h"
 #include "global_variables.h"
 
 /**
@@ -209,6 +210,11 @@ GuiMainWindowAttributesActions::GuiMainWindowAttributesActions(GuiMainWindow* pa
    QObject::connect(paintClearAllOrPartAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintClearAllOrPart()));
 
+   arealEstimationClearAllOrPartAction = new QAction(parent);
+   arealEstimationClearAllOrPartAction->setText("Clear All or Part of Areal Estimation File...");
+   QObject::connect(arealEstimationClearAllOrPartAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotArealEstimationClearAllOrPart()));
+                    
    copyColoringToRgbPaintAction = new QAction(parent);
    copyColoringToRgbPaintAction->setText("Copy Current Coloring to RGB Paint...");
    //copyColoringToRgbPaintAction->setName("copyColoringToRgbPaintAction");
@@ -476,7 +482,8 @@ GuiMainWindowAttributesActions::slotMetricToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                                             svd.getMetricConversionMode());
+                                             svd.getMetricConversionMode(),
+                                             svd.getIntersectionMode());
       stv.setNodeAttributeColumn(metricColumn);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
@@ -516,38 +523,73 @@ GuiMainWindowAttributesActions::slotMetricToRgbPaint()
 void
 GuiMainWindowAttributesActions::slotMetricAverageDeviation()
 {
-   std::vector<bool> checkBoxValues;
-   std::vector<QString> lineEditValues;
+   QCheckBox* meanCheckBox = new QCheckBox("");
+   QLineEdit* meanLineEdit = new QLineEdit;
+   meanLineEdit->setText("Mean");
+   QObject::connect(meanCheckBox, SIGNAL(toggled(bool)),
+                    meanLineEdit, SLOT(setEnabled(bool)));
+   meanCheckBox->setChecked(false);
+   meanLineEdit->setEnabled(false);
    
-   checkBoxValues.push_back(true); lineEditValues.push_back("Mean");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Sample Standard Deviation");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Standard Error");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Minimum Absolute Value");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Maximum Absolute Value");
+   QCheckBox* stdDevCheckBox = new QCheckBox("");
+   QLineEdit* stdDevLineEdit = new QLineEdit;
+   stdDevLineEdit->setText("Sample Standard Deviation");
+   QObject::connect(stdDevCheckBox, SIGNAL(toggled(bool)),
+                    stdDevLineEdit, SLOT(setEnabled(bool)));
+   stdDevCheckBox->setChecked(false);
+   stdDevLineEdit->setEnabled(false);
    
-   QtCheckBoxSelectionLineEditDialog cbsled(theMainWindow,
-                                            "Metric Statistics",
-                                            "Choose Statistical Measurements",
-                                            checkBoxValues,
-                                            lineEditValues);
-   if (cbsled.exec() == QDialog::Accepted) {
+   QCheckBox* stdErrorCheckBox = new QCheckBox("");
+   QLineEdit* stdErrorLineEdit = new QLineEdit;
+   stdErrorLineEdit->setText("Standard Error");
+   QObject::connect(stdErrorCheckBox, SIGNAL(toggled(bool)),
+                    stdErrorLineEdit, SLOT(setEnabled(bool)));
+   stdErrorCheckBox->setChecked(false);
+   stdErrorLineEdit->setEnabled(false);
+   
+   QCheckBox* minAbsCheckBox = new QCheckBox("");
+   QLineEdit* minAbsLineEdit = new QLineEdit;
+   minAbsLineEdit->setText("Minimum Absolute Value");
+   QObject::connect(minAbsCheckBox, SIGNAL(toggled(bool)),
+                    minAbsLineEdit, SLOT(setEnabled(bool)));
+   minAbsCheckBox->setChecked(false);
+   minAbsLineEdit->setEnabled(false);
+   
+   QCheckBox* maxAbsCheckBox = new QCheckBox("");
+   QLineEdit* maxAbsLineEdit = new QLineEdit;
+   maxAbsLineEdit->setText("Maximum Absolute Value");
+   QObject::connect(maxAbsCheckBox, SIGNAL(toggled(bool)),
+                    maxAbsLineEdit, SLOT(setEnabled(bool)));
+   maxAbsCheckBox->setChecked(false);
+   maxAbsLineEdit->setEnabled(false);
+   
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Surface Shape Statistics");
+   ded.setTextAtTop("Choose Statistical Measurements", false);
+   ded.addWidgetsToNextRow(meanCheckBox, meanLineEdit);
+   ded.addWidgetsToNextRow(stdDevCheckBox, stdDevLineEdit);
+   ded.addWidgetsToNextRow(stdErrorCheckBox, stdErrorLineEdit);
+   ded.addWidgetsToNextRow(minAbsCheckBox, minAbsLineEdit);
+   ded.addWidgetsToNextRow(maxAbsCheckBox, maxAbsLineEdit);
+   
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       
       QString meanName, devName, errorName, minAbsName, maxAbsName;
-      if (cbsled.getCheckBoxStatus(0)) {
-         meanName = cbsled.getLineEditValue(0);
+      if (meanCheckBox->isChecked()) {
+         meanName = meanLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(1)) {
-         devName = cbsled.getLineEditValue(1);
+      if (stdDevCheckBox->isChecked()) {
+         devName = stdDevLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(2)) {
-         errorName = cbsled.getLineEditValue(2);
+      if (stdErrorCheckBox->isChecked()) {
+         errorName = stdErrorLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(3)) {
-         minAbsName = cbsled.getLineEditValue(3);
+      if (minAbsCheckBox->isChecked()) {
+         minAbsName = minAbsLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(4)) {
-         maxAbsName = cbsled.getLineEditValue(4);
+      if (maxAbsCheckBox->isChecked()) {
+         maxAbsName = maxAbsLineEdit->text();
       }
       
       MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
@@ -587,9 +629,8 @@ GuiMainWindowAttributesActions::slotProbAtlasThresholdToPaint()
    // An overlay or underlay must be prob atlas
    //
    bool error = false;
-   if ((bsnc->getPrimaryOverlay(0) != BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) &&
-       (bsnc->getSecondaryOverlay(0) != BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) &&
-       (bsnc->getUnderlay(0) != BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS)) {
+   if (theMainWindow->getBrainSet()->isASurfaceOverlay(0, 
+           BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS)) {
       error = true;
    }
    
@@ -769,6 +810,18 @@ GuiMainWindowAttributesActions::slotPaintClearAllOrPart()
 }
 
 /**
+ * Clear all or part of the areal estimation file.
+ */
+void
+GuiMainWindowAttributesActions::slotArealEstimationClearAllOrPart()
+{
+   GuiFilesModified fm;
+   fm.setArealEstimationModified();
+   GuiNodeAttributeFileClearResetDialog d(theMainWindow, GUI_NODE_FILE_TYPE_AREAL_ESTIMATION);
+   d.exec();
+}
+
+/**
  * Called to create a volume using a paint column.
  */
 void
@@ -803,7 +856,8 @@ GuiMainWindowAttributesActions::slotPaintToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT);
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT,
+                                             svd.getIntersectionMode());
       stv.setNodeAttributeColumn(paintColumn);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
@@ -857,7 +911,8 @@ GuiMainWindowAttributesActions::slotCopyColoringToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_RGB_VOLUME_USING_NODE_COLORING);
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_RGB_VOLUME_USING_NODE_COLORING,
+                                             svd.getIntersectionMode());
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
 
@@ -955,38 +1010,73 @@ GuiMainWindowAttributesActions::slotShapeModification()
 void
 GuiMainWindowAttributesActions::slotSurfaceShapeAverageDeviation()
 {
-   std::vector<bool> checkBoxValues;
-   std::vector<QString> lineEditValues;
+   QCheckBox* meanCheckBox = new QCheckBox("");
+   QLineEdit* meanLineEdit = new QLineEdit;
+   meanLineEdit->setText("Mean");
+   QObject::connect(meanCheckBox, SIGNAL(toggled(bool)),
+                    meanLineEdit, SLOT(setEnabled(bool)));
+   meanCheckBox->setChecked(false);
+   meanLineEdit->setEnabled(false);
    
-   checkBoxValues.push_back(true); lineEditValues.push_back("Mean");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Sample Standard Deviation");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Standard Error");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Minimum Absolute Value");
-   checkBoxValues.push_back(true); lineEditValues.push_back("Maximum Absolute Value");
+   QCheckBox* stdDevCheckBox = new QCheckBox("");
+   QLineEdit* stdDevLineEdit = new QLineEdit;
+   stdDevLineEdit->setText("Sample Standard Deviation");
+   QObject::connect(stdDevCheckBox, SIGNAL(toggled(bool)),
+                    stdDevLineEdit, SLOT(setEnabled(bool)));
+   stdDevCheckBox->setChecked(false);
+   stdDevLineEdit->setEnabled(false);
    
-   QtCheckBoxSelectionLineEditDialog cbsled(theMainWindow,
-                                            "Surface Shape Statistics",
-                                            "Choose Statistical Measurements",
-                                            checkBoxValues,
-                                            lineEditValues);
-   if (cbsled.exec() == QDialog::Accepted) {
+   QCheckBox* stdErrorCheckBox = new QCheckBox("");
+   QLineEdit* stdErrorLineEdit = new QLineEdit;
+   stdErrorLineEdit->setText("Standard Error");
+   QObject::connect(stdErrorCheckBox, SIGNAL(toggled(bool)),
+                    stdErrorLineEdit, SLOT(setEnabled(bool)));
+   stdErrorCheckBox->setChecked(false);
+   stdErrorLineEdit->setEnabled(false);
+   
+   QCheckBox* minAbsCheckBox = new QCheckBox("");
+   QLineEdit* minAbsLineEdit = new QLineEdit;
+   minAbsLineEdit->setText("Minimum Absolute Value");
+   QObject::connect(minAbsCheckBox, SIGNAL(toggled(bool)),
+                    minAbsLineEdit, SLOT(setEnabled(bool)));
+   minAbsCheckBox->setChecked(false);
+   minAbsLineEdit->setEnabled(false);
+   
+   QCheckBox* maxAbsCheckBox = new QCheckBox("");
+   QLineEdit* maxAbsLineEdit = new QLineEdit;
+   maxAbsLineEdit->setText("Maximum Absolute Value");
+   QObject::connect(maxAbsCheckBox, SIGNAL(toggled(bool)),
+                    maxAbsLineEdit, SLOT(setEnabled(bool)));
+   maxAbsCheckBox->setChecked(false);
+   maxAbsLineEdit->setEnabled(false);
+   
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Surface Shape Statistics");
+   ded.setTextAtTop("Choose Statistical Measurements", false);
+   ded.addWidgetsToNextRow(meanCheckBox, meanLineEdit);
+   ded.addWidgetsToNextRow(stdDevCheckBox, stdDevLineEdit);
+   ded.addWidgetsToNextRow(stdErrorCheckBox, stdErrorLineEdit);
+   ded.addWidgetsToNextRow(minAbsCheckBox, minAbsLineEdit);
+   ded.addWidgetsToNextRow(maxAbsCheckBox, maxAbsLineEdit);
+   
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       
       QString meanName, devName, errorName, minAbsName, maxAbsName;
-      if (cbsled.getCheckBoxStatus(0)) {
-         meanName = cbsled.getLineEditValue(0);
+      if (meanCheckBox->isChecked()) {
+         meanName = meanLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(1)) {
-         devName = cbsled.getLineEditValue(1);
+      if (stdDevCheckBox->isChecked()) {
+         devName = stdDevLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(2)) {
-         errorName = cbsled.getLineEditValue(2);
+      if (stdErrorCheckBox->isChecked()) {
+         errorName = stdErrorLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(3)) {
-         minAbsName = cbsled.getLineEditValue(3);
+      if (minAbsCheckBox->isChecked()) {
+         minAbsName = minAbsLineEdit->text();
       }
-      if (cbsled.getCheckBoxStatus(4)) {
-         maxAbsName = cbsled.getLineEditValue(4);
+      if (maxAbsCheckBox->isChecked()) {
+         maxAbsName = maxAbsLineEdit->text();
       }
       
       SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
@@ -1053,7 +1143,8 @@ GuiMainWindowAttributesActions::slotSurfaceShapeToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE);
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE,
+                                             svd.getIntersectionMode());
       stv.setNodeAttributeColumn(shapeColumn);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());

@@ -25,6 +25,7 @@
 
 #include <sstream>
 
+#include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
@@ -45,7 +46,7 @@
  * Constructor.
  */
 GuiSetTopologyDialog::GuiSetTopologyDialog(QWidget* parent)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Set Topology");
    
@@ -82,15 +83,18 @@ GuiSetTopologyDialog::GuiSetTopologyDialog(QWidget* parent)
    //
    // layout for entire dialog
    //
-   QVBoxLayout* layout = getDialogLayout();
+   QVBoxLayout* layout = new QVBoxLayout(this);
    layout->addLayout(grid);
    
    //
-   // hookup close pushbutton
+   // Dialog buttons
    //
-   getApplyPushButton()->hide();
-   QObject::connect(getClosePushButton(), SIGNAL(clicked()),
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
+   buttonBox->button(QDialogButtonBox::Close)->setAutoDefault(false);
+   layout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
+                    
    
    surfaceComboBox->setSelectedBrainModel(theMainWindow->getBrainModelSurface());                                                        
    slotSurfaceSelection();

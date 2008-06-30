@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiStructureComboBox;
@@ -38,7 +38,7 @@ class QLabel;
 class QPushButton;
 
 /// dialog for setting and viewing surface information
-class GuiSurfaceInformationDialog : public QtDialog {
+class GuiSurfaceInformationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

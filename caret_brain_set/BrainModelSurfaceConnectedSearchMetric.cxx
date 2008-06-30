@@ -7,19 +7,20 @@
  * Constructor
  */
 BrainModelSurfaceConnectedSearchMetric::BrainModelSurfaceConnectedSearchMetric(
-                                          BrainSet* bs, BrainModelSurface* bmsIn,
+                                          BrainSet* bs, 
+                                          const BrainModelSurface* bmsIn,
                                           const int startNodeIn,
                                           const MetricFile* metricFileIn,
                                           const int metricColumnIn,
                                           const float metricMinimumIn,
                                           const float metricMaximumIn,
                                           const std::vector<int>* limitToTheseNodesIn)
-   : BrainModelSurfaceConnectedSearch(bs, bmsIn, startNodeIn, limitToTheseNodesIn)
-   , metricFile(metricFileIn)
+   : BrainModelSurfaceConnectedSearch(bs, bmsIn, startNodeIn, limitToTheseNodesIn),
+     metricFile(metricFileIn),
+     metricColumn(metricColumnIn),
+     metricMinimum(metricMinimumIn),
+     metricMaximum(metricMaximumIn)
 {
-   metricColumn  = metricColumnIn;
-   metricMinimum = metricMinimumIn;
-   metricMaximum = metricMaximumIn;
 }
 
 /**

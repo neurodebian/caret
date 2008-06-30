@@ -328,7 +328,7 @@ TopologyHelper::NodeInfo::sortNeighbors()
          
          if (foundNode == false) {
             if (startEdge >= 0) {
-               std::cerr << "INFO: multiple starting edges for node " << nodeNumber << std::endl;
+               //std::cerr << "INFO: multiple starting edges for node " << nodeNumber << std::endl;
             }
             else {
                startEdge = k;
@@ -365,14 +365,14 @@ TopologyHelper::NodeInfo::sortNeighbors()
             currentNode = nextNeighbor;
             nextNeighbor = e->getOtherNode(nextNeighbor);
             if (nextNeighbor < 0) {
-               std::cerr << "INFO: Unable to find neighbor of"
-                           <<  nextNeighbor << std::endl;
+               //std::cerr << "INFO: Unable to find neighbor of"
+               //            <<  nextNeighbor << std::endl;
             }
          }
          else {
             nextNeighbor = -1;
-            std::cerr << "INFO: Unable to find edge for for node " 
-                        << nodeNumber << std::endl;
+            //std::cerr << "INFO: Unable to find edge for for node " 
+            //            << nodeNumber << std::endl;
             break;
          }
       }

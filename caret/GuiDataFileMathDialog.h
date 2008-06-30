@@ -26,7 +26,7 @@
 #ifndef __GUI_METRIC_MATH_DIALOG_H__
 #define __GUI_METRIC_MATH_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiNodeAttributeColumnSelectionComboBox;
 class GuiVolumeSelectionControl;
@@ -38,7 +38,7 @@ class QRadioButton;
 class QDoubleSpinBox;
 
 /// dialog for performing mathematical operations on metric files
-class GuiDataFileMathDialog : public QtDialog {
+class GuiDataFileMathDialog : public WuQDialog {
    Q_OBJECT
    
    public:

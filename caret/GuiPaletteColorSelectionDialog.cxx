@@ -41,8 +41,9 @@
 GuiPaletteColorSelectionDialog::GuiPaletteColorSelectionDialog(QWidget* parent,
                                                                PaletteFile* pf,
                                                                const int initialColorIndex)
- : QtDialog(parent, true)
+ : WuQDialog(parent)
 {
+   setModal(true);
    paletteFile = pf;
    
    setWindowTitle("Palette Color Selection");

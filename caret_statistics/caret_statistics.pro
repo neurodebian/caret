@@ -37,6 +37,7 @@ HEADERS += \
       StatisticMeanAndDeviation.h \
       StatisticMultipleRegression.h \
       StatisticNormalizeDistribution.h \
+      StatisticNumericalRecipes.h \
       StatisticPermutation.h \
       StatisticRandomNumber.h \
       StatisticRandomNumberOperator.h \
@@ -70,6 +71,7 @@ SOURCES += \
       StatisticMeanAndDeviation.cxx \
       StatisticMultipleRegression.cxx \
       StatisticNormalizeDistribution.cxx \
+      StatisticNumericalRecipes.cxx \
       StatisticPermutation.cxx \
       StatisticRandomNumber.cxx \
       StatisticRandomNumberOperator.cxx \

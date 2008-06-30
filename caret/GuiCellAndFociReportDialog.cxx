@@ -42,6 +42,7 @@
 #include "GuiMainWindow.h"
 #include "PaintFile.h"
 #include "StringTable.h"
+#include "StudyMetaDataFile.h"
 #include "QtTableDialog.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -51,8 +52,9 @@
  */
 GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent, 
                                                        const bool fociFlagIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    resultsTableDialog = NULL;
    
    fociFlag = fociFlagIn;
@@ -155,18 +157,42 @@ GuiCellAndFociReportDialog::createSurfaceSection()
                                                                  true,
                                                                  false);
                                                                  
+   //
+   // right hem selection combo box
+   //
+   QLabel* cerebellumLabel = new QLabel("Cerebellum");
+   cerebellumSelectionComboBox = new GuiBrainModelSelectionComboBox(false,
+                                                                 true,
+                                                                 false,
+                                                                 "",
+                                                                 0,
+                                                                 "cerebellum",
+                                                                 false,
+                                                                 true,
+                                                                 false);
+                                                                 
    BrainModelSurface* leftBMS  = NULL;
    BrainModelSurface* rightBMS = NULL;
+   BrainModelSurface* cerebellumBMS = NULL;
    const int numModels = theMainWindow->getBrainSet()->getNumberOfBrainModels();
    for (int i = 0; i < numModels; i++) {
       BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(i);
       if (bms != NULL) {
          if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
             if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
-               leftBMS = bms;
+               if (leftBMS == NULL) {
+                  leftBMS = bms;
+               }
             }
             if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
-               rightBMS = bms;
+               if (rightBMS == NULL) {
+                  rightBMS = bms;
+               }
+            }
+            if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CEREBELLUM) {
+               if (cerebellumBMS == NULL) {
+                  cerebellumBMS = bms;
+               }
             }
          }
       }
@@ -177,6 +203,9 @@ GuiCellAndFociReportDialog::createSurfaceSection()
    if (rightBMS != NULL) {
       rightHemSelectionComboBox->setSelectedBrainModel(rightBMS);
    }
+   if (cerebellumBMS != NULL) {
+      cerebellumSelectionComboBox->setSelectedBrainModel(cerebellumBMS);
+   }
 
    QGroupBox* gb = new QGroupBox("Surface Selection");
    QGridLayout* gridLayout = new QGridLayout(gb);
@@ -184,6 +213,8 @@ GuiCellAndFociReportDialog::createSurfaceSection()
    gridLayout->addWidget(leftHemSelectionComboBox, 0, 1);
    gridLayout->addWidget(rightLabel, 1, 0);
    gridLayout->addWidget(rightHemSelectionComboBox, 1, 1);
+   gridLayout->addWidget(cerebellumLabel, 2, 0);
+   gridLayout->addWidget(cerebellumSelectionComboBox, 2, 1);
 
    return gb;
 }
@@ -243,6 +274,13 @@ GuiCellAndFociReportDialog::createCellFociSection(const QString& typeString)
    attrGroupLayout->addWidget(geographyCheckBox);
    
    //
+   // region of interest check box
+   //
+   regionOfInterestCheckBox = new QCheckBox("Region Of Interest");
+   regionOfInterestCheckBox->setChecked(true);
+   attrGroupLayout->addWidget(regionOfInterestCheckBox);
+   
+   //
    // size check box
    //
    sizeCheckBox = new QCheckBox("Size");
@@ -259,16 +297,30 @@ GuiCellAndFociReportDialog::createCellFociSection(const QString& typeString)
    //
    // hemisphere check box
    //
-   hemisphereCheckBox = new QCheckBox("Hemisphere");
-   hemisphereCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(hemisphereCheckBox);
+   structureCheckBox = new QCheckBox("Structure");
+   structureCheckBox->setChecked(true);
+   attrGroupLayout->addWidget(structureCheckBox);
    
    //
-   // study check box
+   // study name check box
    //
-   studyCheckBox = new QCheckBox("Study");
-   studyCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(studyCheckBox);
+   studyNameCheckBox = new QCheckBox("Study Name");
+   studyNameCheckBox->setChecked(true);
+   attrGroupLayout->addWidget(studyNameCheckBox);
+   
+   //
+   // study data format check box
+   //
+   studyDataFormatCheckBox = new QCheckBox("Study Data Format");
+   studyDataFormatCheckBox->setChecked(true);
+   attrGroupLayout->addWidget(studyDataFormatCheckBox);
+   
+   //
+   // study data type check box
+   //
+   studyDataTypeCheckBox = new QCheckBox("Study Data Type");
+   studyDataTypeCheckBox->setChecked(true);
+   attrGroupLayout->addWidget(studyDataTypeCheckBox);
    
    //
    // comment check box
@@ -282,12 +334,15 @@ GuiCellAndFociReportDialog::createCellFociSection(const QString& typeString)
    // If doing a cell report, hide items specific to foci
    //
    if (fociFlag == false) {
+      regionOfInterestCheckBox->hide();
       geographyCheckBox->hide();
       areaCheckBox->hide();
       sizeCheckBox->hide();
       statisticCheckBox->hide();
       commentCheckBox->hide();
-      studyCheckBox->hide();
+      studyNameCheckBox->hide();
+      studyDataFormatCheckBox->hide();
+      studyDataTypeCheckBox->hide();
    }
    
    return attrGroupBox;
@@ -351,7 +406,11 @@ GuiCellAndFociReportDialog::done(int r)
          QMessageBox::critical(this, "ERROR", 
                                  "No right surface is selected.");
       }
+      const BrainModelSurface* cerebellumBMS = cerebellumSelectionComboBox->getSelectedBrainModelSurface();
 
+      StudyMetaDataFile* studyMetaDataFile = 
+         theMainWindow->getBrainSet()->getStudyMetaDataFile();
+      
       //
       // Get the fiducial foci file
       //
@@ -409,9 +468,15 @@ GuiCellAndFociReportDialog::done(int r)
             }
             
             int hemisphereColumn = -1;
-            if (checked(hemisphereCheckBox)) {
-               columnTitle.push_back("Hemisphere");
+            if (checked(structureCheckBox)) {
+               columnTitle.push_back("Structure");
                hemisphereColumn = numTableColumns++;
+            }
+            
+            int regionOfInterestColumn = -1;
+            if (checked(regionOfInterestCheckBox)) {
+               columnTitle.push_back("ROI");
+               regionOfInterestColumn = numTableColumns++;
             }
             
             int sizeColumn = -1;
@@ -426,10 +491,22 @@ GuiCellAndFociReportDialog::done(int r)
                statisticColumn = numTableColumns++;
             }
             
-            int studyColumn = -1;
-            if (checked(studyCheckBox)) {
-               columnTitle.push_back("Study");
-               studyColumn = numTableColumns++;
+            int studyNameColumn = -1;
+            if (checked(studyNameCheckBox)) {
+               columnTitle.push_back("Study Name");
+               studyNameColumn = numTableColumns++;
+            }
+            
+            int studyDataFormatColumn = -1;
+            if (checked(studyDataFormatCheckBox)) {
+               columnTitle.push_back("Study Data Format");
+               studyDataFormatColumn = numTableColumns++;
+            }
+            
+            int studyDataTypeColumn = -1;
+            if (checked(studyDataTypeCheckBox)) {
+               columnTitle.push_back("Study Data Type");
+               studyDataTypeColumn = numTableColumns++;
             }
             
             int commentColumn = -1;
@@ -460,17 +537,61 @@ GuiCellAndFociReportDialog::done(int r)
             //
             std::vector<int> cellsNearestLeftNode(numCells, -1);
             std::vector<int> cellsNearestRightNode(numCells, -1);
+            std::vector<int> cellsNearestCerebellumNode(numCells, -1);
             if (havePaints) {
                BrainModelSurfacePointLocator leftPointLocator(leftBMS,
                                                                true);
                BrainModelSurfacePointLocator rightPointLocator(rightBMS,
                                                                true);
-               
+               BrainModelSurfacePointLocator* cerebellumPointLocator = NULL;
+               if (cerebellumBMS != NULL) {
+                  cerebellumPointLocator = 
+                     new BrainModelSurfacePointLocator(cerebellumBMS, true);
+               }
                for (int i = 0; i < numCells; i++) {
                   const CellProjection* cp = cf->getCellProjection(i);
+                  
                   float xyz[3];
                   cp->getXYZ(xyz);
-                  if (xyz[0] >= 0) {
+                  
+                  bool leftFlag = false;
+                  bool rightFlag = false;
+                  bool cerebellumFlag = false;
+                  switch (cp->getCellStructure()) {
+                     case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+                        leftFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+                        rightFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_BOTH:         
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM:
+                        cerebellumFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+                        cerebellumFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+                        cerebellumFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+                        leftFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+                        rightFlag = true;
+                        break;
+                     case Structure::STRUCTURE_TYPE_INVALID:
+                        if (xyz[0] >= 0) {
+                           rightFlag = true;
+                        }
+                        else {
+                           leftFlag = true;
+                        }
+                        break;
+                  }
+                  
+                  if (rightFlag) {
                      if (cp->getProjectedPosition(rightBMS->getCoordinateFile(),
                                                   rightBMS->getTopologyFile(),
                                                   rightBMS->getIsFiducialSurface(),
@@ -480,7 +601,7 @@ GuiCellAndFociReportDialog::done(int r)
                         cellsNearestRightNode[i] = rightPointLocator.getNearestPoint(xyz);
                      }
                   }
-                  else {
+                  else if (rightFlag) {
                      if (cp->getProjectedPosition(leftBMS->getCoordinateFile(),
                                                   leftBMS->getTopologyFile(),
                                                   leftBMS->getIsFiducialSurface(),
@@ -490,6 +611,22 @@ GuiCellAndFociReportDialog::done(int r)
                         cellsNearestLeftNode[i] = leftPointLocator.getNearestPoint(xyz);
                      }
                   }
+                  else if (cerebellumFlag) {
+                     if (cerebellumBMS != NULL) {
+                        if (cp->getProjectedPosition(cerebellumBMS->getCoordinateFile(),
+                                                     cerebellumBMS->getTopologyFile(),
+                                                     cerebellumBMS->getIsFiducialSurface(),
+                                                     cerebellumBMS->getIsFlatSurface(),
+                                                     false,
+                                                     xyz)) {
+                           cellsNearestCerebellumNode[i] = cerebellumPointLocator->getNearestPoint(xyz);
+                        }
+                     }
+                  }
+               }
+               
+               if (cerebellumPointLocator != NULL) {
+                  delete cerebellumPointLocator;
                }
             }
             
@@ -547,6 +684,10 @@ GuiCellAndFociReportDialog::done(int r)
                   cellTable.setElement(i, geographyColumn, cd->getGeography());
                }
 
+               if (regionOfInterestColumn >= 0) {
+                  cellTable.setElement(i, regionOfInterestColumn, cd->getRegionOfInterest());
+               }
+               
                if (sizeColumn >= 0) {
                   cellTable.setElement(i, sizeColumn, cd->getSize());
                }
@@ -560,15 +701,40 @@ GuiCellAndFociReportDialog::done(int r)
                      Structure::convertTypeToString(cd->getCellStructure()));
                }
 
-               if (studyColumn >= 0) {
-                  QString studyTitle;
-                  if (cd->getStudyNumber() >= 0) {
-                     const CellStudyInfo* cs = cf->getStudyInfo(cd->getStudyNumber());
-                     studyTitle = cs->getTitle();
+               StudyMetaData* smd = NULL;
+               const StudyMetaDataLinkSet smdls = cd->getStudyMetaDataLinkSet();
+               if (smdls.getNumberOfStudyMetaDataLinks() > 0) {
+                  StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(0);
+                  const int indx = studyMetaDataFile->getStudyIndexFromLink(smdl);
+                  if (indx >= 0) {
+                     smd = studyMetaDataFile->getStudyMetaData(indx);
                   }
-                  cellTable.setElement(i, studyColumn, studyTitle);
+               }
+               
+               if (studyNameColumn >= 0) {
+                  QString studyTitle;
+                  if (smd != NULL) {
+                     studyTitle = smd->getTitle();
+                  }
+                  cellTable.setElement(i, studyNameColumn, studyTitle);
                }
 
+               if (studyDataFormatColumn >= 0) {
+                  QString dataFormat;
+                  if (smd != NULL) {
+                     dataFormat = smd->getStudyDataFormat();
+                  }
+                  cellTable.setElement(i, studyDataFormatColumn, dataFormat);
+               }
+               
+               if (studyDataTypeColumn >= 0) {
+                  QString dataType;
+                  if (smd != NULL) {
+                     dataType = smd->getStudyDataType();
+                  }
+                  cellTable.setElement(i, studyDataTypeColumn, dataType);
+               }
+               
                if (commentColumn >= 0) {
                   cellTable.setElement(i, commentColumn, cd->getComment());
                }
@@ -583,6 +749,9 @@ GuiCellAndFociReportDialog::done(int r)
                   }
                   else if (cellsNearestRightNode[i] >= 0) {
                      node = cellsNearestRightNode[i];
+                  }
+                  else if (cellsNearestCerebellumNode[i] >= 0) {
+                     node = cellsNearestCerebellumNode[i];
                   }
                   if (node >= 0) {
                      for (int j = 0; j < numPaintCols; j++) {

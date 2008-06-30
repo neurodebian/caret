@@ -28,6 +28,7 @@
 
 #include <QButtonGroup>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -46,6 +47,7 @@
 #include "GuiStudyInfoEditorWidget.h"
 #include "GuiStudyMetaDataLinkCreationDialog.h"
 #include "GuiVocabularyFileEditorDialog.h"
+#include "QtListBoxSelectionDialog.h"
 #include "WuQWidgetGroup.h"
 #include "VocabularyFile.h"
 #include "global_variables.h"
@@ -56,7 +58,7 @@ static const QString noneStudyName("None");
  * constructor.
  */
 GuiVocabularyFileEditorDialog::GuiVocabularyFileEditorDialog(QWidget* parent)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Vocabulary Editor");
    
@@ -82,15 +84,19 @@ GuiVocabularyFileEditorDialog::GuiVocabularyFileEditorDialog(QWidget* parent)
    //
    // get the layout for the dialog
    //
-   QVBoxLayout* layout = getDialogLayout();
+   QVBoxLayout* layout = new QVBoxLayout(this);
    layout->addWidget(tabWidget);
    
    //
-   // connect signals for Apply and Close buttons
+   // Dialog buttons
    //
-   QObject::connect(getApplyPushButton(), SIGNAL(clicked()),
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Apply 
+                                                      | QDialogButtonBox::Close);
+   layout->addWidget(buttonBox);
+   QPushButton* applyButton = buttonBox->button(QDialogButtonBox::Apply);
+   QObject::connect(applyButton, SIGNAL(clicked()),
                     this, SLOT(slotApplyButton()));
-   QObject::connect(getClosePushButton(), SIGNAL(clicked()),
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
    
    //
@@ -194,6 +200,22 @@ GuiVocabularyFileEditorDialog::createVocabularyWidget()
    vocabularyIdLineEdit = new QLineEdit;
     
    //
+   // Push Button and line edit for ontology source
+   //
+   QPushButton* ontologySourcePushButton = new QPushButton("Ontology Source...");
+   ontologySourcePushButton->setAutoDefault(false);
+   ontologySourcePushButton->setFixedSize(ontologySourcePushButton->sizeHint());
+   QObject::connect(ontologySourcePushButton, SIGNAL(clicked()),
+                    this, SLOT(slotOntologySourcePushButton()));
+   ontologySourceLineEdit = new QLineEdit;
+   
+   //
+   // Label and line edit for Term ID
+   //
+   QLabel* termIDLabel = new QLabel("Term ID");
+   termIDLineEdit = new QLineEdit;
+   
+   //
    // Label and line edit for study number
    //
    QLabel* studyNumberLabel = new QLabel("Study in Vocab File");
@@ -227,12 +249,16 @@ GuiVocabularyFileEditorDialog::createVocabularyWidget()
    dataGridLayout->addWidget(classNameLineEdit, 2, 1);
    dataGridLayout->addWidget(vocabularyIdLabel, 3, 0);
    dataGridLayout->addWidget(vocabularyIdLineEdit, 3, 1);
-   dataGridLayout->addWidget(studyNumberLabel, 4, 0);
-   dataGridLayout->addWidget(studyNumberComboBox, 4, 1);
-   dataGridLayout->addWidget(vocabularyStudyMetaDataPushButton, 5, 0);
-   dataGridLayout->addWidget(vocabularyStudyMetaDataLineEdit, 5, 1);
-   dataGridLayout->addWidget(descriptionLabel, 6, 0);
-   dataGridLayout->addWidget(descriptionTextEdit, 6, 1);
+   dataGridLayout->addWidget(ontologySourcePushButton, 4, 0);
+   dataGridLayout->addWidget(ontologySourceLineEdit, 4, 1);
+   dataGridLayout->addWidget(termIDLabel, 5, 0);
+   dataGridLayout->addWidget(termIDLineEdit, 5, 1);
+   dataGridLayout->addWidget(studyNumberLabel, 6, 0);
+   dataGridLayout->addWidget(studyNumberComboBox, 6, 1);
+   dataGridLayout->addWidget(vocabularyStudyMetaDataPushButton, 7, 0);
+   dataGridLayout->addWidget(vocabularyStudyMetaDataLineEdit, 7, 1);
+   dataGridLayout->addWidget(descriptionLabel, 8, 0);
+   dataGridLayout->addWidget(descriptionTextEdit, 8, 1);
 
    //
    // widget and layout
@@ -242,6 +268,24 @@ GuiVocabularyFileEditorDialog::createVocabularyWidget()
    l->addWidget(entryModeGroupBox);
    l->addWidget(dataGroupBox);
    return w;
+}
+      
+/**
+ * called when ontology source push button pressed.
+ */
+void 
+GuiVocabularyFileEditorDialog::slotOntologySourcePushButton()
+{
+   std::vector<QString> names;
+   VocabularyFile::VocabularyEntry::getOntologySourceValues(names);
+   
+   QtListBoxSelectionDialog lbsd(this,
+                                 "Ontology Sources",
+                                 "",
+                                 names);
+   if (lbsd.exec() == QtListBoxSelectionDialog::Accepted) {
+      ontologySourceLineEdit->setText(lbsd.getSelectedText());
+   }
 }
       
 /**
@@ -320,6 +364,8 @@ GuiVocabularyFileEditorDialog::slotApplyButton()
       ve->setFullName(fullNameLineEdit->text());
       ve->setClassName(classNameLineEdit->text());
       ve->setVocabularyID(vocabularyIdLineEdit->text());
+      ve->setOntologySource(ontologySourceLineEdit->text());
+      ve->setTermID(termIDLineEdit->text());
       ve->setStudyMetaDataLinkSet(smdls);
       int studyNum = studyNumberComboBox->currentIndex();
       if (studyNumberComboBox->currentText() == noneStudyName) {
@@ -357,6 +403,8 @@ GuiVocabularyFileEditorDialog::slotLoadVocabularyEntry(int indx)
       fullNameLineEdit->setText(ve->getFullName());
       classNameLineEdit->setText(ve->getClassName());
       vocabularyIdLineEdit->setText(ve->getVocabularyID());
+      ontologySourceLineEdit->setText(ve->getOntologySource());
+      termIDLineEdit->setText(ve->getTermID());
       int studyNum = ve->getStudyNumber();
       if ((studyNum < 0) ||
           (studyNum >= vf->getNumberOfStudyInfo())) {
@@ -437,7 +485,7 @@ GuiVocabularyFileEditorDialog::slotAbbreviationPushButton()
 {
    GuiNameSelectionDialog nsd(this, GuiNameSelectionDialog::LIST_ALL);
    if (nsd.exec() == QDialog::Accepted) {
-      QString name(nsd.getName());
+      QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          abbreviationLineEdit->setText(name);
       }

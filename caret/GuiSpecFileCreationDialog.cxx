@@ -56,8 +56,9 @@
  * constructor (dialog is modal).
  */
 GuiSpecFileCreationDialog::GuiSpecFileCreationDialog(QDialog* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    const int lineEditWidth = 250;
  
    setWindowTitle("Create Spec File");
@@ -247,9 +248,8 @@ GuiSpecFileCreationDialog::slotDirectoryPushButton()
    fd.setDirectory(QDir::currentPath());
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    if (fd.exec() == QDialog::Accepted) {
-      if (fd.selectedFiles().count() > 0) {
-         directoryLineEdit->setText(fd.selectedFiles().at(0));
-      }
+      const QString ds = fd.directory().absolutePath();
+      directoryLineEdit->setText(ds);
    }
 }
 

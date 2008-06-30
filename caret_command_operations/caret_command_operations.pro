@@ -14,6 +14,7 @@ TEMPLATE = lib
 # Input
 HEADERS += CommandBase.h \
            CommandCaretFileNamingUnitTesting.h \
+           CommandCaretHelpCreateHtmlIndexFile.h \
            CommandColorFileAddColor.h \
            CommandDataFileCompare.h \
            CommandColorFileCreateMissingColors.h \
@@ -23,11 +24,16 @@ HEADERS += CommandBase.h \
            CommandException.h \
            CommandFileConvert.h \
            CommandFileReadTime.h \
+           CommandFileSubstitution.h \
            CommandGiftiInfo.h \
+           CommandImageCombine.h \
            CommandImageCompare.h \
+           CommandImageInsertText.h \
+           CommandImageResize.h \
            CommandImageView.h \
            CommandHelp.h \
            CommandHelpFull.h \
+           CommandHelpGlobalOptions.h \
            CommandHelpHTML.h \
            CommandHelpPDF.h \
            CommandHelpSearch.h \
@@ -66,6 +72,7 @@ HEADERS += CommandBase.h \
            CommandPaintAssignNodesRelativeToLine.h \
            CommandPaintComposite.h \
            CommandPaintFileCreate.h \
+           CommandSceneCreate.h \
            CommandScriptComment.h \
            CommandScriptConvert.h \
            CommandScriptRun.h \
@@ -75,25 +82,31 @@ HEADERS += CommandBase.h \
            CommandShowSurface.h \
            CommandShowVolume.h \
            CommandSpecFileAdd.h \
+           CommandSpecFileClean.h \
            CommandSpecFileCopy.h \
            CommandSpecFileCreate.h \
+           CommandSpecFileDirectoryClean.h \
            CommandSpecFileZip.h \
            CommandStatisticSetRandomSeed.h \
            CommandStatisticalUnitTesting.h \
            CommandStudyMetaDataFileDuplicates.h \
+           CommandSurfaceAlignToStandardOrientation.h \
            CommandSurfaceApplyTransformationMatrix.h \
            CommandSurfaceAverage.h \
            CommandSurfaceBorderCreateParallelBorder.h \
+           CommandSurfaceBorderCutter.h \
            CommandSurfaceBorderDelete.h \
            CommandSurfaceBorderDrawAroundROI.h \
            CommandSurfaceBorderDrawGeodesic.h \
            CommandSurfaceBorderDrawMetric.h \
            CommandSurfaceBorderIntersection.h \
+           CommandSurfaceBorderLandmarkIdentification.h \
+           CommandSurfaceBorderLinkToFocus.h \
            CommandSurfaceBorderMerge.h \
            CommandSurfaceBorderNibbler.h \
            CommandSurfaceBorderProjection.h \
            CommandSurfaceBorderResample.h \
-           CommandSurfaceBorderLinkToFocus.h \
+           CommandSurfaceBorderReverse.h \
            CommandSurfaceBorderUnprojection.h \
            CommandSurfaceBorderVariability.h \
            CommandSurfaceCellCreate.h \
@@ -102,21 +115,26 @@ HEADERS += CommandBase.h \
            CommandSurfaceCrossoverCheck.h \
            CommandSurfaceCurvature.h \
            CommandSurfaceFlatMultiResMorphing.h \
+           CommandSurfaceFlatten.h \
            CommandSurfaceFociCreate.h \
            CommandSurfaceFociDelete.h \
            CommandSurfaceFociProjection.h \
            CommandSurfaceFociUnprojection.h \
+           CommandSurfaceInflate.h \
            CommandSurfaceInformation.h \
            CommandSurfaceGenerateInflated.h \
            CommandSurfacePlaceFociAtExtremum.h \
            CommandSurfacePlaceFociAtLimits.h \
            CommandSurfaceRegionOfInterestSelection.h \
+           CommandSurfaceRegistrationPrepareSlits.h \
            CommandSurfaceRegistrationSpherical.h \
            CommandSurfaceRegistrationSphericalSpecOnly.h \
            CommandSurfaceRoiCoordReport.h \
+           CommandSurfaceRoiFoldingMeasures.h \
+           CommandSurfaceRoiStatisticalReport.h \
            CommandSurfaceSmoothing.h \
            CommandSurfaceSphericalMultiResMorphing.h \
-           CommandSurfaceSulcalNamedAllIdentification.h \
+           CommandSurfaceSulcalIdentificationProbabilistic.h \
            CommandSurfaceSulcalDepth.h \
            CommandSurfaceIdentifySulci.h \
            CommandSurfaceToCerebralHull.h \
@@ -146,6 +164,8 @@ HEADERS += CommandBase.h \
            CommandVolumeDilateErodeWithinMask.h \
            CommandVolumeErode.h \
            CommandVolumeEulerCount.h \
+           CommandVolumeFileCombine.h \
+           CommandVolumeFileMerge.h \
            CommandVolumeFillBiggestObject.h \
            CommandVolumeFillHoles.h \
            CommandVolumeFillSlice.h \
@@ -162,10 +182,12 @@ HEADERS += CommandBase.h \
            CommandVolumeMapToSurface.h \
            CommandVolumeMapToSurfacePALS.h \
            CommandVolumeMapToSurfaceROIFile.h \
+           CommandVolumeMapToVtkModel.h \
            CommandVolumeMaskVolume.h \
            CommandVolumeMaskWithVolume.h \
            CommandVolumeNearToPlane.h \
            CommandVolumePadVolume.h \
+           CommandVolumeProbAtlasToFunctional.h \
            CommandVolumeReplaceVectorMagnitudeWithVolume.h \
            CommandVolumeReplaceVoxelsWithVectorMagnitude.h \
            CommandVolumeRemoveIslands.h \
@@ -176,6 +198,7 @@ HEADERS += CommandBase.h \
            CommandVolumeScalePercent0to255.h \
            CommandVolumeSculpt.h \
            CommandVolumeSegmentation.h \
+           CommandVolumeSegmentationLigase.h \
            CommandVolumeSegmentationStereotaxicSpace.h \
            CommandVolumeSegmentationToCerebralHull.h \
            CommandVolumeSetOrientation.h \
@@ -192,6 +215,7 @@ HEADERS += CommandBase.h \
 
 SOURCES += CommandBase.cxx \
            CommandCaretFileNamingUnitTesting.cxx \
+           CommandCaretHelpCreateHtmlIndexFile.cxx \
            CommandColorFileAddColor.cxx \
            CommandColorFileCreateMissingColors.cxx \
            CommandDataFileCompare.cxx \
@@ -201,13 +225,18 @@ SOURCES += CommandBase.cxx \
            CommandException.cxx \
            CommandFileConvert.cxx \
            CommandFileReadTime.cxx \
+           CommandFileSubstitution.cxx \
            CommandGiftiInfo.cxx \
            CommandHelp.cxx \
            CommandHelpFull.cxx \
+           CommandHelpGlobalOptions.cxx \
            CommandHelpHTML.cxx \
            CommandHelpPDF.cxx \
            CommandHelpSearch.cxx \
+           CommandImageCombine.cxx \
            CommandImageCompare.cxx \
+           CommandImageInsertText.cxx \
+           CommandImageResize.cxx \
            CommandImageView.cxx \
            CommandMetricClustering.cxx \
            CommandMetricComposite.cxx \
@@ -244,6 +273,7 @@ SOURCES += CommandBase.cxx \
            CommandPaintAssignNodesRelativeToLine.cxx \
            CommandPaintComposite.cxx \
            CommandPaintFileCreate.cxx \
+           CommandSceneCreate.cxx \
            CommandScriptComment.cxx \
            CommandScriptConvert.cxx \
            CommandScriptRun.cxx \
@@ -253,25 +283,31 @@ SOURCES += CommandBase.cxx \
            CommandShowSurface.cxx \
            CommandShowVolume.cxx \
            CommandSpecFileAdd.cxx \
+           CommandSpecFileClean.cxx \
            CommandSpecFileCopy.cxx \
            CommandSpecFileCreate.cxx \
+           CommandSpecFileDirectoryClean.cxx \
            CommandSpecFileZip.cxx \
            CommandStatisticSetRandomSeed.cxx \
            CommandStatisticalUnitTesting.cxx \
            CommandStudyMetaDataFileDuplicates.cxx \
+           CommandSurfaceAlignToStandardOrientation.cxx \
            CommandSurfaceApplyTransformationMatrix.cxx \
            CommandSurfaceAverage.cxx \
            CommandSurfaceBorderCreateParallelBorder.cxx \
+           CommandSurfaceBorderCutter.cxx \
            CommandSurfaceBorderDelete.cxx \
            CommandSurfaceBorderDrawAroundROI.cxx \
            CommandSurfaceBorderDrawGeodesic.cxx \
            CommandSurfaceBorderDrawMetric.cxx \
            CommandSurfaceBorderIntersection.cxx \
+           CommandSurfaceBorderLandmarkIdentification.cxx \
+           CommandSurfaceBorderLinkToFocus.cxx \
            CommandSurfaceBorderMerge.cxx \
            CommandSurfaceBorderNibbler.cxx \
            CommandSurfaceBorderProjection.cxx \
            CommandSurfaceBorderResample.cxx \
-           CommandSurfaceBorderLinkToFocus.cxx \
+           CommandSurfaceBorderReverse.cxx \
            CommandSurfaceBorderUnprojection.cxx \
            CommandSurfaceBorderVariability.cxx \
            CommandSurfaceCellCreate.cxx \
@@ -280,23 +316,28 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceCrossoverCheck.cxx \
            CommandSurfaceCurvature.cxx \
            CommandSurfaceFlatMultiResMorphing.cxx \
+           CommandSurfaceFlatten.cxx \
            CommandSurfaceFociCreate.cxx \
            CommandSurfaceFociDelete.cxx \
            CommandSurfaceFociProjection.cxx \
            CommandSurfaceFociUnprojection.cxx \
            CommandSurfaceGenerateInflated.cxx \
            CommandSurfaceIdentifySulci.cxx \
+           CommandSurfaceInflate.cxx \
            CommandSurfaceInformation.cxx \
            CommandSurfacePlaceFociAtExtremum.cxx \
            CommandSurfacePlaceFociAtLimits.cxx \
            CommandSurfaceRegionOfInterestSelection.cxx \
+           CommandSurfaceRegistrationPrepareSlits.cxx \
            CommandSurfaceRegistrationSpherical.cxx \
            CommandSurfaceRegistrationSphericalSpecOnly.cxx \
            CommandSurfaceRoiCoordReport.cxx \
+           CommandSurfaceRoiFoldingMeasures.cxx \
+           CommandSurfaceRoiStatisticalReport.cxx \
            CommandSurfaceSmoothing.cxx \
            CommandSurfaceSphericalMultiResMorphing.cxx \
            CommandSurfaceSulcalDepth.cxx \
-           CommandSurfaceSulcalNamedAllIdentification.cxx \
+           CommandSurfaceSulcalIdentificationProbabilistic.cxx \
            CommandSurfaceToCerebralHull.cxx \
            CommandSurfaceToSegmentationVolume.cxx \
            CommandSurfaceToVolume.cxx \
@@ -324,6 +365,8 @@ SOURCES += CommandBase.cxx \
            CommandVolumeDilateErodeWithinMask.cxx \
            CommandVolumeErode.cxx \
            CommandVolumeEulerCount.cxx \
+           CommandVolumeFileCombine.cxx \
+           CommandVolumeFileMerge.cxx \
            CommandVolumeFillBiggestObject.cxx \
            CommandVolumeFillHoles.cxx \
            CommandVolumeFillSlice.cxx \
@@ -340,10 +383,12 @@ SOURCES += CommandBase.cxx \
            CommandVolumeMapToSurface.cxx \
            CommandVolumeMapToSurfacePALS.cxx \
            CommandVolumeMapToSurfaceROIFile.cxx \
+           CommandVolumeMapToVtkModel.cxx \
            CommandVolumeMaskVolume.cxx \
            CommandVolumeMaskWithVolume.cxx \
            CommandVolumeNearToPlane.cxx \
            CommandVolumePadVolume.cxx \
+           CommandVolumeProbAtlasToFunctional.cxx \
            CommandVolumeReplaceVectorMagnitudeWithVolume.cxx \
            CommandVolumeReplaceVoxelsWithVectorMagnitude.cxx \
            CommandVolumeRemoveIslands.cxx \
@@ -354,6 +399,7 @@ SOURCES += CommandBase.cxx \
            CommandVolumeScalePercent0to255.cxx \
            CommandVolumeSculpt.cxx \
            CommandVolumeSegmentation.cxx \
+           CommandVolumeSegmentationLigase.cxx \
            CommandVolumeSegmentationStereotaxicSpace.cxx \
            CommandVolumeSegmentationToCerebralHull.cxx \
            CommandVolumeSetOrientation.cxx \

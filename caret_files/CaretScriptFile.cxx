@@ -39,7 +39,7 @@
 #include "CommandScriptVariableSet.h"
 #include "DebugControl.h"
 #include "ProgramParameters.h"
-#include "QtInputDialog.h"
+#include "QtScriptInputDialog.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
 
@@ -170,7 +170,7 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
       progressDialog = new QProgressDialog(parentWidget);
       progressDialog->setMinimum(0);
       progressDialog->setMaximum(num);
-      progressDialog->setMinimumDuration(0.0);
+      progressDialog->setMinimumDuration(0);
    }
    
    //
@@ -297,10 +297,10 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
                // Use GUI to get variable's value
                //
                QApplication::restoreOverrideCursor();
-               QtInputDialog inputDialog(progressDialog,
+               QtScriptInputDialog inputDialog(progressDialog,
                                          promptMessage,
                                          true);
-               if (inputDialog.exec() == QtInputDialog::Accepted) {
+               if (inputDialog.exec() == QtScriptInputDialog::Accepted) {
                   variableValue = inputDialog.getInputText();
                }
                else {

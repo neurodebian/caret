@@ -70,6 +70,7 @@ DisplaySettingsScene::showScene(const SceneFile::Scene& /*scene*/, QString& /*er
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsScene::saveScene(SceneFile::Scene& /*scene*/, const bool /*onlyIfSelected*/)
+DisplaySettingsScene::saveScene(SceneFile::Scene& /*scene*/, const bool /*onlyIfSelected*/,
+                             QString& /*errorMessage*/)
 {
 }

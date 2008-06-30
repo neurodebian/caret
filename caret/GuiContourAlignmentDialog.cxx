@@ -42,9 +42,10 @@
 /**
  * Constructor
  */
-GuiContourAlignmentDialog::GuiContourAlignmentDialog(QWidget* parent, bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+GuiContourAlignmentDialog::GuiContourAlignmentDialog(QWidget* parent, bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    setWindowTitle("Contour Alignment");
    
    //
@@ -134,7 +135,7 @@ void
 GuiContourAlignmentDialog::show()
 {
    slotSectionNumberSpinBox();
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**

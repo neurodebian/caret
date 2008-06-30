@@ -28,14 +28,14 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLabel;
 class QTextBrowser;
 
 /// Dialog for displaying a surface topology error report
-class GuiSurfaceTopologyReportDialog : public QtDialog {
+class GuiSurfaceTopologyReportDialog : public WuQDialog {
    Q_OBJECT
    
    public:

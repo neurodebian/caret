@@ -167,7 +167,6 @@ FileFilters::getAllFileFilters(QStringList& allFileFiltersOut)
    allFileFiltersOut.append(getFociFileFilter());
    allFileFiltersOut.append(getFociColorFileFilter());
    allFileFiltersOut.append(getFociProjectionFileFilter());
-   allFileFiltersOut.append(getFociVolumeFileFilter());
    allFileFiltersOut.append(getGeodesicDistanceFileFilter());
    allFileFiltersOut.append(getImageSaveFileFilter());
    allFileFiltersOut.append(getLatitudeLongitudeFileFilter());
@@ -236,6 +235,7 @@ FileFilters::getAllFileFilters(QStringList& allFileFiltersOut)
    allFileFiltersOut.append(getFreeSurferAsciiLabelFileFilter());
    allFileFiltersOut.append(getAnalyzeVolumeFileFilter());
    allFileFiltersOut.append(getMincVolumeFileFilter());
+   allFileFiltersOut.append(getMniObjSurfaceFileFilter());
    allFileFiltersOut.append(getVtkVolumeFileFilter());
    allFileFiltersOut.append(getRawVolumeFileFilter());
    allFileFiltersOut.append(getGiftiCoordinateFileFilter());

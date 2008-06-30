@@ -60,7 +60,7 @@
  * Constructor
  */
 GuiDrawBorderDialog::GuiDrawBorderDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Draw Borders");
    
@@ -129,7 +129,7 @@ GuiDrawBorderDialog::show()
    else if (theMainWindow->getBrainModelVolume() != NULL) {
       assignTabWidget->setCurrentIndex(assignTabWidget->indexOf(assignVoxelsVBox));
    }
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -222,7 +222,7 @@ GuiDrawBorderDialog::createMainPage()
    //
    // 2D radio button
    //
-   twoDimensionalRadioButton = new QRadioButton("2D");
+   twoDimensionalRadioButton = new QRadioButton("2D (Flat)");
    dimensionLayout->addWidget(twoDimensionalRadioButton);
    dimensionButtonGroup->addButton(twoDimensionalRadioButton);
    
@@ -455,7 +455,7 @@ GuiDrawBorderDialog::slotReassignNodeNamePushButton()
 {
    GuiNameSelectionDialog nsd(this, GuiNameSelectionDialog::LIST_PAINT_NAMES_ALPHA);
    if (nsd.exec() == QDialog::Accepted) {
-      QString name(nsd.getName());
+      QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          reassignNameLabel->setText(name);
       }
@@ -543,7 +543,7 @@ GuiDrawBorderDialog::slotSelectNameButton()
                               itemForDisplay);
    if (nsd.exec() == QDialog::Accepted) {
       itemForDisplay = nsd.getSelectedItemType();
-      QString name(nsd.getName());
+      QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          nameLineEdit->setText(name);
          if (StringUtilities::makeUpperCase(name) == "MEDIAL.WALL") {

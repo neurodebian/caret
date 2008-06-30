@@ -170,7 +170,7 @@ CommandSpecFileCreate::executeCommand() throw (BrainModelAlgorithmException,
    while (parameters->getParametersAvailable()) {
       const QString paramName = parameters->getNextParameterAsString("Spec File Create Option");
       if (paramName == "-category") {
-         categoryName = parameters->getNextParameterAsFloat("Category");
+         categoryName = parameters->getNextParameterAsString("Category");
       }
       else if (paramName == "-spec-file-name") {
          specFileName = parameters->getNextParameterAsString("Spec File Name");

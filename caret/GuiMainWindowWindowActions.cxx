@@ -111,6 +111,12 @@ GuiMainWindowWindowActions::GuiMainWindowWindowActions(GuiMainWindow* mainWindow
    QObject::connect(window10Action, SIGNAL(triggered(bool)),
                     this, SLOT(window10Popup()));
 
+   resizeViewWindowsAction = new QAction(mainWindowParent);
+   resizeViewWindowsAction->setText("Resize Viewing Windows...");
+   resizeViewWindowsAction->setObjectName("resizeViewWindowsAction");
+   QObject::connect(resizeViewWindowsAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotResizeViewingWindowsAction()));
+
    displayControlAction = new QAction(mainWindowParent);
    displayControlAction->setText("Display Control Window...");
    displayControlAction->setObjectName("displayControlAction");
@@ -279,6 +285,15 @@ GuiMainWindowWindowActions::window10Popup()
 }
 
 /**
+ * Called when resize viewing window action selected.
+ */
+void 
+GuiMainWindowWindowActions::slotResizeViewingWindowsAction()
+{
+   theMainWindow->resizeViewingWindows();
+}
+      
+/**
  * Called to launch text editor.
  */
 void 
@@ -312,7 +327,7 @@ void
 GuiMainWindowWindowActions::updateActions()
 {
    for (int i = BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2; 
-        i <= BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_10; i++) {
+        i < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; i++) {
       const BrainModel::BRAIN_MODEL_VIEW_NUMBER windowNum = 
          static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(i);
       std::ostringstream str;

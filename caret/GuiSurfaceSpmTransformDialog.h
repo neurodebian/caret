@@ -30,14 +30,14 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class QCheckBox;
 class QLabel;
 
 /// Dialog for transforming a surface using SPM inverse transforms
-class GuiSurfaceSpmTransformDialog : public QtDialog {
+class GuiSurfaceSpmTransformDialog : public WuQDialog {
    Q_OBJECT
    
    public:

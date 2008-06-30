@@ -46,7 +46,7 @@
  * Constructor.
  */
 GuiContourSectionControlDialog::GuiContourSectionControlDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Contour Section Control");
    

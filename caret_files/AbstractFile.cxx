@@ -80,6 +80,7 @@
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
+#include "FociSearchFile.h"
 #include "FreeSurferCurvatureFile.h"
 #include "FreeSurferFunctionalFile.h"
 #include "FreeSurferLabelFile.h"
@@ -102,6 +103,7 @@
 #include "SpecFile.h"
 #include "StringUtilities.h"
 #include "StudyMetaDataFile.h"
+#include "SurfaceFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
 #include "TextFile.h"
@@ -1071,6 +1073,14 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
       }
    }
    
+   //
+   // Special processing for TextFile
+   //
+   if (dynamic_cast<TextFile*>(this) != NULL) {
+      csvFileFlag = false;
+      xmlFileFlag = false;
+   }
+   
    QDomDocument doc(rootXmlElementTagName);
    QDomElement  rootElement;
    
@@ -1260,15 +1270,27 @@ AbstractFile::readFileMetaDataOnly(const QString& filenameIn) throw(FileExceptio
 void
 AbstractFile::readFile(const QString& filenameIn) throw(FileException)
 {
+   if (filenameIn.isEmpty()) {
+      throw FileException("Filename for reading a file of type "
+                          + descriptiveName
+                          + "is empty.");
+   }
+
+   QFileInfo fi(filenameIn);
+   if (fi.exists()) {
+      if (fi.isDir()) {
+         throw FileException(filenameIn + " is a directory, not a file.");
+      }
+   }
+   else {
+      throw FileException(filenameIn + " does not exist.");
+   }
+   
    // Note: filenameIn could possibly be "this's" filename so make a
    // copy of it before calling "clear()" to prevent it from being erased.
    const QString filenameIn2(filenameIn);
    
    clear();
-
-   if (filenameIn2.isEmpty()) {
-      throw FileException(filenameIn2, "Filename for reading is isEmpty");
-   }
 
    filename = filenameIn2;
    
@@ -2383,6 +2405,13 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
          writingQFile->close();
          delete writingQFile;
          writingQFile = NULL;
+         
+         //
+         // Update file permissions ?
+         //
+         if (fileWritePermissions != 0) {
+            QFile::setPermissions(getFileName(), fileWritePermissions);
+         }
       }
       catch (FileException& e) {
          writingQFile->close();
@@ -2391,9 +2420,10 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
          writingQFile = NULL;
          throw e;
       }
-      clearModified();
+      clearModified();      
    }
    else {
+      errMsg = " Open for writing, " + writingQFile->errorString();
       delete writingQFile;
       writingQFile = NULL;
 
@@ -2567,6 +2597,9 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    else if (ext == SpecFile::getFociProjectionFileExtension()) {
       af = new FociProjectionFile;
    }
+   else if (ext == SpecFile::getFociSearchFileExtension()) {
+      af = new FociSearchFile;
+   }
    else if (ext == SpecFile::getLatLonFileExtension()) {
       af = new LatLonFile;
    }
@@ -2654,7 +2687,34 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    else if (ext == SpecFile::getVectorFileExtension()) {
       af = new VectorFile;
    }
-   else if (ext == SpecFile::getGiftiFileExtension()) {
+   else if (filename.endsWith(SpecFile::getGiftiCoordinateFileExtension())) {
+      af = new CoordinateFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiFunctionalFileExtension())) {
+      af = new MetricFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiLabelFileExtension())) {
+      af = new PaintFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiRgbaFileExtension())) {
+      af = new RgbPaintFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiShapeFileExtension())) {
+      af = new SurfaceShapeFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiSurfaceFileExtension())) {
+      af = new SurfaceFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiTensorFileExtension())) {
+      af = NULL;  // not tensor file at this time
+   }
+   else if (filename.endsWith(SpecFile::getGiftiTimeSeriesFileExtension())) {
+      af = new MetricFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiTopologyFileExtension())) {
+      af = new TopologyFile;
+   }
+   else if (ext == SpecFile::getGiftiGenericFileExtension()) {
       af = new GiftiDataArrayFile;
    }
    else {
@@ -2873,6 +2933,9 @@ AbstractFile::getAllFileTypeNamesAndExtensions(std::vector<QString>& typeNames,
    ext.append(SpecFile::getFociProjectionFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
+   ext.append(SpecFile::getFociSearchFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
    ext.append(SpecFile::getProbabilisticAtlasFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
@@ -2969,7 +3032,34 @@ AbstractFile::getAllFileTypeNamesAndExtensions(std::vector<QString>& typeNames,
    ext.append(SpecFile::getVectorFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
-   ext.append(SpecFile::getGiftiFileExtension());
+   ext.append(SpecFile::getGiftiCoordinateFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiFunctionalFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiLabelFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiRgbaFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiShapeFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiSurfaceFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiTensorFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiTimeSeriesFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiTopologyFileExtension());
+   typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
+   ext = "file";
+   ext.append(SpecFile::getGiftiGenericFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
    ext.append(SpecFile::getTextFileExtension());

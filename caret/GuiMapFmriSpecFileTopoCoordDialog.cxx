@@ -44,8 +44,9 @@
  */
 GuiMapFmriSpecFileTopoCoordDialog::GuiMapFmriSpecFileTopoCoordDialog(QWidget* parent,
                                                                      PreferencesFile* pf)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Mapping Surface Selection");
    
    preferencesFile = pf;

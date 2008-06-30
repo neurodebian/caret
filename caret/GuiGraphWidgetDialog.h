@@ -27,18 +27,18 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class GuiGraphWidget;
 
-class GuiGraphWidgetDialog : public QtDialogNonModal {
+class GuiGraphWidgetDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       // constructor
       GuiGraphWidgetDialog(const QString& title,
                            QWidget* parent = 0,
-                           Qt::WFlags f = 0);
+                           Qt::WindowFlags f = 0);
       
       // destructor
       ~GuiGraphWidgetDialog();

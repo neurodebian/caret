@@ -23,8 +23,11 @@
  */
 /*LICENSE_END*/
 
+#include <iostream>
+
 #include <QStringList>
 
+#include "DebugControl.h"
 #include "FileUtilities.h"
 #include "ProgramParameters.h"
 
@@ -132,6 +135,17 @@ ProgramParameters::getNextParameterAsString(const QString& parameterNameForError
    
    const QString name(parameters[parametersIndex]);
    parametersIndex++;
+   
+   if (DebugControl::getDebugOn()) {
+      if (parameterNameForErrorMessage.isEmpty() == false) {
+         std::cout << "Parameter ("
+                   << parameterNameForErrorMessage.toAscii().constData()
+                   << ") "
+                   << name.toAscii().constData()
+                   << std::endl;
+      }
+   }
+   
    return name;
 }
 
@@ -382,15 +396,53 @@ ProgramParameters::getNextParameterAsStructure(const QString& parameterNameForEr
 bool 
 ProgramParameters::getParameterWithValueExists(const QString& value) const
 {
+   const int indx = getIndexOfParameterWithValue(value);
+   return (indx >= 0);
+}
+
+/**
+ * get index of a parameter with specified name (returns -1 if not found).
+ */
+int 
+ProgramParameters::getIndexOfParameterWithValue(const QString& value) const
+{
    const int num = getNumberOfParameters();
    for (int i = 0; i < num; i++) {
       if (parameters[i] == value) {
-         return true;
+         return i;
       }
    }
-   return false;
+   
+   return -1;
 }
 
+/**
+ * get a parameter at a specified index (does not affect "next parameter").
+ */
+QString 
+ProgramParameters::getParameterAtIndex(const int indx) const
+{
+   const int num = getNumberOfParameters();
+   if ((indx >= 0) &&
+       (indx < num)) {
+      return parameters[indx];
+   }
+   
+   return "";
+}
+
+/**
+ * remove parameter at a specified index.
+ */
+void 
+ProgramParameters::removeParameterAtIndex(const int indx)
+{
+   const int num = getNumberOfParameters();
+   if ((indx >= 0) &&
+       (indx < num)) {
+      parameters.erase(parameters.begin() + indx);
+   }
+}      
       
 /**
  * split up remaining parameters (may have more than one in single string).

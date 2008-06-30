@@ -110,4 +110,34 @@ WuQWidgetGroup::blockSignals(bool blockTheSignals)
    }
 }
       
+/** 
+ * make all of the widgets in the group the same size as size hint
+ * of largest widget.
+ */
+void 
+WuQWidgetGroup::resizeAllToLargestSizeHint()
+{
+   int largestWidth  = -1;
+   int largestHeight = -1;
+   
+   for (int i = 0; i < widgets.size(); i++) {
+      const QSize size = widgets.at(i)->sizeHint();
+      if (size.width() > largestWidth) {
+         largestWidth = size.width();
+      }
+      if (size.height() > largestHeight) {
+         largestHeight = size.height();
+      }
+   }
+   
+   if ((largestWidth > 0) &&
+       (largestHeight > 0)) {
+      QSize newSize(largestWidth, largestHeight);
+      
+      for (int i = 0; i < widgets.size(); i++) {
+         widgets.at(i)->setFixedSize(newSize);
+      }
+   }
+}
+      
 

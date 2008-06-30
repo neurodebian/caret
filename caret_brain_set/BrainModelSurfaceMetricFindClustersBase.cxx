@@ -353,8 +353,8 @@ BrainModelSurfaceMetricFindClustersBase::findClustersSingleThread(MetricFile* mf
       const int numClusters = bmsmc.getNumberOfClusters();
       for (int j = 0; j < numClusters; j++) {
          const BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc.getCluster(j);
-         const int numNodesInCluster = cluster->getNumberOfNodesInCluster();
 
+         const int numNodesInCluster = cluster->getNumberOfNodesInCluster();
          //
          // Corrected area is sum of each node's area multiplied by
          // 2 to the power of the selected metric column for the node
@@ -1125,11 +1125,13 @@ BrainModelSurfaceMetricFindClustersBase::createMetricShapeClustersReportFile(
       int latLonFileColumn = 0;
       if (metricShapeFileName.endsWith(SpecFile::getSurfaceShapeFileExtension())) {
          ssf = &inputMetricFile;
-         selectedShapeColumns.resize(ssf->getNumberOfColumns(), true);
+         const int numCols = ssf->getNumberOfColumns();
+         selectedShapeColumns.resize(numCols, true);
       }
       else {
          mf = &inputMetricFile;
-         selectedMetricColumns.resize(ssf->getNumberOfColumns(), true);
+         const int numCols = mf->getNumberOfColumns();
+         selectedMetricColumns.resize(numCols, true);
       }
       if (brain->getLatLonFile()->getNumberOfColumns() > 0) {
          llf = brain->getLatLonFile();
@@ -1150,7 +1152,6 @@ BrainModelSurfaceMetricFindClustersBase::createMetricShapeClustersReportFile(
                                             llf,
                                             latLonFileColumn,
                                             c.name,
-                                            "",
                                             areaCorrectionShapeFile,
                                             areaCorrectionShapeFileColumn,
                                             false);

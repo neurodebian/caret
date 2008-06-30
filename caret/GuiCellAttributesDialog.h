@@ -30,14 +30,14 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLineEdit;
 
 
 /// This class creates the cell attributes editor dialog
-class GuiCellAttributesDialog : public QtDialog {
+class GuiCellAttributesDialog : public WuQDialog {
    Q_OBJECT
     
    public:

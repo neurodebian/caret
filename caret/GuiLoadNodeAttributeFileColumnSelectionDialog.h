@@ -28,7 +28,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "AbstractFile.h"
 
@@ -40,7 +40,7 @@ class QCheckBox;
 class QLineEdit;
 
 /// class for selectively loading node attribute file columns
-class GuiLoadNodeAttributeFileColumnSelectionDialog : public QtDialog {
+class GuiLoadNodeAttributeFileColumnSelectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

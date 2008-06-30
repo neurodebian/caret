@@ -248,7 +248,6 @@ BrainSetMultiThreadedSpecFileReader::readDataFiles(const int numberOfThreads,
    addDataFiles(specFile.cutsFile);
    addDataFiles(specFile.fociColorFile);
    addDataFiles(specFile.fociFile);
-   addDataFiles(specFile.volumeFociFile);
    addDataFiles(specFile.transformationMatrixFile);
    addDataFiles(specFile.transformationDataFile);
    addDataFiles(specFile.deformationMapFile);

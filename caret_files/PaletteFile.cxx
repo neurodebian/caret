@@ -34,6 +34,7 @@
 #include <sstream>
 
 #include "ColorFile.h"
+#include "FileUtilities.h"
 #define __PALETTE_FILE_DEFINED__
 #include "PaletteFile.h"
 #undef  __PALETTE_FILE_DEFINED__
@@ -305,6 +306,10 @@ Palette::getColor(const float scalar,
                   bool& noneColorFlagOut,
                   unsigned char colorOut[3]) const
 {
+   colorOut[0] = 0;
+   colorOut[1] = 0;
+   colorOut[2] = 0;
+
    if (paletteEntries.size() <= 0) return;
    if (myPaletteFile == NULL) return;
    
@@ -1482,6 +1487,48 @@ PaletteFile::clear()
    const unsigned char none[3] = { 0xff, 0xff, 0xff };
    addPaletteColor(PaletteColor("none", none));
 }
+
+/**
+ * get palette index from name or number (number ranges 1..N).
+ */
+int 
+PaletteFile::getPaletteIndexFromNameOrNumber(const QString& nameOrNumber) const throw (FileException)
+{
+   //
+   // Find the palette by name
+   //
+   const int numberOfPalettes = getNumberOfPalettes();
+   for (int i = 0; i < numberOfPalettes; i++) {
+      if (getPalette(i)->getName() == nameOrNumber) {
+         return i;
+      }
+   }
+   
+   //
+   // Search by number
+   //
+   bool ok = false;
+   const int num = nameOrNumber.toInt(&ok);
+   if (ok) {
+      if ((num > 0) ||
+          (num <= numberOfPalettes)) {
+         return (num - 1);
+      }
+
+      throw FileException("ERROR Invalid palette number: "
+                          + nameOrNumber
+                          + ".  Number should range 1 to "
+                          + QString::number(numberOfPalettes));
+   }
+   
+   //
+   // faild to find
+   //
+   throw FileException("ERROR palette name/number "
+                       + nameOrNumber
+                       + " not found in file "
+                       + FileUtilities::basename(getFileName()));
+}      
 
 /**
  * Get the gray interpolate palette.

@@ -28,7 +28,7 @@
 #define __VE_GUI_DRAW_BORDER_DIALOG_H__
 
 #include <QString>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BorderFile.h"
 
@@ -46,7 +46,7 @@ class QRadioButton;
 class QTabWidget;
 
 /// class for dialog used to draw borders
-class GuiDrawBorderDialog : public QtDialog {
+class GuiDrawBorderDialog : public WuQDialog {
    Q_OBJECT
    
    public:

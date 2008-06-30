@@ -57,7 +57,7 @@
  */
 GuiMorphingDialog::GuiMorphingDialog(QWidget* parent, 
             const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    morphingSurfaceType = morphingSurfaceTypeIn;
    

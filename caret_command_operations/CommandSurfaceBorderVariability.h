@@ -29,6 +29,8 @@
 
 #include "CommandBase.h"
 
+class BorderFile;
+
 /// class for surface border variability
 class CommandSurfaceBorderVariability : public CommandBase {
    public:
@@ -52,6 +54,13 @@ class CommandSurfaceBorderVariability : public CommandBase {
                                    ProgramParametersException,
                                    StatisticException);
 
+      /// do the border report
+      void doBorderReport(const BorderFile& bf);
+
+      /// do the border point report
+      void doBorderPointReport(const BorderFile& bf,
+                               const BorderFile& avgBorderFile)
+                                                throw (CommandException);
 };
 
 #endif // __COMMAND_SURFACE_BORDER_VARIABILITY_H__

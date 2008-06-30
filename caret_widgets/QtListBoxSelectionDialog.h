@@ -27,7 +27,7 @@
 #ifndef __GUI_QT_LIST_BOX_SELECTION_DIALOG_H__
 #define __GUI_QT_LIST_BOX_SELECTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include <QStringList>
 #include <vector>
@@ -36,7 +36,7 @@ class QListWidget;
 class QListWidgetItem;
 
 /// Dialog for selecting items in a list box
-class QtListBoxSelectionDialog : public QtDialog {
+class QtListBoxSelectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

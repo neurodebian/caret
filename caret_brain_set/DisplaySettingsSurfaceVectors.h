@@ -74,7 +74,8 @@ class DisplaySettingsSurfaceVectors : public DisplaySettings {
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
       /// for node attribute files - all column selections for each surface are the same
       virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;

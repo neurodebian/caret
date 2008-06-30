@@ -56,7 +56,7 @@
  */
 GuiDataFileMathDialog::GuiDataFileMathDialog(QWidget* parent, 
                                              const DIALOG_MODE modeIn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    dialogMode = modeIn;
    
@@ -574,6 +574,9 @@ GuiDataFileMathDialog::performVolumeMathOperations(QString& errorMessage)
                               false);
          volumeOutputSelectionControl->updateControl();
          volumeOutputSelectionControl->setSelectedVolumeFile(volumeOutput);
+         if (volumeOutput->getVolumeType() == VolumeFile::VOLUME_TYPE_PROB_ATLAS) {
+            theMainWindow->getBrainSet()->synchronizeProbAtlasVolumeRegionNames();
+         }
       }
       
       //

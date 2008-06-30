@@ -230,11 +230,23 @@ class GiftiDataArray {
       /// set the metadata
       void setMetaData(const GiftiMetaData* gmd) { metaData = *gmd; setModified(); }
       
-      /// get the matrix
-      GiftiMatrix* getMatrix() { return &matrix; }
+      /// get the number of matrices
+      int getNumberOfMatrices() const { return matrices.size(); }
+      
+      /// add a matrix
+      void addMatrix(const GiftiMatrix& gm) { matrices.push_back(gm); }
+      
+      /// get a matrix
+      GiftiMatrix* getMatrix(const int indx) { return &matrices[indx]; }
+      
+      /// remove all matrices
+      void removeAllMatrices();
+      
+      /// remove a matrix
+      void removeMatrix(const int indx);
       
       /// get the matrix (const method)
-      const GiftiMatrix* getMatrix() const { return &matrix; }
+      const GiftiMatrix* getMatrix(const int indx) const { return &matrices[indx]; }
       
       /// get the non-written metadata for values not saved to file
       //GiftiMetaData* getNonWrittenMetaData() { return &nonWrittenMetaData; }
@@ -293,6 +305,9 @@ class GiftiDataArray {
       // set all elements of array to zero
       void zeroize();
       
+      // get minimum and maximum values (valid for int data only)
+      void getMinMaxValues(int& minValue, int& maxValue) const;
+
       // get minimum and maximum values (valid for float data only)
       void getMinMaxValues(float& minValue, float& maxValue) const;
       
@@ -374,7 +389,7 @@ class GiftiDataArray {
       uint8_t* dataPointerUByte;
       
       /// the matrix (typically only used by coordinates)
-      GiftiMatrix matrix;
+      std::vector<GiftiMatrix> matrices;
       
       /// the metadata
       GiftiMetaData metaData;
@@ -420,6 +435,15 @@ class GiftiDataArray {
       
       /// min/max float values valid (child class must set this false when an array value is changed)
       mutable bool minMaxFloatValuesValid;
+      
+      /// minimum int value
+      mutable int minValueInt;
+      
+      /// maximum int value
+      mutable int maxValueInt;
+      
+      /// min/max int values valid (child class must set this false when an array value is changed)
+      mutable bool minMaxIntValuesValid;
       
       // ***** BE SURE TO UPDATE copyHelper() if elements are added ******
       

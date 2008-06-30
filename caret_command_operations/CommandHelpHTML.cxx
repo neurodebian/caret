@@ -120,7 +120,7 @@ CommandHelpHTML::executeCommand() throw (BrainModelAlgorithmException,
    htmlFile.appendLine("<p></p>");
    htmlFile.appendLine("<p></p>");
    
-   htmlFile.appendLine(convertToHTML(getGeneralHelpInformation()));
+   htmlFile.appendText(convertToHTML(getGeneralHelpInformation()));
    
    if (numCommands > 0) {
       std::vector<QString> anchorNames(numCommands, "");
@@ -130,7 +130,7 @@ CommandHelpHTML::executeCommand() throw (BrainModelAlgorithmException,
          const QString anchorName = command->getShortDescription().replace(' ', '_');
          anchorNames[i] = anchorName;
          
-         htmlFile.appendLine("<a href=\"#"
+         htmlFile.appendText("<a href=\"#"
                              + anchorName
                              + "\">"
                              + command->getShortDescription() 
@@ -150,7 +150,7 @@ CommandHelpHTML::executeCommand() throw (BrainModelAlgorithmException,
          htmlString = htmlString.replace('>', "&gt;");
          htmlString = htmlString.replace("\n", "<br></br>");  // do after less than/greater than conversion
 */
-         htmlFile.appendLine("<a name=\""
+         htmlFile.appendText("<a name=\""
                              + anchorNames[i]
                              + "\"></a>"
                              + htmlString);
@@ -173,7 +173,7 @@ CommandHelpHTML::convertToHTML(const QString& sin) const
    s = s.replace(' ', "&nbsp;");
    s = s.replace('<', "&lt;");
    s = s.replace('>', "&gt;");
-   s = s.replace("\n", "<br></br>");  // do after less than/greater than conversion
+   s = s.replace('\n', "<br>");  // do after less than/greater than conversion
    return s;
 }
 

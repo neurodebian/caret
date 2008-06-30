@@ -44,8 +44,9 @@
  */
 GuiMapFmriThresholdDialog::GuiMapFmriThresholdDialog(QWidget* parent,
                                                      const QString& volumeFileName)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Volume Thresholding");
    
    //

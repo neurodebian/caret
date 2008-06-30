@@ -57,6 +57,11 @@ class DisplaySettingsStudyMetaData : public DisplaySettings {
       // Update any selections due to changes in loaded cells
       virtual void update();
    
+      // get keyword indices sorted by name case insensitive
+      void getKeywordIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                         const bool reverseOrderFlag,
+                                         const bool limitToDisplayedFociFlag) const;
+      
       // update the keywords
       void updateKeywords();
       
@@ -78,6 +83,11 @@ class DisplaySettingsStudyMetaData : public DisplaySettings {
       // set a keyword's selection status
       void setKeywordSelected(const int indx,
                               const bool selFlag);
+      
+      // get subheader indices sorted by name case insensitive
+      void getSubHeaderIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                           const bool reverseOrderFlag,
+                                           const bool limitToDisplayedFociFlag) const;
       
       // update the subheaders names
       void updateSubHeaderNames();
@@ -108,7 +118,8 @@ class DisplaySettingsStudyMetaData : public DisplaySettings {
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       // create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
          
       // determine studies with selected keywords
       void getStudiesWithSelectedKeywords(std::vector<KEYWORD_STATUS>& studyKeywordStatus) const;

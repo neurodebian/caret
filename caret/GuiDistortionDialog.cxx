@@ -47,8 +47,9 @@
  * Constructor
  */
 GuiDistortionDialog::GuiDistortionDialog(QWidget* parent, BrainModelSurface* bmsIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    bms = bmsIn;
    
    setWindowTitle("Distortion Measurement");

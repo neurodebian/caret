@@ -147,9 +147,9 @@ CommandMetricSmoothing::executeCommand() throw (BrainModelAlgorithmException,
          desiredFullWidthHalfMaximum = 
             parameters->getNextParameterAsFloat("Desired Full Width Half Maximum");
       }
-      else if (paramValue == "-g") {
+      else if (paramValue == "-g") { 
          gaussianSphericalSurfaceName = 
-            parameters->getNextParameterAsFloat("Guassian Spherical Surface");
+            parameters->getNextParameterAsString("Guassian Spherical Surface");
          gaussSigmaNorm = 
             parameters->getNextParameterAsFloat("Gaussian Sigma Norm");
          gaussSigmaTang = 

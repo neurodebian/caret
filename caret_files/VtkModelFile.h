@@ -80,6 +80,11 @@ class VtkModelFile : public AbstractFile {
       /// Destructor
       ~VtkModelFile();
       
+      /// add a coordinate
+      void addCoordinate(const float xyz[3],
+                         const unsigned char* rgbaColorIn = NULL,
+                         const float* normalIn = NULL);
+      
       /// Clears current file data in memory.
       void clear();
       

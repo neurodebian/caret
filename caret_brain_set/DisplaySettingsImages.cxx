@@ -140,7 +140,8 @@ DisplaySettingsImages::showScene(const SceneFile::Scene& scene, QString& errorMe
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsImages::saveScene(SceneFile::Scene& scene, const bool /*onlyIfSelected*/)
+DisplaySettingsImages::saveScene(SceneFile::Scene& scene, const bool /*onlyIfSelected*/,
+                             QString& /*errorMessage*/)
 {
    const int num = brainSet->getNumberOfImageFiles();
 

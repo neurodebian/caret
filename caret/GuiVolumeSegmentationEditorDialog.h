@@ -29,7 +29,7 @@
 #include <list>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "VolumeFile.h"
 #include "VolumeModification.h"
@@ -40,7 +40,7 @@ class QTextBrowser;
 class GuiVolumeSelectionControl;
 
 /// class dialog that allows editing of a segmentation volume
-class GuiVolumeSegmentationEditorDialog : public QtDialog {
+class GuiVolumeSegmentationEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:

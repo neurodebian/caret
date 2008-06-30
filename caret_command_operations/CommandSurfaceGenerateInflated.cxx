@@ -74,6 +74,7 @@ CommandSurfaceGenerateInflated::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-fiducial-coordinate-file-name> \n"
        + indent9 + "<input-closed-topology-file-name> \n"
+       + indent9 + "[-iterations-scale  value] \n"
        + indent9 + "[-generate-inflated] \n"
        + indent9 + "[-generate-very-inflated] \n"
        + indent9 + "[-generate-ellipsoid] \n"
@@ -93,6 +94,13 @@ CommandSurfaceGenerateInflated::getHelpInformation() const
        + indent9 + "If the file name for a surface is not specified, the name\n"
        + indent9 + "of the output file will be automatically generated.\n"
        + indent9 + "\n"
+       + indent9 + "Use the \"-iterations-scale\" to scale the iterations\n"
+       + indent9 + "during the inflation processes.  In most cases, it is\n"
+       + indent9 + "not necessary to use this option such as when the \n"
+       + indent9 + "surface has been generated using Caret.  However, \n"
+       + indent9 + "surfaces produced by FreeSurfer often contain a large\n"
+       + indent9 + "number of nodes, 150,000 or more.  In this case, try\n"
+       + indent9 + "an \"iterations-scale\" of 2.5.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -122,7 +130,8 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
    bool createInflatedFlag = false;
    bool createVeryInflatedFlag = false;
    bool createEllipsoidFlag = false;
-   bool createSphereFlag = false;   
+   bool createSphereFlag = false; 
+   float iterationsScale = 1.0;  
    QString outputSpecFileName;
    QString inflatedCoordinateFileName;
    QString veryInflateCoordinateFileName;
@@ -136,6 +145,9 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       if (paramName == "-output-spec") {
          outputSpecFileName = 
             parameters->getNextParameterAsString("Output Spec File Name");
+      }
+      else if (paramName == "-iterations-scale") {
+         iterationsScale = parameters->getNextParameterAsFloat("Iterations Scale Value");
       }
       else if (paramName == "-generate-inflated") {
          createInflatedFlag = true;
@@ -202,6 +214,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
                                                            createSphereFlag,
                                                            smoothFingersFlag,
                                                            scaleToMatchFiduciaFlag,
+                                                           iterationsScale,
                                                            NULL);
    //
    // Write the output files

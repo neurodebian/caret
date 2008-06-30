@@ -26,18 +26,18 @@
 #ifndef __GUI_CONTOUR_SET_SCALE_DIALOG_H__
 #define __GUI_CONTOUR_SET_SCALE_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QLabel;
 class QDoubleSpinBox;
 
 /// Dialog for setting contour scaling
-class GuiContourSetScaleDialog : public QtDialog {
+class GuiContourSetScaleDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       /// Constructor
-      GuiContourSetScaleDialog(QWidget* parent = 0, bool modal = false, Qt::WFlags f = 0);
+      GuiContourSetScaleDialog(QWidget* parent = 0, bool modalFlag = false, Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiContourSetScaleDialog();

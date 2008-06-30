@@ -190,7 +190,8 @@ DisplaySettingsContours::showScene(const SceneFile::Scene& scene, QString& /*err
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsContours::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsContours::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    if (onlyIfSelected) {
       BrainModelContours* bmc = brainSet->getBrainModelContours();

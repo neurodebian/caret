@@ -109,8 +109,9 @@ Adding the spm origin to the gives  (114.318  149.1  59.14).
  * Constructor
  */
 GuiSurfaceSpmTransformDialog::GuiSurfaceSpmTransformDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Apply SPM Inverse Transform");
 
    //

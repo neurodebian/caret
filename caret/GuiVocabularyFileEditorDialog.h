@@ -27,7 +27,7 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class GuiStudyInfoEditorWidget;
 class QComboBox;
@@ -40,7 +40,7 @@ class QTextEdit;
 class WuQWidgetGroup;
 
 /// dialog for editing a vocabulary file
-class GuiVocabularyFileEditorDialog : public QtDialogNonModal {
+class GuiVocabularyFileEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -75,6 +75,9 @@ class GuiVocabularyFileEditorDialog : public QtDialogNonModal {
       // called when vocab study meta data button pressed
       void slotVocabularStudyMetaDataPushButton();
       
+      // called when ontology source push button pressed
+      void slotOntologySourcePushButton();
+      
    protected:
       // create the vocabulary widget
       QWidget* createVocabularyWidget();
@@ -106,6 +109,12 @@ class GuiVocabularyFileEditorDialog : public QtDialogNonModal {
       /// study meta data line edit
       QLineEdit* vocabularyStudyMetaDataLineEdit;
 
+      /// ontology source line edit
+      QLineEdit* ontologySourceLineEdit;
+      
+      /// term id line edit
+      QLineEdit* termIDLineEdit;
+      
       /// study number combo box
       QComboBox* studyNumberComboBox;
       

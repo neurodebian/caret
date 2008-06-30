@@ -27,13 +27,13 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QListWidget;
 class PaletteFile;
 
 /// dialog for selecting a palette color
-class GuiPaletteColorSelectionDialog : public QtDialog {
+class GuiPaletteColorSelectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

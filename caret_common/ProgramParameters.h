@@ -127,6 +127,15 @@ class ProgramParameters {
       // see if there is a parameter with specified name (does not affect "next parameter")
       bool getParameterWithValueExists(const QString& value) const;
       
+      // get index of a parameter with specified name (returns -1 if not found)
+      int getIndexOfParameterWithValue(const QString& value) const;
+      
+      // get a parameter at a specified index (does not affect "next parameter")
+      QString getParameterAtIndex(const int indx) const;
+      
+      // remove parameter at a specified index
+      void removeParameterAtIndex(const int indx);
+      
       // unget the last parameter
       void ungetLastParameter() throw (ProgramParametersException);
       

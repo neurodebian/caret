@@ -163,3 +163,27 @@ NodeRegionOfInterestFile::assignSelectedNodesWithVolumeFile(const VolumeFile* vf
       }
    }
 }
+
+/**
+ * get the ROI description.
+ */
+QString 
+NodeRegionOfInterestFile::getRegionOfInterestDescription() const
+{
+   if (getNumberOfColumns() > 0) {
+      return getColumnComment(0);
+   }
+   return "";
+}
+
+/**
+ * set the ROI description (number of nodes must have been set).
+ */
+void 
+NodeRegionOfInterestFile::setRegionOfInterestDescription(const QString& s)
+{
+   if (getNumberOfColumns() > 0) {
+      setColumnComment(0, s);
+   }
+}
+      

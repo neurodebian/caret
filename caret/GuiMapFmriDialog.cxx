@@ -79,10 +79,11 @@
  */
 GuiMapFmriDialog::GuiMapFmriDialog(QWidget* parent,
                                    const bool runningAsPartOfCaretIn,
-                                   bool modal,
-                                   Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                   bool modalFlag,
+                                   Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    dataMappingType = DATA_MAPPING_TYPE_NONE;
    
    readAtlases();
@@ -215,7 +216,7 @@ GuiMapFmriDialog::slotCloseOrCancelButton()
       }
    }
    
-   QtDialog::close();
+   WuQDialog::close();
 }
 
 /**
@@ -228,7 +229,7 @@ GuiMapFmriDialog::done(int r)
    // Do nothing - overriding this method prevents the window from closing
    // when the Finish button is pressed.
    //
-   QtDialog::done(r);
+   WuQDialog::done(r);
 }
 
 /**
@@ -2779,7 +2780,7 @@ void
 GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
 {
    bool enableMetricMultiFidOptions = false;  
-   bool enablePaintMultiFidOptions = true; 
+   bool enablePaintMultiFidOptions = false; 
    switch (dataMappingType) {
       case DATA_MAPPING_TYPE_NONE:
          break;

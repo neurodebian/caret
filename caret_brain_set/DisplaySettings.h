@@ -56,7 +56,8 @@ class DisplaySettings {
       
       /// create a scene (read display settings)
       virtual void saveScene(SceneFile::Scene& scene,
-                             const bool onlyIfSelectedFlag) = 0;
+                             const bool onlyIfSelectedFlag,
+                             QString& errorMessage) = 0;
         
       /// for node attribute files - all column selections for each surface are the same
       virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;

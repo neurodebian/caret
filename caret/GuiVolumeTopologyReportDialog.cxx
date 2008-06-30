@@ -46,7 +46,7 @@
  * constructor.
  */
 GuiVolumeTopologyReportDialog::GuiVolumeTopologyReportDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Topology Error Report");
    
@@ -179,7 +179,7 @@ void
 GuiVolumeTopologyReportDialog::show()
 {
    clearDialog();
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**

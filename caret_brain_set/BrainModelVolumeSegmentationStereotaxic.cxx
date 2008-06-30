@@ -107,6 +107,18 @@ BrainModelVolumeSegmentationStereotaxic::execute() throw (BrainModelAlgorithmExc
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
          throw BrainModelAlgorithmException("Structure CEREBELLUM not allowed, must be RIGHT or LEFT");
          break;
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+         throw BrainModelAlgorithmException("Structure CEREBELLUM OR LEFT not allowed, must be RIGHT or LEFT");
+         break;
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+         throw BrainModelAlgorithmException("Structure CEREBELLUM OR RIGHT not allowed, must be RIGHT or LEFT");
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+         throw BrainModelAlgorithmException("Structure LEFT CEREBELLUM not allowed, must be RIGHT or LEFT");
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+         throw BrainModelAlgorithmException("Structure RIGHT CEREBELLUM not allowed, must be RIGHT or LEFT");
+         break;
       case Structure::STRUCTURE_TYPE_INVALID:
          throw BrainModelAlgorithmException("Structure in SpecFile is invalid");
          break;

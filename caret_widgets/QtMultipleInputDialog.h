@@ -29,12 +29,12 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QLineEdit;
 
 /// class that creates a modal dialog for input of multiple items
-class QtMultipleInputDialog : public QtDialog {
+class QtMultipleInputDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -46,7 +46,7 @@ class QtMultipleInputDialog : public QtDialog {
                             const std::vector<QString>& rowValues,
                             const bool enableCancelButton = true,
                             const bool modalIn = true,
-                            Qt::WFlags f = 0);
+                            Qt::WindowFlags f = 0);
                             
       /// destructor
       ~QtMultipleInputDialog();

@@ -30,13 +30,13 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 class BrainSet;
 
 /// DisplaySettingsMetric is a class that maintains parameters for controlling
 /// the display of metric data files.
-class DisplaySettingsMetric : public DisplaySettings {
+class DisplaySettingsMetric : public DisplaySettingsNodeAttributeFile {
    public:
       /// Metric graphing
       enum METRIC_DATA_PLOT {
@@ -47,8 +47,10 @@ class DisplaySettingsMetric : public DisplaySettings {
       
       /// Metric scaling for color mapping
       enum METRIC_OVERLAY_SCALE {
-         /// auto scale using selected metric column min/max
-         METRIC_OVERLAY_SCALE_AUTO_METRIC,
+         /// auto scale metric column min/max
+         METRIC_OVERLAY_SCALE_AUTO,
+         /// auto scale using a specified metric column min/max
+         METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN,
          /// auto scale using selection functional volume min/max
          METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME,
          /// auto scale using user entered min/max
@@ -81,6 +83,14 @@ class DisplaySettingsMetric : public DisplaySettings {
       /// Update any selections due to changes in loaded metric file
       void update();
       
+      /// get the column number for the overlay scale specified column
+      int getOverlayScaleSpecifiedColumnNumber() const 
+               { return overlayScaleSpecifiedColumnNumber; }
+      
+      /// set the column number for the overlay scale specified column
+      void setOverlayScaleSpecifiedColumnNumber(const int col)
+               { overlayScaleSpecifiedColumnNumber = col; }
+               
       /// get the type of metric thresholding
       METRIC_THRESHOLDING_TYPE getMetricThresholdingType() const { return thresholdType; }
       
@@ -93,20 +103,6 @@ class DisplaySettingsMetric : public DisplaySettings {
       
       /// set the user thresholding values
       void setUserThresholdingValues(const float negThresh, const float posThresh);
-      
-      /// get column selected for display
-      int getSelectedDisplayColumn(const int model);
-      
-      /// set column for display
-      void setSelectedDisplayColumn(const int model,
-                                    const int sdc);
-      
-      /// get column selected for thresholding
-      int getSelectedThresholdColumn(const int model);
-      
-      /// set column for thresholding
-      void setSelectedThresholdColumn(const int model,
-                                      const int sdc);
       
       /// get selected overlay scale
       METRIC_OVERLAY_SCALE getSelectedOverlayScale() const { return overlayScale; }
@@ -175,30 +171,23 @@ class DisplaySettingsMetric : public DisplaySettings {
       void getSpecialColorsForThresholdedNodes(unsigned char negThreshColor[3],
                                                unsigned char posThreshColor[3]) const;
                                                
-      /// get apply to left and right structures flag
-      bool getApplySelectionToLeftAndRightStructuresFlag() const 
-             { return applySelectionToLeftAndRightStructuresFlag; }
-      
-      /// set apply to left and right structures flag
-      void setApplySelectionToLeftAndRightStructuresFlag(const bool b) 
-             { applySelectionToLeftAndRightStructuresFlag = b; }
-      
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
-      /// for node attribute files - all column selections for each surface are the same
-      virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;
-      
+      // get the display and threshold columns for palette (negative if invalid)
+      void getMetricsForColoringAndPalette(int& displayColumnOut,
+                                           int& thresholdColumnOut,
+                                           float& negMaxValue,
+                                           float& negMinValue,
+                                           float& posMinValue,
+                                           float& posMaxValue,
+                                           const bool volumeFlag = false) const;
+
    private:
-      /// selected column for dislay
-      std::vector<int> displayColumn;
-      
-      /// selected column for thresholding
-      std::vector<int> thresholdColumn;
-      
       /// metric thresholding type
       METRIC_THRESHOLDING_TYPE thresholdType;
       
@@ -250,8 +239,8 @@ class DisplaySettingsMetric : public DisplaySettings {
       /// show thresholded nodes in special color
       bool showSpecialColorForThresholdedNodes;
       
-      /// apply coloring with corresponding structures
-      bool applySelectionToLeftAndRightStructuresFlag;
-};
+      /// column number for the overlay scale specified column
+      int overlayScaleSpecifiedColumnNumber;
+ };
 
 #endif

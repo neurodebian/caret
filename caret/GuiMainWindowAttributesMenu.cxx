@@ -40,6 +40,8 @@ GuiMainWindowAttributesMenu::GuiMainWindowAttributesMenu(GuiMainWindow* parent)
    
    createAreaColorsSubMenu(attributesActions);
    
+   createArealEstimationSubMenu(attributesActions);
+   
    createLatLonSubMenu(attributesActions);
    
    createMetricSubMenu(attributesActions);
@@ -64,8 +66,6 @@ GuiMainWindowAttributesMenu::GuiMainWindowAttributesMenu(GuiMainWindow* parent)
    
    addSeparator();
    
-   addAction(attributesActions->getGenerateArealEstimationMapAction());
-    
    addAction(attributesActions->getGenerateDeformationFieldAction());
               
    addAction(attributesActions->getGenerateTopographyAction());
@@ -101,6 +101,18 @@ GuiMainWindowAttributesMenu::createVocabularySubMenu(GuiMainWindowAttributesActi
    
    vocabularySubMenu->addAction(attributesActions->getVocabularyFileEditorDialogAction());
    vocabularySubMenu->addAction(attributesActions->getVocabularyMoveStudyInfoToStudyMetaDataAction());
+}
+
+/**
+ * create the areal estimation menu.
+ */
+void 
+GuiMainWindowAttributesMenu::createArealEstimationSubMenu(GuiMainWindowAttributesActions* attributesActions)
+{
+   arealEstimationSubMenu = addMenu("Areal Estimation");
+   
+   arealEstimationSubMenu->addAction(attributesActions->getArealEstimationClearAllOrPartAction());
+   arealEstimationSubMenu->addAction(attributesActions->getGenerateArealEstimationMapAction());   
 }
 
 /**

@@ -46,7 +46,7 @@
  */
 GuiAlignSurfaceToStandardOrientationDialog::GuiAlignSurfaceToStandardOrientationDialog(
                                                                         QWidget* parent)
-   : QtDialog(parent, false, 0)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    setWindowTitle("Align Surface(s) to Standard Orientation");
@@ -140,7 +140,7 @@ GuiAlignSurfaceToStandardOrientationDialog::GuiAlignSurfaceToStandardOrientation
                                                               0,
                                                               "sphereSurfaceComboBox");
    sphereGroupBoxLayout->addWidget(sphereSurfaceComboBox);
-   sphereSurfaceComboBox->setSelectedBrainModelToSurfaceOfType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
+   sphereSurfaceComboBox->setSelectedBrainModelToLastSurfaceOfType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
    
    //
    // Horizontal layout for buttons

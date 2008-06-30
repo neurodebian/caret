@@ -28,7 +28,7 @@
 #define __GUI_SECTION_SMOOTHING_DIALOG_H__
 
 #include <vector>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class BrainModelSurface;
 class QCheckBox;
@@ -39,7 +39,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// Dialog for surface smoothing.
-class GuiSmoothingDialog : public QtDialog {
+class GuiSmoothingDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -51,6 +51,9 @@ class GuiSmoothingDialog : public QtDialog {
       
       /// Destructor
       ~GuiSmoothingDialog();
+      
+      // set the smoothing surface (if not set, does smooths main window surface)
+      void setSmoothingSurface(BrainModelSurface* smoothingSurfaceIn);
       
    private slots:
       /// callde when apply button pressed
@@ -154,6 +157,9 @@ class GuiSmoothingDialog : public QtDialog {
       
       /// update normals check box
       QCheckBox* updateNormalsCheckBox;
+      
+      /// smoothing surface (if NULL, main window surface is smoothed)
+      BrainModelSurface* smoothingSurface;
 };
 
 #endif

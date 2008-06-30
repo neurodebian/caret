@@ -55,7 +55,7 @@ GuiBatchCommandDialog::GuiBatchCommandDialog(QWidget* parent,
                                              const QString& directoryToRunIn,
                                              const QString& commandIn,
                                              const QString& commandFileNameIn)
-   : QtDialog(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Caret Batch Command");
    

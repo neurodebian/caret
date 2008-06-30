@@ -104,6 +104,14 @@ class BrainModelSurfaceToVolumeConverter : public BrainModelAlgorithm {
          CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES
       };
       
+      /// intersection mode
+      enum INTERSECTION_MODE {
+         /// intersection mode intersect tiles with voxels
+         INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS,
+         /// intersection mode project voxels to surface
+         INTERSECTION_MODE_PROJECT_VOXELS_TO_SURFACE
+      };
+      
       /// Constructor
       BrainModelSurfaceToVolumeConverter(BrainSet* bs,
                            BrainModelSurface* surfaceIn,
@@ -115,11 +123,18 @@ class BrainModelSurfaceToVolumeConverter : public BrainModelAlgorithm {
                            const float innerBoundaryIn,
                            const float outerBoundaryIn,
                            const float thicknessStepIn,
-                           const CONVERSION_MODE convertModeIn);
+                           const CONVERSION_MODE convertModeIn,
+                           const INTERSECTION_MODE intersectionModeIn
+                              = INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS);
         
       /// Destructor
       ~BrainModelSurfaceToVolumeConverter();
       
+      /// get names and values for intersection modes
+      static void getIntersectionModeNamesAndValues(
+               std::vector<INTERSECTION_MODE>& intersectionModesOut,
+               std::vector<QString> intersectionModeNamesOut);
+
       /// set the node attribute (paint/metric/shape) column for ROI
       void setNodeAttributeColumn(const int column) { nodeAttributeColumn = column; }
       
@@ -146,6 +161,9 @@ class BrainModelSurfaceToVolumeConverter : public BrainModelAlgorithm {
    private:
       /// perform conversion by intersecting tiles and voxels
       void conversionIntersectTilesAndVoxels() throw (BrainModelAlgorithmException);
+      
+      /// perform conversion by projecting voxels to surface
+      void conversionProjectVoxelsToSurface();
       
       /// get the average rgb colors of three nodes
       void getTilesRgbColor(const int n1, const int n2,
@@ -188,6 +206,9 @@ class BrainModelSurfaceToVolumeConverter : public BrainModelAlgorithm {
       /// type of conversion
       CONVERSION_MODE conversionMode;
 
+      /// intersection mode
+      INTERSECTION_MODE intersectionMode;
+      
       /// flag to check is a voxel already has a value
       std::vector<bool> voxelSet;
       

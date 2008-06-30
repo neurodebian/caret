@@ -48,7 +48,7 @@
  * The Constructor.
  */
 GuiImageViewingWindow::GuiImageViewingWindow(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    setWindowTitle("Image Viewing Window");
@@ -84,8 +84,15 @@ GuiImageViewingWindow::GuiImageViewingWindow(QWidget* parent)
    // the image label
    // 
    imageLabel = new QLabel;
-   imageLabel->setFrameStyle(QFrame::StyledPanel + QFrame::Plain);
+   //imageLabel->setFrameStyle(QFrame::StyledPanel + QFrame::Plain);
    imageLabel->setLineWidth(2);
+   
+   //
+   // Image Group Box
+   //
+   QGroupBox* imageGroupBox = new QGroupBox("Image");
+   QVBoxLayout* imageLayout = new QVBoxLayout(imageGroupBox);
+   imageLayout->addWidget(imageLabel);
    
    //
    // Close Button
@@ -112,7 +119,7 @@ GuiImageViewingWindow::GuiImageViewingWindow(QWidget* parent)
    QVBoxLayout* dialogLayout = new QVBoxLayout;
    dialogLayout->setSpacing(5);
    dialogLayout->addWidget(selHGroupBox);
-   dialogLayout->addWidget(imageLabel);
+   dialogLayout->addWidget(imageGroupBox);
    dialogLayout->addLayout(buttonsLayout);
    setLayout(dialogLayout);
    

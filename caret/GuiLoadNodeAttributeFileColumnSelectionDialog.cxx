@@ -47,8 +47,9 @@ GuiLoadNodeAttributeFileColumnSelectionDialog::GuiLoadNodeAttributeFileColumnSel
                                           QWidget* parent,
                                           NodeAttributeFile* newFileIn,
                                           NodeAttributeFile* currentFileIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    newFileNAF = newFileIn;
    currentFileNAF = currentFileIn;
    
@@ -185,8 +186,9 @@ GuiLoadNodeAttributeFileColumnSelectionDialog::GuiLoadNodeAttributeFileColumnSel
                                           QWidget* parent,
                                           GiftiNodeDataFile* newFileIn,
                                           GiftiNodeDataFile* currentFileIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    newFileNDF = newFileIn;
    currentFileNDF = currentFileIn;
    

@@ -39,6 +39,7 @@
 #include "BrainModelAlgorithmException.h"
 #include "BrainModelBorderSet.h"
 #include "BrainModelSurface.h"
+#include "BrainModelSurfaceOverlay.h"
 #include "BrainSetNodeAttribute.h"
 #include "Structure.h"
 #include "NodeAttributeFile.h"
@@ -101,10 +102,12 @@ class DisplaySettingsWustlRegion;
 class FociColorFile;
 class FociFile;
 class FociProjectionFile;
+class FociSearchFile;
 class GeodesicDistanceFile;
 class ImageFile;
 class LatLonFile;
 class MetricFile;
+class MniObjSurfaceFile;
 class BrainModelIdentification;
 class NodeAttributeFile;
 class PaintFile;
@@ -169,6 +172,9 @@ class BrainSet : public QObject {
       /// set the random seed
       static void setRandomSeed(unsigned int randomSeed);
       
+      /// get the name of the bin directory
+      static QString getBinDirectoryName();
+      
       /// get the web caret flag
       bool getWebCaretFlag() const { return webCaretFlag; }
       
@@ -202,10 +208,53 @@ class BrainSet : public QObject {
       /// add a volume file of the specified type
       void addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
                          const QString& name,
-                         const bool append = true, const bool updateSpec = true);
+                         const bool append, 
+                         const bool updateSpec) throw (FileException);
       
       /// delete a volume file
       void deleteVolumeFile(const VolumeFile* vf);
+      
+      /// get the number of surface overlays
+      int getNumberOfSurfaceOverlays() const { return numberOfSurfaceOverlays; }
+      
+      /// get the primary surface overlay
+      BrainModelSurfaceOverlay* getPrimarySurfaceOverlay();
+      
+      /// get the primary surface overlay (const method)
+      const BrainModelSurfaceOverlay* getPrimarySurfaceOverlay() const;
+      
+      /// get the secondary surface overlay
+      BrainModelSurfaceOverlay* getSecondarySurfaceOverlay();
+      
+      /// get the secondary surface overlay (const method)
+      const BrainModelSurfaceOverlay* getSecondarySurfaceOverlay() const;
+      
+      /// get the surface underlay
+      BrainModelSurfaceOverlay* getSurfaceUnderlay();
+      
+      /// get the surface underlay (const method)
+      const BrainModelSurfaceOverlay* getSurfaceUnderlay() const;
+      
+      /// get a surface overlay
+      BrainModelSurfaceOverlay* getSurfaceOverlay(const int overlayNumber) 
+                                  { return surfaceOverlays[overlayNumber]; }
+                                  
+      /// get a surface overlay (const method)
+      const BrainModelSurfaceOverlay* getSurfaceOverlay(const int overlayNumber) const 
+                                  { return surfaceOverlays[overlayNumber]; }
+              
+      /// get something is an overlay
+      bool isASurfaceOverlay(const int model,
+                  const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS os) const;
+      
+      /// get something is an overlay for any model
+      bool isASurfaceOverlayForAnySurface(const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS os) const;
+      
+      /// update the surface overlays due to change in brain models
+      void updateSurfaceOverlaysDueToChangeInBrainModels();
+      
+      /// copy the overlay selections from specified surface to all other surfaces
+      void copyOverlaysFromSurface(const int surfaceModelIndex);
       
       /// apply all projected files (foci, cells, borders)
       void applyAllProjectedFiles();
@@ -272,6 +321,24 @@ class BrainSet : public QObject {
       
       /// get the "active" fiducial surface
       BrainModelSurface* getActiveFiducialSurface();
+      
+      /// get the left fiducial volume interaction surface
+      BrainModelSurface* getLeftFiducialVolumeInteractionSurface();
+      
+      /// get the right fiducial volume interaction surface
+      BrainModelSurface* getRightFiducialVolumeInteractionSurface();
+      
+      /// get the cerebellum fiducial volume interaction surface
+      BrainModelSurface* getCerebellumFiducialVolumeInteractionSurface();
+      
+      /// set the left fiducial volume interaction surface
+      void setLeftFiducialVolumeInteractionSurface(BrainModelSurface* bms);
+      
+      /// set the right fiducial volume interaction surface
+      void setRightFiducialVolumeInteractionSurface(BrainModelSurface* bms);
+      
+      /// set the cerebellum fiducial volume interaction surface
+      void setCerebellumFiducialVolumeInteractionSurface(BrainModelSurface* bms);
       
       /// delete a brain model surface 
       void deleteBrainModelSurface(BrainModelSurface* bms);
@@ -705,6 +772,9 @@ class BrainSet : public QObject {
       /// delete a cell
       void deleteCell(const int cellNumber);
 
+      /// remove unlinked studies from study meta data file
+      int removeUnlinkedStudiesFromStudyMetaDataFile();
+      
       /// move foci study info to the study meta data file
       void moveFociStudyInfoToStudyMetaDataFile();
       
@@ -714,15 +784,8 @@ class BrainSet : public QObject {
       /// get the foci projection file
       FociProjectionFile* getFociProjectionFile() { return fociProjectionFile; }
       
-      /// get a volume foci file
-      FociFile* getVolumeFociFile() { return volumeFociFile; }
-      
-      /// set a volume foci file
-      const FociFile* getVolumeFociFile() const { return volumeFociFile; }
-      
-      /// delete all foci and foci projections
-      void deleteAllFoci(const bool deleteFociProjections,
-                         const bool deleteVolumeFoci);
+      /// get the foci search file
+      FociSearchFile* getFociSearchFile() { return fociSearchFile; }
       
       /// delete all foci projections (including those in foci files)
       void deleteAllFociProjections();
@@ -780,6 +843,9 @@ class BrainSet : public QObject {
       
       /// get the number of prob atlas volume files
       int getNumberOfVolumeProbAtlasFiles() const { return volumeProbAtlasFiles.size(); }
+      
+      /// synchronize prob atlas volume region names
+      void synchronizeProbAtlasVolumeRegionNames();
       
       /// get the number of rgb volume files
       int getNumberOfVolumeRgbFiles() const { return volumeRgbFiles.size(); }
@@ -912,6 +978,13 @@ class BrainSet : public QObject {
       /// read the areal estimation data file 
       void readArealEstimationFile(const QString& name, const bool append,
                                    const bool updateSpec) throw (FileException);
+      
+      /// read the areal estimation data file (only selected columns)
+      void readArealEstimationFile(const QString& name, 
+                          const std::vector<int>& columnDestination,
+                          const std::vector<QString>& fileBeingReadColumnNames,
+                          const AbstractFile::FILE_COMMENT_MODE fcm,
+                          const bool updateSpec) throw (FileException);
       
       /// write the ArealEstimation data file
       void writeArealEstimationFile(const QString& name) throw (FileException);
@@ -1058,15 +1131,11 @@ class BrainSet : public QObject {
                         const bool append,
                         const bool updateSpec) throw (FileException);
       
-      /// Read the volume foci data file.
-      void readVolumeFociFile(const QString& name, 
-                              const bool append,
-                              const bool updateSpec) throw (FileException);
-                       
       /// write the Foci data file
       void writeFociFile(const QString& name,
                          const BrainModelSurface* leftBms,
                          const BrainModelSurface* rightBms,
+                         const BrainModelSurface* cerebellumBMS,
                          const AbstractFile::FILE_FORMAT fileFormat,
                          const QString& commentText) throw (FileException);
       
@@ -1075,9 +1144,6 @@ class BrainSet : public QObject {
                                             const AbstractFile::FILE_FORMAT fileFormat,
                                             const QString& commentText) throw (FileException);
       
-      /// Write the volume foci data file.
-      void writeVolumeFociFile(const QString& name) throw (FileException);
-
       /// read the foci color data file file
       void readFociColorFile(const QString& name, const bool append,
                              const bool updateSpec) throw (FileException);
@@ -1092,6 +1158,14 @@ class BrainSet : public QObject {
       
       /// write the FociProjection data file
       void writeFociProjectionFile(const QString& name) throw (FileException);
+      
+      /// read the foci search file
+      void readFociSearchFile(const QString& name,
+                              const bool append,
+                              const bool updateSpec) throw (FileException);
+                              
+      /// write the foci search file
+      void writeFociSearchFile(const QString& name) throw (FileException);
       
       /// read the geodesic distance data file file
       void readGeodesicDistanceFile(const QString& name, const bool append,
@@ -1380,6 +1454,14 @@ class BrainSet : public QObject {
                                   const BrainModelSurface::SURFACE_TYPES surfaceType = BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
                                   const TopologyFile::TOPOLOGY_TYPES topologyType = TopologyFile::TOPOLOGY_TYPE_CLOSED) throw (FileException);
 
+      /// import mni obj surface file
+      void importMniObjSurfaceFile(const QString& filename,
+                                   const bool importCoordinates,
+                                   const bool importTopology,
+                                   const bool importColors,
+                                   const BrainModelSurface::SURFACE_TYPES surfaceType = BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+                                   const TopologyFile::TOPOLOGY_TYPES topologyType = TopologyFile::TOPOLOGY_TYPE_CLOSED) throw (FileException);
+
       /// import byu surface file
       void importByuSurfaceFile(const QString& filename,
                                 const bool importCoordinates,
@@ -1534,6 +1616,10 @@ class BrainSet : public QObject {
       /// Set node display flags based upon sections and other criteria.
       void updateNodeDisplayFlags();      
       
+      /// load identification filters from a scene
+      void showSceneIdentificationFilters(const SceneFile::Scene* ss,
+                                          QString& errorMessage);
+                                          
       /// apply a scene (set display settings)
       void showScene(const SceneFile::Scene* ss, 
                      const bool checkSpecFlag,
@@ -1649,6 +1735,9 @@ class BrainSet : public QObject {
       void clearFociColorFile();
 
       /// clear the file
+      void clearFociSearchFile();
+
+      /// clear the file
       void clearGeodesicDistanceFile();
 
       /// clear the file
@@ -1693,12 +1782,36 @@ class BrainSet : public QObject {
       /// clear the file
       void clearTransformationMatrixFile();
 
+      /// clear the transformation data files
+      void clearTransformationDataFiles();
+      
       /// clear the vocabulary file
       void clearVocabularyFile();
       
       /// clear the file
       void clearWustlRegionFile();
    
+      /// clear the anatomy volume files 
+      void clearVolumeAnatomyFiles();
+      
+      /// clear the functional volume files 
+      void clearVolumeFunctionalFiles();
+      
+      /// clear the paint volume files 
+      void clearVolumePaintFiles();
+      
+      /// clear the prob atlasvolume files 
+      void clearVolumeProbabilisticAtlasFiles();
+      
+      /// clear the rgb volume files 
+      void clearVolumeRgbFiles();
+      
+      /// clear the segmentation volume files 
+      void clearVolumeSegmentationFiles();
+      
+      /// clear the vector volume files 
+      void clearVolumeVectorFiles();
+      
    signals:
       /// signal that requests a brain model be displayed and drawn
       void signalDisplayBrainModel(int brainModelIndex);
@@ -1732,6 +1845,12 @@ class BrainSet : public QObject {
       /// parent for progress dialogs
       QWidget* progressDialogParent;
       
+      /// the overlays
+      std::vector<BrainModelSurfaceOverlay*> surfaceOverlays;
+
+      /// the number of surface overlays
+      int numberOfSurfaceOverlays;
+      
       /// node 
       std::vector<BrainSetNodeAttribute> nodeAttributes;
       
@@ -1749,6 +1868,15 @@ class BrainSet : public QObject {
       
       /// storage for all surfaces
       std::vector<BrainModel*> brainModels;
+      
+      /// the left fiducial volume interaction surface
+      BrainModelSurface* leftFiducialVolumeInteractionSurface;
+      
+      /// the right fiducial volume interaction surface
+      BrainModelSurface* rightFiducialVolumeInteractionSurface;
+      
+      /// the cerebellum fiducial volume interaction surface
+      BrainModelSurface* cerebellumFiducialVolumeInteractionSurface;
       
       /// the active fiducial surface
       BrainModelSurface* activeFiducialSurface;
@@ -2002,8 +2130,8 @@ class BrainSet : public QObject {
       /// foci projection file
       FociProjectionFile* fociProjectionFile;
       
-      /// volume foci file
-      FociFile* volumeFociFile;
+      /// foci search file
+      FociSearchFile* fociSearchFile;
       
       /// the image files
       std::vector<ImageFile*> imageFiles;
@@ -2104,11 +2232,11 @@ class BrainSet : public QObject {
       /// mutex for reading foci and foci projection file
       QMutex mutexFociAndFociProjectionFile;
       
-      /// mutex for reading volume foci file
-      QMutex mutexVolumeFociFile;
-      
       /// mutex for reading foci color file
       QMutex mutexFociColorFile;
+      
+      /// mutex for reading foci search file
+      QMutex mutexFociSearchFile;
       
       /// mutex for reading geodesic distance file
       QMutex mutexGeodesicDistanceFile;

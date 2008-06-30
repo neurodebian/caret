@@ -68,6 +68,9 @@ class PubMedArticleFile : public AbstractFile {
       // get the medical subject headings
       QString getMedicalSubjectHeadings() const { return medicalSubjectHeadings; }
       
+      // parse the xml string
+      void parseXML(const QString xmlString) throw (FileException);
+      
    protected:
       // read the file
       void readFileData(QFile& file, 
@@ -80,9 +83,6 @@ class PubMedArticleFile : public AbstractFile {
                          QDataStream& binStream,
                          QDomDocument& xmlDoc,
                          QDomElement& rootElement) throw (FileException);
-      
-      // parse the xml 
-      void parseXML(const QString xmlString) throw (FileException);
       
       // process the PubMedArticle children
       void processPubMedArticleChildren(QDomNode node) throw (FileException);

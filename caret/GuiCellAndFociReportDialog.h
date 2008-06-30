@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class CellFile;
@@ -37,7 +37,7 @@ class QCheckBox;
 class QtTableDialog;
 
 /// dialog for cell and foci reports
-class GuiCellAndFociReportDialog : public QtDialog {
+class GuiCellAndFociReportDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -85,6 +85,9 @@ class GuiCellAndFociReportDialog : public QtDialog {
       /// area check box
       QCheckBox* areaCheckBox;
       
+      /// region of interest check box
+      QCheckBox* regionOfInterestCheckBox;
+      
       /// size check box
       QCheckBox* sizeCheckBox;
       
@@ -95,15 +98,21 @@ class GuiCellAndFociReportDialog : public QtDialog {
       QCheckBox* commentCheckBox;
       
       /// hemisphere check box
-      QCheckBox* hemisphereCheckBox;
+      QCheckBox* structureCheckBox;
       
       /// class check box
       QCheckBox* classCheckBox;
       
-      /// study check box
-      QCheckBox* studyCheckBox;
+      /// study name check box
+      QCheckBox* studyNameCheckBox;
       
-      /// paint name check boxes
+      /// study format check box
+      QCheckBox* studyDataFormatCheckBox;
+      
+      /// study data type check box
+      QCheckBox* studyDataTypeCheckBox;
+      
+      /// paint data type check boxes
       std::vector<QCheckBox*> paintNameCheckBoxes;
       
       /// file type string (cell or foci)
@@ -117,6 +126,9 @@ class GuiCellAndFociReportDialog : public QtDialog {
       
       /// combo box for right hem surface selection
       GuiBrainModelSelectionComboBox* rightHemSelectionComboBox;
+      
+      /// combo box for cerebellum surface selection
+      GuiBrainModelSelectionComboBox* cerebellumSelectionComboBox;
       
 };
 

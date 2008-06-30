@@ -103,6 +103,12 @@ class GuiMainWindowLayersActions : public QObject {
       /// action for deleting borders by name
       QAction* getDeleteBordersByNameAction() { return bordersDeleteByNameAction; }
       
+      /// action for copy border by name
+      QAction* getCopyBorderByNameAction() { return bordersCopyByNameAction; }
+      
+      /// action for draw border update
+      QAction* getBorderDrawUpdateAction() { return borderDrawUpdateAction; }
+      
       /// action for delete all borders
       QAction* getBordersDeleteAllAction() { return bordersDeleteAllAction; }
    
@@ -133,6 +139,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// action for foci project
       QAction* getFociProjectAction() { return fociProjectAction; }
       
+      /// action for foci project to volume
+      QAction* getFociProjectToVolumeAction() { return fociProjectToVolumeAction; }
+      
       /// action for foci PALS project
       QAction* getFociPalsProjectAction() { return fociPalsProjectAction; }
       
@@ -156,6 +165,12 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// action for foci report
       QAction* getFociReportAction() { return fociReportAction; }
+      
+      /// action for converting foci density to metric
+      QAction* getFociDensityToMetricAction() { return fociDensityToMetricAction; }
+      
+      /// action for converting foci density to volume
+      QAction* getFociDensityToVolumeAction() { return fociDensityToVolumeAction; }
       
       /// action for foci attribute assignment
       QAction* getFociAttributeAssignmentAction() { return fociAttributeAssignmentAction; }
@@ -320,6 +335,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for deleting borders by name
       void slotDeleteBordersByName();
       
+      /// slot for copy borders by name
+      void slotCopyBordersByName();
+      
       /// slot for delete all borders
       void slotBordersDeleteAll();
    
@@ -353,6 +371,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for foci project
       void slotFociProject();
       
+      /// slot for foci project to volume
+      void slotFociProjectToVolume();
+      
       /// slot for foci PALS project
       void slotFociPalsProject();
       
@@ -385,6 +406,12 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// slot for updating foci PubMed ID if focus name same as study name
       void slotFociUpdatePubMedIDIfFocusNameMatchesStudyName();
+      
+      /// slot for converting foci density to metric
+      void slotFociDensityToMetric();
+      
+      /// slot for converting foci density to functional volume
+      void slotFociDensityToFunctionalVolume();
       
       /// slot for converting cells to vtk model
       void slotCellsConvertToVtkModel();
@@ -553,9 +580,15 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for deleting borders by name
       QAction* bordersDeleteByNameAction;
       
+      /// slot for copying borders by name
+      QAction* bordersCopyByNameAction;
+      
       /// slot for delete all borders
       QAction* bordersDeleteAllAction;
    
+      /// slot for border draw update
+      QAction* borderDrawUpdateAction;
+      
       /// slot for move border point with mouse
       QAction* bordersMovePointWithMouseAction;
       
@@ -583,6 +616,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for foci project
       QAction* fociProjectAction;
       
+      /// slot for foci project to volume
+      QAction* fociProjectToVolumeAction;
+      
       /// slot for foci PALS projection
       QAction* fociPalsProjectAction;
       
@@ -606,6 +642,12 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// slot for foci report
       QAction* fociReportAction;
+      
+      /// slot for converting foci density to metric
+      QAction* fociDensityToMetricAction;
+      
+      /// slot for converting foci density to volume
+      QAction* fociDensityToVolumeAction;
       
       /// foci attribute assignment action
       QAction* fociAttributeAssignmentAction;

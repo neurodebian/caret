@@ -26,12 +26,12 @@
 #ifndef __GUI_BATCH_COMMAND_DIALOG_H__
 #define __GUI_BATCH_COMMAND_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QLineEdit;
 
 /// Dialog for running batch commands
-class GuiBatchCommandDialog : public QtDialog {
+class GuiBatchCommandDialog : public WuQDialog {
    Q_OBJECT
    
    public:

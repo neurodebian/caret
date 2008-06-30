@@ -29,7 +29,7 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "SpecFile.h"
 
@@ -40,7 +40,7 @@ class QGroupBox;
 class PreferencesFile;
 
 /// Class for selecting topology and coordinate files from a spec file
-class GuiMapFmriSpecFileTopoCoordDialog : public QtDialog {
+class GuiMapFmriSpecFileTopoCoordDialog : public WuQDialog {
    Q_OBJECT
    
    public:

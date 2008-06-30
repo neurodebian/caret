@@ -78,16 +78,6 @@ macx {
 	   -L../caret_widgets -lCaretWidgets 
       
 
-   PRE_TARGETDEPS +=  \
-      ../caret_command_operations/libCaretCommandOperations.a \
-	   ../caret_brain_set/libCaretBrainSet.a \
-      ../caret_vtk4_classes/libCaretVtk4Classes.a \
-	   ../caret_files/libCaretFiles.a \
-	   ../caret_uniformize/libCaretUniformize.a \
-	   ../caret_statistics/libCaretStatistics.a \
-	   ../caret_common/libCaretCommon.a \
-	   ../caret_widgets/libCaretWidgets.a
-      
    contains ( DEFINES, HAVE_ITK ) {
       LIBS += $$ITK_LIBS
    }
@@ -106,6 +96,18 @@ macx {
    
 #   RC_FILE		= caret5.icns
 #   QMAKE_INFO_PLIST 	= Info.plist
+}
+
+unix {
+   PRE_TARGETDEPS +=  \
+      ../caret_command_operations/libCaretCommandOperations.a \
+	   ../caret_brain_set/libCaretBrainSet.a \
+      ../caret_vtk4_classes/libCaretVtk4Classes.a \
+	   ../caret_files/libCaretFiles.a \
+	   ../caret_uniformize/libCaretUniformize.a \
+	   ../caret_statistics/libCaretStatistics.a \
+	   ../caret_common/libCaretCommon.a \
+	   ../caret_widgets/libCaretWidgets.a      
 }
 
 unix:!macx {
@@ -162,6 +164,7 @@ HEADERS += global_variables.h \
 	   GuiBatchCommandDialog.h \
 	   GuiBorderAttributesDialog.h \
       GuiBorderComparisonDialog.h \
+      GuiBorderDrawUpdateDialog.h \
       GuiBrainSetAndModelSelectionControl.h \
 	   GuiBorderNamesListBoxSelectionDialog.h \
 	   GuiBorderProjectionDialog.h \
@@ -172,7 +175,7 @@ HEADERS += global_variables.h \
 	   GuiBrainModelOpenGLPopupMenu.h \
       GuiBrainModelSelectionComboBox.h \
       GuiBrainModelViewingWindow.h \
-      GuiCaptureMainWindowImageDialog.h \
+      GuiCaptureWindowImageDialog.h \
       GuiCaretCommandDialog.h \
       GuiCaretCommandScriptBuilderDialog.h \
       GuiCaretCommandWidget.h \
@@ -204,6 +207,7 @@ HEADERS += global_variables.h \
 	   GuiDeformationFieldDialog.h \
 	   GuiDeleteBordersByNameDialog.h \
 	   GuiDisplayControlDialog.h \
+      GuiDisplayControlSurfaceOverlayWidget.h \
 	   GuiDistortionDialog.h \
 	   GuiDrawBorderDialog.h \
       GuiFilesModified.h \
@@ -212,13 +216,13 @@ HEADERS += global_variables.h \
       GuiFileSelectionButtonAndLineEditWidget.h \
       GuiFileSelectionListWidget.h \
       GuiFociPalsProjectionDialog.h \
+      GuiFociSearchWidget.h \
 	   GuiFociUncertaintyLimitsDialog.h \
 	   GuiFlattenHemisphereDialog.h \
 	   GuiFlattenHemisphereInstructionsDialog.h \
 	   GuiGenerateArealEstimationDialog.h \
 	   GuiGenerateSulcalDepthDialog.h \
 	   GuiGenerateSurfaceCurvatureDialog.h \
-      GuiGiftiFileDialog.h \
       GuiGraphWidget.h \
       GuiGraphWidgetDialog.h \
       GuiHelpViewerWindow.h \
@@ -228,10 +232,12 @@ HEADERS += global_variables.h \
       GuiIdentifyDialog.h \
       GuiImageEditorWindow.h \
       GuiImageFormatComboBox.h \
+      GuiImageResizeDialog.h \
       GuiImageViewingWindow.h \
 	   GuiInflateAndSmoothFingersDialog.h \
 	   GuiInflateSurfaceDialog.h \
 	   GuiInterpolateSurfacesDialog.h \
+      GuiLoadedFileManagementDialog.h \
       GuiMacOSXApplication.h \
       GuiMainWindow.h \
       GuiMainWindowAttributesActions.h \
@@ -260,7 +266,6 @@ HEADERS += global_variables.h \
       GuiMapFmriThresholdDialog.h \
       GuiMapFmriVolume.h \
       GuiMapStereotaxicFocusDialog.h \
-      GuiMessageBox.h \
 	   GuiMetricModificationDialog.h \
 	   GuiMetricsToRgbPaintDialog.h \
       GuiModelSelectionControl.h \
@@ -300,6 +305,7 @@ HEADERS += global_variables.h \
 	   GuiSurfaceDeformationDialog.h \
 	   GuiSurfaceInformationDialog.h \
 	   GuiSurfaceRegionOfInterestDialog.h \
+	   GuiSurfaceRegionOfInterestDialogOLD.h \
 	   GuiSurfaceSpmTransformDialog.h \
 	   GuiSurfaceToVolumeDialog.h \
       GuiSurfaceTopologyReportDialog.h \
@@ -312,7 +318,6 @@ HEADERS += global_variables.h \
 	   GuiTransformationMatrixDialog.h \
       GuiTransformationMatrixSelectionControl.h \
 	   GuiUserViewSaveDialog.h \
-	   GuiViewCurrentFilesDialog.h \
       GuiVocabularyFileEditorDialog.h \
 	   GuiVolumeAttributesDialog.h \
       GuiVolumeBiasCorrectionDialog.h \
@@ -349,6 +354,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiBatchCommandDialog.cxx \
 	   GuiBorderAttributesDialog.cxx \
       GuiBorderComparisonDialog.cxx \
+      GuiBorderDrawUpdateDialog.cxx \
 	   GuiBorderNamesListBoxSelectionDialog.cxx \
 	   GuiBorderProjectionDialog.cxx \
       GuiBordersCreateInterpolatedDialog.cxx \
@@ -359,7 +365,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiBrainModelSelectionComboBox.cxx \
       GuiBrainModelViewingWindow.cxx \
       GuiBrainSetAndModelSelectionControl.cxx \
-      GuiCaptureMainWindowImageDialog.cxx \
+      GuiCaptureWindowImageDialog.cxx \
       GuiCaretCommandDialog.cxx \
       GuiCaretCommandScriptBuilderDialog.cxx \
       GuiCaretCommandWidget.cxx \
@@ -391,6 +397,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiDeformationFieldDialog.cxx \
 	   GuiDeleteBordersByNameDialog.cxx \
 	   GuiDisplayControlDialog.cxx \
+      GuiDisplayControlSurfaceOverlayWidget.cxx \
 	   GuiDistortionDialog.cxx \
 	   GuiDrawBorderDialog.cxx \
       GuiFilesModified.cxx \
@@ -399,13 +406,13 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiFileSelectionButtonAndLineEditWidget.cxx \
       GuiFileSelectionListWidget.cxx \
       GuiFociPalsProjectionDialog.cxx \
+      GuiFociSearchWidget.cxx \
 	   GuiFociUncertaintyLimitsDialog.cxx \
 	   GuiFlattenHemisphereDialog.cxx \
 	   GuiFlattenHemisphereInstructionsDialog.cxx \
 	   GuiGenerateArealEstimationDialog.cxx \
 	   GuiGenerateSulcalDepthDialog.cxx \
 	   GuiGenerateSurfaceCurvatureDialog.cxx \
-      GuiGiftiFileDialog.cxx \
       GuiGraphWidget.cxx \
       GuiGraphWidgetDialog.cxx \
       GuiHelpViewerWindow.cxx \
@@ -415,10 +422,12 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiIdentifyDialog.cxx \
       GuiImageEditorWindow.cxx \
       GuiImageFormatComboBox.cxx \
+      GuiImageResizeDialog.cxx \
       GuiImageViewingWindow.cxx \
 	   GuiInflateAndSmoothFingersDialog.cxx \
 	   GuiInflateSurfaceDialog.cxx \
 	   GuiInterpolateSurfacesDialog.cxx \
+      GuiLoadedFileManagementDialog.cxx \
       GuiMacOSXApplication.cxx \
       GuiMainWindow.cxx \
       GuiMainWindowAttributesActions.cxx \
@@ -447,7 +456,6 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiMapFmriThresholdDialog.cxx \
       GuiMapFmriVolume.cxx	\
       GuiMapStereotaxicFocusDialog.cxx \
-      GuiMessageBox.cxx \
 	   GuiMetricModificationDialog.cxx \
 	   GuiMetricsToRgbPaintDialog.cxx \
       GuiModelSelectionControl.cxx \
@@ -487,6 +495,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiSurfaceDeformationDialog.cxx \
 	   GuiSurfaceInformationDialog.cxx \
 	   GuiSurfaceRegionOfInterestDialog.cxx \
+	   GuiSurfaceRegionOfInterestDialogOLD.cxx \
 	   GuiSurfaceSpmTransformDialog.cxx \
 	   GuiSurfaceToVolumeDialog.cxx \
       GuiSurfaceTopologyReportDialog.cxx \
@@ -499,7 +508,6 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiTransformationMatrixDialog.cxx \
       GuiTransformationMatrixSelectionControl.cxx \
 	   GuiUserViewSaveDialog.cxx \
-	   GuiViewCurrentFilesDialog.cxx \
       GuiVocabularyFileEditorDialog.cxx \
 	   GuiVolumeAttributesDialog.cxx \
       GuiVolumeBiasCorrectionDialog.cxx \

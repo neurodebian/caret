@@ -330,7 +330,7 @@ CommandSurfaceCellCreate::executeCommand() throw (BrainModelAlgorithmException,
    // Project the cells
    //
    CellProjectionFile projCellFile;
-   projCellFile.append(cellFile);
+   projCellFile.appendFiducialCellFile(cellFile);
    CellFileProjector cfp(bms);
    cfp.projectFile(&projCellFile,
                    0,

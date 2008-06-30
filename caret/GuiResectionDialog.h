@@ -26,7 +26,7 @@
 #ifndef __GUI_RESECTION_DIALOG_H__
 #define __GUI_RESECTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -37,7 +37,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// Dialog for resectioning
-class GuiResectionDialog : public QtDialog {
+class GuiResectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

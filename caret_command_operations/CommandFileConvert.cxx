@@ -169,7 +169,12 @@ CommandFileConvert::getHelpInformation() const
        + indent9 + "             \n"
        + indent9 + "            GS   input surface is a GIFTI XML surface file.\n"
        + indent9 + "               This type is followed by the name of the GIFTI\n"
-       + indent9 + "               surfacde file.\n"
+       + indent9 + "               surface file.\n"
+       + indent9 + "         \n"
+       + indent9 + "            MNIOBJ  input surface is a MNI OBJ surface file.\n"
+       + indent9 + "               This type is followed by the name of the MNI\n"
+       + indent9 + "               surface file.\n"
+       + indent9 + "               http://www.bic.mni.mcgill.ca/~david/FAQ/FAQ.html#9 \n"
        + indent9 + "         \n"
        + indent9 + "            STL  input surface is a BYU surface file \n"
        + indent9 + "               This type is followed by the name of the STL surface \n"
@@ -515,6 +520,8 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
                break;
             case SURFACE_TYPE_GIFTI:
                break;
+            case SURFACE_TYPE_MNI_OBJ:
+               break;
             case SURFACE_TYPE_OPEN_INVENTOR:
                throw CommandException("Open Inventor not supported for input.");
                break;
@@ -548,6 +555,9 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
                outputSurfaceName2 = parameters->getNextParameterAsString("Output Surface Name 2");
                break;
             case SURFACE_TYPE_GIFTI:
+               break;
+            case SURFACE_TYPE_MNI_OBJ:
+               throw CommandException("MNI OBJ not supported for writing.");
                break;
             case SURFACE_TYPE_OPEN_INVENTOR:
                break;
@@ -868,6 +878,14 @@ CommandFileConvert::updateSpecFile(const std::vector<QString>& tags,
       // If the user specified a spec file
       //
       if (specFileName.isEmpty() == false) {
+         //
+         // Should spec file be created
+         //
+         if (QFile::exists(specFileName) == false) {
+            SpecFile sf;
+            sf.writeFile(specFileName);
+         }
+               
          //
          // Try reading the spec file but ignore errors since it may not exist
          //
@@ -1214,6 +1232,10 @@ CommandFileConvert::surfaceFileConversion() throw (CommandException)
                                       true,
                                       false);
             break;
+         case SURFACE_TYPE_MNI_OBJ:
+            brainSet->importMniObjSurfaceFile(inputSurfaceName, true, true, true,
+                                              surfaceType, topoType);
+            break;
          case SURFACE_TYPE_OPEN_INVENTOR:
             throw CommandException("Open Inventor not supported for input.");
             break;
@@ -1320,6 +1342,9 @@ CommandFileConvert::surfaceFileConversion() throw (CommandException)
                                        bms,
                                        false);
             break;
+         case SURFACE_TYPE_MNI_OBJ:
+            throw CommandException("MNI OBJ not supported for writing.");
+            break;
          case SURFACE_TYPE_OPEN_INVENTOR:
             brainSet->exportInventorSurfaceFile(bms, outputSurfaceName);
             break;
@@ -1364,6 +1389,9 @@ CommandFileConvert::getSurfaceFileType(const QString& surfaceTypeName,
    else if (surfaceTypeName == "GS") {
       return SURFACE_TYPE_GIFTI;
    }
+   else if (surfaceTypeName == "MNIOBJ") {
+      return SURFACE_TYPE_MNI_OBJ;
+   }
    else if (surfaceTypeName == "OI") {
       return SURFACE_TYPE_OPEN_INVENTOR;
    }
@@ -1406,6 +1434,7 @@ CommandFileConvert::volumeConversion(const QString& inputVolumeName,
          // Write the output file
          //
          VolumeFile::writeFile(outputVolumeName,
+                               volumes[0]->getVolumeType(),
                                volumes[0]->getVoxelDataType(),
                                volumes);
                                

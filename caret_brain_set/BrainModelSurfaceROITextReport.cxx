@@ -46,8 +46,8 @@
  * constructor.
  */
 BrainModelSurfaceROITextReport::BrainModelSurfaceROITextReport(BrainSet* bs,
-                                                 BrainModelSurface* bmsIn,
-                                                 BrainModelSurfaceROINodeSelection* surfaceROIIn,
+                                                 const BrainModelSurface* bmsIn,
+                                                 const BrainModelSurfaceROINodeSelection* surfaceROIIn,
                                                  MetricFile* metricFileIn,
                                                  const std::vector<bool>& selectedMetricColumnsForReportIn,
                                                  MetricFile* shapeFileIn,
@@ -56,7 +56,6 @@ BrainModelSurfaceROITextReport::BrainModelSurfaceROITextReport(BrainSet* bs,
                                                  const std::vector<bool>& selectedPaintColumnsForReportIn,
                                                  LatLonFile* latLonFileIn,
                                                  const int latLonFileColumnIn,
-                                                 const QString& nodeSelectionTextIn,
                                                  const QString& headerTextIn,
                                                  MetricFile* metricCorrectionFileIn,
                                                  const int metricCorrectionColumnIn,
@@ -77,7 +76,6 @@ BrainModelSurfaceROITextReport::BrainModelSurfaceROITextReport(BrainSet* bs,
    selectedPaintColumnsForReport  = selectedPaintColumnsForReportIn;
    reportLatLonFile = latLonFileIn;
    reportLatLonFileColumn = latLonFileColumnIn;
-   setNodeSelectionInformation(nodeSelectionTextIn);
    setHeaderText(headerTextIn);
    reportMetricCorrectionFile = metricCorrectionFileIn;
    metricCorrectionColumn = metricCorrectionColumnIn;
@@ -211,7 +209,7 @@ BrainModelSurfaceROITextReport::paintReport(const float roiArea)
                   //
                   // Is this node in the ROI
                   //
-                  if (surfaceROI->getNodeSelected(tileNodes[k])) {
+                  if (operationSurfaceROI->getNodeSelected(tileNodes[k])) {
                      const int node = tileNodes[k];
                      //
                      // Update area node's paint
@@ -241,7 +239,7 @@ BrainModelSurfaceROITextReport::paintReport(const float roiArea)
          
          const int numNodes = bms->getNumberOfNodes();
          for (int i = 0; i < numNodes; i++) { 
-            if (surfaceROI->getNodeSelected(i)) {           
+            if (operationSurfaceROI->getNodeSelected(i)) {           
                const int paintNameIndex = reportPaintFile->getPaint(i, j);
                //
                // Update COG
@@ -449,7 +447,7 @@ BrainModelSurfaceROITextReport::metricAndSurfaceShapeReport(const bool metricFla
       if (doIt) {
          std::vector<float> values;
          for (int i = 0; i < numNodes; i++) {
-            if (surfaceROI->getNodeSelected(i)) { 
+            if (operationSurfaceROI->getNodeSelected(i)) { 
                values.push_back(mf->getValue(i, j));
             }
          }

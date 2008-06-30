@@ -27,14 +27,14 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiStructureComboBox;
 class QLineEdit;
 class QTextEdit;
 
 /// Dialog for creating a spec file
-class GuiSpecFileCreationDialog : public QtDialog {
+class GuiSpecFileCreationDialog : public WuQDialog {
    Q_OBJECT
    
    public:
