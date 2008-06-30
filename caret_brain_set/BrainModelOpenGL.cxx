@@ -510,6 +510,10 @@ BrainModelOpenGL::drawBrainModelPrivate(BrainModel* bm,
       }
    }
    
+   if (mainWindowFlag) {
+      drawMainWindowCaption();
+   }
+   
    if (drawImageSubRegionBoxFlag) {
       glMatrixMode(GL_PROJECTION);
       glLoadIdentity();
@@ -679,6 +683,30 @@ BrainModelOpenGL::initializeOpenGL(const bool offScreenRenderingFlagIn)
    initializationCompletedFlag = true;
 }
 
+/**
+ * get minimum/maximum point size.
+ */
+void 
+BrainModelOpenGL::getMinMaxPointSize(float& minSizeOut, float& maxSizeOut)
+{
+   float sizes[2];
+   glGetFloatv(GL_POINT_SIZE_RANGE, sizes);
+   minSizeOut = sizes[0];
+   maxSizeOut = sizes[1];
+}
+
+/**
+ * get minimum/maximum line width.
+ */
+void 
+BrainModelOpenGL::getMinMaxLineWidth(float& minWidthOut, float& maxWidthOut)
+{
+   float sizes[2];
+   glGetFloatv(GL_LINE_WIDTH_RANGE, sizes);
+   minWidthOut = sizes[0];
+   maxWidthOut = sizes[1];
+}
+      
 /**
  * draw contours.
  */
@@ -1236,6 +1264,21 @@ BrainModelOpenGL::drawModelContoursAlignment(BrainModelContours* bmc,
 }
 
 /**
+ * get the default ortho right and top for command line scene generation.
+ */
+void 
+BrainModelOpenGL::getDefaultOrthoRightAndTop(const int windowWidthIn,
+                                             const int windowHeightIn,
+                                             double& orthoRightOut,
+                                             double& orthoTopOut)
+{
+   const double aspectRatio = (static_cast<double>(windowWidthIn)) /
+                              (static_cast<double>(windowHeightIn));
+   orthoRightOut = defaultOrthoWindowSize * aspectRatio;
+   orthoTopOut   = defaultOrthoWindowSize;
+}
+                                             
+/**
  * Update the orthographic window size.
  */
 void
@@ -1437,27 +1480,29 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
          if ((selectionMask & SELECTION_MASK_NODE) ||
              (selectionMask & SELECTION_MASK_TILE) ||
              (selectionMask & SELECTION_MASK_LINK)) {
-            if (selectionMask & SELECTION_MASK_NODE) {
-               drawSurfaceNodes(bsnc, modelNumber, cf, numCoords, false);
-            }
-            if (selectionMask & SELECTION_MASK_TILE) {
-               if (numTiles > 0) {
-                  if (surfaceDrawingMode != DisplaySettingsSurface::DRAW_MODE_NONE) {
-                     drawSurfaceTiles(bsnc, bms, cf, tf, numTiles, numCoords);
+            if (surfaceDrawingMode != DisplaySettingsSurface::DRAW_MODE_NONE) {
+               if (selectionMask & SELECTION_MASK_NODE) {
+                  drawSurfaceNodes(bsnc, modelNumber, cf, numCoords, false);
+               }
+               if (selectionMask & SELECTION_MASK_TILE) {
+                  if (numTiles > 0) {
+                     if (surfaceDrawingMode != DisplaySettingsSurface::DRAW_MODE_NONE) {
+                        drawSurfaceTiles(bsnc, bms, cf, tf, numTiles, numCoords);
+                     }
                   }
                }
-            }
-            if (selectionMask & SELECTION_MASK_LINK) {
-               if ((surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINKS) || 
-                   (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_NODES_AND_LINKS) ||
-                   (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL) ||
-                   (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_TILES_LINKS_NODES)) {
-                  drawSurfaceLinks(bsnc, modelNumber, cf, tf, numTiles, false, false);
-               }
-               
-               if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINKS_EDGES_ONLY) {
-                  brainSet->classifyNodes(NULL, true);
-                  drawSurfaceLinks(bsnc, modelNumber, cf, tf, numTiles, true, false);
+               if (selectionMask & SELECTION_MASK_LINK) {
+                  if ((surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINKS) || 
+                      (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_NODES_AND_LINKS) ||
+                      (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL) ||
+                      (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_TILES_LINKS_NODES)) {
+                     drawSurfaceLinks(bsnc, modelNumber, cf, tf, numTiles, false, false);
+                  }
+                  
+                  if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINKS_EDGES_ONLY) {
+                     brainSet->classifyNodes(NULL, true);
+                     drawSurfaceLinks(bsnc, modelNumber, cf, tf, numTiles, true, false);
+                  }
                }
             }
          }
@@ -1466,6 +1511,17 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
                if ((surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_TILES) || 
                    (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT)) {
                   drawSurfaceTiles(bsnc, bms, cf, tf, numTiles, numCoords);
+               }
+               if ((surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT_NO_BACK) ||
+                   (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL)) {
+                  glEnable(GL_CULL_FACE);
+                  glCullFace(GL_BACK);
+                  if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL) {
+                     glPolygonMode(GL_FRONT, GL_LINE);
+                  }
+                  drawSurfaceTiles(bsnc, bms, cf, tf, numTiles, numCoords);
+                  glPolygonMode(GL_FRONT, GL_FILL);
+                  glDisable(GL_CULL_FACE);
                }
                
                if ((surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINKS) || 
@@ -1478,9 +1534,9 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
                   drawSurfaceLinks(bsnc, modelNumber, cf, tf, numTiles, true, false);
                }
                
-               if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL) {
-                  drawSurfaceLinksNoBackside(bsnc, modelNumber, cf, tf, numTiles);
-               }
+               //if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL) {
+               //   drawSurfaceLinksNoBackside(bsnc, modelNumber, cf, tf, numTiles);
+               //}
             }
             
             if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_TILES_LINKS_NODES) {
@@ -2822,25 +2878,19 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
    //
    DisplaySettingsCells* dsc = brainSet->getDisplaySettingsCells();
    if (dsc->getDisplayVolumeCells()) {
-      drawVolumeCellOrFociFile(brainSet->getVolumeCellFile(),
-                               dsc,
-                               brainSet->getCellColorFile(),
-                               volumeSliceAxis,
-                               volumeSliceCoordinate,
-                               firstVolumeVoxelSize);
+      drawVolumeCellFile(volumeSliceAxis,
+                         volumeSliceCoordinate,
+                         firstVolumeVoxelSize);
    }
    
    //
    // Draw the volume foci
    //
-   dsc = brainSet->getDisplaySettingsFoci();
-   if (dsc->getDisplayVolumeCells()) {
-      drawVolumeCellOrFociFile(brainSet->getVolumeFociFile(),
-                               dsc,
-                               brainSet->getFociColorFile(),
-                               volumeSliceAxis,
-                               volumeSliceCoordinate,
-                               firstVolumeVoxelSize);
+   DisplaySettingsFoci* dsf = brainSet->getDisplaySettingsFoci();
+   if (dsf->getDisplayVolumeCells()) {
+      drawVolumeFociFile(volumeSliceAxis,
+                         volumeSliceCoordinate,
+                         firstVolumeVoxelSize);
    }
    
    //
@@ -3738,25 +3788,22 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
       }
    }
 
-   drawObliqueVolumeCellOrFociFile(axis,
-                                   brainSet->getVolumeCellFile(),
-                                   brainSet->getDisplaySettingsCells(),
-                                   brainSet->getCellColorFile(),
-                                   voxSize,
-                                   &tm,
-                                   sliceCornerCoords,
-                                   -1);
-   drawObliqueVolumeCellOrFociFile(axis,
-                                   brainSet->getVolumeFociFile(),
-                                   brainSet->getDisplaySettingsFoci(),
-                                   brainSet->getFociColorFile(),
-                                   voxSize,
-                                   &tm,
-                                   sliceCornerCoords,
-                                   -1);
+   drawObliqueVolumeCellFile(axis,
+                             brainSet->getVolumeCellFile(),
+                             brainSet->getDisplaySettingsCells(),
+                             brainSet->getCellColorFile(),
+                             voxSize,
+                             &tm,
+                             sliceCornerCoords,
+                             -1);
+
+   drawObliqueVolumeFociFile(axis,
+                             voxSize,
+                             &tm,
+                             sliceCornerCoords);
                        
    //
-   // Draw transformation cell/foci files
+   // Draw transformation cell files
    //
    const int num = brainSet->getNumberOfTransformationDataFiles();
    for (int i = 0; i < num; i++) {
@@ -3764,6 +3811,7 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
       
       FociFile* ff = dynamic_cast<FociFile*>(af);
       if (ff != NULL) {
+/*
          const TransformationMatrix* fociXForm = ff->getAssociatedTransformationMatrix();
          if (fociXForm != NULL) {
             FociFile ffCopy = *ff;
@@ -3780,6 +3828,7 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                                             sliceCornerCoords,
                                             i);
          }
+*/
       }
       ContourCellFile* ccf = dynamic_cast<ContourCellFile*>(af);
       if ((ff == NULL) && (ccf != NULL)) {
@@ -3791,14 +3840,14 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                                                 std::numeric_limits<int>::max(),
                                                 cellXForm, 
                                                 false);
-            drawObliqueVolumeCellOrFociFile(axis,
-                                            &cfCopy,
-                                            brainSet->getDisplaySettingsCells(),
-                                            brainSet->getContourCellColorFile(),
-                                            voxSize,
-                                            &tm,
-                                            sliceCornerCoords,
-                                            i);
+            drawObliqueVolumeCellFile(axis,
+                                      &cfCopy,
+                                      brainSet->getDisplaySettingsCells(),
+                                      brainSet->getContourCellColorFile(),
+                                      voxSize,
+                                      &tm,
+                                      sliceCornerCoords,
+                                      i);
          }
       }
       CellFile* cf = dynamic_cast<CellFile*>(af);
@@ -3811,14 +3860,14 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                                                 std::numeric_limits<int>::max(),
                                                 cellXForm, 
                                                 false);
-            drawObliqueVolumeCellOrFociFile(axis,
-                                            &cfCopy,
-                                            brainSet->getDisplaySettingsCells(),
-                                            brainSet->getCellColorFile(),
-                                            voxSize,
-                                            &tm,
-                                            sliceCornerCoords,
-                                            i);
+            drawObliqueVolumeCellFile(axis,
+                                      &cfCopy,
+                                      brainSet->getDisplaySettingsCells(),
+                                      brainSet->getCellColorFile(),
+                                      voxSize,
+                                      &tm,
+                                      sliceCornerCoords,
+                                      i);
          }
       }
       
@@ -4866,19 +4915,19 @@ BrainModelOpenGL::convertVolumeItemXYZToScreenXY(const VolumeFile::VOLUME_AXIS a
 }
 
 /**
- * Draw the oblique volume cell or foci file.
+ * Draw the oblique volume cell file.
  * If "transformDataFileIndex" is greater than or equal to zero, the a 
  * transform data (cell or foci) file is being drawn.
  */
 void 
-BrainModelOpenGL::drawObliqueVolumeCellOrFociFile(const VolumeFile::VOLUME_AXIS axis,
-                                                  const CellFile* cf,
-                                                  const DisplaySettingsCells* dsc,
-                                                  const ColorFile* colorFile,
-                                                  const float voxelSize,
-                                                  const TransformationMatrix* tm,
-                                                  const float sliceCornerCoords[4][3],
-                                                  const int transformDataFileIndex)
+BrainModelOpenGL::drawObliqueVolumeCellFile(const VolumeFile::VOLUME_AXIS axis,
+                                            const CellFile* cf,
+                                            const DisplaySettingsCells* dsc,
+                                            const ColorFile* colorFile,
+                                            const float voxelSize,
+                                            const TransformationMatrix* tm,
+                                            const float sliceCornerCoords[4][3],
+                                            const int transformDataFileIndex)
 {
    if (transformDataFileIndex < 0) {
       if (dsc->getDisplayVolumeCells() == false) {
@@ -4895,29 +4944,13 @@ BrainModelOpenGL::drawObliqueVolumeCellOrFociFile(const VolumeFile::VOLUME_AXIS 
    pref->getSurfaceForegroundColor(noColorRed, noColorGreen, noColorBlue);
 
    const float halfVoxelSize = voxelSize * 0.6;
-   const bool fociFlag = (dynamic_cast<const FociFile*>(cf) != NULL);
    const bool contourCellFlag = (dynamic_cast<const ContourCellFile*>(cf) != NULL);
    
    //
    // Check for selection mode
    //
    bool selectFlag = false;
-   if (fociFlag) {
-      if (transformDataFileIndex >= 0) {
-         if (selectionMask & SELECTION_MASK_TRANSFORM_FOCI) {
-            glPushName(SELECTION_MASK_TRANSFORM_FOCI);
-            glPushName(transformDataFileIndex);
-            selectFlag = true;
-         }
-      }
-      else {
-         if (selectionMask & SELECTION_MASK_VOLUME_FOCI) {
-            glPushName(SELECTION_MASK_VOLUME_FOCI);
-            selectFlag = true;
-         }
-      }
-   }
-   else if (contourCellFlag) {
+   if (contourCellFlag) {
       if (transformDataFileIndex >= 0) {
          if (selectionMask & SELECTION_MASK_TRANSFORM_CONTOUR_CELL) {
             glPushName(SELECTION_MASK_TRANSFORM_CONTOUR_CELL);
@@ -5167,6 +5200,263 @@ BrainModelOpenGL::drawObliqueVolumeCellOrFociFile(const VolumeFile::VOLUME_AXIS 
 }
                                            
 /**
+ * Draw the oblique volume foci file.
+ * If "transformDataFileIndex" is greater than or equal to zero, the a 
+ * transform data (cell or foci) file is being drawn.
+ */
+void 
+BrainModelOpenGL::drawObliqueVolumeFociFile(const VolumeFile::VOLUME_AXIS axis,
+                                            const float voxelSize,
+                                            const TransformationMatrix* tm,
+                                            const float sliceCornerCoords[4][3])
+{
+   const FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+   const DisplaySettingsCells* dsf = brainSet->getDisplaySettingsFoci();
+   const FociColorFile* colorFile = brainSet->getFociColorFile();
+   
+   //
+   // Set color for cells/foci with missing colors
+   //
+   unsigned char noColorRed, noColorGreen, noColorBlue;
+   PreferencesFile* pref = brainSet->getPreferencesFile();
+   pref->getSurfaceForegroundColor(noColorRed, noColorGreen, noColorBlue);
+
+   const float halfVoxelSize = voxelSize * 0.6;
+   
+   //
+   // Check for selection mode
+   //
+   bool selectFlag = false;
+   if (selectionMask & SELECTION_MASK_VOLUME_FOCI) {
+      glPushName(SELECTION_MASK_VOLUME_FOCI);
+      selectFlag = true;
+   }
+   if ((selectFlag == false) && (selectionMask != SELECTION_MASK_OFF)) {
+      return;
+   }
+   
+   //
+   // Normal of plane
+   //
+   float planeNormal[3];
+   MathUtilities::computeNormal((float*)sliceCornerCoords[0],
+                              (float*)sliceCornerCoords[1],
+                              (float*)sliceCornerCoords[2],
+                              planeNormal);
+                              
+   //
+   // Draw cells larger when selecting on a flat surface
+   //
+   float cellSize = dsf->getDrawSize();
+
+   const int numCells = fpf->getNumberOfCellProjections();
+
+   if (numCells > 0) {
+      const int numColors = colorFile->getNumberOfColors();
+      for (int i = 0; i < numCells; i++) {
+         const CellProjection* cd = fpf->getCellProjection(i);
+         
+         ColorFile::ColorStorage::SYMBOL symbol = ColorFile::ColorStorage::SYMBOL_OPENGL_POINT;
+         const int colorIndex = cd->getColorIndex();
+         float pointSize = 1;
+         float lineSize  = 1;
+         unsigned char r = 0, g = 0, b = 0, alpha = 255;
+         if ((colorIndex >= 0) && (colorIndex < numColors)) {
+            const ColorFile::ColorStorage* cs = colorFile->getColor(colorIndex);
+            cs->getRgba(r, g, b, alpha);
+            lineSize = cs->getLineSize();
+            pointSize = cs->getPointSize();
+            symbol = cs->getSymbol();
+         }
+         else {
+            r = noColorRed;
+            g = noColorGreen;
+            b = noColorBlue;
+         }
+         
+         if (dsf->getSymbolOverride() != ColorFile::ColorStorage::SYMBOL_NONE) {
+            symbol = dsf->getSymbolOverride();
+         }
+         if (pointSize < 1) {
+            pointSize = 1;
+         }
+         
+         float size = pointSize * cellSize;
+         //
+         // Double size for highlighting
+         //
+         if (cd->getHighlightFlag()) {
+            size *= 2.0;
+         }
+         
+         float xyz[3];
+         cd->getVolumeXYZ(xyz);
+         if ((xyz[0] == 0.0) && (xyz[1] == 0.0) && (xyz[2] == 0.0)) {
+            continue;
+         }
+         
+         //
+         // Get distance and point on plane
+         //
+         float intersection[3];
+         float signedDistanceFromPlaneOut;
+         bool valid = MathUtilities::rayIntersectPlane(sliceCornerCoords[0],
+                                          sliceCornerCoords[1],
+                                          sliceCornerCoords[2],
+                                          xyz,
+                                          planeNormal,
+                                          intersection,
+                                          &signedDistanceFromPlaneOut);
+         if (signedDistanceFromPlaneOut < 0.0) {
+            signedDistanceFromPlaneOut = -signedDistanceFromPlaneOut;
+         }
+         if (valid) {
+            if (signedDistanceFromPlaneOut > halfVoxelSize) {
+               valid = false;
+            }
+         }
+         if (valid) {
+            //
+            // Undo screen to slice transformation
+            //
+            xyz[0] = intersection[0];
+            xyz[1] = intersection[1];
+            xyz[2] = intersection[2];
+            tm->inverseMultiplyPoint(xyz);
+            
+            //
+            // Convert to screen X/Y
+            //
+            float pt[3] = { xyz[0], xyz[1], xyz[2] };
+            switch (axis) {
+               case VolumeFile::VOLUME_AXIS_X:
+                  return;
+                  break;
+               case VolumeFile::VOLUME_AXIS_Y:
+                  return;
+                  break;
+               case VolumeFile::VOLUME_AXIS_Z:
+                  return;
+                  break;
+               case VolumeFile::VOLUME_AXIS_ALL:
+                  return;
+                  break;
+               case VolumeFile::VOLUME_AXIS_OBLIQUE:
+                  xyz[0] = pt[0];
+                  xyz[1] = pt[1];
+                  xyz[2] = 0.0;
+                  break;
+               case VolumeFile::VOLUME_AXIS_OBLIQUE_X:
+                  xyz[0] = pt[1];
+                  xyz[1] = pt[2];
+                  xyz[2] = 0.0;
+                  break;
+               case VolumeFile::VOLUME_AXIS_OBLIQUE_Y:
+                  xyz[0] = pt[0];
+                  xyz[1] = pt[2];
+                  xyz[2] = 0.0;
+                  break;
+               case VolumeFile::VOLUME_AXIS_OBLIQUE_Z:
+                  xyz[0] = pt[0];
+                  xyz[1] = pt[1];
+                  xyz[2] = 0.0;
+                  break;
+               case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
+                  break;
+               case VolumeFile::VOLUME_AXIS_UNKNOWN:
+                  break;
+            }
+            glColor3ub(r, g, b);
+            if (selectFlag) {
+               glPushName(i);
+               size *= 2;
+            }
+
+            if (alpha < 255) {
+               glEnable(GL_BLEND);
+               glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            }
+            switch (symbol) {
+               case ColorFile::ColorStorage::SYMBOL_OPENGL_POINT:
+                  //
+                  // Points must be at least 1.0 for OpenGL to draw something
+                  //
+                  size = std::max(size, 1.0f);
+                  glPointSize(getValidPointSize(size));
+                  glBegin(GL_POINTS);
+                     glVertex3f(xyz[0], xyz[1], xyz[2]);
+                  glEnd();
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_SPHERE:
+                  glEnable(GL_LIGHTING);
+                  glEnable(GL_COLOR_MATERIAL);
+                  glPushMatrix();
+                      glTranslatef(xyz[0], xyz[1], xyz[2]);
+                      drawSphere(size);
+                  glPopMatrix();
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_BOX:
+                  glEnable(GL_LIGHTING);
+                  glEnable(GL_COLOR_MATERIAL);
+                  glPushMatrix();
+                      glTranslatef(xyz[0], xyz[1], xyz[2]);
+                      glScalef(size, size, size);
+                      drawBox();
+                  glPopMatrix();
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_DIAMOND:
+                  glEnable(GL_LIGHTING);
+                  glEnable(GL_COLOR_MATERIAL);
+                  glPushMatrix();
+                      glTranslatef(xyz[0], xyz[1], xyz[2]);
+                      glScalef(size, size, size);
+                      drawDiamond();
+                  glPopMatrix();
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_DISK:
+                  glEnable(GL_LIGHTING);
+                  glEnable(GL_COLOR_MATERIAL);
+                  glPushMatrix();
+                      glTranslatef(xyz[0], xyz[1], xyz[2]);
+                      drawDisk(size);
+                  glPopMatrix();
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_RING:
+                  glEnable(GL_LIGHTING);
+                  glEnable(GL_COLOR_MATERIAL);
+                  glPushMatrix();
+                      glTranslatef(xyz[0], xyz[1], xyz[2]);
+                      glScalef(size, size, size);
+                      drawRing();
+                  glPopMatrix();
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_NONE:
+                  break;
+               case ColorFile::ColorStorage::SYMBOL_SQUARE:
+                  glEnable(GL_LIGHTING);
+                  glEnable(GL_COLOR_MATERIAL);
+                  glPushMatrix();
+                      glTranslatef(xyz[0], xyz[1], xyz[2]);
+                      glScalef(size, size, size);
+                      drawSquare();
+                  glPopMatrix();
+                  break;
+            }
+            if (selectFlag) {
+               glPopName();
+            }
+            glDisable(GL_BLEND);
+            glDisable(GL_LIGHTING);
+            glDisable(GL_COLOR_MATERIAL);   
+         }
+      }
+   }
+   if (selectFlag) {
+      glPopName();
+   }
+}
+
+/**
  * Draw the oblique volume contour file.
  */
 void 
@@ -5401,16 +5691,17 @@ BrainModelOpenGL::drawVolumeContourFile(const VolumeFile::VOLUME_AXIS axis,
 }
 
 /**
- * Draw the volume cell or foci file.
+ * Draw the volume cell file.
  */
 void 
-BrainModelOpenGL::drawVolumeCellOrFociFile(const CellFile* cf,
-                                           const DisplaySettingsCells* dsc,
-                                           const ColorFile* colorFile,
-                                           const VolumeFile::VOLUME_AXIS axis,
-                                           const float axisCoord,
-                                           const float voxelSize)
+BrainModelOpenGL::drawVolumeCellFile(const VolumeFile::VOLUME_AXIS axis,
+                                     const float axisCoord,
+                                     const float voxelSize)
 {
+   const CellFile* cf = brainSet->getVolumeCellFile();
+   const DisplaySettingsCells* dsc = brainSet->getDisplaySettingsCells();
+   const CellColorFile* colorFile = brainSet->getCellColorFile();
+   
    //
    // Set color for cells/foci with missing colors
    //
@@ -5419,23 +5710,14 @@ BrainModelOpenGL::drawVolumeCellOrFociFile(const CellFile* cf,
    pref->getSurfaceForegroundColor(noColorRed, noColorGreen, noColorBlue);
 
    const float halfVoxelSize = voxelSize * 0.6;
-   const bool fociFlag = (dynamic_cast<const FociFile*>(cf) != NULL);
    
    //
    // Check for selection mode
    //
    bool selectFlag = false;
-   if (fociFlag) {
-      if (selectionMask & SELECTION_MASK_VOLUME_FOCI) {
-         glPushName(SELECTION_MASK_VOLUME_FOCI);
-         selectFlag = true;
-      }
-   }
-   else {
-      if (selectionMask & SELECTION_MASK_VOLUME_CELL) {
-         glPushName(SELECTION_MASK_VOLUME_CELL);
-         selectFlag = true;
-      }
+   if (selectionMask & SELECTION_MASK_VOLUME_CELL) {
+      glPushName(SELECTION_MASK_VOLUME_CELL);
+      selectFlag = true;
    }
    if ((selectFlag == false) && (selectionMask != SELECTION_MASK_OFF)) {
       return;
@@ -5526,6 +5808,141 @@ BrainModelOpenGL::drawVolumeCellOrFociFile(const CellFile* cf,
             glDisable(GL_BLEND);
             glDisable(GL_LIGHTING);
             glDisable(GL_COLOR_MATERIAL);   
+         }
+      }
+   }
+   if (selectFlag) {
+      glPopName();
+   }
+}      
+
+/**
+ * Draw the volume foci file.
+ */
+void 
+BrainModelOpenGL::drawVolumeFociFile(const VolumeFile::VOLUME_AXIS axis,
+                                     const float axisCoord,
+                                     const float voxelSize)
+{
+   const FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+   const DisplaySettingsFoci* dsf = brainSet->getDisplaySettingsFoci();
+   const FociColorFile* colorFile = brainSet->getFociColorFile();
+   
+   //
+   // Set color for cells/foci with missing colors
+   //
+   unsigned char noColorRed, noColorGreen, noColorBlue;
+   PreferencesFile* pref = brainSet->getPreferencesFile();
+   pref->getSurfaceForegroundColor(noColorRed, noColorGreen, noColorBlue);
+
+   const float halfVoxelSize = voxelSize * 0.6;
+
+   //
+   // Check for selection mode
+   //
+   bool selectFlag = false;
+   if (selectionMask & SELECTION_MASK_VOLUME_FOCI) {
+      glPushName(SELECTION_MASK_VOLUME_FOCI);
+      selectFlag = true;
+   }
+   if ((selectFlag == false) && (selectionMask != SELECTION_MASK_OFF)) {
+      return;
+   }
+   
+   int axisIndex = 0;
+   switch (axis) {
+      case VolumeFile::VOLUME_AXIS_X:
+         axisIndex = 0;
+         break;
+      case VolumeFile::VOLUME_AXIS_Y:
+         axisIndex = 1;
+         break;
+      case VolumeFile::VOLUME_AXIS_Z:
+         axisIndex = 2;
+         break;
+      case VolumeFile::VOLUME_AXIS_ALL:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_X:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_Y:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_Z:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
+      case VolumeFile::VOLUME_AXIS_UNKNOWN:
+         return;
+         break;
+   } 
+
+   //
+   // Draw foci larger when selecting on a flat surface
+   //
+   float fociSize = dsf->getDrawSize();
+
+   const int numFoci = fpf->getNumberOfCellProjections();
+
+   if (numFoci > 0) {
+      const int numColors = colorFile->getNumberOfColors();
+      for (int i = 0; i < numFoci; i++) {
+         const CellProjection* focus = fpf->getCellProjection(i);
+         
+         if (focus->getDisplayFlag() == false) {
+            continue;
+         }
+                  
+         ColorFile::ColorStorage::SYMBOL symbol = ColorFile::ColorStorage::SYMBOL_OPENGL_POINT;
+         const int colorIndex = focus->getColorIndex();
+         float pointSize = 1;
+         float lineSize  = 1;
+         unsigned char r = 0, g = 0, b = 0, alpha = 255;
+         if ((colorIndex >= 0) && (colorIndex < numColors)) {
+            const ColorFile::ColorStorage* cs = colorFile->getColor(colorIndex);
+            cs->getRgba(r, g, b, alpha);
+            lineSize = cs->getLineSize();
+            pointSize = cs->getPointSize();
+            symbol = cs->getSymbol();
+         }
+         else {
+            r = noColorRed;
+            g = noColorGreen;
+            b = noColorBlue;
+         }
+         
+         if (dsf->getSymbolOverride() != ColorFile::ColorStorage::SYMBOL_NONE) {
+            symbol = dsf->getSymbolOverride();
+         }
+         if (pointSize < 1) {
+            pointSize = 1;
+         }
+         
+         float size = pointSize * fociSize;
+         
+         //
+         // Double size for highlighting
+         //
+         if (focus->getHighlightFlag()) {
+            size *= 2.0;
+         }
+
+         float xyz[3];
+         focus->getVolumeXYZ(xyz);
+         if ((xyz[0] != 0.0) || (xyz[1] != 0.0) || (xyz[2] != 0.0)) {
+            if (fabs(xyz[axisIndex] - axisCoord) < halfVoxelSize) {
+               convertVolumeItemXYZToScreenXY(axis, xyz);
+               glColor3ub(r, g, b);
+               if (selectFlag) {
+                  glPushName(i);
+               }
+
+               if (alpha < 255) {
+                  glEnable(GL_BLEND);
+                  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+               }
+               drawSymbol(symbol, xyz[0], xyz[1], xyz[2], size, NULL);
+               if (selectFlag) {
+                  glPopName();
+               }
+               glDisable(GL_BLEND);
+               glDisable(GL_LIGHTING);
+               glDisable(GL_COLOR_MATERIAL);   
+            }
          }
       }
    }
@@ -6279,7 +6696,7 @@ BrainModelOpenGL::createCylinderQuadricAndDisplayList()
    
    cylinderQuadric = gluNewQuadric();
 #ifdef Q_OS_MACX
-   gluQuadricCallback(cylinderQuadric, GLU_ERROR, (GLvoid (*)(...))quadricErrorCallback);
+   gluQuadricCallback(cylinderQuadric, GLU_ERROR, (GLvoid (*)())quadricErrorCallback);
 #endif
 #ifdef Q_OS_WIN32
    gluQuadricCallback(cylinderQuadric, GLU_ERROR, (void (__stdcall*)(void))quadricErrorCallback);
@@ -6339,7 +6756,7 @@ BrainModelOpenGL::createConeQuadricAndDisplayList()
    
    coneQuadric = gluNewQuadric();
 #ifdef Q_OS_MACX
-   gluQuadricCallback(coneQuadric, GLU_ERROR, (GLvoid (*)(...))quadricErrorCallback);
+   gluQuadricCallback(coneQuadric, GLU_ERROR, (GLvoid (*)())quadricErrorCallback);
 #endif
 #ifdef Q_OS_WIN32
    gluQuadricCallback(coneQuadric, GLU_ERROR, (void (__stdcall*)(void))quadricErrorCallback);
@@ -6399,7 +6816,7 @@ BrainModelOpenGL::createSphereQuadricAndDisplayList()
    
    sphereQuadric = gluNewQuadric();
 #ifdef Q_OS_MACX
-   gluQuadricCallback(sphereQuadric, GLU_ERROR, (GLvoid (*)(...))quadricErrorCallback);
+   gluQuadricCallback(sphereQuadric, GLU_ERROR, (GLvoid (*)())quadricErrorCallback);
 #endif
 #ifdef Q_OS_WIN32
    gluQuadricCallback(sphereQuadric, GLU_ERROR, (void (__stdcall*)(void))quadricErrorCallback);
@@ -6681,7 +7098,7 @@ BrainModelOpenGL::createDiskQuadricAndDisplayList()
    
    diskQuadric = gluNewQuadric();
 #ifdef Q_OS_MACX
-   gluQuadricCallback(diskQuadric, GLU_ERROR, (GLvoid (*)(...))quadricErrorCallback);
+   gluQuadricCallback(diskQuadric, GLU_ERROR, (GLvoid (*)())quadricErrorCallback);
 #endif
 #ifdef Q_OS_WIN32
    gluQuadricCallback(diskQuadric, GLU_ERROR, (void (__stdcall*)(void))quadricErrorCallback);
@@ -6849,7 +7266,7 @@ BrainModelOpenGL::createRingQuadricAndDisplayList()
    
    ringQuadric = gluNewQuadric();
 #ifdef Q_OS_MACX
-   gluQuadricCallback(ringQuadric, GLU_ERROR, (GLvoid (*)(...))quadricErrorCallback);
+   gluQuadricCallback(ringQuadric, GLU_ERROR, (GLvoid (*)())quadricErrorCallback);
 #endif
 #ifdef Q_OS_WIN32
    gluQuadricCallback(ringQuadric, GLU_ERROR, (void (__stdcall*)(void))quadricErrorCallback);
@@ -6908,7 +7325,7 @@ BrainModelOpenGL::createDiamondQuadricAndDisplayList()
    
    diamondQuadric = gluNewQuadric();
 #ifdef Q_OS_MACX
-   gluQuadricCallback(diamondQuadric, GLU_ERROR, (GLvoid (*)(...))quadricErrorCallback);
+   gluQuadricCallback(diamondQuadric, GLU_ERROR, (GLvoid (*)())quadricErrorCallback);
 #endif
 #ifdef Q_OS_WIN32
    gluQuadricCallback(diamondQuadric, GLU_ERROR, (void (__stdcall*)(void))quadricErrorCallback);
@@ -7326,32 +7743,29 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
    glDisable(GL_COLOR_MATERIAL);
 
    bool partialLighting = false;
-   bool lightPrimaryOverlay = false;
-   bool lightSecondaryOverlay = false;
-   bool lightUnderlay = false;
    
-   if (bs->getLightingOn()) {
-      //
-      // Do not light a flat surface
-      //
-      if ((s->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_FLAT) &&
-          (s->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         glEnable(GL_LIGHTING);
-         glEnable(GL_COLOR_MATERIAL);
+   //
+   // Do not light a flat surface
+   //
+   if ((s->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_FLAT) &&
+       (s->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
+      glEnable(GL_LIGHTING);
+      glEnable(GL_COLOR_MATERIAL);
 
-         lightPrimaryOverlay = bs->getPrimaryOverlayLightingOn();
-         lightSecondaryOverlay = bs->getSecondaryOverlayLightingOn();
-         lightUnderlay = bs->getUnderlayLightingOn();
-         if (lightPrimaryOverlay && lightSecondaryOverlay && lightUnderlay) {
-            // all lighting on
+      int numLightsOn = 0;
+      for (int i = 0; i < brainSet->getNumberOfSurfaceOverlays(); i++) {
+         if (brainSet->getSurfaceOverlay(i)->getLightingEnabled()) {
+            numLightsOn++;
          }
-         else if (lightPrimaryOverlay || lightSecondaryOverlay || lightUnderlay) {
+      }
+      if (numLightsOn > 0) {
+         if (numLightsOn < brainSet->getNumberOfSurfaceOverlays()) {
             partialLighting = true;
          }
-         else {
-            glDisable(GL_LIGHTING);
-            glDisable(GL_COLOR_MATERIAL);
-         }
+      }
+      else {
+         glDisable(GL_LIGHTING);
+         glDisable(GL_COLOR_MATERIAL);
       }
    }
    
@@ -7380,25 +7794,11 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
       
       for (int j = 0; j < numCoords; j++) {
          lightNodeFlag[j] = false;
-         switch(bs->getNodeColorSource(modelNumber, j)) {
-            case BrainModelSurfaceNodeColoring::NODE_COLOR_SOURCE_PRIMARY_OVERLAY:
-               if (lightPrimaryOverlay) {
-                  lightNodeFlag[j] = true;
-               }
-               break;
-            case BrainModelSurfaceNodeColoring::NODE_COLOR_SOURCE_SECONDARY_OVERLAY:
-               if (lightSecondaryOverlay) {
-                  lightNodeFlag[j] = true;
-               }
-               break;
-            case BrainModelSurfaceNodeColoring::NODE_COLOR_SOURCE_UNDERLAY:
-               if (lightUnderlay) {
-                  lightNodeFlag[j] = true;
-               }
-               break;
-            case BrainModelSurfaceNodeColoring::NODE_COLOR_SOURCE_MEDIAL_WALL_OVERRIDE:
+         const int nodeOverlayIndex = bs->getNodeColorSource(modelNumber, j);
+         if (nodeOverlayIndex >= 0) {
+            if (brainSet->getSurfaceOverlay(nodeOverlayIndex)->getLightingEnabled()) {
                lightNodeFlag[j] = true;
-               break;
+            }
          }
       }
       for (int k = 0; k < 2; k++) {
@@ -8016,17 +8416,114 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
          }
           
          //
-         // Only display cells on surfaces that are the same structure
+         // Skip cells/foci with invalid structures
          //
-         if ((cp->getCellStructure() != Structure::STRUCTURE_TYPE_INVALID) &&
-             (surfaceStructure != Structure::STRUCTURE_TYPE_INVALID)) {
-            if (cp->getCellStructure() != surfaceStructure) {
-               if (dsc->getDisplayCellsOnCorrectHemisphereOnly()) {
-                  continue;
+         const Structure::STRUCTURE_TYPE cellStructure = cp->getCellStructure();
+         if ((cellStructure == Structure::STRUCTURE_TYPE_INVALID) ||
+             (surfaceStructure == Structure::STRUCTURE_TYPE_INVALID)) {
+            continue;
+         }
+         
+         //
+         // Using cell structure, determine on which surfaces the
+         // cells should be displayed
+         //
+         // From DVE 28 FEB 2008
+         //    In the Foci Main page, when 'show foci on correct hemisphere only' 
+         //    is selected, all cerebellar foci should be displayed only on the 
+         //    cerebellum; Cerebellum_Left-Cerebral or Cerebellum_Right-Cerebral 
+         //    should be displayed on both the cerebellum and the appropriate 
+         //    cerebral hemisphere.  If 'show foci on correct hemisphere only' 
+         //    is DE-selected, the cerebellar foci should still be shown ONLY on 
+         //    the cerebellum.  
+         //   
+         //
+         bool displayOnLeftSurface = false;
+         bool displayOnRightSurface = false;
+         bool displayOnCerebellumSurface = false;
+         switch (cellStructure) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               displayOnLeftSurface = true;
+               if (dsc->getDisplayCellsOnCorrectHemisphereOnly() == false) {
+                  displayOnRightSurface = true;
                }
-            }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               if (dsc->getDisplayCellsOnCorrectHemisphereOnly()) {
+                  displayOnLeftSurface = true;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               displayOnRightSurface = true;
+               if (dsc->getDisplayCellsOnCorrectHemisphereOnly() == false) {
+                  displayOnLeftSurface = true;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               if (dsc->getDisplayCellsOnCorrectHemisphereOnly()) {
+                  displayOnRightSurface = true;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               displayOnCerebellumSurface = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+               if (dsc->getDisplayCellsOnCorrectHemisphereOnly()) {
+                  displayOnCerebellumSurface = true;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               if (dsc->getDisplayCellsOnCorrectHemisphereOnly()) {
+                  displayOnCerebellumSurface = true;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_INVALID:
+               break;
          }
 
+         //
+         // Skip over foci inappropriate for surface structure
+         //
+         switch (surfaceStructure) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               if (displayOnLeftSurface == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               continue;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               if (displayOnRightSurface == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               continue;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+               if ((displayOnLeftSurface == false) &&
+                   (displayOnRightSurface == false)) {
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               if (displayOnCerebellumSurface == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+                continue;
+                break;
+           case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               continue;
+               break;
+            case Structure::STRUCTURE_TYPE_INVALID:
+               continue;
+               break;
+         }
+         
          ColorFile::ColorStorage::SYMBOL symbol = ColorFile::ColorStorage::SYMBOL_OPENGL_POINT;
          const int colorIndex = cp->getColorIndex();
          float pointSize = 1;
@@ -8545,9 +9042,8 @@ BrainModelOpenGL::drawShapePalette(const int modelNumber)
    }
    
    BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-   if ((bsnc->getPrimaryOverlay(modelNumber)   != BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) &&
-       (bsnc->getSecondaryOverlay(modelNumber) != BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) &&
-       (bsnc->getUnderlay(modelNumber)         != BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE)) {
+   if (brainSet->isASurfaceOverlay(modelNumber,
+             BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE) == false) {
       return;
    }
 
@@ -8764,7 +9260,11 @@ BrainModelOpenGL::drawShapePalette(const int modelNumber)
       
       float minShape = -1.0;
       float maxShape = 1.0;
-      ssf->getColumnColorMappingMinMax(dsss->getSelectedDisplayColumn(modelNumber), minShape, maxShape);
+      const int col = dsss->getShapeColumnForPaletteAndColorMapping();
+      if (col < 0) {
+         return;
+      }
+      ssf->getColumnColorMappingMinMax(col, minShape, maxShape);
 
       //
       // do everything in pixel display
@@ -8856,11 +9356,9 @@ BrainModelOpenGL::drawMetricPalette(const int modelNumber,
    }
    
    bool displayIt = false;
-   BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
    if (surfaceFlag) {
-      if ((bsnc->getPrimaryOverlay(modelNumber)   == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-          (bsnc->getSecondaryOverlay(modelNumber) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-          (bsnc->getUnderlay(modelNumber)         == BrainModelSurfaceNodeColoring::OVERLAY_METRIC)) {
+      if (brainSet->isASurfaceOverlay(modelNumber,
+              BrainModelSurfaceOverlay::OVERLAY_METRIC)) {
          displayIt = true;
       }
    }
@@ -9073,43 +9571,27 @@ BrainModelOpenGL::drawMetricPalette(const int modelNumber,
             }
          }
       }
-     
+           
+      float posMinMetric = 0.0, posMaxMetric = 0.0, negMinMetric = 0.0, negMaxMetric = 0.0;
+      int displayColumn, thresholdColumn;
+      dsm->getMetricsForColoringAndPalette(displayColumn,
+                                          thresholdColumn,
+                                          negMaxMetric,
+                                          negMinMetric,
+                                          posMinMetric,
+                                          posMaxMetric);                                          
       //
       // Are thresholds shown in green 
       //
       if (dsm->getShowSpecialColorForThresholdedNodes()) {
-         const int threshCol = dsm->getSelectedThresholdColumn(modelNumber);
-         if ((threshCol >= 0) && (threshCol < mf->getNumberOfColumns())) {
+         if ((thresholdColumn >= 0) &&
+             (thresholdColumn < mf->getNumberOfColumns())) {
             unsigned char negColor[3];
             unsigned char posColor[3];
             dsm->getSpecialColorsForThresholdedNodes(negColor, posColor);
-            
+
             float negThresh, posThresh;
-            mf->getColumnThresholding(threshCol, negThresh, posThresh);
-            
-            float posMinMetric = 0.0, posMaxMetric = 0.0, negMinMetric = 0.0, negMaxMetric = 0.0;
-            switch (dsm->getSelectedOverlayScale()) {
-               case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER:
-                  dsm->getUserScaleMinMax(posMinMetric, posMaxMetric, negMinMetric, negMaxMetric);
-                  break;
-               case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC:
-                  if (mf->getNumberOfColumns() > 0)  {
-                     mf->getDataColumnMinMax(dsm->getSelectedDisplayColumn(modelNumber), 
-                                             negMaxMetric, posMaxMetric);
-                  }
-                  break;
-               case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
-                  {
-                     BrainModelVolume* bmv = brainSet->getBrainModelVolume();
-                     if (bmv != NULL) {
-                        VolumeFile* vf = bmv->getSelectedVolumeFunctionalViewFile();
-                        if (vf != NULL) {
-                           vf->getMinMaxVoxelValues(negMaxMetric, posMaxMetric);
-                        }
-                     }
-                  }
-                  break;
-            }
+            mf->getColumnThresholding(thresholdColumn, negThresh, posThresh);
             
             if (negThresh < 0.0) {
                if (negMaxMetric < 0.0) {
@@ -9148,30 +9630,6 @@ BrainModelOpenGL::drawMetricPalette(const int modelNumber,
                   &maxX, &winY, &winZ);                 
          gluProject(-halfWidth, 0.0, 0.0, modelMatrix, projMatrix, viewport,
                   &minX, &winY, &winZ);                 
-         
-         float posMinMetric = 0.0, posMaxMetric = 0.0, negMinMetric = 0.0, negMaxMetric = 0.0;
-         switch (dsm->getSelectedOverlayScale()) {
-            case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER:
-               dsm->getUserScaleMinMax(posMinMetric, posMaxMetric, negMinMetric, negMaxMetric);
-               break;
-            case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC:
-               if (mf->getNumberOfColumns() > 0)  {
-                  mf->getDataColumnMinMax(dsm->getSelectedDisplayColumn(modelNumber), 
-                                          negMaxMetric, posMaxMetric);
-               }
-               break;
-            case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
-               {
-                  BrainModelVolume* bmv = brainSet->getBrainModelVolume();
-                  if (bmv != NULL) {
-                     VolumeFile* vf = bmv->getSelectedVolumeFunctionalViewFile();
-                     if (vf != NULL) {
-                        vf->getMinMaxVoxelValues(negMaxMetric, posMaxMetric);
-                     }
-                  }
-               }
-               break;
-         }
          
          //
          // do everything in pixel display
@@ -9277,6 +9735,41 @@ BrainModelOpenGL::drawMetricPalette(const int modelNumber,
       glPopMatrix(); 
    }
 }   
+
+/**
+ * draw main window caption.
+ */
+void 
+BrainModelOpenGL::drawMainWindowCaption()
+{
+   if (mainWindowCaption.isEmpty()) {
+      return;
+   }
+   
+   glDisable(GL_DEPTH_TEST);
+   
+   PreferencesFile* prf = brainSet->getPreferencesFile();
+   unsigned char rf, gf, bf;
+   prf->getSurfaceForegroundColor(rf, gf, bf);
+   glColor3ub(rf, gf, bf);
+   
+   //
+   // Font for drawing numbers
+   //
+   const int fontHeight = 18;
+   QFont font("times", fontHeight);
+   QFontMetrics fontMetrics(font);
+   const int halfWidth = static_cast<int>(fontMetrics.width(mainWindowCaption) * 0.5);
+   const int fontX = static_cast<int>(viewport[0] + (viewport[2] * 0.50))
+                   - halfWidth;
+   const int fontY = static_cast<int>(viewport[1] + (viewport[3] * 0.90));
+   
+   if (glWidget != NULL) {
+      glWidget->renderText(fontX, fontY, mainWindowCaption, font);
+   }
+      
+   glEnable(GL_DEPTH_TEST);
+}      
 
 /**
  * Display a QImage in the OpenGL window.
@@ -9433,13 +9926,17 @@ BrainModelOpenGL::drawVtkModelFile(VtkModelFile* vmf, const int modelNum)
    TransformationMatrixFile* tmf = brainSet->getTransformationMatrixFile();
    
    bool drawModelFlag = false;
-   bool doingSelectionFlag = false;
+   bool doingSelectionAnyFlag = false;
+   bool doingSelectionTrianglesFlag = false;
+   bool doingSelectionVerticesFlag = false;
    if (vmf->getDisplayFlag()) {
       drawModelFlag = true;
       if (selectionMask != SELECTION_MASK_OFF) {
          if (selectionMask & SELECTION_MASK_VTK_MODEL) {
             if (modelNum >= 0) {
-               doingSelectionFlag = true;
+               doingSelectionAnyFlag      = true;
+               doingSelectionVerticesFlag = true;
+               doingSelectionTrianglesFlag = true;
             }
          }
          else {
@@ -9457,7 +9954,8 @@ BrainModelOpenGL::drawVtkModelFile(VtkModelFile* vmf, const int modelNum)
       
       glPushMatrix();
       {
-         if (doingSelectionFlag) {
+         if (doingSelectionTrianglesFlag
+             || doingSelectionAnyFlag) {
             glPushName(SELECTION_MASK_VTK_MODEL);
             glPushName(modelNum);
          }
@@ -9485,68 +9983,74 @@ BrainModelOpenGL::drawVtkModelFile(VtkModelFile* vmf, const int modelNum)
             else {
                glDisable(GL_LIGHTING);
                glDisable(GL_COLOR_MATERIAL);
-            }            
-            const int numPolys = vmf->getNumberOfPolygons();
-            for (int i = 0; i < numPolys; i++) {
-               const VtkModelFile::VtkModelObject* poly = vmf->getPolygon(i);
-               glBegin(GL_POLYGON);
-                  const int num = poly->getNumberOfItems();
-                  const int* pts = poly->getPointIndex(0);
-                  for (int n = 0; n < num; n++) {
-                     const int p3 = pts[n] * 3;
-                     const int p4 = pts[n] * 4;
-                     unsigned char alpha = colors[p4+3];
-                     if (alphaOverride < 255) {
-                        alpha = alphaOverride;
+            } 
+            if (dsm->getShowPolygons()) {           
+               const int numPolys = vmf->getNumberOfPolygons();
+               for (int i = 0; i < numPolys; i++) {
+                  const VtkModelFile::VtkModelObject* poly = vmf->getPolygon(i);
+                  glBegin(GL_POLYGON);
+                     const int num = poly->getNumberOfItems();
+                     const int* pts = poly->getPointIndex(0);
+                     for (int n = 0; n < num; n++) {
+                        const int p3 = pts[n] * 3;
+                        const int p4 = pts[n] * 4;
+                        unsigned char alpha = colors[p4+3];
+                        if (alphaOverride < 255) {
+                           alpha = alphaOverride;
+                        }
+                        glColor4ub(colors[p4], colors[p4+1], colors[p4+2], alpha);
+                        glNormal3fv(&normals[p3]);
+                        glVertex3fv(&coords[p3]);
                      }
-                     glColor4ub(colors[p4], colors[p4+1], colors[p4+2], alpha);
-                     glNormal3fv(&normals[p3]);
-                     glVertex3fv(&coords[p3]);
-                  }
-               glEnd();
+                  glEnd();
+               }
             }
             
             //
             // Draw triangles
             //
-            const int numTriangles = vmf->getNumberOfTriangles();
-            if (numTriangles > 0) {
-               for (int i = 0; i < numTriangles; i++) {
-                  if (doingSelectionFlag) {
-                     glPushName(i);
-                  }
-                  glBegin(GL_TRIANGLES);
-                     const int* t = vmf->getTriangle(i);
-                     const int p1 = t[0] * 3;
-                     const int p2 = t[1] * 3;
-                     const int p3 = t[2] * 3;
-                     const int p14 = t[0] * 4;
-                     const int p24 = t[1] * 4;
-                     const int p34 = t[2] * 4;
-                     
-                     unsigned char alpha1 = colors[p14+3];
-                     unsigned char alpha2 = colors[p24+3];
-                     unsigned char alpha3 = colors[p34+3];
-                     if (alphaOverride < 255) {
-                        alpha1 = alphaOverride;
-                        alpha2 = alphaOverride;
-                        alpha3 = alphaOverride;
+            if (dsm->getShowTriangles()) {
+               const int numTriangles = vmf->getNumberOfTriangles();
+               if (numTriangles > 0) {
+                  for (int i = 0; i < numTriangles; i++) {
+                     if (doingSelectionTrianglesFlag) {
+                        glPushName(GL_TRIANGLES);  // selecting triangles
+                        glPushName(i);
                      }
-                     
-                     glColor4ub(colors[p14], colors[p14+1], colors[p14+2], alpha1);
-                     glNormal3fv(&normals[p1]);
-                     glVertex3fv(&coords[p1]);
-                     
-                     glColor4ub(colors[p24], colors[p24+1], colors[p24+2], alpha2);
-                     glNormal3fv(&normals[p2]);
-                     glVertex3fv(&coords[p2]);
-                     
-                     glColor4ub(colors[p34], colors[p34+1], colors[p34+2], alpha3);
-                     glNormal3fv(&normals[p3]);
-                     glVertex3fv(&coords[p3]);
-                  glEnd();
-                  if (doingSelectionFlag) {
-                     glPopName();
+                     glBegin(GL_TRIANGLES);
+                        const int* t = vmf->getTriangle(i);
+                        const int p1 = t[0] * 3;
+                        const int p2 = t[1] * 3;
+                        const int p3 = t[2] * 3;
+                        const int p14 = t[0] * 4;
+                        const int p24 = t[1] * 4;
+                        const int p34 = t[2] * 4;
+                        
+                        unsigned char alpha1 = colors[p14+3];
+                        unsigned char alpha2 = colors[p24+3];
+                        unsigned char alpha3 = colors[p34+3];
+                        if (alphaOverride < 255) {
+                           alpha1 = alphaOverride;
+                           alpha2 = alphaOverride;
+                           alpha3 = alphaOverride;
+                        }
+                        
+                        glColor4ub(colors[p14], colors[p14+1], colors[p14+2], alpha1);
+                        glNormal3fv(&normals[p1]);
+                        glVertex3fv(&coords[p1]);
+                        
+                        glColor4ub(colors[p24], colors[p24+1], colors[p24+2], alpha2);
+                        glNormal3fv(&normals[p2]);
+                        glVertex3fv(&coords[p2]);
+                        
+                        glColor4ub(colors[p34], colors[p34+1], colors[p34+2], alpha3);
+                        glNormal3fv(&normals[p3]);
+                        glVertex3fv(&coords[p3]);
+                     glEnd();
+                     if (doingSelectionTrianglesFlag) {
+                        glPopName();
+                        glPopName();
+                     }
                   }
                }
             }
@@ -9562,25 +10066,27 @@ BrainModelOpenGL::drawVtkModelFile(VtkModelFile* vmf, const int modelNum)
                glDisable(GL_LIGHTING);
                glDisable(GL_COLOR_MATERIAL);
             }
-            const int numLines = vmf->getNumberOfLines();
-            glLineWidth(getValidLineWidth(dsm->getLineWidth()));
-            for (int i = 0; i < numLines; i++) {
-               const VtkModelFile::VtkModelObject* line = vmf->getLine(i);
-               glBegin(GL_LINE_STRIP);
-                  const int num = line->getNumberOfItems();
-                  const int* pts = line->getPointIndex(0);
-                  for (int n = 0; n < num; n++) {
-                     const int p3 = pts[n] * 3;
-                     const int p4 = pts[n] * 4;
-                     unsigned char alpha = colors[p4+3];
-                     if (alphaOverride < 255) {
-                        alpha = alphaOverride;
+            if (dsm->getShowLines()) {
+               const int numLines = vmf->getNumberOfLines();
+               glLineWidth(getValidLineWidth(dsm->getLineWidth()));
+               for (int i = 0; i < numLines; i++) {
+                  const VtkModelFile::VtkModelObject* line = vmf->getLine(i);
+                  glBegin(GL_LINE_STRIP);
+                     const int num = line->getNumberOfItems();
+                     const int* pts = line->getPointIndex(0);
+                     for (int n = 0; n < num; n++) {
+                        const int p3 = pts[n] * 3;
+                        const int p4 = pts[n] * 4;
+                        unsigned char alpha = colors[p4+3];
+                        if (alphaOverride < 255) {
+                           alpha = alphaOverride;
+                        }
+                        glColor4ub(colors[p4], colors[p4+1], colors[p4+2], alpha);
+                        glNormal3fv(&normals[p3]);
+                        glVertex3fv(&coords[p3]);
                      }
-                     glColor4ub(colors[p4], colors[p4+1], colors[p4+2], alpha);
-                     glNormal3fv(&normals[p3]);
-                     glVertex3fv(&coords[p3]);
-                  }
-               glEnd();
+                  glEnd();
+               }
             }
             
             
@@ -9595,25 +10101,35 @@ BrainModelOpenGL::drawVtkModelFile(VtkModelFile* vmf, const int modelNum)
                glDisable(GL_LIGHTING);
                glDisable(GL_COLOR_MATERIAL);
             }
-            const int numVerts = vmf->getNumberOfVertices();
-            const float s = dsm->getVertexSize() * 0.5;
-            const int* verts = vmf->getVertex(0);
-            for (int i = 0; i < numVerts; i++) {
-               const int p3 = verts[i] * 3;
-               const int p4 = verts[i] * 4;
-               unsigned char alpha = colors[p4+3];
-               if (alphaOverride < 255) {
-                  alpha = alphaOverride;
+            if (dsm->getShowVertices()) {
+               const int numVerts = vmf->getNumberOfVertices();
+               const float s = dsm->getVertexSize() * 0.5;
+               for (int i = 0; i < numVerts; i++) {
+                  const int pointNumber = *vmf->getVertex(i);
+                  const int p3 = pointNumber * 3;
+                  const int p4 = pointNumber * 4;
+                  unsigned char alpha = colors[p4+3];
+                  if (alphaOverride < 255) {
+                     alpha = alphaOverride;
+                  }
+                  glPushMatrix();
+                     if (doingSelectionVerticesFlag) {
+                        glPushName(GL_POINTS);  // selecting points
+                        glPushName(i);
+                     }
+                     glColor4ub(colors[p4], colors[p4+1], colors[p4+2], alpha);
+                     glTranslatef(coords[p3], coords[p3+1], coords[p3+2]);
+                     drawSphere(s);
+                     if (doingSelectionVerticesFlag) {
+                        glPopName();
+                        glPopName();
+                     }
+                  glPopMatrix();
                }
-               glPushMatrix();
-                  glColor4ub(colors[p4], colors[p4+1], colors[p4+2], alpha);
-                  glTranslatef(coords[p3], coords[p3+1], coords[p3+2]);
-                  drawSphere(s);
-               glPopMatrix();
             }
          }
          
-         if (doingSelectionFlag) {
+         if (doingSelectionAnyFlag) {
             glPopName();
             glPopName();
          }
@@ -10474,7 +10990,39 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
       //if ((dynamic_cast<BrainModelSurfaceAndVolume*>(bm) == NULL) &&
       //         (dynamic_cast<BrainModelSurface*>(bm) != NULL)) {
       if (dynamic_cast<BrainModelSurface*>(bm) != NULL) {
-         BrainModelSurface* bms = bs->getActiveFiducialSurface();
+         BrainModelSurface* bms = dynamic_cast<BrainModelSurface*>(bm);
+         switch (bms->getStructure().getType()) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               bms = bs->getLeftFiducialVolumeInteractionSurface();
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               bms = bs->getRightFiducialVolumeInteractionSurface();
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+               bms = NULL;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               bms = bs->getCerebellumFiducialVolumeInteractionSurface();
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+               bms = NULL;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               bms = NULL;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               bms = NULL;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               bms = NULL;
+               break;
+            case Structure::STRUCTURE_TYPE_INVALID:
+               bms = NULL;
+               break;
+         }
+         if (bms == NULL) {
+            bms = bs->getActiveFiducialSurface();
+         }
          const int nodeNumber = selectedNode.getItemIndex1();
          if ((bms != NULL) && (nodeNumber >= 0)) {
             //
@@ -10598,25 +11146,68 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
                                           xyz);
                   
                   //
-                  // Find fiducial coordinate file
+                  // Find closest fiducial/volume interaction surface
                   //
-                  BrainModelSurface* bms = bs->getActiveFiducialSurface();
-                  if (bms != NULL) {
+                  float fiducialDistance = std::numeric_limits<float>::max();
+                  int fiducialNodeNumber = -1;
+                  BrainModelSurface* fiducialBMS;
+                  BrainModelSurface* leftBMS = bs->getLeftFiducialVolumeInteractionSurface();
+                  if (leftBMS != NULL) {
                      //
-                     // Find nearest node
+                     // Find nearest node 
                      //
-                     const CoordinateFile* cf = bms->getCoordinateFile();
+                     const CoordinateFile* cf = leftBMS->getCoordinateFile();
                      const int node = cf->getCoordinateIndexClosestToPoint(xyz[0], xyz[1], xyz[2]);
-                     
+                     if (node >= 0) {
+                        const float dist = cf->getDistanceToPoint(node, xyz);
+                        if (dist < fiducialDistance) {
+                           fiducialDistance = dist;
+                           fiducialNodeNumber = node;
+                           fiducialBMS = leftBMS;
+                        }
+                     }
+                  }
+                  BrainModelSurface* rightBMS = bs->getRightFiducialVolumeInteractionSurface();
+                  if (rightBMS != NULL) {
+                     //
+                     // Find nearest node 
+                     //
+                     const CoordinateFile* cf = rightBMS->getCoordinateFile();
+                     const int node = cf->getCoordinateIndexClosestToPoint(xyz[0], xyz[1], xyz[2]);
+                     if (node >= 0) {
+                        const float dist = cf->getDistanceToPoint(node, xyz);
+                        if (dist < fiducialDistance) {
+                           fiducialDistance = dist;
+                           fiducialNodeNumber = node;
+                           fiducialBMS = rightBMS;
+                        }
+                     }
+                  }
+                  BrainModelSurface* cerebellumBMS = bs->getCerebellumFiducialVolumeInteractionSurface();
+                  if (cerebellumBMS != NULL) {
+                     //
+                     // Find nearest node 
+                     //
+                     const CoordinateFile* cf = cerebellumBMS->getCoordinateFile();
+                     const int node = cf->getCoordinateIndexClosestToPoint(xyz[0], xyz[1], xyz[2]);
+                     if (node >= 0) {
+                        const float dist = cf->getDistanceToPoint(node, xyz);
+                        if (dist < fiducialDistance) {
+                           fiducialDistance = dist;
+                           fiducialNodeNumber = node;
+                           fiducialBMS = cerebellumBMS;
+                        }
+                     }
+                  }
+                   
+                  if (fiducialNodeNumber >= 0) {
                      //
                      // Highlight nearest node
                      //
-                     if (node > 0) {
-                        selectedNode.reset(bs,
-                                           bms,
-                                           viewingWindowNumber);
-                        selectedNode.setItemIndex1(node);
-                     }
+                     selectedNode.reset(bs,
+                                        fiducialBMS,
+                                        viewingWindowNumber);
+                     selectedNode.setItemIndex1(fiducialNodeNumber);
                   }
                }
             }
@@ -10630,9 +11221,8 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
          const int modelIndex = bm->getBrainModelIndex();
          BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
          DisplaySettingsCoCoMac* dsc = brainSet->getDisplaySettingsCoCoMac();
-         if ((bsnc->getPrimaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
-             (bsnc->getSecondaryOverlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) ||
-             (bsnc->getUnderlay(modelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC)) {
+         if (brainSet->isASurfaceOverlay(modelIndex,
+                             BrainModelSurfaceOverlay::OVERLAY_COCOMAC)) {
             if (selectedNode.getItemIndex1() >= 0) {
                dsc->setSelectedNode(selectedNode.getItemIndex1());
             }
@@ -11010,9 +11600,9 @@ BrainModelOpenGL::processSelectedItems(const int numItems)
             break;
          case SELECTION_MASK_VOLUME_FOCI:
             if (index1 >= 0) {
-               CellFile* cf = brainSet->getVolumeFociFile();
-               CellData* cell = cf->getCell(index1);
-               cell->getXYZ(objectPos);
+               FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+               CellProjection* focus = fpf->getCellProjection(index1);
+               focus->getVolumeXYZ(objectPos);
                objectPosValid = true;
             }
             break;
@@ -11219,7 +11809,7 @@ BrainModelOpenGL::processSelectedItems(const int numItems)
             {
                if ((index1 >= 0) && (index1 < brainSet->getNumberOfVtkModelFiles())) {
                   VtkModelFile* vmf = brainSet->getVtkModelFile(index1);
-                  vmf->getTriangleCoordinate(index2, objectPos);
+                  vmf->getTriangleCoordinate(index3, objectPos);
                   
                   const TransformationMatrixFile* tmf = brainSet->getTransformationMatrixFile();
                   const TransformationMatrix* tm = vmf->getAssociatedTransformationMatrix();
@@ -11401,7 +11991,7 @@ BrainModelOpenGL::processSelectedItems(const int numItems)
                case SELECTION_MASK_VTK_MODEL:
                   selectedVtkModel.replaceIfCloser(minDepth, dist,
                                     BrainModelOpenGLSelectedItem::ITEM_TYPE_VTK_MODEL,
-                                    index1, index2);
+                                    index1, index2, index3);
                   break;
                case SELECTION_MASK_OFF:
                case SELECTION_MASK_ALL:

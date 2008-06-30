@@ -35,13 +35,14 @@
 #include "MathUtilities.h"
 #include "MetricFile.h"
 #include "TopologyFile.h"
+#include "TopologyHelper.h"
 #include "ValueIndexSort.h"
 
 /**
  * Constructor.
  */
 BrainModelSurfaceMetricClustering::BrainModelSurfaceMetricClustering(BrainSet* bs,
-                                    BrainModelSurface* bmsIn,
+                                    const BrainModelSurface* bmsIn,
                                     MetricFile* metricFileIn,
                                     const CLUSTER_ALGORITHM algorithmIn,
                                     const int inputColumnIn, 
@@ -54,21 +55,21 @@ BrainModelSurfaceMetricClustering::BrainModelSurfaceMetricClustering(BrainSet* b
                                     const float clusterPositiveMinimumThresholdIn,
                                     const float clusterPositiveMaximumThresholdIn,
                                     const bool outputAllClustersFlagIn)
-   : BrainModelAlgorithm(bs)
+   : BrainModelAlgorithm(bs),
+     bms(bmsIn),
+     metricFile(metricFileIn),
+     algorithm (algorithmIn),
+     inputColumn(inputColumnIn),
+     outputColumn(outputColumnIn),
+     outputColumnName(outputColumnNameIn),
+     minimumNumberOfNodes(minimumNumberOfNodesIn),
+     minimumSurfaceArea(minimumSurfaceAreaIn),
+     clusterNegativeMinimumThreshold(clusterNegativeMinimumThresholdIn),
+     clusterNegativeMaximumThreshold(clusterNegativeMaximumThresholdIn),
+     clusterPositiveMinimumThreshold(clusterPositiveMinimumThresholdIn),
+     clusterPositiveMaximumThreshold(clusterPositiveMaximumThresholdIn),
+     outputAllClustersFlag(outputAllClustersFlagIn)
 {
-   bms = bmsIn;
-   metricFile = metricFileIn;
-   algorithm  = algorithmIn;
-   inputColumn = inputColumnIn;
-   outputColumn = outputColumnIn;
-   outputColumnName = outputColumnNameIn;
-   minimumNumberOfNodes = minimumNumberOfNodesIn;
-   minimumSurfaceArea = minimumSurfaceAreaIn;
-   clusterNegativeMinimumThreshold = clusterNegativeMinimumThresholdIn;
-   clusterNegativeMaximumThreshold = clusterNegativeMaximumThresholdIn;
-   clusterPositiveMinimumThreshold = clusterPositiveMinimumThresholdIn;
-   clusterPositiveMaximumThreshold = clusterPositiveMaximumThresholdIn;
-   outputAllClustersFlag = outputAllClustersFlagIn;
 }
 
 /**
@@ -122,18 +123,26 @@ BrainModelSurfaceMetricClustering::execute() throw (BrainModelAlgorithmException
    nodeWithinThresholds.resize(numNodes);
    
    //
+   // Get a toplogy helper
+   //
+   const TopologyFile* tf = bms->getTopologyFile();
+   const TopologyHelper* th = tf->getTopologyHelper(false, true, false);
+   
+   //
    // Find nodes that are within thresholds
    //
    for (int i = 0; i < numNodes; i++) {
       nodeWithinThresholds[i] = false;
-      float v = metricFile->getValue(i, outputColumn);
-      if ((v >= clusterPositiveMinimumThreshold) && 
-          (v <= clusterPositiveMaximumThreshold)) {
-         nodeWithinThresholds[i] = true;
-      }
-      if ((v <= clusterNegativeMinimumThreshold) && 
-          (v >= clusterNegativeMaximumThreshold)) {
-         nodeWithinThresholds[i] = true;
+      if (th->getNodeHasNeighbors(i)) {
+         float v = metricFile->getValue(i, outputColumn);
+         if ((v >= clusterPositiveMinimumThreshold) && 
+             (v <= clusterPositiveMaximumThreshold)) {
+            nodeWithinThresholds[i] = true;
+         }
+         if ((v <= clusterNegativeMinimumThreshold) && 
+             (v >= clusterNegativeMaximumThreshold)) {
+            nodeWithinThresholds[i] = true;
+         }
       }
    }
    

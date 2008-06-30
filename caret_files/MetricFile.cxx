@@ -1782,11 +1782,11 @@ MetricFile::smoothAverageNeighbors(const int column,
    //
    // Add comments describing smoothing
    //
-   QString smoothComment(getColumnComment(smoothColumn));
+   QString smoothComment(getColumnComment(column));
    if (smoothComment.isEmpty() == false) {
       smoothComment.append("\n");
-      smoothComment.append("Average Neighbors Smoothing: \n");
    }
+   smoothComment.append("Average Neighbors Smoothing: \n");
    smoothComment.append("   Stength/Iterations: ");
    smoothComment.append(StringUtilities::fromNumber(strength));
    smoothComment.append(" ");

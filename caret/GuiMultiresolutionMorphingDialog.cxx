@@ -41,6 +41,8 @@
 #include <QSpinBox>
 #include <QToolTip>
 
+#include "BorderProjectionFile.h"
+#include "BrainModelBorderSet.h"
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainSet.h"
@@ -61,8 +63,9 @@
 GuiMultiresolutionMorphingDialog::GuiMultiresolutionMorphingDialog(QWidget* parent, 
             BrainModelSurfaceMultiresolutionMorphing* morphObjectIn,
             const bool parametersOnlyModeIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    morphObject = morphObjectIn;
    morphingSurfaceType = morphObjectIn->getMorphingSurfaceType();
    parametersOnlyMode  = parametersOnlyModeIn;
@@ -499,7 +502,7 @@ GuiMultiresolutionMorphingDialog::slotEditCycleSpinBoxOldValue()
  */
 QWidget*
 GuiMultiresolutionMorphingDialog::createSurfaceSection()
-{
+{   
    //
    // reference surface
    //
@@ -522,7 +525,20 @@ GuiMultiresolutionMorphingDialog::createSurfaceSection()
                                                                  "",
                                                                  0,
                                                                  "morphingSurfaceComboBox");
-   morphingSurfaceComboBox->setSelectedBrainModel(theMainWindow->getBrainModelSurface());
+   const BrainModelSurface* mainBMS = theMainWindow->getBrainModelSurface();
+   morphingSurfaceComboBox->setSelectedBrainModel(mainBMS);
+   switch (morphingSurfaceType) {
+      case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
+         if (mainBMS->getIsFlatSurface() == false) {
+            morphingSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(BrainModelSurface::SURFACE_TYPE_FLAT);
+         }
+         break;
+      case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
+         if (mainBMS->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
+            morphingSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
+         }
+         break;
+   }
 
    //
    // Group box and layout
@@ -682,6 +698,23 @@ QWidget*
 GuiMultiresolutionMorphingDialog::createMiscSection()
 {
    //
+   // Central Sulcus Landmark
+   //
+   alignSurfaceCheckBox = new QCheckBox("Align to CeS Landmark");
+   alignSurfaceCheckBox->setChecked(true);
+   cesLandmarkNameLineEdit = new QLineEdit;
+   cesLandmarkNameLineEdit->setText("LANDMARK.CentralSulcus");
+   cesLandmarkNameLineEdit->setToolTip("If there is a border with this name,\n"
+                                       "it will be used to automatically \n"
+                                       "align the surface at the conclusion\n"
+                                       "of multi-resolution morphing.");
+   QHBoxLayout* cesLayout = new QHBoxLayout;
+   cesLayout->addWidget(alignSurfaceCheckBox);
+   cesLayout->addWidget(cesLandmarkNameLineEdit);
+   cesLayout->setStretchFactor(alignSurfaceCheckBox, 0);
+   cesLayout->setStretchFactor(cesLandmarkNameLineEdit, 100);
+   
+   //
    // delete temporary files check box
    //
    deleteTempFilesCheckBox = new QCheckBox("Delete Temporary Files");
@@ -717,6 +750,8 @@ GuiMultiresolutionMorphingDialog::createMiscSection()
    if (pointSphericalTilesOutwardCheckBox != NULL) {
       miscLayout->addWidget(pointSphericalTilesOutwardCheckBox);
    }
+   miscLayout->addLayout(cesLayout);
+   
    return miscGroupBox;
 }
 
@@ -785,14 +820,27 @@ GuiMultiresolutionMorphingDialog::done(int r)
    }
    
    //
+   // Get the border projection file and look for the central sulcus border
+   //
+   BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+   BorderProjectionFile bpf;
+   BorderProjection* centralSulcusBorderProjection = NULL;
+   if (alignSurfaceCheckBox->isChecked()) {
+      const QString centralSulcusBorderProjectionName = cesLandmarkNameLineEdit->text().trimmed();
+      bmbs->copyBordersToBorderProjectionFile(bpf);
+      centralSulcusBorderProjection = 
+         bpf.getFirstBorderProjectionByName(centralSulcusBorderProjectionName);
+   }
+   
+   //
    // Create the morphing object
    //
    BrainModelSurfaceMultiresolutionMorphing bsmm(theMainWindow->getBrainSet(),
                                                 referenceSurface,
                                                 morphingSurface,
-                                                morphingSurfaceType);
+                                                morphingSurfaceType,
+                                                centralSulcusBorderProjection);
    
-                                                               
    //
    // Copy the saved parameters to the morphing object
    //
@@ -831,7 +879,8 @@ GuiMultiresolutionMorphingDialog::done(int r)
    }
    if (haveCrossovers) {
       BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-      bsnc->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS);
+      theMainWindow->getBrainSet()->getPrimarySurfaceOverlay()->setOverlay(
+                                            -1, BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS);
       bsnc->assignColors();
    }
    
@@ -844,6 +893,11 @@ GuiMultiresolutionMorphingDialog::done(int r)
                                                       morphingSurfaceType, theMainWindow);
    mmd->show();
    
+   //
+   // Clear modification status of borders
+   //                                     
+   bmbs->setAllModifiedStatus(false);
+                          
    //
    // Notify about modified files and redraw all displays
    //

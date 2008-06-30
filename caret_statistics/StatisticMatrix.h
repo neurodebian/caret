@@ -98,6 +98,9 @@ class StatisticMatrix {
       /// get the inverse of a matrix
       StatisticMatrix inverse() const throw (StatisticException);
       
+      /// get the psueo inverse of a matrix
+      StatisticMatrix inversePseudo() const throw (StatisticException);
+      
       /// multiply by a matrix (this * matrixIn)
       StatisticMatrix multiply(const StatisticMatrix& sm) const throw (StatisticException);
       

@@ -31,6 +31,7 @@
 
 class BrainModelSurface;
 class BrainModelSurfaceROINodeSelection;
+class PaintFile;
 
 /// class for starting at a node, moving as far as possible in specified direction along mesh 
 class BrainModelSurfaceFindExtremum : public BrainModelAlgorithm {
@@ -54,7 +55,25 @@ class BrainModelSurfaceFindExtremum : public BrainModelAlgorithm {
          /// move negative Z
          DIRECTION_Z_NEGATIVE,
          /// move positive Z
-         DIRECTION_Z_POSITIVE
+         DIRECTION_Z_POSITIVE,
+      };
+      
+      /// paint operation
+      enum PAINT_OPERATION {
+         /// no paint operation
+         PAINT_OPERATION_NONE,
+         /// move until paint identity changes
+         PAINT_OPERATION_STOP_WHEN_PAINT_ID_CHANGES
+      };
+      
+      /// normal restriction
+      enum NORMAL_RESTRICTION {
+         /// no restriction
+         NORMAL_RESTRICTION_NONE,
+         /// restrict to negative normals
+         NORMAL_RESTRICTION_NEGATIVE,
+         /// restrict to positive normals
+         NORMAL_RESTRICTION_POSITIVE
       };
       
       // constructor
@@ -75,9 +94,30 @@ class BrainModelSurfaceFindExtremum : public BrainModelAlgorithm {
                                     const float maximumMovementYIn,
                                     const float maximumMovementZIn);
                                     
+      // constructor
+      BrainModelSurfaceFindExtremum(BrainSet* brainSetIn,
+                                    BrainModelSurface* bmsIn,
+                                    const DIRECTION searchDirectionIn,
+                                    const int startNodeNumberIn,
+                                    const float maximumMovementXIn,
+                                    const float maximumMovementYIn,
+                                    const float maximumMovementZIn,
+                                    const PaintFile* paintFileIn,
+                                    const int paintColumnNumberIn,
+                                    const int paintIndexIn,
+                                    const PAINT_OPERATION paintOperationIn);
+                                    
       // destructor
       ~BrainModelSurfaceFindExtremum();
       
+      // restrict nodes to those in the roi
+      void setNodeRestrictionWithROI(const BrainModelSurfaceROINodeSelection* restrictToROIIn);
+      
+      // restrict nodes to those with normals of specified signs
+      void setNodeNormalRestriction(const NORMAL_RESTRICTION xNormalRestrictionIn,
+                                    const NORMAL_RESTRICTION yNormalRestrictionIn,
+                                    const NORMAL_RESTRICTION zNormalRestrictionIn);
+                                    
       // get the extremum node that was found (-1 if invalid)
       int getExtremumNode() const { return extremumNode; }
       
@@ -95,6 +135,9 @@ class BrainModelSurfaceFindExtremum : public BrainModelAlgorithm {
       bool withinMovementAllowance(const float x,
                                    const float y,
                                    const float z) const;
+      
+      /// check the node's normal
+      bool checkNodeNormal(const float* normalVector) const;
       
       /// the surface 
       BrainModelSurface* bms;
@@ -122,6 +165,24 @@ class BrainModelSurfaceFindExtremum : public BrainModelAlgorithm {
       
       /// nodes in path to extremum
       std::vector<int> nodesInPathToExtremum;
+      
+      /// paint operation
+      PAINT_OPERATION paintOperation;
+      
+      /// paint file
+      PaintFile* paintFile;
+      
+      /// paint column number
+      int paintColumnNumber;
+      
+      /// paint index
+      int paintIndex;
+      
+      /// normal restrictions
+      NORMAL_RESTRICTION normalRestriction[3];
+      
+      /// search ROI restriction
+      BrainModelSurfaceROINodeSelection* restrictToROI;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_FIND_EXTREMUM_H__

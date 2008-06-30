@@ -43,6 +43,8 @@ class StereotaxicSpace {
          SPACE_AFNI_TALAIRACH,
          /// FLIRT space
          SPACE_FLIRT,
+         /// FLIRT 222 space
+         SPACE_FLIRT_222,
          /// macaque atlas
          SPACE_MACAQUE_F6,
          /// Macaque F99

@@ -54,7 +54,7 @@
  * constructor.
  */
 GuiCopySpecFileDialog::GuiCopySpecFileDialog(QWidget* parent, PreferencesFile* pref)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    preferencesFile = pref;
    

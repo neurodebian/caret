@@ -34,11 +34,16 @@
  * The constructor.
  */
 DisplaySettingsPaint::DisplaySettingsPaint(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      bs->getPaintFile(),
+                                      NULL,
+                                      BrainModelSurfaceOverlay::OVERLAY_PAINT,
+                                      true,
+                                      false)
 {
    medialWallOverrideColumn = -1;
    medialWallOverrideEnabled = false;
-   applySelectionToLeftAndRightStructuresFlag = false;
+   geographyBlending = 0.6;
    reset();
 }
 
@@ -55,7 +60,7 @@ DisplaySettingsPaint::~DisplaySettingsPaint()
 void
 DisplaySettingsPaint::reset()
 {
-   selectedColumn.clear();
+   DisplaySettingsNodeAttributeFile::reset();
 }
 
 /**
@@ -64,95 +69,8 @@ DisplaySettingsPaint::reset()
 void
 DisplaySettingsPaint::update()
 {
-   updateSelectedColumnIndices(brainSet->getPaintFile(), selectedColumn);
+   DisplaySettingsNodeAttributeFile::update();
    updateSelectedColumnIndex(brainSet->getPaintFile(), medialWallOverrideColumn);
-}
-
-/**
- * Get the column selected for display.
- * Returns -1 if there are no paint columns.
- */
-int
-DisplaySettingsPaint::getSelectedColumn(const int modelIn) const
-{
-   if (selectedColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return selectedColumn[model]; 
-}
-
-/**
- * set column for display.
- */
-void 
-DisplaySettingsPaint::setSelectedColumn(const int model, const int sdc) 
-{ 
-   if (applySelectionToLeftAndRightStructuresFlag) {
-      PaintFile* pf = brainSet->getPaintFile();
-      if ((sdc >= 0) && (sdc < pf->getNumberOfColumns())) {
-         int leftCol = -1;
-         int rightCol = -1;
-         QString name = pf->getColumnName(sdc).toLower().trimmed();
-         if (name.indexOf("left") >= 0) {
-            leftCol = sdc;
-            const QString rightName = name.replace("left", "right");
-            for (int i = 0; i < pf->getNumberOfColumns(); i++) {
-               if (pf->getColumnName(i).toLower().trimmed() == rightName) {
-                  rightCol = i;
-                  break;
-               }
-            }
-         }
-         else if (name.indexOf("right") >= 0) {
-            rightCol = sdc;
-            const QString leftName = name.replace("right", "left");
-            for (int i = 0; i < pf->getNumberOfColumns(); i++) {
-               if (pf->getColumnName(i).toLower().trimmed() == leftName) {
-                  leftCol = i;
-                  break;
-               }
-            }
-         }
-         
-         for (int i = 0; i < brainSet->getNumberOfBrainModels(); i++) {
-            const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-            if (bms != NULL) {
-               switch (bms->getStructure().getType()) {
-                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-                     if (leftCol >= 0) {
-                        selectedColumn[i] = leftCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-                     if (rightCol >= 0) {
-                        selectedColumn[i] = rightCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-                     break;
-                  case Structure::STRUCTURE_TYPE_CEREBELLUM:
-                     break;
-                  case Structure::STRUCTURE_TYPE_INVALID:
-                     break;
-               }
-            }
-         }
-      }
-   }
-   else {
-      if (model < 0) {
-         std::fill(selectedColumn.begin(), selectedColumn.end(), sdc);
-      }
-      else {
-         selectedColumn[model] = sdc; 
-      }
-   }
 }
 
 static const QString paintColumnID("paint-column");
@@ -170,12 +88,11 @@ DisplaySettingsPaint::showScene(const SceneFile::Scene& scene, QString& errorMes
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsPaint") {
-         showSceneNodeAttribute(*sc,
-                                paintColumnID,
-                                pf,
-                                "Paint File",
-                                selectedColumn,
-                                errorMessage);
+         showSceneSelectedColumns(*sc,
+                                  "Paint File",
+                                  paintColumnID,
+                                  "",
+                                  errorMessage);
 
          const int num = sc->getNumberOfSceneInfo();
          for (int i = 0; i < num; i++) {
@@ -185,8 +102,8 @@ DisplaySettingsPaint::showScene(const SceneFile::Scene& scene, QString& errorMes
             if (infoName == "medialWallOverrideEnabled") {
                si->getValue(medialWallOverrideEnabled);
             }
-            else if (infoName == "applySelectionToLeftAndRightStructuresFlag") {
-               applySelectionToLeftAndRightStructuresFlag = si->getValueAsBool();
+            else if (infoName == "geographyBlending") {
+               si->getValue(geographyBlending);
             }
             else if (infoName == paintMedWallColumnID) {
                const QString columnName = si->getValueAsString();
@@ -206,7 +123,8 @@ DisplaySettingsPaint::showScene(const SceneFile::Scene& scene, QString& errorMes
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    PaintFile* pf = brainSet->getPaintFile();
    
@@ -215,22 +133,19 @@ DisplaySettingsPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelect
          return;
       }
       
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_PAINT) == false) {
+      if (brainSet->isASurfaceOverlayForAnySurface(
+                           BrainModelSurfaceOverlay::OVERLAY_PAINT) == false) {
          return;
       }
    }
    SceneFile::SceneClass sc("DisplaySettingsPaint");
    
-   saveSceneNodeAttribute(sc,
-                          paintColumnID,
-                          pf,
-                          selectedColumn);
+   saveSceneSelectedColumns(sc);
                           
    sc.addSceneInfo(SceneFile::SceneInfo("medialWallOverrideEnabled",
                                         medialWallOverrideEnabled));
-   sc.addSceneInfo(SceneFile::SceneInfo("applySelectionToLeftAndRightStructuresFlag",
-                                        applySelectionToLeftAndRightStructuresFlag));
+   sc.addSceneInfo(SceneFile::SceneInfo("geographyBlending",
+                                        geographyBlending));
                                         
    if ((medialWallOverrideColumn >= 0) && 
        (medialWallOverrideColumn < pf->getNumberOfColumns())) {
@@ -241,16 +156,3 @@ DisplaySettingsPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelect
    scene.addSceneClass(sc);
 }
                        
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-bool 
-DisplaySettingsPaint::columnSelectionsAreTheSame(const int bm1, const int bm2) const
-{
-   return (selectedColumn[bm1] == selectedColumn[bm2]);
-}      
-
-

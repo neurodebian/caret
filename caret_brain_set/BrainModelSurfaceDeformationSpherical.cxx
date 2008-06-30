@@ -119,7 +119,7 @@ BrainModelSurfaceDeformationSpherical::loadRegularSphere() throw (BrainModelAlgo
    //
    QString specFileName(brainSet->getCaretHomeDirectory());
    specFileName.append("/");
-   specFileName.append("REGISTER.SPHERE");
+   specFileName.append("data_files/REGISTER.SPHERE");
    specFileName.append("/");  
    switch(deformationMapFile->getSphereResolution()) {
       case 20:
@@ -359,7 +359,8 @@ BrainModelSurfaceDeformationSpherical::tessellateTargetBordersIntoDeformationSph
    // Set node coloring overlay to paint
    //
    BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-   bsnc->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_PAINT);
+   brainSet->getPrimarySurfaceOverlay()->setOverlay(-1,
+                        BrainModelSurfaceOverlay::OVERLAY_PAINT);
    bsnc->assignColors();
    
    //

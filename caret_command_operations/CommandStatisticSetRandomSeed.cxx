@@ -35,7 +35,7 @@
  */
 CommandStatisticSetRandomSeed::CommandStatisticSetRandomSeed()
    : CommandBase("-statistic-set-random-seed",
-                 "STATISTIC SET RANDOM SEED")
+                 "STATISTICS SET RANDOM SEED")
 {
 }
 

@@ -28,14 +28,14 @@
 #define __VE_GUI_COMMUNICATOR_CONNECT_DIALOG_H__
 
 #include <QString>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLineEdit;
 class QSpinBox;
 
 /// This class is used to connect to other programs via sockets.
-class GuiCommunicatorClientConnectDialog : public QtDialog {
+class GuiCommunicatorClientConnectDialog : public WuQDialog {
    Q_OBJECT
    
    public:

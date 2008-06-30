@@ -381,7 +381,8 @@ DisplaySettingsVolume::sceneSelectedVolumeHelper(SceneFile::SceneClass& sceneCla
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsVolume::saveScene(SceneFile::Scene& scene, const bool onlyIfSelectedFlag)
+DisplaySettingsVolume::saveScene(SceneFile::Scene& scene, const bool onlyIfSelectedFlag,
+                             QString& /*errorMessage*/)
 {
    if (onlyIfSelectedFlag) {
       const int numVolumes =

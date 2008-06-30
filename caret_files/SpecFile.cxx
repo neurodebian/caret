@@ -168,7 +168,7 @@ SpecFile::SpecFile()
    fociFile.initialize("Foci File", fociFileTag, Entry::FILE_TYPE_OTHER);
    fociColorFile.initialize("Foci Color File", fociColorFileTag, Entry::FILE_TYPE_OTHER);
    fociProjectionFile.initialize("Foci Projection File", fociProjectionFileTag, Entry::FILE_TYPE_OTHER);
-   volumeFociFile.initialize("Volume Foci File", volumeFociFileTag, Entry::FILE_TYPE_OTHER);
+   fociSearchFile.initialize("Foci Search File", fociSearchFileTag, Entry::FILE_TYPE_OTHER);
    
    paramsFile.initialize("Params File", paramsFileTag, Entry::FILE_TYPE_OTHER);
    deformationMapFile.initialize("Deformation Map File", deformationMapFileTag, Entry::FILE_TYPE_SURFACE);
@@ -335,7 +335,7 @@ SpecFile::updateAllEntries()
    allEntries.push_back(&fociFile);
    allEntries.push_back(&fociColorFile);
    allEntries.push_back(&fociProjectionFile);
-   allEntries.push_back(&volumeFociFile);
+   allEntries.push_back(&fociSearchFile);
    
    allEntries.push_back(&paramsFile);
    allEntries.push_back(&deformationMapFile);
@@ -497,7 +497,7 @@ SpecFile::copyHelperSpecFile(const SpecFile& sf)
    fociFile = sf.fociFile;
    fociColorFile = sf.fociColorFile;
    fociProjectionFile = sf.fociProjectionFile;
-   volumeFociFile = sf.volumeFociFile;
+   fociSearchFile = sf.fociSearchFile;
    
    paramsFile = sf.paramsFile;
    deformationMapFile = sf.deformationMapFile;
@@ -571,6 +571,41 @@ SpecFile::clear()
    // DO NOT CLEAR THESE
    // allEntries
 }   
+
+/**
+ * clean the spec file (remove entries for files that do not exist).
+ */
+bool 
+SpecFile::cleanSpecFile()
+{
+   //
+   // Save the current directory
+   //
+   const QString savedDirectory(QDir::currentPath());
+   
+   //
+   // Set to spec file's directory
+   //
+   const QString fn(getFileName());
+   if (fn.isEmpty() == false) {
+      QDir::setCurrent(FileUtilities::dirname(fn));
+   }
+   
+   //
+   // Loop through entries
+   //
+   bool fileRemovedFlag = false;
+   for (unsigned int j = 0; j < allEntries.size(); j++) {
+      fileRemovedFlag |= allEntries[j]->cleanup();
+   }
+      
+   //
+   // Restore the current directory
+   //
+   QDir::setCurrent(savedDirectory);
+   
+   return fileRemovedFlag;
+}      
 
 /**
  * Remove files from the spec file and possibly the files themselves on the disk.
@@ -1235,7 +1270,7 @@ SpecFile::processTag(const std::vector<QString>& tokens)
       }
    }
    
-   std::cout << "Unknown Spec File tag moved to header: " << tag.toAscii().constData() << std::endl;
+   //std::cout << "Unknown Spec File tag moved to header: " << tag.toAscii().constData() << std::endl;
    std::ostringstream str;
    str << stString.toAscii().constData() << " "
        << filename.toAscii().constData() << " "
@@ -2157,10 +2192,14 @@ SpecFile::Entry::prependPath(const QString& path,
 void 
 SpecFile::Entry::getAllFiles(std::vector<QString>& allFiles)
 {
+   allFiles.clear();
+   
    for (unsigned int i = 0; i < files.size(); i++) {
       allFiles.push_back(files[i].filename);
       if (files[i].dataFileName.isEmpty() == false) {
-         allFiles.push_back(files[i].dataFileName);
+         if (files[i].dataFileName.isEmpty() == false) {
+            allFiles.push_back(files[i].dataFileName);
+         }
       }
    }
 }
@@ -2206,6 +2245,29 @@ SpecFile::Entry::getNumberOfFilesSelected() const
       }
    }
    return cnt;
+}
+
+/**
+ * clean up this entry (remove entries for files that do not exist).
+ */
+bool 
+SpecFile::Entry::cleanup()
+{
+   std::vector<Files> temp;
+   
+   for (unsigned int i = 0; i < files.size(); i++) {
+      QFileInfo fi1(files[i].filename);
+      if (fi1.exists()) {
+         temp.push_back(files[i]);
+      }
+   }
+   
+   if (temp.size() != files.size()) {
+      files = temp;
+      return true;
+   }
+   
+   return false;
 }
 
 /**

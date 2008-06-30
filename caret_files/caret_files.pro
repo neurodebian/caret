@@ -28,12 +28,10 @@ HEADERS += AbstractFile.h \
 	   BrainVoyagerFile.h \
 	   ByteSwapping.h \
       CaretScriptFile.h \
-      CellBase.h \
       CellClass.h \
       CellColorFile.h \
       CellFile.h \
       CellProjectionFile.h \
-      CellProjectionFileSaxReader.h \ 
 	   CellStudyInfo.h \
       CocomacConnectivityFile.h \
       CommaSeparatedValueFile.h \
@@ -50,6 +48,7 @@ HEADERS += AbstractFile.h \
       FociColorFile.h \  
       FociFile.h \
       FociProjectionFile.h \
+      FociSearchFile.h \
 	   FreeSurferCurvatureFile.h \
 	   FreeSurferFunctionalFile.h \
 	   FreeSurferLabelFile.h \
@@ -69,6 +68,7 @@ HEADERS += AbstractFile.h \
       LatLonFile.h \
       MDPlotFile.h \
       MetricFile.h \
+      MniObjSurfaceFile.h \
       NeurolucidaFile.h \
       NiftiHelper.h \
       NodeAttributeFile.h \
@@ -127,7 +127,6 @@ SOURCES += AbstractFile.cxx \
       CellColorFile.cxx \
       CellFile.cxx \
       CellProjectionFile.cxx \
-      CellProjectionFileSaxReader.cxx \ 
 	   CellStudyInfo.cxx \
       CocomacConnectivityFile.cxx \
       ColorFile.cxx \
@@ -144,6 +143,7 @@ SOURCES += AbstractFile.cxx \
       FociColorFile.cxx \
       FociFile.cxx \
       FociProjectionFile.cxx \
+      FociSearchFile.cxx \
 	   FreeSurferCurvatureFile.cxx \
 	   FreeSurferFunctionalFile.cxx \
 	   FreeSurferLabelFile.cxx \
@@ -163,6 +163,7 @@ SOURCES += AbstractFile.cxx \
       LatLonFile.cxx \
       MDPlotFile.cxx \
       MetricFile.cxx \
+      MniObjSurfaceFile.cxx \
       NeurolucidaFile.cxx \
       NiftiHelper.cxx \
       NodeAttributeFile.cxx \

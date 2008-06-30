@@ -26,7 +26,7 @@
 #ifndef __GUI_VOLUME_RECONSTRUCTION_DIALOG_H__
 #define __GUI_VOLUME_RECONSTRUCTION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QComboBox;
@@ -35,14 +35,14 @@ class QGroupBox;
 class VolumeFile;
 
 /// Dialog for constructing a surface from a volume
-class GuiVolumeReconstructionDialog : public QtDialog {
+class GuiVolumeReconstructionDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       
       /// Constructor
       GuiVolumeReconstructionDialog(QWidget* parent, VolumeFile* segmentationVolumeFileIn,
-                                    bool modal = true, Qt::WFlags f = 0);
+                                    bool modalFlag = true, Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiVolumeReconstructionDialog();
@@ -55,6 +55,16 @@ class GuiVolumeReconstructionDialog : public QtDialog {
       void slotSurfaceTypeComboBox(int item);
       
    private:
+      /// surface type
+      enum SURFACE_TYPE {
+         /// brain model surface
+         SURFACE_TYPE_BRAIN_MODEL = 0,
+         /// solid structure
+         SURFACE_TYPE_SOLID_STRUCTURE,
+         /// visualization toolkit model
+         SURFACE_TYPE_VTK_MODEL
+      };
+      
       /// segmentation volume being reconstructed
       VolumeFile* segmentationVolumeFile;
       

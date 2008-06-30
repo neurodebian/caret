@@ -28,14 +28,14 @@
 /*LICENSE_END*/
 
 #include "CaretTips.h"
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QPushButton;
 class QTextEdit;
 
 /// dialog for displaying caret tips
-class GuiCaretTipsDialog : public QtDialogNonModal {
+class GuiCaretTipsDialog : public WuQDialog {
    Q_OBJECT
    
    public:

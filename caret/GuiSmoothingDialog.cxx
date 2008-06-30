@@ -54,11 +54,13 @@
  * Constructor.
  */
 GuiSmoothingDialog::GuiSmoothingDialog(QWidget* parent, 
-                                       const bool modal,
+                                       const bool modalFlag,
                                        const bool showOtherSmoothingOptions,
                                        std::vector<bool>* smoothOnlyTheseNodesIn)
-   : QtDialog(parent, modal)
+   : WuQDialog(parent)
 {
+   setModal(modalFlag);
+   smoothingSurface = NULL;
    setWindowTitle("Smoothing");
    
    smoothOnlyTheseNodes = smoothOnlyTheseNodesIn;
@@ -394,6 +396,15 @@ GuiSmoothingDialog::~GuiSmoothingDialog()
 }
 
 /**
+ * set the smoothing surface (if not set, does smooths main window surface).
+ */
+void 
+GuiSmoothingDialog::setSmoothingSurface(BrainModelSurface* smoothingSurfaceIn)
+{
+   smoothingSurface = smoothingSurfaceIn;
+}
+      
+/**
  * Slot for OK or Cancel button in modal mode.
  */
 void
@@ -536,7 +547,10 @@ GuiSmoothingDialog::doSmoothing()
       numberOfThreads = threadsSpinBox->value();
    }
 
-   BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
+   BrainModelSurface* bms = smoothingSurface;
+   if (bms == NULL) {
+      bms = theMainWindow->getBrainModelSurface();
+   }
    if (bms != NULL) {
    
       //

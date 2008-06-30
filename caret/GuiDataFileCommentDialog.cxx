@@ -61,7 +61,7 @@
  */
 GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent, 
                                                    AbstractFile* af)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    
@@ -139,7 +139,7 @@ GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
  */
 GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
                                                    BrainModelBorderFileInfo* bfi)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    initialize();
@@ -151,7 +151,7 @@ GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
    QString numBorderString("Number of Borders: ");
    numBorderString.append(StringUtilities::fromNumber(bmbs->getNumberOfBorders()));
    std::vector<QString> nameSet;
-   bmbs->getAllBorderNames(nameSet);
+   bmbs->getAllBorderNames(nameSet, false);
    nameSet.insert(nameSet.begin(), numBorderString);
    
    //
@@ -182,7 +182,7 @@ GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
 GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent, 
                                                    NodeAttributeFile* naf,
                                                    int nodeAttributeFileColumnIn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    initialize();
@@ -228,7 +228,7 @@ GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
 GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent, 
                                                    GiftiNodeDataFile* naf,
                                                    int nodeAttributeFileColumnIn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    initialize();
 
@@ -273,7 +273,7 @@ GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
 GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent, 
                                                    const QString& fileName,
                                                    const bool volumeFileFlag)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    initialize();
 
@@ -587,7 +587,9 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
    // Create the text browser that allows hyperlinks (read only)
    //
    textBrowser = new GuiHyperLinkTextBrowser(0);
+   tabWidget->blockSignals(true);
    tabWidget->addTab(textBrowser, "View Comment");
+   tabWidget->blockSignals(false);
    textBrowser->setReadOnly(true);
    QObject::connect(textBrowser, SIGNAL(keyPressed()),
                     this, SLOT(slotTextBrowserKeyPress()));
@@ -596,7 +598,9 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
    // Create the text editor for editing the comment
    //
    textEditor = new QTextEdit;
+   tabWidget->blockSignals(true);
    tabWidget->addTab(textEditor, "Edit Comment");   
+   tabWidget->blockSignals(false);
    if (viewCommentOnly) {
       tabWidget->setTabEnabled(tabWidget->indexOf(textEditor), false);
    }
@@ -614,7 +618,9 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
          {
             QWidget* vbox = new QWidget;
             headerTagGridLayout = new QGridLayout(vbox);
+            tabWidget->blockSignals(true);
             tabWidget->addTab(vbox, "Header");
+            tabWidget->blockSignals(false);
             if (viewCommentOnly) {
                tabWidget->setTabEnabled(tabWidget->indexOf(vbox), false);
             }
@@ -626,7 +632,9 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
    
    if (namesList.empty() == false) {
       QListWidget* lb = new QListWidget;
+      tabWidget->blockSignals(true);
       tabWidget->addTab(lb, "Names");
+      tabWidget->blockSignals(false);
       for (std::vector<QString>::const_iterator iter = namesList.begin();
            iter != namesList.end(); iter++) {
          lb->addItem(*iter);
@@ -753,6 +761,7 @@ GuiDataFileCommentDialog::slotCloseDialog()
                   if (volumes.size() > 0) {
                      volumes[0]->setFileComment(textEditor->toPlainText());
                      VolumeFile::writeFile(volumeFileOnDisk->getFileName(),
+                                           volumeFileOnDisk->getVolumeType(),
                                            volumeFileOnDisk->getVoxelDataType(),
                                            volumes,
                                            volumeFileOnDisk->getDataFileWasZipped());

@@ -40,7 +40,7 @@
 #include "GuiGraphWidget.h"
 #include "GuiHistogramDisplayDialog.h"
 #include "StatisticHistogram.h"
-#include "QtSaveWidgetAsImagePushButton.h"
+#include "WuQSaveWidgetAsImagePushButton.h"
 #include "QtUtilities.h"
 #include "StatisticDataGroup.h"
 
@@ -51,11 +51,12 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
                                        const QString& titleCaption,
                                        const std::vector<float>& values,
                                        const bool showGrayWhitePeaks,
-                                       const bool modal, 
-                                       Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                       const bool modalFlag, 
+                                       Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
-   if (modal == false) {
+   setModal(true);
+   if (modalFlag == false) {
       //
       // Delete this dialog when user presses close button
       //
@@ -269,9 +270,8 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
    //
    // Save as Image button
    //
-   QtSaveWidgetAsImagePushButton* saveAsImageButton = 
-              new QtSaveWidgetAsImagePushButton("Save As Image...",
-                                                0,
+   WuQSaveWidgetAsImagePushButton* saveAsImageButton = 
+              new WuQSaveWidgetAsImagePushButton("Save As Image...",
                                                 histogramLayoutWidget);
    buttonsLayout->addWidget(saveAsImageButton);
    saveAsImageButton->setFixedSize(saveAsImageButton->sizeHint());

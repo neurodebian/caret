@@ -54,6 +54,7 @@
 #undef __COLOR_FILE_EDITOR_MAIN__
 
 #include "QtUtilities.h"
+#include "WuQDataEntryDialog.h"
 #include "global_variables.h"
 
 /**
@@ -69,9 +70,10 @@ GuiColorFileEditorDialog::GuiColorFileEditorDialog(QWidget* parent,
                                                    const bool showSymbol,
                                                    const bool modalFlag,
                                                    const bool deleteWhenClosed) :
-   QtDialog(parent, modalFlag)
+   WuQDialog(parent)
 
 {
+   setModal(modalFlag);
    if (deleteWhenClosed) {
       setAttribute(Qt::WA_DeleteOnClose);
    }
@@ -122,6 +124,15 @@ GuiColorFileEditorDialog::GuiColorFileEditorDialog(QWidget* parent,
    newColorButton->setAutoDefault(false);
    QObject::connect(newColorButton, SIGNAL(clicked()),
                     this, SLOT(newColorButtonSlot()));
+   
+   //
+   // Change color name button
+   //
+   QPushButton* changeColorNameButton = new QPushButton("Change Name...");
+   newDeleteButtonBoxLayout->addWidget(changeColorNameButton);
+   changeColorNameButton->setAutoDefault(false);
+   QObject::connect(changeColorNameButton, SIGNAL(clicked()),
+                    this, SLOT(changeColorNameButtonSlot()));
    
    //
    // Delete color button
@@ -532,35 +543,90 @@ GuiColorFileEditorDialog::newColorButtonSlot()
 }
 
 /**
+ * called when change color name button is pressed.
+ */
+void 
+GuiColorFileEditorDialog::changeColorNameButtonSlot()
+{
+   if (currentColorFileIndex >= 0) {
+      const QString name = colorFile->getColorNameByIndex(currentColorFileIndex);
+      
+      //
+      // Get the new name
+      //
+      WuQDataEntryDialog ded(this);
+      ded.setWindowTitle("Edit Color Name");
+      QLineEdit* nameLineEdit = ded.addLineEditWidget("Color Name", name);
+      if (ded.exec() == WuQDataEntryDialog::Accepted) {
+         const QString newName = nameLineEdit->text();
+         if ((newName.isEmpty() == false) &&
+             (newName != name)) {
+            //
+            // Change the name
+            //
+            colorFile->setColorNameByIndex(currentColorFileIndex, newName);
+
+            //
+            // Reload list box
+            //
+            loadColorsIntoListBox();
+            
+            //
+            // Find new name
+            //
+            int listBoxIndex = -1;
+            for (int i = 0; i < nameSelectionListBox->count(); i++) {
+               if (nameSelectionListBox->item(i)->text() == newName) {
+                  listBoxIndex = i;
+                  break;
+               }
+            }
+            if (listBoxIndex >= 0) {
+               nameSelectionListBox->setCurrentRow(listBoxIndex);
+               nameListSelectionSlot(listBoxIndex);
+            }
+            
+            //
+            // Redraw since color file has changed
+            //
+            emit redrawRequested();
+         }
+      }
+   }
+}      
+
+/**
  * Called when delete color button is pressed
  */
 void
 GuiColorFileEditorDialog::deleteColorButtonSlot()
 {
    int listBoxIndex = nameSelectionListBox->currentRow();
-   const int colorIndex = colors[listBoxIndex].colorFileIndex;
-   
-   //
-   //  Remove the color
-   //
-   colorFile->removeColorByIndex(colorIndex);
-   loadColorsIntoListBox();
-   
-   //
-   // Reset items in list box
-   //
-   if (listBoxIndex >= static_cast<int>(colors.size())) {
-      listBoxIndex = colors.size() - 1;
-   }
    if (listBoxIndex >= 0) {
-      nameSelectionListBox->setCurrentRow(listBoxIndex);
-      nameListSelectionSlot(listBoxIndex);
+      const int colorIndex = colors[listBoxIndex].colorFileIndex;
+      
+      //
+      //  Remove the color
+      //
+      colorFile->removeColorByIndex(colorIndex);
+      loadColorsIntoListBox();
+      
+      //
+      // Reset items in list box
+      //
+      if (listBoxIndex >= static_cast<int>(colors.size())) {
+         listBoxIndex = colors.size() - 1;
+      }
+      if (listBoxIndex >= 0) {
+         nameSelectionListBox->setCurrentRow(listBoxIndex);
+         nameListSelectionSlot(listBoxIndex);
+      }
+      
+      //
+      // Redraw since color file has changed
+      //
+      emit redrawRequested();
    }
-   
-   //
-   // Redraw since color file has changed
-   //
-   emit redrawRequested();
 }
 
 /**

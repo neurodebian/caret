@@ -834,6 +834,11 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
                                               const QString& sourceSpecName,
                                               const DeformationMapFile* dmf,
                                               const bool sourceToTargetFlag,
+                                              const bool deformSourceFiducialCoordFilesIn,
+                                              const bool deformSourceInflatedCoordFilesIn,
+                                              const bool deformSourceVeryInflatedCoordFilesIn,
+                                              const bool deformSourceSphericalCoordFilesIn,
+                                              const bool deformSourceFlatCoordFilesIn,
                                               QString& deformErrorsMessage)
                                        throw (BrainModelAlgorithmException)
 {
@@ -1023,7 +1028,7 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
    // Only spherical deformation deforms coord files
    //
    bool doCoordFiles = false;
-   switch(deformationMapFile->getFlatOrSphereSelection()) {
+   switch(dmf->getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
@@ -1038,7 +1043,7 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
       //
       // If fiducial coord files should be deformed
       //
-      if (deformSourceFiducialCoordFiles) {
+      if (deformSourceFiducialCoordFilesIn) {
          BrainModelSurfaceDeformDataFile::deformCoordinateFiles(dmf,
                                                                sf.fiducialCoordFile,
                                                                deformErrorsMessage);
@@ -1047,7 +1052,7 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
       //
       // If inflated coord files should be deformed
       //
-      if (deformSourceInflatedCoordFiles) {
+      if (deformSourceInflatedCoordFilesIn) {
          BrainModelSurfaceDeformDataFile::deformCoordinateFiles(dmf,
                                                                sf.inflatedCoordFile,
                                                                deformErrorsMessage);
@@ -1056,7 +1061,7 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
       //
       // If very inflated coord files should be deformed
       //
-      if (deformSourceVeryInflatedCoordFiles) {
+      if (deformSourceVeryInflatedCoordFilesIn) {
          BrainModelSurfaceDeformDataFile::deformCoordinateFiles(dmf,
                                                                sf.veryInflatedCoordFile,
                                                                deformErrorsMessage);
@@ -1065,7 +1070,7 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
       //
       // If spherical coord files should be deformed
       //
-      if (deformSourceSphericalCoordFiles) {
+      if (deformSourceSphericalCoordFilesIn) {
          BrainModelSurfaceDeformDataFile::deformCoordinateFiles(dmf,
                                                                sf.sphericalCoordFile,
                                                                deformErrorsMessage);
@@ -1074,7 +1079,7 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
       //
       // If flat coord files should be deformed
       //
-      if (deformSourceFlatCoordFiles) {
+      if (deformSourceFlatCoordFilesIn) {
          BrainModelSurfaceDeformDataFile::deformFlatCoordinateFiles(dmf,
                                                                sf.flatCoordFile,
                                                                deformErrorsMessage);
@@ -1302,6 +1307,11 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
                       deformationMapFile->getSourceSpecFileName(),
                       deformationMapFile,
                       true,
+                      deformSourceFiducialCoordFiles,
+                      deformSourceInflatedCoordFiles,
+                      deformSourceVeryInflatedCoordFiles,
+                      deformSourceSphericalCoordFiles,
+                      deformSourceFlatCoordFiles,
                       sourceToTargetDeformDataFileErrors);
       
       //
@@ -1406,6 +1416,11 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
                          deformationMapFile->getSourceSpecFileName(),  // have source since 
                          deformationMapFile,                     // swapSourceAndTarget was called
                          false,
+                         deformSourceFiducialCoordFiles,
+                         deformSourceInflatedCoordFiles,
+                         deformSourceVeryInflatedCoordFiles,
+                         deformSourceSphericalCoordFiles,
+                         deformSourceFlatCoordFiles,
                          targetToSourceDeformDataFileErrors);
       }
       

@@ -27,12 +27,12 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class GuiModelSelectionControl;
 
 /// dialog for editing models
-class GuiModelsEditorDialog : public QtDialogNonModal {
+class GuiModelsEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:

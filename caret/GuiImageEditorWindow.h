@@ -28,7 +28,7 @@
 #define __GUI_IMAGE_EDITOR_WINDOW_H__
 
 #include <QColor>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 #include <QFont>
 
 #include "SceneFile.h"
@@ -46,7 +46,7 @@ class QPaintEvent;
 class QSpinBox;
 
 /// Dialog used to display and edit images
-class GuiImageEditorWindow : public QtDialog {
+class GuiImageEditorWindow : public WuQDialog {
    
    Q_OBJECT
    
@@ -87,6 +87,9 @@ class GuiImageEditorWindow : public QtDialog {
       
       /// called to inform editor that an image has been saved
       void slotImageHasBeenSaved();
+      
+      /// called to copy image to clipboard
+      void slotCopyImageToClipboard();
       
    protected:
       /// image size combo box
@@ -145,7 +148,7 @@ class GuiImageEditorWidget : public QWidget {
       // constructor
       GuiImageEditorWidget(QWidget *parent, 
                         const POPUP_MENU popupMenuStyleIn,
-                        Qt::WFlags f = 0);
+                        Qt::WindowFlags f = 0);
       
       // destructor
       ~GuiImageEditorWidget();
@@ -261,7 +264,7 @@ class GuiImageEditorWidget : public QWidget {
 //********************************************************************************
 
 /// dialog for resizing an image
-class GuiImageEditorWidgetResizeDialog : public QtDialog {
+class GuiImageEditorWidgetResizeDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -303,7 +306,7 @@ class GuiImageEditorWidgetResizeDialog : public QtDialog {
 //********************************************************************************
 
 /// dialog for adding text to an image
-class GuiImageEditorWidgetAddTextDialog : public QtDialog {
+class GuiImageEditorWidgetAddTextDialog : public WuQDialog {
    Q_OBJECT
    
    public:

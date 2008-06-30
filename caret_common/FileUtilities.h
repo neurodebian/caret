@@ -151,6 +151,11 @@ class FileUtilities {
       
       // return the name of a temporary directory (empty if invalid)
       static QString temporaryDirectory();
+      
+      // see if a file contains the specified text
+      static bool findTextInFile(const QString& fileName,
+                                 const QString& text,
+                                 const bool caseSensitiveFlag);
 
 };
 

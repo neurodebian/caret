@@ -2,6 +2,7 @@
 #include <QAction>
 #include <QButtonGroup>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -24,7 +25,7 @@
  * constructor.
  */
 GuiStudyMetaDataLinkCreationDialog::GuiStudyMetaDataLinkCreationDialog(QWidget* parent)
-   : QtDialogModal(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Link to Study Metadata");
    
@@ -46,7 +47,7 @@ GuiStudyMetaDataLinkCreationDialog::GuiStudyMetaDataLinkCreationDialog(QWidget* 
    //
    // Get the layout for the dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(linkSelWidget);
    dialogLayout->addWidget(tableWidget);
    dialogLayout->addWidget(linkWidget);
@@ -55,6 +56,17 @@ GuiStudyMetaDataLinkCreationDialog::GuiStudyMetaDataLinkCreationDialog(QWidget* 
    // load the table
    //
    loadStudyTableWidget();
+   
+   //
+   // Dialog buttons
+   //
+   buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok 
+                                                      | QDialogButtonBox::Cancel);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(accepted()),
+                    this, SLOT(accept()));
+   QObject::connect(buttonBox, SIGNAL(rejected()),
+                    this, SLOT(reject()));
 }
 
 /**
@@ -747,7 +759,10 @@ GuiStudyMetaDataLinkCreationDialog::enableLinkSelections()
 void 
 GuiStudyMetaDataLinkCreationDialog::slotEnableDisableOkButton()
 {
-   setOkButtonEnabled(getSelectedStudyIndex() >= 0);
+   QPushButton* okButton = buttonBox->button(QDialogButtonBox::Ok);
+   if (okButton != NULL) {
+      okButton->setEnabled(getSelectedStudyIndex() >= 0);
+   }
 }
       
 /**
@@ -1032,5 +1047,5 @@ GuiStudyMetaDataLinkCreationDialog::done(int r)
       saveCurrentStudy();
    }
 
-   QtDialogModal::done(r);
+   WuQDialog::done(r);
 }

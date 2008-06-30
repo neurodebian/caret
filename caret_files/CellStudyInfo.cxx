@@ -423,7 +423,10 @@ CellStudyInfo::getFullDescriptionForDisplayToUser(const bool useHTML) const
 {
    const QString boldStart("<B>");
    const QString boldEnd("</B>");
-   const QString newLine("\n");
+   QString newLine("\n");
+   if (useHTML) {
+      newLine = "<BR>";
+   }
    
    QString s;
    if (useHTML) s += boldStart;

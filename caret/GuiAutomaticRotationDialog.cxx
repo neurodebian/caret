@@ -48,7 +48,7 @@
  * Constructor
  */
 GuiAutomaticRotationDialog::GuiAutomaticRotationDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Automatic Rotation");
    

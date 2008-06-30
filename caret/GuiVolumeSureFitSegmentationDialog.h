@@ -30,7 +30,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 #include "VolumeFile.h"
 
 class GuiGraphWidget;
@@ -48,7 +48,7 @@ class QTextEdit;
 class StatisticHistogram;
 
 /// Dialog for segmenting an anatomy volume
-class GuiVolumeSureFitSegmentationDialog : public QtDialog {
+class GuiVolumeSureFitSegmentationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

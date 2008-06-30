@@ -116,11 +116,13 @@
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
+#include "FociSearchFile.h"
 #include "GeodesicDistanceFile.h"
 #include "ImageFile.h"
 #include "LatLonFile.h"
 #include "MDPlotFile.h"
 #include "MetricFile.h"
+#include "MniObjSurfaceFile.h"
 #include "NeurolucidaFile.h"
 #include "PaintFile.h"
 #include "PaletteFile.h"
@@ -217,6 +219,13 @@ BrainSet::BrainSet(const QString& topoFileName,
    //
    std::vector<QString> messages;
    readSpecFile(SPEC_FILE_READ_MODE_NORMAL, sf, "", messages, NULL, NULL);
+   if (messages.empty() == false) {
+      for (unsigned int i = 0; i < messages.size(); i++) {
+         std::cout << "BrainSet construction error: "
+                   << messages[i].toAscii().constData()
+                   << std::endl;
+      }
+   }
    
    //
    // As a result of this call, the block of code below is probably unnecessary
@@ -322,11 +331,10 @@ BrainSet::constructBrainSet()
    webCaretFlag = false;
    readingSpecFileFlag = false;
    ignoreTopologyFileInCoordinateFileHeaderFlag = false;
+   numberOfSurfaceOverlays = 4;
    
-   if (staticStuffInitialized == false) {
-      staticStuffInitialized = true;
-      initializeStaticStuff();
-   }
+   initializeStaticStuff();
+   
    primaryBrainSetFlag = false;
 
    progressDialogParent = NULL;
@@ -346,7 +354,7 @@ BrainSet::constructBrainSet()
    deformationFieldFile   = new DeformationFieldFile;
    fociColorFile          = new FociColorFile;
    fociProjectionFile     = new FociProjectionFile;
-   volumeFociFile         = new FociFile;
+   fociSearchFile         = new FociSearchFile;
    geodesicDistanceFile   = new GeodesicDistanceFile;
    latLonFile             = new LatLonFile;
    metricFile             = new MetricFile;
@@ -400,12 +408,18 @@ BrainSet::constructBrainSet()
    displaySettingsProbabilisticAtlasVolume = new DisplaySettingsProbabilisticAtlas(this,
                                  DisplaySettingsProbabilisticAtlas::PROBABILISTIC_TYPE_VOLUME);
    
+   for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+      surfaceOverlays.push_back(new BrainModelSurfaceOverlay(this, i));
+   }
+   
    reset();   
    
    //
    // load the splash image
    //
    QString imageName(getCaretHomeDirectory());
+   imageName.append(QDir::separator());
+   imageName.append("data_files"); 
    imageName.append(QDir::separator());
    imageName.append("images"); 
    imageName.append(QDir::separator());
@@ -463,6 +477,29 @@ BrainSet::setDisplayCrossForNode(const int node, BrainModelSurface* surface)
 }
            
 /**
+ * get the name of the bin directory.
+ */
+QString 
+BrainSet::getBinDirectoryName()
+{
+   QString binName("bin_other");
+#ifdef  Q_OS_WIN32
+   binName = "bin_windows";
+#endif
+#ifdef  Q_OS_FREEBSD
+   binName = "bin_freebsd";
+#endif
+#ifdef  Q_OS_UNIX
+   binName = "bin_linux";
+#endif
+#ifdef Q_OS_MACX
+   binName = "bin_macosx";
+#endif
+
+   return binName;
+}
+
+/**
  * set the random seed.
  */
 void 
@@ -477,6 +514,11 @@ BrainSet::setRandomSeed(unsigned int randomSeed)
 void
 BrainSet::initializeStaticStuff()
 {
+   if (staticStuffInitialized) {
+      return;
+   }
+   staticStuffInitialized = true;
+
 /*
 #ifdef Q_OS_WIN32
    caretHomeDirectory = "C:\\caret");
@@ -576,7 +618,6 @@ BrainSet::~BrainSet()
    delete deformationFieldFile;
    delete fociColorFile;
    delete fociProjectionFile;
-   delete volumeFociFile;
    delete geodesicDistanceFile;
    delete latLonFile;
    delete metricFile;
@@ -628,6 +669,122 @@ BrainSet::~BrainSet()
    delete displaySettingsWustlRegion;
 }
 
+/**
+ * get the primary surface overlay.
+ */
+BrainModelSurfaceOverlay* 
+BrainSet::getPrimarySurfaceOverlay()
+{
+   return getSurfaceOverlay(getNumberOfSurfaceOverlays() - 1);
+}
+
+/**
+ * get the primary surface overlay (const method).
+ */
+const BrainModelSurfaceOverlay* 
+BrainSet::getPrimarySurfaceOverlay() const
+{
+   return getSurfaceOverlay(getNumberOfSurfaceOverlays() - 1);
+}
+
+/**
+ * get the secondary surface overlay.
+ */
+BrainModelSurfaceOverlay* 
+BrainSet::getSecondarySurfaceOverlay()
+{
+   return getSurfaceOverlay(getNumberOfSurfaceOverlays() - 2);
+}
+
+/**
+ * get the secondary surface overlay (const method).
+ */
+const BrainModelSurfaceOverlay* 
+BrainSet::getSecondarySurfaceOverlay() const
+{
+   return getSurfaceOverlay(getNumberOfSurfaceOverlays() - 2);
+}
+
+/**
+ * get the surface underlay.
+ */
+BrainModelSurfaceOverlay* 
+BrainSet::getSurfaceUnderlay()
+{
+   return getSurfaceOverlay(0);
+}
+
+/**
+ * get the surface underlay (const method).
+ */
+const BrainModelSurfaceOverlay* 
+BrainSet::getSurfaceUnderlay() const
+{
+   return getSurfaceOverlay(0);
+}
+      
+/**
+ * get something is an overlay for any model.
+ */
+bool 
+BrainSet::isASurfaceOverlayForAnySurface(const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS os) const
+{
+   for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+      for (int m = 0; m < getNumberOfBrainModels(); m++) {
+         if (getBrainModelSurface(m) != NULL) {
+            if (getSurfaceOverlay(i)->getOverlay(m) == os) {
+               return true;
+            }
+         }
+      }
+   }
+   
+   return false;
+}
+      
+/**
+ * get something is an overlay.
+ */
+bool 
+BrainSet::isASurfaceOverlay(const int modelIn,
+                     const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS os) const
+{
+   int model = modelIn;
+   if (model < 0) {
+      model = 0;
+   }
+   
+   for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+      if (getSurfaceOverlay(i)->getOverlay(model) == os) {
+         return true;
+      }
+   }
+   
+   return false;
+}
+      
+/**
+ * copy the overlay selections from specified surface to all other surfaces.
+ */
+void 
+BrainSet::copyOverlaysFromSurface(const int surfaceModelIndex)
+{
+   for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+      getSurfaceOverlay(i)->copyOverlaysFromSurface(surfaceModelIndex);
+   }
+}
+      
+/**
+ * update the surface overlays due to change in brain models.
+ */
+void 
+BrainSet::updateSurfaceOverlaysDueToChangeInBrainModels()
+{
+   for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+      getSurfaceOverlay(i)->update();
+   }
+}
+      
 /**
  * apply all projected files (foci, cells, borders).
  */
@@ -682,7 +839,7 @@ BrainSet::clearAllDisplayLists()
    volumeCellFile->clearDisplayList();
    fociColorFile->clearDisplayList();
    fociProjectionFile->clearDisplayList();
-   volumeFociFile->clearDisplayList();
+   fociSearchFile->clearDisplayList();
    cocomacFile->clearDisplayList();
    cutsFile->clearDisplayList();
    deformationFieldFile->clearDisplayList();
@@ -719,55 +876,13 @@ BrainSet::deleteAllBrainModels()
 {
    deleteAllTopologyFiles();
    
-   for (unsigned int k = 0; k < volumeFunctionalFiles.size(); k++) {
-      if (volumeFunctionalFiles[k] != NULL) {
-         delete volumeFunctionalFiles[k];
-         volumeFunctionalFiles[k] = NULL;
-      }
-   }
-   volumeFunctionalFiles.clear();
-   for (unsigned int k = 0; k < volumePaintFiles.size(); k++) {
-      if (volumePaintFiles[k] != NULL) {
-         delete volumePaintFiles[k];
-         volumePaintFiles[k] = NULL;
-      }
-   }
-   volumePaintFiles.clear();
-   for (unsigned int k = 0; k < volumeProbAtlasFiles.size(); k++) {
-      if (volumeProbAtlasFiles[k] != NULL) {
-         delete volumeProbAtlasFiles[k];
-         volumeProbAtlasFiles[k] = NULL;
-      }
-   }
-   volumeProbAtlasFiles.clear();
-   for (unsigned int k = 0; k < volumeRgbFiles.size(); k++) {
-      if (volumeRgbFiles[k] != NULL) {
-         delete volumeRgbFiles[k];
-         volumeRgbFiles[k] = NULL;
-      }
-   }
-   volumeRgbFiles.clear();
-   for (unsigned int k = 0; k < volumeSegmentationFiles.size(); k++) {
-      if (volumeSegmentationFiles[k] != NULL) {
-         delete volumeSegmentationFiles[k];
-         volumeSegmentationFiles[k] = NULL;
-      }
-   }
-   volumeSegmentationFiles.clear();
-   for (unsigned int k = 0; k < volumeAnatomyFiles.size(); k++) {
-      if (volumeAnatomyFiles[k] != NULL) {
-         delete volumeAnatomyFiles[k];
-         volumeAnatomyFiles[k] = NULL;
-      }
-   }
-   volumeAnatomyFiles.clear();
-   for (unsigned int k = 0; k < volumeVectorFiles.size(); k++) {
-      if (volumeVectorFiles[k] != NULL) {
-         delete volumeVectorFiles[k];
-         volumeVectorFiles[k] = NULL;
-      }
-   }
-   volumeVectorFiles.clear();
+   clearVolumeAnatomyFiles();
+   clearVolumeFunctionalFiles();
+   clearVolumePaintFiles();
+   clearVolumeProbabilisticAtlasFiles();
+   clearVolumeRgbFiles();
+   clearVolumeSegmentationFiles();
+   clearVolumeVectorFiles();
    
    for (unsigned int i = 0; i < brainModels.size(); i++) {
       if (brainModels[i] != NULL) {
@@ -843,6 +958,9 @@ BrainSet::reset(const bool keepSceneData)
    structure = Structure::STRUCTURE_TYPE_INVALID;
    
    activeFiducialSurface = NULL;
+   leftFiducialVolumeInteractionSurface = NULL;
+   rightFiducialVolumeInteractionSurface = NULL;
+   cerebellumFiducialVolumeInteractionSurface = NULL;
    
    cerebralHullFileName = "";
    deleteAllImageFiles();
@@ -862,54 +980,41 @@ BrainSet::resetDataFiles(const bool keepSceneData,
 {
    deleteAllBorders();
 
-   //cocomacFile->clear();
    clearCocomacConnectivityFile();
-   contourCellFile->clear();
-   //contourCellColorFile->clear();
+   clearContourCellFile();
    clearContourCellColorFile();
-   //cutsFile->clear();
    clearCutsFile();
-   //areaColorFile->clear();
    clearAreaColorFile();
-   paramsFile->clear();
+   clearParamsFile();
    if (keepSceneData == false) {
       sceneFile->clear();
    }
    
-   paletteFile->clear();
+   clearPaletteFile();
    paletteFile->addDefaultPalettes();
    paletteFile->clearModified();
    
-   //borderColorFile->clear();
    clearBorderColorFile();
    
-   //cellColorFile->clear();
    clearCellColorFile();
-   //cellProjectionFile->clear();
-   //volumeCellFile->clear();
    deleteAllCells(true, true);
    
    if (keepFociAndFociColorsAndStudyMetaData == false) {
-      //fociColorFile->clear();
       clearFociColorFile();
-      //fociProjectionFile->clear();
-      deleteAllFoci(true, true);
+      deleteAllFociProjections();
+      clearFociSearchFile();
+      fociSearchFile->addDefaultSearch();
    }
    
    if (keepFociAndFociColorsAndStudyMetaData == false) {
-      studyMetaDataFile->clear();
+      clearStudyMetaDataFile();
    }
    
-   vocabularyFile->clear();
+   clearVocabularyFile();
    
-   volumeFociFile->clear();
-      
-   transformationMatrixFile->clear();
+   clearTransformationMatrixFile();
    
-   for (int i = 0; i < getNumberOfTransformationDataFiles(); i++) {
-      delete transformationDataFiles[i];
-   }
-   transformationDataFiles.clear();
+   clearTransformationDataFiles();
    
    deleteAllImageFiles();
    deleteAllVtkModelFiles();
@@ -1288,6 +1393,20 @@ BrainSet::showScene(const int sceneIndex, QString& errorMessage)
 }
 
 /**
+ * load identification filters from a scene.
+ */
+void 
+BrainSet::showSceneIdentificationFilters(const SceneFile::Scene* ss,
+                                         QString& errorMessage)
+{
+   errorMessage = "";
+   
+   if (ss != NULL) {
+      brainModelIdentification->showScene(*ss, errorMessage);
+   }
+}
+
+/**
  * apply a scene (set display settings).
  */
 void 
@@ -1339,7 +1458,7 @@ BrainSet::showScene(const SceneFile::Scene* ss,
       //
       deleteAllBorders();
       deleteAllCells(true, true);
-      deleteAllFoci(true, true);
+      deleteAllFociProjections();
       clearCutsFile();
       clearContourCellFile();
       
@@ -1362,15 +1481,9 @@ BrainSet::showScene(const SceneFile::Scene* ss,
 
       //
       // Get rid of volume prob atlas files
-      //      
-      for (unsigned int k = 0; k < volumeProbAtlasFiles.size(); k++) {
-         if (volumeProbAtlasFiles[k] != NULL) {
-            delete volumeProbAtlasFiles[k];
-            volumeProbAtlasFiles[k] = NULL;
-         }
-      }
-      volumeProbAtlasFiles.clear();
-
+      //   
+      clearVolumeProbabilisticAtlasFiles();   
+ 
       //
       // Clear node identify symbols
       //
@@ -1392,7 +1505,15 @@ BrainSet::showScene(const SceneFile::Scene* ss,
                    NULL,
                    NULL);
       errorMessage.append(specMsg);
+      paletteFile->clearModified();
        
+      //
+      // Update overlays
+      //
+      for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+         getSurfaceOverlay(i)->showScene(*ss, errorMessage);
+      }
+      
       //
       // Update node/voxel coloring
       //
@@ -1497,7 +1618,73 @@ BrainSet::showScene(const SceneFile::Scene* ss,
                      errorMessage.append(activeFiducialName);
                      errorMessage.append("\n");
                   }
-               }
+               }  
+               else if (si->getName() == "LeftVolumeFiducialInteraction") {
+                  const QString fiducialName(si->getValueAsString());
+                  bool found = false;
+                  const int numModels = getNumberOfBrainModels();
+                  for (int i = 0; i < numModels; i++) {
+                     BrainModelSurface* bms = getBrainModelSurface(i);
+                     if (bms != NULL) {
+                        const CoordinateFile* cf = bms->getCoordinateFile();
+                        const QString name(FileUtilities::basename(cf->getFileName()));
+                        if (name == fiducialName) {
+                           setLeftFiducialVolumeInteractionSurface(bms);
+                           found = true;
+                           break;
+                        }
+                     }
+                  }
+                  if (found == false) {
+                     errorMessage.append("Unable to set left fiducial volume interaction surface to: ");
+                     errorMessage.append(fiducialName);
+                     errorMessage.append("\n");
+                  }
+               }  
+               else if (si->getName() == "RightVolumeFiducialInteraction") {
+                  const QString fiducialName(si->getValueAsString());
+                  bool found = false;
+                  const int numModels = getNumberOfBrainModels();
+                  for (int i = 0; i < numModels; i++) {
+                     BrainModelSurface* bms = getBrainModelSurface(i);
+                     if (bms != NULL) {
+                        const CoordinateFile* cf = bms->getCoordinateFile();
+                        const QString name(FileUtilities::basename(cf->getFileName()));
+                        if (name == fiducialName) {
+                           setRightFiducialVolumeInteractionSurface(bms);
+                           found = true;
+                           break;
+                        }
+                     }
+                  }
+                  if (found == false) {
+                     errorMessage.append("Unable to set right fiducial volume interaction surface to: ");
+                     errorMessage.append(fiducialName);
+                     errorMessage.append("\n");
+                  }
+               }  
+               else if (si->getName() == "CerebellumVolumeFiducialInteraction") {
+                  const QString fiducialName(si->getValueAsString());
+                  bool found = false;
+                  const int numModels = getNumberOfBrainModels();
+                  for (int i = 0; i < numModels; i++) {
+                     BrainModelSurface* bms = getBrainModelSurface(i);
+                     if (bms != NULL) {
+                        const CoordinateFile* cf = bms->getCoordinateFile();
+                        const QString name(FileUtilities::basename(cf->getFileName()));
+                        if (name == fiducialName) {
+                           setCerebellumFiducialVolumeInteractionSurface(bms);
+                           found = true;
+                           break;
+                        }
+                     }
+                  }
+                  if (found == false) {
+                     errorMessage.append("Unable to set cerebellum fiducial volume interaction surface to: ");
+                     errorMessage.append(fiducialName);
+                     errorMessage.append("\n");
+                  }
+               }  
             }
          }
          else if (sc->getName() == "TransformationDataFile") {
@@ -1638,6 +1825,12 @@ BrainSet::saveReplaceSceneHelper(SceneFile::Scene& scene,
       }
    }
    
+   //
+   // Update overlays
+   //
+   for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
+      getSurfaceOverlay(i)->saveScene(scene, onlyIfSelectedFlag);
+   }
    brainModelIdentification->saveScene(scene);
    nodeColoring->saveScene(scene, onlyIfSelectedFlag);
    voxelColoring->saveScene(scene, onlyIfSelectedFlag);
@@ -1673,31 +1866,31 @@ BrainSet::saveReplaceSceneHelper(SceneFile::Scene& scene,
    //
    // display settings
    //
-   displaySettingsArealEstimation->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsBorders->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsCells->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsCoCoMac->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsContours->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsCuts->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsFoci->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsGeodesicDistance->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsDeformationField->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsImages->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsMetric->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsModels->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsPaint->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsProbabilisticAtlasSurface->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsProbabilisticAtlasVolume->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsRgbPaint->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsScene->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsSection->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsStudyMetaData->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsSurface->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsSurfaceShape->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsSurfaceVectors->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsTopography->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsVolume->saveScene(scene, onlyIfSelectedFlag);
-   displaySettingsWustlRegion->saveScene(scene, onlyIfSelectedFlag);
+   displaySettingsArealEstimation->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsBorders->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsCells->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsCoCoMac->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsContours->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsCuts->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsFoci->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsGeodesicDistance->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsDeformationField->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsImages->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsMetric->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsModels->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsPaint->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsProbabilisticAtlasSurface->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsProbabilisticAtlasVolume->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsRgbPaint->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsScene->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsSection->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsStudyMetaData->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsSurface->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsSurfaceShape->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsSurfaceVectors->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsTopography->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsVolume->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsWustlRegion->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    
    SceneFile::SceneClass sc("NodeHighlighting");   
    const int numNodes = getNumberOfNodes();
@@ -1723,6 +1916,34 @@ BrainSet::saveReplaceSceneHelper(SceneFile::Scene& scene,
          sca.addSceneInfo(SceneFile::SceneInfo("ActiveFiducial", name));
       }
    }
+   
+   const BrainModelSurface* bmsLeft = getLeftFiducialVolumeInteractionSurface();
+   if (bmsLeft != NULL) {
+      const CoordinateFile* cf = bmsLeft->getCoordinateFile();
+      const QString name(FileUtilities::basename(cf->getFileName()));
+      if (name.isEmpty() == false) {
+         sca.addSceneInfo(SceneFile::SceneInfo("LeftVolumeFiducialInteraction", name));
+      }
+   }
+   
+   const BrainModelSurface* bmsRight = getRightFiducialVolumeInteractionSurface();
+   if (bmsRight != NULL) {
+      const CoordinateFile* cf = bmsRight->getCoordinateFile();
+      const QString name(FileUtilities::basename(cf->getFileName()));
+      if (name.isEmpty() == false) {
+         sca.addSceneInfo(SceneFile::SceneInfo("RightVolumeFiducialInteraction", name));
+      }
+   }
+   
+   const BrainModelSurface* bmsCerebellum = getCerebellumFiducialVolumeInteractionSurface();
+   if (bmsCerebellum != NULL) {
+      const CoordinateFile* cf = bmsCerebellum->getCoordinateFile();
+      const QString name(FileUtilities::basename(cf->getFileName()));
+      if (name.isEmpty() == false) {
+         sca.addSceneInfo(SceneFile::SceneInfo("CerebellumVolumeFiducialInteraction", name));
+      }
+   }
+   
    if (sca.getNumberOfSceneInfo() > 0) {
       scene.addSceneClass(sca);
    }
@@ -2256,9 +2477,31 @@ BrainSet::getFirstBrainModelSurfaceIndex() const
 void
 BrainSet::setSpecFileName(const QString& name) 
 { 
+   //
+   // MUST read with the old spec file name and then
+   // write with the new spec file name
+   //
+   const QString oldSpecFileName(specFileName);
+   SpecFile sf;
+   bool specValidFlag = false;
+   try {
+      sf.readFile(specFileName);
+      specValidFlag = true;
+   }
+   catch (FileException&) {
+   }
+
    specFileName = name;
    if (name.isEmpty() == false) {
       QDir::setCurrent(FileUtilities::dirname(name));
+   }
+   
+   if (specValidFlag) {
+      try {
+         sf.writeFile(specFileName);
+      }
+      catch (FileException&) {
+      }
    }
 }
 
@@ -2346,6 +2589,7 @@ BrainSet::classifyNodes(TopologyFile* tfIn,
                 << (static_cast<float>(timer.elapsed()) / 1000.0) << std::endl;
    }
    
+   updateSurfaceOverlaysDueToChangeInBrainModels();
    clearAllDisplayLists();
 }
 
@@ -2509,7 +2753,7 @@ BrainSet::convertVolumeBordersToFiducialCells()
    //
    // Append to existing cells
    //
-   cellProjectionFile->append(cf);
+   cellProjectionFile->appendFiducialCellFile(cf);
    
    //
    // Update cell display settings
@@ -2823,6 +3067,12 @@ BrainSet::addToSpecFile(const QString& specFileTag, const QString& fileName,
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
          loadedFilesSpecFile.setStructure(Structure::getCerebellumAsString());
          break;
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+         loadedFilesSpecFile.setStructure(Structure::getCerebellumOrLeftCerebralAsString());
+         break;
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+         loadedFilesSpecFile.setStructure(Structure::getCerebellumOrRightCerebralAsString());
+         break;
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
          loadedFilesSpecFile.setStructure(Structure::getCortextLeftAsString());
          break;
@@ -2831,6 +3081,12 @@ BrainSet::addToSpecFile(const QString& specFileTag, const QString& fileName,
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
          loadedFilesSpecFile.setStructure(Structure::getCortexBothAsString());
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+         loadedFilesSpecFile.setStructure(Structure::getLeftCerebralOrCerebellumAsString());
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+         loadedFilesSpecFile.setStructure(Structure::getRightCerebralOrCerebellumAsString());
          break;
       case Structure::STRUCTURE_TYPE_INVALID:
          // do not override if unknown
@@ -2990,6 +3246,53 @@ BrainSet::readArealEstimationFile(const QString& name, const bool append,
    }
 }
       
+/**
+ * read the areal estimation data file file (only selected columns).
+ */
+void 
+BrainSet::readArealEstimationFile(const QString& name, 
+                         const std::vector<int>& columnDestination,
+                         const std::vector<QString>& fileBeingReadColumnNames,
+                         const AbstractFile::FILE_COMMENT_MODE fcm,
+                         const bool updateSpec) throw (FileException)
+{
+   QMutexLocker locker(&mutexArealEstimationFile);
+   
+   const bool arealEstimationFileEmpty = arealEstimationFile->empty();
+   
+   ArealEstimationFile aef;
+   aef.readFile(name);
+   if (aef.getNumberOfNodes() != getNumberOfNodes()) {
+      throw FileException(FileUtilities::basename(name), numNodesMessage);
+   }
+   try {
+      for (int i = 0; i < aef.getNumberOfColumns(); i++) {
+         if (i < static_cast<int>(fileBeingReadColumnNames.size())) {
+            aef.setColumnName(i, fileBeingReadColumnNames[i]);
+         }
+      }
+      std::vector<int> columnDestination2 = columnDestination;
+      arealEstimationFile->append(aef, columnDestination2, fcm);
+   }
+   catch (FileException& e) {
+      throw FileException(FileUtilities::basename(name), e.whatQString());
+   }
+   if (arealEstimationFileEmpty) {
+      arealEstimationFile->clearModified();
+   }
+   else {
+      arealEstimationFile->setModified();
+   }
+
+   if (readingSpecFileFlag == false) {
+      displaySettingsArealEstimation->update(); 
+   }
+   
+   if (updateSpec) {
+      addToSpecFile(SpecFile::arealEstimationFileTag, name);
+   }
+}
+
 /**
  * read a volume border file.
  */
@@ -3421,7 +3724,7 @@ BrainSet::readCellFile(const QString& name,
       throw FileException(FileUtilities::basename(name), e.whatQString());
    }
 
-   cellProjectionFile->append(cellFile);
+   cellProjectionFile->appendFiducialCellFile(cellFile);
 
    if (updateSpec) {
       addToSpecFile(SpecFile::cellFileTag, name);
@@ -3907,7 +4210,7 @@ BrainSet::writeSurfaceFile(const QString& name,
 {
    QString oldFileName = FileUtilities::filenameWithoutExtension(
                                         bms->getCoordinateFile()->getFileName());
-   oldFileName.append(SpecFile::getGiftiFileExtension());
+   oldFileName.append(SpecFile::getGiftiSurfaceFileExtension());
    
    const BrainModelSurface::SURFACE_TYPES st1 = bms->getSurfaceType();
    switch (st1) {
@@ -4061,8 +4364,10 @@ BrainSet::writeCoordinateFile(const QString& name,
  * Read the volume file data
  */
 void
-BrainSet::readVolumeFile(const QString& name, const VolumeFile::VOLUME_TYPE vt,
-                         const bool appendIn, const bool updateSpecIn) throw (FileException)
+BrainSet::readVolumeFile(const QString& name, 
+                         const VolumeFile::VOLUME_TYPE vt,
+                         const bool appendIn, 
+                         const bool updateSpecIn) throw (FileException)
 {
    bool updateSpec = updateSpecIn;
    bool append = appendIn;
@@ -4090,6 +4395,18 @@ BrainSet::readVolumeFile(const QString& name, const VolumeFile::VOLUME_TYPE vt,
       }
       addVolumeFile(vt, vf, name, append, updateSpec); 
    }
+   
+   //
+   // If not reading a spec file, reading prob atlas volumes, and
+   // appending volumes, then region names need to be synchronized
+   //
+   if (readingSpecFileFlag == false) {
+      if (vt == VolumeFile::VOLUME_TYPE_PROB_ATLAS) {
+         if (volumes.size() < volumeProbAtlasFiles.size()) {
+            synchronizeProbAtlasVolumeRegionNames();
+         }
+      }
+   }
 }
 
 /**
@@ -4098,7 +4415,8 @@ BrainSet::readVolumeFile(const QString& name, const VolumeFile::VOLUME_TYPE vt,
 void
 BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf, 
                         const QString& name,
-                        const bool append, const bool updateSpec)
+                        const bool append, 
+                        const bool updateSpec) throw (FileException)
 {
    QMutexLocker locker(&mutexAddVolumeFile);
    
@@ -4110,54 +4428,54 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
    switch (vt) {
       case VolumeFile::VOLUME_TYPE_ANATOMY:
          if (append == false) {
-            for (unsigned int i = 0; i < volumeAnatomyFiles.size(); i++) {
-               delete volumeAnatomyFiles[i];
-            }
-            volumeAnatomyFiles.clear();
+            clearVolumeAnatomyFiles();
          }
          volumeAnatomyFiles.push_back(vf);
          tag = SpecFile::volumeAnatomyFileTag;
          break;
       case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
          if (append == false) {
-            for (unsigned int i = 0; i < volumeFunctionalFiles.size(); i++) {
-               delete volumeFunctionalFiles[i];
-            }
-            volumeFunctionalFiles.clear();
+            clearVolumeFunctionalFiles();
          }
          volumeFunctionalFiles.push_back(vf);
          tag = SpecFile::volumeFunctionalFileTag;
          break;
       case VolumeFile::VOLUME_TYPE_PAINT:
          if (append == false) {
-            for (unsigned int i = 0; i < volumePaintFiles.size(); i++) {
-               delete volumePaintFiles[i];
-            }
-            volumePaintFiles.clear();
+            clearVolumePaintFiles();
          }
          volumePaintFiles.push_back(vf);
          tag = SpecFile::volumePaintFileTag;
          break;
       case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
          if (append == false) {
-            for (unsigned int i = 0; i < volumeProbAtlasFiles.size(); i++) {
-               delete volumeProbAtlasFiles[i];
+            clearVolumeProbabilisticAtlasFiles();
+         }
+         else if (volumeProbAtlasFiles.size() > 0) {
+            int dimOld[3];
+            volumeProbAtlasFiles[0]->getDimensions(dimOld);
+            int dimNew[3];
+            vf->getDimensions(dimNew);
+            if ((dimOld[0] != dimNew[0]) ||
+                (dimOld[1] != dimNew[1]) ||
+                (dimOld[2] != dimNew[2])) {
+               throw FileException("Newly selected probabilistic atlas volume "
+                                   "has different dimensions than previously "
+                                   "loaded probabilistic atlas volume(s).  All "
+                                   "probabilistic atlas volumes must have the "
+                                   "same dimensions.");
             }
-            volumeProbAtlasFiles.clear();
          }
          volumeProbAtlasFiles.push_back(vf);
-         if (volumeProbAtlasFiles.size() > 1) {
-            volumeProbAtlasFiles[0]->setVoxelColoringInvalid();
-         }
+         //if (volumeProbAtlasFiles.size() > 1) {
+         //   volumeProbAtlasFiles[0]->setVoxelColoringInvalid();
+         //}
          tag = SpecFile::volumeProbAtlasFileTag;
          displaySettingsProbabilisticAtlasVolume->update();
          break;
       case VolumeFile::VOLUME_TYPE_RGB:
          if (append == false) {
-            for (unsigned int i = 0; i < volumeRgbFiles.size(); i++) {
-               delete volumeRgbFiles[i];
-            }
-            volumeRgbFiles.clear();
+            clearVolumeRgbFiles();
          }
          volumeRgbFiles.push_back(vf);
          tag = SpecFile::volumeRgbFileTag;
@@ -4168,10 +4486,7 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
       case VolumeFile::VOLUME_TYPE_SEGMENTATION:
          {
             if (append == false) {
-               for (unsigned int i = 0; i < volumeSegmentationFiles.size(); i++) {
-                  delete volumeSegmentationFiles[i];
-               }
-               volumeSegmentationFiles.clear();
+               clearVolumeSegmentationFiles();
             }
             const bool isModified = vf->getModified();
             vf->makeSegmentationZeroTwoFiftyFive();
@@ -4185,10 +4500,7 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
       case VolumeFile::VOLUME_TYPE_VECTOR:
          {
             if (append == false) {
-               for (unsigned int i = 0; i < volumeVectorFiles.size(); i++) {
-                  delete volumeVectorFiles[i];
-               }
-               volumeVectorFiles.clear();
+               clearVolumeVectorFiles();
             }
             volumeVectorFiles.push_back(vf);
             tag = SpecFile::volumeVectorFileTag;
@@ -4258,7 +4570,9 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
          //
          // Update indices into name table
          //
-         bmv->updateProbAtlasNameTableIndices(getNumberOfVolumeProbAtlasFiles() - 1);
+    //     if (readingSpecFileFlag == false) {
+    //        synchronizeProbAtlasVolumeRegionNames();
+    //     }
          displaySettingsProbabilisticAtlasVolume->update();
          break;
       case VolumeFile::VOLUME_TYPE_RGB:
@@ -4345,13 +4659,6 @@ BrainSet::deleteVolumeFile(const VolumeFile* vf)
          }
       }
       volumeProbAtlasFiles = files;
-      
-      if (indx >= 0) {
-         BrainModelVolume* bmv = getBrainModelVolume();
-         if (bmv != NULL) {
-            bmv->updateProbAtlasNameTableIndices();
-         }
-      }
    }
    
    if (getNumberOfVolumeRgbFiles() > 0) {
@@ -4483,6 +4790,7 @@ BrainSet::writeMultiVolumeFile(const QString& name,
    if (subVolumes.empty() == false) {
       subVolumes[0]->setFileComment(comment);
       VolumeFile::writeFile(name,
+                            volumeType,
                             voxelDataTypeToWrite,
                             subVolumes,
                             zipAfniVolumeFile);
@@ -4511,6 +4819,14 @@ BrainSet::writeVolumeFile(const QString& nameIn,
    }
    
    QString name(nameIn);
+   
+   //
+   // NIFTI GZIP
+   //
+   if (name.endsWith(SpecFile::getNiftiVolumeFileExtension()) &&
+       zipAfniVolumeFile) {
+      name += ".gz";
+   }
    
    vf->setFileWriteType(writeFileType);
    
@@ -4559,6 +4875,7 @@ BrainSet::writeVolumeFile(const QString& nameIn,
    std::vector<VolumeFile*> volumesToWrite;
    volumesToWrite.push_back(vf);
    VolumeFile::writeFile(name,
+                         volumeType,
                          voxelDataTypeToWrite,
                          volumesToWrite,
                          zipAfniVolumeFile);
@@ -4594,8 +4911,7 @@ BrainSet::readSurfaceFile(const QString& name,
    BrainModelSurface::SURFACE_TYPES surfaceType = surfaceTypeIn;
    
    BrainModelSurface* bms = new BrainModelSurface(this);
-   bool normalsValid = false;
-   bms->readSurfaceFile(name, normalsValid);
+   bms->readSurfaceFile(name);
    if (surfaceType == BrainModelSurface::SURFACE_TYPE_UNKNOWN) {
       surfaceType = bms->getSurfaceType();
    }
@@ -4692,9 +5008,7 @@ BrainSet::readSurfaceFile(const QString& name,
       cf->clearModified();
    }
       
-   if (normalsValid == false) {
-      bms->computeNormals();
-   }
+   bms->computeNormals();
    bms->setSurfaceType(surfaceType);
    
    //
@@ -4998,7 +5312,7 @@ BrainSet::addBrainModel(BrainModel* bm, const bool readingSpecFile)
    brainModelBorderSet->addBrainModel(bm);
    
    updateDisplayedModelIndices();
-   
+   updateSurfaceOverlaysDueToChangeInBrainModels();
    updateAllDisplaySettings();
    
    if (readingSpecFile == false) {
@@ -5044,7 +5358,8 @@ BrainSet::deleteBrainModel(const BrainModel* bm)
    delete bm;
    
    updateDisplayedModelIndices();
-   
+   updateSurfaceOverlaysDueToChangeInBrainModels();
+
    updateAllDisplaySettings();
    
    nodeColoring->assignColors();
@@ -5056,41 +5371,42 @@ BrainSet::deleteBrainModel(const BrainModel* bm)
  */ 
 void
 BrainSet::writeFociFile(const QString& name,
-                        const BrainModelSurface* leftBms,
-                        const BrainModelSurface* rightBms,
+                        const BrainModelSurface* leftBMS,
+                        const BrainModelSurface* rightBMS,
+                        const BrainModelSurface* cerebellumBMS,
                         const AbstractFile::FILE_FORMAT fileFormat,
                         const QString& commentText) throw (FileException)
 {
    FociFile ff;
 
-   if ((leftBms != NULL) && (rightBms != NULL)) {
-      fociProjectionFile->getCellFileForRightLeftFiducials(leftBms->getCoordinateFile(),
-                                                           leftBms->getTopologyFile(),
-                                                           rightBms->getCoordinateFile(),
-                                                           rightBms->getTopologyFile(),
-                                                           ff);
-   }
-   else if (leftBms != NULL) {
-      const bool fiducialSurfaceFlag = 
-         ((leftBms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_RAW) ||
-          (leftBms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL));
-      fociProjectionFile->getCellFile(leftBms->getCoordinateFile(),
-                                      leftBms->getTopologyFile(),
-                                      fiducialSurfaceFlag,
-                                      ff);
-   }
-   else if (rightBms != NULL) {
-      const bool fiducialSurfaceFlag = 
-         ((rightBms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_RAW) ||
-          (rightBms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL));
-      fociProjectionFile->getCellFile(rightBms->getCoordinateFile(),
-                                      rightBms->getTopologyFile(),
-                                      fiducialSurfaceFlag,
-                                      ff);
-   }
-   else {
-      throw FileException("No surface(s) selected for writing foci file.");
-   }
+   const CoordinateFile* leftCF = ((leftBMS != NULL) ?
+                                   leftBMS->getCoordinateFile()
+                                   : NULL);
+   const TopologyFile* leftTF = ((leftBMS != NULL) ?
+                                 leftBMS->getTopologyFile()
+                                 : NULL);
+   
+   const CoordinateFile* rightCF = ((rightBMS != NULL) ?
+                                   rightBMS->getCoordinateFile()
+                                   : NULL);
+   const TopologyFile* rightTF = ((rightBMS != NULL) ?
+                                 rightBMS->getTopologyFile()
+                                 : NULL);
+   
+   const CoordinateFile* cerebellumCF = ((cerebellumBMS != NULL) ?
+                                   cerebellumBMS->getCoordinateFile()
+                                   : NULL);
+   const TopologyFile* cerebellumTF = ((cerebellumBMS != NULL) ?
+                                 cerebellumBMS->getTopologyFile()
+                                 : NULL);
+   
+   fociProjectionFile->getCellFileForRightLeftFiducials(leftCF,
+                                                        leftTF,
+                                                        rightCF,
+                                                        rightTF,
+                                                        cerebellumCF,
+                                                        cerebellumTF,
+                                                        ff);
    
    //
    // Check for foci
@@ -5151,91 +5467,13 @@ BrainSet::readFociFile(const QString& name,
    QMutexLocker locker(&mutexFociAndFociProjectionFile);
    
    if (append == false) {
-      deleteAllFoci(true, false);
+      deleteAllFociProjections();
    }
    
-   fociProjectionFile->append(fociFile);
+   fociProjectionFile->appendFiducialCellFile(fociFile);
 
    if (updateSpec) {
       addToSpecFile(SpecFile::fociFileTag, name);
-   }
-}
-      
-/** 
- * Write the volume foci data file.
- */ 
-void
-BrainSet::writeVolumeFociFile(const QString& name) throw (FileException)
-{
-   //
-   // Only fiducial added to spec file
-   //
-   loadedFilesSpecFile.volumeFociFile.setAllSelections(SpecFile::SPEC_FALSE);
-
-   if (volumeFociFile != NULL) {
-      volumeFociFile->writeFile(name);
-      addToSpecFile(SpecFile::volumeFociFileTag, name);
-   }
-   else {
-      QString msg("There are no volulme foci ");
-   }
-}
-
-/**      
- * Read the volume foci data file.
- */
-void 
-BrainSet::readVolumeFociFile(const QString& name, 
-                       const bool append,
-                       const bool updateSpec) throw (FileException)
-{
-   QMutexLocker locker(&mutexVolumeFociFile);
-   
-   if (append == false) {
-      deleteAllFoci(false, true);
-   }
-   
-   const unsigned long modified = volumeFociFile->getModified();
-   
-   if (volumeFociFile->getNumberOfCells() == 0) {         
-      try {
-         volumeFociFile->readFile(name);
-         //
-         // If transformation should be applied
-         //
-         if (specDataFileTransformationMatrix.isIdentity() == false) {
-            volumeFociFile->applyTransformationMatrix(std::numeric_limits<int>::min(),
-                                                std::numeric_limits<int>::max(),
-                                                specDataFileTransformationMatrix,
-                                                false);
-         }
-      }
-      catch (FileException& e) {
-         deleteAllFoci(false, true);
-         throw FileException(FileUtilities::basename(name), e.whatQString());
-      }
-   }
-   else {
-      // Append to existing 
-      CellFile ff;
-      ff.readFile(name);
-      //
-      // If transformation should be applied
-      //
-      if (specDataFileTransformationMatrix.isIdentity() == false) {
-         ff.applyTransformationMatrix(std::numeric_limits<int>::min(),
-                                             std::numeric_limits<int>::max(),
-                                             specDataFileTransformationMatrix,
-                                             false);
-      }
-      volumeFociFile->append(ff);
-   }
-   volumeFociFile->setModifiedCounter(modified);
-
-   displaySettingsFoci->update();
-
-   if (updateSpec) {
-      addToSpecFile(SpecFile::volumeFociFileTag, name);
    }
 }
       
@@ -5340,6 +5578,59 @@ BrainSet::readFociProjectionFile(const QString& name,
    }
 }
       
+/** 
+ * Write the Foci Search data file.
+ */ 
+void
+BrainSet::writeFociSearchFile(const QString& name) throw (FileException)
+{
+   loadedFilesSpecFile.fociSearchFile.setAllSelections(SpecFile::SPEC_FALSE);
+   fociSearchFile->writeFile(name);
+   addToSpecFile(SpecFile::fociSearchFileTag, name);
+}
+
+/**      
+ * Read the foci search data file file
+ */
+void 
+BrainSet::readFociSearchFile(const QString& name, 
+                            const bool append,
+                            const bool updateSpec) throw (FileException)
+{
+   QMutexLocker locker(&mutexFociSearchFile);
+   
+   if (append == false) {
+      clearFociSearchFile();
+   }
+   const unsigned long modified = fociSearchFile->getModified();
+   
+   if (fociSearchFile->getNumberOfFociSearchSets() == 0) {         
+      try {
+         fociSearchFile->readFile(name);
+      }
+      catch (FileException& e) {
+         deleteAllFociProjections();
+         throw FileException(FileUtilities::basename(name), e.whatQString());
+      }
+   }
+   else {
+      // Append to existing 
+      FociSearchFile fsf;
+      fsf.readFile(name);
+      QString msg;
+      fociSearchFile->append(fsf);
+   }
+   fociSearchFile->setModifiedCounter(modified);
+   
+   if (readingSpecFileFlag == false) {
+      displaySettingsFoci->update();
+   }
+   
+   if (updateSpec) {
+      addToSpecFile(SpecFile::fociSearchFileTag, name);
+   }
+}
+
 /** 
  * Write the geodesic distance data file.
  */ 
@@ -5554,6 +5845,7 @@ BrainSet::readMetricFile(const QString& name,
    const bool metricFileEmpty = metricFile->empty();
    
    MetricFile mf;
+   mf.setNumberOfNodesForSparseNodeIndexFiles(getNumberOfNodes());
    mf.readFile(name);
    if (mf.getNumberOfNodes() != getNumberOfNodes()) {
       throw FileException(FileUtilities::basename(name), numNodesMessage);
@@ -6357,6 +6649,7 @@ BrainSet::readSurfaceShapeFile(const QString& name,
    const bool shapeEmpty = surfaceShapeFile->empty();
    
    SurfaceShapeFile ssf;
+   ssf.setNumberOfNodesForSparseNodeIndexFiles(getNumberOfNodes());
    ssf.readFile(name);
    if (ssf.getNumberOfNodes() != getNumberOfNodes()) {
       throw FileException(FileUtilities::basename(name), numNodesMessage);
@@ -7519,6 +7812,9 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
          }
       }
    }
+   if (specFileIn.volumeProbAtlasFile.files.size() > 1) {
+      synchronizeProbAtlasVolumeRegionNames();
+   }
    
    //
    // Read in the rgb paint volume files
@@ -8306,24 +8602,6 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
    }
    
    //
-   // Read the volume foci file
-   //
-   for (unsigned int i = 0; i < specFileIn.volumeFociFile.files.size(); i++) {
-      if (specFileIn.volumeFociFile.files[i].selected) {
-         if (updateFileReadProgressDialog(specFileIn.volumeFociFile.files[i].filename,
-                                          progressFileCounter, progressDialog)) {
-            return true;
-         }
-         try {
-            readVolumeFociFile(specFileIn.volumeFociFile.files[i].filename, true, true);
-         }
-         catch (FileException& e) {
-            errorMessages.push_back(e.whatQString());
-         }
-      }
-   }
-   
-   //
    // Read the foci projection file
    //
    for (unsigned int i = 0; i < specFileIn.fociProjectionFile.files.size(); i++) {
@@ -8341,6 +8619,31 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
       }
    }
    fociProjectionFile->clearModified();
+   
+   //
+   // Read the foci search file
+   //
+   for (unsigned int i = 0; i < specFileIn.fociSearchFile.files.size(); i++) {
+      if (i == 0) {
+         //
+         // Remove default search
+         //
+         clearFociSearchFile();
+      }
+      if (specFileIn.fociSearchFile.files[i].selected) {
+         if (updateFileReadProgressDialog(specFileIn.fociSearchFile.files[i].filename,
+                                          progressFileCounter, progressDialog)) {
+            return true;
+         }
+         try {
+            readFociSearchFile(specFileIn.fociSearchFile.files[i].filename, true, true);
+         }
+         catch (FileException& e) {
+            errorMessages.push_back(e.whatQString());
+         }
+      }
+   }
+   fociSearchFile->clearModified();
    
    //
    // Read the transformation matrix file
@@ -8491,8 +8794,9 @@ BrainSet::readSpecFileMultiThreaded(const SPEC_FILE_READ_MODE specReadMode,
                        const QString& specFileNameIn,
                        std::vector<QString>& errorMessages,
                        const TransformationMatrix* specTransformationMatrixIn,
-                       QProgressDialog* progressDialog)
+                       QProgressDialog* progressDialogIn)
 {
+   QProgressDialog* progressDialog = progressDialogIn;
    specFileTimeOfLoading = QDateTime::currentDateTime();
 
    readingSpecFileFlag = true;
@@ -8788,12 +9092,11 @@ BrainSet::postSpecFileReadInitializations()
    //   
    // Default to surface shape if no overlays/underlays selected
    //
-   nodeColoring->assignColors(); // need to do this to allocate underlay/overlay arrays
-   if ((nodeColoring->getPrimaryOverlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
-       (nodeColoring->getSecondaryOverlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
-       (nodeColoring->getUnderlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE)) {  
+   if (getSurfaceUnderlay()->getOverlay(-1) ==  
+                      BrainModelSurfaceOverlay::OVERLAY_NONE) {  
       if (getSurfaceShapeFile()->getNumberOfColumns() > 0) {
-         nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
+         getSurfaceUnderlay()->setOverlay(-1,
+                  BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE);
       }
    }
    nodeColoring->assignColors();
@@ -8992,6 +9295,144 @@ BrainSet::getActiveFiducialSurface()
    return activeFiducialSurface;
 }
 
+/**
+ * get the left fiducial volume interaction surface.
+ */
+BrainModelSurface* 
+BrainSet::getLeftFiducialVolumeInteractionSurface()
+{
+   //
+   // Does the surface still exist
+   //
+   int indx = getBrainModelIndex(leftFiducialVolumeInteractionSurface);
+   if (indx >= 0) {
+      BrainModelSurface* bms = getBrainModelSurface(indx);
+      if (bms->getStructure().getType() != Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
+         indx = -1;
+      }
+   }
+   if (indx < 0) {
+      //
+      // Find the first left fiducial surface
+      //
+      leftFiducialVolumeInteractionSurface = NULL;
+      const int numBrains = getNumberOfBrainModels();
+      for (int i = 0; i < numBrains; i++) {
+         BrainModelSurface* bms = getBrainModelSurface(i);
+         if (bms != NULL) {
+            if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+               if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
+                  leftFiducialVolumeInteractionSurface = bms;
+               }
+            }
+         }
+      }
+   }
+   
+   return leftFiducialVolumeInteractionSurface;
+}
+
+/**
+ * get the right fiducial volume interaction surface.
+ */
+BrainModelSurface* 
+BrainSet::getRightFiducialVolumeInteractionSurface()
+{
+   //
+   // Does the surface still exist
+   //
+   int indx = getBrainModelIndex(rightFiducialVolumeInteractionSurface);
+   if (indx >= 0) {
+      BrainModelSurface* bms = getBrainModelSurface(indx);
+      if (bms->getStructure().getType() != Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
+         indx = -1;
+      }
+   }
+   if (indx < 0) {
+      //
+      // Find the first right fiducial surface
+      //
+      rightFiducialVolumeInteractionSurface = NULL;
+      const int numBrains = getNumberOfBrainModels();
+      for (int i = 0; i < numBrains; i++) {
+         BrainModelSurface* bms = getBrainModelSurface(i);
+         if (bms != NULL) {
+            if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+               if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
+                  rightFiducialVolumeInteractionSurface = bms;
+               }
+            }
+         }
+      }
+   }
+   
+   return rightFiducialVolumeInteractionSurface;
+}
+
+/**
+ * get the cerebellum fiducial volume interaction surface.
+ */
+BrainModelSurface* 
+BrainSet::getCerebellumFiducialVolumeInteractionSurface()
+{
+   //
+   // Does the surface still exist
+   //
+   int indx = getBrainModelIndex(cerebellumFiducialVolumeInteractionSurface);
+   if (indx >= 0) {
+      BrainModelSurface* bms = getBrainModelSurface(indx);
+      if (bms->getStructure().getType() != Structure::STRUCTURE_TYPE_CEREBELLUM) {
+         indx = -1;
+      }
+   }
+   if (indx < 0) {
+      //
+      // Find the first cerebellum fiducial surface
+      //
+      cerebellumFiducialVolumeInteractionSurface = NULL;
+      const int numBrains = getNumberOfBrainModels();
+      for (int i = 0; i < numBrains; i++) {
+         BrainModelSurface* bms = getBrainModelSurface(i);
+         if (bms != NULL) {
+            if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+               if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CEREBELLUM) {
+                  cerebellumFiducialVolumeInteractionSurface = bms;
+               }
+            }
+         }
+      }
+   }
+   
+   return cerebellumFiducialVolumeInteractionSurface;
+}
+
+/**
+ * set the left fiducial volume interaction surface.
+ */
+void 
+BrainSet::setLeftFiducialVolumeInteractionSurface(BrainModelSurface* bms)
+{
+   leftFiducialVolumeInteractionSurface = bms;
+}
+
+/**
+ * set the right fiducial volume interaction surface.
+ */
+void 
+BrainSet::setRightFiducialVolumeInteractionSurface(BrainModelSurface* bms)
+{
+   rightFiducialVolumeInteractionSurface = bms;
+}
+
+/**
+ * set the cerebellum fiducial volume interaction surface.
+ */
+void 
+BrainSet::setCerebellumFiducialVolumeInteractionSurface(BrainModelSurface* bms)
+{
+   cerebellumFiducialVolumeInteractionSurface = bms;
+}      
+
 /** 
  * Get a brain model surface of the specified type.
  */
@@ -9070,7 +9511,9 @@ BrainSet::generateCerebralHullVtkFile(const VolumeFile* segmentationVolume,
    //
    addVolumeFile(VolumeFile::VOLUME_TYPE_SEGMENTATION,
                  hullVolume,
-                 hullVolume->getFileName());
+                 hullVolume->getFileName(),
+                 true,
+                 true);
                  
    if(saveHullVolumeFileFlag) {
       //
@@ -9380,13 +9823,6 @@ BrainSet::assignFociColors()
                                     displaySettingsFoci->getColorMode());
    
    //
-   // volume foci files
-   //
-   volumeFociFile->assignColors(*fociColorFile,
-                                    displaySettingsFoci->getColorMode());
-   
-   
-   //
    // Transform data files may contain cell files
    //
    assignTransformationDataFileColors();
@@ -9491,6 +9927,93 @@ BrainSet::assignTransformationDataFileColors()
 }
 
 /**
+ * remove unlinked studies from study meta data file.
+ * Returns number of studies that are removed.
+ */
+int 
+BrainSet::removeUnlinkedStudiesFromStudyMetaDataFile()
+{
+   //
+   // Used to track linked studies
+   //
+   const int numStudies = studyMetaDataFile->getNumberOfStudyMetaData();
+   if (numStudies <= 0) {
+      return 0;
+   }
+
+   //
+   // Get PubMed IDs of various data types
+   //
+   std::set<QString> pmidSet;
+   std::vector<QString> pmids;
+   
+   arealEstimationFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   cellProjectionFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   deformationFieldFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   fociProjectionFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   geodesicDistanceFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   latLonFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   paintFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   rgbPaintFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   surfaceShapeFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   surfaceVectorFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   topographyFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   vocabularyFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+   pmidSet.insert(pmids.begin(), pmids.end());
+   
+   //
+   // Identify linked studies
+   //
+   std::vector<bool> studyUsageFlags(numStudies, 0);
+   for (std::set<QString>::iterator iter = pmidSet.begin();
+        iter != pmidSet.end();
+        iter++) {
+      const QString pmid(*iter);
+      if (pmid.isEmpty() == false) {
+         const int studyNumber = studyMetaDataFile->getStudyIndexFromPubMedID(pmid);
+         if (studyNumber >= 0) {
+            studyUsageFlags[studyNumber] = true;
+         }
+      }
+   }
+   
+   //
+   // Remove unused studies
+   //
+   int numUnusedStudies = 0;
+   for (int i = (numStudies - 1); i >= 0; i--) {
+      if (studyUsageFlags[i] == false) {
+         studyMetaDataFile->deleteStudyMetaData(i);
+         numUnusedStudies++;
+      }
+   }
+   
+   return numUnusedStudies;
+}
+      
+/**
  * move foci study info to the study meta data file.
  */
 void 
@@ -9503,23 +10026,6 @@ BrainSet::moveFociStudyInfoToStudyMetaDataFile()
    displaySettingsFoci->update();
 }
       
-/**
- * Delete foci and foci projections.
- */
-void
-BrainSet::deleteAllFoci(const bool deleteFociProjections,
-                        const bool deleteVolumeFoci)
-{
-   if (deleteFociProjections) {
-      deleteAllFociProjections();
-   }
-   
-   if (deleteVolumeFoci) {
-      volumeFociFile->clear();
-      loadedFilesSpecFile.volumeFociFile.setAllSelections(SpecFile::SPEC_FALSE);
-   }
-}
-
 /**
  * Delete all foci projections (including those in foci files).
  */
@@ -9813,8 +10319,8 @@ BrainSet::writeVtkModelFile(const QString& name,
 BrainSetNodeAttribute* 
 BrainSet::getNodeAttributes(const int nodeNum) 
 {
-   if (nodeNum > static_cast<int>(nodeAttributes.size())) {
-      nodeAttributes.resize(nodeNum);
+   if (nodeNum >= static_cast<int>(nodeAttributes.size())) {
+      nodeAttributes.resize(nodeNum + 1);
    }
    return &nodeAttributes[nodeNum];
 }
@@ -10860,13 +11366,13 @@ BrainSet::importVtkTypeFileHelper(const QString& filename, vtkPolyData* polyData
       //
       // Reset node coloring
       //
-      nodeColoring->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-      nodeColoring->setSecondaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-      nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
+      getPrimarySurfaceOverlay()->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_NONE);
+      getSecondarySurfaceOverlay()->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_NONE);
+      getSurfaceUnderlay()->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_NONE);
       
       if (importColors) {
          if (rgbPaintFile->getNumberOfColumns() > 0) {
-            nodeColoring->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT);
+            getPrimarySurfaceOverlay()->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT);
          }
       }
 
@@ -10972,6 +11478,118 @@ BrainSet::importMDPlotFile(const QString& filename,
    displaySettingsCells->update();
 }
                             
+/**
+ * import mni obj surface file.
+ */
+void 
+BrainSet::importMniObjSurfaceFile(const QString& filename,
+                                  const bool importCoordinates,
+                                  const bool importTopology,
+                                  const bool importColors,
+                                  const BrainModelSurface::SURFACE_TYPES surfaceType,
+                                  const TopologyFile::TOPOLOGY_TYPES topologyType) throw (FileException)
+{
+   int numNodes = getNumberOfNodes();
+   bool noNodesFlag = (numNodes == 0);
+   
+   MniObjSurfaceFile mni;
+   try {
+      mni.readFile(filename);
+      
+      if (importTopology) {
+         //
+         // Get the topology
+         //
+         TopologyFile* mniTopology = new TopologyFile;
+         try {
+            mniTopology->importFromMniObjSurfaceFile(mni);
+            mniTopology->setTopologyType(topologyType);
+            addTopologyFile(mniTopology);
+            setSelectedTopologyFiles();
+         }
+         catch (FileException& /*e*/) {
+            delete mniTopology;
+            throw FileException(filename, "Error getting topology");
+         }
+      }
+      
+      //
+      // Get the coordinates
+      //
+      if (mni.getNumberOfPoints() > 0) {
+         if (importCoordinates) {
+            BrainModelSurface* bms = new BrainModelSurface(this);
+            bms->importFromMniObjSurfaceFile(mni);
+            if (numNodes == 0) {
+               if (bms->getNumberOfNodes() > 0) {
+                  numNodesMessage = " contains a different number of nodes than ";
+                  numNodesMessage.append(FileUtilities::basename(filename));
+               }
+               else {
+                  delete bms;
+                  bms = NULL;
+                  throw FileException(filename, "Contains no nodes");
+               }
+            }
+            else if (numNodes != bms->getNumberOfNodes()) {
+               delete bms;
+               bms = NULL;
+               throw FileException(FileUtilities::basename(filename), numNodesMessage);
+            }
+            
+            if (getNumberOfTopologyFiles() > 0) {
+               bms->setTopologyFile(getTopologyFile(getNumberOfTopologyFiles() - 1));
+            }
+            bms->orientTilesConsistently();
+            bms->computeNormals();
+            bms->setSurfaceType(surfaceType);
+            bms->setStructure(getStructure());
+            addBrainModel(bms);
+         }
+         numNodes = getNumberOfNodes();
+         
+         if (importColors && (numNodes > 0)) {
+            
+            //
+            // Add new column or get the column in the rgb file
+            //
+            const QString rgbColumnName("MNI OBJ Surface");
+            int column = 0;
+            if (rgbPaintFile->getNumberOfColumns() <= 0) {
+               rgbPaintFile->setNumberOfNodesAndColumns(numNodes, 1);
+               column = 0;
+            }
+            else {
+               rgbPaintFile->addColumns(1);
+               column = paintFile->getNumberOfColumns() - 1;
+            }
+            rgbPaintFile->setColumnName(0, rgbColumnName);
+            
+            //
+            // Converts a brain voyager color index into a paint file index
+            //
+            for (int i = 0; i < numNodes; i++) {
+               const unsigned char* rgba = mni.getColorRGBA(i);
+               const float r = rgba[0];
+               const float g = rgba[1];
+               const float b = rgba[2];
+               rgbPaintFile->setRgb(i, column, r, g, b);
+            }
+         }
+      }
+      else {
+         throw FileException(filename, "Has no coordinates");
+      }
+   }
+   catch (FileException& e) {
+      throw e;
+   }
+   
+   if (noNodesFlag) {
+      postSpecFileReadInitializations();
+   }
+}
+
 /**
  * import brain voyager file
  */
@@ -11344,6 +11962,15 @@ BrainSet::getVolumeProbAtlasFile(const int index) const
 }
       
 /**
+ * synchronize prob atlas volume region names.
+ */
+void 
+BrainSet::synchronizeProbAtlasVolumeRegionNames()
+{
+   VolumeFile::synchronizeRegionNames(volumeProbAtlasFiles);
+}
+      
+/**
  * get the volume rgb file
  */
 VolumeFile* 
@@ -11500,7 +12127,7 @@ BrainSet::updateNodeDisplayFlags()
    DisplaySettingsSection* dss = getDisplaySettingsSection();
    
    SectionFile* sf = getSectionFile();
-   const int column = dss->getSelectedColumn();
+   const int column = dss->getSelectedDisplayColumn(-1, -1);
 
    if (sf->getNumberOfColumns() == 0) {
       checkNodes = false;
@@ -11684,6 +12311,16 @@ BrainSet::clearFociColorFile()
  * clear the file
  */
 void 
+BrainSet::clearFociSearchFile()
+{
+   fociSearchFile->clear();
+   loadedFilesSpecFile.fociSearchFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the file
+ */
+void 
 BrainSet::clearGeodesicDistanceFile()
 {
    geodesicDistanceFile->clear();
@@ -11821,6 +12458,19 @@ BrainSet::clearTransformationMatrixFile()
 }
 
 /**
+ * clear the transformation data files.
+ */
+void 
+BrainSet::clearTransformationDataFiles()
+{
+   for (int i = 0; i < getNumberOfTransformationDataFiles(); i++) {
+      delete transformationDataFiles[i];
+   }
+   transformationDataFiles.clear();
+   loadedFilesSpecFile.transformationDataFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+      
+/**
  * clear the file
  */
 void 
@@ -11850,6 +12500,97 @@ BrainSet::clearVocabularyFile()
    loadedFilesSpecFile.vocabularyFile.setAllSelections(SpecFile::SPEC_FALSE);
 }
 
+/**
+ * clear the anatomy volume files.
+ */
+void 
+BrainSet::clearVolumeAnatomyFiles()
+{
+   for (unsigned int i = 0; i < volumeAnatomyFiles.size(); i++) {
+      delete volumeAnatomyFiles[i];
+   }
+   volumeAnatomyFiles.clear();
+   loadedFilesSpecFile.volumeAnatomyFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the functional volume files.
+ */
+void 
+BrainSet::clearVolumeFunctionalFiles()
+{
+   for (unsigned int i = 0; i < volumeFunctionalFiles.size(); i++) {
+      delete volumeFunctionalFiles[i];
+   }
+   volumeFunctionalFiles.clear();
+   loadedFilesSpecFile.volumeFunctionalFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the paint volume files.
+ */
+void 
+BrainSet::clearVolumePaintFiles()
+{
+   for (unsigned int i = 0; i < volumePaintFiles.size(); i++) {
+      delete volumePaintFiles[i];
+   }
+   volumePaintFiles.clear();
+   loadedFilesSpecFile.volumePaintFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the prob atlasvolume files.
+ */
+void 
+BrainSet::clearVolumeProbabilisticAtlasFiles()
+{
+   for (unsigned int i = 0; i < volumeProbAtlasFiles.size(); i++) {
+      delete volumeProbAtlasFiles[i];
+   }
+   volumeProbAtlasFiles.clear();
+   loadedFilesSpecFile.volumeProbAtlasFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the rgb volume files.
+ */
+void 
+BrainSet::clearVolumeRgbFiles()
+{
+   for (unsigned int i = 0; i < volumeRgbFiles.size(); i++) {
+      delete volumeRgbFiles[i];
+   }
+   volumeRgbFiles.clear();
+   loadedFilesSpecFile.volumeRgbFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the segmentation volume files.
+ */
+void 
+BrainSet::clearVolumeSegmentationFiles()
+{
+   for (unsigned int i = 0; i < volumeSegmentationFiles.size(); i++) {
+      delete volumeSegmentationFiles[i];
+   }
+   volumeSegmentationFiles.clear();
+   loadedFilesSpecFile.volumeSegmentationFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the vector volume files.
+ */
+void 
+BrainSet::clearVolumeVectorFiles()
+{
+   for (unsigned int i = 0; i < volumeVectorFiles.size(); i++) {
+      delete volumeVectorFiles[i];
+   }
+   volumeVectorFiles.clear();
+   loadedFilesSpecFile.volumeVectorFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+      
 /**
  * convert displayed borders into a VTK model.
  */

@@ -33,7 +33,7 @@
  */
 CommandScriptComment::CommandScriptComment()
    : CommandBase("-script-comment",
-                 "COMMENT")
+                 "SCRIPT COMMENT")
 {
 }
 

@@ -30,7 +30,7 @@
 
 #include <QLabel>
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 #include "SceneFile.h"
 
 class BrainSet;
@@ -39,7 +39,7 @@ class QGridLayout;
 class QMouseEvent;
 
 /// dialog for viewing colors assigned to names
-class GuiColorKeyDialog : public QtDialogNonModal { 
+class GuiColorKeyDialog : public WuQDialog { 
    Q_OBJECT
    
    public:
@@ -94,6 +94,9 @@ class GuiColorKeyDialog : public QtDialogNonModal {
       
       // called when a name label is clicked
       void slotNameLabelClicked(const QString& name);
+      
+      // clear highlighting
+      void slotClearHighlighting();
       
    protected:
       /// name and color holder

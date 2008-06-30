@@ -29,7 +29,7 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QComboBox;
@@ -49,7 +49,7 @@ class vtkMPEG2Writer;
 #endif // HAVE_VTK_MPEG
 
 /// Dialog for recording to movie file.
-class GuiRecordingDialog : public QtDialog {
+class GuiRecordingDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -105,7 +105,9 @@ class GuiRecordingDialog : public QtDialog {
          /// MPEG2 using VTK
          MOVIE_FILE_TYPE_MPEG2_VTK,
          /// AVI using VTK
-         MOVIE_FILE_TYPE_AVI_VTK
+         MOVIE_FILE_TYPE_AVI_VTK,
+         /// Sequence of JPEG Images
+         MOVIE_FILE_TYPE_JPEG_IMAGES
       };
       
       /// get the movie file type
@@ -146,6 +148,9 @@ class GuiRecordingDialog : public QtDialog {
       
       /// add image to movie being created with VTK's AVI
       void addImageToAviVTK(const QImage& image);
+      
+      /// add image to movie for JPEG images
+      void addImageToJpeg(const QImage& image);
       
       /// convert a QImage into VTK's ImageData (user must delete returned vtkImageData object)
       vtkImageData* convertQImagetoVTKImageData(const QImage& image);

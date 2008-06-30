@@ -206,7 +206,8 @@ DisplaySettingsSurfaceVectors::showScene(const SceneFile::Scene& scene, QString&
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsSurfaceVectors::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsSurfaceVectors::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    SurfaceVectorFile* svf = brainSet->getSurfaceVectorFile();
    if (onlyIfSelected) {

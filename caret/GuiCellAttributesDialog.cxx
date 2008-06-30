@@ -56,7 +56,7 @@ operator<(const GuiCellAttributesDialog::CellAttributes& b1,
  * Constructor.
  */
 GuiCellAttributesDialog::GuiCellAttributesDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    

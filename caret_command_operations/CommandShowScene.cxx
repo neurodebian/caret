@@ -34,6 +34,7 @@
 #include "FileFilters.h"
 #include "ImageFile.h"
 #include "OffScreenOpenGLWidget.h"
+#include "PreferencesFile.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
 #include "SceneFile.h"
@@ -82,7 +83,7 @@ CommandShowScene::getHelpInformation() const
        + indent9 + "<spec-file>\n"
        + indent9 + "<scene-file>\n"
        + indent9 + "<scene-name-or-number>\n"
-       + indent9 + "[image-file-name] \n"
+       + indent9 + "[-image-file  image-file-name  images-per-row] \n"
        + indent9 + "\n"
        + indent9 + "Render an image of a scene into an image file.\n"
        + indent9 + "Note: the scene numbers start at one.\n"
@@ -91,8 +92,11 @@ CommandShowScene::getHelpInformation() const
        + indent9 + "to be the index of the scene (1..N) in the scene file.  \n"
        + indent9 + "Otherwise, it is interpreted to be the name of the scene.\n"
        + indent9 + "\n"
-       + indent9 + "NOTE: If the image file name is not specified, the image of\n"
-       + indent9 + "the scene will be shown in a window on the user's display.\n"
+       + indent9 + "If the \"-image-file\" option is specified, the images of\n"
+       + indent9 + "the main and viewing windows will be placed into an image\n"
+       + indent9 + "file.  \"images-per-row\" specifies how the images (if there\n"
+       + indent9 + "are viewing windows displayed in the scene) will be layed\n"
+       + indent9 + "out.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -134,12 +138,21 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
    //
    bool saveImageToFile = false;
    QString imageFileName;
-   if (parameters->getParametersAvailable()) {
+   int imagesPerRow = 1;
+   while (parameters->getParametersAvailable()) {
+      const QString paramName = parameters->getNextParameterAsString("Parameter");
+
       //
       // Image file name
       //
-      imageFileName = parameters->getNextParameterAsString("Image File Name");
-      saveImageToFile = true;
+      if (paramName == "-image-file") {
+         imageFileName = parameters->getNextParameterAsString("Image File Name");
+         imagesPerRow  = parameters->getNextParameterAsInt("Images Per Row");
+         saveImageToFile = true;
+      }
+      else {
+         throw CommandException("Unrecognized parameter: " + paramName);
+      }
    }
       
    //
@@ -229,9 +242,9 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
                       sceneErrorMessage);
        
    //
-   // The output image file
+   // Contains images captured of all windows
    //
-   ImageFile outputImageFile;
+   std::vector<QImage> capturedImages;
    
    //
    // Loop through main and viewing windows
@@ -311,11 +324,30 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
       }
       
       //
-      // Add to the bottom of the output image file
+      // Track the image
       //
-      outputImageFile.appendImageAtBottom(ImageFile(image));
+      capturedImages.push_back(image);
    }
    
+   //
+   // Get background color
+   //
+   const PreferencesFile* pf = brainSet.getPreferencesFile();
+   unsigned char r, g, b;
+   pf->getSurfaceBackgroundColor(r, g, b);
+   const int backgroundColor[3] = { r, b, b };
+   
+   //
+   // Combine the images
+   //
+   QImage outputImage;
+   ImageFile::combinePreservingAspectAndFillIfNeeded(capturedImages,
+                                                     imagesPerRow,
+                                                     backgroundColor,
+                                                     outputImage);
+   ImageFile outputImageFile;
+   outputImageFile.setImage(outputImage);
+                                                     
    //
    // Write the image file
    //

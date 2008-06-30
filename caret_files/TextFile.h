@@ -53,6 +53,9 @@ class TextFile : public AbstractFile {
       // append a line to the text (new line is also added)
       void appendLine(const QString& s);
       
+      // append text to the file (no newline is added)
+      void appendText(const QString& s);
+      
       // clear the contents
       void clear();
       

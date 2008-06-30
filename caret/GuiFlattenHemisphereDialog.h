@@ -5,7 +5,7 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class QCheckBox;
@@ -15,7 +15,7 @@ class QLabel;
 class QLineEdit;
 
 /// Dialog for flattening hemispheres
-class GuiFlattenHemisphereDialog : public QtDialog {
+class GuiFlattenHemisphereDialog : public WuQDialog {
    Q_OBJECT
    
    public:

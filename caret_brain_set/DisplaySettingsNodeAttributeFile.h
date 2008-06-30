@@ -29,6 +29,7 @@
 
 #include <vector>
 
+#include "BrainModelSurfaceOverlay.h"
 #include "DisplaySettings.h"
 #include "SceneFile.h"
 
@@ -40,10 +41,11 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
    public:
       // constructor
       DisplaySettingsNodeAttributeFile(BrainSet* bs,
-                                       GiftiNodeDataFile* gafIn,
-                                       NodeAttributeFile* nafIn,
-                                       const bool allowSurfaceUniqueColumnSelectionFlagIn,
-                                       const bool thresholdColumnValidFlagIn);
+                     GiftiNodeDataFile* gafIn,
+                     NodeAttributeFile* nafIn,
+                     const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS overlayTypeIn,
+                     const bool allowSurfaceUniqueColumnSelectionFlagIn,
+                     const bool thresholdColumnValidFlagIn);
       
       // destructor
       ~DisplaySettingsNodeAttributeFile();
@@ -59,17 +61,21 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
       virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const; 
 
       /// get column selected for display
-      int getSelectedDisplayColumn(const int modelNumber);
+      int getSelectedDisplayColumn(const int modelNumber,
+                                   const int overlayNumber) const;
 
       /// set column for display
       void setSelectedDisplayColumn(const int modelNumber,
+                                    const int overlayNumber,
                                     const int columnNumber);
 
       /// get column selected for thresholding
-      int getSelectedThresholdColumn(const int modelNumber);
+      int getSelectedThresholdColumn(const int modelNumber,
+                                     const int overlayNumber) const;
 
       /// set column for thresholding
       void setSelectedThresholdColumn(const int modelNumber,
+                                      const int overlayNumber,
                                       const int columnNumber);
 
       /// get apply to left and right structures flag
@@ -80,10 +86,20 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
       void setApplySelectionToLeftAndRightStructuresFlag(const bool b)
              { applySelectionToLeftAndRightStructuresFlag = b; }
 
-   protected:
-      /// get the number of overlays
-      static int getNumberOfOverlays();
+      /// for node attribute files - all column selections for each surface are the same
+      //virtual bool displayColumnSelectionsAreTheSame(const int bm1, const int bm2) const;
       
+      /// for node attribute files - all column selections for each surface are the same
+      //virtual bool thresholdColumnSelectionsAreTheSame(const int bm1, const int bm2) const;
+      
+      // get flags to find out if any columns are selected as one of the overlays
+      void getSelectedColumnFlags(const int brainModelIndex,
+                                  std::vector<bool>& selectedColumnFlagsOut) const;
+                                  
+      // Get first selected column that is an overlay for the brain model (-1 if none)
+      int getFirstSelectedColumnForBrainModel(const int brainModelIndex) const;
+      
+   protected:
       /// get the number of columns for the file
       int getFileNumberOfColumns() const;
       
@@ -105,7 +121,7 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
  
       /// get the index for column selection
       int getColumnSelectionIndex(const int modelIndex,
-                                  const int overlayNumber);
+                                  const int overlayNumber) const;
                                   
    private:
       /// the selected display column
@@ -119,6 +135,9 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
       
       /// node attribute file for which this is setting the settings
       NodeAttributeFile* naf;
+      
+      /// type of overlay for this data type
+      BrainModelSurfaceOverlay::OVERLAY_SELECTIONS overlayType;
       
       /// threshold column is valid 
       bool thresholdColumnValidFlag;

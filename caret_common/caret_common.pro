@@ -16,9 +16,9 @@ win32 {
    DEFINES	-= UNICODE
 }
 
-macx {
-   INCLUDEPATH += /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
-} 
+#macx {
+#   INCLUDEPATH += /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
+#} 
 
 # Input
 HEADERS += Basename.h \
@@ -40,7 +40,6 @@ HEADERS += Basename.h \
       StatisticsUtilities.h \
       StringTable.h \
       Species.h \
-	   SpeechGenerator.h \
       StereotaxicSpace.h \
 	   StringUtilities.h \
       Structure.h \
@@ -65,7 +64,6 @@ SOURCES += Basename.cxx \
       StatisticsUtilities.cxx \
       StringTable.cxx \
       Species.cxx \
-	   SpeechGenerator.cxx \
       StereotaxicSpace.cxx \
 	   StringUtilities.cxx \
       Structure.cxx \

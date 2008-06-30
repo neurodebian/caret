@@ -43,9 +43,10 @@
 /**
  * Constructor
  */
-GuiContourSetScaleDialog::GuiContourSetScaleDialog(QWidget* parent, bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+GuiContourSetScaleDialog::GuiContourSetScaleDialog(QWidget* parent, bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    scaleStartPoint[0] = 0.0;
    scaleStartPoint[1] = 0.0;
    scaleEndPoint[0]   = 0.0;

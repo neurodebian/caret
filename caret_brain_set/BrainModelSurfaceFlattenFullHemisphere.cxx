@@ -408,19 +408,16 @@ BrainModelSurfaceFlattenFullHemisphere::execute() throw (BrainModelAlgorithmExce
    //
    // Make sure there is some sort of coloring
    //
-   BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-   if ((bsnc->getPrimaryOverlay(-1)   == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
-       (bsnc->getSecondaryOverlay(-1) == BrainModelSurfaceNodeColoring::OVERLAY_NONE) &&
-       (bsnc->getUnderlay(-1)         == BrainModelSurfaceNodeColoring::OVERLAY_NONE)) {
-      SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
-      if (ssf->getNumberOfColumns() > 0) {
-         bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
-      }
-      else {
-         PaintFile* pf = brainSet->getPaintFile();
-         if (pf->getNumberOfColumns() > 0) {
-            bsnc->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_PAINT);            
-         }
+   SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
+   if (ssf->getNumberOfColumns() > 0) {
+      brainSet->getSurfaceUnderlay()->setOverlay(-1, 
+                     BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE);
+   }
+   else {
+      PaintFile* pf = brainSet->getPaintFile();
+      if (pf->getNumberOfColumns() > 0) {
+         brainSet->getSurfaceUnderlay()->setOverlay(-1, 
+                     BrainModelSurfaceOverlay::OVERLAY_PAINT);            
       }
    }
 }
@@ -627,7 +624,8 @@ BrainModelSurfaceFlattenFullHemisphere::executePart2()
    std::vector<QString> paintNames;
    paintNames.push_back(medialWallName);
    QString errorMessage;
-   if (flattenSurface->orientPaintedNodesToNegativeZAxis(paintNames,
+   if (flattenSurface->orientPaintedNodesToNegativeZAxis(brainSet->getPaintFile(),
+                                                         paintNames,
                                                          geographyColumnNumber,
                                                          errorMessage)) {
       throw BrainModelAlgorithmException(errorMessage);

@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QLayout>
 #include <QLineEdit>
@@ -39,7 +40,7 @@
 GuiSpecAndSceneFileCreationDialog::GuiSpecAndSceneFileCreationDialog(QWidget* parent,
                                                        BrainSet* brainSetIn,
                                                        const std::vector<int>& sceneIndicesIn)
-   : QtDialogModal(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Create Spec and Scene File");
    
@@ -80,8 +81,19 @@ GuiSpecAndSceneFileCreationDialog::GuiSpecAndSceneFileCreationDialog(QWidget* pa
    //
    // Get the dialog's layout and add to it
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addLayout(fileGridLayout);
+
+   //
+   // Dialog buttons
+   //
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok 
+                                                      | QDialogButtonBox::Cancel);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(accepted()),
+                    this, SLOT(accept()));
+   QObject::connect(buttonBox, SIGNAL(rejected()),
+                    this, SLOT(reject()));
 }
                                   
 /**
@@ -97,6 +109,11 @@ GuiSpecAndSceneFileCreationDialog::~GuiSpecAndSceneFileCreationDialog()
 void 
 GuiSpecAndSceneFileCreationDialog::done(int r)
 {
+   if (r == QDialog::Rejected) {
+      WuQDialog::done(r);
+      return;
+   }
+   
    //
    // Get name of spec file
    //
@@ -104,6 +121,9 @@ GuiSpecAndSceneFileCreationDialog::done(int r)
    if (specFileName.isEmpty()) {
       QMessageBox::critical(this, "ERROR", "You must enter the name for the Spec File.");
       return;
+   }
+   if (specFileName.endsWith(SpecFile::getSpecFileExtension()) == false) {
+      specFileName.append(SpecFile::getSpecFileExtension());
    }
 
    //
@@ -113,6 +133,9 @@ GuiSpecAndSceneFileCreationDialog::done(int r)
    if (sceneFileName.isEmpty()) {
       QMessageBox::critical(this, "ERROR", "You must enter the name for the Scene File.");
       return;
+   }
+   if (sceneFileName.endsWith(SpecFile::getSceneFileExtension()) == false) {
+      sceneFileName.append(SpecFile::getSceneFileExtension());
    }
 
    //
@@ -132,5 +155,5 @@ GuiSpecAndSceneFileCreationDialog::done(int r)
       return;
    }
    
-   QtDialogModal::done(r);
+   WuQDialog::done(r);
 }

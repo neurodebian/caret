@@ -54,6 +54,8 @@ GuiMainWindowHelpMenu::GuiMainWindowHelpMenu(GuiMainWindow* parent) :
    
    addAction(helpActions->getCaretHelpAction());
 
+   addAction(helpActions->getOnlineCaretHelpAction());
+   
    addAction(helpActions->getCaretTipsAction());
    
    addAction(helpActions->getCaretWebSiteAction());

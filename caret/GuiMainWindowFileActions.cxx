@@ -46,19 +46,18 @@
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelViewingWindow.h"
-#include "GuiCaptureMainWindowImageDialog.h"
+#include "GuiCaptureWindowImageDialog.h"
 #include "GuiChooseSpecFileDialog.h"
 #include "GuiConvertDataFileDialog.h"
 #include "GuiCopySpecFileDialog.h"
 #include "GuiDataFileOpenDialog.h"
 #include "GuiDataFileSaveDialog.h"
 #include "GuiFilesModified.h"
-#include "GuiGiftiFileDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
 #include "GuiPreferencesDialog.h"
 #include "GuiSpecFileDialog.h"
-#include "GuiViewCurrentFilesDialog.h"
+#include "GuiLoadedFileManagementDialog.h"
 #include "GuiZipSpecFileDialog.h"
 #include "QtUtilities.h"
 #include "StringUtilities.h"
@@ -149,10 +148,10 @@ GuiMainWindowFileActions::GuiMainWindowFileActions(GuiMainWindow* parent) :
                     this, SLOT(printMainWindowImage()));
 
    captureMainWindowImageAction = new QAction(parent);
-   captureMainWindowImageAction->setText("Capture Image of Main Window...");
+   captureMainWindowImageAction->setText("Capture Image of Window...");
    captureMainWindowImageAction->setObjectName("captureMainWindowImageAction");
    QObject::connect(captureMainWindowImageAction, SIGNAL(triggered(bool)),
-                    this, SLOT(captureMainWindowImageSlot()));
+                    parent, SLOT(displayCaptureWindowImageDialog()));
                     
    openSpecFileAction = new QAction(parent);
    openSpecFileAction->setText("Open Spec File...");
@@ -173,11 +172,11 @@ GuiMainWindowFileActions::GuiMainWindowFileActions(GuiMainWindow* parent) :
    QObject::connect(closeSpecFileAction, SIGNAL(triggered(bool)),
                     parent, SLOT(slotCloseSpecFile()));
 
-   viewCurrentFilesAction = new QAction(parent);
-   viewCurrentFilesAction->setText("View Current Files...");
-   viewCurrentFilesAction->setObjectName("viewCurrentFilesAction");
-   QObject::connect(viewCurrentFilesAction, SIGNAL(triggered(bool)),
-                    this, SLOT(viewCurrentFilesSlot()));
+   loadedFileManagementAction = new QAction(parent);
+   loadedFileManagementAction->setText("Manage Loaded Files...");
+   loadedFileManagementAction->setObjectName("loadedFileManagementAction");
+   QObject::connect(loadedFileManagementAction, SIGNAL(triggered(bool)),
+                    this, SLOT(loadedFileManagementSlot()));
 
    exitCaretAction = new QAction(parent);
    exitCaretAction->setText("Exit...");
@@ -185,18 +184,6 @@ GuiMainWindowFileActions::GuiMainWindowFileActions(GuiMainWindow* parent) :
    exitCaretAction->setObjectName("exitCaretAction");
    QObject::connect(exitCaretAction, SIGNAL(triggered(bool)),
                     parent, SLOT(slotCloseProgram()));  //SLOT(close()));
-
-   openGiftiFileDialogAction = new QAction(parent);
-   openGiftiFileDialogAction->setText("Open GIFTI File...");
-   openGiftiFileDialogAction->setObjectName("openGiftiFile");
-   QObject::connect(openGiftiFileDialogAction, SIGNAL(triggered(bool)),
-                    this, SLOT(openGiftiFileSlot()));
-
-   saveGiftiFileDialogAction = new QAction(parent);
-   saveGiftiFileDialogAction->setText("Save GIFTI File...");
-   saveGiftiFileDialogAction->setObjectName("saveGiftiFile");
-   QObject::connect(saveGiftiFileDialogAction, SIGNAL(triggered(bool)),
-                    this, SLOT(saveGiftiFileSlot()));
 }
 
 /**
@@ -479,57 +466,12 @@ GuiMainWindowFileActions::openSpecFileSlot()
  * Popup the view current files dialog.
  */
 void
-GuiMainWindowFileActions::viewCurrentFilesSlot()
+GuiMainWindowFileActions::loadedFileManagementSlot()
 {
-   GuiViewCurrentFilesDialog* vfd = new GuiViewCurrentFilesDialog(theMainWindow);
-   vfd->show();
+   GuiLoadedFileManagementDialog* lfmd = new GuiLoadedFileManagementDialog(theMainWindow);
+   lfmd->show();
 }
 
-/**
- * capture image of main window.
- */
-void 
-GuiMainWindowFileActions::captureMainWindowImageSlot()
-{
-   GuiCaptureMainWindowImageDialog* cmwid = NULL;
-   if (cmwid == NULL) {
-      cmwid = new GuiCaptureMainWindowImageDialog(theMainWindow);
-      QtUtilities::positionWindowOffOtherWindow(theMainWindow, cmwid);
-   }
-   cmwid->show();
-   cmwid->activateWindow();
-}
-
-/**
- * open gifti file slot.
- */
-void 
-GuiMainWindowFileActions::openGiftiFileSlot()
-{
-   static GuiGiftiFileDialog* gd = NULL;
-   if (gd == NULL) {
-      gd = new GuiGiftiFileDialog(theMainWindow,
-                                  GuiGiftiFileDialog::DIALOG_MODE_FILE_OPEN);
-   }
-   gd->show();
-   gd->activateWindow();
-}
-
-/**
- * save gifti file slot.
- */
-void 
-GuiMainWindowFileActions::saveGiftiFileSlot()
-{
-   static GuiGiftiFileDialog* gd = NULL;
-   if (gd == NULL) {
-      gd = new GuiGiftiFileDialog(theMainWindow,
-                                  GuiGiftiFileDialog::DIALOG_MODE_FILE_SAVE);
-   }
-   gd->show();
-   gd->activateWindow();
-}
-      
 /**
  * update the actions (typically called when menu is about to show)
  */

@@ -104,8 +104,8 @@ class GuiBrainModelOpenGLPopupMenu : public QMenu {
       /// Create the brain model sub menu
       void createBrainModelSubMenu();
       
-      /// create the mouse mode sub menu
-      void createMouseModeSubMenu();
+      // create the mouse mode sub menu
+      //void createMouseModeSubMenu();
       
       /// create the color key sub menu
       void createColorKeySubMenu();

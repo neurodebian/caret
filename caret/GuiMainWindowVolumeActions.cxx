@@ -28,7 +28,9 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
 #include <QMessageBox>
+#include <QSpinBox>
 
 #include "AtlasSpaceFile.h"
 #include "BrainSet.h"
@@ -43,7 +45,6 @@
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowVolumeActions.h"
-#include "QtMultipleInputDialog.h"
 #include "GuiVolumeCreateDialog.h"
 #include "GuiVolumeHandleFinderDialog.h"
 #include "GuiVolumeReconstructionDialog.h"
@@ -51,10 +52,9 @@
 #include "GuiVolumeSelectionDialog.h"
 #include "GuiVolumeSureFitSegmentationDialog.h"
 #include "GuiVolumeTopologyReportDialog.h"
-#include "QtCheckBoxSelectionDialog.h"
 #include "QtTextEditDialog.h"
-
 #include "VolumeFile.h"
+#include "WuQDataEntryDialog.h"
 #include "global_variables.h"
 #include "vtkTransform.h"
 
@@ -313,67 +313,50 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv != NULL) {
-      std::vector<QString> itemLabels;
       
-      int itemIndex = 0;
+      //
+      // Dialog for choosing volume to which apply rotation is applied
+      //
+      WuQDataEntryDialog ded(theMainWindow);
+      ded.setWindowTitle("Apply Rotation");
       
       //
       // Primary overlay
       //
-      int primaryOverlayIndex = -1;
+      QCheckBox* primaryOverlayCheckBox = NULL;
       VolumeFile* primaryOverlay = bmv->getOverlayPrimaryVolumeFile();
       if (primaryOverlay != NULL) {
          QString name("Primary Overlay: ");
          name.append(FileUtilities::basename(primaryOverlay->getFileName()));
-         itemLabels.push_back(name);
-         primaryOverlayIndex = itemIndex;
-         itemIndex++;
+         primaryOverlayCheckBox = ded.addCheckBox(name, true);
       }
       
       //
       // Secondary overlay
       //
-      int secondaryOverlayIndex = -1;
+      QCheckBox* secondaryOverlayCheckBox = NULL;
       VolumeFile* secondaryOverlay = bmv->getOverlaySecondaryVolumeFile();
       if (secondaryOverlay != NULL) {
          QString name("Secondary Overlay: ");
          name.append(FileUtilities::basename(secondaryOverlay->getFileName()));
-         itemLabels.push_back(name);
-         secondaryOverlayIndex = itemIndex;
-         itemIndex++;
+         secondaryOverlayCheckBox = ded.addCheckBox(name, true);
       }
       
       //
       // Underlay
       //
-      int underlayIndex = -1;
+      QCheckBox* underlayCheckBox = NULL;
       VolumeFile* underlay = bmv->getUnderlayVolumeFile();
       if (underlay != NULL) {
          QString name("Underlay: ");
          name.append(FileUtilities::basename(underlay->getFileName()));
-         itemLabels.push_back(name);
-         underlayIndex = itemIndex;
-         itemIndex++;
+         underlayCheckBox = ded.addCheckBox(name, true);
       }
-      
-      //
-      // Default apply to all 
-      //
-      std::vector<bool> itemSelections(itemLabels.size(), "true");
-      
-      //
-      // Create the checkbox dialog
-      //
-      QtCheckBoxSelectionDialog cbsd(theMainWindow,
-                                     "Apply Rotation",
-                                     "Apply to these volumes:",
-                                     itemLabels,
-                                     itemSelections);
       
       //
       // Did user press OK ?
       //
-      if (cbsd.exec() == QDialog::Accepted) {
+      if (ded.exec() == QDialog::Accepted) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    
          vtkTransform* transform = vtkTransform::New();
@@ -399,8 +382,8 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
          //
          // Apply to primary overlay volume
          //
-         if (primaryOverlayIndex >= 0) {
-            if (cbsd.getCheckBoxStatus(primaryOverlayIndex)) {
+         if (primaryOverlayCheckBox != NULL) {
+            if (primaryOverlayCheckBox->isChecked()) {
                primaryOverlay->applyTransformationMatrix(transform);
             }
          }
@@ -408,8 +391,8 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
          //
          // Apply to secondary overlay volume
          //
-         if (secondaryOverlayIndex >= 0) {
-            if (cbsd.getCheckBoxStatus(secondaryOverlayIndex)) {
+         if (secondaryOverlayCheckBox != NULL) {
+            if (secondaryOverlayCheckBox->isChecked()) {
                secondaryOverlay->applyTransformationMatrix(transform);
             }
          }
@@ -417,8 +400,8 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
          //
          // Apply to underlay volume
          //
-         if (underlayIndex >= 0) {
-            if (cbsd.getCheckBoxStatus(underlayIndex)) {
+         if (underlayCheckBox != NULL) {
+            if (underlayCheckBox->isChecked()) {
                underlay->applyTransformationMatrix(transform);
             }
          }
@@ -599,30 +582,27 @@ GuiMainWindowVolumeActions::slotSegmentPad()
       VolumeFile* vf = bmv->getSelectedVolumeSegmentationFile();
       
       if (vf != NULL) {
-         std::vector<QString> labels, values;
-         labels.push_back("X Left      ");   values.push_back("0");
-         labels.push_back("X Right     ");   values.push_back("0");
-         labels.push_back("Y Posterior ");   values.push_back("0");
-         labels.push_back("Y Anterior  ");   values.push_back("0");
-         labels.push_back("Z Inferior  ");   values.push_back("0");
-         labels.push_back("Z Superior  ");   values.push_back("0");
-         QtMultipleInputDialog mip(theMainWindow,
-                                   "Pad Segmentation Volume",
-                                   "",
-                                   labels,
-                                   values,
-                                   true,
-                                   true);
-         if (mip.exec() == QDialog::Accepted) {
+         WuQDataEntryDialog ded(theMainWindow);
+         ded.setWindowTitle("Padding Options");
+         QSpinBox* xLeftSpinBox = ded.addSpinBox("X Left", 0, 10000, 1);
+         QSpinBox* xRightSpinBox = ded.addSpinBox("X Right", 0, 10000, 1);
+         QSpinBox* yPosteriorSpinBox = ded.addSpinBox("Y Posterior", 0, 10000, 1);
+         QSpinBox* yAnteriorSpinBox = ded.addSpinBox("Y Anterior", 0, 10000, 1);
+         QSpinBox* zInferiorSpinBox = ded.addSpinBox("Z Inferior", 0, 10000, 1);
+         QSpinBox* zSuperiorSpinBox = ded.addSpinBox("Z Superior", 0, 10000, 1);
+         QCheckBox* erodePaddingCheckBox = ded.addCheckBox("Erode Padding", true);
+         if (ded.exec() == QDialog::Accepted) {
             QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-            std::vector<int> values;
-            mip.getValues(values);
-            int padding[6];
-            for (int i = 0; i < 6; i++) {
-               padding[i] = values[i];
-            }
+            const int padding[6] = {
+               xLeftSpinBox->value(),
+               xRightSpinBox->value(),
+               yPosteriorSpinBox->value(),
+               yAnteriorSpinBox->value(),
+               zInferiorSpinBox->value(),
+               zSuperiorSpinBox->value()
+            };
             
-            vf->padSegmentation(padding);
+            vf->padSegmentation(padding, erodePaddingCheckBox->isChecked());
             GuiFilesModified fm;
             fm.setVolumeModified();
             theMainWindow->fileModificationUpdate(fm);

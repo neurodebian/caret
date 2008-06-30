@@ -30,7 +30,7 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class ColorFile;
 class QListWidget;
@@ -39,38 +39,56 @@ class QComboBox;
 
 /// This class displays a dialog that allows the user to choose from a variety
 /// of data types' names.
-class GuiNameSelectionDialog : public QtDialog {
+class GuiNameSelectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       enum LIST_ITEMS_TYPE {
-         LIST_NONE                      =   0,
-         LIST_AREA_COLORS_ALPHA         =   1,
-         LIST_BORDER_NAMES_ALPHA        =   2,
-         LIST_BORDER_COLORS_ALPHA       =   4,
-         LIST_BORDER_COLORS_FILE        =   8,
-         LIST_CELL_COLORS_ALPHA         =  16,
-         LIST_CELL_COLORS_FILE          =  32,
-         LIST_FOCI_NAMES_ALPHA          =  64,
-         LIST_PAINT_NAMES_ALPHA         = 128,
-         LIST_CONTOUR_CELL_COLORS_ALPHA = 256,
-         LIST_CONTOUR_CELL_COLORS_FILE  = 512,
-         LIST_VOCABULARY_ALPHA          = 1024,
-         LIST_STEREOTAXIC_SPACES        = 2048,
-         LIST_STATISTICS                = 4096,
-         LIST_VOLUME_PAINT_NAMES_ALPHA  = 8192,
+         LIST_NONE                      =       0,  
+         LIST_AREA_COLORS_ALPHA         =       1,  // 2^0
+         LIST_BORDER_NAMES_ALPHA        =       2,  // 2^1
+         LIST_BORDER_COLORS_ALPHA       =       4,  // 2^2
+         LIST_BORDER_COLORS_FILE        =       8,  // 2^3
+         LIST_CELL_COLORS_ALPHA         =      16,  // 2^4
+         LIST_CELL_COLORS_FILE          =      32,  // 2^5
+         LIST_FOCI_AREAS_ALPHA          =      64,  // 2^6
+         LIST_FOCI_CLASSES_ALPHA        =     128,  // 2^7
+         LIST_FOCI_COMMENT_ALPHA        =     256,  // 2^8
+         LIST_FOCI_GEOGRAPHY_ALPHA      =     512,  // 2^9
+         LIST_FOCI_ROI_ALPHA            =    1024,  // 2^10
+         LIST_FOCI_NAMES_ALPHA          =    2048,  // 2^11
+         LIST_PAINT_NAMES_ALPHA         =    4096,  // 2^12
+         LIST_CONTOUR_CELL_COLORS_ALPHA =    8192,  // 2^13
+         LIST_CONTOUR_CELL_COLORS_FILE  =   16384,  // 2^14
+         LIST_VOCABULARY_ALPHA          =   32768,  // 2^15
+         LIST_STEREOTAXIC_SPACES        =   65536,  // 2^16
+         LIST_STATISTICS                =  131072,  // 2^17
+         LIST_STRUCTURE                 =  262144,  // 2^18
+         LIST_STUDY_CITATION            =  524288,  // 2^19
+         LIST_STUDY_DATA_FORMAT         = 1048576,  // 2^20
+         LIST_STUDY_DATA_TYPE           = 2097152,  // 2^21
+         LIST_STUDY_KEYWORDS_ALPHA      = 4194304,  // 2^22
+         LIST_STUDY_MESH_ALPHA          = 8388608,  // 2^23
+         LIST_STUDY_TABLE_HEADERS       = 16777216,  // 2^24
+         LIST_STUDY_TABLE_SUBHEADERS    = 33554432,  // 2^25
+         LIST_VOLUME_PAINT_NAMES_ALPHA  = 67108864,  // 2^26
          LIST_ALL                       = 0xffffffff
       };
       
       /// Constructor
-      GuiNameSelectionDialog(QWidget* parent, const unsigned int itemsToDisplay = LIST_ALL,
-                             const LIST_ITEMS_TYPE defaultItem = LIST_NONE);
+      GuiNameSelectionDialog(QWidget* parent, 
+                             const unsigned int itemsToDisplay = LIST_ALL,
+                             const LIST_ITEMS_TYPE defaultItem = LIST_NONE,
+                             const bool allowMultipleSelectionsFlagIn = false);
 
       /// Destructor
       ~GuiNameSelectionDialog();
 
-      /// Get the name that was selected
-      QString getName() const { return name; }
+      /// Get the names that were selected (use if multiple selections)
+      QStringList getNamesSelected() const;
+      
+      /// Get the name that was selected (use if single selections)
+      QString getNameSelected() const;
       
       /// Get the selected item type
       LIST_ITEMS_TYPE getSelectedItemType() const;
@@ -78,12 +96,6 @@ class GuiNameSelectionDialog : public QtDialog {
    private slots:
       /// called when a file type radio button is pressed
       void fileTypeSelectionSlot(int buttNum);
-      
-      /// called when an item is selected (double clicked) in the list box
-      void listBoxSelectionSlot(QListWidgetItem*);
-      
-      /// called when an item is selected (single clicked) in the list box
-      void listBoxHighlightSlot(QListWidgetItem*);
       
    private:
       /// Add a color file to this list box
@@ -106,6 +118,21 @@ class GuiNameSelectionDialog : public QtDialog {
       
       /// load the name for the file type and order
       void loadFociNamesAlphaOrder();
+      
+      /// load the name for the file type and order
+      void loadFociClassesAlphaOrder();
+      
+      /// load the name for the file type and order
+      void loadFociAreasAlphaOrder();
+      
+      /// load the names for the file type and order
+      void loadFociCommentAlphaOrder();
+      
+      /// load the name for the file type and order
+      void loadFociGeographyAlphaOrder();
+      
+      /// load the names for the file type and order
+      void loadFociROIAlphaOrder();
       
       /// load the names for the file type and order
       void loadCellColorsAlphaOrder();
@@ -134,11 +161,38 @@ class GuiNameSelectionDialog : public QtDialog {
       /// load the statistics
       void loadStatistics();
       
+      /// load the structures
+      void loadStructures();
+      
+      /// load the study citations
+      void loadStudyCitation();
+      
+      /// load the study data format
+      void loadStudyDataFormat();
+      
+      /// load the study data type
+      void loadStudyDataType();
+      
+      /// load the name for the file type and order
+      void loadStudyKeywords();
+      
+      /// load the name for the file type and order
+      void loadStudyMedialSubjectHeadings();
+      
+      /// load study table headers
+      void loadStudyTableHeaders();
+      
+      /// load study table subheaders
+      void loadStudyTableSubHeaders();
+      
       /// selected name
       QString name;
       
       /// the list box containing names
       QListWidget* nameListBox;
+      
+      /// allow multiple selections
+      bool allowMultipleSelectionsFlag;
       
       /// default selected item
       static int defaultSelection;
@@ -164,6 +218,21 @@ class GuiNameSelectionDialog : public QtDialog {
       /// item number for foci names alphabetical
       int fociNamesAlphaItemNumber;
       
+      /// item number for foci areas alphabetical
+      int fociAreasAlphaItemNumber;
+      
+      /// item number for foci classes alphabetical
+      int fociClassesAlphaItemNumber;
+      
+      /// item number for foci comment alphabetical
+      int fociCommentAlphaItemNumber;
+      
+      /// item number for foci geography alphabetical
+      int fociGeographyAlphaItemNumber;
+      
+      /// item number for foci roi alphabetical
+      int fociRegionOfInterestAlphaItemNumber;
+      
       /// item number for paint names alphabetical
       int paintNamesAlphaItemNumber;
       
@@ -181,6 +250,30 @@ class GuiNameSelectionDialog : public QtDialog {
       
       /// item number for stereotaxic spaces
       int stereotaxicSpaceItemNumber;
+      
+      /// item number for structures
+      int structuresItemNumber;
+      
+      /// item number for study study citation
+      int studyCitationItemNumber;
+      
+      /// item number for study data format
+      int studyDataFormatItemNumber;
+      
+      /// item number for study data type
+      int studyDataTypeItemNumber;
+      
+      /// item number for study keywords
+      int studyKeywordsItemNumber;
+      
+      /// item number for study medical subject headings
+      int studyMedicalSubjectHeadingsItemNumber;
+      
+      /// item number for study table headers
+      int studyTableHeadersItemNumber;
+      
+      /// item number for study table subheaders
+      int studyTableSubHeadersItemNumber;
       
       /// item number for statistics
       int statisticsItemNumber;

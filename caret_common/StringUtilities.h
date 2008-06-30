@@ -36,6 +36,11 @@ class StringUtilities {
 
    public:
 
+      // sort elements case insensitive
+      static void sortCaseInsensitive(std::vector<QString>& elements,
+                                      const bool reverseOrderFlag,
+                                      const bool removeDuplicatesFlag);
+      
       // convert to a C++ standard string
       static std::string toStdString(const QString& qs);
       

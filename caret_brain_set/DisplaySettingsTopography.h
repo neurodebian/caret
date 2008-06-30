@@ -30,11 +30,11 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 /// DisplaySettingsTopography is a class that maintains parameters for controlling
 /// the display of Topography Files.
-class DisplaySettingsTopography : public DisplaySettings {
+class DisplaySettingsTopography : public DisplaySettingsNodeAttributeFile {
    public:
       /// Type of topography display
       enum TOPOGRAPHY_DISPLAY_TYPE {
@@ -54,12 +54,6 @@ class DisplaySettingsTopography : public DisplaySettings {
       /// set the topography display type
       void setDisplayType(const TOPOGRAPHY_DISPLAY_TYPE tdt) { displayType = tdt; }
       
-      /// get the selected column
-      int getSelectedColumn(const int model) const;
-      
-      /// set the selected file index
-      void setSelectedColumn(const int model, const int col);
-      
       /// Reinitialize all display settings
       void reset();
       
@@ -70,17 +64,12 @@ class DisplaySettingsTopography : public DisplaySettings {
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
-                       
-      /// for node attribute files - all column selections for each surface are the same
-      virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
 
    private:
       /// display type
       TOPOGRAPHY_DISPLAY_TYPE displayType;
-      
-      /// selected topography column
-      std::vector<int> selectedColumn;
 };
 
 #endif

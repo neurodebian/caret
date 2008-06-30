@@ -129,24 +129,10 @@ PubMedArticleFile::retrieveArticleWithPubMedID(const QString& pubMedIDIn) throw 
    else {
       throw FileException("HTTP Error: " + http.getErrorMessage());
    }
-   
-   if (journalYear.isEmpty() == false) {
-      journalTitle += (" "
-                       + journalYear
-                       + ";");
-   }
-   if (journalVolume.isEmpty() == false) {
-      journalTitle += (" "
-                       + journalVolume
-                       + ":");
-   }
-   if (journalPages.isEmpty() == false) {
-      journalTitle += journalPages;
-   }
 }
 
 /**
- * parse the xml.
+ * parse the xml string.
  */
 void 
 PubMedArticleFile::parseXML(const QString xmlString) throw (FileException)
@@ -229,6 +215,20 @@ PubMedArticleFile::parseXML(const QString xmlString) throw (FileException)
       // next sibling
       //
       node = node.nextSibling();
+   }
+   
+   if (journalYear.isEmpty() == false) {
+      journalTitle += (" "
+                       + journalYear
+                       + ";");
+   }
+   if (journalVolume.isEmpty() == false) {
+      journalTitle += (" "
+                       + journalVolume
+                       + ":");
+   }
+   if (journalPages.isEmpty() == false) {
+      journalTitle += journalPages;
    }
 }
       

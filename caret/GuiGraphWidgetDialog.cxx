@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QPushButton>
 #include <QVBoxLayout>
 
@@ -34,17 +35,21 @@
  */
 GuiGraphWidgetDialog::GuiGraphWidgetDialog(const QString& title,
                                            QWidget* parent,
-                                           Qt::WFlags f)
-   : QtDialogNonModal(parent, f)
+                                           Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    
    graphWidget = new GuiGraphWidget(0, title);
    dialogLayout->addWidget(graphWidget);
    
-   getApplyPushButton()->hide();
-   
-   QObject::connect(getClosePushButton(), SIGNAL(clicked()),
+   //
+   // Dialog buttons
+   //
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
+   buttonBox->button(QDialogButtonBox::Close)->setAutoDefault(false);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
 }
 

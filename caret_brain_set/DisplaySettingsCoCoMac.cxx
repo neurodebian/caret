@@ -113,11 +113,12 @@ DisplaySettingsCoCoMac::showScene(const SceneFile::Scene& scene, QString& errorM
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsCoCoMac::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsCoCoMac::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    if (onlyIfSelected) {
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC) == false) {
+      if (brainSet->isASurfaceOverlayForAnySurface(
+                           BrainModelSurfaceOverlay::OVERLAY_COCOMAC) == false) {
          return;
       }
    }

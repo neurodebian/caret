@@ -89,31 +89,19 @@ class GuiMainWindowFileActions : public QObject {
       /// add document to spec file action
       QAction* getAddDocumentToSpecFileAction() { return addDocumentToSpecFileAction; }
       
-      /// view current files action
-      QAction* getViewCurrentFilesAction() { return viewCurrentFilesAction; }
+      ///loaded file management action
+      QAction* getLoadedFileManagementAction() { return loadedFileManagementAction; }
 
       /// exit caret action
       QAction* getExitCaretAction() { return exitCaretAction; }
       
       /// capture image of main window action
       QAction* getCaptureMainWindowImageAction() { return captureMainWindowImageAction; }
-      
-      /// open gifti file action
-      QAction* getOpenGiftiFileDialogAction() { return openGiftiFileDialogAction; }
-      
-      /// save gifti file action
-      QAction* getSaveGiftiFileDialogAction() { return saveGiftiFileDialogAction; }
 
    public slots:
       /// update the actions (typically called when menu is about to show)
       void updateActions();
 
-      /// open gifti file slot
-      void openGiftiFileSlot();
-      
-      /// save gifti file slot
-      void saveGiftiFileSlot();
-      
       /// add document to spec file action
       void addDocumentToSpecFileSlot();
       
@@ -135,8 +123,8 @@ class GuiMainWindowFileActions : public QObject {
       /// print main window action
       void printMainWindowImage();
       
-      /// view current files action
-      void viewCurrentFilesSlot();
+      /// loaded file management action
+      void loadedFileManagementSlot();
       
       /// record as mpeg action
       void recordAsMpegSlot();
@@ -153,9 +141,6 @@ class GuiMainWindowFileActions : public QObject {
       /// convert data files action
       void convertDataFileSlot();
       
-      /// capture image of main window
-      void captureMainWindowImageSlot();
-      
    protected:
       /// exit caret action
       QAction* exitCaretAction;
@@ -168,12 +153,6 @@ class GuiMainWindowFileActions : public QObject {
       
       /// fast open data file dialog action
       QAction* fastOpenDataFileAction;
-      
-      /// open gifti file action
-      QAction* openGiftiFileDialogAction;
-      
-      /// save gifti file action
-      QAction* saveGiftiFileDialogAction;
       
       /// preferences dialog action
       QAction* showPreferencesDialogAction;
@@ -214,8 +193,8 @@ class GuiMainWindowFileActions : public QObject {
       /// open spec file action
       QAction* openSpecFileAction;
       
-      /// view current files action
-      QAction* viewCurrentFilesAction;
+      /// loaded file management action
+      QAction* loadedFileManagementAction;
 };
 
 #endif  // __GUI_MAIN_WINDOW_FILE_ACTIONS_H__

@@ -55,6 +55,9 @@ class GuiMainWindowHelpActions : public QObject {
       /// caret help action
       QAction* getCaretHelpAction() { return caretHelpAction; }
       
+      /// caret online help action
+      QAction* getOnlineCaretHelpAction() { return caretOnlineHelpAction; }
+      
       /// caret tips action
       QAction* getCaretTipsAction() { return caretTipsAction; }
       
@@ -89,6 +92,9 @@ class GuiMainWindowHelpActions : public QObject {
       /// display caret help browser
       void helpMenuCaretHelp();
 
+      /// display online caret help
+      void helpMenuOnlineCaretHelp();
+      
       /// display caret tips dialog
       void helpMenuCaretTips();
 
@@ -119,6 +125,9 @@ class GuiMainWindowHelpActions : public QObject {
       
       /// caret help action
       QAction* caretHelpAction;
+      
+      /// caret online help action
+      QAction* caretOnlineHelpAction;
       
       /// caret tips action
       QAction* caretTipsAction;

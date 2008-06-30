@@ -44,7 +44,7 @@
  * constructor.
  */
 GuiBorderComparisonDialog::GuiBorderComparisonDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Border Comparison");
    

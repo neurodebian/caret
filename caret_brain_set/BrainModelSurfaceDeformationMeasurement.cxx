@@ -208,7 +208,7 @@ BrainModelSurfaceDeformationMeasurement::execute() throw (BrainModelAlgorithmExc
    std::ostringstream str;
    str << brainSet->getCaretHomeDirectory()
        << "/"
-       << "REGISTER.SPHERE"
+       << "data_files/REGISTER.SPHERE"
        << "/"
        << "sphere.v5."
        << sphereNumber

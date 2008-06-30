@@ -94,6 +94,7 @@ CommandSurfaceRegionOfInterestSelection::getHelpInformation() const
        + indent9 + "[-boundary-only] \n"
        + indent9 + "[-dilate  iterations] \n"
        + indent9 + "[-dilate-paint  paint-file-name column  paint-name  iterations]\n"
+       + indent9 + "[-edges   SEL-TYPE] \n"
        + indent9 + "[-erode   iterations] \n"
        + indent9 + "[-limit-x-lateral   x-value] \n"
        + indent9 + "[-limit-x-medial    x-value] \n"
@@ -113,6 +114,7 @@ CommandSurfaceRegionOfInterestSelection::getHelpInformation() const
        + indent9 + "[-invert-selection] \n"
        + indent9 + "[-latlon file-name column min-lat max-lat min-lon max-lon SEL_TYPE]\n"
        + indent9 + "[-paint  paint-file-name  column  paint-name SEL-TYPE]\n"
+       + indent9 + "[-remove-islands] \n"
        + indent9 + "[-shape  shape-file-name  column  min max SEL-TYPE]\n"
        + indent9 + "\n"
        + indent9 + "The input region of interest file does not need to exist.\n"
@@ -173,6 +175,9 @@ CommandSurfaceRegionOfInterestSelection::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "\"-paint\" will add nodes to the ROI if the nodes paint name\n"
        + indent9 + "   is the specified paint name for the column.\n"
+       + indent9 + "\n"
+       + indent9 + "\"-remove-islands\" will retain only largest set of \n"
+       + indent9 + "   connected nodes in the ROI.\n"
        + indent9 + "\n"
        + indent9 + "\"-shape\" will add nodes to the ROI if the nodes shape value\n"
        + indent9 + "   is within the specified range of the column.\n"
@@ -452,6 +457,12 @@ CommandSurfaceRegionOfInterestSelection::executeCommand() throw (BrainModelAlgor
                                      paintName,
                                      iterations);
       }
+      else if (parameterName == "-edges") {
+         const BrainModelSurfaceROINodeSelection::SELECTION_LOGIC
+            selectionType = getSelectionType(
+               parameters->getNextParameterAsString("Lat Lon Selection Type"));
+         roi->selectNodesThatAreEdges(selectionType, bms);
+      }
       else if (parameterName == "-erode") {
          const int numberOfIterations =
             parameters->getNextParameterAsInt("Erosion Iterations");
@@ -611,6 +622,9 @@ CommandSurfaceRegionOfInterestSelection::executeCommand() throw (BrainModelAlgor
          if (msg.isEmpty() == false) {
             throw CommandException(msg);
          }
+      }
+      else if (parameterName == "-remove-islands") {
+         roi->discardIslands(bms);
       }
       else if (parameterName == "-shape") {
          //

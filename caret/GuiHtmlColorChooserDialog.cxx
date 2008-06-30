@@ -24,6 +24,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QIcon>
 #include <QLayout>
 #include <QListWidget>
@@ -36,7 +37,7 @@
  * constructor.
  */
 GuiHtmlColorChooserDialog::GuiHtmlColorChooserDialog(QWidget* parent)
-   : QtDialogModal(parent)
+   : WuQDialog(parent)
 {
    //
    // Get number of HTML colors
@@ -61,8 +62,19 @@ GuiHtmlColorChooserDialog::GuiHtmlColorChooserDialog(QWidget* parent)
    //
    // Layout the dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(colorListWidget);
+
+   //
+   // Dialog buttons
+   //
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                                  QDialogButtonBox::Cancel);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(accepted()),
+                    this, SLOT(accept()));
+   QObject::connect(buttonBox, SIGNAL(rejected()),
+                    this, SLOT(reject()));
 }
 
 /**

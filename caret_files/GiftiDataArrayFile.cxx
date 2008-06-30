@@ -68,6 +68,7 @@ GiftiDataArrayFile::GiftiDataArrayFile(const QString& descriptiveName,
    defaultDataArrayIntent = defaultDataArrayIntentIn;
    defaultDataType = defaultDataTypeIn;
    dataAreIndicesIntoLabelTable = dataAreIndicesIntoLabelTableIn;
+   numberOfNodesForSparseNodeIndexFile = 0;
 
    if (giftiXMLFilesEnabled) {
       setFileReadWriteType(FILE_FORMAT_XML, FILE_IO_READ_AND_WRITE);
@@ -116,9 +117,10 @@ GiftiDataArrayFile::GiftiDataArrayFile()
                   FILE_IO_NONE,            // does not support "other" format
                   FILE_IO_NONE)            // does not support "csvf" format
 {
-   defaultDataArrayIntent = "NIFTI_INTENT_UNKNOWN";
+   defaultDataArrayIntent = "NIFTI_INTENT_NONE";
    defaultDataType = GiftiDataArray::DATA_TYPE_FLOAT32;
    dataAreIndicesIntoLabelTable = false;
+   numberOfNodesForSparseNodeIndexFile = 0;
    
    setFileReadWriteType(FILE_FORMAT_XML, FILE_IO_READ_AND_WRITE);
 #ifdef HAVE_VTK
@@ -164,6 +166,7 @@ GiftiDataArrayFile::copyHelperGiftiDataArrayFile(const GiftiDataArrayFile& nndf)
    defaultDataType = nndf.defaultDataType;
    defaultDataArrayIntent = nndf.defaultDataArrayIntent;
    dataAreIndicesIntoLabelTable = nndf.dataAreIndicesIntoLabelTable;
+   numberOfNodesForSparseNodeIndexFile = nndf.numberOfNodesForSparseNodeIndexFile;
    
    for (unsigned int i = 0; i < nndf.dataArrays.size(); i++) {
       addDataArray(new GiftiDataArray(*nndf.dataArrays[i]));
@@ -783,7 +786,21 @@ GiftiDataArrayFile::removeDataArray(const int arrayIndex)
       dataArrays.resize(numArrays - 1);
    }
 }      
-      
+ 
+/**
+ * remove a data array.
+ */
+void 
+GiftiDataArrayFile::removeDataArray(const GiftiDataArray* arrayPointer)
+{
+   for (int i = 0; i < getNumberOfDataArrays(); i++) {
+      if (getDataArray(i) == arrayPointer) {
+         removeDataArray(i);
+         break;
+      }
+   }
+}
+
 /**
  * Read the contents of the file (header has already been read).
  */
@@ -815,6 +832,10 @@ GiftiDataArrayFile::readFileData(QFile& file,
       case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
          readLegacyFileData(file, stream, binStream);
          break;
+   }
+   
+   if (getReadMetaDataOnlyFlag() == false) {
+      procesNiftiIntentNodeIndexArrays();
    }
 }
 
@@ -1168,3 +1189,137 @@ GiftiDataArrayFile::writeLegacyFileData(QTextStream& /* stream */,
    throw FileException(filename, "GiftiDataArrayFile does not support writing legacy files.");
 }
 
+/**
+ * set the number of nodes for sparse node index files (NIFTI_INTENT_NODE_INDEX).
+ */
+void 
+GiftiDataArrayFile::setNumberOfNodesForSparseNodeIndexFiles(const int numNodes)
+{
+   numberOfNodesForSparseNodeIndexFile = numNodes;
+}      
+
+/**
+ * process NIFTI_INTENT_NODE_INDEX arrays.
+ */
+void 
+GiftiDataArrayFile::procesNiftiIntentNodeIndexArrays() throw (FileException)
+{
+   //
+   // See if there is a node index array
+   //
+   GiftiDataArray* nodeIndexArray = getDataArrayWithIntent(GiftiCommon::intentNodeIndex);
+   if (nodeIndexArray != NULL) {
+      //
+      // Make sure node index array is integer type and one dimensional
+      //
+      if (nodeIndexArray->getDataType() != GiftiDataArray::DATA_TYPE_INT32) {
+         throw FileException("Data type other than \"int\" not supported for data intent: "
+                             + GiftiCommon::intentNodeIndex);
+      }
+      if (nodeIndexArray->getNumberOfDimensions() < 1) {
+         throw FileException("Dimensions other than one not supported for data intent: "
+                             + GiftiCommon::intentNodeIndex);
+      }
+      
+      //
+      // Make node index array integer
+      //
+      nodeIndexArray->convertToDataType(GiftiDataArray::DATA_TYPE_INT32);
+      
+      //
+      // Get the node indices
+      //
+      const int numNodeIndices = nodeIndexArray->getDimension(0);
+      if (numNodeIndices <= 0) {
+         throw FileException("Dimension is zero for data intent: "
+                             + GiftiCommon::intentNodeIndex);
+      }
+      const int zeroIndex[2] = { 0, 0 };
+      const int32_t* indexData = nodeIndexArray->getDataInt32Pointer(zeroIndex);
+      
+      //
+      // Find the true number of nodes
+      //
+      int numNodes = numberOfNodesForSparseNodeIndexFile;
+      if (numNodes <= 0) {
+         int minNodeIndex = 0;
+         nodeIndexArray->getMinMaxValues(minNodeIndex, numNodes);
+      }
+      
+      //
+      // Check each data array
+      //
+      const int numArrays = getNumberOfDataArrays();
+      for (int i = 0; i < numArrays; i++) {
+         GiftiDataArray* dataArray = getDataArray(i);
+         if (dataArray->getIntent() != GiftiCommon::intentNodeIndex) {
+            if (dataArray->getNumberOfDimensions() < 1) {
+               throw FileException("Data Array with intent \""
+                                   + dataArray->getIntent()
+                                   + " is not one-dimensional in sparse node file.");
+            }
+            if (dataArray->getDimension(0) != numNodeIndices) {
+               throw FileException("Data Array with intent \""
+                                   + dataArray->getIntent()
+                                   + " has a different number of nodes than the "
+                                     "NIFTI_INTENT_NODE_INDEX array in the file.");
+            }
+            
+            switch (dataArray->getDataType()) {
+               case GiftiDataArray::DATA_TYPE_FLOAT32:
+                  {
+                     std::vector<float> dataFloat(numNodes, 0.0);
+                     const float* readPtr = dataArray->getDataFloat32Pointer(zeroIndex);
+                     for (int m = 0; m < numNodeIndices; m++) {
+                        dataFloat[indexData[m]] = readPtr[m];
+                     }
+                     std::vector<int> newDim(1, numNodes);
+                     dataArray->setDimensions(newDim);
+                     for (int n = 0; n < numNodes; n++) {
+                        const int indxs[2] = { n, 0 };
+                        dataArray->setDataFloat32(indxs, dataFloat[n]);
+                     }
+                  }
+                  break;
+               case GiftiDataArray::DATA_TYPE_INT32:
+                  {
+                     std::vector<int32_t> dataInt(numNodes, 0);
+                     const int32_t* readPtr = dataArray->getDataInt32Pointer(zeroIndex);
+                     for (int m = 0; m < numNodeIndices; m++) {
+                        dataInt[indexData[m]] = readPtr[m];
+                     }
+                     std::vector<int> newDim(1, numNodes);
+                     dataArray->setDimensions(newDim);
+                     for (int n = 0; n < numNodes; n++) {
+                        const int indxs[2] = { n, 0 };
+                        dataArray->setDataInt32(indxs, dataInt[n]);
+                     }
+                  }
+                  break;
+               case GiftiDataArray::DATA_TYPE_UINT8:
+                  {
+                     std::vector<uint8_t> dataByte(numNodes, 0);
+                     const uint8_t* readPtr = dataArray->getDataUInt8Pointer(zeroIndex);
+                     for (int m = 0; m < numNodeIndices; m++) {
+                        dataByte[indexData[m]] = readPtr[m];
+                     }
+                     std::vector<int> newDim(1, numNodes);
+                     dataArray->setDimensions(newDim);
+                     for (int n = 0; n < numNodes; n++) {
+                        const int indxs[2] = { n, 0 };
+                        dataArray->setDataUInt8(indxs, dataByte[n]);
+                     }
+                  }
+                  break;
+            }
+         }
+      }
+      
+      //
+      // Remove the node index array
+      //
+      removeDataArray(nodeIndexArray);      
+   }
+}
+
+      

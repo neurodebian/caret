@@ -27,7 +27,7 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QComboBox;
 class QLineEdit;
@@ -35,7 +35,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// dialog for creating a volume
-class GuiVolumeCreateDialog : public QtDialog {
+class GuiVolumeCreateDialog : public WuQDialog {
    Q_OBJECT
    
    public:

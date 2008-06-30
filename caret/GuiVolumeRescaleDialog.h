@@ -27,13 +27,13 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class VolumeFile;
 class QLineEdit;
 
 /// dialog for rescaling a volume's voxel values
-class GuiVolumeRescaleDialog : public QtDialog {
+class GuiVolumeRescaleDialog : public WuQDialog {
    Q_OBJECT
    
    public:

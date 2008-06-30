@@ -43,8 +43,8 @@ class BrainModelSurfaceROITextReport : public BrainModelSurfaceROIOperation {
    public:      
       // constructor
       BrainModelSurfaceROITextReport(BrainSet* bs,
-                                        BrainModelSurface* bmsIn,
-                                        BrainModelSurfaceROINodeSelection* surfaceROIIn,
+                                        const BrainModelSurface* bmsIn,
+                                        const BrainModelSurfaceROINodeSelection* surfaceROIIn,
                                         MetricFile* metricFileIn,
                                         const std::vector<bool>& selectedMetricColumnsForReportIn,
                                         MetricFile* shapeFileIn,
@@ -53,7 +53,6 @@ class BrainModelSurfaceROITextReport : public BrainModelSurfaceROIOperation {
                                         const std::vector<bool>& selectedPaintColumnsForReportIn,
                                         LatLonFile* latLonFileIn,
                                         const int latLonFileColumnIn,
-                                        const QString& nodeSelectionTextIn,
                                         const QString& headerTextIn,
                                         MetricFile* metricCorrectionFileIn,
                                         const int metricCorrectionColumnIn,
@@ -62,10 +61,10 @@ class BrainModelSurfaceROITextReport : public BrainModelSurfaceROIOperation {
       // destructor
       ~BrainModelSurfaceROITextReport();
       
+   protected:
       // execute the operation
       void executeOperation() throw (BrainModelAlgorithmException);
       
-   protected:
       // create the text report
       void createTextReport() throw (BrainModelAlgorithmException);
       

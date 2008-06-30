@@ -50,7 +50,7 @@ class GuiToolBar : public QToolBar {
       /// Constructor
       GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
                  GuiBrainModelOpenGL* brainModelOpenGLIn,
-                 const bool mainWindowFlag);
+                 const BrainModel::BRAIN_MODEL_VIEW_NUMBER viewWindowNumberIn);
       
       /// Destructor
       ~GuiToolBar();
@@ -70,6 +70,10 @@ class GuiToolBar : public QToolBar {
       /// update mouse mode combo box
       void updateMouseModeComboBox();
       
+      /// get the viewing window used by this toolbar
+      BrainModel::BRAIN_MODEL_VIEW_NUMBER getViewWindowNumber() const 
+           { return viewWindowNumber; }
+           
    signals:
       /// Signal emitted when the model selection combo box is changed.  Normally,
       /// this signal does not need to be used by the parent of the toolbar.  The
@@ -184,6 +188,9 @@ class GuiToolBar : public QToolBar {
       
       /// mouse mode combo box
       QComboBox* mouseModeComboBox;
+      
+      /// the viewing window used by this toolbar
+      BrainModel::BRAIN_MODEL_VIEW_NUMBER viewWindowNumber;
       
 };
 

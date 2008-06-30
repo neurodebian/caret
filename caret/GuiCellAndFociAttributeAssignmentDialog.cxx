@@ -25,6 +25,8 @@
 
 #include <QButtonGroup>
 #include <QCheckBox>
+#include <QDialogButtonBox>
+#include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -42,6 +44,7 @@
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiCellAndFociAttributeAssignmentDialog.h"
 #include "GuiMainWindow.h"
+#include "MathUtilities.h"
 #include "PaintFile.h"
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -51,7 +54,7 @@
  */
 GuiCellAndFociAttributeAssignmentDialog::GuiCellAndFociAttributeAssignmentDialog(QWidget* parent, 
                                                        const bool fociFlagIn)
-   : QtDialogModal(parent)
+   : WuQDialog(parent)
 {
    fociFlag = fociFlagIn;
    typeString = "Cell";
@@ -64,7 +67,7 @@ GuiCellAndFociAttributeAssignmentDialog::GuiCellAndFociAttributeAssignmentDialog
    //
    // Layout for dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    
    //
    // Create surface section
@@ -89,7 +92,13 @@ GuiCellAndFociAttributeAssignmentDialog::GuiCellAndFociAttributeAssignmentDialog
       dialogLayout->addWidget(paintWidget);
    }
    
-   setOkButtonEnabled(true);
+   dialogButtonBox = new QDialogButtonBox(QDialogButtonBox::Apply 
+                                          | QDialogButtonBox::Close);
+   QObject::connect(dialogButtonBox, SIGNAL(clicked(QAbstractButton*)),
+                    this, SLOT(slotPushButton(QAbstractButton*)));
+   dialogLayout->addWidget(dialogButtonBox);
+   
+   updateDialog();
 }
                            
 /**
@@ -99,6 +108,18 @@ GuiCellAndFociAttributeAssignmentDialog::~GuiCellAndFociAttributeAssignmentDialo
 {
 }
 
+/**
+ * update the dialog.
+ */
+void 
+GuiCellAndFociAttributeAssignmentDialog::updateDialog()
+{
+   leftHemSelectionComboBox->updateComboBox();
+   rightHemSelectionComboBox->updateComboBox();
+   cerebellumSelectionComboBox->updateComboBox();
+   updatePaintColumnSection();
+}
+   
 /**
  * create the surface section.
  */
@@ -139,8 +160,26 @@ GuiCellAndFociAttributeAssignmentDialog::createSurfaceSection()
    QObject::connect(rightHemSelectionCheckBox, SIGNAL(toggled(bool)),
                     rightHemSelectionComboBox, SLOT(setEnabled(bool)));
                                                                  
+   //
+   // right hem selection combo box
+   //
+   cerebellumSelectionCheckBox = new QCheckBox("Cerebellum");
+   cerebellumSelectionCheckBox->setChecked(true);
+   cerebellumSelectionComboBox = new GuiBrainModelSelectionComboBox(false,
+                                                                 true,
+                                                                 false,
+                                                                 "",
+                                                                 0,
+                                                                 "right-hem",
+                                                                 false,
+                                                                 true,
+                                                                 false);
+   QObject::connect(cerebellumSelectionCheckBox, SIGNAL(toggled(bool)),
+                    cerebellumSelectionComboBox, SLOT(setEnabled(bool)));
+                                                                 
    BrainModelSurface* leftBMS  = NULL;
    BrainModelSurface* rightBMS = NULL;
+   BrainModelSurface* cerebellumBMS = NULL;
    const int numModels = theMainWindow->getBrainSet()->getNumberOfBrainModels();
    for (int i = 0; i < numModels; i++) {
       BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(i);
@@ -152,6 +191,9 @@ GuiCellAndFociAttributeAssignmentDialog::createSurfaceSection()
             if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
                rightBMS = bms;
             }
+            if (bms->getStructure().getType() == Structure::STRUCTURE_TYPE_CEREBELLUM) {
+               cerebellumBMS = bms;
+            }
          }
       }
    }
@@ -161,13 +203,31 @@ GuiCellAndFociAttributeAssignmentDialog::createSurfaceSection()
    if (rightBMS != NULL) {
       rightHemSelectionComboBox->setSelectedBrainModel(rightBMS);
    }
+   if (cerebellumBMS != NULL) {
+      cerebellumSelectionComboBox->setSelectedBrainModel(cerebellumBMS);
+   }
 
+   QLabel* maximumDistanceLabel = new QLabel("Maximum Distance of Focus from Surface");
+   maximumDistanceDoubleSpinBox = new QDoubleSpinBox;
+   maximumDistanceDoubleSpinBox->setMinimum(0.0);
+   maximumDistanceDoubleSpinBox->setMaximum(10000000000.0);
+   maximumDistanceDoubleSpinBox->setDecimals(3);
+   maximumDistanceDoubleSpinBox->setSingleStep(1.0);
+   maximumDistanceDoubleSpinBox->setValue(100.0);
+   QHBoxLayout* distanceLayout = new QHBoxLayout;
+   distanceLayout->addWidget(maximumDistanceLabel);
+   distanceLayout->addWidget(maximumDistanceDoubleSpinBox);
+   distanceLayout->addStretch();
+   
    QGroupBox* gb = new QGroupBox("Surface Selection");
    QGridLayout* gridLayout = new QGridLayout(gb);
    gridLayout->addWidget(leftHemSelectionCheckBox, 0, 0);
    gridLayout->addWidget(leftHemSelectionComboBox, 0, 1);
    gridLayout->addWidget(rightHemSelectionCheckBox, 1, 0);
    gridLayout->addWidget(rightHemSelectionComboBox, 1, 1);
+   gridLayout->addWidget(cerebellumSelectionCheckBox, 2, 0);
+   gridLayout->addWidget(cerebellumSelectionComboBox, 2, 1);
+   gridLayout->addLayout(distanceLayout, 3, 0, 1, 2, Qt::AlignLeft);
 
    return gb;
 }
@@ -184,6 +244,11 @@ GuiCellAndFociAttributeAssignmentDialog::createAssignmentSection()
    appendToCurrentValuesCheckBox = new QCheckBox("Append to Current Values");
    
    //
+   // Clear attributes without setting
+   //
+   clearAttributesWithoutSettingCheckBox = new QCheckBox("Clear Attribute and Do NOT Set the Attribute");
+   
+   //
    // Ignore "?" entries check box
    //
    ignoreQuestionEntriesCheckBox = new QCheckBox("Ignore \"?\" Values");
@@ -194,6 +259,7 @@ GuiCellAndFociAttributeAssignmentDialog::createAssignmentSection()
    QGroupBox* assGroupBox = new QGroupBox("Assignment Options");
    QVBoxLayout* assGroupLayout = new QVBoxLayout(assGroupBox);
    assGroupLayout->addWidget(appendToCurrentValuesCheckBox);
+   assGroupLayout->addWidget(clearAttributesWithoutSettingCheckBox);
    assGroupLayout->addWidget(ignoreQuestionEntriesCheckBox);
    
    return assGroupBox;
@@ -216,11 +282,17 @@ GuiCellAndFociAttributeAssignmentDialog::createCellFociSection(const QString& ty
    geographyRadioButton = new QRadioButton("Geography");
    
    //
+   // Region of Interest radio button
+   //
+   regionOfInterestRadioButton = new QRadioButton("Region of Interest");
+   
+   //
    // Button group for mutual exclusion
    //
    QButtonGroup* buttGroup = new QButtonGroup(this);
    buttGroup->addButton(areaRadioButton);
    buttGroup->addButton(geographyRadioButton);
+   buttGroup->addButton(regionOfInterestRadioButton);
    
    //
    // Group box for cell/foci attributes
@@ -229,6 +301,7 @@ GuiCellAndFociAttributeAssignmentDialog::createCellFociSection(const QString& ty
    QVBoxLayout* attrGroupLayout = new QVBoxLayout(attrGroupBox);
    attrGroupLayout->addWidget(areaRadioButton);
    attrGroupLayout->addWidget(geographyRadioButton);
+   attrGroupLayout->addWidget(regionOfInterestRadioButton);
    
    //
    // If doing a cell report, hide items specific to foci
@@ -236,6 +309,7 @@ GuiCellAndFociAttributeAssignmentDialog::createCellFociSection(const QString& ty
    if (fociFlag == false) {
       areaRadioButton->hide();
       geographyRadioButton->hide();
+      regionOfInterestRadioButton->hide();
    }
    
    return attrGroupBox;
@@ -247,12 +321,6 @@ GuiCellAndFociAttributeAssignmentDialog::createCellFociSection(const QString& ty
 QWidget* 
 GuiCellAndFociAttributeAssignmentDialog::createPaintSection()
 {
-   PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
-   const int numCols = pf->getNumberOfColumns();
-   if (numCols <= 0) {
-      return NULL;
-   }
-   
    //
    // Group box for paint attributes
    //
@@ -265,34 +333,57 @@ GuiCellAndFociAttributeAssignmentDialog::createPaintSection()
    QScrollArea* paintScrollView = new QScrollArea;
    paintGroupLayout->addWidget(paintScrollView);
    QWidget* paintScrollWidget = new QWidget;
-   QVBoxLayout* paintScrollLayout = new QVBoxLayout(paintScrollWidget);
+   paintNameCheckBoxesLayout = new QVBoxLayout(paintScrollWidget);
    paintScrollView->setWidget(paintScrollWidget);
    paintScrollView->setWidgetResizable(true);
 
+   return paintGroupBox;
+}      
+
+/**
+ * update the paint column section.
+ */
+void 
+GuiCellAndFociAttributeAssignmentDialog::updatePaintColumnSection()
+{
    //
    // Add check boxes for paint columns
    //
+   PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
+   const int numCols = pf->getNumberOfColumns();   
+   
    for (int i = 0; i < numCols; i++) {
-      QCheckBox* pcb = new QCheckBox(pf->getColumnName(i));
-      paintScrollLayout->addWidget(pcb);
-      pcb->setChecked(false);
-      paintNameCheckBoxes.push_back(pcb);
+      QCheckBox* pcb = NULL;
+      if (i < static_cast<int>(paintNameCheckBoxes.size())) {
+         pcb = paintNameCheckBoxes[i];
+      }
+      else {
+         pcb = new QCheckBox(pf->getColumnName(i));
+         paintNameCheckBoxesLayout->addWidget(pcb);
+         pcb->setChecked(false);
+         paintNameCheckBoxes.push_back(pcb);
+      }
+      pcb->setText(pf->getColumnName(i));
+      paintNameCheckBoxes[i]->show();
    }
    
-   return paintGroupBox;
+   for (int i = numCols; i < static_cast<int>(paintNameCheckBoxes.size()); i++) {
+      paintNameCheckBoxes[i]->hide();
+   }
 }      
 
 /**
  * called when apply button pressed.
  */
 void 
-GuiCellAndFociAttributeAssignmentDialog::done(int r)
+GuiCellAndFociAttributeAssignmentDialog::slotPushButton(QAbstractButton* buttonPressed)
 {
-   if (r == QtDialogModal::Accepted) {
+   if (buttonPressed == dialogButtonBox->button(QDialogButtonBox::Apply)) {
       if ((rightHemSelectionCheckBox->isChecked() == false) &&
-          (leftHemSelectionCheckBox->isChecked() == false)) {
+          (leftHemSelectionCheckBox->isChecked() == false)  &&
+          (cerebellumSelectionCheckBox->isChecked() == false)) {
          QMessageBox::critical(this, "ERROR", 
-                                 "Both hemispheres are deselected.");
+                                 "All surfaces are deselected.");
          return;
       }
       
@@ -308,16 +399,23 @@ GuiCellAndFociAttributeAssignmentDialog::done(int r)
                                  "No right surface is selected.");
          return;
       }
+      const BrainModelSurface* cerebellumBMS = cerebellumSelectionComboBox->getSelectedBrainModelSurface();
+      if (cerebellumBMS == NULL) {
+         QMessageBox::critical(this, "ERROR", 
+                                 "No cerebellum surface is selected.");
+         return;
+      }
 
       if ((areaRadioButton->isChecked() == false) &&
-          (geographyRadioButton->isChecked() == false)) {
+          (geographyRadioButton->isChecked() == false) &&
+          (regionOfInterestRadioButton->isChecked() == false)) {
          QMessageBox::critical(this, "ERROR", 
-                                 "One of Area or Geography must be selected.");
+                                 "One of Area, Geography, or Region of Interest must be selected.");
          return;
       }
       
       //
-      // Get the fiducial foci file
+      // Get the foci projection file
       //
       CellProjectionFile* cf = NULL;
       if (fociFlag) {
@@ -337,44 +435,81 @@ GuiCellAndFociAttributeAssignmentDialog::done(int r)
             const int numPaintCols = pf->getNumberOfColumns();
 
             if (numPaintCols <= 0) {
-               QMessageBox::critical(this, "ERROR", 
-                                       "There are no paint columns.");
-               return;
+               if (clearAttributesWithoutSettingCheckBox->isChecked() == false) {
+                  QMessageBox::critical(this, "ERROR", 
+                                          "There are no paint columns.");
+                  return;
+               }
             }
 
             //
             // Determine node nearest to each cell
             //
+            std::vector<float> cellsNearestLeftNodeDistance(numCells, -1.0);
+            std::vector<float> cellsNearestRightNodeDistance(numCells, -1.0);
+            std::vector<float> cellsNearestCerebellumNodeDistance(numCells, -1.0);
             std::vector<int> cellsNearestLeftNode(numCells, -1);
             std::vector<int> cellsNearestRightNode(numCells, -1);
+            std::vector<int> cellsNearestCerebellumNode(numCells, -1);
             BrainModelSurfacePointLocator leftPointLocator(leftBMS,
                                                             true);
             BrainModelSurfacePointLocator rightPointLocator(rightBMS,
+                                                            true);
+            BrainModelSurfacePointLocator cerebellumPointLocator(cerebellumBMS,
                                                             true);
             
             for (int i = 0; i < numCells; i++) {
                CellProjection* cp = cf->getCellProjection(i);
                float xyz[3];
                cp->getXYZ(xyz);
-               if (xyz[0] >= 0) {
-                  if (cp->getProjectedPosition(rightBMS->getCoordinateFile(),
-                                               rightBMS->getTopologyFile(),
-                                               rightBMS->getIsFiducialSurface(),
-                                               rightBMS->getIsFlatSurface(),
-                                               false,
-                                               xyz)) {
-                     cellsNearestRightNode[i] = rightPointLocator.getNearestPoint(xyz);
-                  }
-               }
-               else {
-                  if (cp->getProjectedPosition(leftBMS->getCoordinateFile(),
-                                               leftBMS->getTopologyFile(),
-                                               leftBMS->getIsFiducialSurface(),
-                                               leftBMS->getIsFlatSurface(),
-                                               false,
-                                               xyz)) {
-                     cellsNearestLeftNode[i] = leftPointLocator.getNearestPoint(xyz);
-                  }
+               
+               switch (cp->getCellStructure()) {
+                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT:         
+                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+                     if (cp->getProjectedPosition(leftBMS->getCoordinateFile(),
+                                                  leftBMS->getTopologyFile(),
+                                                  leftBMS->getIsFiducialSurface(),
+                                                  leftBMS->getIsFlatSurface(),
+                                                  false,
+                                                  xyz)) {
+                        cellsNearestLeftNode[i] = leftPointLocator.getNearestPoint(xyz);
+                        cellsNearestLeftNodeDistance[i] = 
+                           MathUtilities::distance3D(xyz, 
+                               leftBMS->getCoordinateFile()->getCoordinate(cellsNearestLeftNode[i]));
+                     }
+                     break;
+                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+                     if (cp->getProjectedPosition(rightBMS->getCoordinateFile(),
+                                                  rightBMS->getTopologyFile(),
+                                                  rightBMS->getIsFiducialSurface(),
+                                                  rightBMS->getIsFlatSurface(),
+                                                  false,
+                                                  xyz)) {
+                        cellsNearestRightNode[i] = rightPointLocator.getNearestPoint(xyz);
+                        cellsNearestRightNodeDistance[i] = 
+                           MathUtilities::distance3D(xyz, 
+                               rightBMS->getCoordinateFile()->getCoordinate(cellsNearestRightNode[i]));
+                     }
+                     break;
+                  case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+                  case Structure::STRUCTURE_TYPE_CEREBELLUM:
+                  case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:       
+                  case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+                     if (cp->getProjectedPosition(cerebellumBMS->getCoordinateFile(),
+                                                  cerebellumBMS->getTopologyFile(),
+                                                  cerebellumBMS->getIsFiducialSurface(),
+                                                  cerebellumBMS->getIsFlatSurface(),
+                                                  false,
+                                                  xyz)) {
+                        cellsNearestCerebellumNode[i] = cerebellumPointLocator.getNearestPoint(xyz);
+                        cellsNearestCerebellumNodeDistance[i] = 
+                           MathUtilities::distance3D(xyz, 
+                               cerebellumBMS->getCoordinateFile()->getCoordinate(cellsNearestCerebellumNode[i]));
+                     }
+                     break;
+                  case Structure::STRUCTURE_TYPE_INVALID:
+                     break;
                }
             }
             
@@ -391,6 +526,13 @@ GuiCellAndFociAttributeAssignmentDialog::done(int r)
                          cellsNearestLeftNode.end(),
                          -1);
             }
+            if (cerebellumSelectionCheckBox->isChecked() == false) {
+               std::fill(cellsNearestCerebellumNode.begin(),
+                         cellsNearestCerebellumNode.end(),
+                         -1);
+            }
+            
+            const float maximumDistance = maximumDistanceDoubleSpinBox->value();
             
             //
             // Process the cells
@@ -408,37 +550,53 @@ GuiCellAndFociAttributeAssignmentDialog::done(int r)
                else if (geographyRadioButton->isChecked()) {
                   valueString = cd->getGeography();
                }
+               else if (regionOfInterestRadioButton->isChecked()) {
+                  valueString = cd->getRegionOfInterest();
+               }
                
                if (appendToCurrentValuesCheckBox->isChecked() == false) {
                   valueString = "";
                }
                
-               //
-               // Load paint into the table
-               //
-               int node = -1;
-               if (cellsNearestLeftNode[i] >= 0) {
-                  node = cellsNearestLeftNode[i];
+               if (clearAttributesWithoutSettingCheckBox->isChecked()) {
+                  valueString = "";
                }
-               else if (cellsNearestRightNode[i] >= 0) {
-                  node = cellsNearestRightNode[i];
-               }
-               if (node >= 0) {
-                  for (int j = 0; j < numPaintCols; j++) {
-                     if (paintNameCheckBoxes[j]->isChecked()) {
-                        const int paintIndex = pf->getPaint(node, j);
-                        QString paintName = pf->getPaintNameFromIndex(paintIndex);
-                        if (valueString.isEmpty() == false) {
-                           valueString += "; ";
-                        }
-                        
-                        if (ignoreQuestionEntriesCheckBox->isChecked()) {
-                           if (paintName.startsWith("?")) {
-                              paintName = " ";
+               else {
+                  //
+                  // Load paint into the table
+                  //
+                  int node = -1;
+                  float distance = 100000000.0;
+                  if (cellsNearestLeftNode[i] >= 0) {
+                     node = cellsNearestLeftNode[i];
+                     distance = cellsNearestLeftNodeDistance[i];
+                  }
+                  else if (cellsNearestRightNode[i] >= 0) {
+                     node = cellsNearestRightNode[i];
+                     distance = cellsNearestRightNodeDistance[i];
+                  }
+                  else if (cellsNearestCerebellumNode[i] >= 0) {
+                     node = cellsNearestCerebellumNode[i];
+                     distance = cellsNearestCerebellumNodeDistance[i];
+                  }
+                  if ((node >= 0) &&
+                      (distance <= maximumDistance)) {
+                     for (int j = 0; j < numPaintCols; j++) {
+                        if (paintNameCheckBoxes[j]->isChecked()) {
+                           const int paintIndex = pf->getPaint(node, j);
+                           QString paintName = pf->getPaintNameFromIndex(paintIndex);
+                           if (valueString.isEmpty() == false) {
+                              valueString += "; ";
                            }
+                           
+                           if (ignoreQuestionEntriesCheckBox->isChecked()) {
+                              if (paintName.startsWith("?")) {
+                                 paintName = " ";
+                              }
+                           }
+                           
+                           valueString += paintName;
                         }
-                        
-                        valueString += paintName;
                      }
                   }
                }
@@ -448,6 +606,9 @@ GuiCellAndFociAttributeAssignmentDialog::done(int r)
                }
                else if (geographyRadioButton->isChecked()) {
                   cd->setGeography(valueString);
+               }
+               else if (regionOfInterestRadioButton->isChecked()) {
+                  cd->setRegionOfInterest(valueString);
                }
             } // for (i = 0; i < numCells...
          }  // if (numCells > 0)
@@ -467,8 +628,9 @@ GuiCellAndFociAttributeAssignmentDialog::done(int r)
          return;
       }
    }
-   
-   QtDialogModal::done(r);
+   else if (buttonPressed == dialogButtonBox->button(QDialogButtonBox::Close)) {
+      close();
+   }
 }
 
 /**

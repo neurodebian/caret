@@ -237,6 +237,7 @@ BrainModelVolumeSureFitErrorCorrection::generateSurfaceAndMeasurements(const Vol
                                                            false,  // sphere
                                                            true,   // finger smoothing
                                                            false,  // scale to fiducial
+                                                           1.0,    // No iteration scaling
                                                            &metricMeasurements);
                                                            
    //

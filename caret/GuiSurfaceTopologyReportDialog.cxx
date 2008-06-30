@@ -49,7 +49,7 @@
  * constructor.
  */
 GuiSurfaceTopologyReportDialog::GuiSurfaceTopologyReportDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Topology Error Report");
    
@@ -278,7 +278,7 @@ void
 GuiSurfaceTopologyReportDialog::show()
 {
    clearDialog();
-   QtDialog::show();
+   WuQDialog::show();
    slotApplyButton();
 }
 

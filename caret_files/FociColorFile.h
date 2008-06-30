@@ -43,6 +43,12 @@ class FociColorFile : public ColorFile {
       // remove colors not matching the names in the cell projection file
       void removeNonMatchingColors(const FociProjectionFile* fpf);
 
+      /// get color indices sorted by name case insensitive
+      void getColorIndicesSortedByName(const FociProjectionFile* fpf,
+                                       std::vector<int>& indicesSortedByNameOut,
+                                       const bool reverseOrderFlag,
+                                       const bool limitToColorsUsedByDisplayedFociFlag) const;
+      
    protected:
 };
 

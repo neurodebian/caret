@@ -1106,7 +1106,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    // Project the cell file using the fiducial surface
    //
    CellProjectionFile sourceCellsProjected;
-   sourceCellsProjected.append(*sourceCellFile);
+   sourceCellsProjected.appendFiducialCellFile(*sourceCellFile);
    CellFileProjector cfp(sourceFiducialSurface);
    cfp.projectFile(&sourceCellsProjected,
                        0,
@@ -1545,7 +1545,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    // Replace cell projections with cells
    //
    sourceCellProjectionFile->clear();
-   sourceCellProjectionFile->append(*sourceCellFile);
+   sourceCellProjectionFile->appendFiducialCellFile(*sourceCellFile);
    
    //
    // Project cells to target fiducial surface

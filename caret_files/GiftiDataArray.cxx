@@ -70,14 +70,16 @@ GiftiDataArray::GiftiDataArray(GiftiDataArrayFile* parentGiftiDataArrayFileIn,
    //dataLocation = DATA_LOCATION_INTERNAL;
    
    if (intentName == GiftiCommon::intentCoordinates) {   
-      GiftiMatrix* gm = getMatrix();
-      gm->setDataSpaceName(GiftiCommon::spaceLabelTalairach);
-      gm->setTransformedSpaceName(GiftiCommon::spaceLabelTalairach);
+      GiftiMatrix gm;
+      gm.setDataSpaceName(GiftiCommon::spaceLabelTalairach);
+      gm.setTransformedSpaceName(GiftiCommon::spaceLabelTalairach);
+      matrices.push_back(gm);
    }
    
    //getDataTypeAppropriateForIntent(intent, dataType);
    metaData.set(GiftiCommon::metaDataNameUniqueID, 
                 QUuid::createUuid().toString());
+                
 }
 
 /**
@@ -102,9 +104,10 @@ GiftiDataArray::GiftiDataArray(GiftiDataArrayFile* parentGiftiDataArrayFileIn,
    //dataLocation = DATA_LOCATION_INTERNAL;
    
    if (intentName == GiftiCommon::intentCoordinates) {   
-      GiftiMatrix* gm = getMatrix();
-      gm->setDataSpaceName(GiftiCommon::spaceLabelTalairach);
-      gm->setTransformedSpaceName(GiftiCommon::spaceLabelTalairach);
+      GiftiMatrix gm;
+      gm.setDataSpaceName(GiftiCommon::spaceLabelTalairach);
+      gm.setTransformedSpaceName(GiftiCommon::spaceLabelTalairach);
+      matrices.push_back(gm);
    }
    
    dataType = DATA_TYPE_FLOAT32;
@@ -158,12 +161,16 @@ GiftiDataArray::copyHelperGiftiDataArray(const GiftiDataArray& nda)
    data = nda.data;
    metaData = nda.metaData;
    nonWrittenMetaData = nda.nonWrittenMetaData;
-   minMaxFloatValuesValid = nda.minMaxFloatValuesValid;
    externalFileName = nda.externalFileName;
    externalFileOffset = nda.externalFileOffset;
+   minMaxFloatValuesValid = nda.minMaxFloatValuesValid;
    minValueFloat = nda.minValueFloat;
    maxValueFloat = nda.maxValueFloat;
-   
+   minMaxFloatValuesValid = nda.minMaxFloatValuesValid;
+   minValueInt = nda.minValueInt;
+   maxValueInt = nda.maxValueInt;
+   minMaxIntValuesValid = nda.minMaxIntValuesValid;
+   matrices = nda.matrices;
    setModified();
 }
 
@@ -941,7 +948,9 @@ GiftiDataArray::readFromText(QString& text,
       // Check if data type needs to be converted
       //
       if (requiredDataType != dataType) {
-         convertToDataType(requiredDataType);
+         if (intentName != GiftiCommon::intentNodeIndex) {
+            convertToDataType(requiredDataType);
+         }
       }
       
       //
@@ -1041,6 +1050,18 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
    }
    
    //
+   // Clean up the dimensions by removing any "last" dimensions that
+   // are one with the exception of the first dimension
+   //   e.g.:   dimension = [73730, 1]  becomes [73730]
+   //
+   const int dimensionality = static_cast<int>(dimensions.size());
+   for (int i = (dimensionality - 1); i >= 1; i--) {
+      if (dimensions[i] <= 1) {
+         dimensions.resize(i);
+      }
+   }
+   
+   //
    // Check name of data type and encoding
    //
    if (intentName.isEmpty()) {
@@ -1119,9 +1140,11 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
    metaData.writeAsXML(stream, indent);
    
    //
-   // Write the matrix
+   // Write the matrices
    //
-   matrix.writeAsXML(stream, indent);
+   for (int i = 0; i < getNumberOfMatrices(); i++) {
+      matrices[i].writeAsXML(stream, indent);
+   }
    
    //
    // Write the data element opening tag
@@ -1297,6 +1320,7 @@ GiftiDataArray::convertToDataType(const DATA_TYPE newDataType)
       //
       // Set my new data type and reallocate memory
       //
+      const DATA_TYPE oldDataType = dataType;
       dataType = newDataType;
       allocateData();
       
@@ -1315,7 +1339,7 @@ GiftiDataArray::convertToDataType(const DATA_TYPE newDataType)
          for (uint32_t i = 0; i < numElements; i++) {
             switch (dataType) {
                case DATA_TYPE_FLOAT32:
-                  switch (dataType) {
+                  switch (oldDataType) {
                      case DATA_TYPE_FLOAT32:
                         dataPointerFloat[i] = static_cast<float>(copyOfMe.dataPointerFloat[i]);
                         break;
@@ -1328,7 +1352,7 @@ GiftiDataArray::convertToDataType(const DATA_TYPE newDataType)
                   }
                   break;
                case DATA_TYPE_INT32:
-                  switch (dataType) {
+                  switch (oldDataType) {
                      case DATA_TYPE_FLOAT32:
                         dataPointerInt[i] = static_cast<int32_t>(copyOfMe.dataPointerFloat[i]);
                         break;
@@ -1341,7 +1365,7 @@ GiftiDataArray::convertToDataType(const DATA_TYPE newDataType)
                   }
                   break;
                case DATA_TYPE_UINT8:
-                  switch (dataType) {
+                  switch (oldDataType) {
                      case DATA_TYPE_FLOAT32:
                         dataPointerUByte[i] = static_cast<uint8_t>(copyOfMe.dataPointerFloat[i]);
                         break;
@@ -1399,6 +1423,27 @@ GiftiDataArray::setModified()
 }      
 
 /** 
+ * get minimum and maximum values (valid for int data only).
+ */
+void 
+GiftiDataArray::getMinMaxValues(int& minValue, int& maxValue) const
+{
+   if (minMaxIntValuesValid == false) {
+      minValueInt = std::numeric_limits<int>::max();
+      minValueInt = std::numeric_limits<int>::min();
+      
+      int numItems = getTotalNumberOfElements();
+      for (int i = 0; i < numItems; i++) {
+         minValueInt = std::min(minValueInt, dataPointerInt[i]);
+         maxValueInt = std::max(maxValueInt, dataPointerInt[i]);
+      }
+      minMaxIntValuesValid = true;
+   }
+   minValue = minValueInt;
+   maxValue = maxValueInt;
+}
+      
+/** 
  * get minimum and maximum values (valid for float data only).
  */
 void 
@@ -1406,7 +1451,7 @@ GiftiDataArray::getMinMaxValues(float& minValue, float& maxValue) const
 {
    if (minMaxFloatValuesValid == false) {
       minValueFloat = std::numeric_limits<float>::max();
-      maxValueFloat = -std::numeric_limits<float>::min();
+      maxValueFloat = -std::numeric_limits<float>::max();
       
       int numItems = getTotalNumberOfElements();
       for (int i = 0; i < numItems; i++) {
@@ -1816,5 +1861,25 @@ GiftiDataArray::updateMetaDataBeforeWriting()
    metaData.remove(AbstractFile::headerTagResolution);
    metaData.remove(AbstractFile::headerTagSampling);
    metaData.remove(AbstractFile::headerTagScale);
+}
+      
+/**
+ * remove all matrices.
+ */
+void 
+GiftiDataArray::removeAllMatrices()
+{
+   matrices.clear();
+   setModified();
+}
+      
+/**
+ * remove a matrix.
+ */
+void 
+GiftiDataArray::removeMatrix(const int indx)
+{
+   matrices.erase(matrices.begin() + indx);
+   setModified();
 }
       

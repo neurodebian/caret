@@ -218,7 +218,7 @@ CommandSurfaceBorderLinkToFocus::executeCommand() throw (BrainModelAlgorithmExce
    // Project the foci
    //
    FociProjectionFile fociFileProjected;
-   fociFileProjected.append(fociFile);
+   fociFileProjected.appendFiducialCellFile(fociFile);
    CellFileProjector cellProjector(surface);
    cellProjector.projectFile(&fociFileProjected,
                              0,

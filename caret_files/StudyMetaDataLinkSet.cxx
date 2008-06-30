@@ -25,6 +25,7 @@
 /*LICENSE_END*/
 
 #include <iostream>
+#include <set>
 
 #include <QDomDocument>
 #include <QDomElement>
@@ -99,6 +100,23 @@ void
 StudyMetaDataLinkSet::setStudyMetaDataLink(const int indx, const StudyMetaDataLink& smdl)
 {
    links[indx] = smdl;
+}
+      
+/**
+ * get all linked PubMed IDs.
+ */
+void 
+StudyMetaDataLinkSet::getAllLinkedPubMedIDs(std::vector<QString>& pmidsOut) const
+{
+   std::set<QString> pmidSet;
+   const int num = getNumberOfStudyMetaDataLinks();
+   for (int i = 0; i < num; i++) {
+      const QString pmid = getStudyMetaDataLink(i).getPubMedID();
+      pmidSet.insert(pmid);
+   }
+   pmidsOut.clear();
+   pmidsOut.insert(pmidsOut.end(),
+                   pmidSet.begin(), pmidSet.end());
 }
       
 /**

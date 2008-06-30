@@ -50,6 +50,8 @@
 #include "StatisticTestNames.h"
 #include "StereotaxicSpace.h"
 #include "StringUtilities.h"
+#include "Structure.h"
+#include "StudyMetaDataFile.h"
 #include "VocabularyFile.h"
 #include "VolumeFile.h"
 #include "global_variables.h"
@@ -63,10 +65,13 @@
  */
 GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent, 
                                                const unsigned int itemsToDisplay,
-                                               const LIST_ITEMS_TYPE defaultItem) :
-   QtDialog(parent, true)
+                                               const LIST_ITEMS_TYPE defaultItem,
+                                               const bool allowMultipleSelectionsFlagIn) :
+   WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Name Selection");
+   allowMultipleSelectionsFlag = allowMultipleSelectionsFlagIn;
    
    //
    // layout for dialog
@@ -88,13 +93,26 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
    borderColorsFileItemNumber       = -1;
    cellColorsAlphaItemNumber        = -1;
    cellColorsFileItemNumber         = -1;
+   fociAreasAlphaItemNumber         = -1;
+   fociClassesAlphaItemNumber       = -1;
+   fociCommentAlphaItemNumber       = -1;
+   fociGeographyAlphaItemNumber     = -1;
    fociNamesAlphaItemNumber         = -1;
+   fociRegionOfInterestAlphaItemNumber = -1;
    paintNamesAlphaItemNumber        = -1;
    contourCellColorsAlphaItemNumber = -1;
    contourCellColorsFileItemNumber  = -1;
    vocabularyAlphaItemNumber        = -1;
    stereotaxicSpaceItemNumber       = -1;
    statisticsItemNumber             = -1;
+   structuresItemNumber             = -1;
+   studyCitationItemNumber          = -1;
+   studyDataFormatItemNumber        = -1;
+   studyDataTypeItemNumber          = -1;
+   studyKeywordsItemNumber          = -1;
+   studyMedicalSubjectHeadingsItemNumber = -1;
+   studyTableHeadersItemNumber      = -1;
+   studyTableSubHeadersItemNumber   = -1;
    volumePaintNamesAlphaOrderItemNumber = -1;
    
    int itemNumber = 0;
@@ -156,6 +174,34 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
       }
       contourCellColorsFileItemNumber = itemNumber++;
    }   
+   if (itemsToDisplay & LIST_FOCI_AREAS_ALPHA) {
+      fileTypeComboBox->addItem("Foci Areas (alphabetical)");
+      if (defaultItem == LIST_FOCI_AREAS_ALPHA) {
+         defaultSelection = itemNumber;
+      }
+      fociAreasAlphaItemNumber = itemNumber++;      
+   }   
+   if (itemsToDisplay & LIST_FOCI_CLASSES_ALPHA) {
+      fileTypeComboBox->addItem("Foci Classes (alphabetical)");
+      if (defaultItem == LIST_FOCI_CLASSES_ALPHA) {
+         defaultSelection = itemNumber;
+      }
+      fociClassesAlphaItemNumber = itemNumber++;      
+   }   
+   if (itemsToDisplay & LIST_FOCI_COMMENT_ALPHA) {
+      fileTypeComboBox->addItem("Foci Comments (alphabetical)");
+      if (defaultItem == LIST_FOCI_COMMENT_ALPHA) {
+         defaultSelection = itemNumber;
+      }
+      fociCommentAlphaItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_FOCI_GEOGRAPHY_ALPHA) {
+      fileTypeComboBox->addItem("Foci Geography (alphabetical)");
+      if (defaultItem == LIST_FOCI_GEOGRAPHY_ALPHA) {
+         defaultSelection = itemNumber;
+      }
+      fociGeographyAlphaItemNumber = itemNumber++;      
+   }   
    if (itemsToDisplay & LIST_FOCI_NAMES_ALPHA) {
       fileTypeComboBox->addItem("Foci Names (alphabetical)");
       if (defaultItem == LIST_FOCI_NAMES_ALPHA) {
@@ -163,6 +209,13 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
       }
       fociNamesAlphaItemNumber = itemNumber++;      
    }   
+   if (itemsToDisplay & LIST_FOCI_ROI_ALPHA) {
+      fileTypeComboBox->addItem("Foci ROI (alphabetical)");
+      if (defaultItem == LIST_FOCI_ROI_ALPHA) {
+        defaultSelection = itemNumber;
+      }
+      fociRegionOfInterestAlphaItemNumber = itemNumber++;
+   }
    if (itemsToDisplay & LIST_PAINT_NAMES_ALPHA) {
       fileTypeComboBox->addItem("Paint Names (alphabetical)");
       if (defaultItem == LIST_PAINT_NAMES_ALPHA) {
@@ -184,6 +237,62 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
       }
       stereotaxicSpaceItemNumber = itemNumber++;
    }
+   if (itemsToDisplay & LIST_STRUCTURE) {
+      fileTypeComboBox->addItem("Structure");
+      if (defaultItem == LIST_STRUCTURE) {
+         defaultSelection = itemNumber;
+      }
+      structuresItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_CITATION) {
+      fileTypeComboBox->addItem("Study Citation");
+      if (defaultItem == LIST_STUDY_CITATION) {
+         defaultSelection = itemNumber;
+      }
+      studyCitationItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_DATA_FORMAT) {
+      fileTypeComboBox->addItem("Study Data Format");
+      if (defaultItem == LIST_STUDY_DATA_FORMAT) {
+         defaultSelection = itemNumber;
+      }
+      studyDataFormatItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_DATA_TYPE) {
+      fileTypeComboBox->addItem("Study Data Type");
+      if (defaultItem == LIST_STUDY_DATA_TYPE) {
+         defaultSelection = itemNumber;
+      }
+      studyDataTypeItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_KEYWORDS_ALPHA) {
+      fileTypeComboBox->addItem("Study Keywords (alphabetical)");
+      if (defaultItem == LIST_STUDY_KEYWORDS_ALPHA) {
+         defaultSelection = itemNumber;
+      }
+      studyKeywordsItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_MESH_ALPHA) {
+      fileTypeComboBox->addItem("Study Medical Subject Headings (alphabetical)");
+      if (defaultItem == LIST_STUDY_MESH_ALPHA) {
+         defaultSelection = itemNumber;
+      }
+      studyMedicalSubjectHeadingsItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_TABLE_HEADERS) {
+      fileTypeComboBox->addItem("Study Table Headers (alphabetical)");
+      if (defaultItem == LIST_STUDY_TABLE_HEADERS) {
+         defaultSelection = itemNumber;
+      }
+      studyTableHeadersItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_STUDY_TABLE_SUBHEADERS) {
+      fileTypeComboBox->addItem("Study Table Tab SubHeaders (alphabetical)");
+      if (defaultItem == LIST_STUDY_TABLE_SUBHEADERS) {
+         defaultSelection = itemNumber;
+      }
+      studyTableSubHeadersItemNumber = itemNumber++;
+   }
    if (itemsToDisplay & LIST_VOCABULARY_ALPHA) {
       fileTypeComboBox->addItem("Vocabulary Abbreviations (alphabetical)");
       if (defaultItem == LIST_VOCABULARY_ALPHA) {
@@ -204,11 +313,13 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
    //
    nameListBox = new QListWidget(this);
    nameListBox->setMinimumSize(QSize(300, 300));
+   if (allowMultipleSelectionsFlag) {
+      nameListBox->setSelectionMode(QListWidget::ExtendedSelection);
+   }
+   else {
+      nameListBox->setSelectionMode(QListWidget::SingleSelection);
+   }
    rows->addWidget(nameListBox);
-   QObject::connect(nameListBox, SIGNAL(itemDoubleClicked(QListWidgetItem*)),
-                    this, SLOT(listBoxSelectionSlot(QListWidgetItem*)));
-   QObject::connect(nameListBox, SIGNAL(itemClicked(QListWidgetItem*)),
-                    this, SLOT(listBoxHighlightSlot(QListWidgetItem*)));
    
    //
    // Set initial selections
@@ -242,6 +353,37 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
 }
 
 /**
+ * Get the names that were selected (use if multiple selections).
+ */
+QStringList 
+GuiNameSelectionDialog::getNamesSelected() const
+{
+   QStringList sl;
+   
+   const QList<QListWidgetItem*> selectedItems = nameListBox->selectedItems();
+   const int num = selectedItems.size();
+   for (int i = 0; i < num; i++) {
+      sl << selectedItems.at(i)->text();
+   }
+   
+   return sl;
+}
+
+/**
+ * Get the name that was selected (use if single selections).
+ */
+QString 
+GuiNameSelectionDialog::getNameSelected() const
+{
+   const QStringList nameList = getNamesSelected();
+   if (nameList.size() > 0) {
+      return nameList.at(0);
+   }
+   
+   return "";
+}
+      
+/**
  * Get the selected item type.
  */
 GuiNameSelectionDialog::LIST_ITEMS_TYPE 
@@ -266,8 +408,23 @@ GuiNameSelectionDialog::getSelectedItemType() const
    else if (item == cellColorsFileItemNumber) {
       return LIST_CELL_COLORS_FILE;
    }
+   else if (item == fociAreasAlphaItemNumber) {
+      return LIST_FOCI_AREAS_ALPHA;
+   }
+   else if (item == fociClassesAlphaItemNumber) {
+      return LIST_FOCI_CLASSES_ALPHA;
+   }
+   else if (item == fociCommentAlphaItemNumber) {
+      return LIST_FOCI_COMMENT_ALPHA;
+   }
+   else if (item == fociGeographyAlphaItemNumber) {
+      return LIST_FOCI_GEOGRAPHY_ALPHA;
+   }
    else if (item == fociNamesAlphaItemNumber) {
       return LIST_FOCI_NAMES_ALPHA;
+   }
+   else if (item == fociRegionOfInterestAlphaItemNumber) {
+      return LIST_FOCI_ROI_ALPHA;
    }
    else if (item == paintNamesAlphaItemNumber) {
       return LIST_PAINT_NAMES_ALPHA;
@@ -281,8 +438,32 @@ GuiNameSelectionDialog::getSelectedItemType() const
    else if (item == stereotaxicSpaceItemNumber) {
       return LIST_STEREOTAXIC_SPACES;
    }
+   else if (item == structuresItemNumber) {
+      return LIST_STRUCTURE;
+   }
    else if (item == statisticsItemNumber) {
       return LIST_STATISTICS;
+   }
+   else if (item == studyCitationItemNumber) {
+      return LIST_STUDY_CITATION;
+   }
+   else if (item == studyDataFormatItemNumber) {
+      return LIST_STUDY_DATA_FORMAT;
+   }
+   else if (item == studyDataTypeItemNumber) {
+      return LIST_STUDY_DATA_TYPE;
+   }
+   else if (item == studyKeywordsItemNumber) {
+      return LIST_STUDY_KEYWORDS_ALPHA;
+   }
+   else if (item == studyMedicalSubjectHeadingsItemNumber) {
+      return LIST_STUDY_MESH_ALPHA;
+   }
+   else if (item == studyTableHeadersItemNumber) {
+      return LIST_STUDY_TABLE_HEADERS;
+   }
+   else if (item == studyTableSubHeadersItemNumber) {
+      return LIST_STUDY_TABLE_SUBHEADERS;
    }
    else if (item == vocabularyAlphaItemNumber) {
       return LIST_VOCABULARY_ALPHA;
@@ -293,25 +474,6 @@ GuiNameSelectionDialog::getSelectedItemType() const
    return LIST_NONE;
 }
       
-/**
- * Called when a name is selected (double clicked) in the list box.
- */
-void
-GuiNameSelectionDialog::listBoxSelectionSlot(QListWidgetItem* item)
-{
-   name = item->text();
-   done(QDialog::Accepted);
-}
-
-/**
- * Called when a name is selected (single clicked) in the list box.
- */
-void
-GuiNameSelectionDialog::listBoxHighlightSlot(QListWidgetItem* item)
-{
-   name = item->text();
-}
-
 /**
  * Called when a file type radio button is pressed.  Load appropriate names.
  */
@@ -344,8 +506,23 @@ GuiNameSelectionDialog::fileTypeSelectionSlot(int buttNum)
    else if (buttNum == contourCellColorsFileItemNumber) {
       loadContourCellColorsFileOrder();
    }
+   else if (buttNum == fociAreasAlphaItemNumber) {
+      loadFociAreasAlphaOrder();
+   }
+   else if (buttNum == fociClassesAlphaItemNumber) {
+      loadFociClassesAlphaOrder();
+   }
+   else if (buttNum == fociCommentAlphaItemNumber) {
+      loadFociCommentAlphaOrder();
+   }
+   else if (buttNum == fociGeographyAlphaItemNumber) {
+      loadFociGeographyAlphaOrder();
+   }
    else if (buttNum == fociNamesAlphaItemNumber) {
       loadFociNamesAlphaOrder();
+   }
+   else if (buttNum == fociRegionOfInterestAlphaItemNumber) {
+      loadFociROIAlphaOrder();
    }
    else if (buttNum == paintNamesAlphaItemNumber) {
       loadPaintNamesAlphaOrder();
@@ -355,6 +532,30 @@ GuiNameSelectionDialog::fileTypeSelectionSlot(int buttNum)
    }
    else if (buttNum == stereotaxicSpaceItemNumber) {
       loadStereotaxicSpaces();
+   }
+   else if (buttNum == structuresItemNumber) {
+      loadStructures();
+   }
+   else if (buttNum == studyCitationItemNumber) {
+      loadStudyCitation();
+   }
+   else if (buttNum == studyDataFormatItemNumber) {
+      loadStudyDataFormat();
+   }
+   else if (buttNum == studyDataTypeItemNumber) {
+      loadStudyDataType();
+   }
+   else if (buttNum == studyKeywordsItemNumber) {
+      loadStudyKeywords();
+   }
+   else if (buttNum == studyMedicalSubjectHeadingsItemNumber) {
+      loadStudyMedialSubjectHeadings();
+   }
+   else if (buttNum == studyTableHeadersItemNumber) {
+      loadStudyTableHeaders();
+   }
+   else if (buttNum == studyTableSubHeadersItemNumber) {
+      loadStudyTableSubHeaders();
    }
    else if (buttNum == vocabularyAlphaItemNumber) {
       loadVocabularyAlphaOrder();
@@ -375,13 +576,19 @@ GuiNameSelectionDialog::addNamesToListBox(std::vector<QString>& names, const boo
 {
    nameListBox->clear();
    
+   //
+   // Remove blanks
+   //
+   std::remove(names.begin(), names.end(), "");
+   
    if (sortThem) {
       //
       // sort and remove duplicates
       //
-      std::set<QString> sorted(names.begin(), names.end());
-      names.clear();
-      names.insert(names.begin(), sorted.begin(), sorted.end());
+      StringUtilities::sortCaseInsensitive(names, false, true);
+      //std::set<QString> sorted(names.begin(), names.end());
+      //names.clear();
+      //names.insert(names.begin(), sorted.begin(), sorted.end());
    }
    
    const unsigned int num = names.size();
@@ -390,7 +597,6 @@ GuiNameSelectionDialog::addNamesToListBox(std::vector<QString>& names, const boo
    }
    if (num > 0) {
       QListWidgetItem item(names[0]);
-      listBoxHighlightSlot(&item);
       nameListBox->setCurrentRow(0);
    }
 }
@@ -449,6 +655,156 @@ GuiNameSelectionDialog::loadVocabularyAlphaOrder()
    addNamesToListBox(names, true);
 }
       
+/**
+ * load the name for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadFociAreasAlphaOrder()
+{
+   std::vector<QString> names;
+   FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
+   fpf->getAllCellAreas(names);
+   addNamesToListBox(names, true);
+}
+
+/**
+ * load the names for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadFociCommentAlphaOrder()
+{
+   std::vector<QString> names;
+   FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
+   fpf->getAllCellComments(names);
+   addNamesToListBox(names, true);
+}
+      
+/**
+ * load the name for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadFociGeographyAlphaOrder()
+{
+   std::vector<QString> names;
+   
+   FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
+   fpf->getAllCellGeography(names);
+   addNamesToListBox(names, true);
+}
+      
+/**
+ * load the name for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadFociROIAlphaOrder()
+{
+   std::vector<QString> names;
+   
+   FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
+   fpf->getAllCellRegionsOfInterest(names);
+   addNamesToListBox(names, true);
+}
+      
+/**
+ * load the study citations.
+ */
+void 
+GuiNameSelectionDialog::loadStudyCitation()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllCitations(names);
+   addNamesToListBox(names, true);
+}
+
+/**
+ * load the study data format.
+ */
+void 
+GuiNameSelectionDialog::loadStudyDataFormat()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllDataFormats(names);
+   addNamesToListBox(names, true);
+}
+
+/**
+ * load the study data type.
+ */
+void 
+GuiNameSelectionDialog::loadStudyDataType()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllDataTypes(names);
+   addNamesToListBox(names, true);
+}
+      
+/**
+ * load the name for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadStudyKeywords()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllKeywords(names);
+   addNamesToListBox(names, true);
+}
+
+/**
+ * load the name for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadStudyMedialSubjectHeadings()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllMedicalSubjectHeadings(names);
+   addNamesToListBox(names, true);
+}
+      
+/**
+ * load study table headers.
+ */
+void 
+GuiNameSelectionDialog::loadStudyTableHeaders()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllTableHeaders(names);
+   addNamesToListBox(names, true);
+}
+
+/**
+ * load study table subheaders.
+ */
+void 
+GuiNameSelectionDialog::loadStudyTableSubHeaders()
+{
+   std::vector<QString> names;
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
+   smdf->getAllTableSubHeaderShortNames(names);
+   addNamesToListBox(names, true);
+}
+
+/**
+ * load the name for the file type and order.
+ */
+void 
+GuiNameSelectionDialog::loadFociClassesAlphaOrder()
+{
+   std::vector<QString> names;
+   
+   FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
+   const int num = fpf->getNumberOfCellProjections();
+   for (int j = 0; j < num; j++) {
+      names.push_back(fpf->getCellProjection(j)->getClassName());
+   }
+   addNamesToListBox(names, true);
+}
+      
 /** 
  * load the name of foci in alphabetical order
  */
@@ -473,7 +829,7 @@ GuiNameSelectionDialog::loadBorderNamesAlphaOrder()
 {
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
    std::vector<QString> names;
-   bmbs->getAllBorderNames(names);
+   bmbs->getAllBorderNames(names, false);
    addNamesToListBox(names, true);
 }
 
@@ -553,6 +909,18 @@ GuiNameSelectionDialog::loadStereotaxicSpaces()
    addNamesToListBox(names, true);
 }
 
+/**
+ * load the structures.
+ */
+void 
+GuiNameSelectionDialog::loadStructures()
+{
+   std::vector<Structure::STRUCTURE_TYPE> types;
+   std::vector<QString> names;
+   Structure::getAllTypesAndNames(types, names, true, true);
+   addNamesToListBox(names, true);
+}
+      
 /**
  * load the statistics.
  */

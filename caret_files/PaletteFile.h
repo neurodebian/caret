@@ -282,6 +282,9 @@ class PaletteFile : public AbstractFile {
       /// get the index of the "gray interp" palette
       int getGrayInterPaletteIndex() const;
       
+      /// get palette index from name or number (number ranges 1..N)
+      int getPaletteIndexFromNameOrNumber(const QString& nameOrNumber) const throw (FileException);
+      
       /// get a palette (const method)
       const Palette* getPalette(const int palNum) const { return &palettes[palNum]; }
       

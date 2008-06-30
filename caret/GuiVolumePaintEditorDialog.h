@@ -29,7 +29,7 @@
 #include <stack>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "VolumeFile.h"
 #include "VolumeModification.h"
@@ -39,7 +39,7 @@ class QLineEdit;
 class QPushButton;
 
 /// class dialog that allows editing of a paint volume
-class GuiVolumePaintEditorDialog : public QtDialog {
+class GuiVolumePaintEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -135,6 +135,9 @@ class NodeAttributeFile : public AbstractFile {
       /// prepend to the comment for a column
       void prependToColumnComment(const int col, const QString& comm);
       
+      /// get PubMedID's of all linked studies
+      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const;
+      
       // get the study metadata link for a column
       StudyMetaDataLinkSet getColumnStudyMetaDataLinkSet(const int col) const;
       

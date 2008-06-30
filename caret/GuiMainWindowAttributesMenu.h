@@ -47,6 +47,9 @@ class GuiMainWindowAttributesMenu : public QMenu {
       /// create the area colors menu
       void createAreaColorsSubMenu(GuiMainWindowAttributesActions* attributesActions);
       
+      /// create the areal estimation menu
+      void createArealEstimationSubMenu(GuiMainWindowAttributesActions* attributesActions);
+      
       /// create the lat/lon sub menu
       void createLatLonSubMenu(GuiMainWindowAttributesActions* attributesActions);
       
@@ -82,6 +85,9 @@ class GuiMainWindowAttributesMenu : public QMenu {
 
       /// area colors menu
       QMenu* areaColorsSubMenu;
+      
+      /// areal estimation menu
+      QMenu* arealEstimationSubMenu;
       
       /// lat/lon sub menu
       QMenu* latLonSubMenu;

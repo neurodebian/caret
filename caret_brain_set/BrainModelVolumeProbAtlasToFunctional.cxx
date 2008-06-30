@@ -91,15 +91,15 @@ BrainModelVolumeProbAtlasToFunctional::execute() throw (BrainModelAlgorithmExcep
    }
    
    DisplaySettingsProbabilisticAtlas* dspa = brainSet->getDisplaySettingsProbabilisticAtlasVolume();
-   BrainModelVolume* bmv = brainSet->getBrainModelVolume();
-   const int numPaintNames = bmv->getNumberOfProbAtlasNames();
+   //BrainModelVolume* bmv = brainSet->getBrainModelVolume();
+   const int numPaintNames = probAtlasVolume->getNumberOfRegionNames();
    
    //
    // indices that should be ignored
    //
-   const int questIndex = bmv->getProbAtlasIndexFromName("???");
-   const int gyralIndex = bmv->getProbAtlasIndexFromName("GYRAL");
-   const int gyrusIndex = bmv->getProbAtlasIndexFromName("GYRUS");
+   const int questIndex = probAtlasVolume->getRegionIndexFromName("???");
+   const int gyralIndex = probAtlasVolume->getRegionIndexFromName("GYRAL");
+   const int gyrusIndex = probAtlasVolume->getRegionIndexFromName("GYRUS");
 
     
    //
@@ -119,7 +119,7 @@ BrainModelVolumeProbAtlasToFunctional::execute() throw (BrainModelAlgorithmExcep
                int cntIndex = 0;
                if (dspa->getChannelSelected(volNum)) {
                   const int voxel = static_cast<int>(vf->getVoxel(i, j, k));
-                  cntIndex = bmv->getProbAtlasNameTableIndex(volNum, voxel);
+                  cntIndex = voxel; //vf->getProbAtlasNameTableIndex(volNum, voxel);
                }
                if ((cntIndex > 0) && (cntIndex < numPaintNames)) {
                   if (dspa->getAreaSelected(cntIndex) == false) {

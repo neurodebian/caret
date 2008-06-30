@@ -149,11 +149,96 @@ ArealEstimationFile::clear()
  * columnDestination is where naf's columns should be (-1=new, -2=do not load).
  */
 void 
-ArealEstimationFile::append(NodeAttributeFile& /*naf*/, 
-                     std::vector<int> /*columnDestination*/,
-                          const FILE_COMMENT_MODE) throw (FileException)
+ArealEstimationFile::append(NodeAttributeFile& naf, 
+                            std::vector<int> columnDestinationIn,
+                            const FILE_COMMENT_MODE fcm) throw (FileException)
 {
-   throw FileException("Not implemented yet.");
+   bool setTheFileNameFlag = false;
+   
+   std::vector<int> columnDestination = columnDestinationIn;
+   
+   ArealEstimationFile& aef = dynamic_cast<ArealEstimationFile&>(naf);
+   
+   if (numberOfNodes != aef.numberOfNodes) {
+      if (numberOfNodes > 0) {
+         throw FileException("Trying to append areal estimtation file with a different number "
+                          "of nodes");
+      }
+      else {
+         setTheFileNameFlag = true;
+      }
+   }
+
+   setModified();
+   
+   //
+   // Find out how many columns need to be added
+   //   
+   int numColumnsToAdd = 0;
+   int newColumnIndex = numberOfColumns;
+   for (int i = 0; i < aef.getNumberOfColumns(); i++) {
+      if (columnDestination[i] == APPEND_COLUMN_NEW) {
+         numColumnsToAdd++;
+         columnDestination[i] = newColumnIndex;
+         newColumnIndex++;
+      }
+   }
+   //
+   // Add on additional columns
+   //
+   if (getNumberOfNodes() == 0) {
+      setNumberOfNodesAndColumns(aef.getNumberOfNodes(), numColumnsToAdd);
+   }
+   else {
+      addColumns(numColumnsToAdd);
+   }
+      
+   //
+   // copy column names from other file
+   //
+   for (int k = 0; k < aef.numberOfColumns; k++) {
+      if (columnDestination[k] >= 0) {
+         const int col = columnDestination[k];
+         setColumnName(col, aef.getColumnName(k));
+         setColumnComment(col, aef.getColumnComment(k));
+         setLongName(col, aef.getLongName(k));
+      }
+   }
+   
+   //
+   // Transfer area names
+   //
+   std::vector<int> areaNameIndex;
+   for (int k = 0; k < aef.getNumberOfAreaNames(); k++) {
+      areaNameIndex.push_back(addAreaName(aef.getAreaName(k)));
+   }
+   
+   //
+   // copy areal estimation data from other file
+   //
+   int areaNamesData[4];
+   float probData[4];
+   for (int j = 0; j < aef.numberOfColumns; j++) {
+      if (columnDestination[j] >= 0) {
+         const int col = columnDestination[j];
+         for (int i = 0; i < numberOfNodes; i++) {
+            aef.getNodeData(i, j, areaNamesData, probData);
+            for (int m = 0; m < 4; m++) {
+               areaNamesData[m] = areaNameIndex[areaNamesData[m]];
+            }
+            setNodeData(i, col, areaNamesData, probData);
+         }
+      }
+   }
+   
+   if (setTheFileNameFlag) {
+      setFileName(aef.getFileName());
+   }
+   
+   //
+   // transfer the file's comment
+   //
+   appendFileComment(aef, fcm);
 }
 
 /**

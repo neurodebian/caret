@@ -27,7 +27,7 @@
 #ifndef __GUI_SECTION_CONTROL_DIALOG_H__
 #define __GUI_SECTION_CONTROL_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QComboBox;
 class QLabel;
@@ -36,8 +36,10 @@ class QScrollBar;
 class QSpinBox;
 class QSlider;
 
+class GuiNodeAttributeColumnSelectionComboBox;
+
 /// Dialog for controlling selected sections.
-class GuiSectionControlDialog : public QtDialog {
+class GuiSectionControlDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -74,7 +76,7 @@ class GuiSectionControlDialog : public QtDialog {
       
    private:
       /// section file column combo box;
-      QComboBox* sectionFileColumnComboBox;
+      GuiNodeAttributeColumnSelectionComboBox* sectionFileColumnComboBox;
       
       /// single section radio button
       QRadioButton* singleSectionRadioButton;

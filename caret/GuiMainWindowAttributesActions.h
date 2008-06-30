@@ -112,6 +112,9 @@ class GuiMainWindowAttributesActions : public QObject {
       ///  for clearing all or part of the paint file
       QAction* getPaintClearAllOrPartAction() { return paintClearAllOrPartAction; }
       
+      ///  for clearing all or part of areal estimationo file
+      QAction* getArealEstimationClearAllOrPartAction() { return arealEstimationClearAllOrPartAction; }
+      
       ///  for copying current coloring to rgb paint
       QAction* getCopyColoringToRgbPaintAction() { return copyColoringToRgbPaintAction; }
       
@@ -216,6 +219,9 @@ class GuiMainWindowAttributesActions : public QObject {
       /// slot for clearing all or part of the paint file
       void slotPaintClearAllOrPart();
       
+      /// slot for clearing all or part of the areal estimation file
+      void slotArealEstimationClearAllOrPart();
+      
       /// slot for copying current coloring to rgb paint
       void slotCopyColoringToRgbPaint();
       
@@ -315,6 +321,9 @@ class GuiMainWindowAttributesActions : public QObject {
       
       ///  for clearing all or part of the paint file
       QAction* paintClearAllOrPartAction;
+      
+      /// for clearing all or part of areal estimation file
+      QAction* arealEstimationClearAllOrPartAction;
       
       ///  for copying current coloring to rgb paint
       QAction* copyColoringToRgbPaintAction;

@@ -68,6 +68,9 @@ class GuiVolumeSelectionControl : public QWidget {
       /// get the selected volume type
       VolumeFile::VOLUME_TYPE getSelectedVolumeType() const;
       
+      /// set the selected volume type
+      void setSelectedVolumeType(const VolumeFile::VOLUME_TYPE vt);
+      
       /// get the selected volume file (if null NEW might be selected)
       VolumeFile* getSelectedVolumeFile();
       

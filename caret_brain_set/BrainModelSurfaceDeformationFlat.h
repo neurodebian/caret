@@ -39,6 +39,9 @@ class BrainModelSurfaceDeformationFlat : public BrainModelSurfaceDeformation {
       // Destructor
       ~BrainModelSurfaceDeformationFlat();
       
+      /// get output of flat fluid
+      QString getFlatFluidOutput() const { return outputOfFlatFluid; }
+      
    protected:
       // Execute the deformation
       void executeDeformation() throw (BrainModelAlgorithmException);
@@ -46,6 +49,8 @@ class BrainModelSurfaceDeformationFlat : public BrainModelSurfaceDeformation {
       // Check the borders to make sure the names are valid.
       void checkBorderNames(const QString& borderFileName) throw (BrainModelAlgorithmException);
 
+      /// output of flat fluid program
+      QString outputOfFlatFluid;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_DEFORMATION_FLAT_H__

@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
@@ -48,7 +49,7 @@
 GuiShapeOrVectorsFromCoordinateSubtractionDialog::GuiShapeOrVectorsFromCoordinateSubtractionDialog(
                                                                  QWidget* parent,
                                                                  const MODE modeIn)
-   : QtDialogModal(parent)
+   : WuQDialog(parent)
 {
    mode = modeIn;
    
@@ -67,7 +68,7 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::GuiShapeOrVectorsFromCoordinat
    //
    //  Layout for dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    
    //
    // surface A
@@ -144,6 +145,17 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::GuiShapeOrVectorsFromCoordinat
 
    columnComboBox->setCurrentIndex(GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NEW);
    columnNameLineEdit->setText(columnComboBox->currentText());
+
+   //
+   // Dialog buttons
+   //
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok 
+                                                      | QDialogButtonBox::Cancel);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(accepted()),
+                    this, SLOT(accept()));
+   QObject::connect(buttonBox, SIGNAL(rejected()),
+                    this, SLOT(reject()));
 }
 
 /**
@@ -277,5 +289,5 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::done(int r)
       beep();
    }
    
-   QtDialogModal::done(r);
+   WuQDialog::done(r);
 }

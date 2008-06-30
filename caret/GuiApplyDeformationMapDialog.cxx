@@ -53,8 +53,8 @@
 /**
  * Constructor
  */
-GuiApplyDeformationMapDialog::GuiApplyDeformationMapDialog(QWidget* parent, Qt::WFlags f)
-   : QtDialog(parent, false, f)
+GuiApplyDeformationMapDialog::GuiApplyDeformationMapDialog(QWidget* parent, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
    //
    // initialize some variables

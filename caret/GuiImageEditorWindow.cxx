@@ -29,6 +29,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QContextMenuEvent>
@@ -45,6 +46,7 @@
 #include <QPrintDialog>
 #include <QPrinter>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSpinBox>
 #include <QToolButton>
 #include <QToolTip>
@@ -54,6 +56,7 @@
 #include "GuiDataFileOpenDialog.h"
 #include "GuiDataFileSaveDialog.h"
 #include "GuiFilesModified.h"
+#include "GuiImageResizeDialog.h"
 #include "GuiMainWindow.h"
 
 #define __IMAGE_EDITOR_WIDGET_ADD_TEXT_DIALOG_MAIN__
@@ -71,9 +74,10 @@
  * The Constructor.
  */
 GuiImageEditorWindow::GuiImageEditorWindow(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
-   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+   setModal(false);
+   //setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
    setWindowTitle("Image Editing Window");
    
    //
@@ -148,6 +152,24 @@ GuiImageEditorWindow::GuiImageEditorWindow(QWidget* parent)
    toolbar2Layout->addWidget(dumbLabel);
    
    //
+   // Copy to clipboard 
+   //
+   QToolButton* copyToClipboardToolButton = new QToolButton;
+   toolbar2Layout->addWidget(copyToClipboardToolButton);
+   copyToClipboardToolButton->setText("C");
+   copyToClipboardToolButton->setToolTip("Copy Image to\n"
+                                         "Clipboard");
+   QObject::connect(copyToClipboardToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotCopyImageToClipboard()));
+                    
+   //
+   // Space 2
+   //
+   QLabel* dumb2Label = new QLabel(" ");
+   dumb2Label->setFixedSize(dumb2Label->sizeHint());
+   toolbar2Layout->addWidget(dumb2Label);
+   
+   //
    // Annotate tool button
    //
    QToolButton* annotateToolButton = new QToolButton;
@@ -220,7 +242,7 @@ GuiImageEditorWindow::GuiImageEditorWindow(QWidget* parent)
    imageSizeComboBox->setCurrentIndex(imageViewer->getViewingSize());
    QObject::connect(imageSizeComboBox, SIGNAL(activated(int)),
                     imageViewer, SLOT(slotViewingSizeMenu(int)));
-   dialogLayout->addWidget(imageViewer);
+   //dialogLayout->addWidget(imageViewer);
    QObject::connect(imageViewer, SIGNAL(signalGeometryChanged()),
                     this, SLOT(slotImageSizeChanged()));
    
@@ -234,6 +256,14 @@ GuiImageEditorWindow::GuiImageEditorWindow(QWidget* parent)
    QObject::connect(resizeToolButton, SIGNAL(clicked()),
                     imageViewer, SLOT(slotResizeImage()));
 
+   //
+   // Scroll view for image viewer
+   //
+   QScrollArea* imageViewerScrollViewer = new QScrollArea;
+   imageViewerScrollViewer->setWidget(imageViewer);
+   imageViewerScrollViewer->setWidgetResizable(true);
+   dialogLayout->addWidget(imageViewerScrollViewer);
+   
    //
    // Close Button
    //
@@ -249,7 +279,7 @@ GuiImageEditorWindow::GuiImageEditorWindow(QWidget* parent)
    
    dialogLayout->setStretchFactor(toolbar1Layout, 0);
    dialogLayout->setStretchFactor(toolbar2Layout, 0);
-   dialogLayout->setStretchFactor(imageViewer, 0);
+   dialogLayout->setStretchFactor(imageViewer, 100);
    dialogLayout->setStretchFactor(buttons, 0);
 //   dialogLayout->setResizeMode(QLayout::Minimum);
    
@@ -337,6 +367,19 @@ GuiImageEditorWindow::slotSaveImageFile()
 */
 }
       
+/**
+ * called to copy image to clipboard.
+ */
+void 
+GuiImageEditorWindow::slotCopyImageToClipboard()
+{
+   ImageFile* imageFile = imageViewer->getImageFile();
+   if (imageFile != NULL) {
+      QApplication::clipboard()->setImage(*(imageFile->getImage()),
+                                          QClipboard::Clipboard);
+   }
+}
+
 /**
  * called to print an image.
  */
@@ -434,6 +477,7 @@ GuiImageEditorWindow::displayImage(const int imageNumberIn)
 void 
 GuiImageEditorWindow::slotImageSizeChanged()
 {
+/*
    //
    // Allows dialog to resize to fit image and don't let it change position
    //   
@@ -444,6 +488,7 @@ GuiImageEditorWindow::slotImageSizeChanged()
    updateGeometry();
    resize(sizeHint());
    adjustSize();
+*/
 }
       
 /**
@@ -614,10 +659,10 @@ GuiImageEditorWindow::showScene(const SceneFile::SceneClass /*sc*/)
  */
 GuiImageEditorWidget::GuiImageEditorWidget(QWidget *parent, 
                                      const POPUP_MENU popupMenuStyleIn,
-                                     Qt::WFlags f)
+                                     Qt::WindowFlags f)
    : QWidget(parent, f)
 {
-   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+//   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
    
    viewingImageSize = VIEWING_IMAGE_SIZE_100;
    imageFile = NULL;
@@ -985,6 +1030,23 @@ GuiImageEditorWidget::slotResizeImage()
          return;
       }
 
+      GuiImageResizeDialog ird(this, *image);
+      if (ird.exec() == QDialog::Accepted) {
+         imageFile->setModified();
+
+         GuiFilesModified fm;
+         fm.setImagesModified();
+         theMainWindow->fileModificationUpdate(fm);
+         GuiBrainModelOpenGL::updateAllGL();
+      }
+   }
+/*
+   if (theMainWindow->getBrainSet()->getImageFileValid(imageFile)) {
+      QImage* image = imageFile->getImage();
+      if (image == NULL) {
+         return;
+      }
+
       GuiImageEditorWidgetResizeDialog iewrd(this, image->width(), image->height());
       if (iewrd.exec() == QDialog::Accepted) {
          int x, y;
@@ -1000,7 +1062,7 @@ GuiImageEditorWidget::slotResizeImage()
          GuiBrainModelOpenGL::updateAllGL();
       }
    }
-   
+*/   
    windowSizeChanged();
 }
 
@@ -1139,8 +1201,9 @@ GuiImageEditorWidget::getViewingSize() const
 GuiImageEditorWidgetResizeDialog::GuiImageEditorWidgetResizeDialog(QWidget* parent, 
                                                              const int xSize, 
                                                              const int ySize)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Scaling");
    originalAspect = static_cast<float>(xSize) / static_cast<float>(ySize);
    
@@ -1280,8 +1343,9 @@ GuiImageEditorWidgetResizeDialog::done(int r)
 GuiImageEditorWidgetAddTextDialog::GuiImageEditorWidgetAddTextDialog(QWidget* parent, 
                                                              const int x, 
                                                              const int y)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    if (staticDataInitialized == false) {
       staticDataInitialized = true;
       fontColor.setRgb(0, 0, 0);

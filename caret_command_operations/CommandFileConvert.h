@@ -71,6 +71,7 @@ class CommandFileConvert : public CommandBase {
          SURFACE_TYPE_FREE_SURFER,
          SURFACE_TYPE_FREE_SURFER_PATCH,
          SURFACE_TYPE_GIFTI,
+         SURFACE_TYPE_MNI_OBJ,
          SURFACE_TYPE_OPEN_INVENTOR,
          SURFACE_TYPE_STL,
          SURFACE_TYPE_VTK,

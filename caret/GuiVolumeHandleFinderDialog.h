@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BrainModelVolumeTopologicalError.h"
 
@@ -40,7 +40,7 @@ class QRadioButton;
 class WuQWidgetGroup;
 
 /// Dialog for handle finding
-class GuiVolumeHandleFinderDialog : public QtDialog {
+class GuiVolumeHandleFinderDialog : public WuQDialog {
    Q_OBJECT
    
    public:

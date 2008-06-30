@@ -64,14 +64,17 @@
  */
 GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
                        GuiBrainModelOpenGL* brainModelOpenGLIn,
-                       const bool mainWindowFlag)
+                       const BrainModel::BRAIN_MODEL_VIEW_NUMBER viewWindowNumberIn)
    : QToolBar(parent)
 {
    setMovable(false);
    
    mainWindow = mainWindowIn;
    brainModelOpenGL = brainModelOpenGLIn;
-
+   viewWindowNumber = viewWindowNumberIn;
+   const bool mainWindowFlag =
+      (viewWindowNumber == BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
+      
    //
    // actions for toolbar
    //
@@ -271,6 +274,7 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
    QToolButton* dcButton = NULL;
    QToolButton* specButton = NULL;
    yokeButton = NULL;
+   QToolButton* swapButton = NULL;
    volumeUnderlayOnlyButton = NULL;
    if (mainWindowFlag) {
       //
@@ -297,6 +301,12 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
       //
       yokeButton = new QToolButton;
       yokeButton->setDefaultAction(toolBarActions->getYokeAction());
+      
+      //
+      // Swap toolbar button
+      //
+      swapButton = new QToolButton;
+      swapButton->setDefaultAction(toolBarActions->getSwapAction());
    }
 
    QHBoxLayout* l1 = new QHBoxLayout;
@@ -330,6 +340,9 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
    }
    if (yokeButton != NULL) {
       l1->addWidget(yokeButton, 0);
+   }
+   if (swapButton != NULL) {
+      l1->addWidget(swapButton, 0);
    }
    l1->addStretch();  //1000);
    
@@ -1276,6 +1289,8 @@ GuiToolBar::updateMouseModeComboBox()
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE_POINT));
             mouseModeComboBox->addItem("Border Point Move", 
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT));
+            mouseModeComboBox->addItem("Border Update", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE));
             mouseModeComboBox->addItem("Cell Add", 
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CELL_ADD));
             mouseModeComboBox->addItem("Cell Delete", 
@@ -1409,6 +1424,8 @@ GuiToolBar::slotMouseModeComboBoxActivated(int indx)
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_REVERSE:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_RENAME:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_CUT_DRAW:
                {

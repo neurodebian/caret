@@ -72,7 +72,8 @@ class DisplaySettingsImages : public DisplaySettings {
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
       /// get the image position mode
       IMAGE_POSITION_MODE getImagePositionMode() const { return imagePositionMode; }

@@ -34,20 +34,15 @@
 
 class BrainModelSurface;
 class BrainModelSurfaceROINodeSelection;
-class CoordinateFile;
-class LatLonFile;
-class MetricFile;
-class PaintFile;
-class SurfaceShapeFile;
-class TopologyFile;
+class TopologyHelper;
 
 /// base class for performing region of interest operations on a surface
 class BrainModelSurfaceROIOperation : public BrainModelAlgorithm {
    public:
       // constructor
       BrainModelSurfaceROIOperation(BrainSet* bs,
-                           BrainModelSurface* bmsIn,
-                           BrainModelSurfaceROINodeSelection* surfaceROIIn);
+                           const BrainModelSurface* bmsIn,
+                           const BrainModelSurfaceROINodeSelection* inputSurfaceROIIn);
       
       // destructor
       ~BrainModelSurfaceROIOperation();
@@ -62,23 +57,23 @@ class BrainModelSurfaceROIOperation : public BrainModelAlgorithm {
       // execute the operation
       virtual void executeOperation() throw (BrainModelAlgorithmException) = 0;
        
+      // get the topology helper
+      const TopologyHelper* getTopologyHelper() const;
+      
       /// get the separator character
       static QString getSeparatorCharacter() { return ";"; }
       
       // Create the report header
       void createReportHeader(float& roiAreaOut);
              
-      // set node selection information
-      void setNodeSelectionInformation(const QString& nodeSelectionTextIn);
-      
       // set the header text
       void setHeaderText(const QString& headerTextIn);
       
       /// surface on which to perform operation
-      BrainModelSurface* bms;
+      const BrainModelSurface* bms;
       
       /// the ROI selection
-      BrainModelSurfaceROINodeSelection* surfaceROI;
+      BrainModelSurfaceROINodeSelection* operationSurfaceROI;
       
       /// report text 
       QString reportText;
@@ -93,11 +88,11 @@ class BrainModelSurfaceROIOperation : public BrainModelAlgorithm {
       static const QString separatorCharacter;
       
    private:
-      /// information about node selection
-      QString nodeSelectionText;
-      
       /// the header text
       QString headerText;
+      
+      /// the input region of interest
+      const BrainModelSurfaceROINodeSelection* inputSurfaceROI;
       
 };
 

@@ -42,6 +42,7 @@
 #include <QDir>
 
 #include "BorderFile.h"
+#include "BorderProjectionFile.h"
 #include "BrainModelSurfaceDistortion.h"
 #include "BrainModelSurfaceFlatHexagonalSubsample.h"
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
@@ -63,17 +64,18 @@ BrainModelSurfaceMultiresolutionMorphing::BrainModelSurfaceMultiresolutionMorphi
                                              BrainSet* brainSetIn,
                                              BrainModelSurface* referenceSurfaceIn,
                                              BrainModelSurface* morphingSurfaceIn,
-               const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn)
-   : BrainModelAlgorithm(brainSetIn)
+               const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn,
+               const BorderProjection* centralSulcusBorderProjectionIn)
+   : BrainModelAlgorithm(brainSetIn),
+     referenceSurface(referenceSurfaceIn),
+     morphingSurface(morphingSurfaceIn),
+     morphingSurfaceType(morphingSurfaceTypeIn),
+     centralSulcusBorderProjection(centralSulcusBorderProjectionIn)
 {   
    currentCycle = std::numeric_limits<int>::max();
    
    brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_UNKNOWN;
    
-   referenceSurface = referenceSurfaceIn;
-   morphingSurface  = morphingSurfaceIn;
-   
-   morphingSurfaceType = morphingSurfaceTypeIn;
    
    for (int i = 0; i < MAXIMUM_NUMBER_OF_CYCLES; i++) {
       switch (morphingSurfaceType) {
@@ -910,7 +912,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
             //
             morphingSurface->popCoordinates();
          }
-         
+                  
          //
          // If doing flat registration and smoothing of flat surface overlap 
          // enabled and doing the last cycle
@@ -967,7 +969,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                //
                // Measure the overlap smoothed surface
                //
-               measureSurface(5000, (timer.elapsed() * 0.001));
+               measureSurface(1000, (timer.elapsed() * 0.001));
                
                //
                // if flat surface 
@@ -976,7 +978,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                   //
                   // Restore the coordinates
                   //
-                  morphingSurface->popCoordinates();
+                  smoothingSurface->popCoordinates();
                }
             }
             else {
@@ -994,6 +996,47 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
             brainSet->addToSpecFile(
                BrainModelSurface::getCoordSpecFileTagFromSurfaceType(morphingSurface->getSurfaceType()),
                morphingSurface->getFileName());
+               
+            //
+            // If surface should be aligned
+            //
+            if (centralSulcusBorderProjection != NULL) {
+               if (centralSulcusBorderProjection->getNumberOfLinks() > 1) {
+                  const bool flatFlag =
+                     (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT);
+                  BrainModelSurface* alignmentSurface = new BrainModelSurface(*morphingSurface);
+                  alignmentSurface->alignToStandardOrientation(referenceSurface,
+                                                               centralSulcusBorderProjection,
+                                                               false,
+                                                               false);
+                  brainSet->addBrainModel(alignmentSurface);
+                  
+                  if (flatFlag) {
+                     alignmentSurface->scaleSurfaceToArea(referenceSurfaceArea, true);
+                  }
+
+                  CoordinateFile* cf = alignmentSurface->getCoordinateFile();
+                  const QString name(
+                       outputFileNamePrefix
+                     + (flatFlag
+                        ? "FLAT_ALIGNED"
+                        : "SPHERE_ALIGNED")
+                     + outputFileNameSuffix);
+                  try {
+                     brainSet->writeCoordinateFile(name, alignmentSurface->getSurfaceType(), cf, true);    
+                  }
+                  catch (FileException& e) {
+                     throw BrainModelAlgorithmException(e.whatQString());
+                  }
+                  
+                  morphingSurface = alignmentSurface;
+                  
+                  //
+                  // Measure the overlap smoothed surface
+                  //
+                  measureSurface(2000, (timer.elapsed() * 0.001));
+               }
+            }
          }
          
          //
@@ -1081,7 +1124,10 @@ BrainModelSurfaceMultiresolutionMorphing::measureSurface(const int cycleNumber,
    }
    else {
       std::ostringstream str;
-      if (cycleNumber > 1000) {
+      if (cycleNumber == 2000) {
+         str << "Aligned";
+      }
+      else if (cycleNumber == 1000) {
          str << "Overlap Smoothed";
       }
       else {
@@ -1945,7 +1991,7 @@ BrainModelSurfaceMultiresolutionMorphing::flatUpsample(BrainSet* fromBrain, Brai
        //
        std::ostringstream ostr;
        ostr << brainSet->getCaretHomeDirectory().toAscii().constData()
-            << "/CONSTRUCT.SPHERE/"
+            << "/data_files/CONSTRUCT.SPHERE/"
             << "sphere.v5."
             << lvl
             << ".spec";

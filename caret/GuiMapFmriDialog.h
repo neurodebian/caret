@@ -50,11 +50,11 @@ class QDoubleSpinBox;
 #include "MapFmriAtlasSpecFileInfo.h"
 #include "GuiMapFmriMappingSet.h"
 #include "GuiMapFmriVolume.h"
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 
 /// Dialog for fmri mapping
-class GuiMapFmriDialog : public QtDialog {
+class GuiMapFmriDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -62,7 +62,7 @@ class GuiMapFmriDialog : public QtDialog {
       GuiMapFmriDialog(QWidget* parent,
                        const bool runningAsPartOfCaretIn,
                        bool modal = false,
-                       Qt::WFlags f = 0);
+                       Qt::WindowFlags f = 0);
                        
       /// Destructor
       ~GuiMapFmriDialog();

@@ -386,6 +386,14 @@ CellProjectionUnprojector::unprojectCellProjections(CellProjectionFile& cpf, Bra
                   break;
                case Structure::STRUCTURE_TYPE_CEREBELLUM:
                   break;
+               case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+                  break;
+               case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+                  break;
+               case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+                  break;
+               case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+                  break;
             }
          }
       }

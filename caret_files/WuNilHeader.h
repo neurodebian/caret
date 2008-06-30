@@ -92,6 +92,7 @@ class WuNilAttribute {
       static const QString NAME_MMPPIX;
       static const QString NAME_CONVERSION_PROGRAM;
       static const QString NAME_REGION_NAME;
+      static const QString NAME_IMAGEDATA_BYTE_ORDER;
 };
 
 #ifdef __WUNIL_HEADER_DEFINE__
@@ -113,6 +114,7 @@ class WuNilAttribute {
    const QString WuNilAttribute::NAME_MMPPIX = "mmppix";
    const QString WuNilAttribute::NAME_CONVERSION_PROGRAM = "conversion program";
    const QString WuNilAttribute::NAME_REGION_NAME = "region names";
+   const QString WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER = "imagedata byte order";
 
 #endif // __WUNIL_HEADER_DEFINE__
 

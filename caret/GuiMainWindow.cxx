@@ -86,11 +86,14 @@
 #include "FileUtilities.h"
 #include "FociColorFile.h"
 #include "FociProjectionFile.h"
+#include "FociSearchFile.h"
 #include "GeodesicDistanceFile.h"
 #include "GuiBrainModelViewingWindow.h"
 #include "GuiAddCellsDialog.h"
 #include "GuiAutomaticRotationDialog.h"
 #include "GuiBordersCreateInterpolatedDialog.h"
+#include "GuiBorderDrawUpdateDialog.h"
+#include "GuiCaptureWindowImageDialog.h"
 #include "GuiColorKeyDialog.h"
 #include "GuiContourAlignmentDialog.h"
 #include "GuiContourDrawDialog.h"
@@ -123,7 +126,6 @@
 #include "GuiMainWindowWindowActions.h"
 #include "GuiMainWindowWindowMenu.h"
 #include "GuiMapStereotaxicFocusDialog.h"
-#include "GuiMessageBox.h"
 #include "GuiMetricModificationDialog.h"
 #include "GuiMetricsToRgbPaintDialog.h"
 #include "GuiModelsEditorDialog.h"
@@ -142,6 +144,7 @@
 //#include "GuiSpeechGenerator.h"
 #include "GuiStudyMetaDataFileEditorDialog.h"
 #include "GuiSurfaceRegionOfInterestDialog.h"
+#include "GuiSurfaceRegionOfInterestDialogOLD.h"
 #include "GuiTransformationMatrixDialog.h"
 #include "GuiVocabularyFileEditorDialog.h"
 #include "GuiVolumeBiasCorrectionDialog.h"
@@ -174,6 +177,8 @@
 #include "VocabularyFile.h"
 #include "VtkModelFile.h"
 #include "WustlRegionFile.h"
+#include "WuQDataEntryDialog.h"
+#include "WuQMessageBox.h"
 
 /**
  * Constructor.
@@ -181,7 +186,7 @@
 GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
                              const int openGLsizeX,
                              const int openGLsizeY)
-   : QtMainWindow(0)
+   : QMainWindow(0)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    
@@ -320,7 +325,8 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    // Create toolbar after GuiBrainModelOpenGL since the toolbar connects
    // to slots  in it.
    //
-   toolBar = new GuiToolBar(this, this, mainOpenGL, true);
+   toolBar = new GuiToolBar(this, this, mainOpenGL, 
+                            BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
    addToolBar(toolBar);
    QObject::connect(toolBar, SIGNAL(modelSelection(int)),
                     this, SLOT(updateDisplayedMenus()));
@@ -341,7 +347,9 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    addContourCellsDialog   = NULL;
    alignSurfaceToStandardOrientationDialog = NULL;
    automaticRotationDialog = NULL;
+   borderDrawUpdateDialog  = NULL;
    bordersCreateInterpolatedDialog = NULL;
+   captureWindowImageDialog = NULL;
    caretCommandExecutorDialog = NULL;
    caretCommandScriptBuilderDialog = NULL;
    contourAlignmentDialog  = NULL;
@@ -350,6 +358,7 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    contourSetScaleDialog   = NULL;
    drawBorderDialog        = NULL;
    flatMorphingDialog      = NULL;
+   fociAttributeAssignmentDialog = NULL;
    helpViewerDialog        = NULL;
    imageEditorWindow       = NULL;
    identifyDialog          = NULL;
@@ -372,6 +381,7 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    sphereMorphingDialog    = NULL;
    studyMetaDataFileEditorDialog = NULL;
    surfaceRegionOfInterestDialog = NULL;
+   surfaceRegionOfInterestDialogOLD = NULL;
    transformMatrixEditorDialog = NULL;
    volumeSureFitMultiHemSegmentationDialog = NULL;
    volumeThresholdSegmentationDialog = NULL;
@@ -418,14 +428,6 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    //
    QObject::connect(getBrainSet(), SIGNAL(signalBrainSetChanged()),
                     this, SLOT(postSpecFileReadInitializations()));
-                    
-   //
-   // Prepare dialogs
-   // 
-   QString iconFileName(getBrainSet()->getCaretHomeDirectory());
-   iconFileName.append("/data_files/icons/message_box_icon.jpg");
-   GuiMessageBox::loadIcon(iconFileName);
-   //GuiMessageBox::setSpeechGenerator(speechGenerator);
 }
 
 /**
@@ -707,12 +709,133 @@ GuiMainWindow::showViewingWindow(const BrainModel::BRAIN_MODEL_VIEW_NUMBER item)
    if (createdWindow) {
       modelWindow[item]->initializeToolBar();
       QtUtilities::positionWindowOffOtherWindow(this, modelWindow[item]);
+      
+      if (item >= BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_3) {
+         if (modelWindow[BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2] != NULL) {
+            const QSize window2Size = 
+               modelWindow[BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2]->size();
+            modelWindow[item]->resize(window2Size);
+            //modelWindow[item]->updateGeometry();
+         }
+      }
    }
    
    modelWindow[item]->show();
    modelWindow[item]->activateWindow();
 }
 
+/**
+ * resize the viewing windows.
+ */
+void 
+GuiMainWindow::resizeViewingWindows()
+{
+   //
+   // Keep list of main and open viewing windows
+   //
+   QStringList windowNames;
+   QList<QVariant> windowNumbers;
+   windowNames.push_back("Main Window");
+   windowNumbers.push_back(QVariant(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW));
+   
+   //
+   // Find open viewing windows
+   //
+   for (int i = BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2; 
+        i < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; i++) {
+      const BrainModel::BRAIN_MODEL_VIEW_NUMBER windowNum = 
+         static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(i);
+      if (modelWindow[windowNum] != NULL) {
+         const QString str("Viewing Window "
+                           + QString::number(windowNum + 1));
+         windowNames   << str;
+         windowNumbers << i;
+      }
+   }
+   
+   //
+   // Is a viewing window open ?
+   //
+   if (windowNames.size() > 1) {
+      //
+      // Create dialog for choosing window 
+      //
+      WuQDataEntryDialog ded(this);
+      ded.setTextAtTop("Choose the window whose size you would like matched.",
+                       true);
+      ded.setWindowTitle("Resize Viewing Windows");
+      QComboBox* windowComboBox = ded.addComboBox("Resize to Match ",
+                                                  windowNames,
+                                                  &windowNumbers);
+      if (ded.exec() == WuQDataEntryDialog::Accepted) {
+         //
+         // Get the selected window
+         //
+         QWidget* windowWidget = this;
+         const int indx = windowComboBox->currentIndex();
+         const BrainModel::BRAIN_MODEL_VIEW_NUMBER windowNum = 
+            static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(
+               windowNumbers.at(indx).toInt());
+         if (windowNum >= BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2) {
+            windowWidget = modelWindow[windowNum];
+         }
+         
+         //
+         // New size for window
+         //
+         const QSize newWindowSize(windowWidget->size());
+            
+         //
+         // Resize all viewing windows
+         //
+         for (int i = BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2; 
+              i < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; i++) {
+            //
+            // If not window resizing is based upon
+            //
+            if (i != windowNum) {
+               if (modelWindow[i] != NULL) {
+                  //
+                  // New size for window
+                  //
+                  QSize newSize = newWindowSize;
+                  
+                  //
+                  // If resizing to match the main window
+                  //
+                  if (windowNum == BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW) {
+                     //
+                     // Get size of main window openGL and
+                     // viewing window and openGL
+                     //
+                     const QSize mainOpenGLSize = mainOpenGL->size();
+                     const QSize viewingWindowOpenGLSize = 
+                        modelWindow[i]->getBrainModelOpenGL()->size();
+                     const int dH = mainOpenGLSize.height()
+                                    - viewingWindowOpenGLSize.height();
+                     const int dW = mainOpenGLSize.width()
+                                    - viewingWindowOpenGLSize.width();
+                                    
+                     //
+                     // Proportionately change window size
+                     //
+                     const QSize currentSize(modelWindow[i]->size());
+                     newSize.setHeight(currentSize.height() + dH);
+                     newSize.setWidth(currentSize.width() + dW);
+                  }
+            
+                  //
+                  // Update the windows size
+                  //
+                  modelWindow[i]->resize(newSize);
+                  modelWindow[i]->updateGeometry();
+               }
+            }
+         }
+      }
+   }
+}
+      
 /**
  * Destroy a viewing window
  */
@@ -994,6 +1117,22 @@ GuiMainWindow::getSurfaceRegionOfInterestDialog(const bool showIt)
       surfaceRegionOfInterestDialog->activateWindow();
    }
    return surfaceRegionOfInterestDialog;
+}
+
+/**
+ * Create, possibly show and return the surface region of interest dialog.
+ */
+GuiSurfaceRegionOfInterestDialogOLD*
+GuiMainWindow::getSurfaceRegionOfInterestDialogOLD(const bool showIt)
+{
+   if (surfaceRegionOfInterestDialogOLD == NULL) {
+      surfaceRegionOfInterestDialogOLD = new GuiSurfaceRegionOfInterestDialogOLD(this);
+   }
+   if (showIt) {
+      surfaceRegionOfInterestDialogOLD->show();
+      surfaceRegionOfInterestDialogOLD->activateWindow();
+   }
+   return surfaceRegionOfInterestDialogOLD;
 }
 
 /**
@@ -1361,7 +1500,6 @@ GuiMainWindow::displayDisplayControlDialog()
    if (firstTime) {
       QtUtilities::positionWindowOffOtherWindow(this, displayControlDialog);
    }
-   displayControlDialog->printPageSizes();
 }
 
 /**
@@ -1583,6 +1721,7 @@ GuiMainWindow::checkForModifiedFiles(BrainSet* bs,
    checkFileModified("Deformation Field File", bs->getDeformationFieldFile(), msg);
    checkFileModified("Foci Color File", bs->getFociColorFile(), msg);
    checkFileModified("Foci Projection File", bs->getFociProjectionFile(), msg);
+   checkFileModified("Foci Search File", bs->getFociSearchFile(), msg);
    checkFileModified("Geodesic Distance File", bs->getGeodesicDistanceFile(), msg);
    for (int i = 0; i < bs->getNumberOfImageFiles(); i++) {
       checkFileModified("Image File", bs->getImageFile(i), msg);
@@ -1665,7 +1804,7 @@ GuiMainWindow::closeSpecFile(const bool keepSceneAndSpec,
          }
          msg2.append(msg);
          
-         if (QMessageBox::warning(this, 
+         if (WuQMessageBox::warning(this, 
                                  "WARNING",
                                  msg2, 
                                  (QMessageBox::Yes | QMessageBox::No),
@@ -1687,7 +1826,7 @@ GuiMainWindow::closeSpecFile(const bool keepSceneAndSpec,
          //
          // Return value of zero is YES button.
          //
-         if (QMessageBox::warning(this, 
+         if (WuQMessageBox::warning(this, 
                                  "WARNING",
                                  msg2, 
                                  (QMessageBox::Yes | QMessageBox::No),
@@ -1760,52 +1899,6 @@ GuiMainWindow::closeEvent(QCloseEvent* event)
 {
    slotCloseProgram();
    event->ignore();
-/*
-   QString msg;
-
-   //
-   // See if files are modified
-   //
-   for (unsigned int i = 0; i < loadedBrainSets.size(); i++) {
-      checkForModifiedFiles(loadedBrainSets[i], msg, true);
-   }
-   if (msg.isEmpty() == false) {
-      //
-      // Return value of zero is YES button.
-      //
-      QString msg2("Are you sure that you want to quit?\n"
-                   "Changes to these files will be lost:\n\n");
-      msg2.append(msg);
-      
-      if (GuiMessageBox::warning(this, 
-                              "Caret 5",
-                              msg2, 
-                              "Quit Anyway",
-                              "Do Not Quit") == 0) {
-         //speakText("Goodbye carrot user.");
-         event->accept();
-      }
-      else {
-         event->ignore();
-      }
-   }
-   else {   
-      //
-      // Return value of zero is YES button.
-      //
-      if (GuiMessageBox::warning(this, 
-                              "Caret 5",
-                              "Are you sure you want to quit ?", 
-                              "Yes",
-                              "No") == 0) {
-         //speakText("Goodbye carrot user.");
-         event->accept();
-      }
-      else {
-         event->ignore();
-      }
-   }
-*/
 }
 
 /**
@@ -1964,9 +2057,9 @@ GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf,
                      "\n"
                      "Choose \"Keep Loaded Spec\" if you want to view both the new"
                      "spec file and the files already loaded into Caret.\n");
-         QMessageBox msgBox(this);
+         WuQMessageBox msgBox(this);
          msgBox.setText(msg);
-         msgBox.setWindowTitle("New Spec?");
+         msgBox.setTheWindowTitle("New Spec?");
          QPushButton* keepLoadedSpecPushButton = msgBox.addButton("Keep Loaded Spec",
                                                                    QMessageBox::ActionRole);
          QPushButton* newSpecOnlyPushButton = msgBox.addButton("New Spec Only",
@@ -2282,7 +2375,7 @@ GuiMainWindow::updateStatusBarLabel()
    statusBarSectionHighLabel->setHidden(true); 
    SectionFile* sf = getBrainSet()->getSectionFile();
    if (sf->getNumberOfColumns() > 0) {
-      const int selectedColumn = dss->getSelectedColumn();
+      const int selectedColumn = dss->getSelectedDisplayColumn(-1, -1);
       if ((selectedColumn >= 0) && (selectedColumn < sf->getNumberOfColumns())) {
          const int minSection = dss->getMinimumSelectedSection();
          const int maxSection = dss->getMaximumSelectedSection();
@@ -2353,6 +2446,12 @@ GuiMainWindow::updateStatusBarLabel()
          modeLabel      = "RENAME BORDER";
          clickLeftLabel = "Choose Border";
          break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE:
+         modeLabel      = "BORDER UPDATE";
+         leftLabel      = "Draw Update";
+         shiftLeftLabel = "Done";
+         altLeftLabel   = "Rotate(3D)";
+         break;
       case GuiBrainModelOpenGL::MOUSE_MODE_FOCI_DELETE:
          modeLabel      = "DELETE FOCI";
          clickLeftLabel = "Delete Focus";
@@ -2362,7 +2461,7 @@ GuiMainWindow::updateStatusBarLabel()
          clickLeftLabel = "Delete Cell";
          break;
       case GuiBrainModelOpenGL::MOUSE_MODE_CUT_DRAW:
-         modeLabel      = "DRAW Cut";
+         modeLabel      = "DRAW CUT";
          leftLabel      = "Draw";
          shiftLeftLabel = "Done";
          break;
@@ -2587,6 +2686,10 @@ GuiMainWindow::updateDisplayedMenus()
 void
 GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
 {
+   for (int i = 0; i < getBrainSet()->getNumberOfSurfaceOverlays(); i++) {
+      getBrainSet()->getSurfaceOverlay(i)->update();
+   }
+   
    bool updateAddCellsDialog = false;
    bool updateAddContourCellsDialog = false;
    bool updateArealEstimation = false;
@@ -2597,7 +2700,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    bool updateCellDisplayFlags = false;
    bool updateCellColors   = false;
    bool updateContourCellDisplayFlags = false;
-   bool updateContourCellColors = true;
+   bool updateContourCellColors = false;
    bool updateCocomac = false;
    bool updateContours = false;
    bool updateCoordinates = false;
@@ -2606,6 +2709,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    bool updateFociDisplayFlags = false;
    bool updateFoci = false;
    bool updateFociColors   = false;
+   bool updateFociSearch = false;
    bool updateGeodesic = false;
    bool updateImages = false;
    bool updateLatLon = false;
@@ -2717,6 +2821,9 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       updateFociColors = true;
       updateFociDisplayFlags = true;
       updateStudyMetaData = true;
+   }
+   if (fm.fociSearch) {
+      updateFociSearch = true;
    }
    if (fm.geodesic) {
       updateGeodesic = true;
@@ -2864,6 +2971,11 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       }
    }
 
+   if (updateCoordinates || updateFoci || updatePaint || updateContours || updateVolume) {
+      if (fociAttributeAssignmentDialog != NULL) {
+         fociAttributeAssignmentDialog->updateDialog();
+      }
+   }
    if (updateFoci) {
       if (mapStereotaxicFocusDialog != NULL) {
          mapStereotaxicFocusDialog->updateDialog();
@@ -2990,6 +3102,9 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       if (surfaceRegionOfInterestDialog != NULL) {
          surfaceRegionOfInterestDialog->updateDialog();
       }
+      if (surfaceRegionOfInterestDialogOLD != NULL) {
+         surfaceRegionOfInterestDialogOLD->updateDialog();
+      }
    }
    
    if (updateVocabulary) {
@@ -3061,7 +3176,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
          if (updateDeformationField) {
             displayControlDialog->updateDeformationFieldPage();
          }
-         if (updateFociColors) {
+         if (updateFociColors || updateFociSearch) {
             displayControlDialog->updateFociItems(true);
          }
          if (updateGeodesic) {
@@ -3111,7 +3226,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
             displayControlDialog->updateSurfaceAndVolumeItems();
             displayControlDialog->updateVolumeItems();
          }
-         displayControlDialog->updateOverlayUnderlayItems();
+         displayControlDialog->updateOverlayUnderlayItemsNew();
       }
    }
    
@@ -3233,28 +3348,43 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
                                                         msg);
       if (bm != NULL) {
          if (i == 0) {
+            //
+            // Show the desired brain model in the main window
+            //
             displayBrainModelInMainWindow(bm);
-            if (geometry[0] >= 0) {
-               geometry[0] = std::min(geometry[0], screenMaxX);
-               geometry[1] = std::min(geometry[1], screenMaxY);
+
+            //
+            // If desired size of window is unknown, resize so graphics
+            // is proper size
+            // 
+            if (geometry[0] < 0) {
+               geometry[0] = x();
+               geometry[1] = y();
                
-               switch(dss->getWindowPositionPreference()) {
-                  case DisplaySettingsScene::WINDOW_POSITIONS_USE_ALL:
-                     geometry[0] = std::max(geometry[0], screenMinX);
-                     geometry[1] = std::max(geometry[1], screenMinY);
-                     move(geometry[0], geometry[1]);
-                     resize(geometry[2], geometry[3]);
-                     break;
-                  case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_MAIN_OTHERS_RELATIVE:
-                     break;
-                  case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_ALL:
-                     break;
-               }
-               mainWindowX = x();
-               mainWindowY = y();
-               mainWindowSceneX = geometry[0];
-               mainWindowSceneY = geometry[1];
+               const int deltaSizeX = glWidgetWidthHeight[0] - mainOpenGL->width();
+               const int deltaSizeY = glWidgetWidthHeight[1] - mainOpenGL->height();
+               geometry[2] = width() + deltaSizeX;
+               geometry[3] = height() + deltaSizeY;
             }
+            geometry[0] = std::min(geometry[0], screenMaxX);
+            geometry[1] = std::min(geometry[1], screenMaxY);
+            
+            switch(dss->getWindowPositionPreference()) {
+               case DisplaySettingsScene::WINDOW_POSITIONS_USE_ALL:
+                  geometry[0] = std::max(geometry[0], screenMinX);
+                  geometry[1] = std::max(geometry[1], screenMinY);
+                  move(geometry[0], geometry[1]);
+                  break;
+               case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_MAIN_OTHERS_RELATIVE:
+                  resize(geometry[2], geometry[3]);
+                  break;
+               case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_ALL:
+                  break;
+            }
+            mainWindowX = x();
+            mainWindowY = y();
+            mainWindowSceneX = geometry[0];
+            mainWindowSceneY = geometry[1];
          }
          else {
             //
@@ -3266,27 +3396,42 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
                viewWindow = modelWindow[i];
             }
             viewWindow->displayBrainModelInWindow(bm);
-            if (geometry[0] >= 0) {
-               geometry[0] = std::min(geometry[0], screenMaxX);
-               geometry[1] = std::min(geometry[1], screenMaxY);
-               switch(dss->getWindowPositionPreference()) {
-                  case DisplaySettingsScene::WINDOW_POSITIONS_USE_ALL:
-                     geometry[0] = std::max(geometry[0], screenMinX);
-                     geometry[1] = std::max(geometry[1], screenMinY);
-                     viewWindow->move(geometry[0], geometry[1]);
-                     viewWindow->resize(geometry[2], geometry[3]);
-                     break;
-                  case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_MAIN_OTHERS_RELATIVE:
-                     geometry[0] = (geometry[0] - mainWindowSceneX) + mainWindowX;
-                     geometry[1] = (geometry[1] - mainWindowSceneY) + mainWindowY;
-                     geometry[0] = std::max(geometry[0], screenMinX);
-                     geometry[1] = std::max(geometry[1], screenMinY);
-                     viewWindow->move(geometry[0], geometry[1]);
-                     viewWindow->resize(geometry[2], geometry[3]);
-                     break;
-                  case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_ALL:
-                     break;
+            if (geometry[0] < 0) {
+               geometry[0] = mainWindowSceneX + 20.0;
+               geometry[1] = mainWindowSceneY + 20.0;
+               
+               GuiBrainModelOpenGL* openGL = GuiBrainModelOpenGL::getBrainModelOpenGLForWindow(
+                                    static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(i));
+               if (openGL != NULL) {
+                  const int deltaSizeX = glWidgetWidthHeight[0] - openGL->width();
+                  const int deltaSizeY = glWidgetWidthHeight[1] - openGL->height();
+                  geometry[2] = viewWindow->width() + deltaSizeX;
+                  geometry[3] = viewWindow->height() + deltaSizeY;
                }
+               else {
+                  geometry[2] = 512;
+                  geometry[3] = 512;
+               }
+            }
+            geometry[0] = std::min(geometry[0], screenMaxX);
+            geometry[1] = std::min(geometry[1], screenMaxY);
+            switch(dss->getWindowPositionPreference()) {
+               case DisplaySettingsScene::WINDOW_POSITIONS_USE_ALL:
+                  geometry[0] = std::max(geometry[0], screenMinX);
+                  geometry[1] = std::max(geometry[1], screenMinY);
+                  viewWindow->move(geometry[0], geometry[1]);
+                  viewWindow->resize(geometry[2], geometry[3]);
+                  break;
+               case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_MAIN_OTHERS_RELATIVE:
+                  geometry[0] = (geometry[0] - mainWindowSceneX) + mainWindowX;
+                  geometry[1] = (geometry[1] - mainWindowSceneY) + mainWindowY;
+                  geometry[0] = std::max(geometry[0], screenMinX);
+                  geometry[1] = std::max(geometry[1], screenMinY);
+                  viewWindow->move(geometry[0], geometry[1]);
+                  viewWindow->resize(geometry[2], geometry[3]);
+                  break;
+               case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_ALL:
+                  break;
             }
          }
       }
@@ -3362,6 +3507,7 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
    //
    GuiToolBar::updateAllToolBars(false);
    if (displayControlDialog != NULL) {
+      displayControlDialog->showScene(*scene, errorMessage);
       displayControlDialog->updateAllItemsInDialog(true, true);
       updateSectionControlDialog();
       
@@ -3456,8 +3602,27 @@ GuiMainWindow::saveScene(std::vector<SceneFile::SceneClass>& mainWindowSceneClas
          }
       }
    }
+   
+   if (displayControlDialog != NULL) {
+      mainWindowSceneClasses.push_back(displayControlDialog->saveScene());
+   }
 }
      
+/**
+ * display the capture window as image dialog.
+ */
+void 
+GuiMainWindow::displayCaptureWindowImageDialog()
+{
+   if (captureWindowImageDialog == NULL) {
+      captureWindowImageDialog = new GuiCaptureWindowImageDialog(this);
+      QtUtilities::positionWindowOffOtherWindow(this, 
+                                                captureWindowImageDialog);
+   }
+   captureWindowImageDialog->show();
+   captureWindowImageDialog->activateWindow();
+}
+      
 /**
  * display an image viewing window.
  */
@@ -3550,6 +3715,24 @@ GuiMainWindow::displayImageEditorWindow()
    imageEditorWindow->show();
    imageEditorWindow->activateWindow();
 }
+
+/**
+ * display the border draw update dialog.
+ */
+void 
+GuiMainWindow::displayBorderDrawUpdateDialog()
+{
+   if (borderDrawUpdateDialog == NULL) {
+      borderDrawUpdateDialog = new GuiBorderDrawUpdateDialog(this);
+   }
+   borderDrawUpdateDialog->show();
+   borderDrawUpdateDialog->activateWindow();
+   
+   if (borderDrawUpdateDialog->getBorderUpdateMode()
+       != BrainModelBorderSet::UPDATE_BORDER_MODE_NONE) {
+      getBrainModelOpenGL()->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE);
+   }
+}      
 
 /**
  * save a color key dialog to a scene.
@@ -3771,8 +3954,12 @@ GuiMainWindow::displayPaintColorKey()
 void 
 GuiMainWindow::displayFociAttributeAssignmentDialog()
 {
-   GuiCellAndFociAttributeAssignmentDialog faad(this, true);
-   faad.exec();
+   if (fociAttributeAssignmentDialog == NULL) {
+      fociAttributeAssignmentDialog = new GuiCellAndFociAttributeAssignmentDialog(this, true);
+   }
+   fociAttributeAssignmentDialog->updateDialog();
+   fociAttributeAssignmentDialog->show();
+   fociAttributeAssignmentDialog->activateWindow();
 }
       
 /**

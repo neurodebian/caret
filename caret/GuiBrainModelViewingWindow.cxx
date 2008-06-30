@@ -40,7 +40,7 @@ GuiBrainModelViewingMainWindow::GuiBrainModelViewingMainWindow(QWidget* /*parent
                                      GuiMainWindow* mainWindowIn,
                                      const BrainModel::BRAIN_MODEL_VIEW_NUMBER svn,
                                      const char* /*name*/)
-      : QtMainWindow(0)
+      : QMainWindow(0)
 {
    
    //
@@ -56,7 +56,7 @@ GuiBrainModelViewingMainWindow::GuiBrainModelViewingMainWindow(QWidget* /*parent
    //
    // Create the toolbar
    //
-   toolBar = new GuiToolBar(this, mainWindowIn, brainModelOpenGL, false);
+   toolBar = new GuiToolBar(this, mainWindowIn, brainModelOpenGL, svn);
    addToolBar(toolBar);
 }
 
@@ -85,7 +85,7 @@ GuiBrainModelViewingMainWindow::initializeToolBar()
 GuiBrainModelViewingWindow::GuiBrainModelViewingWindow(QWidget* parent,
                            GuiMainWindow* caretMainWindowIn,
                            const BrainModel::BRAIN_MODEL_VIEW_NUMBER svn)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    

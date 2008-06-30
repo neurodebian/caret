@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <QDateTime>
+#include <QFileInfo>
 
 #include "vtkCellArray.h"
 #include "vtkFloatArray.h"
@@ -106,16 +107,18 @@ VtkModelFile::VtkModelFile(const BorderFile* bf, const BorderColorFile* colors)
       if (numLinks > 0) {
          std::vector<int> pts;
          for (int j = 0; j < numLinks; j++) {
-           const float* xyz = border->getLinkXYZ(j);
-           pts.push_back(coordinates.getNumberOfCoordinates());
-           coordinates.addCoordinate(xyz);
-           
            unsigned char rgbaColor[4] = { 170, 170, 170, 255 };
            const int colorIndex = border->getBorderColorIndex();
            if ((colorIndex >= 0) && (colorIndex < colors->getNumberOfColors())) {
               colors->getColorByIndex(colorIndex, rgbaColor[0], rgbaColor[1], 
                                                   rgbaColor[2], rgbaColor[3]);
            }
+
+           const float normal[3] = { 0.0, 0.0, 1.0 };
+           const float* xyz = border->getLinkXYZ(j);
+           pts.push_back(coordinates.getNumberOfCoordinates());
+           addCoordinate(xyz, rgbaColor, normal);
+/*           
            pointColors.push_back(rgbaColor[0]);
            pointColors.push_back(rgbaColor[1]);
            pointColors.push_back(rgbaColor[2]);
@@ -124,6 +127,7 @@ VtkModelFile::VtkModelFile(const BorderFile* bf, const BorderColorFile* colors)
            pointNormals.push_back(0.0);
            pointNormals.push_back(0.0);
            pointNormals.push_back(1.0);
+*/
          }
          
          lines.push_back(VtkModelObject(&pts[0], pts.size()));
@@ -153,16 +157,19 @@ VtkModelFile::VtkModelFile(const CellFile* cells, const CellColorFile* colors)
    for (int i = 0; i < numCells; i++) {
       const CellData* cd = cells->getCell(i);
       
-      const float* xyz = cd->getXYZ();
-      vertices.push_back(coordinates.getNumberOfCoordinates());
-      coordinates.addCoordinate(xyz);
-     
       unsigned char rgbaColor[4] = { 170, 170, 170, 255 };
       const int colorIndex = cd->getColorIndex();
       if ((colorIndex >= 0) && (colorIndex < colors->getNumberOfColors())) {
          colors->getColorByIndex(colorIndex, rgbaColor[0], rgbaColor[1], 
                                              rgbaColor[2], rgbaColor[3]);
       }
+
+      const float normal[3] = { 0.0, 0.0, 1.0 };
+      const float* xyz = cd->getXYZ();
+      vertices.push_back(coordinates.getNumberOfCoordinates());
+      addCoordinate(xyz, rgbaColor, normal);
+
+/*     
       pointColors.push_back(rgbaColor[0]);
       pointColors.push_back(rgbaColor[1]);
       pointColors.push_back(rgbaColor[2]);
@@ -171,6 +178,7 @@ VtkModelFile::VtkModelFile(const CellFile* cells, const CellColorFile* colors)
       pointNormals.push_back(0.0);
       pointNormals.push_back(0.0);
       pointNormals.push_back(1.0);
+*/
    }
 }
 
@@ -196,16 +204,19 @@ VtkModelFile::VtkModelFile(const FociFile* foci, const FociColorFile* colors)
    for (int i = 0; i < numFoci; i++) {
       const CellData* cd = foci->getCell(i);
       
-      const float* xyz = cd->getXYZ();
-      vertices.push_back(coordinates.getNumberOfCoordinates());
-      coordinates.addCoordinate(xyz);
-     
       unsigned char rgbaColor[4] = { 170, 170, 170, 255 };
       const int colorIndex = cd->getColorIndex();
       if ((colorIndex >= 0) && (colorIndex < colors->getNumberOfColors())) {
          colors->getColorByIndex(colorIndex, rgbaColor[0], rgbaColor[1], 
                                              rgbaColor[2], rgbaColor[3]);
       }
+
+      const float normal[3] = { 0.0, 0.0, 0.0 };
+      const float* xyz = cd->getXYZ();
+      vertices.push_back(coordinates.getNumberOfCoordinates());
+      addCoordinate(xyz, rgbaColor, normal);
+
+/*     
       pointColors.push_back(rgbaColor[0]);
       pointColors.push_back(rgbaColor[1]);
       pointColors.push_back(rgbaColor[2]);
@@ -214,6 +225,7 @@ VtkModelFile::VtkModelFile(const FociFile* foci, const FociColorFile* colors)
       pointNormals.push_back(0.0);
       pointNormals.push_back(0.0);
       pointNormals.push_back(1.0);
+*/
    }
 }
       
@@ -223,6 +235,40 @@ VtkModelFile::VtkModelFile(const FociFile* foci, const FociColorFile* colors)
 VtkModelFile::~VtkModelFile()
 {
    clear();
+}
+
+/**
+ * add a coordinate.
+ */
+void 
+VtkModelFile::addCoordinate(const float xyz[3],
+                            const unsigned char* rgbaColorIn,
+                            const float* normalIn)
+{
+   vertices.push_back(coordinates.getNumberOfCoordinates());
+   coordinates.addCoordinate(xyz);
+  
+   unsigned char rgbaColor[4] = { 170, 170, 170, 255 };
+   if (rgbaColorIn != NULL) {
+      rgbaColor[0] = rgbaColorIn[0];
+      rgbaColor[1] = rgbaColorIn[1];
+      rgbaColor[2] = rgbaColorIn[2];
+      rgbaColor[3] = rgbaColorIn[3];
+   }
+   pointColors.push_back(rgbaColor[0]);
+   pointColors.push_back(rgbaColor[1]);
+   pointColors.push_back(rgbaColor[2]);
+   pointColors.push_back(rgbaColor[3]);
+  
+   float normal[3] = { 0.0, 0.0, 1.0 };
+   if (normalIn != NULL) {
+      normal[0] = normalIn[0];
+      normal[1] = normalIn[1];
+      normal[2] = normalIn[2];
+   }
+   pointNormals.push_back(normal[0]);
+   pointNormals.push_back(normal[1]);
+   pointNormals.push_back(normal[2]);
 }
 
 /**
@@ -314,6 +360,19 @@ VtkModelFile::readFile(const QString& fileNameIn) throw (FileException)
       //polyData->Delete();
    }
    
+   timeToReadFileInSeconds = static_cast<float>(timer.elapsed()) / 1000.0;
+   QFileInfo fi(filename);
+   const float fileSize = fi.size() / 1048576.0;
+   if (DebugControl::getDebugOn() ||
+       DebugControl::getFileReadTimingFlag()) {
+      std::cout << "Time to read " << FileUtilities::basename(getFileName()).toAscii().constData()
+                << " ("
+                << fileSize
+                << " MB) was "
+                << timeToReadFileInSeconds
+                << " seconds." << std::endl;
+   }
+
    //
    // Free up memory
    //
@@ -322,12 +381,6 @@ VtkModelFile::readFile(const QString& fileNameIn) throw (FileException)
    }
    if (xmlReader != NULL) {
       xmlReader->Delete();
-   }
-   if (DebugControl::getDebugOn()) {
-      std::cout << "Time to read " << FileUtilities::basename(filename).toAscii().constData()
-                << " was "   
-                << (static_cast<float>(timer.elapsed()) / 1000.0)
-                << " seconds." << std::endl;
    }
 }   
 

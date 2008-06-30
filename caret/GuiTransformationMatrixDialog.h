@@ -30,7 +30,7 @@
 #include <stack>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiTransformationMatrixSelectionControl; 
 class QCheckBox;
@@ -45,7 +45,7 @@ class TransformationMatrix;
 class vtkTransform;
 
 /// Dialog for editing transformation matrices.
-class GuiTransformationMatrixDialog : public QtDialog {
+class GuiTransformationMatrixDialog : public WuQDialog {
    Q_OBJECT
    
    public:

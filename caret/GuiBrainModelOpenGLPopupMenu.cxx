@@ -181,6 +181,7 @@ GuiBrainModelOpenGLPopupMenu::displayBrainModel(QAction* action)
 /**
  * Create the mouse mode sub menu.
  */
+/*
 void
 GuiBrainModelOpenGLPopupMenu::createMouseModeSubMenu()
 {
@@ -252,6 +253,7 @@ GuiBrainModelOpenGLPopupMenu::createMouseModeSubMenu()
    if (surface != NULL) {
       mouseMenu->addSeparator();
       mouseMenu->addAction(layersActions->getBordersDrawAction());
+      mouseMenu->addAction(layersActions->getBorderDrawUpdateAction());
       if (bordersDisplayed) {
          mouseMenu->addAction(layersActions->getBordersDeleteWithMouseAction());
          mouseMenu->addAction(layersActions->getBordersDeletePointWithMouseAction());
@@ -321,6 +323,7 @@ GuiBrainModelOpenGLPopupMenu::createMouseModeSubMenu()
       mouseMenu->addAction("Transformation Axes", this, SLOT(slotTransformationAxes()));
    }
 }
+*/
 
 /**
  * called for transformation axes.

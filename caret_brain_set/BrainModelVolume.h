@@ -160,22 +160,6 @@ class BrainModelVolume : public BrainModel {
       void addToDisplayRotation(const int volumeViewNumber,
                                 const float delta);
       
-      /// get the number of names in the prob atlas name table
-      int getNumberOfProbAtlasNames() const { return probAtlasNameTable.size(); }
-      
-      /// get a name by its index from the prob atlas name table
-      QString getProbAtlasNameFromIndex(const int index) const;
-      
-      /// get an index for a name in the prob atlas name table 
-      int getProbAtlasIndexFromName(const QString& name) const;
-      
-      /// update prob atlas name table indices (call without arguments to update for all)
-      void updateProbAtlasNameTableIndices(const int probAtlasVolumeIndex = -1);
-      
-      /// get the prob atlas name table index for a prob atlas volume voxel
-      int getProbAtlasNameTableIndex(const int probAtlasVolumeIndex,
-                                     const int voxelValue) const;
-                                     
       /// get the oblique rotation matrix
       vtkTransform* getObliqueRotationMatrix() { 
          return obliqueRotationMatrix; 
@@ -232,15 +216,6 @@ class BrainModelVolume : public BrainModel {
       
       /// show underlay only
       float showUnderlayOnly[NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS];
-      
-      /// add name to prob atlas name table (returns its index);
-      int addNameToProbAtlasNameTable(const QString& name);
-      
-      /// prob atlas name table
-      std::vector<QString> probAtlasNameTable;
-      
-      /// prob atlas name table indices
-      std::vector< std::vector<int> > probAtlasNameTableIndices;
       
       /// oblique view rotation matrix
       vtkTransform* obliqueRotationMatrix;

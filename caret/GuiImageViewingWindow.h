@@ -27,7 +27,7 @@
 #ifndef __GUI_IMAGE_VIEWING_WINDOW_H__
 #define __GUI_IMAGE_VIEWING_WINDOW_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "SceneFile.h"
 
@@ -35,7 +35,7 @@ class QComboBox;
 class QLabel;
 
 /// Dialog used to display images
-class GuiImageViewingWindow : public QtDialog {
+class GuiImageViewingWindow : public WuQDialog {
    
    Q_OBJECT
    

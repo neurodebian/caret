@@ -89,6 +89,20 @@ class BrainModelSurfaceDeformation : public BrainModelAlgorithm {
       QString getTargetToSourceDeformDataFileErrors() const 
                          { return targetToSourceDeformDataFileErrors; }
 
+      /// deform the data files
+      static void deformDataFiles(BrainSet* sourceBrain,
+                           BrainSet* targetBrain,
+                           const QString& sourceSpecName,
+                           const DeformationMapFile* dmf,
+                           const bool sourceToTargetFlag,
+                           const bool deformSourceFiducialCoordFilesIn,
+                           const bool deformSourceInflatedCoordFilesIn,
+                           const bool deformSourceVeryInflatedCoordFilesIn,
+                           const bool deformSourceSphericalCoordFilesIn,
+                           const bool deformSourceFlatCoordFilesIn,
+                           QString& deformErrorsMessage) 
+                     throw (BrainModelAlgorithmException);
+      
    protected:
       /// Execute the subclass' deformation
       virtual void executeDeformation() throw (BrainModelAlgorithmException) = 0;
@@ -115,15 +129,6 @@ class BrainModelSurfaceDeformation : public BrainModelAlgorithm {
                                                       
       /// create the output spec and deformation file names
       void createOutputSpecAndDeformationFileNames();
-      
-      /// deform the data files
-      void deformDataFiles(BrainSet* sourceBrain,
-                           BrainSet* targetBrain,
-                           const QString& sourceSpecName,
-                           const DeformationMapFile* dmf,
-                           const bool sourceToTargetFlag,
-                           QString& deformErrorsMessage) 
-                     throw (BrainModelAlgorithmException);
       
       /// resample the border files
       void resampleBorderFiles() throw (BrainModelAlgorithmException);

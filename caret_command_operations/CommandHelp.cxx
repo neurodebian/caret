@@ -25,7 +25,10 @@
 
 #include <iostream>
 
+#include <QApplication>
+
 #include "CommandHelp.h"
+#include "CommandHelpGlobalOptions.h"
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
@@ -91,6 +94,41 @@ void
 CommandHelp::printCommandLongHelpInformation(const CommandBase* command)
 {
    std::cout << command->getHelpInformation().toAscii().constData();
+   
+   CommandHelpGlobalOptions hgo;
+   
+   const QString moreHelp = 
+        (indent9 + "Run \""
+         + QApplication::applicationName()
+         + " "
+         + hgo.getOperationSwitch() + "\"\n"
+         + indent9 + "   for parameters available to all commands.\n"
+         + "\n");
+/*
+   const QString moreHelp = 
+        (indent9 + "Adding the parameter \"-CHDIR <directory-name>\" to \n"
+       + indent9 + "the command will result in the command running from \n"
+       + indent9 + "that directory.  This parameter does not affect the \n"
+       + indent9 + "current directory in the shell that executes the \n"
+       + indent9 + "command.\n"
+       + indent9 + "\n"
+       + indent9 + "Adding the parameter \"-CHMOD <permissions>\" to the \n"
+       + indent9 + "command will result in all files written by the command\n"
+       + indent9 + "receiving the specified permissions.  \"permissions\"\n"
+       + indent9 + "is a list of one or move of the following values separated \n"
+       + indent9 + "by commas:\n"
+       + indent9 + "   UR   - user read\n"
+       + indent9 + "   UW   - user write\n"
+       + indent9 + "   UX   - user execute\n"
+       + indent9 + "   GR   - group read\n"
+       + indent9 + "   GW   - group write\n"
+       + indent9 + "   GX   - group execute\n"
+       + indent9 + "   AR   - all read\n"
+       + indent9 + "   AW   - all write\n"
+       + indent9 + "   AX   - all execute\n"
+       + indent9 + "\n");
+*/
+   std::cout << moreHelp.toAscii().constData();
 }
       
 /**

@@ -46,7 +46,7 @@
  * Constructor.
  */
 GuiAverageBorderDialog::GuiAverageBorderDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Average Borders");
 

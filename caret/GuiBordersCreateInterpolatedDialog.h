@@ -27,7 +27,7 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class QDoubleSpinBox;
 class QLabel;
@@ -35,7 +35,7 @@ class QLineEdit;
 class QSpinBox;
 
 /// dialog for creating interpolated borders
-class GuiBordersCreateInterpolatedDialog : public QtDialogNonModal {
+class GuiBordersCreateInterpolatedDialog : public WuQDialog {
    Q_OBJECT
    
    public:

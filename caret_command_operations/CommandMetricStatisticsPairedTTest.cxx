@@ -34,7 +34,7 @@
  * constructor.
  */
 CommandMetricStatisticsPairedTTest::CommandMetricStatisticsPairedTTest()
-   : CommandBase("-metric-stat-paired-t-test",
+   : CommandBase("-metric-statistics-paired-t-test",
                  "METRIC STATISTICS PAIRED T-TEST")
 {
 }

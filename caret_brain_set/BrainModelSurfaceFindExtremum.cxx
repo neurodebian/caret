@@ -29,6 +29,7 @@
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceFindExtremum.h"
 #include "BrainModelSurfaceROINodeSelection.h"
+#include "PaintFile.h"
 #include "TopologyFile.h"
 #include "TopologyHelper.h"
 
@@ -54,6 +55,11 @@ BrainModelSurfaceFindExtremum::BrainModelSurfaceFindExtremum(BrainSet* brainSetI
    maximumMovementX = maximumMovementXIn;
    maximumMovementY = maximumMovementYIn;
    maximumMovementZ = maximumMovementZIn;
+   paintOperation = PAINT_OPERATION_NONE;
+   normalRestriction[0] = NORMAL_RESTRICTION_NONE;
+   normalRestriction[1] = NORMAL_RESTRICTION_NONE;
+   normalRestriction[2] = NORMAL_RESTRICTION_NONE;
+   restrictToROI = NULL;
 }
                               
 /**
@@ -78,7 +84,50 @@ BrainModelSurfaceFindExtremum::BrainModelSurfaceFindExtremum(BrainSet* brainSetI
    maximumMovementX = maximumMovementXIn;
    maximumMovementY = maximumMovementYIn;
    maximumMovementZ = maximumMovementZIn;
+   paintOperation = PAINT_OPERATION_NONE;
+   normalRestriction[0] = NORMAL_RESTRICTION_NONE;
+   normalRestriction[1] = NORMAL_RESTRICTION_NONE;
+   normalRestriction[2] = NORMAL_RESTRICTION_NONE;
+   restrictToROI = NULL;
 }
+
+/**
+ * constructor.
+ */
+BrainModelSurfaceFindExtremum::BrainModelSurfaceFindExtremum(
+                                       BrainSet* brainSetIn,
+                                       BrainModelSurface* bmsIn,
+                                       const DIRECTION searchDirectionIn,
+                                       const int startNodeNumberIn,
+                                       const float maximumMovementXIn,
+                                       const float maximumMovementYIn,
+                                       const float maximumMovementZIn,
+                                       const PaintFile* paintFileIn,
+                                       const int paintColumnNumberIn,
+                                       const int paintIndexIn,
+                                       const PAINT_OPERATION paintOperationIn)
+   : BrainModelAlgorithm(brainSetIn)
+{
+   bms = bmsIn;
+   startNodeNumber = startNodeNumberIn;
+   searchDirection = searchDirectionIn;
+   startXYZ[0] = 0.0;
+   startXYZ[1] = 0.0;
+   startXYZ[2] = 0.0;
+   extremumNode = -1;
+   maximumMovementX = maximumMovementXIn;
+   maximumMovementY = maximumMovementYIn;
+   maximumMovementZ = maximumMovementZIn;
+   paintFile = (PaintFile*)paintFileIn;
+   paintColumnNumber = paintColumnNumberIn;
+   paintIndex = paintIndexIn;
+   paintOperation = paintOperationIn;
+   normalRestriction[0] = NORMAL_RESTRICTION_NONE;
+   normalRestriction[1] = NORMAL_RESTRICTION_NONE;
+   normalRestriction[2] = NORMAL_RESTRICTION_NONE;
+   restrictToROI = NULL;
+}
+                                    
                               
 /**
  * destructor.
@@ -112,6 +161,19 @@ BrainModelSurfaceFindExtremum::execute() throw (BrainModelAlgorithmException)
    }
    const TopologyHelper* th = tf->getTopologyHelper(false, true, false);
    
+   switch (paintOperation) {
+      case PAINT_OPERATION_NONE:
+         break;
+      case PAINT_OPERATION_STOP_WHEN_PAINT_ID_CHANGES:
+         if (paintFile == NULL) {
+            throw BrainModelAlgorithmException("Paint file is invalid.");
+         }
+         if ((paintColumnNumber < 0) ||
+             (paintColumnNumber >= paintFile->getNumberOfColumns())) {
+            throw BrainModelAlgorithmException("Paint column number is invalid.");
+         }
+         break;
+   }
    //
    // Convert lateral/medial search to negative or positive X search
    //
@@ -191,79 +253,87 @@ BrainModelSurfaceFindExtremum::execute() throw (BrainModelAlgorithmException)
          float nx, ny, nz;
          cf->getCoordinate(neighborNode, nx, ny, nz);
          
-         switch (searchDirection) {
-            case DIRECTION_INVALID:
-               break;
-            case DIRECTION_LATERAL:
-               break;
-            case DIRECTION_MEDIAL:
-               break;
-            case DIRECTION_X_NEGATIVE:
-               if (nx < x) {
-                  if ((nextNode < 0) ||
-                      (nx < nextValue)) {
-                     if (withinMovementAllowance(nx, ny, nz)) {
-                        nextNode = neighborNode;
-                        nextValue = nx;
+         if (restrictToROI != NULL) {
+            if (restrictToROI->getNodeSelected(neighborNode) == false) {
+               continue;
+            }
+         }
+         
+         if (checkNodeNormal(bms->getNormal(neighborNode))) {
+            switch (searchDirection) {
+               case DIRECTION_INVALID:
+                  break;
+               case DIRECTION_LATERAL:
+                  break;
+               case DIRECTION_MEDIAL:
+                  break;
+               case DIRECTION_X_NEGATIVE:
+                  if (nx < x) {
+                     if ((nextNode < 0) ||
+                         (nx < nextValue)) {
+                        if (withinMovementAllowance(nx, ny, nz)) {
+                           nextNode = neighborNode;
+                           nextValue = nx;
+                        }
                      }
                   }
-               }
-               break;
-            case DIRECTION_X_POSITIVE:
-               if (nx > x) {
-                  if ((nextNode < 0) ||
-                      (nx > nextValue)) {
-                     if (withinMovementAllowance(nx, ny, nz)) {
-                        nextNode = neighborNode;
-                        nextValue = nx;
+                  break;
+               case DIRECTION_X_POSITIVE:
+                  if (nx > x) {
+                     if ((nextNode < 0) ||
+                         (nx > nextValue)) {
+                        if (withinMovementAllowance(nx, ny, nz)) {
+                           nextNode = neighborNode;
+                           nextValue = nx;
+                        }
                      }
                   }
-               }
-               break;
-            case DIRECTION_Y_NEGATIVE:
-               if (ny < y) {
-                  if ((nextNode < 0) ||
-                      (ny < nextValue)) {
-                     if (withinMovementAllowance(nx, ny, nz)) {
-                        nextNode = neighborNode;
-                        nextValue = ny;
+                  break;
+               case DIRECTION_Y_NEGATIVE:
+                  if (ny < y) {
+                     if ((nextNode < 0) ||
+                         (ny < nextValue)) {
+                        if (withinMovementAllowance(nx, ny, nz)) {
+                           nextNode = neighborNode;
+                           nextValue = ny;
+                        }
                      }
                   }
-               }
-               break;
-            case DIRECTION_Y_POSITIVE:
-               if (ny > y) {
-                  if ((nextNode < 0) ||
-                      (ny > nextValue)) {
-                     if (withinMovementAllowance(nx, ny, nz)) {
-                        nextNode = neighborNode;
-                        nextValue = ny;
+                  break;
+               case DIRECTION_Y_POSITIVE:
+                  if (ny > y) {
+                     if ((nextNode < 0) ||
+                         (ny > nextValue)) {
+                        if (withinMovementAllowance(nx, ny, nz)) {
+                           nextNode = neighborNode;
+                           nextValue = ny;
+                        }
                      }
                   }
-               }
-               break;
-            case DIRECTION_Z_NEGATIVE:
-               if (nz < z) {
-                  if ((nextNode < 0) ||
-                      (nz < nextValue)) {
-                     if (withinMovementAllowance(nx, ny, nz)) {
-                        nextNode = neighborNode;
-                        nextValue = nz;
+                  break;
+               case DIRECTION_Z_NEGATIVE:
+                  if (nz < z) {
+                     if ((nextNode < 0) ||
+                         (nz < nextValue)) {
+                        if (withinMovementAllowance(nx, ny, nz)) {
+                           nextNode = neighborNode;
+                           nextValue = nz;
+                        }
                      }
                   }
-               }
-               break;
-            case DIRECTION_Z_POSITIVE:
-               if (nz > z) {
-                  if ((nextNode < 0) ||
-                      (nz > nextValue)) {
-                     if (withinMovementAllowance(nx, ny, nz)) {
-                        nextNode = neighborNode;
-                        nextValue = nz;
+                  break;
+               case DIRECTION_Z_POSITIVE:
+                  if (nz > z) {
+                     if ((nextNode < 0) ||
+                         (nz > nextValue)) {
+                        if (withinMovementAllowance(nx, ny, nz)) {
+                           nextNode = neighborNode;
+                           nextValue = nz;
+                        }
                      }
                   }
-               }
-               break;
+                  break;
+            }
          }
       }
       
@@ -272,14 +342,32 @@ BrainModelSurfaceFindExtremum::execute() throw (BrainModelAlgorithmException)
       //
       if (nextNode >= 0) {
          //
-         // move to next node
+         // Check paint ?
          //
-         extremumNode = nextNode;
-      
-         //
-         // add nodes to path
-         //
-         nodesInPathToExtremum.push_back(extremumNode);
+         switch (paintOperation) {
+            case PAINT_OPERATION_NONE:
+               break;
+            case PAINT_OPERATION_STOP_WHEN_PAINT_ID_CHANGES:
+               //
+               // Did paint change?
+               //
+               if (paintFile->getPaint(nextNode, paintColumnNumber)
+                   != paintIndex) {
+                  done = true;
+               }
+               break;
+         }
+         if (done == false) {
+            //
+            // move to next node
+            //
+            extremumNode = nextNode;
+         
+            //
+            // add nodes to path
+            //
+            nodesInPathToExtremum.push_back(extremumNode);
+         }
       }
       else {
          //
@@ -316,6 +404,30 @@ BrainModelSurfaceFindExtremum::withinMovementAllowance(const float x,
 }
       
 /**
+ * check the node's normal.
+ */
+bool 
+BrainModelSurfaceFindExtremum::checkNodeNormal(const float* normalVector) const
+{
+   for (int i = 0; i < 3; i++) {
+      switch (normalRestriction[i]) {
+         case NORMAL_RESTRICTION_NONE:
+            break;
+         case NORMAL_RESTRICTION_NEGATIVE:
+            if (normalVector[i] >= 0.0) {
+               return false;
+            }
+         case NORMAL_RESTRICTION_POSITIVE:
+            if (normalVector[i] <= 0.0) {
+               return false;
+            }
+      }
+   }
+   
+   return true;
+}
+      
+/**
  * get nodes in path to extremum including extremum.
  */
 void 
@@ -338,5 +450,29 @@ BrainModelSurfaceFindExtremum::setRegionOfInterestToNodesInPath(BrainModelSurfac
    for (int i = 0; i < num; i++) {
       roi.setNodeSelected(nodesInPathToExtremum[i], 1);
    }
+}
+      
+/**
+ * restrict nodes to those with normals of specified signs.
+ */
+void 
+BrainModelSurfaceFindExtremum::setNodeNormalRestriction(
+                                 const NORMAL_RESTRICTION xNormalRestrictionIn,
+                                 const NORMAL_RESTRICTION yNormalRestrictionIn,
+                                 const NORMAL_RESTRICTION zNormalRestrictionIn)
+{
+   normalRestriction[0] = xNormalRestrictionIn;
+   normalRestriction[1] = yNormalRestrictionIn;
+   normalRestriction[2] = zNormalRestrictionIn;
+}                                    
+
+/**
+ * restrict nodes to those in the roi.
+ */
+void 
+BrainModelSurfaceFindExtremum::setNodeRestrictionWithROI(
+   const BrainModelSurfaceROINodeSelection* restrictToROIIn)
+{
+   restrictToROI = (BrainModelSurfaceROINodeSelection*)restrictToROIIn;
 }
       

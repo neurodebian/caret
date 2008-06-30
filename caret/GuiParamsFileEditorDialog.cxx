@@ -43,7 +43,7 @@
  * Constructor.
  */
 GuiParamsFileEditorDialog::GuiParamsFileEditorDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Parameters File Editor");
 

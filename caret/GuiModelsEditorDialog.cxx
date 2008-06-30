@@ -24,6 +24,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QLabel>
 #include <QLayout>
 #include <QPushButton>
@@ -41,7 +42,7 @@
  * constructor.
  */
 GuiModelsEditorDialog::GuiModelsEditorDialog(QWidget* parent)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    setObjectName("GuiModelsEditor");
    setWindowTitle("Models Editor");
@@ -49,7 +50,7 @@ GuiModelsEditorDialog::GuiModelsEditorDialog(QWidget* parent)
    //
    // Layout for dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    
    //
    // model control
@@ -79,11 +80,13 @@ GuiModelsEditorDialog::GuiModelsEditorDialog(QWidget* parent)
    dialogLayout->addWidget(colorPushButton);
    
    //
-   // setup buttons
+   // Dialog buttons
    //
-   getApplyPushButton()->hide();
-   QObject::connect(getClosePushButton(), SIGNAL(clicked()),
-                    this, SLOT(close()));
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
+   buttonBox->button(QDialogButtonBox::Close)->setAutoDefault(false);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(rejected()),
+                    this, SLOT(close()));                    
 }
 
 /**

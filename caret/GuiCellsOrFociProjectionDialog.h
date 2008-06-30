@@ -27,13 +27,13 @@
 #ifndef __GUI_PROJECT_CELLS_OR_FOCI_DIALOG_H__
 #define __GUI_PROJECT_CELLS_OR_FOCI_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QRadioButton;
 class QDoubleSpinBox;
 
 /// class for dialog used to project cells and foci
-class GuiCellsOrFociProjectionDialog : public QtDialog {
+class GuiCellsOrFociProjectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

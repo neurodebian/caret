@@ -29,13 +29,13 @@
 
 #include <vector>
 
-#include "QtDialogModal.h"
+#include "WuQDialog.h"
 
 class BrainSet;
 class QLineEdit;
 
 /// dialog for creating a spec and scene files from a group of scenes
-class GuiSpecAndSceneFileCreationDialog : public QtDialogModal {
+class GuiSpecAndSceneFileCreationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

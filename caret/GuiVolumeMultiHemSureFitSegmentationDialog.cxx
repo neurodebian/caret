@@ -80,7 +80,7 @@
  * constructor.
  */
 GuiVolumeMultiHemSureFitSegmentationDialog::GuiVolumeMultiHemSureFitSegmentationDialog(QWidget* parent)
-   : QtDialog(parent)
+   : WuQDialog(parent)
 {
    checkForExternalPrograms();
    
@@ -442,6 +442,14 @@ GuiVolumeMultiHemSureFitSegmentationDialog::updateSegmentationChooseFilesPage()
                }
             }
             cerebellumCount++;
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
             break;
          case Structure::STRUCTURE_TYPE_INVALID:
             break;
@@ -1751,7 +1759,8 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotAnatomyResampleVoxels()
       anatomyVoxelSizeZSpinBox->value()
    };
    
-   anatomyVolume->resampleToSpacing(newSizes);
+   anatomyVolume->resampleToSpacing(newSizes,
+                                    VolumeFile::INTERPOLATION_TYPE_CUBIC);
    GuiBrainModelOpenGL::updateAllGL();
    updateAnatomyVoxelSizePage();
 }
@@ -1846,6 +1855,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotSaveAnatomyVolumeFile()
          filesToWrite.push_back(anatomyVolume);
          try {
             VolumeFile::writeFile(name,
+                                  anatomyVolume->getVolumeType(),
                                   VolumeFile::VOXEL_DATA_TYPE_FLOAT,
                                   filesToWrite,
                                   zipAfniFlag);
@@ -2924,7 +2934,7 @@ GuiVolumeMultiHemSureFitSegmentationDialog::slotClosePushButton()
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    dsv->setAnatomyThresholdValid(false);
    
-   QtDialog::close();
+   WuQDialog::close();
 }
 
 /**

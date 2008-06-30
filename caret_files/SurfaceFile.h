@@ -56,21 +56,6 @@ class SurfaceFile : public GiftiDataArrayFile {
       // set a triangle
       void setTriangle(const int indx, const int v1, const int v2, const int v3);
       
-      // get a normal (pointer to normal's x/y/z)
-      const float* getNormal(const int indx) const;
-      
-      // set a normal
-      void setNormal(const int indx, const float xyz[3]);
-      
-      // set a normal
-      void setNormal(const int indx, const float x, const float y, const float z);
-      
-      // generate normals
-      void generateNormals();
-      
-      // get normals are valid
-      bool getNormalsValid() const { return normalsValid; }
-      
       /// get the type of coordinates
       QString getCoordinateType() const;
       
@@ -107,9 +92,6 @@ class SurfaceFile : public GiftiDataArrayFile {
       void writeLegacyFileData(QTextStream& stream, QDataStream& binStream)
                                                        throw (FileException);
       
-      /// normals are valid
-      bool normalsValid;
-
       //
       // IF ANY MORE MEMBERS ADDED UPDATE CopyHelperSurface
       //

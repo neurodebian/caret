@@ -26,9 +26,10 @@
 #include <cstdlib>
 #include <iostream>
 
+#include <QCheckBox>
 #include <QComboBox>
+#include <QDir>
 #include <QDoubleSpinBox>
-#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -48,6 +49,8 @@
 #include "QtUtilities.h"
 #include "StringUtilities.h"
 #include "Structure.h"
+#include "WuQFileDialog.h"
+#include "WuQWidgetGroup.h"
 
 //=============================================================================
 //=============================================================================
@@ -96,8 +99,9 @@ GuiCaretCommandWidget::GuiCaretCommandWidget(CommandBase* commandIn,
    ScriptBuilderParameters parameters;
    command->getScriptBuilderParameters(parameters);   
    QGridLayout* gridLayout = new QGridLayout;
-   gridLayout->setColumnStretch(0, 0);
-   gridLayout->setColumnStretch(1, 1000);
+   gridLayout->setColumnStretch(GuiCaretCommandParameter::GRID_COLUMN_CHECK_BOX, 0);
+   gridLayout->setColumnStretch(GuiCaretCommandParameter::GRID_COLUMN_DESCRIPTION, 0);
+   gridLayout->setColumnStretch(GuiCaretCommandParameter::GRID_COLUMN_VALUE, 1000);
    for (int i = 0; i < parameters.getNumberOfParameters(); i++) {
       GuiCaretCommandParameter* gccp = 
          GuiCaretCommandParameter::createParameter(parameters.getParameter(i),
@@ -154,13 +158,16 @@ GuiCaretCommandWidget::getCommandLineForGUI(QString& commandSwitchOut,
 
    int numParams = static_cast<int>(commandParameters.size());
    for (int i = 0; i < numParams; i++) {
-      const QString param = commandParameters[i]->getParameterValueAsText();
+      bool paramValidFlag = false;
+      const QStringList param = commandParameters[i]->getParameterForGUI(paramValidFlag);
       
-      commandParametersOut += param;
-      
-      if (i == (numParams - 1)) {
-         if (dynamic_cast<GuiCaretCommandParameterVariableList*>(commandParameters[i]) != NULL) {
-            lastParameterIsVariableListFlag = true;
+      if (paramValidFlag) {
+         commandParametersOut += param;
+         
+         if (i == (numParams - 1)) {
+            if (dynamic_cast<GuiCaretCommandParameterVariableList*>(commandParameters[i]) != NULL) {
+               lastParameterIsVariableListFlag = true;
+            }
          }
       }
    }  
@@ -184,42 +191,45 @@ GuiCaretCommandWidget::getCommandLineForCommandExecution(QString& commandSwitchO
 
    int numParams = static_cast<int>(commandParameters.size());
    for (int i = 0; i < numParams; i++) {
-      const QString param = commandParameters[i]->getParameterValueAsText();
+      bool paramValidFlag = false;
+      const QStringList param = commandParameters[i]->getParameterForGUI(paramValidFlag);
       
-      if (param.isEmpty()) {
-         if (commandParameters[i]->getParameterAllowedToBeEmpty() == false) {
-            if (errorMessageOut.isEmpty() == false) {
-               errorMessageOut += "\n";
+      if (paramValidFlag) {
+         if (param.isEmpty()) {
+            if (commandParameters[i]->getParameterAllowedToBeEmpty() == false) {
+               if (errorMessageOut.isEmpty() == false) {
+                  errorMessageOut += "\n";
+               }
+               errorMessageOut += ("Parameter \""
+                                   + commandParameters[i]->getParameterDescription()
+                                   + "\" is missing its value.");
             }
-            errorMessageOut += ("Parameter \""
-                                + commandParameters[i]->getParameterDescription()
-                                + "\" is missing its value.");
+            
+            //
+            // Empty parameters goes in double quotes
+            //
+            //param = "\"\"";
          }
          
          //
-         // Empty parameters goes in double quotes
+         // Is last parameter variable list parameter?
          //
-         //param = "\"\"";
-      }
-      
-      //
-      // Is last parameter variable list parameter?
-      //
-      if (i == (numParams - 1)) {
-         if (dynamic_cast<GuiCaretCommandParameterVariableList*>(commandParameters[i]) != NULL) {
-            //
-            // Split up variable list
-            //
-            QStringList sl;
-            StringUtilities::tokenStringsWithQuotes(param, sl);
-            commandParametersOut += sl;
+         if (i == (numParams - 1)) {
+            if (dynamic_cast<GuiCaretCommandParameterVariableList*>(commandParameters[i]) != NULL) {
+               //
+               // Split up variable list
+               //
+               //QStringList sl;
+               //StringUtilities::tokenStringsWithQuotes(param, sl);
+               commandParametersOut += param;
+            }
+            else {
+               commandParametersOut += param;
+            }
          }
          else {
             commandParametersOut += param;
          }
-      }
-      else {
-         commandParametersOut += param;
       }
    }  
 }
@@ -248,10 +258,42 @@ GuiCaretCommandWidget::setComment(const QString& s)
 void 
 GuiCaretCommandWidget::setParameters(const QStringList& parametersIn)
 {
-   const int num = std::min(parametersIn.count(),
-                            static_cast<int>(commandParameters.size()));
+   QStringList parameters = parametersIn;
+   
+   const int numParamGUI = static_cast<int>(commandParameters.size());
+
+   //
+   // Look for and set any optional parameters first
+   //
+   for (int i = 0; i < numParamGUI; i++) {
+      GuiCaretCommandParameter* cmdParam = commandParameters[i];
+      const QString optSwitch = cmdParam->getOptionalSwitch();
+      if (optSwitch.isEmpty() == false) {
+         for (int j = 0; j < parameters.count(); j++) {
+            if (parameters.at(j) == optSwitch) {
+               cmdParam->setChecked(true);
+               const int nextJ = j + 1;
+               if (nextJ < parameters.count()) {
+                  cmdParam->setParameterValueFromText(parametersIn.at(nextJ));
+                  parameters.removeAt(nextJ);
+               }
+               parameters.removeAt(j);
+               break;
+            }
+         }
+      }
+   }
+
+   //
+   // Set required parameters last
+   //
+   const int num = std::min(numParamGUI,
+                            static_cast<int>(parameters.count()));
    for (int i = 0; i < num; i++) {
-      commandParameters[i]->setParameterValueFromText(parametersIn.at(i));
+      GuiCaretCommandParameter* cmdParam = commandParameters[i];
+      if (cmdParam->getOptionalSwitch().isEmpty()) {
+         cmdParam->setParameterValueFromText(parametersIn.at(i));
+      }
    }
 }
 
@@ -262,8 +304,10 @@ GuiCaretCommandWidget::setParameters(const QStringList& parametersIn)
 /**
  * constructor.
  */
-GuiCaretCommandParameter::GuiCaretCommandParameter()
+GuiCaretCommandParameter::GuiCaretCommandParameter(const ScriptBuilderParameters::Parameter* parameter)
 {
+   optionalSwitch = parameter->getOptionalSwitch();
+   optionCheckBox = NULL;
 }
 
 /**
@@ -271,6 +315,67 @@ GuiCaretCommandParameter::GuiCaretCommandParameter()
  */
 GuiCaretCommandParameter::~GuiCaretCommandParameter()
 {
+}
+
+/**
+ * add widgets to the grid.
+ */
+void 
+GuiCaretCommandParameter::addWidgetsToGridLayout(QGridLayout* gridLayout,
+                                                 QWidget* descriptionWidget,
+                                                 QWidget* valueWidget)
+{
+   const int rowNumber = gridLayout->rowCount();
+   if (optionalSwitch.isEmpty() == false) {
+      optionCheckBox = new QCheckBox("");
+      gridLayout->addWidget(optionCheckBox, rowNumber, GRID_COLUMN_CHECK_BOX);
+   }
+   gridLayout->addWidget(descriptionWidget, rowNumber, GRID_COLUMN_DESCRIPTION);
+   gridLayout->addWidget(valueWidget, rowNumber, GRID_COLUMN_VALUE);
+   
+   if (optionCheckBox != NULL) {
+      WuQWidgetGroup* wg = new WuQWidgetGroup(optionCheckBox);
+      wg->addWidget(descriptionWidget);
+      wg->addWidget(valueWidget);
+      QObject::connect(optionCheckBox, SIGNAL(toggled(bool)),
+                       wg, SLOT(setEnabled(bool)));
+      wg->setEnabled(optionCheckBox->isChecked());
+   }
+}
+                            
+/**
+ * set the checkbox.
+ */
+void 
+GuiCaretCommandParameter::setChecked(const bool b)
+{
+   if (optionCheckBox != NULL) {
+      optionCheckBox->setChecked(b);
+   }
+}
+      
+/**
+ * get parameter value as text for the GUI.
+ */
+QStringList
+GuiCaretCommandParameter::getParameterForGUI(bool& parameterValidOut) const
+{
+   QStringList cmdParams;
+   parameterValidOut = true;
+   if (optionCheckBox != NULL) {
+      if (optionCheckBox->isChecked()) {
+         cmdParams += optionalSwitch;
+      }
+      else {
+         parameterValidOut = false;
+      }
+   }
+   
+   if (parameterValidOut) {
+      cmdParams += getParameterValueAsText().trimmed();
+   }
+   
+   return cmdParams;
 }
 
 /**
@@ -338,9 +443,10 @@ GuiCaretCommandParameter::createParameter(const ScriptBuilderParameters::Paramet
          {
             QLabel* label1 = new QLabel(parameter->getDescription());
             QLabel* label2 = new QLabel("UNKNOWN PARAMETER TYPE");
-            const int rowNumber = gridLayout->rowCount();
-            gridLayout->addWidget(label1, rowNumber, 0);
-            gridLayout->addWidget(label2, rowNumber, 1);
+            commandParameter->addWidgetsToGridLayout(gridLayout, label1, label2);
+            //const int rowNumber = gridLayout->rowCount();
+            //gridLayout->addWidget(label1, rowNumber, GRID_COLUMN_DESCRIPTION);
+            //gridLayout->addWidget(label2, rowNumber, GRID_COLUMN_VALUE);
          }
          std::cout << "PROGRAM ERROR: Unsupported parameter type for." << std::endl;
          break;
@@ -362,6 +468,7 @@ GuiCaretCommandParameter::createParameter(const ScriptBuilderParameters::Paramet
  */
 GuiCaretCommandParameterFloat::GuiCaretCommandParameterFloat(const ScriptBuilderParameters::Parameter* parameter,
                                                              QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QLabel* label = new QLabel(parameter->getDescription());
    
@@ -376,10 +483,10 @@ GuiCaretCommandParameterFloat::GuiCaretCommandParameterFloat(const ScriptBuilder
    doubleSpinBox->setValue(defaultValue);
    QObject::connect(doubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SIGNAL(signalDataModified()));
-                    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(doubleSpinBox, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, label, doubleSpinBox);                 
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(doubleSpinBox, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -417,6 +524,7 @@ GuiCaretCommandParameterFloat::setParameterValueFromText(const QString& s)
  */
 GuiCaretCommandParameterInt::GuiCaretCommandParameterInt(const ScriptBuilderParameters::Parameter* parameter,
                                                              QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QLabel* label = new QLabel(parameter->getDescription());
    
@@ -431,9 +539,10 @@ GuiCaretCommandParameterInt::GuiCaretCommandParameterInt(const ScriptBuilderPara
    QObject::connect(spinBox, SIGNAL(valueChanged(int)),
                     this, SIGNAL(signalDataModified()));
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(spinBox, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, label, spinBox);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(spinBox, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -471,6 +580,7 @@ GuiCaretCommandParameterInt::setParameterValueFromText(const QString& s)
  */
 GuiCaretCommandParameterBoolean::GuiCaretCommandParameterBoolean(const ScriptBuilderParameters::Parameter* parameter,
                                                              QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QLabel* label = new QLabel(parameter->getDescription());
    
@@ -489,9 +599,10 @@ GuiCaretCommandParameterBoolean::GuiCaretCommandParameterBoolean(const ScriptBui
       comboBox->setCurrentIndex(0);
    }
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(comboBox, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, label, comboBox);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(comboBox, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -538,6 +649,7 @@ GuiCaretCommandParameterBoolean::setParameterValueFromText(const QString& s)
 GuiCaretCommandParameterFile::GuiCaretCommandParameterFile(const ScriptBuilderParameters::Parameter* parameter,
                                                            QGridLayout* gridLayout,
                                                            const bool multipleSelectionFlagIn)
+   : GuiCaretCommandParameter(parameter)
 {
    multipleSelectionFlag = multipleSelectionFlagIn;
 
@@ -550,11 +662,14 @@ GuiCaretCommandParameterFile::GuiCaretCommandParameterFile(const ScriptBuilderPa
    QObject::connect(fileNameLineEdit, SIGNAL(textChanged(const QString&)),
                     this, SIGNAL(signalDataModified()));
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(pushButton, rowNumber, 0);
-   gridLayout->addWidget(fileNameLineEdit, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, pushButton, fileNameLineEdit);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(pushButton, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(fileNameLineEdit, rowNumber, GRID_COLUMN_VALUE);
    
-   fileFilters = parameter->getFileFilters();
+   QString defaultFileName;
+   parameter->getFileParameters(fileFilters, defaultFileName);
+   fileNameLineEdit->setText(defaultFileName);
 }
 
 /**
@@ -573,7 +688,7 @@ GuiCaretCommandParameterFile::slotPushButtonPressed()
    WuQFileDialog fd(fileNameLineEdit);
    fd.setModal(true);
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
-   fd.setDirectory(".");
+   fd.setDirectory(QDir::currentPath());
    if (multipleSelectionFlag) {
       fd.setFileMode(WuQFileDialog::ExistingFiles);
    }
@@ -632,6 +747,7 @@ GuiCaretCommandParameterFile::setParameterValueFromText(const QString& s)
  */
 GuiCaretCommandParameterDirectory::GuiCaretCommandParameterDirectory(const ScriptBuilderParameters::Parameter* parameter,
                                                            QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QPushButton* pushButton = new QPushButton(parameter->getDescription() + "...");
    pushButton->setAutoDefault(false);
@@ -642,9 +758,10 @@ GuiCaretCommandParameterDirectory::GuiCaretCommandParameterDirectory(const Scrip
    QObject::connect(directoryNameLineEdit, SIGNAL(textChanged(const QString&)),
                     this, SIGNAL(signalDataModified()));
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(pushButton, rowNumber, 0);
-   gridLayout->addWidget(directoryNameLineEdit, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, pushButton, directoryNameLineEdit);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(pushButton, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(directoryNameLineEdit, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -663,7 +780,7 @@ GuiCaretCommandParameterDirectory::slotPushButtonPressed()
    WuQFileDialog fd(directoryNameLineEdit);
    fd.setModal(true);
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
-   fd.setDirectory(".");
+   fd.setDirectory(QDir::currentPath());
    fd.setFileMode(WuQFileDialog::DirectoryOnly);
    if (fd.exec() == WuQFileDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
@@ -700,6 +817,7 @@ GuiCaretCommandParameterDirectory::setParameterValueFromText(const QString& s)
  */
 GuiCaretCommandParameterDataItemList::GuiCaretCommandParameterDataItemList(const ScriptBuilderParameters::Parameter* parameter,
                                QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QLabel* label = new QLabel(parameter->getDescription());
    
@@ -713,9 +831,10 @@ GuiCaretCommandParameterDataItemList::GuiCaretCommandParameterDataItemList(const
    QObject::connect(comboBox, SIGNAL(currentIndexChanged(int)),
                     this, SIGNAL(signalDataModified()));
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(comboBox, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, label, comboBox);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(comboBox, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -758,6 +877,7 @@ GuiCaretCommandParameterDataItemList::setParameterValueFromText(const QString& s
  */
 GuiCaretCommandParameterStructure::GuiCaretCommandParameterStructure(const ScriptBuilderParameters::Parameter* parameter,
                                                              QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    std::vector<Structure::STRUCTURE_TYPE> types;
    std::vector<QString> names;
@@ -774,9 +894,10 @@ GuiCaretCommandParameterStructure::GuiCaretCommandParameterStructure(const Scrip
       comboBox->addItem(comboBoxValues[i]);
    }
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(comboBox, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, label, comboBox);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(comboBox, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -820,6 +941,7 @@ GuiCaretCommandParameterStructure::setParameterValueFromText(const QString& s)
  */
 GuiCaretCommandParameterString::GuiCaretCommandParameterString(const ScriptBuilderParameters::Parameter* parameter,
                                                              QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QLabel* label = new QLabel(parameter->getDescription());
    
@@ -831,9 +953,10 @@ GuiCaretCommandParameterString::GuiCaretCommandParameterString(const ScriptBuild
    QObject::connect(lineEdit, SIGNAL(textChanged(const QString&)),
                     this, SIGNAL(signalDataModified()));
    
-   const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(lineEdit, rowNumber, 1);
+   addWidgetsToGridLayout(gridLayout, label, lineEdit);
+   //const int rowNumber = gridLayout->rowCount();
+   //gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   //gridLayout->addWidget(lineEdit, rowNumber, GRID_COLUMN_VALUE);
 }
 
 /**
@@ -871,6 +994,7 @@ GuiCaretCommandParameterString::setParameterValueFromText(const QString& s)
  */
 GuiCaretCommandParameterVariableList::GuiCaretCommandParameterVariableList(const ScriptBuilderParameters::Parameter* parameter,
                                                              QGridLayout* gridLayout)
+   : GuiCaretCommandParameter(parameter)
 {
    QLabel* label = new QLabel(parameter->getDescription());
    
@@ -887,9 +1011,9 @@ GuiCaretCommandParameterVariableList::GuiCaretCommandParameterVariableList(const
                     this, SIGNAL(signalDataModified()));
 
    const int rowNumber = gridLayout->rowCount();
-   gridLayout->addWidget(label, rowNumber, 0);
-   gridLayout->addWidget(addFilePushButton, rowNumber + 1, 0);
-   gridLayout->addWidget(textEdit, rowNumber, 1, rowNumber + 2, 1);
+   gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
+   gridLayout->addWidget(addFilePushButton, rowNumber + 1, GRID_COLUMN_DESCRIPTION);
+   gridLayout->addWidget(textEdit, rowNumber, 1, rowNumber + 2, GRID_COLUMN_VALUE);
    gridLayout->setRowStretch(rowNumber, 0);
    gridLayout->setRowStretch(rowNumber + 1, 0);
    gridLayout->setRowStretch(rowNumber + 2, 100);
@@ -915,7 +1039,7 @@ GuiCaretCommandParameterVariableList::slotAddFileButton()
    WuQFileDialog fd(textEdit);
    fd.setModal(true);
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
-   fd.setDirectory(".");
+   fd.setDirectory(QDir::currentPath());
    fd.setFileMode(WuQFileDialog::ExistingFiles);
    fd.setFilters(allFileFilters);
    fd.selectFilter(lastFileFilter);

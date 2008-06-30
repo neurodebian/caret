@@ -30,7 +30,7 @@
 #include <QLineEdit>
 #include <QStringList>
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class QComboBox;
 class QTextEdit;
@@ -62,7 +62,7 @@ class GuiShellCommandLineEdit : public QLineEdit {
 };
 
 /// dialog for executing shell commands
-class GuiShellCommandWindow : public QtDialogNonModal {
+class GuiShellCommandWindow : public WuQDialog {
    Q_OBJECT
    
    public:

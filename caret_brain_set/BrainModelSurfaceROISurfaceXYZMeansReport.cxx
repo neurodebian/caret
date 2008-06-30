@@ -76,7 +76,7 @@ BrainModelSurfaceROISurfaceXYZMeansReport::executeOperation() throw (BrainModelA
       
       const CoordinateFile* coordFile = surfaceMeansCoordFiles[j];
       for (int i = 0; i < numNodes; i++) {
-         if (surfaceROI->getNodeSelected(i)) {
+         if (operationSurfaceROI->getNodeSelected(i)) {
             float xyz[3];
             coordFile->getCoordinate(i, xyz);
             meanX += xyz[0];

@@ -36,7 +36,7 @@
  */
 QtTextEditDialog::QtTextEditDialog(QWidget* parent, const bool readOnly,
                        const bool modalFlag)
-   : QtDialog(parent)
+   : WuQDialog(parent)
 {
    setModal(modalFlag);
    if (modalFlag == false) {

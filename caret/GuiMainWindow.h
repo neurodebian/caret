@@ -31,8 +31,9 @@ class QCloseEvent;
 class QLabel;
 class GuiToolBar;
 
+#include <QMainWindow>
+
 #include "GuiBrainModelOpenGL.h"
-#include "QtMainWindow.h"
 #include "SceneFile.h"
 #include "SpecFile.h"
 
@@ -47,9 +48,12 @@ class CommunicatorServerCaretSocket;
 class GuiAddCellsDialog;
 class GuiAlignSurfaceToStandardOrientationDialog;
 class GuiAutomaticRotationDialog;
+class GuiBorderDrawUpdateDialog;
 class GuiBordersCreateInterpolatedDialog;
+class GuiCaptureWindowImageDialog;
 class GuiCaretCommandDialog;
 class GuiCaretCommandScriptBuilderDialog;
+class GuiCellAndFociAttributeAssignmentDialog;
 class GuiContourAlignmentDialog;
 class GuiContourDrawDialog;
 class GuiContourSectionControlDialog;
@@ -93,6 +97,7 @@ class GuiPaletteEditorDialog;
 class GuiParamsFileEditorDialog;
 class GuiSectionControlDialog;
 class GuiSurfaceRegionOfInterestDialog;
+class GuiSurfaceRegionOfInterestDialogOLD;
 class GuiPreferencesDialog;
 class GuiRecordingDialog;
 class GuiSetTopologyDialog;
@@ -116,7 +121,7 @@ class TransformationMatrix;
 /**
  * MainWindow for the graphical user-interface
  */
-class GuiMainWindow : public QtMainWindow {
+class GuiMainWindow : public QMainWindow {
 
    Q_OBJECT
    
@@ -216,6 +221,9 @@ class GuiMainWindow : public QtMainWindow {
       /// create, possibly show, and return the draw border dialog
       GuiDrawBorderDialog* getDrawBorderDialog(const bool showIt);
       
+      /// get the draw border updated dialog
+      GuiBorderDrawUpdateDialog* getDrawBorderUpdateDialog() { return borderDrawUpdateDialog; }
+      
       /// show the help viewer dialog
       void showHelpViewerDialog(const QString& helpPage = "");
       
@@ -240,6 +248,9 @@ class GuiMainWindow : public QtMainWindow {
       
       /// create, (possibly show), and return the surface region of interest dialog
       GuiSurfaceRegionOfInterestDialog* getSurfaceRegionOfInterestDialog(const bool showIt);
+      
+      /// create, (possibly show), and return the surface region of interest dialog
+      GuiSurfaceRegionOfInterestDialogOLD* getSurfaceRegionOfInterestDialogOLD(const bool showIt);
       
       /// create, (possibly show), and return the volume region of interest dialog
       GuiVolumeRegionOfInterestDialog* getVolumeRegionOfInterestDialog(const bool showIt);
@@ -397,6 +408,12 @@ class GuiMainWindow : public QtMainWindow {
       /// display an image viewing window
       void displayImageViewingWindow();
       
+      /// display the capture window as image dialog
+      void displayCaptureWindowImageDialog();
+      
+      /// display the border draw update dialog
+      void displayBorderDrawUpdateDialog();
+      
       /// display the areal estimation color key
       void displayArealEstimationColorKey();
       
@@ -541,6 +558,9 @@ class GuiMainWindow : public QtMainWindow {
       /// Remove a viewing window
       void removeViewingWindow(const BrainModel::BRAIN_MODEL_VIEW_NUMBER item);
       
+      /// resize the viewing windows
+      void resizeViewingWindows();
+      
    private:
       /// the available brain set
       std::vector<BrainSet*> loadedBrainSets;
@@ -614,6 +634,9 @@ class GuiMainWindow : public QtMainWindow {
       /// add contour cells dialog
       GuiAddCellsDialog* addContourCellsDialog;
       
+      /// capture window image dialog
+      GuiCaptureWindowImageDialog* captureWindowImageDialog;
+      
       /// contour alignment dialog
       GuiContourAlignmentDialog* contourAlignmentDialog;
       
@@ -644,6 +667,9 @@ class GuiMainWindow : public QtMainWindow {
       /// borders create interpolated dialog
       GuiBordersCreateInterpolatedDialog* bordersCreateInterpolatedDialog;
       
+      /// border draw update dialog
+      GuiBorderDrawUpdateDialog* borderDrawUpdateDialog;
+      
       /// map talairach focus dialog
       GuiMapStereotaxicFocusDialog* mapStereotaxicFocusDialog;
       
@@ -652,6 +678,9 @@ class GuiMainWindow : public QtMainWindow {
       
       /// surface region of interest dialog
       GuiSurfaceRegionOfInterestDialog* surfaceRegionOfInterestDialog;
+      
+      /// surface region of interest dialog
+      GuiSurfaceRegionOfInterestDialogOLD* surfaceRegionOfInterestDialogOLD;
       
       /// volume region of interest dialog
       GuiVolumeRegionOfInterestDialog* volumeRegionOfInterestDialog;
@@ -758,6 +787,9 @@ class GuiMainWindow : public QtMainWindow {
       /// volume probabilistic atlas color key dialog
       GuiColorKeyDialog* volumeProbAtlasColorKeyDialog;
       
+      /// foci attribute assignemnt dialog
+      GuiCellAndFociAttributeAssignmentDialog* fociAttributeAssignmentDialog;
+      
       /// volume bias correction dialog
       GuiVolumeBiasCorrectionDialog* volumeBiasCorrectionDialog;
       
@@ -838,6 +870,7 @@ class GuiMainWindow : public QtMainWindow {
       /// create the status bar
       void createStatusBar();
       
+   friend class GuiCaptureWindowImageDialog;
    friend class GuiMainWindowFileMenu;
    friend class GuiMainWindowLayersMenu;
    friend class GuiMainWindowWindowMenu;

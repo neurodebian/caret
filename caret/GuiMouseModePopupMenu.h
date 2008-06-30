@@ -62,6 +62,9 @@ class GuiMouseModePopupMenu : public QMenu {
       static QString getActionBorderDrawName() { return "Border Draw"; }
       
       // name of action
+      static QString getActionBorderDrawUpdateName() { return "Border Draw Update"; }
+      
+      // name of action
       static QString getActionBorderDeleteName() { return "Border Delete"; }
       
       // name of action

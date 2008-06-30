@@ -29,15 +29,19 @@
 
 #include <vector>
 
-#include "QtDialogModal.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class CellFile;
+class QAbstractButton;
 class QCheckBox;
+class QDialogButtonBox;
+class QDoubleSpinBox;
 class QRadioButton;
+class QVBoxLayout;
 
 /// dialog for cell and foci attribute assignment
-class GuiCellAndFociAttributeAssignmentDialog : public QtDialogModal {
+class GuiCellAndFociAttributeAssignmentDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -47,11 +51,15 @@ class GuiCellAndFociAttributeAssignmentDialog : public QtDialogModal {
                                  
       // destructor
       ~GuiCellAndFociAttributeAssignmentDialog();
+      
+      // update the dialog
+      void updateDialog();
    
+   protected slots:
+      // called when a button pressed
+      void slotPushButton(QAbstractButton* buttonPressed);
+      
    protected:
-      // called when ok/cancel pressed
-      void done(int r);
-            
       // create the surface section
       QWidget* createSurfaceSection();
       
@@ -64,11 +72,17 @@ class GuiCellAndFociAttributeAssignmentDialog : public QtDialogModal {
       // create the paint section
       QWidget* createPaintSection();
       
+      // update the paint column section
+      void updatePaintColumnSection();
+      
       // determine if a check box is shown and checked
       bool checked(const QCheckBox* cb) const;
       
       /// append to current values 
       QCheckBox* appendToCurrentValuesCheckBox;
+      
+      /// clear attribute and do not set check box
+      QCheckBox* clearAttributesWithoutSettingCheckBox;
       
       /// ignore "?" entries
       QCheckBox* ignoreQuestionEntriesCheckBox;
@@ -79,8 +93,14 @@ class GuiCellAndFociAttributeAssignmentDialog : public QtDialogModal {
       /// geography radio button
       QRadioButton* geographyRadioButton;
       
+      /// region of interest radio button
+      QRadioButton* regionOfInterestRadioButton;
+      
       /// paint name check boxes
       std::vector<QCheckBox*> paintNameCheckBoxes;
+      
+      /// layout for paint name checkboxes
+      QVBoxLayout* paintNameCheckBoxesLayout;
       
       /// file type string (cell or foci)
       QString typeString;
@@ -99,6 +119,18 @@ class GuiCellAndFociAttributeAssignmentDialog : public QtDialogModal {
       
       /// right hem check box
       QCheckBox* rightHemSelectionCheckBox;
+      
+      /// combo box for cerebellum surface selection
+      GuiBrainModelSelectionComboBox* cerebellumSelectionComboBox;
+      
+      /// cerebellum check box
+      QCheckBox* cerebellumSelectionCheckBox;
+      
+      /// maximum distance of focus from surface double spin box
+      QDoubleSpinBox* maximumDistanceDoubleSpinBox;
+      
+      /// the dialog button box
+      QDialogButtonBox* dialogButtonBox;
 };
 
 #endif // __GUI_CELL_AND_FOCI_ATTRIBUTE_ASSIGNMENT_DIALOG_H__

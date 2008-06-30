@@ -53,8 +53,9 @@
  * Constructor
  */
 GuiGenerateSulcalDepthDialog::GuiGenerateSulcalDepthDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Generate Sulcal Depth");
    
    //
