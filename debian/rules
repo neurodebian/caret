@@ -40,6 +40,8 @@ clean-%:
 	# ignore when there is no Makefile
 	-cd $* && make clean
 	-cd $* && rm Makefile
+	-find . -name '*.so' -exec rm '{}' \;
+	-rm caret/caret5 caret_command/caret_command
 
 
 configure: configure-stamp
@@ -108,7 +110,7 @@ binary-arch: build install
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	dh_shlibdeps
+	LD_LIBRARY_PATH=caret_brain_set:caret_command_operations:caret_uniformize:caret_widgets:caret_common:caret_files:caret_statistics dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
