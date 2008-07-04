@@ -9,7 +9,7 @@ INCLUDEPATH += .
 
 include(../caret_qmake_include.pro)
 
-LIBS += -lminc \
+LIBS += -lminc2 \
         -L../caret_uniformize -lCaretUniformize \
         -L../caret_statistics -lCaretStatistics \
         -L../caret_common -lCaretCommon \
