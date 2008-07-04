@@ -96,7 +96,7 @@ exists( $(NETCDF_INC_DIR)/minc.h ) {
    DEFINES += HAVE_MINC
    INCLUDEPATH += $(NETCDF_INC_DIR)
    NETCDF_LIBS = -L$(NETCDF_LIB_DIR) \
-                 -lminc \
+                 -lminc2 \
                  -lnetcdf
 
    message( "Building with MINC support" )
