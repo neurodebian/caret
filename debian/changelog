@@ -1,3 +1,11 @@
+caret (5.6~dfsg.1-2) unstable; urgency=low
+
+  * Adjust build-dependencies to account for the new libqt4-opengl-dev
+    package, built by qt4-x11 (from 4.4.0-1 on). Done in a backport-friendly
+    way, i.e. alternatively depend on libqt4-dev (>= 4.3) and (<< 4.4.0).
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Sun,  6 Jul 2008 17:51:14 +0200
+
 caret (5.6~dfsg.1-1) unstable; urgency=low
 
   * New upstream version.

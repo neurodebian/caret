@@ -2,7 +2,7 @@ Source: caret
 Section: science
 Priority: optional
 Maintainer: Michael Hanke <michael.hanke@gmail.com>
-Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.3), libqwt5-qt4-dev, libvtk5-dev, libminc-dev
+Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.3), libqt4-dev (<< 4.4.0) | libqt4-opengl-dev, libqwt5-qt4-dev, libvtk5-dev, libminc-dev
 Standards-Version: 3.8.0
 Homepage: http://brainmap.wustl.edu/caret
 Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/caret.git
