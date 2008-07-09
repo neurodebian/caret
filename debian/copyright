@@ -4,7 +4,7 @@ Upstream-Source: http://brainmap.wustl.edu/pub/caret
 
 
 Files: *
-Copyright: Copyright:, 1995-2008,
+Copyright: Copyright 1995-2008,
   John Harwell
   Heather Drury
   Donna Hanlon
@@ -15,7 +15,7 @@ License: GPL-2+
 
 
 Files: caret_common/MathUtilities.cxx
-Copyright: Copyright, 1993-2002,
+Copyright: Copyright 1993-2002,
   Ken Martin
   Will Schroeder
   Bill Lorensen
@@ -59,7 +59,7 @@ License: BSD
 
 
 Files: debian/*
-Copyright: Copyright, 2007-2008, Michael Hanke <michael.hanke@gmail.com>
+Copyright: Copyright 2007-2008, Michael Hanke <michael.hanke@gmail.com>
 License: GPL-2+
   On Debian systems the full text of the GNU General Public License can be found
   in the `/usr/share/common-licenses/GPL' file.

@@ -40,8 +40,6 @@ clean-%:
 	# ignore when there is no Makefile
 	-cd $* && make clean
 	-cd $* && rm Makefile
-	-find . -name '*.so' -exec rm '{}' \;
-	-rm caret/caret5 caret_command/caret_command
 
 
 configure: configure-stamp
@@ -69,6 +67,8 @@ clean: clean-caret_statistics clean-caret_common clean-caret_brain_set \
        clean-caret_command
 	dh_testdir
 	dh_testroot
+	-find . -name '*.so' -exec rm '{}' \;
+	-rm caret/caret5 caret_command/caret_command
 	rm -f build-stamp configure-stamp
 	
 	dh_clean
