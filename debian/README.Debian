@@ -1,10 +1,37 @@
-caret for Debian
-----------------
+Caret for Debian
+================
 
-Due to patent issues Debian VTK comes without MPEG2 support. Therefore the MPEG
-support in CARET is disabled as well.
+This document describes the differences between the Debian package of Caret
+and original Caret releases.
+
+
+
+User interface
+--------------
+
+The Caret package provides desktop integration via desktop files for the main
+Caret GUI application. Additionally, the package includes a manpage. Caret
+binaries are called via a simple wrapper script that configures an appropriate
+environment (browser selection and path settings) for using Caret on Debian
+systems.
+
+
+
+Missing Functionality
+---------------------
+
+Due to patent issues Debian VTK comes without MPEG2 support. Therefore the
+MPEG support in CARET is disabled as well.
 
 CARET is build with MINC support, but at the moment without ITK support. The
-Debian has to figure out what kind of advantages ITK support really has.
+Debian maintainer has to figure out what kind of advantages ITK support really
+has.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Tue, 25 Sep 2007 13:57:33 +0200
+Unlike the source distribution, the binary distribution of Caret comes with a
+set of additional documentation and data files, e.g. for fMRI mapping data
+into several stereotaxic spaces.  This package does not include them.
+Currently, they are available from unofficial Debian repositories (e.g.
+http://apsy.gse.uni-magdeburg.de/debian).  However, the Debian maintainer is
+working on integrating this package in Debian as well.
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Tue, 15 Jul 2008 08:23:34 +0200

@@ -1,12 +1,3 @@
-caret (5.6~dfsg.1-2) unstable; urgency=low
-
-  * Adjust build-dependencies to account for the new libqt4-opengl-dev
-    package, built by qt4-x11 (from 4.4.0-1 on). Done in a backport-friendly
-    way, i.e. alternatively depend on libqt4-dev (>= 4.3) and (<< 4.4.0).
-  * Added Yaroslav Halchenko to Uploaders.
-
- -- Michael Hanke <michael.hanke@gmail.com>  Wed, 09 Jul 2008 07:37:08 +0200
-
 caret (5.6~dfsg.1-1) unstable; urgency=low
 
   * New upstream version.
@@ -14,13 +5,18 @@ caret (5.6~dfsg.1-1) unstable; urgency=low
     installed by the Debian package.
   * Use minc version 2 instead of old libminc0.
   * Bumped Standards-Version to 3.8.0 -- no changes necessary.
-  * Recommend caret-data package version 5.6 or later.
   * Several bugfixes (missing headers) for GCC 4.3 compatibility.
+   * Adjust build-dependencies to account for the new libqt4-opengl-dev
+    package, built by qt4-x11 (from 4.4.0-1 on). Done in a backport-friendly
+    way, i.e. alternatively depend on libqt4-dev (>= 4.3) and (<< 4.4.0).
+  * Added Yaroslav Halchenko to Uploaders.
+  * caret-data is not recommended, but suggested dependency as the package is
+    not yet in the Debian archive. Added relevant notes to README.Debian.
   * Converted debian/copyright into a machine readable format.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Fri, 04 Jul 2008 11:48:00 +0200
+ -- Michael Hanke <michael.hanke@gmail.com>  Tue, 15 Jul 2008 07:41:29 +0200
 
-caret (5.5.2~dfsg.1-1) unstable; urgency=low
+caret (5.5.2~dfsg.1-1) UNRELEASED; urgency=low
 
   * New Upstream Version. Build-depends on Qt >= 4.3. Merged most commandline
     tools into 'caret_command'.
@@ -37,25 +33,24 @@ caret (5.5.2~dfsg.1-1) unstable; urgency=low
     shared libraries. This should be no problem, as it is a very simple
     editor and all of the 1000 editors in Debian should be able to do what
     'caret_edit' does/did.
-  * -
 
  -- Michael Hanke <michael.hanke@gmail.com>  Mon, 30 Jun 2008 19:40:29 +0200
 
-caret (5.5.1~dfsg.1-2) unstable; urgency=low
+caret (5.5.1~dfsg.1-2) UNRELEASED; urgency=low
 
   * Added a manpage.
   * Fixed desktop and menu files to comply to the latest menu policy.
 
  -- Michael Hanke <michael.hanke@gmail.com>  Tue, 11 Sep 2007 21:59:09 +0200
 
-caret (5.5.1~dfsg.1-1) unstable; urgency=low
+caret (5.5.1~dfsg.1-1) UNRELEASED; urgency=low
 
   * New Upstream Version.
   * Abandoned dpatch in favor of Git.
 
  -- Michael Hanke <michael.hanke@gmail.com>  Sun,  8 Jul 2007 13:17:27 +0200
 
-caret (5.5~dfsg.1-1) unstable; urgency=low
+caret (5.5~dfsg.1-1) UNRELEASED; urgency=low
 
   [ Michael Hanke ]
   * Initial release. (Closes: #421703)
