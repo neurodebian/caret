@@ -12,7 +12,7 @@ Vcs-Git: git://git.debian.org/git/pkg-exppsy/caret.git
 Package: caret
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: caret-data (>= 5.6~dfsg.1)
+Suggests: caret-data (>= 5.6~dfsg.1)
 Description: Computerized Anatomical Reconstruction and Editing Toolkit
  This software allows for creating, viewing and manipulating surface
  reconstructions of the cerebral and cerebellar cortex, viewing volumes and for
