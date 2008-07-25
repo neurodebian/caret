@@ -13,8 +13,11 @@ caret (5.6~dfsg.1-1) unstable; urgency=low
   * caret-data is not recommended, but suggested dependency as the package is
     not yet in the Debian archive. Added relevant notes to README.Debian.
   * Converted debian/copyright into a machine readable format.
+  * Include the AFNI licensing terms in the Debian packaging as
+    debian/copyright.afni and mention it in debian/copyright as pieces of
+    caret_uniformize were derived from AFNI.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Tue, 15 Jul 2008 07:41:29 +0200
+ -- Michael Hanke <michael.hanke@gmail.com>  Fri, 25 Jul 2008 18:31:41 +0200
 
 caret (5.5.2~dfsg.1-1) UNRELEASED; urgency=low
 

@@ -9,6 +9,7 @@ Copyright: Copyright 1995-2008,
   Heather Drury
   Donna Hanlon
   David Van Essen
+Copyright: Copyright 1995-2002, Washington University School of Medicine
 License: GPL-2+
   On Debian systems the full text of the GNU General Public License can be found
   in the `/usr/share/common-licenses/GPL' file.
@@ -56,6 +57,21 @@ License: BSD
 
   On Debian systems the full text of the BSD License can be found in the
   `/usr/share/common-licenses/BSD' file.
+
+
+Files: caret_uniformize/*
+Copyright: Copyright 1994-2000, Medical College of Wisconsin
+License: GPL-2+
+  This source code has been derived from parts of the AFNI package
+  (http://afni.nimh.nih.gov). The copyright statement refers to a
+  'README.copyright' file, which contains the licensing terms of AFNI. This
+  file is not available in the Caret source distribution, but only included in
+  the binary distribution as 'copyright.afni'. This file has been included in
+  the Debian packaging as 'debian/copyright.afni'.
+
+  On Debian systems the full text of the GNU General Public License can be found
+  in the `/usr/share/common-licenses/GPL' file.
+
 
 
 Files: debian/*
