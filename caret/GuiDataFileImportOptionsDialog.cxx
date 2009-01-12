@@ -26,6 +26,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QLabel>
 #include <QLayout>
 #include <QSpinBox>
@@ -43,9 +44,9 @@
  */
 GuiDataFileImportOptionsDialog::GuiDataFileImportOptionsDialog(QWidget* parent,
                                                                const QString& filterName)
-   : QtDialogModal(parent)
+   : WuQDialog(parent)
 {
-   QVBoxLayout* layout = getDialogLayout();
+   QVBoxLayout* layout = new QVBoxLayout(this);
    
    if (filterName == FileFilters::getAnalyzeVolumeFileFilter()) {
       layout->addWidget(createVolumeOptionsWidget(filterName));   
@@ -70,6 +71,9 @@ GuiDataFileImportOptionsDialog::GuiDataFileImportOptionsDialog(QWidget* parent,
       layout->addWidget(createVolumeOptionsWidget(filterName));   
    }
 #endif // HAVE_MINC
+   else if (filterName == FileFilters::getMniObjSurfaceFileFilter()) {
+      layout->addWidget(createSurfaceOptionsWidget(filterName));   
+   }
    else if (filterName == FileFilters::getNeurolucidaFileFilter()) {
       layout->addWidget(createContourOptionsWidget(filterName));   
    }
@@ -97,6 +101,14 @@ GuiDataFileImportOptionsDialog::GuiDataFileImportOptionsDialog(QWidget* parent,
                 << ") passed to GuiDataFileImportOptionsDialog()."
                 << std::endl;
    }
+   
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok 
+                                                      | QDialogButtonBox::Cancel);
+   layout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(accepted()),
+                    this, SLOT(accept()));
+   QObject::connect(buttonBox, SIGNAL(rejected()),
+                    this, SLOT(reject()));
 }
 
 /**
@@ -231,6 +243,12 @@ GuiDataFileImportOptionsDialog::createSurfaceOptionsWidget(const QString& filter
       showStructure = true;
       showTopologyType  = true;
       showSurfaceType = true;
+   }
+   else if (filterName == FileFilters::getMniObjSurfaceFileFilter()) {
+      showStructure = true;
+      showTopologyType  = true;
+      showSurfaceType = true;
+      showRgb = true;
    }
    else if (filterName == FileFilters::getStlSurfaceFileFilter()) {
       showStructure = true;

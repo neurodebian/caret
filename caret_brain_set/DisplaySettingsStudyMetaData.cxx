@@ -25,9 +25,12 @@
 /*LICENSE_END*/
 
 #include <algorithm>
+#include <map>
 
 #include "BrainSet.h"
 #include "DisplaySettingsStudyMetaData.h"
+#include "FociProjectionFile.h"
+#include "NameIndexSort.h"
 #include "StudyMetaDataFile.h"
 
 /**
@@ -64,6 +67,206 @@ DisplaySettingsStudyMetaData::update()
    updateSubHeaderNames();
 }
    
+class CaseInsensitiveStringCompare {
+   public:
+      bool operator() (const QString& s1, const QString& s2) const {
+         return (s1.toLower() < s2.toLower());
+      }
+};
+
+/**
+ * get keywords and number of foci using the keywords.
+ */
+void 
+DisplaySettingsStudyMetaData::getKeywordsAndUsageByFoci(std::vector<QString>& keywordsOut,
+                                     std::vector<int>& fociCountForKeywordOut) const
+{
+   keywordsOut.clear();
+   fociCountForKeywordOut.clear();
+   
+   const StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+   const int numStudies = smdf->getNumberOfStudyMetaData();
+   if (numStudies <= 0) {
+      return;
+   }
+   const FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+   const int numFoci = fpf->getNumberOfCellProjections();
+   if (numFoci <= 0) {
+      return;
+   }
+   
+   //
+   // Track number of foci using each study
+   //
+   std::vector<int> numberOfFociLinkingToStudy(numStudies, 0);
+   for (int j = 0; j < numFoci; j++) {
+      const CellProjection* fp = fpf->getCellProjection(j);
+      StudyMetaDataLinkSet smdls = fp->getStudyMetaDataLinkSet();
+      for (int j = 0; j < smdls.getNumberOfStudyMetaDataLinks(); j++) {
+         StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+         const int studyIndex = smdf->getStudyIndexFromLink(smdl);
+         if ((studyIndex >= 0) && (studyIndex < numStudies)) {
+            numberOfFociLinkingToStudy[studyIndex]++;
+         }
+      }
+   }
+   
+   //
+   // Update count for each keyword
+   //
+   std::map<QString,int, CaseInsensitiveStringCompare> keywordFociCount;
+   for (int i= 0; i < smdf->getNumberOfStudyMetaData(); i++) {
+      //if (numberOfFociLinkingToStudy[i] > 0) {
+         //
+         // Get keywords from study
+         //
+         const StudyMetaData* smd = smdf->getStudyMetaData(i);
+         std::vector<QString> keywords;
+         smd->getKeywords(keywords);
+         
+         const int numKeywords = static_cast<int>(keywords.size());
+         if (numKeywords > 0) {
+            //
+            // Update the total keywords counts
+            //
+            for (int k = 0; k < numKeywords; k++) {
+               const QString& kw = keywords[k];
+               std::map<QString,int>::iterator iter = keywordFociCount.find(kw);
+               if (iter != keywordFociCount.end()) {
+                  keywordFociCount[kw] += numberOfFociLinkingToStudy[i];
+               }
+               else {
+                  keywordFociCount[kw] = numberOfFociLinkingToStudy[i];
+               }
+            }
+         }
+      //}
+   }
+   
+   for (std::map<QString,int>::iterator iter = keywordFociCount.begin();
+        iter != keywordFociCount.end();
+        iter++) {
+      keywordsOut.push_back(iter->first);
+      fociCountForKeywordOut.push_back(iter->second);
+   }
+}
+/*
+void 
+DisplaySettingsStudyMetaData::getKeywordsAndUsageByFoci(std::vector<QString>& keywordsOut,
+                                     std::vector<int>& fociCountForKeywordOut) const
+{
+   keywordsOut.clear();
+   fociCountForKeywordOut.clear();
+   
+   const StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+   const FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+   const int numFoci = fpf->getNumberOfCellProjections();
+   
+   //
+   // Track foci using each keyword
+   //
+   std::map<QString,int> keywordFociCount;
+   
+   //
+   // Check all studies
+   //
+   for (int i= 0; i < smdf->getNumberOfStudyMetaData(); i++) {
+      //
+      // Get keywords from study
+      //
+      const StudyMetaData* smd = smdf->getStudyMetaData(i);
+      std::vector<QString> keywords;
+      smd->getKeywords(keywords);
+      
+      const int numKeywords = static_cast<int>(keywords.size());
+      if (numKeywords > 0) {
+                  
+         //
+         // Loop through all foci and count number of foci that
+         // use these keywords
+         //
+         int numberOfFociUsingKeywords = 0;
+         for (int j = 0; j < numFoci; j++) {
+            const CellProjection* fp = fpf->getCellProjection(j);
+            StudyMetaDataLinkSet smdls = fp->getStudyMetaDataLinkSet();
+            for (int j = 0; j < smdls.getNumberOfStudyMetaDataLinks(); j++) {
+               StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+               const int studyIndex = smdf->getStudyIndexFromLink(smdl);
+               if (studyIndex == i) {
+                  numberOfFociUsingKeywords++;
+               }
+            }
+         }
+         
+         //
+         // Update the total keywords counts
+         //
+         for (int k = 0; k < numKeywords; k++) {
+            const QString& kw = keywords[k];
+            std::map<QString,int>::iterator iter = keywordFociCount.find(kw);
+            if (iter != keywordFociCount.end()) {
+               keywordFociCount[kw] += numberOfFociUsingKeywords;
+            }
+            else {
+               keywordFociCount[kw] = numberOfFociUsingKeywords;
+            }
+         }
+      }
+   }
+   
+   for (std::map<QString,int>::iterator iter = keywordFociCount.begin();
+        iter != keywordFociCount.end();
+        iter++) {
+      keywordsOut.push_back(iter->first);
+      fociCountForKeywordOut.push_back(iter->second);
+   }
+}
+*/
+
+/**
+ * get keyword indices sorted by name case insensitive.
+ */
+void 
+DisplaySettingsStudyMetaData::getKeywordIndicesSortedByName(
+                                   std::vector<int>& indicesSortedByNameOut,
+                                   const bool reverseOrderFlag,
+                                   const bool limitToDisplayedFociFlag) const
+{
+   NameIndexSort nis;
+   
+   int numKeywords = 0;
+   if (limitToDisplayedFociFlag) {
+      std::vector<QString> subsetOfKeywords;
+      brainSet->getStudyMetaDataFile()->getAllKeywordsUsedByDisplayedFoci(
+                                             brainSet->getFociProjectionFile(),
+                                             subsetOfKeywords);
+      numKeywords = static_cast<int>(subsetOfKeywords.size());
+      for (int i = 0; i < numKeywords; i++) {
+         //
+         // Need to use index of ALL keywords
+         //
+         nis.add(getKeywordIndexByName(subsetOfKeywords[i]), subsetOfKeywords[i]);
+      }
+   }
+   else {
+      numKeywords = getNumberOfKeywords();
+      for (int i = 0; i < numKeywords; i++) {
+         nis.add(i, getKeywordNameByIndex(i));
+      }
+   }
+   
+   nis.sortByNameCaseInsensitive();
+   
+   indicesSortedByNameOut.resize(numKeywords, 0);
+   for (int i = 0; i < numKeywords; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+
 /**
  * update the keywords.
  */
@@ -209,6 +412,127 @@ DisplaySettingsStudyMetaData::getStudiesWithSelectedKeywords(
    }
 }
 
+/**
+ * get subheaders and number of foci using the subheaders.
+ */
+void 
+DisplaySettingsStudyMetaData::getSubheadersAndUsageByFoci(
+                                 std::vector<QString>& subheadersOut,
+                                 std::vector<int>& fociCountForSubheadersOut) const
+{
+   subheadersOut.clear();
+   fociCountForSubheadersOut.clear();
+   
+   const StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
+   const int numStudies = smdf->getNumberOfStudyMetaData();
+   if (numStudies <= 0) {
+      return;
+   }
+   const FociProjectionFile* fpf = brainSet->getFociProjectionFile();
+   const int numFoci = fpf->getNumberOfCellProjections();
+   if (numFoci <= 0) {
+      return;
+   }
+   
+   //
+   // Track number of foci using each study
+   //
+   std::vector<int> numberOfFociLinkingToStudy(numStudies, 0);
+   for (int j = 0; j < numFoci; j++) {
+      const CellProjection* fp = fpf->getCellProjection(j);
+      StudyMetaDataLinkSet smdls = fp->getStudyMetaDataLinkSet();
+      for (int j = 0; j < smdls.getNumberOfStudyMetaDataLinks(); j++) {
+         StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+         const int studyIndex = smdf->getStudyIndexFromLink(smdl);
+         if ((studyIndex >= 0) && (studyIndex < numStudies)) {
+            numberOfFociLinkingToStudy[studyIndex]++;
+         }
+      }
+   }
+   
+   //
+   // Update count for each subheader
+   //
+   std::map<QString,int, CaseInsensitiveStringCompare> subheaderFociCount;
+   for (int i= 0; i < smdf->getNumberOfStudyMetaData(); i++) {
+      //if (numberOfFociLinkingToStudy[i] > 0) {
+         //
+         // Get subheaders from study
+         //
+         const StudyMetaData* smd = smdf->getStudyMetaData(i);
+         std::vector<QString> subheaders;
+         smd->getAllTableSubHeaderShortNames(subheaders);
+         
+         const int numSubheaders = static_cast<int>(subheaders.size());
+         if (numSubheaders > 0) {
+            //
+            // Update the total subheader counts
+            //
+            for (int k = 0; k < numSubheaders; k++) {
+               const QString& sh = subheaders[k];
+               std::map<QString,int>::iterator iter = subheaderFociCount.find(sh);
+               if (iter != subheaderFociCount.end()) {
+                  subheaderFociCount[sh] += numberOfFociLinkingToStudy[i];
+               }
+               else {
+                  subheaderFociCount[sh] = numberOfFociLinkingToStudy[i];
+               }
+            }
+         }
+      //}
+   }
+   
+   for (std::map<QString,int>::iterator iter = subheaderFociCount.begin();
+        iter != subheaderFociCount.end();
+        iter++) {
+      subheadersOut.push_back(iter->first);
+      fociCountForSubheadersOut.push_back(iter->second);
+   }
+}
+                                     
+/**
+ * get subheader indices sorted by name case insensitive.
+ */
+void 
+DisplaySettingsStudyMetaData::getSubHeaderIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                            const bool reverseOrderFlag,
+                                            const bool limitToDisplayedFociFlag) const
+{
+   NameIndexSort nis;
+   int numSubHeaderNames = 0;
+   
+   if (limitToDisplayedFociFlag) {
+      std::vector<QString> subsetOfSubHeaderNames;
+      brainSet->getStudyMetaDataFile()->getAllTableSubHeaderShortNamesUsedByDisplayedFoci(
+                                             brainSet->getFociProjectionFile(),
+                                             subsetOfSubHeaderNames);
+      numSubHeaderNames = static_cast<int>(subsetOfSubHeaderNames.size());
+      for (int i = 0; i < numSubHeaderNames; i++) {
+         //
+         // Need to use index of ALL subheaders
+         //
+         nis.add(getSubHeaderIndexByName(subsetOfSubHeaderNames[i]), subsetOfSubHeaderNames[i]);
+      }
+   }
+   else {
+      numSubHeaderNames = getNumberOfSubHeaderNames();
+      for (int i = 0; i < numSubHeaderNames; i++) {
+         nis.add(i, getSubHeaderNameByIndex(i));
+      }
+   }
+   
+   nis.sortByNameCaseInsensitive();
+   
+   indicesSortedByNameOut.resize(numSubHeaderNames, 0);
+   for (int i = 0; i < numSubHeaderNames; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+       
 /**
  * update the subheaders names.
  */
@@ -392,7 +716,8 @@ DisplaySettingsStudyMetaData::showScene(const SceneFile::Scene& scene, QString& 
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsStudyMetaData::saveScene(SceneFile::Scene& scene, const bool /*onlyIfSelected*/)
+DisplaySettingsStudyMetaData::saveScene(SceneFile::Scene& scene, const bool /*onlyIfSelected*/,
+                             QString& /*errorMessage*/)
 {
    SceneFile::SceneClass sc("DisplaySettingsStudyMetaData");
    const int num = getNumberOfKeywords();

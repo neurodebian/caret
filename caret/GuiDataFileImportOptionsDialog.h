@@ -28,10 +28,10 @@
 /*LICENSE_END*/
 
 #include "BrainModelSurface.h"
-#include "QtDialogModal.h"
 #include "Structure.h"
 #include "TopologyFile.h"
 #include "VolumeFile.h"
+#include "WuQDialog.h"
 
 class GuiStructureComboBox;
 class GuiSurfaceTypeComboBox;
@@ -43,7 +43,7 @@ class QComboBox;
 class QSpinBox;
 
 /// dialog for setting options for importing files
-class GuiDataFileImportOptionsDialog : public QtDialogModal {
+class GuiDataFileImportOptionsDialog : public WuQDialog {
    Q_OBJECT
    
    public:

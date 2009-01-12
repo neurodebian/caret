@@ -106,7 +106,8 @@ CommandSurfaceIdentifySulci::getHelpInformation() const
        + indent9 + "   Specifies the type of the volume files that will be written \n"
        + indent9 + "    during the segmentation process.  Valid values are: \n"
        + indent9 + "       AFNI \n"
-       + indent9 + "       NIFTI    (RECOMMENDED!!!!) \n"
+       + indent9 + "       NIFTI   \n"
+       + indent9 + "       NIFTI_GZIP (RECOMMENDED!!!!) \n"
        + indent9 + "       SPM \n"
        + indent9 + "       WUNIL \n"
        + indent9 + "\n");
@@ -140,12 +141,15 @@ CommandSurfaceIdentifySulci::executeCommand() throw (BrainModelAlgorithmExceptio
       parameters->getNextParameterAsString("Write Volume Type");
    checkForExcessiveParameters();
 
-   VolumeFile::FILE_READ_WRITE_TYPE writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
+   VolumeFile::FILE_READ_WRITE_TYPE writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
    if (writeVolumeTypeString == "AFNI") {
       writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_AFNI;
    }
    else if (writeVolumeTypeString == "NIFTI") {
       writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
+   }
+   else if (writeVolumeTypeString == "NIFTI_GZIP") {
+      writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
    }
    else if (writeVolumeTypeString == "SPM") {
       writeVolumeType = VolumeFile::FILE_READ_WRITE_TYPE_SPM_OR_MEDX;
@@ -176,13 +180,13 @@ CommandSurfaceIdentifySulci::executeCommand() throw (BrainModelAlgorithmExceptio
    // Set the selected files
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::volumeSegmentationFileTag, segmentationVolumeFileName, 
+   specFile.addToSpecFile(SpecFile::getVolumeSegmentationFileTag(), segmentationVolumeFileName, 
                           segmentationVolumeDataFileName, SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, closedTopologyFileName, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), closedTopologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::rawCoordFileTag, rawCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getRawCoordFileTag(), rawCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, fiducialCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), fiducialCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    //

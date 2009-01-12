@@ -29,7 +29,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
-#include "WuQFileDialog.h">
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -48,6 +48,7 @@
 #include "DisplaySettingsMetric.h"
 #include "DisplaySettingsPaint.h"
 #include "DisplaySettingsSurfaceShape.h"
+#include "FileFilters.h"
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiMainWindow.h"
@@ -64,8 +65,9 @@
  */
 GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
                                                    const DIALOG_MODE modeIn,
-                                                   const QString& dialogTitle)
-   : QtDialog(parent, false)
+                                                   const QString& dialogTitle,
+                                    const bool showSurfaceSelectionOptionsFlag)
+   : WuQDialog(parent)
 {
    mode = modeIn;
    
@@ -106,6 +108,10 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
       surfaceSelectionBox->setSelectedBrainModelIndex(surfaceModelIndex);
    }
 
+   if (showSurfaceSelectionOptionsFlag == false) {
+      surfaceSelectionBox->setHidden(true);
+   }
+   
    const int spinWidth = 120;
    const double floatMin = -std::numeric_limits<float>::max();
    const double floatMax =  std::numeric_limits<float>::max();
@@ -198,60 +204,69 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
    surfaceGridLayout->addWidget(surfaceOffsetZDoubleSpinBox, rowNum, 3);
    rowNum++;
    
-   //
-   // Parameters file contains information for offset
-   // xmin, ymin, zmin
-   //
+   if (showSurfaceSelectionOptionsFlag == false) {
+       transLabel->setHidden(true);
+       surfaceOffsetXDoubleSpinBox->setHidden(true);
+       surfaceOffsetYDoubleSpinBox->setHidden(true);
+       surfaceOffsetZDoubleSpinBox->setHidden(true);
+   }
+   
    const ParamsFile* pf = theMainWindow->getBrainSet()->getParamsFile();
-   QString xmin, ymin, zmin;
-   if (pf->getParameter(ParamsFile::keyXmin, xmin) &&
-       pf->getParameter(ParamsFile::keyYmin, ymin) &&
-       pf->getParameter(ParamsFile::keyZmin, zmin)) {
-      QLabel* xyzLabel = new QLabel("XYZ min");
-      QLabel* xLabel = new QLabel(xmin);
-      QLabel* yLabel = new QLabel(ymin);
-      QLabel* zLabel = new QLabel(zmin);
-      surfaceGridLayout->addWidget(xyzLabel, rowNum, 0);
-      surfaceGridLayout->addWidget(xLabel, rowNum, 1);
-      surfaceGridLayout->addWidget(yLabel, rowNum, 2);
-      surfaceGridLayout->addWidget(zLabel, rowNum, 3);
-      rowNum++;
-   }
-   
-   //
-   // AC position
-   //
-   QString acx, acy, acz;
-   if (pf->getParameter(ParamsFile::keyACx, acx) &&
-       pf->getParameter(ParamsFile::keyACy, acy) &&
-       pf->getParameter(ParamsFile::keyACz, acz)) {
-      QLabel* xyzLabel = new QLabel("AC xyz");
-      QLabel* xLabel = new QLabel(acx);
-      QLabel* yLabel = new QLabel(acy);
-      QLabel* zLabel = new QLabel(acz);
-      surfaceGridLayout->addWidget(xyzLabel, rowNum, 0);
-      surfaceGridLayout->addWidget(xLabel, rowNum, 1);
-      surfaceGridLayout->addWidget(yLabel, rowNum, 2);
-      surfaceGridLayout->addWidget(zLabel, rowNum, 3);
-      rowNum++;
-   }
-   
-   //
-   // Whole volume ac
-   //
-   QString wholeAcx, wholeAcy, wholeAcz;
-   if (pf->getParameter(ParamsFile::keyWholeVolumeACx, wholeAcx) &&
-       pf->getParameter(ParamsFile::keyWholeVolumeACy, wholeAcy) &&
-       pf->getParameter(ParamsFile::keyWholeVolumeACz, wholeAcz)) {
-      QLabel* xyzLabel = new QLabel("Whole Vol AC xyz");
-      QLabel* xLabel = new QLabel(wholeAcx);
-      QLabel* yLabel = new QLabel(wholeAcy);
-      QLabel* zLabel = new QLabel(wholeAcz);
-      surfaceGridLayout->addWidget(xyzLabel, rowNum, 0);
-      surfaceGridLayout->addWidget(xLabel, rowNum, 1);
-      surfaceGridLayout->addWidget(yLabel, rowNum, 2);
-      surfaceGridLayout->addWidget(zLabel, rowNum, 3);
-      rowNum++;
+   if (showSurfaceSelectionOptionsFlag) {
+      //
+      // Parameters file contains information for offset
+      // xmin, ymin, zmin
+      //
+      QString xmin, ymin, zmin;
+      if (pf->getParameter(ParamsFile::keyXmin, xmin) &&
+          pf->getParameter(ParamsFile::keyYmin, ymin) &&
+          pf->getParameter(ParamsFile::keyZmin, zmin)) {
+         QLabel* xyzLabel = new QLabel("XYZ min");
+         QLabel* xLabel = new QLabel(xmin);
+         QLabel* yLabel = new QLabel(ymin);
+         QLabel* zLabel = new QLabel(zmin);
+         surfaceGridLayout->addWidget(xyzLabel, rowNum, 0);
+         surfaceGridLayout->addWidget(xLabel, rowNum, 1);
+         surfaceGridLayout->addWidget(yLabel, rowNum, 2);
+         surfaceGridLayout->addWidget(zLabel, rowNum, 3);
+         rowNum++;
+      }
+      
+      //
+      // AC position
+      //
+      QString acx, acy, acz;
+      if (pf->getParameter(ParamsFile::keyACx, acx) &&
+          pf->getParameter(ParamsFile::keyACy, acy) &&
+          pf->getParameter(ParamsFile::keyACz, acz)) {
+         QLabel* xyzLabel = new QLabel("AC xyz");
+         QLabel* xLabel = new QLabel(acx);
+         QLabel* yLabel = new QLabel(acy);
+         QLabel* zLabel = new QLabel(acz);
+         surfaceGridLayout->addWidget(xyzLabel, rowNum, 0);
+         surfaceGridLayout->addWidget(xLabel, rowNum, 1);
+         surfaceGridLayout->addWidget(yLabel, rowNum, 2);
+         surfaceGridLayout->addWidget(zLabel, rowNum, 3);
+         rowNum++;
+      }
+      
+      //
+      // Whole volume ac
+      //
+      QString wholeAcx, wholeAcy, wholeAcz;
+      if (pf->getParameter(ParamsFile::keyWholeVolumeACx, wholeAcx) &&
+          pf->getParameter(ParamsFile::keyWholeVolumeACy, wholeAcy) &&
+          pf->getParameter(ParamsFile::keyWholeVolumeACz, wholeAcz)) {
+         QLabel* xyzLabel = new QLabel("Whole Vol AC xyz");
+         QLabel* xLabel = new QLabel(wholeAcx);
+         QLabel* yLabel = new QLabel(wholeAcy);
+         QLabel* zLabel = new QLabel(wholeAcz);
+         surfaceGridLayout->addWidget(xyzLabel, rowNum, 0);
+         surfaceGridLayout->addWidget(xLabel, rowNum, 1);
+         surfaceGridLayout->addWidget(yLabel, rowNum, 2);
+         surfaceGridLayout->addWidget(zLabel, rowNum, 3);
+         rowNum++;
+      }
    }
    
    //
@@ -346,7 +361,7 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
    //
    // Volume origin
    //
-   volumeGridLayout->addWidget(new QLabel("Volume Origin"), rowNumber, 0, Qt::AlignLeft);
+   volumeGridLayout->addWidget(new QLabel("Volume Origin at Center\nof First Voxel"), rowNumber, 0, Qt::AlignLeft);
    volumeOriginXDoubleSpinBox = new QDoubleSpinBox;
    volumeOriginXDoubleSpinBox->setFixedWidth(spinWidth);
    volumeOriginXDoubleSpinBox->setSingleStep(0.5);
@@ -509,7 +524,7 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
             PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
             nodeAttributeLabel = "Paint";
             if (pf->getNumberOfColumns() > 0) {
-               nodeAttributeColumn = dsp->getSelectedColumn(surfaceModelIndex);
+               nodeAttributeColumn = dsp->getFirstSelectedColumnForBrainModel(surfaceModelIndex);
             }
             nodeFileType = GUI_NODE_FILE_TYPE_PAINT;
          }
@@ -523,7 +538,7 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
             nodeAttributeLabel = "Metric";
             if (mf->getNumberOfColumns() > 0) {
                DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-               nodeAttributeColumn = dsm->getSelectedDisplayColumn(surfaceModelIndex);
+               nodeAttributeColumn = dsm->getFirstSelectedColumnForBrainModel(surfaceModelIndex);
             }
             nodeFileType = GUI_NODE_FILE_TYPE_METRIC;
          }
@@ -537,7 +552,7 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
             nodeAttributeLabel = "Surface Shape";
             if (ssf->getNumberOfColumns() > 0) {
                DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
-               nodeAttributeColumn = dsss->getSelectedDisplayColumn(surfaceModelIndex);
+               nodeAttributeColumn = dsss->getFirstSelectedColumnForBrainModel(surfaceModelIndex);
             }
             nodeFileType = GUI_NODE_FILE_TYPE_SURFACE_SHAPE;
          }
@@ -716,7 +731,7 @@ GuiSurfaceToVolumeDialog::slotParamtersFromVolumePushButton()
    openVolumeFileDialog.setAcceptMode(WuQFileDialog::AcceptOpen);
    openVolumeFileDialog.setWindowTitle("Choose Volume File");
    openVolumeFileDialog.setFileMode(WuQFileDialog::ExistingFile);
-   openVolumeFileDialog.setFilter( "Volume File (*.HEAD *.hdr *.ifh)");
+   openVolumeFileDialog.setFilter(FileFilters::getVolumeGenericFileFilter());
    if (openVolumeFileDialog.exec() == QDialog::Accepted) {
       if (openVolumeFileDialog.selectedFiles().count() > 0) {
          const QString vname(openVolumeFileDialog.selectedFiles().at(0));

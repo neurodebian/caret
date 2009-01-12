@@ -246,8 +246,9 @@ def renderSceneToImage(specFileName, sceneFileName, sceneNumber, imageName) :
        + sceneFileName    \
        + " "              \
        + str(sceneNumber) \
-       + " "              \
-       + imageName;
+       + " -image-file "  \
+       + imageName        \
+       + " 1"
    print "cmd: %s" % (cmd)
 
    #
@@ -660,35 +661,39 @@ def testSegmentation() :
    
    #              1111111111
    #     1234567890123456789
-   op = "YYYYYYYYYNYYYYY"
+   op = "YYYYYYYYNYYYYYYYY"
    command = "-volume-segment"
-   gray = 57
-   white = 106
+   gray = "57"
+   white = "106"
    pad = "NNNNNN"
    structure = "RIGHT"
    specName = "Human.TestSegmentation.R.spec"
-   volName = "Human.AnatomyVolume.R+orig.nii"
-   volType = "NIFTI";
-   cmd  = "%s %s %s %s %s %d %d %s %s %s" % \
-          (progName, command, volName, specName, op, gray, white, pad, structure, volType)
+   anatVolName = "Human.AnatomyVolume.R+orig.nii"
+   segVolName = "\"\""
+   errorCorrection = "GRAPH"
+   volType = "NIFTI_GZIP";
+   cmd  = "%s %s %s %s %s %s %s %s %s %s %s %s" % \
+          (progName, command, anatVolName, segVolName, specName, op, gray, 
+           white, pad, structure, errorCorrection, volType)
    
    print "Executing: %s" % cmd
    result = os.system(cmd)
    if (result == 0) :
-      fileList = ("Human.case9.R.Segmentation.nii",
-                  "Human.case9.R.Segmentation_vent.nii",
-                  "RadialPositionMap+orig.nii",
-                  "Human.case9.R.Segment_ErrorCorrected.nii",
-                  "Human.case9.R.CerebralHull.nii",
+      fileList = ("Human.case9.R.Segmentation.nii.gz",
+                  "Human.case9.R.Segmentation_vent.nii.gz",
+                  "RadialPositionMap+orig.nii.gz",
+                  "Human.case9.R.Segment_GraphErrorCorrected.nii.gz",
+                  "Human.case9.R.CerebralHull.nii.gz",
                   "Human.case9.R.Fiducial.*.coord",
                   "Human.case9.R.Inflated.*.coord",
-                  "Human.case9.R.paint_file_*.paint",
-                  "Human.case9.R.surface_shape_file_*.surface_shape")
+                  "Human.case9.R.*.paint",
+                  "Human.case9.R.*.surface_shape")
       
       for file in fileList :
          correctFile = "./results/" + file
          tol = 1.0;
          cmd = "%s -caret-data-file-compare %s %s %f" % (progName, file, correctFile, tol)
+         print cmd, "\n"
          result += os.system(cmd);
    
    if (result != 0) :
@@ -963,6 +968,35 @@ def testTwoSampleTTestPooled() :
 
 ##-----------------------------------------------------------------------------
 ##
+## Initialize preferences file
+##
+def initializePreferencesFile() :
+   #
+   # Set background and foreground color
+   #
+   argList = ("-preferences-file-settings",
+              "-background-color", "0", "0", "0",
+              "-foreground-color", "255", "255", "255",
+              "-debug", "false");
+
+   #
+   # Assemble the command
+   #
+   cmd = progName
+   for arg in argList :
+      cmd = cmd + " " + arg
+
+   #
+   # Execute the command
+   # 
+   print "Executing: %s" % cmd
+   result = os.system(cmd)
+   if (result != 0) :
+      problemMessage += "Updating preferences file failed.\n"
+      problemCount += 1
+      
+##-----------------------------------------------------------------------------
+##
 def printHelp() :
    print "Caret Unit Testing"
    print ""
@@ -1059,6 +1093,11 @@ if doAllFlag :
 print "Unit testing started"
 
 startTime = time.clock()
+
+#
+# Update preferences file
+#
+initializePreferencesFile()
 
 #
 # Set the random seed so statistical results consistent

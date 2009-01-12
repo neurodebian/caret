@@ -55,7 +55,7 @@ GuiMainWindowWindowMenu::GuiMainWindowWindowMenu(GuiMainWindow* parent) :
    addAction(windowActions->getCaretCommandExecutorAction());
    addAction(windowActions->getCaretCommandScriptBuilderAction());
    addAction(windowActions->getDisplayImageEditorAction());
-   addAction(windowActions->getShellCommandWindowAction());
+   //addAction(windowActions->getShellCommandWindowAction());
    addAction(windowActions->getTextFileEditorAction());
    addSeparator();
 
@@ -68,6 +68,7 @@ GuiMainWindowWindowMenu::GuiMainWindowWindowMenu(GuiMainWindow* parent) :
    addAction(windowActions->getWindow8Action());
    addAction(windowActions->getWindow9Action());   
    addAction(windowActions->getWindow10Action()); 
+   addAction(windowActions->getResizeViewWindowsAction());
       
    addSeparator();
    addAction(windowActions->getImageViewingWindowAction());

@@ -50,7 +50,7 @@
  * Constructor.
  */
 GuiVolumePaintEditorDialog::GuiVolumePaintEditorDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Paint Volume Editor");
    
@@ -160,7 +160,7 @@ GuiVolumePaintEditorDialog::slotNameSelectionPushButton()
                               GuiNameSelectionDialog::LIST_ALL,
                               itemForDisplay);
    if (nsd.exec() == QDialog::Accepted) {
-      QString name(nsd.getName());
+      QString name(nsd.getNameSelected());
       if (name.isEmpty() == false) {
          paintNameLineEdit->setText(name);
       }
@@ -313,7 +313,7 @@ GuiVolumePaintEditorDialog::show()
 {
    clearUndoStack();
    
-   QtDialog::show();
+   WuQDialog::show();
    theMainWindow->getBrainModelOpenGL()->setMouseMode(
                   GuiBrainModelOpenGL::MOUSE_MODE_VOLUME_PAINT_EDIT);
 }

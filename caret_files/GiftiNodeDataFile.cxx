@@ -238,6 +238,25 @@ GiftiNodeDataFile::getColumnComment(const int col) const
 }
 
 /**
+ * get indices to all linked studies.
+ */
+void 
+GiftiNodeDataFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const
+{
+   std::set<QString> pmidSet;
+   const int numColumns= getNumberOfColumns();
+   for (int i = 0; i < numColumns; i++) {
+      const StudyMetaDataLinkSet smdl = getColumnStudyMetaDataLinkSet(i);
+      std::vector<QString> pmids;
+      smdl.getAllLinkedPubMedIDs(pmids);
+      pmidSet.insert(pmids.begin(), pmids.end());
+   }
+   studyPMIDs.clear();
+   studyPMIDs.insert(studyPMIDs.end(),
+                     pmidSet.begin(), pmidSet.end());
+}
+
+/**
  * get the study metadata link set for a column.
  */
 StudyMetaDataLinkSet
@@ -441,7 +460,9 @@ GiftiNodeDataFile::addColumns(const int numberOfNewColumns,
    
    std::vector<int> dim;
    dim.push_back(numNodes);
-   dim.push_back(numberOfElementsPerColumn);
+   if (numberOfElementsPerColumn > 1) {
+      dim.push_back(numberOfElementsPerColumn);
+   }
    for (int i = 0; i < numberOfNewColumns; i++) {
       addDataArray(new GiftiDataArray(this,
                                       getDefaultDataArrayIntent(),

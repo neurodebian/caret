@@ -44,8 +44,9 @@ GuiVolumeSelectionDialog::GuiVolumeSelectionDialog(QWidget* parent,
                           const bool enableNewVolumeSelectionIn,
                           const bool enableNameTextEntryIn,
                           const bool enableDescriptiveLabelTextEntryIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Volume Selection");
    
    //

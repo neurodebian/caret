@@ -49,8 +49,9 @@
  * Constructor.
  */
 GuiBorderAttributesDialog::GuiBorderAttributesDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    showVarianceTopographyUncertaintyFlag = true;
    
    borderFileType = BORDER_FILE_TYPE_BORDER_SET;
@@ -80,8 +81,9 @@ GuiBorderAttributesDialog::GuiBorderAttributesDialog(QWidget* parent,
                                                      const QString fileNameIn,
                                                      const BORDER_FILE_TYPE borderFileTypeIn,
                                                      const bool showVarianceTopographyUncertaintyFlagIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    showVarianceTopographyUncertaintyFlag = showVarianceTopographyUncertaintyFlagIn;
    borderFileType = borderFileTypeIn;
    fileName = fileNameIn;
@@ -540,6 +542,6 @@ GuiBorderAttributesDialog::done(int r)
       QApplication::restoreOverrideCursor();
    }
    
-   QtDialog::done(r);
+   WuQDialog::done(r);
 }
 

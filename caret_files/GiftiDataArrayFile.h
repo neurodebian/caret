@@ -111,6 +111,9 @@ class GiftiDataArrayFile : public AbstractFile {
       virtual void resetDataArray(const int arrayIndex);
       
       /// remove a data array
+      virtual void removeDataArray(const GiftiDataArray* arrayPointer);
+      
+      /// remove a data array
       virtual void removeDataArray(const int arrayIndex);
       
       // get all of the data array names
@@ -182,6 +185,9 @@ class GiftiDataArrayFile : public AbstractFile {
       /// get the default data array intent
       void setDefaultDataArrayIntent(const QString& newIntentName);
       
+      /// set the number of nodes for sparse node index files (NIFTI_INTENT_NODE_INDEX)
+      void setNumberOfNodesForSparseNodeIndexFiles(const int numNodes);
+      
    protected:
       // append helper for files where data are label indices
       void appendLabelDataHelper(const GiftiDataArrayFile& naf,
@@ -218,6 +224,9 @@ class GiftiDataArrayFile : public AbstractFile {
                                  QDomDocument& xmlDoc,
                                  QDomElement& rootElement) throw (FileException);
       
+      // process NIFTI_INTENT_NODE_INDEX arrays
+      void procesNiftiIntentNodeIndexArrays() throw (FileException);
+      
       /// the data arrays
       std::vector<GiftiDataArray*> dataArrays;
       
@@ -239,6 +248,9 @@ class GiftiDataArrayFile : public AbstractFile {
       /// gifti XML files enabled
       static bool giftiXMLFilesEnabled;
       
+      /// number of nodes in sparse node index files (NIFTI_INTENT_NODE_INDEX array)
+      int numberOfNodesForSparseNodeIndexFile;
+      
       /*!!!! be sure to update copyHelperGiftiDataArrayFile if new member added !!!!*/
    
    // 
@@ -246,9 +258,8 @@ class GiftiDataArrayFile : public AbstractFile {
    //
 };
 
+#endif // __GIFTI_DATA_ARRAY_FILE_H__
+
 #ifdef __GIFTI_DATA_ARRAY_FILE_MAIN__
    bool GiftiDataArrayFile::giftiXMLFilesEnabled = true;
 #endif // __GIFTI_DATA_ARRAY_FILE_MAIN__
-
-#endif // __GIFTI_DATA_ARRAY_FILE_H__
-

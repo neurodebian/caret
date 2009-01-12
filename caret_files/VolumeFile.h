@@ -38,6 +38,7 @@
 #include "AbstractFile.h"
 #include "AfniHeader.h"
 #include "FileException.h"
+#include "VoxelIJK.h"
 #include "StudyMetaDataLinkSet.h"
 #include "WuNilHeader.h"
 
@@ -65,76 +66,6 @@ class VolumeFile : public AbstractFile {
       };
       
    public:
-      /// Class for storing voxel indices used while searching a volume
-      class VoxelIJK {
-         public:
-            /// Constructor
-            VoxelIJK() {
-               ijkv[0] = -1;
-               ijkv[1] = -1;
-               ijkv[2] = -1;
-            }
-            
-            /// Constructor
-            VoxelIJK(const int i, const int j, const int k) {
-               ijkv[0] = i; 
-               ijkv[1] = j;
-               ijkv[2] = k;
-            }  
-            /// Constructor
-            VoxelIJK(const int ijkIn[3]) {
-               ijkv[0] = ijkIn[0];
-               ijkv[1] = ijkIn[1];
-               ijkv[2] = ijkIn[2];
-            }  
-
-            /// get the voxel indices
-            const int* getIJK() const { return &ijkv[0]; }
-            
-            /// get the I component
-            int getI() const { return ijkv[0]; }
-            
-            /// get the J component
-            int getJ() const { return ijkv[1]; }
-            
-            /// get the K component
-            int getK() const { return ijkv[2]; }
-            
-            /// get the voxel indices
-            void getIJK(int& i, int& j, int& k) const {
-               i = ijkv[0];
-               j = ijkv[1];
-               k = ijkv[2];
-            }
-
-            /// get the voxel indices
-            void getIJK(int ijkOut[3]) const {
-               ijkOut[0] = ijkv[0];
-               ijkOut[1] = ijkv[1];
-               ijkOut[2] = ijkv[2];
-            }
-
-            /// set the voxel indices
-            void setIJK(const int ijkIn[3]) { 
-               ijkv[0] = ijkIn[0]; 
-               ijkv[1] = ijkIn[1]; 
-               ijkv[2] = ijkIn[2]; 
-            }
-            
-            /// get the voxel indices
-            void setIJK(const int i, const int j, const int k) {
-               ijkv[0] = i;
-               ijkv[1] = j;
-               ijkv[2] = k;
-            }
-
-         private:
-            /// the voxel indices
-            int ijkv[3];
-            
-         friend class VolumeFile;
-      };
-
       /// group of voxels
       class VoxelGroup {
          public:
@@ -201,6 +132,8 @@ class VolumeFile : public AbstractFile {
          FILE_READ_WRITE_TYPE_ANALYZE,
          /// NIFTI
          FILE_READ_WRITE_TYPE_NIFTI,
+         /// NIFTI GZIPped
+         FILE_READ_WRITE_TYPE_NIFTI_GZIP,
          /// SPM/MEDx
          FILE_READ_WRITE_TYPE_SPM_OR_MEDX,
          /// WU IFH
@@ -403,6 +336,17 @@ class VolumeFile : public AbstractFile {
          /// increment row fastest
          SLICE_DATA_ORDER_ROW
       };
+      
+      /// interpolation type
+      enum INTERPOLATION_TYPE {
+         /// interpolation type cubic
+         INTERPOLATION_TYPE_CUBIC,
+         /// interpolation type linear
+         INTERPOLATION_TYPE_LINEAR,
+         /// interpolation type nearest neighbor (use for paint and atlas volumes)
+         INTERPOLATION_TYPE_NEAREST_NEIGHBOR
+      };
+      
       /// get the name of the file (description only used if file name is isEmpty)
       virtual QString getFileName(const QString& description = "") const;
 
@@ -496,7 +440,8 @@ class VolumeFile : public AbstractFile {
                   ParamsFile* paramsFile = NULL);
       
       /// pad segmentation volume
-      void padSegmentation(const int padding[6]);
+      void padSegmentation(const int padding[6],
+                           const bool erodePaddingFlag);
       
       /// copy a subvolume to "this" volume
       void copySubVolume(const VolumeFile* sourceVolume,
@@ -529,19 +474,16 @@ class VolumeFile : public AbstractFile {
       /// get the volume data (const method)
       const float* getVoxelData() const { return voxels; }
       
-      /// get the coordinate of a voxel
+      /// get the coordinate at the center of the voxel
       void getVoxelCoordinate(const int ijk[3], 
-                             const bool centerOfVoxelFlag,
                              float coord[3]) const;
       
-      /// get the coordinate of a voxel
+      /// get the coordinate at the center of the voxel
       void getVoxelCoordinate(const int i, const int j, const int k, 
-                              const bool centerOfVoxelFlag,
                               float coord[3]) const;
       
-      /// get the coordinate of a voxel
+      /// get the coordinate at the center of the voxel
       void getVoxelCoordinate(const VoxelIJK& v, 
-                              const bool centerOfVoxelFlag,
                               float coord[3]) const;
       
       /// get the volume data
@@ -585,6 +527,9 @@ class VolumeFile : public AbstractFile {
       
       /// set a voxel at the specified index
       void setVoxel(const int ijk[3], const int component, const float voxelValue);
+      
+      /// set a voxel at the specified index
+      void setVoxel(const VoxelIJK& v, const int component, const float voxelValue);
       
       /// set a voxel at the specified index
       void setVoxel(const int i, const int j, const int k, const int component, 
@@ -677,10 +622,17 @@ class VolumeFile : public AbstractFile {
       /// set the dimensions of the volume
       void setDimensions(const int dim[3]);
       
-      /// get the origin
+      /// get the origin at the corner of the first voxel
+      void getOriginAtCornerOfVoxel(float originCornerOfVoxelOut[3]) const;
+      
+      /// set the origin at the corner of the first voxel
+      void setOriginAtCornerOfVoxel(const float originCornerOfVoxelIn[3],
+                                    const float voxelSizesIn[3]);
+      
+      /// get the origin (at the center of the first voxel)
       void getOrigin(float originOut[3]) const;
       
-      /// set the origin
+      /// set the origin (at the center of the first voxel)
       void setOrigin(const float originIn[3]);
       
       /// get the voxel spacing for the volume
@@ -707,7 +659,8 @@ class VolumeFile : public AbstractFile {
                                                          throw (FileException);      
       
       /// Get the volume extent of non-zero voxels.  Return voxel index range of non-zero voxels.
-      void getNonZeroVoxelExtent(int extent[6]) const;
+      void getNonZeroVoxelExtent(int extentVoxelIndices[6],
+                                 float extentCoordinates[6]) const;
       
       /// get the volume's data file name
       QString getDataFileName() const { return dataFileName; }
@@ -725,8 +678,7 @@ class VolumeFile : public AbstractFile {
       int getNumberOfSubVolumes() const { return numberOfSubVolumes; }
       
       /// get the sub volume names
-      void getSubVolumeNames(std::vector<QString>& names) const 
-         { names = subVolumeNames; }
+      void getSubVolumeNames(std::vector<QString>& names) const;
 
       /// get the volume file's type for reading
       FILE_READ_WRITE_TYPE getFileReadType() const { return fileReadType; }
@@ -766,7 +718,17 @@ class VolumeFile : public AbstractFile {
                                     const QString& paintName,
                                     const Border* border,
                                     const int slicesAboveAndBelowPlane);
-                                    
+      
+      /// set highlight a region name
+      void setHighlightRegionName(const QString& name,
+                                  const bool highlightItFlag);
+                                  
+      /// get a region is highlighted
+      bool getHighlightRegionNameByIndex(const int indx) const;
+      
+      /// clear region highlighting
+      void clearRegionHighlighting();
+      
       /// get the number of region names
       int getNumberOfRegionNames() const { return regionNames.size(); }
       
@@ -781,6 +743,9 @@ class VolumeFile : public AbstractFile {
       
       /// add a region name (returns its index)
       int addRegionName(const QString& name);
+      
+      /// synchronize the region names in the volumes (index X is always region Y)
+      static void synchronizeRegionNames(std::vector<VolumeFile*>& volumeFiles);
       
       /// Get the ranges of the voxel values for a specific column.
       void getMinMaxVoxelValues(float& minVoxelValue, float& maxVoxelValue);
@@ -838,6 +803,7 @@ class VolumeFile : public AbstractFile {
                                      
       /// write the specified sub-volumes
       static void writeFile(const QString& fileNameIn,
+                            const VOLUME_TYPE volumeType,
                             const VOXEL_DATA_TYPE writeVoxelDataType,
                             std::vector<VolumeFile*>& volumesToWrite,
                             const bool zipAfniBrikFile = false) throw (FileException);
@@ -916,7 +882,8 @@ class VolumeFile : public AbstractFile {
       void undoModification(const VolumeModification* modifiedVoxel);
       
       /// resample the image to the specified spacing
-      void resampleToSpacing(const float newSpacing[3]);
+      void resampleToSpacing(const float newSpacing[3],
+                             const INTERPOLATION_TYPE interpolationType);
       
       /// apply a transformation matrix to a volume
       void applyTransformationMatrix(vtkTransform* transform);
@@ -931,14 +898,26 @@ class VolumeFile : public AbstractFile {
       int getTotalNumberOfVoxels() const;
       
       /// compute a voxel index.
-      int getVoxelDataIndex(const VoxelIJK& v, const int component = 0) const;
+      inline int getVoxelDataIndex(const VoxelIJK& v, const int component = 0) const {
+         const int indx = v.ijkv[0] + v.ijkv[1] * dimensions[0] + v.ijkv[2] * dimensions[0] * dimensions[1];
+         const int compIndex = indx * numberOfComponentsPerVoxel + component;
+         return compIndex;
+      }
 
       /// compute a voxel data index
-      int getVoxelDataIndex(const int ijk[3], const int component = 0) const;
+      inline int getVoxelDataIndex(const int ijk[3], const int component = 0) const {
+         const int indx = ijk[0] + ijk[1] * dimensions[0] + ijk[2] * dimensions[0] * dimensions[1];
+         const int compIndex = indx * numberOfComponentsPerVoxel + component;
+         return compIndex;
+      }
       
       /// compute a voxel data index
-      int getVoxelDataIndex(const int i, const int j, const int k, 
-                        const int component = 0) const;
+      inline int getVoxelDataIndex(const int i, const int j, const int k, 
+                                   const int component = 0) const {
+         const int indx = i + j * dimensions[0] + k * dimensions[0] * dimensions[1];
+         const int compIndex = indx * numberOfComponentsPerVoxel + component;
+         return compIndex;
+      }
       
       /// compute a voxel color index.
       int getVoxelColorIndex(const VoxelIJK& v) const;
@@ -1050,9 +1029,15 @@ class VolumeFile : public AbstractFile {
       void clampVoxelIndex(const VOLUME_AXIS axis,
                            int& voxelIndex) const;
       
+      /// clamp a voxel index to within valid values (0 to dim-1)
+      void clampVoxelIndex(int voxelIJK[3]) const;
+      
       /// clamp a voxel dimensions to within valid values (0 to dim)
       void clampVoxelDimension(const VOLUME_AXIS axis,
                                int& voxelIndex) const;
+      
+      /// clamp a voxel dimensions to within valid values (0 to dim)
+      void clampVoxelDimension(int voxelIJK[3]) const;
       
       /// get 6 connected neighbors for a voxel
       void getNeighbors(const VoxelIJK& voxel, std::vector<VoxelIJK>& neighbors) const;
@@ -1079,8 +1064,8 @@ class VolumeFile : public AbstractFile {
                             const int unconnectedValueOut,
                             VolumeModification* modifiedVoxels = NULL);
                             
-      /// remove islands (all but the largest connected piece of surface)
-      void removeIslandsFromSegmentation();
+      /// remove islands (all but the largest connected piece of surface, true if islands removed)
+      bool removeIslandsFromSegmentation();
       
       /// Find non-zero voxel extent and write limits file if filename is not isEmpty
       void findLimits(const QString& limitfileName, int extent[6]);
@@ -1207,6 +1192,12 @@ class VolumeFile : public AbstractFile {
       /// get the number of cavities in a segmentation volume
       int getNumberOfSegmentationCavitiesSubVolume(const int extent[6]) const;
       
+      /// get topology information by generating a surface
+      void getSegmentationTopologyInformation(int& numberOfObjects,
+                                              int& numberOfCavities,
+                                              int& numberOfHoles,
+                                              int& eulerCount) const throw (FileException);
+                                              
       /// get the euler data for this volume
       void getEulerCountsForSegmentationVolume(int& numberOfObjects,
                                                int& numberOfCavities,
@@ -1368,6 +1359,9 @@ class VolumeFile : public AbstractFile {
       /// initialize the sub volume information
       void initializeSubVolumes(const int num);
       
+      /// get data file name for read error (if data file name empty, return file name)
+      QString getDataFileNameForReadError() const;
+      
       /// Read the spec file data (should never be called)
       void readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,
                                   QDomElement& /* rootElement */) throw (FileException);
@@ -1471,6 +1465,9 @@ class VolumeFile : public AbstractFile {
       /// the region names
       std::vector<QString> regionNames;
 
+      /// indices of highlighted region names
+      std::vector<int> regionNameHighlighted;
+      
       /// the voxel colors (3 components (RGB) per voxel)
       unsigned char* voxelColoring;
       
@@ -1489,7 +1486,7 @@ class VolumeFile : public AbstractFile {
       /// voxel sizes
       float spacing[3];
       
-      /// coordinates for origin (first, typically most LPI voxel)
+      /// coordinates for origin (located at the center of the first voxel)
       float origin[3];
       
       /// number of components per voxel
@@ -1563,6 +1560,8 @@ class VolumeFile : public AbstractFile {
       static bool eulerTableValid;
 };
 
+#endif // __VE_VOLUME_FILE_NEW_H__
+
 #ifdef __VOLUME_FILE_MAIN_H__
 bool VolumeFile::eulerTableValid = false;
 float VolumeFile::eulerTable[256];
@@ -1596,7 +1595,4 @@ int VolumeFile::localNeighbors[26][3] = {
 	{0, -1, -1},
 	{-1, -1, -1}
 };
-
 #endif // __VOLUME_FILE_MAIN_H__
-
-#endif // __VE_VOLUME_FILE_NEW_H__

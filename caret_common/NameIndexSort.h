@@ -43,10 +43,14 @@ class NameIndexSort {
             QString name;
             
             /// the index
-            int         indx;
+            int indx;
             
             /// less than operator
             bool operator<(const NameIndexPair& nip) const;
+            
+            /// compare case insensitive
+            static bool lessThanCaseInsensitive(const NameIndexPair& nip1,
+                                                const NameIndexPair& nip2);
       };
       
    public:
@@ -67,13 +71,22 @@ class NameIndexSort {
       /// get number of name indice pairs
       int getNumberOfItems() const;
       
-      /// get name and index for an item
-      void getNameAndIndex(const int itemNum,
+      /// get name and index for an item after sorting
+      void getSortedNameAndIndex(const int itemNum,
                            int& indexOut,
                            QString& nameOut) const;
       
-      /// sort by name
-      void sortByName();
+      /// get index for an item after sorting
+      int getSortedIndex(const int itemNum) const;
+      
+      /// get name for an item after sorting
+      QString getSortedName(const int itemNum) const;
+      
+      /// sort by name case sensitive
+      void sortByNameCaseSensitive();
+      
+      /// sort by name case insensitive
+      void sortByNameCaseInsensitive();
       
    protected:
       /// the names and indices

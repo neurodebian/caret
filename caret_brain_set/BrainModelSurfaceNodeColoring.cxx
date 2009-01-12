@@ -32,6 +32,7 @@
 
 #include "AreaColorFile.h"
 #include "ArealEstimationFile.h"
+#include "BrainModelSurfaceOverlay.h"
 #include "BrainModelVolume.h"
 #include "CocomacConnectivityFile.h"
 #include "ColorFile.h"
@@ -329,30 +330,17 @@ static unsigned char lutOrangeYellow[256][3] = {
  */
 BrainModelSurfaceNodeColoring::BrainModelSurfaceNodeColoring(BrainSet* bs)
 {
-   overlayPrimaryNodeColors  = NULL;
-   overlaySecondaryNodeColors  = NULL;
-   underlayNodeColors = NULL;
-   nodeColors = NULL;
-   
    brainSet = bs;
-   primaryOverlay.clear();
-   secondaryOverlay.clear();
-   underlay.clear();
    defaultColor[0] = 100;
    defaultColor[1] = 100;
    defaultColor[2] = 100;
    defaultColorName = "???";
-   geographyBlending = 0.6;
-   opacity = 1.0;
-   lightingOn = true;
-   primaryOverlayLightingOn = true;
-   secondaryOverlayLightingOn = true;
-   underlayLightingOn = true;
-   lightingOn = true;
    numNodesLastTime = -1;
    numBrainModelsLastTime = -1;
    
    probAtlasThreshPaintFile = NULL;
+   
+   coloringMode = COLORING_MODE_NORMAL;
    
    assignTopographyEccentricityPalette();
    assignTopographyPolarAnglePalette();
@@ -408,18 +396,30 @@ BrainModelSurfaceNodeColoring::setDefaultColor()
  * get the colors for a node.
  */
 const unsigned char* 
-BrainModelSurfaceNodeColoring::getNodeColor(const int model, const int indexIn) const 
+BrainModelSurfaceNodeColoring::getNodeColor(const int modelIn, const int indexIn) const 
 {
-   const int index = (model * numNodesLastTime * 3) + (indexIn * 3);
+   //
+   // Model might be "-1" which for display purposes means all models.
+   // In this case, use the first model.
+   //
+   const int model = (modelIn < 0) ? 0 : modelIn;
+   
+   const int index = (model * numNodesLastTime * 4) + (indexIn * 4);
    return &nodeColoring[index];
 }
       
 /**
  * get the color source for a node.
  */
-BrainModelSurfaceNodeColoring::NODE_COLOR_SOURCE 
-BrainModelSurfaceNodeColoring::getNodeColorSource(const int model, const int indexIn) const 
+int 
+BrainModelSurfaceNodeColoring::getNodeColorSource(const int modelIn, const int indexIn) const 
 {
+   //
+   // Model might be "-1" which for display purposes means all models.
+   // In this case, use the first model.
+   //
+   const int model = (modelIn < 0) ? 0 : modelIn;
+   
    const int index = (model * numNodesLastTime) + indexIn;
    return nodeColorSource[index];
 }
@@ -428,13 +428,21 @@ BrainModelSurfaceNodeColoring::getNodeColorSource(const int model, const int ind
  * Set the colors for a node.
  */
 void
-BrainModelSurfaceNodeColoring::setNodeColor(const int model,
-                                            const int index, const unsigned char rgb[3])
+BrainModelSurfaceNodeColoring::setNodeColor(const int modelIn,
+                                            const int index, const unsigned char rgb[3],
+                                            const unsigned char alpha)
 {
+   //
+   // Model might be "-1" which for display purposes means all models.
+   // In this case, use the first model.
+   //
+   const int model = (modelIn < 0) ? 0 : modelIn;
+   
    const int numNodes = brainSet->getNumberOfNodes();
-   nodeColoring[model * numNodes * 3 + index * 3]     = rgb[0];
-   nodeColoring[model * numNodes * 3 + index * 3 + 1] = rgb[1];
-   nodeColoring[model * numNodes * 3 + index * 3 + 2] = rgb[2];
+   nodeColoring[model * numNodes * 4 + index * 4]     = rgb[0];
+   nodeColoring[model * numNodes * 4 + index * 4 + 1] = rgb[1];
+   nodeColoring[model * numNodes * 4 + index * 4 + 2] = rgb[2];
+   nodeColoring[model * numNodes * 4 + index * 4 + 3] = alpha;
 }
 
 /**
@@ -457,13 +465,16 @@ BrainModelSurfaceNodeColoring::getLutIndex(const float value, const float dmin, 
  * Assign surface painting for NONE
  */
 void
-BrainModelSurfaceNodeColoring::assignNoneColoring()
+BrainModelSurfaceNodeColoring::assignNoneColoring(const int nodeColoringOffset,
+                                                  const int nodeColorSourceOffset)
 {
    const int numNodes = brainSet->getNumberOfNodes();
    for (register int i = 0; i < numNodes; i++) {
-      nodeColors[i].r = defaultColor[0];
-      nodeColors[i].g = defaultColor[1];
-      nodeColors[i].b = defaultColor[2];
+      nodeColoring[nodeColoringOffset + i*4]   = defaultColor[0];
+      nodeColoring[nodeColoringOffset + i*4+1] = defaultColor[1];
+      nodeColoring[nodeColoringOffset + i*4+2] = defaultColor[2];
+      nodeColoring[nodeColoringOffset + i*4+3] = 255;
+      nodeColorSource[nodeColorSourceOffset + i]  = -1;
    }
 }
 
@@ -471,7 +482,8 @@ BrainModelSurfaceNodeColoring::assignNoneColoring()
  * Assign RGB Paint Coloring.
  */
 void
-BrainModelSurfaceNodeColoring::assignRgbPaintColoring(const bool underlayFlag)
+BrainModelSurfaceNodeColoring::assignRgbPaintColoring(const int overlayNumber,
+                                                      const bool underlayFlag)
 {
    DisplaySettingsRgbPaint* dsrp = brainSet->getDisplaySettingsRgbPaint();
    RgbPaintFile* rgbPaintFile = brainSet->getRgbPaintFile();
@@ -489,7 +501,7 @@ BrainModelSurfaceNodeColoring::assignRgbPaintColoring(const bool underlayFlag)
       std::cerr << "RGB Paint has different number of nodes than surface." << std::endl;
       return;
    }
-   const int column = dsrp->getSelectedColumn(modelNumber);
+   const int column = dsrp->getSelectedDisplayColumn(modelNumber, overlayNumber);
    if ((column < 0) || (column >= rgbPaintFile->getNumberOfColumns())) {
       std::cout << "Invalid RGB Paint column selected." << std::endl;
       return;
@@ -541,7 +553,12 @@ BrainModelSurfaceNodeColoring::assignRgbPaintColoring(const bool underlayFlag)
       float r, g, b;
       rgbPaintFile->getRgb(i, column, r, g, b);
       
-      if (positiveDisplay) {
+      if ((r == 0.0) &&
+          (g == 0.0) &&
+          (b == 0.0)) {
+         // no RGB so do nothing
+      }
+      else if (positiveDisplay) {
          if (underlayFlag) {
             redThresh   = -1.0;
             greenThresh = -1.0;
@@ -577,25 +594,22 @@ BrainModelSurfaceNodeColoring::assignRgbPaintColoring(const bool underlayFlag)
          }
          if (dsrp->getRedEnabled()) {
             if (r <= 0.0) {
-               r = -r;
-               if (r > redThresh) {
-                  nodeColors[i].r = (unsigned char)redPF->GetValue(-r);
+               if (r < redThresh) {
+                  nodeColors[i].r = (unsigned char)redPF->GetValue(r);
                }
             }
          }
          if (dsrp->getGreenEnabled()) {
             if (g <= 0.0) {
-               g = -g;
-               if (g > greenThresh) {
-                  nodeColors[i].g = (unsigned char)greenPF->GetValue(-g);
+               if (g < greenThresh) {
+                  nodeColors[i].g = (unsigned char)greenPF->GetValue(g);
                }
             }
          }
          if (dsrp->getBlueEnabled()) {
             if (b <= 0.0) {
-               b = -b;
-               if (b > blueThresh) {
-                  nodeColors[i].b = (unsigned char)bluePF->GetValue(-b);
+               if (b < blueThresh) {
+                  nodeColors[i].b = (unsigned char)bluePF->GetValue(b);
                }
             }
          }
@@ -619,16 +633,20 @@ BrainModelSurfaceNodeColoring::assignRgbPaintColoring(const bool underlayFlag)
          }
       }
    }
+   
+   redPF->Delete();
+   greenPF->Delete();
+   bluePF->Delete();
 }
 
 /**
  * Assign areal estimation coloring.
  */
 void
-BrainModelSurfaceNodeColoring::assignArealEstimationColoring()
+BrainModelSurfaceNodeColoring::assignArealEstimationColoring(const int overlayNumber)
 {
    DisplaySettingsArealEstimation* dsae = brainSet->getDisplaySettingsArealEstimation();
-   const int columnNumber = dsae->getSelectedColumn(modelNumber);
+   const int columnNumber = dsae->getSelectedDisplayColumn(modelNumber, overlayNumber);
    
    ArealEstimationFile* aef = brainSet->getArealEstimationFile();
    const int numNodes = brainSet->getNumberOfNodes();
@@ -716,7 +734,7 @@ BrainModelSurfaceNodeColoring::matchPaintNamesToNodeColorFile(BrainSet* bs,
  * Assign paint coloring to nodes.
  */ 
 void
-BrainModelSurfaceNodeColoring::assignPaintColoring()
+BrainModelSurfaceNodeColoring::assignPaintColoring(const int overlayNumber)
 {
    PaintFile* pf = brainSet->getPaintFile();
    
@@ -729,7 +747,7 @@ BrainModelSurfaceNodeColoring::assignPaintColoring()
       return;
    }
    DisplaySettingsPaint* dsp = brainSet->getDisplaySettingsPaint();
-   const int column = dsp->getSelectedColumn(modelNumber);
+   const int column = dsp->getSelectedDisplayColumn(modelNumber, overlayNumber);
    if (column < 0) {
       //std::cerr << "No column of paint file selected." << std::endl;
       return;
@@ -768,55 +786,6 @@ BrainModelSurfaceNodeColoring::assignPaintColoring()
          }
       }
    }
-/*
-   PaintFile* pf = brainSet->getPaintFile();
-   
-   const int numNodes = pf->getNumberOfNodes();
-   if (numNodes == 0) {
-      return;
-   }
-   if (numNodes != brainSet->getNumberOfNodes()) {
-      std::cerr << "Number of nodes in Paint File does not match surface." << std::endl;
-      return;
-   }
-   DisplaySettingsPaint* dsp = brainSet->getDisplaySettingsPaint();
-   const int column = dsp->getSelectedColumn(modelNumber);
-   if (column < 0) {
-      //std::cerr << "No column of paint file selected." << std::endl;
-   }
-   
-   const int numPaintNames = pf->getNumberOfPaintNames();
-   std::vector<QString> paintNames;
-   for (int j = 0; j < numPaintNames; j++) {
-      paintNames.push_back(pf->getPaintNameFromIndex(j));
-   }
-   int* paintIndexToColorFile = new int[numPaintNames];
-        
-   matchPaintNamesToNodeColorFile(brainSet, paintIndexToColorFile, paintNames);
-   AreaColorFile* cf = brainSet->getAreaColorFile();
-   
-   //
-   // Assign the colors to the nodes
-   //
-   for (int i = 0; i < numNodes; i++) {
-      const int p = pf->getPaint(i, column);
-      const int colorFileIndex = paintIndexToColorFile[p];
-      if (colorFileIndex >= 0) {
-         if (colorFileIndex != questionColorIndex) {
-            unsigned char r = 0, g = 0, b = 0;
-            cf->getColorByIndex(colorFileIndex,
-                                 r, g, b);
-            nodeColors[i].r = r;
-            nodeColors[i].g = g;
-            nodeColors[i].b = b;
-         }
-      }
-      else {
-         paintIndicesWithNoAreaColor.insert(p);
-      }
-   }
-   delete[] paintIndexToColorFile;
-*/
 }
 
 /**
@@ -1124,151 +1093,6 @@ BrainModelSurfaceNodeColoring::assignProbabilisticThresholdColoring()
    if (paintsAreaColorIndex != NULL) delete[] paintsAreaColorIndex;
 }
 
-/*
-**
- * Threshold probabilistic coloring.
- *
-void
-BrainModelSurfaceNodeColoring::assignProbabilisticThresholdColoring()
-{
-   DisplaySettingsProbabilisticAtlas* dspa = brainSet->getDisplaySettingsProbabilisticAtlas();
-   ProbabilisticAtlasFile* paf = brainSet->getProbabilisticAtlasFile();
-   
-   const int numberOfNodes = paf->getNumberOfNodes();
-   const int numberOfColumns = paf->getNumberOfColumns();
-   
-   if (numberOfNodes != brainSet->getNumberOfNodes()) {
-      std::cerr << "Probabilistic Atlas file has different number of nodes than surface." << std::endl;
-      return;
-   }
-   if (numberOfColumns <= 0) {
-      return;
-   }
-   const int numPaintNames = paf->getNumberOfPaintNames();
-   if (numPaintNames <= 0) {
-      std::cerr << "Probabilistic Atlas file contains no paint names." << std::endl;
-      return;
-   }
-
-   const QString question3 = "???";
-   
-   std::vector<QString> paintNames;
-   for (int j = 0; j < numPaintNames; j++) {
-      QString name(paf->getPaintNameFromIndex(j));
-      if (dspa->getTreatQuestColorAsUnassigned()) {
-         if (name == question3) {
-            name = "Unassigned");
-         }
-      }
-      paintNames.push_back(name);
-   }
-   
-   int* paintsAreaColorIndex = new int[numPaintNames];
-        
-   matchPaintNamesToNodeColorFile(brainSet, paintsAreaColorIndex, paintNames);
-   
-   const int numSelectedChannels = dspa->getNumberOfChannelsSelected();
-
-   // see if there is a color for "ANYAREA" which is used when at least one paint column is
-   // non-zero but there is not a majority of the columns the same.
-   AreaColorFile* cf = brainSet->getAreaColorFile();
-   unsigned char anyAreaColor[3] = { defaultColor[0], defaultColor[1], defaultColor[2] };
-   bool anyAreaColorValid = false;
-   cf->getColorByName("ANYAREA", anyAreaColorValid, anyAreaColor[0], anyAreaColor[1], anyAreaColor[2]);
-
-   //
-   // Number of columns that must match
-   //
-   const float ratio = dspa->getThresholdDisplayTypeRatio();
-                             
-   for (int j = 0; j < numberOfNodes; j++){
-      nodeColors[j].r = defaultColor[0];
-      nodeColors[j].g = defaultColor[1];
-      nodeColors[j].b = defaultColor[2];
-
-      int paintColCount = 0;
-      int paintColIndex = 0;
-      bool atLeastOneNonZero = false;
-      for (int k = 0; k < (numberOfColumns - 1); k++) {
-         int cnt = 0;  
-         int cntIndex = 0;
-         if (dspa->getChannelSelectedForStructure(k)) {
-            cntIndex = paf->getPaint(j, k);
-         }
-         if ((cntIndex > 0) && (cntIndex < numPaintNames)) {
-            if (dspa->getAreaSelected(cntIndex) == false) {
-               cntIndex = -1;
-            }
-         }
-         if ((cntIndex > 0) && (cntIndex < numPaintNames)) {
-            cnt = 1;   // count self so start at 1
-            atLeastOneNonZero = true;
-            // skip over ???
-            if (paintNames[cntIndex] == "???") {
-               continue;
-            }
-
-            for (int l = k + 1; l < numberOfColumns; l++) {
-               if (dspa->getChannelSelectedForStructure(l)) {
-                  if (cntIndex == paf->getPaint(j, l)) {
-                      cnt++;
-                  }
-               }
-            }
-
-            const float percentSelected = static_cast<float>(cnt)
-                                        / static_cast<float>(numSelectedChannels);
-            if (percentSelected >= ratio) {
-               if (cnt > paintColCount) {
-                  paintColCount = cnt;
-                  paintColIndex = cntIndex;
-               }
-               break;
-            }
-            else {
-               cnt = 0;
-            }
-         }
-      }
-
-      if (probAtlasThreshPaintFile != NULL) {
-         probAtlasThreshPaintFile->setPaint(j, probAtlasThreshPaintColumn, 0);
-      }
-      
-      if (paintColCount > 0) {
-         const int paintIndex = paintColIndex;
-         const int areaColorIndex = paintsAreaColorIndex[paintIndex];
-
-         if ((areaColorIndex >= 0) && 
-             (dspa->getAreaSelected(paintIndex))) {
-            unsigned char r, g, b;
-            cf->getColorByIndex(areaColorIndex, r, g, b);
-            nodeColors[j].r = r;
-            nodeColors[j].g = g;
-            nodeColors[j].b = b;
-            if (probAtlasThreshPaintFile != NULL) {
-               const int indx = probAtlasThreshPaintFile->addPaintName(
-                                            paf->getPaintNameFromIndex(paintIndex));
-               probAtlasThreshPaintFile->setPaint(j, probAtlasThreshPaintColumn, indx);
-            }
-         }
-         else {
-             nodeColors[j].r = anyAreaColor[0];
-             nodeColors[j].g = anyAreaColor[1];
-             nodeColors[j].b = anyAreaColor[2];
-         }
-      }
-      else if (atLeastOneNonZero && anyAreaColorValid) {
-          nodeColors[j].r = anyAreaColor[0];
-          nodeColors[j].g = anyAreaColor[1];
-          nodeColors[j].b = anyAreaColor[2];
-      }
-   }
-   
-   if (paintsAreaColorIndex != NULL) delete[] paintsAreaColorIndex;
-}
-*/
-
 /**
  * add prob atlas thresholding to paint file
  * the paint column must exist.
@@ -1302,7 +1126,7 @@ BrainModelSurfaceNodeColoring::assignProbabilisticColoring(const BrainModelSurfa
 //---------------------------------------------------------------------------
 void
 BrainModelSurfaceNodeColoring::assignBlendGeographyColoring(const int offset,
-                                                            const int sourceOffset)
+                                                            const int /*sourceOffset*/)
 {
    PaintFile* pf = brainSet->getPaintFile();
    
@@ -1327,55 +1151,24 @@ BrainModelSurfaceNodeColoring::assignBlendGeographyColoring(const int offset,
       }
    }
    
+   DisplaySettingsPaint* dsp = brainSet->getDisplaySettingsPaint();
+   const float geographyBlending = dsp->getGeographyBlending();
+    
    const int numNodes = brainSet->getNumberOfNodes();
    
    for (int j = 0; j < numNodes; j++) {
       const int paintIndex = pf->getPaint(j, geoColumn);
-      if (overlayPrimaryNodeColors[j].r >= 0) {
-         if (geoPaint[paintIndex] != 0) {
-             nodeColoring[offset + j * 3] = 
-                      (unsigned char)(overlayPrimaryNodeColors[j].r * geographyBlending);
-             nodeColoring[offset + j * 3 + 1] = 
-                      (unsigned char)(overlayPrimaryNodeColors[j].g * geographyBlending);
-             nodeColoring[offset + j * 3 + 2] = 
-                      (unsigned char)(overlayPrimaryNodeColors[j].b * geographyBlending);
-         }
-         else {
-             nodeColoring[offset + j * 3]     = overlayPrimaryNodeColors[j].r;
-             nodeColoring[offset + j * 3 + 1] = overlayPrimaryNodeColors[j].g;
-             nodeColoring[offset + j * 3 + 2] = overlayPrimaryNodeColors[j].b;
-         }
-         nodeColorSource[sourceOffset + j] = NODE_COLOR_SOURCE_PRIMARY_OVERLAY;
-      }
-      else if (overlaySecondaryNodeColors[j].r >= 0) {
-         if (geoPaint[paintIndex] != 0) {
-             nodeColoring[offset + j * 3] = 
-                      (unsigned char)(overlaySecondaryNodeColors[j].r * geographyBlending);
-             nodeColoring[offset + j * 3 + 1] = 
-                      (unsigned char)(overlaySecondaryNodeColors[j].g * geographyBlending);
-             nodeColoring[offset + j * 3 + 2] = 
-                      (unsigned char)(overlaySecondaryNodeColors[j].b * geographyBlending);
-         }
-         else {
-             nodeColoring[offset + j * 3]     = overlaySecondaryNodeColors[j].r;
-             nodeColoring[offset + j * 3 + 1] = overlaySecondaryNodeColors[j].g;
-             nodeColoring[offset + j * 3 + 2] = overlaySecondaryNodeColors[j].b;
-         }
-         nodeColorSource[sourceOffset + j] = NODE_COLOR_SOURCE_SECONDARY_OVERLAY;
-      }
-      else if (geoPaint[paintIndex] != 0) {
-         nodeColoring[offset + j * 3] = 
-               (unsigned char)(underlayNodeColors[j].r * geographyBlending);
-         nodeColoring[offset + j * 3 + 1] = 
-               (unsigned char)(underlayNodeColors[j].g * geographyBlending);
-         nodeColoring[offset + j * 3 + 2] = 
-               (unsigned char)(underlayNodeColors[j].b * geographyBlending);
-      }
-      else {
-          nodeColoring[offset + j * 3]     = underlayNodeColors[j].r;
-          nodeColoring[offset + j * 3 + 1] = underlayNodeColors[j].g;
-          nodeColoring[offset + j * 3 + 2] = underlayNodeColors[j].b;
-          nodeColorSource[sourceOffset + j] = NODE_COLOR_SOURCE_UNDERLAY;
+      if (geoPaint[paintIndex]) {
+          const int indx = offset + (j * 4);
+          nodeColoring[indx] = 
+             static_cast<unsigned char>(nodeColoring[indx]
+                                        * geographyBlending);
+          nodeColoring[indx + 1] = 
+             static_cast<unsigned char>(nodeColoring[indx + 1]
+                                        * geographyBlending);
+          nodeColoring[indx + 2] = 
+             static_cast<unsigned char>(nodeColoring[indx + 2]
+                                        * geographyBlending);
       }
    }
    
@@ -1403,7 +1196,7 @@ BrainModelSurfaceNodeColoring::assignCrossoverColoring()
  * Sections coloring
  */
 void
-BrainModelSurfaceNodeColoring::assignSectionColoring()
+BrainModelSurfaceNodeColoring::assignSectionColoring(const int overlayNumber)
 {
    SectionFile* sf = brainSet->getSectionFile();
    const int numNodes = sf->getNumberOfNodes();
@@ -1412,14 +1205,14 @@ BrainModelSurfaceNodeColoring::assignSectionColoring()
       return;
    }
    
-   const DisplaySettingsSurface* dss = brainSet->getDisplaySettingsSurface();
+   const DisplaySettingsSection* dss = brainSet->getDisplaySettingsSection();
    int selectedSection = -100000;
    bool sectionEveryX  = false;
    dss->getSectionHighlighting(selectedSection, sectionEveryX);
    
    DisplaySettingsSection* ds = brainSet->getDisplaySettingsSection();
    
-   const int sectionSetNumber = ds->getSelectedColumn();
+   const int sectionSetNumber = ds->getSelectedDisplayColumn(-1, overlayNumber);
    if ((sectionSetNumber >= 0) && (sectionSetNumber < sf->getNumberOfColumns())) {
       for (int i = 0; i < numNodes; i++) {
          bool colorIt = false;
@@ -1467,12 +1260,12 @@ BrainModelSurfaceNodeColoring::assignEdgesColoring()
  * Surface Shape coloring.
  */
 void
-BrainModelSurfaceNodeColoring::assignSurfaceShapeColoring()
+BrainModelSurfaceNodeColoring::assignSurfaceShapeColoring(const int overlayNumber)
 {
    const SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
    const DisplaySettingsSurfaceShape* dsss = brainSet->getDisplaySettingsSurfaceShape();
    
-   const int column = dsss->getSelectedDisplayColumn(modelNumber);
+   const int column = dsss->getSelectedDisplayColumn(modelNumber, overlayNumber);
    if (column < 0) {
       return;
    }
@@ -1701,139 +1494,13 @@ BrainModelSurfaceNodeColoring::assignCocomacColoring()
    }
    
    dsc->setIDInfo(idInfo);
-   
-/*
-      if (selectedNodePaintIndex >= 0) {
-         const string paintName(s.paintID[selectedNodePaintIndex]);
-         if (getCocomacShowConnectionInfo()) {
-            char str[1024];
-            sprintf(str, 
-                    "\t-----------------------------------------------------"
-                    "--------\n");
-            StatusPrint(str);
-            sprintf(str, "\tSelected node's area is %s.\n", paintName);
-            StatusPrint(str);
-         }
-         
-         set<int> tgtPaintIndices;
-         
-         for (int i = 0; i < numProj; i++) {
-            CocomacProjection* cp = ccf->getCocomacProjection(i);
-            
-            switch(getCocomacViewConnection()) {
-               case COCOMAC_VIEW_AFFERENT_OR_EFFERENT:
-               case COCOMAC_VIEW_AFFERENT:
-                  if (paintName == cp->getTargetSite()) {
-                     const string srcName(cp->getSourceSite());
-                     const int srcPaintIndex = s.PaintIndex(srcName);
-                     if (getCocomacShowConnectionInfo()) {
-                        char str[1024];
-                        sprintf(str,
-                           "\t%s has afferent connection from %s, density %s\n",
-                           paintName, cp->getSourceSite(), 
-                           cp->getDensity());
-                        StatusPrint(str);
-                     }
-                     if (srcPaintIndex >= 0) {
-                        tgtPaintIndices.insert(srcPaintIndex);   
-                     }
-                  }
-                  if (getCocomacViewConnection() == COCOMAC_VIEW_AFFERENT) {
-                     break;
-                  }
-                  else {
-                     // for COCOMAC_VIEW_AFFERENT_OR_EFFERENT, fall through
-                     // to also show efferent connections
-                  }
-               case COCOMAC_VIEW_EFFERENT:
-                  if (paintName == cp->getSourceSite()) {
-                     const string tgtName(cp->getTargetSite());
-                     const int tgtPaintIndex = s.PaintIndex(tgtName);
-                     if (getCocomacShowConnectionInfo()) {
-                        char str[1024];
-                        sprintf(str,
-                             "\t%s has efferent connection to %s, density %s\n",
-                              paintName, cp->getTargetSite(),
-                              cp->getDensity());
-                        StatusPrint(str);
-                     }
-                     if (tgtPaintIndex >= 0) {
-                        tgtPaintIndices.insert(tgtPaintIndex);   
-                     }
-                  }
-                  break;
-               case COCOMAC_VIEW_AFFERENT_AND_EFFERENT:
-                  if (paintName == cp->getSourceSite()) {
-                     const string tgtName(cp->getTargetSite());
-                     bool connectsBothWays = false;
-                     string afferentDensity;
-                     for (int i = 0; i < numProj; i++) {
-                        CocomacProjection* ocp = ccf->getCocomacProjection(i);
-                        if ((ocp->getSourceSite() == tgtName) &&
-                            (ocp->getTargetSite() == paintName)) {
-                           connectsBothWays = true;
-                           afferentDensity = ocp->getDensity();
-                           break;
-                        }
-                     }
-                     if (connectsBothWays) {
-                        const int tgtPaintIndex = s.PaintIndex(tgtName);
-                        char str[1024];
-                        if (getCocomacShowConnectionInfo()) {
-                           sprintf(str,
-                              "\t%s has afferent and efferent connections "
-                              "with %s, afferent density %s, "
-                              "efferent density %s\n",
-                              paintName, cp->getTargetSite(),
-                              afferentDensity,cp->getDensity());
-                           StatusPrint(str);
-                        }
-                        if (tgtPaintIndex >= 0) {
-                           tgtPaintIndices.insert(tgtPaintIndex);   
-                        }
-                     }
-                  }
-                  break;
-            }
-         }
-         
-         for (int j = 0; j < s.num_points; j++) {
-            int rgb[3] = { 0, 0, 0 };
-            bool applyColorsToNode = false;
-            if (s.points[j].paint[paintColumn] == selectedNodePaintIndex) {
-               rgb[0] = 255;
-               rgb[1] =   0;
-               rgb[2] =   0;
-               applyColorsToNode = true;
-            }
-            else {
-               for (set<int>::iterator is = tgtPaintIndices.begin();
-                     is != tgtPaintIndices.end(); is++) {
-                  if (s.points[j].paint[paintColumn] == *is) {
-                     rgb[0] =   0;
-                     rgb[1] = 255;
-                     rgb[2] =   0;
-                     applyColorsToNode = true;
-                     break;
-                  }
-               }
-            }
-            if (applyColorsToNode == true) {
-               nodeColors[j].r = rgb[0];
-               nodeColors[j].g = rgb[1];
-               nodeColors[j].b = rgb[2];
-            }
-         }
-      }
-   }
-*/
 }
 
 /**
  * Assign metric coloring.
  */
 void
-BrainModelSurfaceNodeColoring::assignMetricColoring()
+BrainModelSurfaceNodeColoring::assignMetricColoring(const int overlayNumber)
 {
    QTime timer;
    timer.start();
@@ -1841,7 +1508,7 @@ BrainModelSurfaceNodeColoring::assignMetricColoring()
    MetricFile* mf = brainSet->getMetricFile();
    DisplaySettingsMetric* dsm = brainSet->getDisplaySettingsMetric();
    
-   const int viewIndex = dsm->getSelectedDisplayColumn(modelNumber);
+   const int viewIndex = dsm->getSelectedDisplayColumn(modelNumber, overlayNumber);
    if (viewIndex < 0) {
       return;
    }
@@ -1870,14 +1537,19 @@ BrainModelSurfaceNodeColoring::assignMetricColoring()
                                             dsm->getSelectedOverlayScale();
    if (overlayScale == DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME) {
       if (funcVolume == NULL) {
-         overlayScale = DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC;
+         overlayScale = DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO;
       }
    }
    
    bool userScaleFlag = false;
    switch (overlayScale) {
-      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC:
-         mf->getDataColumnMinMax(viewIndex, negMaxMetric, posMaxMetric);
+      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO:
+         mf->getDataColumnMinMax(dsm->getSelectedDisplayColumn(modelNumber, overlayNumber), //dsm->getFirstSelectedColumnForBrainModel(modelNumber),
+                                 negMaxMetric, posMaxMetric);
+         break;
+      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
+         mf->getDataColumnMinMax(dsm->getOverlayScaleSpecifiedColumnNumber(),
+                                 negMaxMetric, posMaxMetric);
          break;
       case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
          funcVolume->getMinMaxVoxelValues(negMaxMetric, posMaxMetric);
@@ -1890,7 +1562,7 @@ BrainModelSurfaceNodeColoring::assignMetricColoring()
    
    //setColorbarMinMaxZero(minMetric, maxMetric, 0.0);
    
-   const int thresholdIndex = dsm->getSelectedThresholdColumn(modelNumber);
+   const int thresholdIndex = dsm->getSelectedThresholdColumn(modelNumber, overlayNumber);
    float thresholdNegativeValue = 0.0, thresholdPositiveValue = 0.0;
    dsm->getUserThresholdingValues(thresholdNegativeValue,
                                   thresholdPositiveValue);
@@ -2279,7 +1951,7 @@ BrainModelSurfaceNodeColoring::assignTopographyPolarAnglePalette()
  * Assign from topography
  */
 void
-BrainModelSurfaceNodeColoring::assignTopographyColoring()
+BrainModelSurfaceNodeColoring::assignTopographyColoring(const int overlayNumber)
 {
    TopographyFile* tf = brainSet->getTopographyFile();
    if ((tf->getNumberOfNodes() == 0) || (tf->getNumberOfColumns() == 0)) {
@@ -2287,7 +1959,7 @@ BrainModelSurfaceNodeColoring::assignTopographyColoring()
    }
    
    DisplaySettingsTopography* dst = brainSet->getDisplaySettingsTopography();
-   const int column = dst->getSelectedColumn(modelNumber);
+   const int column = dst->getSelectedDisplayColumn(modelNumber, overlayNumber);
    
    const bool showEccentricity = 
       (dst->getDisplayType() == DisplaySettingsTopography::TOPOGRAPHY_DISPLAY_ECCENTRICITY);
@@ -2405,106 +2077,27 @@ BrainModelSurfaceNodeColoring::assignColors()
       return;
    }
    
+   const int numberOfSurfaceOverlays = brainSet->getNumberOfSurfaceOverlays();
+   
    if ((numNodesLastTime < 0) ||
        (numNodesLastTime != numNodes) ||
        (numBrainModelsLastTime < 0) ||
        (numBrainModelsLastTime != numBrainModels)) {
-      if (overlayPrimaryNodeColors != NULL) {
-         delete[] overlayPrimaryNodeColors;
-      }
-      if (overlaySecondaryNodeColors != NULL) {
-         delete[] overlaySecondaryNodeColors;
-      }
-      if (underlayNodeColors != NULL) {
-         delete[] underlayNodeColors;
-      }
-      overlayPrimaryNodeColors = new NodeColor[numNodes];
-      overlaySecondaryNodeColors = new NodeColor[numNodes];
-      underlayNodeColors = new NodeColor[numNodes];
-      nodeColoring.resize(numNodes * 3 * numBrainModels);
+      nodeColors.resize(numNodes);
+      nodeColoring.resize(numNodes * 4 * numBrainModels);
       nodeColorSource.resize(numNodes * numBrainModels);
       numNodesLastTime = numNodes;
-      const int oldNumBrainModels = numBrainModelsLastTime;
       numBrainModelsLastTime = numBrainModels;
-      
-      OVERLAY_SELECTIONS primOver = OVERLAY_NONE;
-      OVERLAY_SELECTIONS secOver  = OVERLAY_NONE;
-      OVERLAY_SELECTIONS under   = OVERLAY_NONE;
-      const int firstModelIndex = brainSet->getFirstBrainModelSurfaceIndex();
-      if (primaryOverlay.empty() == false) {
-         primOver = primaryOverlay[0];
-         if ((firstModelIndex >= 0) && 
-             (firstModelIndex < static_cast<int>(primaryOverlay.size()))) {
-            primOver = primaryOverlay[firstModelIndex];
-         }
-      }
-      if (secondaryOverlay.empty() == false) {
-         secOver = secondaryOverlay[0];
-         if ((firstModelIndex >= 0) && 
-             (firstModelIndex < static_cast<int>(secondaryOverlay.size()))) {
-            secOver = secondaryOverlay[firstModelIndex];
-         }
-      }
-      if (underlay.empty() == false) {
-         under = underlay[0];
-         if ((firstModelIndex >= 0) && 
-             (firstModelIndex < static_cast<int>(underlay.size()))) {
-            under = underlay[firstModelIndex];
-         }
-      }
-      primaryOverlay.resize(numBrainModels,   primOver);
-      secondaryOverlay.resize(numBrainModels, secOver);
-      underlay.resize(numBrainModels,         under);
-      
-      if (oldNumBrainModels > 0) {
-         int firstSurfaceIndex = -1;
-         for (int i = 0; i < oldNumBrainModels; i++) {
-            if (i < numBrainModels) {
-               if (brainSet->getBrainModelSurface(i) != NULL) {
-                  firstSurfaceIndex = i;
-                  break;
-               }
-            }
-         }
-         if (firstSurfaceIndex >= 0) {
-            for (int i = oldNumBrainModels; i < numBrainModels; i++) {
-               primaryOverlay[i]   = primaryOverlay[firstSurfaceIndex];
-               secondaryOverlay[i] = secondaryOverlay[firstSurfaceIndex];
-               underlay[i]         = underlay[firstSurfaceIndex];
-            }
-         }
-      }      
-   }
-   else {
-/*
-      for (int i = 0; i < numNodesLastTime; i++) {
-         overlayPrimaryNodeColors[i].reset();
-         overlaySecondaryNodeColors[i].reset();
-         underlayNodeColors[i].reset();
-      }
-*/
    }
    
    setDefaultColor();
    
    for (modelNumber = 0; modelNumber < numBrainModels; modelNumber++) {
       //
-      // If this NOT a surface
-      //
-/*
-      if ((brainSet->getBrainModelSurface(modelNumber) == NULL) &&
-          (brainSet->getBrainModelSurfaceAndVolume(modelNumber) == NULL)) {
-         //
-         // Skip it
-         //
-         continue;
-      }
-*/      
-      //
       // offsets into nodeColoring and nodeColorSource
       //
       const int nodeColorSourceOffset = modelNumber * numNodes;
-      const int nodeColoringOffset = nodeColorSourceOffset * 3;
+      const int nodeColoringOffset = nodeColorSourceOffset * 4;
       
       //
       // If this is not the first model number
@@ -2513,365 +2106,365 @@ BrainModelSurfaceNodeColoring::assignColors()
          //
          // If this model has the same coloring as the first model
          //
-         if ((getUnderlay(modelNumber) == getUnderlay(0)) &&
-             (getSecondaryOverlay(modelNumber) == getSecondaryOverlay(0)) &&
-             (getPrimaryOverlay(modelNumber) == getPrimaryOverlay(0))) {
+         bool copySurfaceColorsFlag = true;
+         for (int i = 0; i < numberOfSurfaceOverlays; i++) {
             //
-            // See if underlay and overlays are same for the surfaces
+            // Are the two overlays set the same ?
             //
-            DisplaySettings* dsu = NULL;
-            switch(getUnderlay(modelNumber)) {
-               case OVERLAY_NONE:
-                  break;
-               case OVERLAY_AREAL_ESTIMATION:
-                  dsu = brainSet->getDisplaySettingsArealEstimation();
-                  break;
-               case OVERLAY_COCOMAC:
-                  dsu = brainSet->getDisplaySettingsCoCoMac();
-                  break;
-               case OVERLAY_METRIC:
-                  dsu = brainSet->getDisplaySettingsMetric();
-                  break;
-               case OVERLAY_PAINT:
-                  dsu = brainSet->getDisplaySettingsPaint();
-                  break;
-               case OVERLAY_PROBABILISTIC_ATLAS:
-                  dsu = brainSet->getDisplaySettingsProbabilisticAtlasSurface();
-                  break;
-               case OVERLAY_RGB_PAINT:
-                  dsu = brainSet->getDisplaySettingsRgbPaint();
-                  break;
-               case OVERLAY_SECTIONS:
-                  break;
-               case OVERLAY_SHOW_CROSSOVERS:
-                  break;
-               case OVERLAY_SHOW_EDGES:
-                  break;
-               case OVERLAY_SURFACE_SHAPE:
-                  dsu = brainSet->getDisplaySettingsSurfaceShape();
-                  break;
-               case OVERLAY_TOPOGRAPHY:
-                  dsu = brainSet->getDisplaySettingsTopography();
-                  break;
-               case OVERLAY_GEOGRAPHY_BLENDING:
-                  break;
+            BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(i);
+            if (bmsOverlay->getOverlay(modelNumber) == 
+                bmsOverlay->getOverlay(0)) {
+               DisplaySettingsNodeAttributeFile* dsnaf = NULL;
+               switch(bmsOverlay->getOverlay(modelNumber)) {
+                  case BrainModelSurfaceOverlay::OVERLAY_NONE:
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION:
+                     dsnaf = brainSet->getDisplaySettingsArealEstimation();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_COCOMAC:
+                     //dsnaf = brainSet->getDisplaySettingsCoCoMac();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_METRIC:
+                     dsnaf = brainSet->getDisplaySettingsMetric();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_PAINT:
+                     dsnaf = brainSet->getDisplaySettingsPaint();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS:
+                     //dsnaf = brainSet->getDisplaySettingsProbabilisticAtlasSurface();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT:
+                     dsnaf = brainSet->getDisplaySettingsRgbPaint();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_SECTIONS:
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS:
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_SHOW_EDGES:
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE:
+                     dsnaf = brainSet->getDisplaySettingsSurfaceShape();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY:
+                     dsnaf = brainSet->getDisplaySettingsTopography();
+                     break;
+                  case BrainModelSurfaceOverlay::OVERLAY_GEOGRAPHY_BLENDING:
+                     break;
+               }
+               if (dsnaf != NULL) {
+                  if (dsnaf->columnSelectionsAreTheSame(modelNumber, 0) == false) {
+                     copySurfaceColorsFlag = false;
+                  }
+               }
+            }
+            else {
+               copySurfaceColorsFlag = false;
+               break;
+            }
+         }
+
+         if (copySurfaceColorsFlag) {
+            //
+            // Copy coloring
+            //
+            for (int i = 0; i < numNodes; i++) {
+               nodeColoring[nodeColoringOffset + i*4]   = nodeColoring[i*4];
+               nodeColoring[nodeColoringOffset + i*4+1] = nodeColoring[i*4+1];
+               nodeColoring[nodeColoringOffset + i*4+2] = nodeColoring[i*4+2];
+               nodeColoring[nodeColoringOffset + i*4+3] = nodeColoring[i*4+3];
+               nodeColorSource[nodeColorSourceOffset + i]  = nodeColorSource[i];
             }
             
-            DisplaySettings* dso2 = NULL;
-            switch(getSecondaryOverlay(modelNumber)) {
-               case OVERLAY_NONE:
-                  break;
-               case OVERLAY_AREAL_ESTIMATION:
-                  dso2 = brainSet->getDisplaySettingsArealEstimation();
-                  break;
-               case OVERLAY_COCOMAC:
-                  dso2 = brainSet->getDisplaySettingsCoCoMac();
-                  break;
-               case OVERLAY_METRIC:
-                  dso2 = brainSet->getDisplaySettingsMetric();
-                  break;
-               case OVERLAY_PAINT:
-                  dso2 = brainSet->getDisplaySettingsPaint();
-                  break;
-               case OVERLAY_PROBABILISTIC_ATLAS:
-                  dso2 = brainSet->getDisplaySettingsProbabilisticAtlasSurface();
-                  break;
-               case OVERLAY_RGB_PAINT:
-                  dso2 = brainSet->getDisplaySettingsRgbPaint();
-                  break;
-               case OVERLAY_SECTIONS:
-                  break;
-               case OVERLAY_SHOW_CROSSOVERS:
-                  break;
-               case OVERLAY_SHOW_EDGES:
-                  break;
-               case OVERLAY_SURFACE_SHAPE:
-                  dso2 = brainSet->getDisplaySettingsSurfaceShape();
-                  break;
-               case OVERLAY_TOPOGRAPHY:
-                  dso2 = brainSet->getDisplaySettingsTopography();
-                  break;
-               case OVERLAY_GEOGRAPHY_BLENDING:
-                  break;
-            }
-
-            DisplaySettings* dso1 = NULL;
-            switch(getPrimaryOverlay(modelNumber)) {
-               case OVERLAY_NONE:
-                  break;
-               case OVERLAY_AREAL_ESTIMATION:
-                  dso1 = brainSet->getDisplaySettingsArealEstimation();
-                  break;
-               case OVERLAY_COCOMAC:
-                  dso1 = brainSet->getDisplaySettingsCoCoMac();
-                  break;
-               case OVERLAY_METRIC:
-                  dso1 = brainSet->getDisplaySettingsMetric();
-                  break;
-               case OVERLAY_PAINT:
-                  dso1 = brainSet->getDisplaySettingsPaint();
-                  break;
-               case OVERLAY_PROBABILISTIC_ATLAS:
-                  dso1 = brainSet->getDisplaySettingsProbabilisticAtlasSurface();
-                  break;
-               case OVERLAY_RGB_PAINT:
-                  dso1 = brainSet->getDisplaySettingsRgbPaint();
-                  break;
-               case OVERLAY_SHOW_CROSSOVERS:
-                  break;
-               case OVERLAY_SHOW_EDGES:
-                  break;
-               case OVERLAY_SECTIONS:
-                  break;
-               case OVERLAY_SURFACE_SHAPE:
-                  dso1 = brainSet->getDisplaySettingsSurfaceShape();
-                  break;
-               case OVERLAY_TOPOGRAPHY:
-                  dso1 = brainSet->getDisplaySettingsTopography();
-                  break;
-               case OVERLAY_GEOGRAPHY_BLENDING:
-                  break;
-            }
-            
-            bool theSame = true;
-            if (dsu != NULL) {
-               if (dsu->columnSelectionsAreTheSame(modelNumber, 0) == false) {
-                  theSame = false;
-               }
-            }
-            if (dso2 != NULL) {
-               if (dso2->columnSelectionsAreTheSame(modelNumber, 0) == false) {
-                  theSame = false;
-               }
-            }
-            if (dso1 != NULL) {
-               if (dso1->columnSelectionsAreTheSame(modelNumber, 0) == false) {
-                  theSame = false;
-               }
-            }
-
-            if (theSame) {
-               //
-               // Copy coloring
-               //
-               for (int i = 0; i < numNodes; i++) {
-                  nodeColoring[nodeColoringOffset + i*3]   = nodeColoring[i*3];
-                  nodeColoring[nodeColoringOffset + i*3+1] = nodeColoring[i*3+1];
-                  nodeColoring[nodeColoringOffset + i*3+2] = nodeColoring[i*3+2];
-                  nodeColorSource[nodeColorSourceOffset + i]  = nodeColorSource[i];
-               }
-               
-               //
-               // Go to the next model
-               //
-               continue;
-            }
+            //
+            // Go to the next model
+            //
+            continue;
          }
       }
 
-      //
-      // Reset the colors
-      //
-      for (int i = 0; i < numNodesLastTime; i++) {
-         overlayPrimaryNodeColors[i].reset();
-         overlaySecondaryNodeColors[i].reset();
-         underlayNodeColors[i].reset();
-      }
-
-      //
-      // First, set the nodes' underlay colors
-      //
-      nodeColors = underlayNodeColors;
-      
       //
       // initialize nodes to default color
       // 
-      assignNoneColoring();
-      
-      switch(getUnderlay(modelNumber)) {
-         case OVERLAY_NONE:
-            break;
-         case OVERLAY_AREAL_ESTIMATION:
-            assignArealEstimationColoring();
-            break;
-         case OVERLAY_COCOMAC:
-            assignCocomacColoring();
-            break;
-         case OVERLAY_METRIC:
-            assignMetricColoring();
-            break;
-         case OVERLAY_PAINT:
-            assignPaintColoring();
-            break;
-         case OVERLAY_PROBABILISTIC_ATLAS:
-            assignProbabilisticColoring(brainSet->getBrainModelSurface(modelNumber));
-            break;
-         case OVERLAY_RGB_PAINT:
-            assignRgbPaintColoring(true);
-            break;
-         case OVERLAY_SECTIONS:
-            assignSectionColoring();
-            break;
-         case OVERLAY_SHOW_CROSSOVERS:
-            assignCrossoverColoring();
-            break;
-         case OVERLAY_SHOW_EDGES:
-            assignEdgesColoring();
-            break;
-         case OVERLAY_SURFACE_SHAPE:
-            assignSurfaceShapeColoring();
-            break;
-         case OVERLAY_TOPOGRAPHY:
-            assignTopographyColoring();
-            break;
-         case OVERLAY_GEOGRAPHY_BLENDING:
-            // handled later in this method
-            break;
-      }
+      assignNoneColoring(nodeColoringOffset,
+                         nodeColorSourceOffset);
       
       //
-      // Now set the nodes' secondary overlay colors
+      // Use selected coloring mode
       //
-      nodeColors = overlaySecondaryNodeColors;
-      
-      switch(getSecondaryOverlay(modelNumber)) {
-         case OVERLAY_NONE:
-            break;
-         case OVERLAY_AREAL_ESTIMATION:
-            assignArealEstimationColoring();
-            break;
-         case OVERLAY_COCOMAC:
-            assignCocomacColoring();
-            break;
-         case OVERLAY_METRIC:
-            assignMetricColoring();
-            break;
-         case OVERLAY_PAINT:
-            assignPaintColoring();
-            break;
-         case OVERLAY_PROBABILISTIC_ATLAS:
-            assignProbabilisticColoring(brainSet->getBrainModelSurface(modelNumber));
-            break;
-         case OVERLAY_RGB_PAINT:
-            assignRgbPaintColoring(false);
-            break;
-         case OVERLAY_SECTIONS:
-            assignSectionColoring();
-            break;
-         case OVERLAY_SHOW_CROSSOVERS:
-            assignCrossoverColoring();
-            break;
-         case OVERLAY_SHOW_EDGES:
-            assignEdgesColoring();
-            break;
-         case OVERLAY_SURFACE_SHAPE:
-            assignSurfaceShapeColoring();
-            break;
-         case OVERLAY_TOPOGRAPHY:
-            assignTopographyColoring();
-            break;
-         case OVERLAY_GEOGRAPHY_BLENDING:
-            std::cout << "WARNING: Geography blending ignore for all but "
-                      << "the bottom-most overlay."
-                      << std::endl;
-            break;
-      }
-      
-      //
-      // Now set the nodes' primary overlay colors
-      //
-      nodeColors = overlayPrimaryNodeColors;
-      
-      switch(getPrimaryOverlay(modelNumber)) {
-         case OVERLAY_NONE:
-            break;
-         case OVERLAY_AREAL_ESTIMATION:
-            assignArealEstimationColoring();
-            break;
-         case OVERLAY_COCOMAC:
-            assignCocomacColoring();
-            break;
-         case OVERLAY_METRIC:
-            assignMetricColoring();
-            break;
-         case OVERLAY_PAINT:
-            assignPaintColoring();
-            break;
-         case OVERLAY_PROBABILISTIC_ATLAS:
-            assignProbabilisticColoring(brainSet->getBrainModelSurface(modelNumber));
-            break;
-         case OVERLAY_RGB_PAINT:
-            assignRgbPaintColoring(false);
-            break;
-         case OVERLAY_SHOW_CROSSOVERS:
-            assignCrossoverColoring();
-            break;
-         case OVERLAY_SHOW_EDGES:
-            assignEdgesColoring();
-            break;
-         case OVERLAY_SECTIONS:
-            assignSectionColoring();
-            break;
-         case OVERLAY_SURFACE_SHAPE:
-            assignSurfaceShapeColoring();
-            break;
-         case OVERLAY_TOPOGRAPHY:
-            assignTopographyColoring();
-            break;
-         case OVERLAY_GEOGRAPHY_BLENDING:
-            std::cout << "WARNING: Geography blending ignore for all but "
-                      << "the bottom-most overlay."
-                      << std::endl;
-            break;
-      }
-      
-      //
-      // Ignore opacity if underlay is geography blending
-      //
-      if (getUnderlay(modelNumber) == OVERLAY_GEOGRAPHY_BLENDING){
-         assignBlendGeographyColoring(nodeColoringOffset, nodeColorSourceOffset);
-      }
-      else {
-         const float oneMinusOpacity = 1.0 - opacity;
-         
-         for (int i = 0; i < numNodes; i++) {
-            unsigned char colors[3];
-            NODE_COLOR_SOURCE colorSource;
-            colors[0] = underlayNodeColors[i].r;
-            colors[1] = underlayNodeColors[i].g;
-            colors[2] = underlayNodeColors[i].b;
-            colorSource = NODE_COLOR_SOURCE_UNDERLAY;
+      switch (coloringMode) {
+         case COLORING_MODE_NORMAL:
+            {
+               //
+               // Loop through the overlays and assign the colors
+               //
+               for (int iso = 0; iso < numberOfSurfaceOverlays; iso++) {
+                  //
+                  // Reset the colors
+                  //
+                  for (int i = 0; i < numNodes; i++) {
+                     nodeColors[i].reset();
+                  }
 
-            if (overlayPrimaryNodeColors[i].r >= 0) {
-               float r = overlayPrimaryNodeColors[i].r  * opacity
-                       + underlayNodeColors[i].r * oneMinusOpacity;
-               float g = overlayPrimaryNodeColors[i].g  * opacity
-                       + underlayNodeColors[i].g * oneMinusOpacity;
-               float b = overlayPrimaryNodeColors[i].b  * opacity
-                       + underlayNodeColors[i].b * oneMinusOpacity;
-               colors[0] = clamp0255(r);
-               colors[1] = clamp0255(g);
-               colors[2] = clamp0255(b);
-               colorSource = NODE_COLOR_SOURCE_PRIMARY_OVERLAY;
+                  //
+                  // Get the surface overlay
+                  //
+                  const BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(iso);
+                  
+                  //
+                  // Color using the overlay
+                  //
+                  switch (bmsOverlay->getOverlay(modelNumber)) {
+                     case BrainModelSurfaceOverlay::OVERLAY_NONE:
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION:
+                        assignArealEstimationColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_COCOMAC:
+                        assignCocomacColoring();
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_METRIC:
+                        assignMetricColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_PAINT:
+                        assignPaintColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS:
+                        assignProbabilisticColoring(brainSet->getBrainModelSurface(modelNumber));
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT:
+                        assignRgbPaintColoring(iso, false);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SECTIONS:
+                        assignSectionColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS:
+                        assignCrossoverColoring();
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SHOW_EDGES:
+                        assignEdgesColoring();
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE:
+                        assignSurfaceShapeColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY:
+                        assignTopographyColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_GEOGRAPHY_BLENDING:
+                        // handled later in this method
+                        break;
+                  }
+
+                  //
+                  // Get opacity for blending overlays
+                  //         
+                  const float overlayOpacity = bmsOverlay->getOpacity();
+                  const float oneMinusOverlayOpacity = 1.0 - overlayOpacity;
+                  
+                  //
+                  // Apply coloring to nodes
+                  //
+                  for (int i = 0; i < numNodes; i++) {
+                     //
+                     // Was color applied to the node for this overlay
+                     //
+                     if ((nodeColors[i].r >= 0) ||
+                         (nodeColors[i].g >= 0) ||
+                         (nodeColors[i].b >= 0)) {
+                        float r = nodeColors[i].r  * overlayOpacity
+                                + nodeColoring[nodeColoringOffset + i*4] * oneMinusOverlayOpacity;
+                        float g = nodeColors[i].g  * overlayOpacity
+                                + nodeColoring[nodeColoringOffset + i*4+1] * oneMinusOverlayOpacity;
+                        float b = nodeColors[i].b  * overlayOpacity
+                                + nodeColoring[nodeColoringOffset + i*4+2] * oneMinusOverlayOpacity;
+                        nodeColoring[nodeColoringOffset + i*4]   = clamp0255(r);
+                        nodeColoring[nodeColoringOffset + i*4+1] = clamp0255(g);
+                        nodeColoring[nodeColoringOffset + i*4+2] = clamp0255(b);
+                        nodeColoring[nodeColoringOffset + i*4+3] = 255;
+                        nodeColorSource[nodeColorSourceOffset + i]  = iso;
+                     }
+                  }
+                  
+                  //
+                  // Special case for geography blending do if previous overlay was
+                  // geography blending
+                  //
+                  if (iso > 0) {
+                     if (brainSet->getSurfaceOverlay(iso - 1)->getOverlay(modelNumber) ==
+                         BrainModelSurfaceOverlay::OVERLAY_GEOGRAPHY_BLENDING) {
+                        assignBlendGeographyColoring(nodeColoringOffset,
+                                                     nodeColorSourceOffset);
+                     }
+                  }         
+               }
             }
-            else if (overlaySecondaryNodeColors[i].r >= 0) {
-               float r = overlaySecondaryNodeColors[i].r  * opacity
-                       + underlayNodeColors[i].r * oneMinusOpacity;
-               float g = overlaySecondaryNodeColors[i].g  * opacity
-                       + underlayNodeColors[i].g * oneMinusOpacity;
-               float b = overlaySecondaryNodeColors[i].b  * opacity
-                       + underlayNodeColors[i].b * oneMinusOpacity;
-               colors[0] = clamp0255(r);
-               colors[1] = clamp0255(g);
-               colors[2] = clamp0255(b);
-               colorSource = NODE_COLOR_SOURCE_SECONDARY_OVERLAY;
+            break;
+         case COLORING_MODE_OVERLAY_BLENDING:
+            {
+               //
+               // Node coloring for the three most primary overlays and the underlay
+               //
+               std::vector<NodeColor> primaryOverlayColors;
+               std::vector<NodeColor> secondaryOverlayColors;
+               std::vector<NodeColor> tertiaryOverlayColors;
+               std::vector<NodeColor> underlayColors;
+               
+               //
+               // Indices of overlays
+               //
+               const int primaryOverlayIndex = numberOfSurfaceOverlays - 1;
+               const int secondaryOverlayIndex = numberOfSurfaceOverlays - 2;
+               const int tertiaryOverlayIndex = numberOfSurfaceOverlays - 3;
+
+               //
+               // Loop through the overlays and assign the colors
+               //
+               for (int iso = 0; iso < numberOfSurfaceOverlays; iso++) {
+                  //
+                  // Reset the colors
+                  //
+                  for (int i = 0; i < numNodes; i++) {
+                     nodeColors[i].reset();
+                  }
+
+                  //
+                  // Get the surface overlay
+                  //
+                  const BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(iso);
+                  
+                  //
+                  // Color using the overlay
+                  //
+                  switch (bmsOverlay->getOverlay(modelNumber)) {
+                     case BrainModelSurfaceOverlay::OVERLAY_NONE:
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION:
+                        assignArealEstimationColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_COCOMAC:
+                        assignCocomacColoring();
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_METRIC:
+                        assignMetricColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_PAINT:
+                        assignPaintColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS:
+                        assignProbabilisticColoring(brainSet->getBrainModelSurface(modelNumber));
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT:
+                        assignRgbPaintColoring(iso, false);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SECTIONS:
+                        assignSectionColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS:
+                        assignCrossoverColoring();
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SHOW_EDGES:
+                        assignEdgesColoring();
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE:
+                        assignSurfaceShapeColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY:
+                        assignTopographyColoring(iso);
+                        break;
+                     case BrainModelSurfaceOverlay::OVERLAY_GEOGRAPHY_BLENDING:
+                        // handled later in this method
+                        break;
+                  }
+                  
+                  //
+                  // Assign the colors to the proper underlay/overlay
+                  //
+                  if (iso == 0) {
+                     underlayColors = nodeColors;
+                  }
+                  else if (iso == primaryOverlayIndex) {
+                     primaryOverlayColors = nodeColors;
+                  }
+                  else if (iso == secondaryOverlayIndex) {
+                     secondaryOverlayColors = nodeColors;
+                  }
+                  else if (iso == tertiaryOverlayIndex) {
+                     tertiaryOverlayColors = nodeColors;
+                  }
+               }
+               
+               //
+               // Blend the colors
+               //
+               for (int i = 0; i < numNodes; i++) {
+                  //
+                  // Was color applied to the node for this overlay
+                  //
+                  if (primaryOverlayColors[i].isValid() ||
+                      secondaryOverlayColors[i].isValid() ||
+                      tertiaryOverlayColors[i].isValid()) {
+                     float r = 0.0, g = 0.0, b = 0.0;
+                     float sum = 0.0;
+                     float maxBefore = 0.0;
+                     int overlayColorSource = 0;
+                      if (tertiaryOverlayColors[i].isValid()) {
+                        r += tertiaryOverlayColors[i].r;
+                        g += tertiaryOverlayColors[i].g;
+                        b += tertiaryOverlayColors[i].b;
+                        overlayColorSource = primaryOverlayIndex;
+                        sum += 1.0;
+                        
+                        maxBefore = std::max(tertiaryOverlayColors[i].r,
+                                             std::max(tertiaryOverlayColors[i].g,
+                                                      tertiaryOverlayColors[i].b));
+                     }
+                    if (secondaryOverlayColors[i].isValid()) {
+                        r += secondaryOverlayColors[i].r;
+                        g += secondaryOverlayColors[i].g;
+                        b += secondaryOverlayColors[i].b;
+                        overlayColorSource = secondaryOverlayIndex;
+                        sum += 1.0;
+                        
+                        maxBefore = std::max(secondaryOverlayColors[i].r,
+                                             std::max(secondaryOverlayColors[i].g,
+                                                      secondaryOverlayColors[i].b));
+                     }
+                     if (primaryOverlayColors[i].isValid()) {
+                        r += primaryOverlayColors[i].r;
+                        g += primaryOverlayColors[i].g;
+                        b += primaryOverlayColors[i].b;
+                        overlayColorSource = tertiaryOverlayIndex;
+                        sum += 1.0;
+                        
+                        maxBefore = std::max(primaryOverlayColors[i].r,
+                                             std::max(primaryOverlayColors[i].g,
+                                                      primaryOverlayColors[i].b));
+                     }
+                     if (sum > 0.0) {
+                        const float maxAfter = std::max(r, std::max(g, b));
+                        const float scale = maxBefore / maxAfter;
+                        
+                        sum = 1.0;
+                        nodeColoring[nodeColoringOffset + i*4]   = clamp0255(r / sum);
+                        nodeColoring[nodeColoringOffset + i*4+1] = clamp0255(g / sum);
+                        nodeColoring[nodeColoringOffset + i*4+2] = clamp0255(b / sum);
+                        
+                        nodeColoring[nodeColoringOffset + i*4]   = clamp0255(r * scale);
+                        nodeColoring[nodeColoringOffset + i*4+1] = clamp0255(g * scale);
+                        nodeColoring[nodeColoringOffset + i*4+2] = clamp0255(b * scale);
+                        nodeColoring[nodeColoringOffset + i*4+3] = 255;
+                        nodeColorSource[nodeColorSourceOffset + i]  = overlayColorSource;
+                     }
+                  }
+                  else if (underlayColors[i].isValid()) {
+                     nodeColoring[nodeColoringOffset + i*4]   = clamp0255(underlayColors[i].r);
+                     nodeColoring[nodeColoringOffset + i*4+1] = clamp0255(underlayColors[i].g);
+                     nodeColoring[nodeColoringOffset + i*4+2] = clamp0255(underlayColors[i].b);
+                     nodeColoring[nodeColoringOffset + i*4+3] = 255;
+                     nodeColorSource[nodeColorSourceOffset + i]  = 0;
+                  }
+               }
             }
-            nodeColoring[nodeColoringOffset + i*3]   = colors[0];
-            nodeColoring[nodeColoringOffset + i*3+1] = colors[1];
-            nodeColoring[nodeColoringOffset + i*3+2] = colors[2];
-            nodeColorSource[nodeColorSourceOffset + i]  = colorSource;
-            
-         }
+            break;
       }
       
       //
@@ -2883,9 +2476,9 @@ BrainModelSurfaceNodeColoring::assignColors()
       
       if ((brightness != 0.0) || (contrast != 1.0)) {
          for (int i = 0; i < numNodes; i++) {
-            float r = nodeColoring[nodeColoringOffset + i*3];
-            float g = nodeColoring[nodeColoringOffset + i*3+1];
-            float b = nodeColoring[nodeColoringOffset + i*3+2];
+            float r = nodeColoring[nodeColoringOffset + i*4];
+            float g = nodeColoring[nodeColoringOffset + i*4+1];
+            float b = nodeColoring[nodeColoringOffset + i*4+2];
             
             //
             //  Brightness is added
@@ -2913,12 +2506,20 @@ BrainModelSurfaceNodeColoring::assignColors()
                scale = 255.0 / maxValue;
             }
             
-            nodeColoring[nodeColoringOffset + i*3]   = clamp0255(r * scale);
-            nodeColoring[nodeColoringOffset + i*3+1] = clamp0255(g * scale);
-            nodeColoring[nodeColoringOffset + i*3+2] = clamp0255(b * scale);
+            nodeColoring[nodeColoringOffset + i*4]   = clamp0255(r * scale);
+            nodeColoring[nodeColoringOffset + i*4+1] = clamp0255(g * scale);
+            nodeColoring[nodeColoringOffset + i*4+2] = clamp0255(b * scale);
          }
       }
-   
+      
+      //
+      // Apply opacity
+      //
+      const float surfaceOpacity = dsn->getOpacity();
+      for (int i = 0; i < numNodes; i++) {
+         nodeColoring[nodeColoringOffset + i*4+3] = clamp0255(surfaceOpacity * 255.0);
+      }
+      
       assignMedialWallOverrideColoring(nodeColoringOffset,
                                        nodeColorSourceOffset);
    }
@@ -2972,120 +2573,15 @@ BrainModelSurfaceNodeColoring::assignMedialWallOverrideColoring(const int colorO
                cf->getColorByIndex(colorIndex, r, g, b);
                for (int i = 0; i < numNodes; i++) {
                   if (pf->getPaint(i, paintColumn) == medWallIndex) {
-                     nodeColoring[colorOffset + i*3]   = r;
-                     nodeColoring[colorOffset + i*3+1] = g;
-                     nodeColoring[colorOffset + i*3+2] = b;
-                     nodeColorSource[sourceOffset + i]  = NODE_COLOR_SOURCE_MEDIAL_WALL_OVERRIDE;   
+                     nodeColoring[colorOffset + i*4]   = r;
+                     nodeColoring[colorOffset + i*4+1] = g;
+                     nodeColoring[colorOffset + i*4+2] = b;
+                     nodeColorSource[sourceOffset + i]  = -1;   
                   }
                }
             }
          }
       }
-   }
-}
-
-/**
- * get the primary overlay selection.
- */
-BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS 
-BrainModelSurfaceNodeColoring::getPrimaryOverlay(const int modelIn) const 
-{ 
-   if (primaryOverlay.empty()) {
-      return OVERLAY_NONE;
-   }
-    
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return primaryOverlay[model]; 
-}
-      
-/** 
- * Set the primary overlay selection.
- * For the change to take place, updateNodeColors() must also be called.
- */
-void 
-BrainModelSurfaceNodeColoring::setPrimaryOverlay(const int model, const OVERLAY_SELECTIONS os) 
-{
-   if (model < 0) {
-      std::fill(primaryOverlay.begin(), primaryOverlay.end(), os);
-   }
-   else {
-      primaryOverlay[model] = os;
-   }
-   if (os == OVERLAY_SHOW_EDGES) {
-      brainSet->classifyNodes(NULL, true);
-   }
-}
-
-/**
- * get the secondary overlay selection.
- */
-BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS 
-BrainModelSurfaceNodeColoring::getSecondaryOverlay(const int modelIn) const 
-{ 
-   if (secondaryOverlay.empty()) {
-      return OVERLAY_NONE;
-   }
-    
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return secondaryOverlay[model]; 
-}
-
-/** 
- * Set the secondary overlay selection
- * For the change to take place, updateNodeColors() must also be called.
- */
-void 
-BrainModelSurfaceNodeColoring::setSecondaryOverlay(const int model, const OVERLAY_SELECTIONS os) 
-{
-   if (model < 0) {
-      std::fill(secondaryOverlay.begin(), secondaryOverlay.end(), os);
-   }
-   else {
-      secondaryOverlay[model] = os;
-   }
-   if (os == OVERLAY_SHOW_EDGES) {
-      brainSet->classifyNodes(NULL, true);
-   }
-}
-
-/**
- * get the underlay selection.
- */
-BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS 
-BrainModelSurfaceNodeColoring::getUnderlay(const int modelIn) const 
-{ 
-   if (underlay.empty()) {
-      return OVERLAY_NONE;
-   }
-    
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return underlay[model]; 
-}
-      
-/**
- * set the underlay selection
- * For the change to take place, updateNodeColors() must also be called.
- */
-void 
-BrainModelSurfaceNodeColoring::setUnderlay(const int model, const OVERLAY_SELECTIONS us) 
-{
-   if (model < 0) {
-      std::fill(underlay.begin(), underlay.end(), us);
-   }
-   else {
-       underlay[model] = us;
    }
 }
 
@@ -3124,6 +2620,15 @@ void
 BrainModelSurfaceNodeColoring::showScene(const SceneFile::Scene& scene,
                                          QString& errorMessage) 
 {
+   coloringMode = COLORING_MODE_NORMAL;
+
+   const int numOverlays = brainSet->getNumberOfSurfaceOverlays();
+   const int primaryOverlayNumber = numOverlays - 1;
+   const int secondaryOverlayNumber = numOverlays - 2;
+   const int underlayNumber = 0;
+
+   DisplaySettingsPaint* dsp = brainSet->getDisplaySettingsPaint();
+   
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
@@ -3134,23 +2639,40 @@ BrainModelSurfaceNodeColoring::showScene(const SceneFile::Scene& scene,
             const QString infoName = si->getName();      
             const QString value = si->getValueAsString();
             
+            if (infoName == "coloringMode") {
+               if (value == "NORMAL") {
+                  coloringMode = COLORING_MODE_NORMAL;
+                  break;
+               }
+               else if (value == "BLENDING") {
+                  coloringMode = COLORING_MODE_OVERLAY_BLENDING;
+                  break;
+               }
+            }
+            
+            //
+            // NOTE: ALL OF THESE SCENE ITEMS SUPPORT SCENES MADE PRIOR TO
+            // THE NEW OVERLAY SYSTEM
+            //
             if (infoName == ouGeographyBlending) {
-               setGeographyBlending(si->getValueAsFloat());
+               dsp->setGeographyBlending(si->getValueAsFloat());
             }
             else if (infoName == ouOpacity) {
-               setOpacity(si->getValueAsFloat());
+               for (int i = 0; i < numOverlays; i++) {
+                  brainSet->getSurfaceOverlay(i)->setOpacity(si->getValueAsFloat());
+               }
             }
             else if (infoName == ouLighting) {
-               setLightingOn(si->getValueAsBool());
+               //setLightingOn(si->getValueAsBool());
             }
             else if (infoName == ouPrimaryLighting) {
-               setPrimaryOverlayLightingOn(si->getValueAsBool());
+               brainSet->getSurfaceOverlay(primaryOverlayNumber)->setLightingEnabled(si->getValueAsBool());
             }
             else if (infoName == ouSecondaryLighting) {
-               setSecondaryOverlayLightingOn(si->getValueAsBool());
+               brainSet->getSurfaceOverlay(secondaryOverlayNumber)->setLightingEnabled(si->getValueAsBool());
             }
             else if (infoName == ouUnderlayLighting) {
-               setUnderlayLightingOn(si->getValueAsBool());
+               brainSet->getSurfaceOverlay(underlayNumber)->setLightingEnabled(si->getValueAsBool());
             }
             
             //
@@ -3159,75 +2681,75 @@ BrainModelSurfaceNodeColoring::showScene(const SceneFile::Scene& scene,
             if ((infoName == underlayNameID) ||
                 (infoName == secondaryOverlayNameID) ||
                 (infoName == primaryOverlayNameID)) {
-               OVERLAY_SELECTIONS  overlay  = OVERLAY_NONE;
+               BrainModelSurfaceOverlay::OVERLAY_SELECTIONS  overlay  = BrainModelSurfaceOverlay::OVERLAY_NONE;
                const QString surfaceName = si->getModelName();
                
                if (value == ouArealEstimationName) {
-                  overlay  = OVERLAY_AREAL_ESTIMATION;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION;
                   if (brainSet->getArealEstimationFile()->getNumberOfColumns() <= 0) {
-                     errorMessage.append("No Areal Estimation File is loaded.\n");
+                     errorMessage.append("Areal Estimation File is overlay/underlay but no Areal Estimation File is loaded.\n");
                   }
                }
                else if (value == ouCocomacName) {
-                  overlay  = OVERLAY_COCOMAC;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_COCOMAC;
                   const CocomacConnectivityFile* coco = brainSet->getCocomacFile();
                   if (coco->empty()) {
-                     errorMessage.append("No CoCoMac Connectivity File is loaded\n");
+                     errorMessage.append("CoCoMac File is overlay/underlay but no CoCoMac File is loaded.\n");
                   }
                }
                else if (value == ouMetricName) {
-                  overlay  = OVERLAY_METRIC;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_METRIC;
                   if (brainSet->getMetricFile()->empty()) {
-                     errorMessage.append("No Metric File is loaded.\n");
+                     errorMessage.append("Metric File is overlay/underlay but no Metric File is loaded.\n");
                   }
                }
                else if (value == ouPaintName) {
-                  overlay  = OVERLAY_PAINT;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_PAINT;
                   if (brainSet->getPaintFile()->empty()) {
-                     errorMessage.append("No Paint File is loaded.\n");
+                     errorMessage.append("Paint File is overlay/underlay but no Paint File is loaded.\n");
                   }
                }
                else if (value == ouProbabilisticAtlasName) {
-                  overlay  = OVERLAY_PROBABILISTIC_ATLAS;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS;
                   if (brainSet->getProbabilisticAtlasSurfaceFile()->empty()) {
-                     errorMessage.append("No Probabilistic Atlas File is loaded.\n");
+                     errorMessage.append("Prob Atlas File is overlay/underlay but no Prob Atlas File is loaded.\n");
                   }
                }
                else if (value == ouRgbPaintName) {
-                  overlay  = OVERLAY_RGB_PAINT;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT;
                   if (brainSet->getRgbPaintFile()->empty()) {
-                     errorMessage.append("No RGB Paint File is loaded.\n");
+                     errorMessage.append("RGB Paint File is overlay/underlay but no RGB Paint File is loaded.\n");
                   }
                }
                else if (value == ouSectionsName) {
-                  overlay  = OVERLAY_SECTIONS;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_SECTIONS;
                }
                else if (value == ouShowCrossoversName) {
-                  overlay  = OVERLAY_SHOW_CROSSOVERS;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS;
                }
                else if (value == ouShowEdgesName) {
-                  overlay  = OVERLAY_SHOW_EDGES;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_SHOW_EDGES;
                }
                else if (value == ouSurfaceShapeName) {
-                  overlay  = OVERLAY_SURFACE_SHAPE;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE;
                   if (brainSet->getSurfaceShapeFile()->empty()) {
-                     errorMessage.append("No Surface Shape File is loaded.\n");
+                     errorMessage.append("Surface Shape File is overlay/underlay but no Surface Shape File is loaded.\n");
                   }
                }
                else if (value == ouTopographyName) {
-                  overlay  = OVERLAY_TOPOGRAPHY;
+                  overlay  = BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY;
                   if (brainSet->getTopographyFile()->empty()) {
-                     errorMessage.append("No Topography File is loaded.\n");
+                     errorMessage.append("Topography File is overlay/underlay but no Topography File is loaded.\n");
                   }
                }
                else if (value == ouGeographyBlendingName) {
-                  overlay = OVERLAY_GEOGRAPHY_BLENDING;
+                  overlay = BrainModelSurfaceOverlay::OVERLAY_GEOGRAPHY_BLENDING;
                   PaintFile* pf = brainSet->getPaintFile();
                   if (pf->empty()) {
-                     errorMessage.append("No Paint File is loaded.\n");
+                     errorMessage.append("Geography Blending is overlay/underlay but no Paint File is loaded.\n");
                   }
                   else if (pf->getGeographyColumnNumber() < 0) {
-                     errorMessage.append("No Geography Column in Paint File.\n");
+                     errorMessage.append("Geography Blending is overlay/underlay but no Geography Column in Paint File.\n");
                   }
                }
                
@@ -3252,13 +2774,13 @@ BrainModelSurfaceNodeColoring::showScene(const SceneFile::Scene& scene,
                //
                for (int k = startSurface; k < endSurface; k++) {
                   if (infoName == underlayNameID) {
-                     setUnderlay(k, overlay);
+                     brainSet->getSurfaceOverlay(underlayNumber)->setOverlay(k, overlay);
                   }
                   else if (infoName == secondaryOverlayNameID) {
-                     setSecondaryOverlay(k, overlay);
+                     brainSet->getSurfaceOverlay(secondaryOverlayNumber)->setOverlay(k, overlay);
                   }
                   else if (infoName == primaryOverlayNameID) {
-                     setPrimaryOverlay(k, overlay);
+                     brainSet->getSurfaceOverlay(primaryOverlayNumber)->setOverlay(k, overlay);
                   }
                }
             }
@@ -3271,191 +2793,19 @@ BrainModelSurfaceNodeColoring::showScene(const SceneFile::Scene& scene,
  * create a scene (read display settings).
  */
 void 
-BrainModelSurfaceNodeColoring::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+BrainModelSurfaceNodeColoring::saveScene(SceneFile::Scene& scene, 
+                                          const bool /*onlyIfSelected*/)
 {
-   if (onlyIfSelected) {
-      const int num = brainSet->getNumberOfBrainModels();
-      bool haveSurfacesFlag = false;
-      for (int i = 0; i < num; i++) {
-         if (brainSet->getBrainModelSurface(i) != NULL) {
-            haveSurfacesFlag = true;
-            break;
-         }
-      }
-      if (haveSurfacesFlag == false) {
-         return;
-      }
-   }
    SceneFile::SceneClass sc("BrainModelSurfaceNodeColoring");
-   sc.addSceneInfo(SceneFile::SceneInfo(ouGeographyBlending, getGeographyBlending()));
-   sc.addSceneInfo(SceneFile::SceneInfo(ouOpacity, getOpacity()));
-   sc.addSceneInfo(SceneFile::SceneInfo(ouLighting, getLightingOn()));
-   sc.addSceneInfo(SceneFile::SceneInfo(ouPrimaryLighting, getPrimaryOverlayLightingOn()));
-   sc.addSceneInfo(SceneFile::SceneInfo(ouSecondaryLighting, getSecondaryOverlayLightingOn()));
-   sc.addSceneInfo(SceneFile::SceneInfo(ouUnderlayLighting, getUnderlayLightingOn()));
-
-   bool didDefaultFlag[3] = { false, false, false };
-   
-   //
-   // Check each brain model
-   //
-   const int num = brainSet->getNumberOfBrainModels();
-   for (int n = 0; n < num; n++) {
-      //
-      // Is this a surface ?
-      //
-      const BrainModelSurface* bms = brainSet->getBrainModelSurface(n);
-      if (bms != NULL) {
-         //
-         // Surface index but use zero index if doing all
-         //
-         int surfaceIndex = n;
-         
-         //
-         // Get name of coordinate file
-         //
-         const CoordinateFile* cf = bms->getCoordinateFile();
-         QString surfaceName = FileUtilities::basename(cf->getFileName());
-         
-         //
-         // Do underlay and both overlays
-         //
-         for (int i = 0; i < 3; i++) {
-            QString ouName;
-            QString ouValue;
-            if (i == 0) {
-               ouName = underlayNameID;
-               switch(getUnderlay(surfaceIndex)) {
-                  case OVERLAY_NONE:
-                     ouValue = ouNoneName;
-                     break;
-                  case OVERLAY_AREAL_ESTIMATION:
-                     ouValue = ouArealEstimationName;
-                     break;
-                  case OVERLAY_COCOMAC:
-                     ouValue = ouCocomacName;
-                     break;
-                  case OVERLAY_METRIC:
-                     ouValue = ouMetricName;
-                     break;
-                  case OVERLAY_PAINT:
-                     ouValue = ouPaintName;
-                     break;
-                  case OVERLAY_PROBABILISTIC_ATLAS:
-                     ouValue = ouProbabilisticAtlasName;
-                     break;
-                  case OVERLAY_RGB_PAINT:
-                     ouValue = ouRgbPaintName;
-                     break;
-                  case OVERLAY_SECTIONS:
-                     ouValue = ouSectionsName;
-                     break;
-                  case OVERLAY_SHOW_CROSSOVERS:
-                     ouValue = ouShowCrossoversName;
-                     break;
-                  case OVERLAY_SHOW_EDGES:
-                     ouValue = ouShowEdgesName;
-                     break;
-                  case OVERLAY_SURFACE_SHAPE:
-                     ouValue = ouSurfaceShapeName;
-                     break;
-                  case OVERLAY_TOPOGRAPHY:
-                     ouValue = ouTopographyName;
-                     break;
-                  case OVERLAY_GEOGRAPHY_BLENDING:
-                     ouValue = ouGeographyBlendingName;
-                     break;
-               }
-            }
-            else {
-               OVERLAY_SELECTIONS overlay = OVERLAY_NONE;
-               if (i == 1) {
-                  ouName = primaryOverlayNameID;
-                  overlay = getPrimaryOverlay(surfaceIndex);
-               }
-               else if (i == 2) {
-                  ouName = secondaryOverlayNameID;
-                  overlay = getSecondaryOverlay(surfaceIndex);
-               }
-               
-               switch (overlay) {
-                  case OVERLAY_NONE:
-                     ouValue = ouNoneName;
-                     break;
-                  case OVERLAY_AREAL_ESTIMATION:
-                     ouValue = ouArealEstimationName;
-                     break;
-                  case OVERLAY_COCOMAC:
-                     ouValue = ouCocomacName;
-                     break;
-                  case OVERLAY_METRIC:
-                     ouValue = ouMetricName;
-                     break;
-                  case OVERLAY_PAINT:
-                     ouValue = ouPaintName;
-                     break;
-                  case OVERLAY_PROBABILISTIC_ATLAS:
-                     ouValue = ouProbabilisticAtlasName;
-                     break;
-                  case OVERLAY_RGB_PAINT:
-                     ouValue = ouRgbPaintName;
-                     break;
-                  case OVERLAY_SECTIONS:
-                     ouValue = ouSectionsName;
-                     break;
-                  case OVERLAY_SHOW_CROSSOVERS:
-                     ouValue = ouShowCrossoversName;
-                     break;
-                  case OVERLAY_SHOW_EDGES:
-                     ouValue = ouShowEdgesName;
-                     break;
-                  case OVERLAY_SURFACE_SHAPE:
-                     ouValue = ouSurfaceShapeName;
-                     break;
-                  case OVERLAY_TOPOGRAPHY:
-                     ouValue = ouTopographyName;
-                     break;
-                  case OVERLAY_GEOGRAPHY_BLENDING:
-                     ouValue = ouGeographyBlendingName;
-                     break;
-               }
-            }
-         
-            //
-            // Do default first
-            //
-            if (didDefaultFlag[i] == false) {
-               SceneFile::SceneInfo si(ouName, 
-                           SceneFile::SceneInfo::getDefaultSurfacesName(), ouValue);
-               sc.addSceneInfo(si);
-               didDefaultFlag[i] = true;
-            }
-            
-            //
-            // Create the scene info for this overlay/underlay
-            //
-            SceneFile::SceneInfo si(ouName, surfaceName, ouValue);
-            sc.addSceneInfo(si);
-         } // for (int i
-      }  // if (bms != NULL)   
-   }  // for n
-   
+   switch (coloringMode) {
+      case COLORING_MODE_NORMAL:
+         sc.addSceneInfo(SceneFile::SceneInfo("coloringMode", 
+                                              "NORMAL"));
+         break;
+      case COLORING_MODE_OVERLAY_BLENDING:
+         sc.addSceneInfo(SceneFile::SceneInfo("coloringMode", 
+                                              "BLENDING"));
+         break;
+   }
    scene.addSceneClass(sc);
 }
-
-/**
- * see if an overlay is of a specific type.
- */
-bool 
-BrainModelSurfaceNodeColoring::isUnderlayOrOverlay(const OVERLAY_SELECTIONS  ol) const
-{
-   for (int i = 0; i < static_cast<int>(underlay.size()); i++) {
-      if (ol != OVERLAY_NONE) {
-         if (ol == underlay[i]) return true;
-         if (ol == secondaryOverlay[i]) return true;
-         if (ol == primaryOverlay[i]) return true;
-      }
-   }
-   return false;
-}                               
-

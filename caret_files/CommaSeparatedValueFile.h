@@ -115,11 +115,10 @@ class CommaSeparatedValueFile : public AbstractFile {
       static const int currentFileVersion;
 };
 
+#endif // __COMMA_SEPARATED_VALUE_FILE_H__
+
 #ifdef __COMMA_SEPARATED_FILE_MAIN__
    const QString CommaSeparatedValueFile::sectionStartTag = "csvf-section-start";   
    const QString CommaSeparatedValueFile::sectionEndTag   = "csvf-section-end";   
    const int CommaSeparatedValueFile::currentFileVersion = 0;
 #endif // __COMMA_SEPARATED_FILE_MAIN__
-
-#endif // __COMMA_SEPARATED_VALUE_FILE_H__
-

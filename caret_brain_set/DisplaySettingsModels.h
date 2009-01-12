@@ -79,11 +79,36 @@ class DisplaySettingsModels : public DisplaySettings {
       /// set the opacity
       void setOpacity(const float op) { opacity = op; }
       
+      /// get show polygons
+      bool getShowPolygons() const { return showPolygons; }
+      
+      /// set show polygons
+      void setShowPolygons(const bool b) { showPolygons = b; }
+      
+      /// get show triangles
+      bool getShowTriangles() const { return showTriangles; }
+      
+      /// set show triangles
+      void setShowTriangles(const bool b) { showTriangles = b; }
+      
+      /// get show lines
+      bool getShowLines() const { return showLines; }
+      
+      /// set show lines
+      void setShowLines(const bool b) { showLines = b; }
+      
+      /// get show vertices
+      bool getShowVertices() const { return showVertices; }
+      
+      /// set show vertices
+      void setShowVertices(const bool b) { showVertices = b; }
+      
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
    private:
       /// opacity
@@ -103,6 +128,18 @@ class DisplaySettingsModels : public DisplaySettings {
       
       /// light enable for 
       bool lightPolygons;
+      
+      /// show polygons
+      bool showPolygons;
+      
+      /// show triangles
+      bool showTriangles;
+      
+      /// show lines
+      bool showLines;
+      
+      /// show vertices
+      bool showVertices;
       
 };
 

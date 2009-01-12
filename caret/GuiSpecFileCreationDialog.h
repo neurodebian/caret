@@ -27,14 +27,17 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
+class GuiCategoryComboBox;
+class GuiSpeciesComboBox;
+class GuiStereotaxicSpaceComboBox;
 class GuiStructureComboBox;
 class QLineEdit;
 class QTextEdit;
 
 /// Dialog for creating a spec file
-class GuiSpecFileCreationDialog : public QtDialog {
+class GuiSpecFileCreationDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -51,15 +54,6 @@ class GuiSpecFileCreationDialog : public QtDialog {
       // called to set directory
       void slotDirectoryPushButton();
 
-      // called when species button pressed
-      void slotSpeciesPushButton();
-      
-      // called when category button pressed
-      void slotCategoryPushButton();
-      
-      // called when space button pressed
-      void slotSpacePushButton();
-      
    protected:
       // called when OK or Cancel button pressed
       void done(int r);
@@ -67,17 +61,17 @@ class GuiSpecFileCreationDialog : public QtDialog {
       // directory line edit
       QLineEdit* directoryLineEdit;
       
-      // species line edit
-      QLineEdit* speciesLineEdit;
+      // species combo box
+      GuiSpeciesComboBox* speciesComboBox;
       
       // subject line edit
       QLineEdit* subjectLineEdit;
       
-      // space line edit
-      QLineEdit* spaceLineEdit;
+      // space combo box
+      GuiStereotaxicSpaceComboBox* stereotaxicSpaceComboBox;
       
-      // category line edit
-      QLineEdit* categoryLineEdit;
+      // category combo box
+      GuiCategoryComboBox* categoryComboBox;
       
       // structure combo box
       GuiStructureComboBox* structureComboBox;

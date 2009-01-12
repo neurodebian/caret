@@ -25,6 +25,7 @@
 
 #include <algorithm>
 
+#include "BrainModelSurface.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainSet.h"
 #include "DisplaySettingsSurfaceShape.h"
@@ -35,9 +36,13 @@
  * The constructor.
  */
 DisplaySettingsSurfaceShape::DisplaySettingsSurfaceShape(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      bs->getSurfaceShapeFile(),
+                                      NULL,
+                                      BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE,
+                                      true,
+                                      false)
 {
-   applySelectionToLeftAndRightStructuresFlag = false;
    reset();
 }
 
@@ -54,13 +59,13 @@ DisplaySettingsSurfaceShape::~DisplaySettingsSurfaceShape()
 void
 DisplaySettingsSurfaceShape::reset()
 {
+   DisplaySettingsNodeAttributeFile::reset();
    colorMap = SURFACE_SHAPE_COLOR_MAP_GRAY;
    displayColorBar = false;
    nodeUncertaintyColumn = 0;
    nodeUncertaintyEnabled = false;
    paletteIndex = 0;
    interpolatePaletteColors = false;
-   displayColumn.clear();
 }
 
 /**
@@ -69,7 +74,8 @@ DisplaySettingsSurfaceShape::reset()
 void
 DisplaySettingsSurfaceShape::update()
 {
-   updateSelectedColumnIndices(brainSet->getSurfaceShapeFile(), displayColumn);
+   DisplaySettingsNodeAttributeFile::update();
+   
    if (nodeUncertaintyColumn >= 0) {
       const SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
       if (nodeUncertaintyColumn >= ssf->getNumberOfColumns()) {
@@ -82,94 +88,6 @@ DisplaySettingsSurfaceShape::update()
    }
 }
 
-/**
- * Get the column selected for display.
- * Returns -1 if there are no surface shape columns.
- */
-int
-DisplaySettingsSurfaceShape::getSelectedDisplayColumn(const int modelIn) const
-{
-   if (displayColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return displayColumn[model]; 
-}
-
-/**
- * set column for display.
- */
-void 
-DisplaySettingsSurfaceShape::setSelectedDisplayColumn(const int model,
-                                                      const int sdc) 
-{ 
-   if (applySelectionToLeftAndRightStructuresFlag) {
-      SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
-      if ((sdc >= 0) && (sdc < ssf->getNumberOfColumns())) {
-         int leftCol = -1;
-         int rightCol = -1;
-         QString name = ssf->getColumnName(sdc).toLower().trimmed();
-         if (name.indexOf("left") >= 0) {
-            leftCol = sdc;
-            const QString rightName = name.replace("left", "right");
-            for (int i = 0; i < ssf->getNumberOfColumns(); i++) {
-               if (ssf->getColumnName(i).toLower().trimmed() == rightName) {
-                  rightCol = i;
-                  break;
-               }
-            }
-         }
-         else if (name.indexOf("right") >= 0) {
-            rightCol = sdc;
-            const QString leftName = name.replace("right", "left");
-            for (int i = 0; i < ssf->getNumberOfColumns(); i++) {
-               if (ssf->getColumnName(i).toLower().trimmed() == leftName) {
-                  leftCol = i;
-                  break;
-               }
-            }
-         }
-         
-         for (int i = 0; i < brainSet->getNumberOfBrainModels(); i++) {
-            const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-            if (bms != NULL) {
-               switch (bms->getStructure().getType()) {
-                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-                     if (leftCol >= 0) {
-                        displayColumn[i] = leftCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-                     if (rightCol >= 0) {
-                        displayColumn[i] = rightCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-                     break;
-                  case Structure::STRUCTURE_TYPE_CEREBELLUM:
-                     break;
-                  case Structure::STRUCTURE_TYPE_INVALID:
-                     break;
-               }
-            }
-         }
-      }
-   }
-   else {
-      if (model < 0) {
-         std::fill(displayColumn.begin(), displayColumn.end(), sdc);
-      }
-      else {
-         displayColumn[model] = sdc; 
-      }
-   }
-}
-     
 static const QString surfaceShapeViewID("surface-shape-column");
 
 /**
@@ -178,18 +96,19 @@ static const QString surfaceShapeViewID("surface-shape-column");
 void 
 DisplaySettingsSurfaceShape::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
          
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsSurfaceShape") {
-         showSceneNodeAttribute(*sc,
-                                surfaceShapeViewID,
-                                brainSet->getSurfaceShapeFile(),
-                                "Surface Shape File",
-                                displayColumn,
-                                errorMessage);
+         showSceneSelectedColumns(*sc,
+                                  "Surface Shape File",
+                                  surfaceShapeViewID,
+                                  "",
+                                  errorMessage);
 
          const int num = sc->getNumberOfSceneInfo();
          for (int i = 0; i < num; i++) {
@@ -217,9 +136,6 @@ DisplaySettingsSurfaceShape::showScene(const SceneFile::Scene& scene, QString& e
             }
             else if (infoName == "interpolatePaletteColors") {
                si->getValue(interpolatePaletteColors);
-            }
-            else if (infoName == "applySelectionToLeftAndRightStructuresFlag") {
-               si->getValue(applySelectionToLeftAndRightStructuresFlag);
             }
             else if (infoName == "shapePaletteIndex") {
                const QString paletteName = si->getValueAsString();
@@ -249,8 +165,11 @@ DisplaySettingsSurfaceShape::showScene(const SceneFile::Scene& scene, QString& e
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
    
    if (onlyIfSelected) {
@@ -258,18 +177,15 @@ DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyI
          return;
       }
       
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE) == false) {
+      if (brainSet->isASurfaceOverlayForAnySurface(
+                  BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE) == false) {
 //         return;
       }
    }
    
    SceneFile::SceneClass sc("DisplaySettingsSurfaceShape");
    
-   saveSceneNodeAttribute(sc,
-                          surfaceShapeViewID,
-                          ssf,
-                          displayColumn);
+   saveSceneSelectedColumns(sc);
 
    sc.addSceneInfo(SceneFile::SceneInfo("colorMap",
                                         colorMap));
@@ -283,8 +199,6 @@ DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyI
                                         nodeUncertaintyEnabled));
    sc.addSceneInfo(SceneFile::SceneInfo("interpolatePaletteColors",
                                         interpolatePaletteColors));
-   sc.addSceneInfo(SceneFile::SceneInfo("applySelectionToLeftAndRightStructuresFlag",
-                                        applySelectionToLeftAndRightStructuresFlag));
    PaletteFile* pf = brainSet->getPaletteFile();
    if ((paletteIndex >= 0) && (paletteIndex < pf->getNumberOfPalettes())) {
       const Palette* pal = pf->getPalette(paletteIndex);
@@ -294,17 +208,36 @@ DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyI
    
    scene.addSceneClass(sc);
 }
-                       
+ 
 /**
- * for node attribute files - all column selections for each surface are the same.
+ * get the columns for palette and color mapping (negative if invalid).
  */
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-bool 
-DisplaySettingsSurfaceShape::columnSelectionsAreTheSame(const int bm1, const int bm2) const
+int 
+DisplaySettingsSurfaceShape::getShapeColumnForPaletteAndColorMapping() const
 {
-   return (displayColumn[bm1] == displayColumn[bm2]);
-}      
-
-
+   int displayColumnOut = -1;
+   
+   //
+   // Get the brain model surface in the main window
+   //
+   const int mainWindowBrainModelIndex = 
+      brainSet->getDisplayedModelIndexForWindow(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
+   const BrainModelSurface* bms = brainSet->getBrainModelSurface(mainWindowBrainModelIndex);
+   if (bms == NULL) {
+      return displayColumnOut;
+   }
+   
+   //
+   // See if surface has shape as an overlay
+   //
+   for (int i = 0; i < brainSet->getNumberOfSurfaceOverlays(); i++) {
+      const BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(i); 
+      if (bmsOverlay->getOverlay(mainWindowBrainModelIndex) ==
+          BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE) {
+         displayColumnOut = bmsOverlay->getDisplayColumnSelected(mainWindowBrainModelIndex);
+      }
+   }
+   
+   return displayColumnOut;
+}
+                                                     

@@ -70,8 +70,9 @@ static const QString continuationAndNewLine = " \\\n";
 GuiSurfaceDeformationDialog::GuiSurfaceDeformationDialog(
                               QWidget* parent,
                               const DeformationMapFile::DEFORMATION_TYPE deformationTypeIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    deformationType = deformationTypeIn;
    
    switch (deformationType) {
@@ -544,7 +545,8 @@ GuiSurfaceDeformationDialog::editBorderFile(const QString& specFileName,
    //
    // Get the type of border file
    //
-   GuiBorderAttributesDialog::BORDER_FILE_TYPE borderFileType;
+   GuiBorderAttributesDialog::BORDER_FILE_TYPE borderFileType =
+      GuiBorderAttributesDialog::BORDER_FILE_TYPE_BORDER;
    switch(fileType) {
       case DeformationDataFiles::DATA_FILE_BORDER_FLAT:
          borderFileType = GuiBorderAttributesDialog::BORDER_FILE_TYPE_BORDER;

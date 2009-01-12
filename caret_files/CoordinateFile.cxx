@@ -24,10 +24,8 @@
 /*LICENSE_END*/
 
 #include <QGlobalStatic>
-#ifdef Q_OS_WIN32
-#define NOMINMAX
-#endif
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <sstream>
@@ -41,6 +39,7 @@
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "MathUtilities.h"
+#include "MniObjSurfaceFile.h"
 #include "GiftiDataArray.h"
 #include "MetricFile.h"
 #include "SpecFile.h"
@@ -125,6 +124,53 @@ CoordinateFile::addCoordinate(const float xyz[3])
    coords[indx*3 + 1] = xyz[1];
    coords[indx*3 + 2] = xyz[2];
 }
+
+/**
+ * apply GIFTI transformation matrix.
+ */
+void
+CoordinateFile::applyGiftiTransformationMatrix()
+{
+   if (getNumberOfDataArrays() > 0) {
+      GiftiDataArray* gda = getDataArray(0);
+      
+      GiftiMatrix* bestMatrix = NULL;
+      const int num = gda->getNumberOfMatrices();
+      for (int i = 0; i < num; i++) {
+         GiftiMatrix* gm = gda->getMatrix(i);
+         
+         if (gm->getDataSpaceName() == GiftiCommon::spaceLabelTalairach) {
+            //
+            // If data is already Talairach, do not need to do anything to the data
+            //
+            return;
+         }
+         else if (gm->getTransformedSpaceName() == GiftiCommon::spaceLabelTalairach) {
+            // 
+            // This matrix will make the coordinates Talairach
+            //
+            bestMatrix = gm;
+         }
+      }
+      
+      //
+      // If a matrix was found, apply it
+      //
+      if (bestMatrix != NULL) {
+         double m[4][4];
+         bestMatrix->getMatrix(m);
+         TransformationMatrix tm;
+         tm.setMatrix(m);
+         applyTransformationMatrix(tm);
+         
+         gda->removeAllMatrices();
+         GiftiMatrix gm;
+         gm.setDataSpaceName(GiftiCommon::spaceLabelTalairach);
+         gm.setTransformedSpaceName(GiftiCommon::spaceLabelTalairach);
+         gda->addMatrix(gm);
+      }
+   }
+}      
 
 /**
  * Apply transformation matrix to coordinate file.
@@ -391,6 +437,19 @@ CoordinateFile::getBounds(float bounds[6]) const
  * Get the coordinate closest to the point at (xp, yp, zp).
  */
 int 
+CoordinateFile::getCoordinateIndexClosestToPoint(const float xyz[3],
+                                                 const int startSearchAtCoordinateIndex) const
+{
+   return getCoordinateIndexClosestToPoint(xyz[0],
+                                           xyz[1],
+                                           xyz[2],
+                                           startSearchAtCoordinateIndex);
+}
+
+/**
+ * Get the coordinate closest to the point at (xp, yp, zp).
+ */
+int 
 CoordinateFile::getCoordinateIndexClosestToPoint(const float xp, const float yp, 
                                                  const float zp,
                                                  const int startSearchAtCoordinateIndex) const
@@ -647,6 +706,27 @@ CoordinateFile::createAverageCoordinateFile(const std::vector<CoordinateFile*>& 
    }
 }
 
+/**
+ * get the coordinates from a MNI OBJ surface file.
+ */
+void 
+CoordinateFile::importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException)
+{
+   clear();
+   
+   const int numVertices = mni.getNumberOfPoints();
+   if (numVertices > 0) {
+      setNumberOfCoordinates(numVertices);
+      for (int i = 0; i < numVertices; i++) {
+         const float* xyz = mni.getPointXYZ(i);
+         setCoordinate(i, xyz);
+      }
+   }
+   appendToFileComment(" Imported from ");
+   appendToFileComment(FileUtilities::basename(mni.getFileName()));
+   setModified();
+}
+      
 /**
  * Get the coordinates out of a brain voyager file.
  */
@@ -985,3 +1065,33 @@ CoordinateFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStr
    
 }
 
+/**
+ * get spec file tag from configuration id.
+ */
+QString 
+CoordinateFile::getSpecFileTagUsingConfigurationID() const
+{
+   const QString name = getHeaderTag(AbstractFile::headerTagConfigurationID);
+   return convertConfigurationIDToSpecFileTag(name);
+}
+
+/**
+ * convert configuration ID to spec file tag.
+ */
+QString 
+CoordinateFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
+{   
+   const QString name(nameIn.toUpper());
+   if (name == "RAW") return SpecFile::getRawCoordFileTag();
+   else if (name == "FIDUCIAL") return SpecFile::getFiducialCoordFileTag();
+   else if (name == "INFLATED") return SpecFile::getInflatedCoordFileTag();
+   else if (name == "VERY_INFLATED") return SpecFile::getVeryInflatedCoordFileTag();
+   else if (name == "SPHERICAL") return SpecFile::getSphericalCoordFileTag();
+   else if (name == "ELLIPSOIDAL") return SpecFile::getEllipsoidCoordFileTag();
+   else if (name == "CMW") return SpecFile::getCompressedCoordFileTag();
+   else if (name == "FLAT") return SpecFile::getFlatCoordFileTag();
+   else if (name == "FLAT_LOBAR") return SpecFile::getLobarFlatCoordFileTag();
+   else if (name == "HULL") return SpecFile::getHullCoordFileTag();
+   else return SpecFile::getUnknownCoordFileMatchTag();
+}
+      

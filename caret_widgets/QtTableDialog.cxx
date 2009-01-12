@@ -50,7 +50,7 @@ QtTableDialog::QtTableDialog(QWidget* parent,
                              const QString& title,
                              const StringTable& dataTable,
                              const bool deleteMeWhenClosed)
-   : QtDialog(parent, false)  
+   : WuQDialog(parent)  
 {
    if (deleteMeWhenClosed) {
       setAttribute(Qt::WA_DeleteOnClose);
@@ -74,6 +74,9 @@ QtTableDialog::QtTableDialog(QWidget* parent,
       for (int j = 0; j < nc; j++) {
          table->setItem(i, j, new QTableWidgetItem(dataTable.getElement(i, j)));
       }
+   }
+   if (nc == 1) {
+      table->setColumnWidth(0, 500);
    }
    dialogLayout->addWidget(table);
    

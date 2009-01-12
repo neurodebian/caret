@@ -28,12 +28,12 @@
 #define __GUI_MORPHING_MEASUREMENTS_DIALOG_H__
 
 #include <vector>
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
 
 /// Dialog for displaying morphing measurements
-class GuiMorphingMeasurementsDialog : public QtDialog {
+class GuiMorphingMeasurementsDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -41,6 +41,7 @@ class GuiMorphingMeasurementsDialog : public QtDialog {
       GuiMorphingMeasurementsDialog(const std::vector<MorphingMeasurements>& mm,
                         const float totalTime, 
                         const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingType,
+                        const bool deleteDialogWhenClosedFlag,
                         QWidget* parent);
       
       /// destructor

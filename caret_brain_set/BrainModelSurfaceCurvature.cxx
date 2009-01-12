@@ -39,20 +39,28 @@
  */
 BrainModelSurfaceCurvature::BrainModelSurfaceCurvature(
                                           BrainSet* bs,
-                                          BrainModelSurface* surfaceIn,
+                                          const BrainModelSurface* surfaceIn,
                                           SurfaceShapeFile* shapeFileIn,
                                           const int meanCurvatureColumnIn,
                                           const int gaussianCurvatureColumnIn,
                                           const QString& meanCurvatureNameIn,
-                                          const QString& gaussianCurvatureNameIn)
+                                          const QString& gaussianCurvatureNameIn,
+                                          const bool computePrincipalCurvaturesIn)
    : BrainModelAlgorithm(bs)
 {
-   surface                 = surfaceIn;
+   surface = NULL;
+   if (surfaceIn != NULL) {
+      surface = new BrainModelSurface(*surfaceIn);
+   }
    shapeFile               = shapeFileIn;
    meanCurvatureColumn     = meanCurvatureColumnIn;
    gaussianCurvatureColumn = gaussianCurvatureColumnIn;
    meanCurvatureName = meanCurvatureNameIn;
    gaussianCurvatureName = gaussianCurvatureNameIn;
+   computePrincipalCurvatures = computePrincipalCurvaturesIn;
+   
+   kMinColumn = -1;
+   kMaxColumn = -1;
 }
 
 /**
@@ -60,6 +68,10 @@ BrainModelSurfaceCurvature::BrainModelSurfaceCurvature(
  */
 BrainModelSurfaceCurvature::~BrainModelSurfaceCurvature()
 {
+   if (surface != NULL) {
+      delete surface;
+      surface = NULL;
+   }
 }
 
 /**
@@ -116,12 +128,33 @@ BrainModelSurfaceCurvature::execute() throw (BrainModelAlgorithmException)
    }
    
    //
+   // Do principle curvatures?
+   //
+   if (computePrincipalCurvatures) {
+      if (shapeFile->getNumberOfColumns() == 0) {
+         shapeFile->setNumberOfNodesAndColumns(surface->getNumberOfNodes(), 2);
+      }
+      else {
+         shapeFile->addColumns(2);
+      }
+      kMaxColumn = shapeFile->getNumberOfColumns() - 2;
+      kMinColumn = shapeFile->getNumberOfColumns() - 1;
+      
+      shapeFile->setColumnName(kMaxColumn, "k-max (k1, first principal curvature)");
+      shapeFile->setColumnColorMappingMinMax(kMaxColumn, -1.5, 1.5);
+      shapeFile->setColumnName(kMinColumn, "k-min (k2, second principal curvature)");
+      shapeFile->setColumnColorMappingMinMax(kMinColumn, -1.5, 1.5);
+   }
+   
+   //
    // Compute curvature for each node
    //
    const int numNodes = surface->getNumberOfNodes();
    for (int i = 0; i < numNodes; i++) {         
       float gauss = 0.0;
       float mean  = 0.0;
+      float kmax = 0.0;
+      float kmin = 0.0;
 
       std::vector<int> neighbors;
       th->getNodeNeighbors(i, neighbors);
@@ -172,7 +205,7 @@ BrainModelSurfaceCurvature::execute() throw (BrainModelAlgorithmException)
             projectToPlane(projected, basis, dc[j].xyz);
          }
          
-         leastSquares(numNeighbors, dc, dn, gauss, mean);
+         determineCurvature(numNeighbors, dc, dn, gauss, mean, kmax, kmin);
       }
       
       if (meanCurvatureColumn != CURVATURE_COLUMN_DO_NOT_GENERATE) {
@@ -180,6 +213,13 @@ BrainModelSurfaceCurvature::execute() throw (BrainModelAlgorithmException)
       }
       if (gaussianCurvatureColumn != CURVATURE_COLUMN_DO_NOT_GENERATE) {
          shapeFile->setValue(i, gaussianCurvatureColumn, gauss);
+      }
+      
+      if (kMaxColumn >= 0) {
+         shapeFile->setValue(i, kMaxColumn, kmax);
+      }
+      if (kMinColumn >= 0) {
+         shapeFile->setValue(i, kMinColumn, kmin);
       }
    }
    
@@ -224,14 +264,16 @@ BrainModelSurfaceCurvature::projection(const float vector[3],
 }
 
 /**
- *
+ * Determine the curvatures
  */
 void
-BrainModelSurfaceCurvature::leastSquares(const int num,
+BrainModelSurfaceCurvature::determineCurvature(const int num,
                                          const std::vector<CurvePoint3D>& dc,
                                          const std::vector<CurvePoint3D>& dn,
                                          float& gauss,
-                                         float& mean)
+                                         float& mean,
+                                         float& kmax,
+                                         float& kmin)
 {
    float sum1 = 0.0;
    float sum2 = 0.0;
@@ -279,5 +321,18 @@ BrainModelSurfaceCurvature::leastSquares(const int num,
    
    gauss = k1 * k2;
    mean  = (k1 + k2) / 2.0;
+   
+   //
+   // For KMAX and KMIN, is the largest of the two values
+   // when ignoring the signs
+   //
+   if (std::fabs(k1) > std::fabs(k2)) {
+      kmax = k1;
+      kmin = k2;
+   }
+   else {
+      kmax = k2;
+      kmin = k1;
+   }
 }
 

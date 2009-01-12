@@ -25,6 +25,7 @@
 
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainSet.h"
+#include "DisplaySettingsSection.h"
 #include "DisplaySettingsSurface.h"
 #include "StringUtilities.h"
 
@@ -41,6 +42,8 @@ DisplaySettingsSurface::DisplaySettingsSurface(BrainSet* bs)
    linkSize       = 2;
    forceVectorDisplayLength = 10.0;
    
+   opacity = 1.0;
+   
    identifyNodeColor = IDENTIFY_NODE_COLOR_GREEN;
    
    showNormals               = false;
@@ -49,9 +52,6 @@ DisplaySettingsSurface::DisplaySettingsSurface(BrainSet* bs)
    showMorphingLinearForces  = false;
    partialView = PARTIAL_VIEW_ALL;
 
-   sectionToHighlight = 10;
-   sectionHighlightEveryX    = true;
-   
    viewingProjection = VIEWING_PROJECTION_ORTHOGRAPHIC;
 
    showSurfaceAxes = false;
@@ -96,9 +96,7 @@ void
 DisplaySettingsSurface::setDrawMode(const DRAW_MODE dm) 
 { 
    drawMode = dm;
-
-   BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-   
+      
    bool lightOn = false;
    switch (drawMode) {
       case DRAW_MODE_NODES:
@@ -116,35 +114,14 @@ DisplaySettingsSurface::setDrawMode(const DRAW_MODE dm)
       case DRAW_MODE_TILES_WITH_LIGHT:
          lightOn = true;
          break;
+      case DRAW_MODE_TILES_WITH_LIGHT_NO_BACK:
+         lightOn = true;
       case DRAW_MODE_TILES_LINKS_NODES:
          lightOn = true;
          break;
       case DRAW_MODE_NONE:
          break;
    }
-   bsnc->setLightingOn(lightOn);
-}
-
-/**
- * get section highlighting.
- */
-void 
-DisplaySettingsSurface::getSectionHighlighting(int& sectionToHighlightOut, 
-                                               bool& highlightEveryXOut) const
-{
-   sectionToHighlightOut = sectionToHighlight;
-   highlightEveryXOut    = sectionHighlightEveryX;
-}
-
-/**
- * set section highlighting.
- */
-void 
-DisplaySettingsSurface::setSectionHighlighting(const int sectionToHighlightIn,
-                                               const bool highlightEveryXIn) 
-{
-   sectionToHighlight     = sectionToHighlightIn;
-   sectionHighlightEveryX = highlightEveryXIn;
 }
 
 /**
@@ -193,6 +170,7 @@ static const QString DRAW_MODE_LINKS_EDGES_ONLY_VALUE("DRAW_MODE_LINKS_EDGES_ONL
 static const QString DRAW_MODE_NODES_AND_LINKS_VALUE("DRAW_MODE_NODES_AND_LINKS");
 static const QString DRAW_MODE_TILES_VALUE("DRAW_MODE_TILES");
 static const QString DRAW_MODE_TILES_WITH_LIGHT_VALUE("DRAW_MODE_TILES_WITH_LIGHT");
+static const QString DRAW_MODE_TILES_WITH_LIGHT_NO_BACK_VALUE("DRAW_MODE_TILES_WITH_LIGHT_NO_BACK");
 static const QString DRAW_MODE_TILES_LINKS_NODES_VALUE("DRAW_MODE_TILES_LINKS_NODES");
 static const QString DRAW_MODE_NONE_VALUE("DRAW_MODE_NONE");
 
@@ -234,6 +212,9 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
                else if (drawModeValue == DRAW_MODE_TILES_WITH_LIGHT_VALUE) {
                   drawMode = DRAW_MODE_TILES_WITH_LIGHT;
                }
+               else if (drawModeValue == DRAW_MODE_TILES_WITH_LIGHT_NO_BACK_VALUE) {
+                  drawMode = DRAW_MODE_TILES_WITH_LIGHT_NO_BACK;
+               }
                else if (drawModeValue == DRAW_MODE_TILES_LINKS_NODES_VALUE) {
                   drawMode = DRAW_MODE_TILES_LINKS_NODES;
                }
@@ -243,6 +224,9 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
             }
             else if (infoName == "nodeBrightness") {
                si->getValue(nodeBrightness);
+            }
+            else if (infoName == "opacity") {
+               si->getValue(opacity);
             }
             else if (infoName == "nodeContrast") {
                si->getValue(nodeContrast);
@@ -274,10 +258,20 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
                partialView = static_cast<PARTIAL_VIEW_TYPE>(val);
             }
             else if (infoName == "sectionToHighlight") {
+               int sectionToHighlight;
+               bool sectionHighlightEveryX;
+               DisplaySettingsSection* dss = brainSet->getDisplaySettingsSection();
+               dss->getSectionHighlighting(sectionToHighlight, sectionHighlightEveryX);
                si->getValue(sectionToHighlight);
-            }
+               dss->getSectionHighlighting(sectionToHighlight, sectionHighlightEveryX);
+             }
             else if (infoName == "sectionHighlightEveryX") {
+               int sectionToHighlight;
+               bool sectionHighlightEveryX;
+               DisplaySettingsSection* dss = brainSet->getDisplaySettingsSection();
+               dss->getSectionHighlighting(sectionToHighlight, sectionHighlightEveryX);
                si->getValue(sectionHighlightEveryX);
+               dss->getSectionHighlighting(sectionToHighlight, sectionHighlightEveryX);
             }
             else if (infoName == "viewingProjection") {
                int val;
@@ -318,7 +312,8 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    if (onlyIfSelected) {
       const int num = brainSet->getNumberOfBrainModels();
@@ -359,6 +354,9 @@ DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
       case DRAW_MODE_TILES_WITH_LIGHT:
          drawModeValue = DRAW_MODE_TILES_WITH_LIGHT_VALUE;
          break;
+      case DRAW_MODE_TILES_WITH_LIGHT_NO_BACK:
+         drawModeValue = DRAW_MODE_TILES_WITH_LIGHT_NO_BACK_VALUE;
+         break;
       case DRAW_MODE_TILES_LINKS_NODES:
          drawModeValue = DRAW_MODE_TILES_LINKS_NODES_VALUE;
          break;
@@ -372,6 +370,8 @@ DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
                                         nodeBrightness));
    sc.addSceneInfo(SceneFile::SceneInfo("nodeContrast",
                                         nodeContrast));
+   sc.addSceneInfo(SceneFile::SceneInfo("opacity",
+                                        opacity));
    sc.addSceneInfo(SceneFile::SceneInfo("nodeSize",
                                         nodeSize));
    sc.addSceneInfo(SceneFile::SceneInfo("linkSize",
@@ -388,10 +388,6 @@ DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
                                         showMorphingLinearForces));
    sc.addSceneInfo(SceneFile::SceneInfo("partialView",
                                         partialView));
-   sc.addSceneInfo(SceneFile::SceneInfo("sectionToHighlight",
-                                        sectionToHighlight));
-   sc.addSceneInfo(SceneFile::SceneInfo("sectionHighlightEveryX",
-                                        sectionHighlightEveryX));
    sc.addSceneInfo(SceneFile::SceneInfo("viewingProjection",
                                         viewingProjection));
    sc.addSceneInfo(SceneFile::SceneInfo("showSurfaceAxes",

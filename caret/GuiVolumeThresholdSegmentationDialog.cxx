@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include <QApplication>
 #include <QGridLayout>
 #include <QLabel>
@@ -47,7 +49,7 @@
  * constructor.
  */
 GuiVolumeThresholdSegmentationDialog::GuiVolumeThresholdSegmentationDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Anatomy Threshold Segmentation");
    
@@ -151,7 +153,7 @@ GuiVolumeThresholdSegmentationDialog::show()
 {
    slotMinThresholdSpinBox(minThresholdSpinBox->value());
    slotMaxThresholdSpinBox(maxThresholdSpinBox->value());
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -163,7 +165,7 @@ GuiVolumeThresholdSegmentationDialog::close()
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    dsv->setAnatomyThresholdValid(false);
    GuiBrainModelOpenGL::updateAllGL();
-   QDialog::close();
+   WuQDialog::close();
 }
 
 /**

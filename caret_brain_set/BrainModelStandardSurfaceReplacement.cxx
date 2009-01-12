@@ -25,7 +25,6 @@
 
 #include "BrainModelStandardSurfaceReplacement.h"
 #include "BrainModelSurface.h"
-#include "BrainModelSurfaceNodeColoring.h"
 #include "BrainModelSurfacePointProjector.h"
 #include "BrainSet.h"
 #include "DeformationMapFile.h"
@@ -65,7 +64,7 @@ BrainModelStandardSurfaceReplacement::execute() throw (BrainModelAlgorithmExcept
    // Read in the standard sphere
    //
    QString standardSphereSpecName(brainSet->getCaretHomeDirectory());
-   standardSphereSpecName.append("/REGISTER.SPHERE/sphere.v5.6.spec");
+   standardSphereSpecName.append("/data_files/REGISTER.SPHERE/sphere.v5.6.spec");
    
    //
    // Read in the standard sphere spec file
@@ -269,10 +268,10 @@ BrainModelStandardSurfaceReplacement::execute() throw (BrainModelAlgorithmExcept
    //
    // Reset node coloring
    //
-   BrainModelSurfaceNodeColoring* nodeColoring = brainSet->getNodeColoring();
-   nodeColoring->setPrimaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-   nodeColoring->setSecondaryOverlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-   nodeColoring->setUnderlay(-1, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
+   brainSet->getPrimarySurfaceOverlay()->setOverlay(-1, 
+                  BrainModelSurfaceOverlay::OVERLAY_NONE);
+   brainSet->getSecondarySurfaceOverlay()->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_NONE);
+   brainSet->getSurfaceUnderlay()->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_NONE);
    
    brainSet->postSpecFileReadInitializations();
 }      

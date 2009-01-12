@@ -510,7 +510,7 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
                                           targetFlatBorderFile);
             addCommentAboutDeformation(*dmf, inputFile, &targetFlatBorderFile);
             targetFlatBorderFile.writeFile(outputFileName);
-            specFileTag = SpecFile::flatBorderFileTag;
+            specFileTag = SpecFile::getFlatBorderFileTag();
          }
          break;
       case DATA_FILE_BORDER_SPHERICAL:
@@ -532,7 +532,7 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
                                           targetSphericalBorderFile);
             addCommentAboutDeformation(*dmf, inputFile, &targetSphericalBorderFile);
             targetSphericalBorderFile.writeFile(outputFileName);
-            specFileTag = SpecFile::sphericalBorderFileTag;
+            specFileTag = SpecFile::getSphericalBorderFileTag();
          }
          break;
       case DATA_FILE_BORDER_PROJECTION:
@@ -541,7 +541,7 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
          //
          addCommentAboutDeformation(*dmf, inputFile, &targetBorderProjectionFile);
          targetBorderProjectionFile.writeFile(outputFileName);
-         specFileTag = SpecFile::borderProjectionFileTag;
+         specFileTag = SpecFile::getBorderProjectionFileTag();
          break;
       case DATA_FILE_CELL:
          break;
@@ -642,7 +642,7 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
       case DATA_FILE_AREAL_ESTIMATION:
          inputFile  = new ArealEstimationFile;
          outputFile = new ArealEstimationFile;
-         specFileTag = SpecFile::arealEstimationFileTag;
+         specFileTag = SpecFile::getArealEstimationFileTag();
          break;
       case DATA_FILE_ATLAS:
          break;
@@ -667,7 +667,7 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
       case DATA_FILE_LAT_LON:
          inputFile = new LatLonFile;
          outputFile = new LatLonFile;
-         specFileTag = SpecFile::latLonFileTag;
+         specFileTag = SpecFile::getLatLonFileTag();
          break;
       case DATA_FILE_METRIC:
          break;
@@ -678,12 +678,12 @@ BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(const DeformationMapFil
       case DATA_FILE_RGB_PAINT:
          inputFile  = new RgbPaintFile;
          outputFile = new RgbPaintFile;
-         specFileTag = SpecFile::rgbPaintFileTag;
+         specFileTag = SpecFile::getRgbPaintFileTag();
          break;
       case DATA_FILE_TOPOGRAPHY:
          inputFile  = new TopographyFile;
          outputFile = new TopographyFile;
-         specFileTag = SpecFile::topographyFileTag;
+         specFileTag = SpecFile::getTopographyFileTag();
          break;
    }
    if ((inputFile != NULL) && (outputFile != NULL)) {
@@ -848,7 +848,7 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
       case DATA_FILE_ATLAS:
          inputFile  = new ProbabilisticAtlasFile;
          outputFile = new ProbabilisticAtlasFile;
-         specFileTag = SpecFile::atlasFileTag;
+         specFileTag = SpecFile::getAtlasFileTag();
          break;
       case DATA_FILE_BORDER_FLAT:
          break;
@@ -873,7 +873,7 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
       case DATA_FILE_METRIC:
          inputFile  = new MetricFile;
          outputFile = new MetricFile;
-         specFileTag = SpecFile::metricFileTag;
+         specFileTag = SpecFile::getMetricFileTag();
          switch(dmf->getMetricDeformationType()) {
             case DeformationMapFile::METRIC_DEFORM_NEAREST_NODE:
                dt = GiftiNodeDataFile::DEFORM_NEAREST_NODE;
@@ -886,12 +886,12 @@ BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(const DeformationMapFil
       case DATA_FILE_SHAPE:
          inputFile  = new SurfaceShapeFile;
          outputFile = new SurfaceShapeFile;
-         specFileTag = SpecFile::surfaceShapeFileTag;
+         specFileTag = SpecFile::getSurfaceShapeFileTag();
          break;
       case DATA_FILE_PAINT:
          inputFile  = new PaintFile;
          outputFile = new PaintFile;
-         specFileTag = SpecFile::paintFileTag;
+         specFileTag = SpecFile::getPaintFileTag();
          break;
       case DATA_FILE_RGB_PAINT:
          break;
@@ -1106,7 +1106,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    // Project the cell file using the fiducial surface
    //
    CellProjectionFile sourceCellsProjected;
-   sourceCellsProjected.append(*sourceCellFile);
+   sourceCellsProjected.appendFiducialCellFile(*sourceCellFile);
    CellFileProjector cfp(sourceFiducialSurface);
    cfp.projectFile(&sourceCellsProjected,
                        0,
@@ -1298,10 +1298,10 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
          // file will be written if file is new to spec file
          //
          if (fociFileFlag) {
-            sf.addToSpecFile(SpecFile::fociFileTag, outputFileName, "", true);
+            sf.addToSpecFile(SpecFile::getFociFileTag(), outputFileName, "", true);
          }
          else {
-            sf.addToSpecFile(SpecFile::cellFileTag, outputFileName, "", true);
+            sf.addToSpecFile(SpecFile::getCellFileTag(), outputFileName, "", true);
          }
       }
       catch(FileException& e) {
@@ -1545,7 +1545,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    // Replace cell projections with cells
    //
    sourceCellProjectionFile->clear();
-   sourceCellProjectionFile->append(*sourceCellFile);
+   sourceCellProjectionFile->appendFiducialCellFile(*sourceCellFile);
    
    //
    // Project cells to target fiducial surface
@@ -1612,10 +1612,10 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
          // file will be written if file is new to spec file
          //
          if (fociFileFlag) {
-            sf.addToSpecFile(SpecFile::fociProjectionFileTag, outputFileName, "", true);
+            sf.addToSpecFile(SpecFile::getFociProjectionFileTag(), outputFileName, "", true);
          }
          else {
-            sf.addToSpecFile(SpecFile::cellProjectionFileTag, outputFileName, "", true);
+            sf.addToSpecFile(SpecFile::getCellProjectionFileTag(), outputFileName, "", true);
          }
       }
       catch(FileException& e) {

@@ -192,6 +192,12 @@ class BrainModelOpenGL {
       /// Update the orthographic window size.
       void updateOrthoSize(const int windowNumber, const int width, const int height);
    
+      /// get caption displayed in main window
+      QString getMainWindowCaption() const { return mainWindowCaption; }
+
+      /// set caption displayed in main window
+      void setMainWindowCaption(const QString& s) { mainWindowCaption = s; }
+
       /// selected node
       BrainModelOpenGLSelectedItem getSelectedNode() const { return selectedNode; }
        
@@ -298,9 +304,12 @@ class BrainModelOpenGL {
       /// set OpenGL text enabled
       static void setOpenGLTextEnabled(const bool b) { openGLTextEnabledFlag = b; }
       
-      /// voxel coordinate is center of voxel (else left, bottom corner)
-      static bool getVoxelCoordinateIsCenterOfVoxel() { return voxelCoordinateIsCenterOfVoxel; }
-      
+      /// get the default ortho right and top for command line scene generation
+      static void getDefaultOrthoRightAndTop(const int windowWidthIn,
+                                             const int windowHeightIn,
+                                             double& orthoRightOut,
+                                             double& orthoTopOut);
+                                             
    protected:
       /// Draw a brain model
       void drawBrainModelPrivate(BrainModel* bm,
@@ -520,6 +529,9 @@ class BrainModelOpenGL {
       /// Draw the borders.
       void drawBorders(BrainModelSurface* s);
       
+      /// draw main window caption
+      void drawMainWindowCaption();
+      
       /// Draw the Surface Shape palette colorbar.
       void drawShapePalette(const int modelNumber);
 
@@ -571,23 +583,31 @@ class BrainModelOpenGL {
                                  const float axisCoord,
                                  const float voxelSize);
                                         
-      /// Draw the volume cell or foci file
-      void drawVolumeCellOrFociFile(const CellFile* cf,
-                                    const DisplaySettingsCells* dsc,
-                                    const ColorFile* colorFile,
-                                    const VolumeFile::VOLUME_AXIS axis,
-                                    const float axisCoord,
-                                    const float voxelSize);
+      /// Draw the volume cell file
+      void drawVolumeCellFile(const VolumeFile::VOLUME_AXIS axis,
+                              const float axisCoord,
+                              const float voxelSize);
       
-      /// Draw the oblique volume cell or foci file
-      void drawObliqueVolumeCellOrFociFile(const VolumeFile::VOLUME_AXIS axis,
-                                           const CellFile* cf,
-                                           const DisplaySettingsCells* dsc,
-                                           const ColorFile* colorFile,
-                                           const float voxelSize,
-                                           const TransformationMatrix* tm,
-                                           const float sliceCornerCoords[4][3],
-                                           const int transformDataFileIndex = -1);
+      /// Draw the volume foci file
+      void drawVolumeFociFile(const VolumeFile::VOLUME_AXIS axis,
+                              const float axisCoord,
+                              const float voxelSize);
+      
+      /// Draw the oblique volume cell file
+      void drawObliqueVolumeCellFile(const VolumeFile::VOLUME_AXIS axis,
+                                     const CellFile* cf,
+                                     const DisplaySettingsCells* dsc,
+                                     const ColorFile* colorFile,
+                                     const float voxelSize,
+                                     const TransformationMatrix* tm,
+                                     const float sliceCornerCoords[4][3],
+                                     const int transformDataFileIndex = -1);
+                                           
+      /// Draw the oblique volume foci file
+      void drawObliqueVolumeFociFile(const VolumeFile::VOLUME_AXIS axis,
+                                     const float voxelSize,
+                                     const TransformationMatrix* tm,
+                                     const float sliceCornerCoords[4][3]);
                                            
       /// Draw the oblique volume contour file.
       void drawObliqueContourFile(const VolumeFile::VOLUME_AXIS axis,
@@ -865,8 +885,11 @@ class BrainModelOpenGL {
       /// OpenGL text enabled
       static bool openGLTextEnabledFlag;
       
-      /// voxel coordinate is center of voxel (else left, bottom corner)
-      static bool voxelCoordinateIsCenterOfVoxel;
+      /// get minimum/maximum point size
+      static void getMinMaxPointSize(float& minSizeOut, float& maxSizeOut);
+      
+      /// get minimum/maximum line width
+      static void getMinMaxLineWidth(float& minWidthOut, float& maxWidthOut);
       
       /// maximum point size
       float maximumPointSize;
@@ -879,6 +902,9 @@ class BrainModelOpenGL {
       
       /// minimum line width
       float minimumLineWidth;
+      
+      /// caption displayed in main window
+      QString mainWindowCaption;
 };
 
 #ifdef __BRAIN_MODEL_OPENGL_MAIN__
@@ -887,7 +913,6 @@ float BrainModelOpenGL::defaultOrthoWindowSize = 125.0;
 unsigned char BrainModelOpenGL::surfaceEditDrawColor[3] = { 0, 0, 255 };
 GLubyte BrainModelOpenGL::polygonStipple[128];
 bool BrainModelOpenGL::openGLTextEnabledFlag = true;
-bool BrainModelOpenGL::voxelCoordinateIsCenterOfVoxel = true;
 
 #endif // __BRAIN_MODEL_OPENGL_MAIN__
 

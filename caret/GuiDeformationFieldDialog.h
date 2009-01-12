@@ -27,7 +27,7 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -36,7 +36,7 @@ class QLineEdit;
 class QRadioButton;
 
 /// dialog for creating deformation fields
-class GuiDeformationFieldDialog : public QtDialog {
+class GuiDeformationFieldDialog : public WuQDialog {
    Q_OBJECT
    
    public:

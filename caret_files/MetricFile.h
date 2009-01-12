@@ -492,6 +492,9 @@ class MetricFile : public GiftiNodeDataFile {
       static const QString metaDataColumnAverageThreshold;
 };
 
+
+#endif  // __METRIC_FILE__CLASS_H__
+
 #ifdef _METRIC_MAIN_
    const QString MetricFile::tagColumnColorMapping = "tag-column-color-mapping";
    const QString MetricFile::tagColumnThreshold    = "tag-column-threshold";
@@ -501,5 +504,3 @@ class MetricFile : public GiftiNodeDataFile {
    const QString MetricFile::metaDataColumnThreshold    = "column-threshold";
    const QString MetricFile::metaDataColumnAverageThreshold = "column-average-threshold";
 #endif  // _METRIC_MAIN_
-
-#endif  // __METRIC_FILE__CLASS_H__

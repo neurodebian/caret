@@ -27,6 +27,7 @@
 #include <iostream>
 
 #include "BrainSet.h"
+#include "DebugControl.h"
 #include "FileUtilities.h"
 #include "MapFmriAtlasSpecFileInfo.h"
 #include "SpecFile.h"
@@ -95,13 +96,13 @@ MapFmriAtlasSpecFileInfo::MapFmriAtlasSpecFileInfo(const QString& specFileNameIn
       //
       // Get structure and species
       //
-      structure = sf.getStructure();
-      species = sf.getSpecies();
+      structure = sf.getStructure().getTypeAsString();
+      species = sf.getSpecies().getName();
       
       //
       // Get the space
       //
-      space = sf.getSpace();
+      space = sf.getSpace().getName();
       if (space.isEmpty()) {
          space = "UNKNOWN";
       }
@@ -117,6 +118,30 @@ MapFmriAtlasSpecFileInfo::MapFmriAtlasSpecFileInfo(const QString& specFileNameIn
       if ((coordFiles.empty() == false) && 
           (topoFile.isEmpty() == false)) {
          dataValid = true;
+      }
+      
+      if (DebugControl::getDebugOn()) {
+         QString msg;
+         if (topoFile.isEmpty()) {
+            msg += "\n   has no closed topology file.";
+         }
+         if (averageCoordinateFile.isEmpty()) {
+            msg += "\n   has no average coordinate file.";
+         }
+         if (coordFiles.empty()) {
+            msg += "\n   has no fiducial coordinate files.";
+         } 
+         if (msg.isEmpty() == false) {
+            std::cout << "INFO: Atlas space \""
+                      << space.toAscii().constData()
+                      << "\" structure \""
+                      << structure.toAscii().constData()
+                      << "\""
+                      << msg.toAscii().constData()
+                      << "\n   from spec file "
+                      << FileUtilities::basename(specFileNameIn).toAscii().constData()
+                      << std::endl;
+         }
       }
    }
    catch (FileException& e) {

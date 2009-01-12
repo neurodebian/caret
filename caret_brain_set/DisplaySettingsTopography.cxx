@@ -34,7 +34,12 @@
  * The constructor.
  */
 DisplaySettingsTopography::DisplaySettingsTopography(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      NULL,
+                                      bs->getTopographyFile(),
+                                      BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY,
+                                      true,
+                                      false)
 {
    reset();
 }
@@ -52,7 +57,7 @@ DisplaySettingsTopography::~DisplaySettingsTopography()
 void
 DisplaySettingsTopography::reset()
 {
-   selectedColumn.clear();
+   DisplaySettingsNodeAttributeFile::reset();
    displayType = TOPOGRAPHY_DISPLAY_ECCENTRICITY;
 }
 
@@ -62,39 +67,7 @@ DisplaySettingsTopography::reset()
 void
 DisplaySettingsTopography::update()
 {
-   updateSelectedColumnIndices(brainSet->getTopographyFile(), selectedColumn);
-}
-
-/**
- * Get the selected column.
- */
-int 
-DisplaySettingsTopography::getSelectedColumn(const int modelIn) const 
-{ 
-   if (selectedColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return selectedColumn[model]; 
-}
-
-/**
- * Set the selected file index.
- */
-void 
-DisplaySettingsTopography::setSelectedColumn(const int model, const int col) 
-{ 
-   if (model < 0) {
-      std::fill(selectedColumn.begin(), selectedColumn.end(), col);
-   }
-   else {
-      selectedColumn[model] = col; 
-   }
+   DisplaySettingsNodeAttributeFile::update();
 }
 
 static const QString topographyID("topography-column");
@@ -105,16 +78,17 @@ static const QString topographyID("topography-column");
 void 
 DisplaySettingsTopography::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsTopography") {
-         showSceneNodeAttribute(*sc,
-                                topographyID,
-                                brainSet->getTopographyFile(),
-                                "Topography File",
-                                selectedColumn,
-                                errorMessage);
+         showSceneSelectedColumns(*sc,
+                                  "Topograrphy File",
+                                  topographyID,
+                                  "",
+                                  errorMessage);
                                 
          const int num = sc->getNumberOfSceneInfo();
          for (int i = 0; i < num; i++) {
@@ -135,41 +109,30 @@ DisplaySettingsTopography::showScene(const SceneFile::Scene& scene, QString& err
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsTopography::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsTopography::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    TopographyFile* tf = brainSet->getTopographyFile();
    if (onlyIfSelected) {
       if (tf->getNumberOfColumns() <= 0) {
          return;
       }
       
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY) == false) {
+      if (brainSet->isASurfaceOverlayForAnySurface(
+                     BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY) == false) {
          return;
       }
    }
    
    SceneFile::SceneClass sc("DisplaySettingsTopography");
    
-   saveSceneNodeAttribute(sc,
-                          topographyID,
-                          tf,
-                          selectedColumn);
+   saveSceneSelectedColumns(sc);
 
    sc.addSceneInfo(SceneFile::SceneInfo("topography-displayType",
                                         displayType));
    
    scene.addSceneClass(sc);
 }
-
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-bool 
-DisplaySettingsTopography::columnSelectionsAreTheSame(const int bm1, const int bm2) const
-{
-   return (selectedColumn[bm1] == selectedColumn[bm2]);
-}      
-
-                       
 

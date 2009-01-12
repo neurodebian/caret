@@ -27,13 +27,13 @@
 #ifndef __GUI_VOLUME_RESIZING_DIALOG_H__
 #define __GUI_VOLUME_RESIZING_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QSpinBox;
 
 /// Dialog for resizing a volume
-class GuiVolumeResizingDialog : public QtDialog {
+class GuiVolumeResizingDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -51,7 +51,7 @@ class GuiVolumeResizingDialog : public QtDialog {
       
    public slots:
       /// Called when OK button pressed
-      void slotOKButton();
+      void slotApplyButton();
       
       /// called when dialog is being closed
       virtual void close();

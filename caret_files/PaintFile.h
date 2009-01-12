@@ -35,6 +35,7 @@ class AreaColorFile;
 class ColorFile;
 class CoordinateFile;
 class DeformationMapFile;
+class NodeRegionOfInterestFile;
 class TopologyFile;
 class VolumeFile;
 
@@ -83,6 +84,12 @@ class PaintFile : public GiftiNodeDataFile {
       // assign colors to the labels
       void assignColors(const ColorFile& colorFile);
       
+      // assign paint from an ROI file
+      void assignNodesFromROIFile(const int columnNumber,
+                                  const NodeRegionOfInterestFile& roiFile,
+                                  const QString& paintName,
+                                  const bool assignNodesInRoiOnlyFlag) throw (FileException);
+                                  
       // Clean up paint names (eliminate unused ones)
       void cleanUpPaintNames();
       
@@ -139,10 +146,12 @@ class PaintFile : public GiftiNodeDataFile {
                        
       // dilate paint ID "paintIndex" if neighbors paint index >= 0 do only those
       int dilatePaintID(const TopologyFile* tf,
-                         const int columnNumber,
-                         const int iterations,
-                         const int paintIndex,
-                         const int neighborOnlyWithPaintIndex) throw (FileException);
+                        const CoordinateFile* cf,
+                        const int columnNumber,
+                        const int iterations,
+                        const int paintIndex,
+                        const int neighborOnlyWithPaintIndex,
+                        const float maximumExtent[6]) throw (FileException);
                          
       // set all the paints for a node
       void setPaints(const int nodeNumber, const int* paints);
@@ -228,6 +237,8 @@ class PaintFile : public GiftiNodeDataFile {
       void copyHelperPaint(const PaintFile& pf);
 };
 
+#endif // __PAINT_FILE_H__
+
 #ifdef _PAINT_FILE_MAIN_
     const QString PaintFile::columnNameLobes = "Lobes";
     const QString PaintFile::columnNameGeography = "Geography";
@@ -236,5 +247,3 @@ class PaintFile : public GiftiNodeDataFile {
     const QString PaintFile::columnNameModality = "Modality";
     const QString PaintFile::tagNumberOfPaintNames = "tag-number-of-paint-names";
 #endif // _PAINT_FILE_MAIN_
-
-#endif // __PAINT_FILE_H__

@@ -39,9 +39,10 @@
 /**
  * Constructor
  */
-GuiContourDrawDialog::GuiContourDrawDialog(QWidget* parent, bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+GuiContourDrawDialog::GuiContourDrawDialog(QWidget* parent, bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    setWindowTitle("Contour Drawing");
    
    //

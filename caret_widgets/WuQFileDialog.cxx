@@ -80,7 +80,7 @@
 #include "WuQFileDialogIcons.h"
 #undef _WU_Q_FILE_DIALOG_MAIN_H_
 
-static const qint32 WUQFileDialogMagic = 'WUFD';
+static const qint32 WUQFileDialogMagic = 0x57554644;  //'WUFD';
 static const qint32 WUQFileDialogVersion = 1;
 
 /**
@@ -88,7 +88,7 @@ static const qint32 WUQFileDialogVersion = 1;
  */
 WuQFileDialog::WuQFileDialog(QWidget* parent,
                                  Qt::WindowFlags f)
-   : QDialog(parent, f)
+   : WuQDialog(parent, f)
 {
    initializeDialog();
 }
@@ -100,7 +100,7 @@ WuQFileDialog::WuQFileDialog(QWidget* parent,
                                  const QString& caption,
                                  const QString& directoryName,
                                  const QString& filter)
-   : QDialog(parent, 0)
+   : WuQDialog(parent, 0)
 {
    initializeDialog();
    
@@ -1057,6 +1057,20 @@ WuQFileDialog::loadCommonDirectorySection()
                              + QDir::separator()
                              + "Documents");
    addToCommonDirectory(documentsPath, tr("Documents"));
+
+   //
+   // Add Downloads
+   //
+   const QString downloadsPath(homeDir 
+                             + QDir::separator()
+                             + "Downloads");
+   addToCommonDirectory(downloadsPath, tr("Downloads"));
+
+   //
+   // Add Volumes
+   //
+   const QString volumesPath("/Volumes");
+   addToCommonDirectory(volumesPath, tr("Volumes"));
 #endif // Q_OS_MACX
 
 #ifdef Q_OS_WIN32
@@ -1077,6 +1091,21 @@ WuQFileDialog::loadCommonDirectorySection()
    addToCommonDirectory(documentsPath, tr("My Documents"));
 #endif // Q_OS_WIN32
 
+   //
+   // Add drives
+   //
+   QFileInfoList drivesList = QDir::drives();
+   for (int i = 0; i < drivesList.count(); i++) {
+      const QFileInfo fi = drivesList.at(i);
+      const QString driveName = fi.absoluteFilePath();
+#ifdef Q_OS_MACX   
+      if (driveName == "/") {
+         continue;
+      }
+#endif // Q_OS_MACX
+      addToCommonDirectory(driveName, driveName);
+   }
+   
    //
    // Anything else will be sidebar URLS
    //
@@ -1540,9 +1569,17 @@ WuQFileDialog::setReadOnly(const bool enabled)
  * set the directory path.
  */
 void 
-WuQFileDialog::setDirectory(const QString& dirPath,
+WuQFileDialog::setDirectory(const QString& dirPathIn,
                               const bool selectionFromHistoryFlag)
 {
+   //
+   // Convert from ".", if needed
+   //
+   QString dirPath = dirPathIn;
+   if (dirPath == ".") {
+      dirPath = QDir::currentPath();
+   }
+   
    //
    // Set the directory
    //
@@ -1552,12 +1589,23 @@ WuQFileDialog::setDirectory(const QString& dirPath,
    // Update navigation history combo box
    //
    if (selectionFromHistoryFlag == false) {
-      //
-      // Add to history
-      //
-      navigationHistoryComboBox->insertItem(0, dirPath);
       navigationHistoryComboBox->blockSignals(true);
-      navigationHistoryComboBox->setCurrentIndex(0);
+
+      //
+      // If directory is first item in combo box, do not add it
+      //
+      const int dirIndex = navigationHistoryComboBox->findText(dirPath);
+      if (dirIndex != 0) {
+         //
+         // Add to history
+         //
+         navigationHistoryComboBox->insertItem(0, dirPath);
+         navigationHistoryComboBox->setCurrentIndex(0);
+      }
+      else if (dirIndex == 0) {
+         navigationHistoryComboBox->setCurrentIndex(0);
+      }
+      
       navigationHistoryComboBox->blockSignals(false);
    }
    

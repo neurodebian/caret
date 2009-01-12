@@ -225,7 +225,8 @@ BrainModelSurfacePaintToBorderConverter::execute() throw (BrainModelAlgorithmExc
       //
       // If border color does not exist
       //
-      if (borderColorIndex < 0) {
+      if ((borderColorIndex < 0) ||
+          (borderColorMatch == false)) {
          //
          // If there is an area color
          //

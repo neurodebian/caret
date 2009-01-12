@@ -30,11 +30,11 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 /// DisplaySettingsArealEstimation is a class that maintains parameters for
 /// controlling the display of areal estimation data.
-class DisplaySettingsArealEstimation : public DisplaySettings {
+class DisplaySettingsArealEstimation : public DisplaySettingsNodeAttributeFile {
    public:
       /// Constructor
       DisplaySettingsArealEstimation(BrainSet* bs);
@@ -48,25 +48,14 @@ class DisplaySettingsArealEstimation : public DisplaySettings {
       /// Update any selections due to changes in loaded areal estimation file
       void update();
       
-      /// Get the selected column
-      int getSelectedColumn(const int model) const;
-      
-      /// Set the selected file index
-      void setSelectedColumn(const int model, const int col);
-      
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
-      /// for node attribute files - all column selections for each surface are the same
-      virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;
-      
    private:
-      /// selected column
-      std::vector<int> selectedColumn;
-      
 };
 
 #endif

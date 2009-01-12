@@ -26,7 +26,7 @@
 #ifndef __GUI_METRIC_MODIFICATION_DIALOG_H__
 #define __GUI_METRIC_MODIFICATION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QComboBox;
 class QGroupBox;
@@ -42,7 +42,7 @@ class MetricFile;
 class QDoubleSpinBox;
 
 /// dialog for modifying a metric column
-class GuiMetricModificationDialog : public QtDialog {
+class GuiMetricModificationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

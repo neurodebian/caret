@@ -47,6 +47,7 @@
 #include "ColorFile.h"
 #include "DebugControl.h"
 #include "MathUtilities.h"
+#include "StringUtilities.h"
 #include "TransformationMatrixFile.h"
 
 /*************************************************************************************/
@@ -346,6 +347,7 @@ BrainModelBorderSet::deleteBorder(const int borderIndex)
       delete borders[borderIndex];
       borders.erase(borders.begin() + borderIndex, borders.begin() + borderIndex + 1);
    }
+   setProjectionsModified(true);
 }
 
 /**
@@ -357,6 +359,7 @@ BrainModelBorderSet::deleteBorderLink(const int borderIndex, const int linkIndex
    if ((borderIndex >= 0) && (borderIndex < getNumberOfBorders())) {
       borders[borderIndex]->deleteBorderLink(linkIndex);
    }   
+   setProjectionsModified(true);
 }
 
 /**
@@ -384,6 +387,313 @@ BrainModelBorderSet::deleteBorderProjections()
 
    SpecFile* sf = brainSet->getLoadedFilesSpecFile();
    sf->borderProjectionFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+      
+/**
+ * update a border with a new segment.
+ */
+void 
+BrainModelBorderSet::updateBorder(const BrainModelSurface* bms,
+                                  const UPDATE_BORDER_MODE updateMode,
+                                  Border* newBorderSegment,
+                                  const float samplingDensity,
+                                  const bool projectBorderFlag,
+                                  QString& errorMessageOut)
+{
+   const int brainModelIndex = bms->getBrainModelIndex();
+   if (brainModelIndex <= 0) {
+      return;
+   }
+   const int numberOfBrainModels = brainSet->getNumberOfBrainModels();
+   
+   const int numberOfLinksInNewSegment = newBorderSegment->getNumberOfLinks();
+   if (numberOfLinksInNewSegment <= 1) {
+      return;
+   }
+   
+   //
+   // Links where new border segment is inserted
+   //
+   BrainModelBorder* bmb = NULL;
+   int borderNumber = -1;
+   int startLinkNumber = -1;
+   int endLinkNumber   = -1;
+   bool reverseOrderFlag = false;
+   
+   //
+   // New segment must be this close to an existing border link
+   //
+   const float distanceTolerance = 25.0;
+   
+   //
+   // Start and end based upon update mode
+   //
+   const bool eraseModeFlag = (updateMode == UPDATE_BORDER_MODE_ERASE);
+   switch (updateMode) {
+      case UPDATE_BORDER_MODE_NONE:
+         errorMessageOut = "Update MODE is invalid.";
+         return;
+         break;
+      case UPDATE_BORDER_MODE_REPLACE_SEGMENT_IN_MIDDLE_OF_BORDER:
+      case UPDATE_BORDER_MODE_ERASE:
+         {
+            //
+            // Find border link nearest start of updated links
+            //
+            if (findBorderAndLinkNearestCoordinate(bms,
+                                                   newBorderSegment->getLinkXYZ(0),
+                                                   borderNumber,
+                                                   startLinkNumber) == false) {
+               errorMessageOut = "Unable to find border near start of new links.";
+               return;
+            }
+            
+            //
+            // Find the link nearest the end of updated links
+            //
+            bmb = getBorder(borderNumber);
+            endLinkNumber = bmb->getLinkNearestCoordinate(brainModelIndex,
+                                              newBorderSegment->getLinkXYZ(numberOfLinksInNewSegment - 1));
+            if (endLinkNumber < 0) {
+               errorMessageOut = "Unable to find border near end of new links.";
+               return;
+            }
+            
+            QString newEraseString("New");
+            if (eraseModeFlag) {
+               newEraseString = "Erase";
+            }
+            
+            //
+            // Make sure new segment starts and ends near new border
+            //
+            const float* borderStartXYZ = 
+               bmb->getBorderLink(startLinkNumber)->getLinkPosition(brainModelIndex);
+            const float distToStart = 
+               MathUtilities::distance3D(borderStartXYZ, 
+                                         newBorderSegment->getLinkXYZ(0));
+            if (distToStart > distanceTolerance) {
+               errorMessageOut = newEraseString 
+                               + " segment does not start close to a border.";
+               return;
+            }
+            const float* borderEndXYZ = 
+               bmb->getBorderLink(endLinkNumber)->getLinkPosition(brainModelIndex);
+            const float distToEnd = 
+               MathUtilities::distance3D(borderEndXYZ, 
+                                         newBorderSegment->getLinkXYZ(numberOfLinksInNewSegment - 1));
+            if (distToEnd > distanceTolerance) {
+               errorMessageOut = newEraseString
+                               + " segment does not end close to a border.";
+               return;
+            }
+
+            //
+            // If needed, reverse links
+            //
+            if (startLinkNumber > endLinkNumber) {
+               reverseOrderFlag = true;
+               std::swap(startLinkNumber, endLinkNumber);
+            }
+         }
+         break;
+      case UPDATE_BORDER_MODE_EXTEND_BORDER_FROM_END:
+         {
+            //
+            // Find border link nearest start of updated links
+            //
+            int nearestLinkNumber = -1;
+            if (findBorderAndLinkNearestCoordinate(bms,
+                                                   newBorderSegment->getLinkXYZ(0),
+                                                   borderNumber,
+                                                   nearestLinkNumber) == false) {
+               errorMessageOut = "Unable to find border near start of new links.";
+               return;
+            }
+            bmb = getBorder(borderNumber);
+           
+            //
+            // Get distance from both ends of existing border to first
+            // link in new segment
+            //
+            const float* borderStartXYZ = 
+               bmb->getBorderLink(0)->getLinkPosition(brainModelIndex);
+            const float distToStart = 
+               MathUtilities::distance3D(borderStartXYZ, 
+                                                newBorderSegment->getLinkXYZ(0));
+            const float* borderEndXYZ = 
+               bmb->getBorderLink(bmb->getNumberOfBorderLinks() - 1)->getLinkPosition(brainModelIndex);
+            const float distToEnd = 
+               MathUtilities::distance3D(borderEndXYZ, 
+                                                newBorderSegment->getLinkXYZ(0));
+            
+            //
+            // Add on to start or ending end of border
+            //
+            if (distToStart < distToEnd) {
+               if (distToStart > distanceTolerance) {
+                  errorMessageOut = "New segment is not close to a border.";
+                  return;
+               }
+               endLinkNumber = nearestLinkNumber;
+               reverseOrderFlag = true;
+            }
+            else {
+               if (distToEnd > distanceTolerance) {
+                  errorMessageOut = "New segment is not close to a border.";
+                  return;
+               }
+               startLinkNumber = nearestLinkNumber;
+            }
+         }
+         break;
+   }
+   
+   
+   //
+   // Create a new border
+   //
+   BrainModelBorder* newBorder = new BrainModelBorder(*bmb);
+   newBorder->borderLinks.clear();
+   
+   //
+   // Add in links prior to updated links
+   //
+   if (startLinkNumber >= 0) {
+      for (int i = 0; i < (startLinkNumber - 1); i++) {
+         BrainModelBorderLink newLink(*(bmb->getBorderLink(i)));
+         newBorder->addBorderLink(newLink);
+      }
+   }
+   
+   //
+   // If not erasing
+   //
+   if (eraseModeFlag == false) {
+      //
+      // Add new links
+      //
+      if (reverseOrderFlag) {
+         for (int i = (numberOfLinksInNewSegment - 1); i >= 0; i--) {
+            const float* xyz = newBorderSegment->getLinkXYZ(i);
+            BrainModelBorderLink newLink(numberOfBrainModels);
+            newLink.setLinkPosition(brainModelIndex, xyz);
+            newBorder->addBorderLink(newLink);
+         }
+      }
+      else {
+         for (int i = 0; i < numberOfLinksInNewSegment; i++) {
+            const float* xyz = newBorderSegment->getLinkXYZ(i);
+            BrainModelBorderLink newLink(numberOfBrainModels);
+            newLink.setLinkPosition(brainModelIndex, xyz);
+            newBorder->addBorderLink(newLink);
+         }
+      }
+   }
+   
+   //
+   // Add in links after updated links
+   //
+   if (endLinkNumber >= 0) {
+      for (int i = (endLinkNumber + 1); i < bmb->getNumberOfBorderLinks(); i++) {
+         BrainModelBorderLink newLink(*(bmb->getBorderLink(i)));
+         newBorder->addBorderLink(newLink);
+      }
+   }
+   
+   //
+   // Delete the old border
+   //
+   borders.erase(borders.begin() + borderNumber);
+   
+   //
+   // Resample
+   //
+   int dummyInt;
+   newBorder->resampleToDensity(bms,
+                                samplingDensity,
+                                2,
+                                dummyInt);
+   
+   //
+   // Add the new border
+   //
+   addBorder(newBorder);
+   
+   if (projectBorderFlag) {
+      const int lastBorderNumber = getNumberOfBorders() - 1;
+      projectBorders(bms,
+                     true,
+                     lastBorderNumber,
+                     lastBorderNumber);
+   }
+}
+
+/**
+ * find border and links nearest 3D coordinate (returns true if found).
+ */
+bool 
+BrainModelBorderSet::findBorderAndLinkNearestCoordinate(const BrainModelSurface* bms,
+                                        const float xyz[3],
+                                        int& borderNumberOut,
+                                        int& borderLinkOut) const
+{    
+   borderNumberOut = -1;
+   borderLinkOut = -1;
+   float maxDist = std::numeric_limits<int>::max();
+   
+   const int brainModelIndex = bms->getBrainModelIndex();
+   if (brainModelIndex <= 0) {
+      return false;
+   }
+
+   const int numBorders = getNumberOfBorders();
+   for (int i = 0;  i < numBorders; i++) {
+      const BrainModelBorder* bmb = getBorder(i);
+      const int nearestLink = bmb->getLinkNearestCoordinate(brainModelIndex,
+                                                            xyz);
+      if (nearestLink >= 0) {
+         const BrainModelBorderLink* bmbl = bmb->getBorderLink(nearestLink);
+         const float* pos = bmbl->getLinkPosition(brainModelIndex);
+         if (pos != NULL) {
+            const float dist = MathUtilities::distanceSquared3D(pos, xyz);
+            if (dist < maxDist) {
+               borderNumberOut = i;
+               borderLinkOut   = nearestLink;
+               maxDist = dist;
+            }
+         }
+      }
+   }
+   
+   return (borderNumberOut >= 0);
+}
+
+/**
+ * delete border not displayed on a brain model.
+ */
+void 
+BrainModelBorderSet::deleteBordersNotDisplayedOnBrainModel(const BrainModel* bm)
+{
+   const int brainModelIndex = brainSet->getBrainModelIndex(bm);
+   if (brainModelIndex < 0) {
+      std::cout << "PROGRAM ERROR: invalid brain model index at " << __LINE__
+                << " in " << __FILE__ << std::endl;
+      return;
+   }
+
+   std::vector<int> bordersToDelete;
+   const int numBorders = getNumberOfBorders();
+   for (int i = (numBorders - 1); i >= 0; i--) {
+      const BrainModelBorder* b = getBorder(i);
+      if (b->getValidForBrainModel(brainModelIndex) &&
+          b->getDisplayFlag()) {
+         // keep border
+      }
+      else {
+         deleteBorder(i);
+      }
+   }
 }
       
 /**
@@ -751,7 +1061,7 @@ BrainModelBorderSet::unprojectBordersForAllSurfaces(const int firstBorderToProje
                           lastBorderToProject);
       }
    }
-   setAllModifiedStatus(false);
+   setAllBordersModifiedStatus(false);
 }
 
 /**
@@ -1100,10 +1410,40 @@ BrainModelBorderSet::resampleDisplayedBorders(const BrainModel* bm,
 }
 
 /**
+ * get indeces of borders with name.
+ */
+void 
+BrainModelBorderSet::getAllBordersWithName(const QString& nameIn,
+                                           std::vector<int>& indicesOut) const
+{
+   indicesOut.clear();
+   
+   const int numBorders = getNumberOfBorders();
+   for (int i = 0;  i < numBorders; i++) {
+      if (getBorder(i)->getName() == nameIn) {
+         indicesOut.push_back(i);
+      }
+   }
+}
+                           
+/**
+ * copy a border.
+ */
+void 
+BrainModelBorderSet::copyBorder(const int borderToCopyIndex,
+                                const QString& nameForCopiedBorder)
+{
+   BrainModelBorder* b = new BrainModelBorder(*getBorder(borderToCopyIndex));
+   b->setName(nameForCopiedBorder);
+   addBorder(b);
+}
+
+/**
  * get the unique names of all borders.
  */
 void 
-BrainModelBorderSet::getAllBorderNames(std::vector<QString>& names)
+BrainModelBorderSet::getAllBorderNames(std::vector<QString>& names,
+                                       const bool reverseOrderFlag)
 {
    std::set<QString> uniqueNames;
    const int numBorders = getNumberOfBorders();
@@ -1116,6 +1456,8 @@ BrainModelBorderSet::getAllBorderNames(std::vector<QString>& names)
    }
    names.clear();
    names.insert(names.end(), uniqueNames.begin(), uniqueNames.end());
+   
+   StringUtilities::sortCaseInsensitive(names, reverseOrderFlag, false);
 }
 
 /** 
@@ -1167,14 +1509,13 @@ BrainModelBorderSet::setSurfaceBordersModified(const BrainModelSurface* bms,
  * Set the modification status of all borders and the projections
  */
 void
-BrainModelBorderSet::setAllModifiedStatus(const bool mod)
+BrainModelBorderSet::setAllBordersModifiedStatus(const bool mod)
 {
    const int num = brainSet->getNumberOfBrainModels();
    for (int i = 0; i < num; i++) {
       const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-      setSurfaceBordersModified(bms, false);
+      setSurfaceBordersModified(bms, mod);
    }
-   setProjectionsModified(mod);
 }
 
 /**
@@ -2286,6 +2627,32 @@ BrainModelBorder::getModified(const int brainModelIndex) const
    return brainModelModified[brainModelIndex];
 }      
 
+/**
+ * get the link nearest the coordinate (returns -1 if found).
+ */
+int 
+BrainModelBorder::getLinkNearestCoordinate(const int brainModelIndex,
+                                               const float xyz[3]) const
+{
+   int nearestLinkNumber = -1;
+   float maxDist = std::numeric_limits<int>::max();
+   
+   const int numLinks = getNumberOfBorderLinks();
+   for (int j = 0; j < numLinks; j++) {
+      const BrainModelBorderLink* bmbl = getBorderLink(j);
+      const float* pos = bmbl->getLinkPosition(brainModelIndex);
+      if (pos != NULL) {
+         const float dist = MathUtilities::distanceSquared3D(pos, xyz);
+         if (dist < maxDist) {
+            nearestLinkNumber   = j;
+            maxDist = dist;
+         }
+      }
+   }
+   
+   return nearestLinkNumber;
+}
+                                    
 /**
  * apply a transformation matrix to a brain model's borders.
  */

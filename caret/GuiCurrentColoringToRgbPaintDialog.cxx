@@ -45,8 +45,9 @@
  * Constructor.
  */
 GuiCurrentColoringToRgbPaintDialog::GuiCurrentColoringToRgbPaintDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Copy Current Coloring to RGB Paint");
    
    //
@@ -176,7 +177,7 @@ GuiCurrentColoringToRgbPaintDialog::done(int r)
       }
    
       DisplaySettingsRgbPaint* dsrgb = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
-      dsrgb->setSelectedColumn(-1, columnNumber);
+      dsrgb->setSelectedDisplayColumn(-1, -1, columnNumber);
       
       GuiFilesModified fm;
       fm.setRgbPaintModified();

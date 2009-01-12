@@ -24,6 +24,7 @@
  */
 /*LICENSE_END*/
 
+#include <QCheckBox>
 #include <QWidget>
 
 #include "WuQWidgetGroup.h"
@@ -107,6 +108,50 @@ WuQWidgetGroup::blockSignals(bool blockTheSignals)
 {
    for (int i = 0; i < widgets.size(); i++) {
       widgets.at(i)->blockSignals(blockTheSignals);
+   }
+}
+      
+/**
+ * set status of all checkboxes.
+ */
+void 
+WuQWidgetGroup::setAllCheckBoxesChecked(const bool b)
+{
+   for (int i = 0; i < widgets.size(); i++) {
+      QCheckBox* cb = dynamic_cast<QCheckBox*>(widgets.at(i));
+      if (cb != NULL) {
+         cb->setChecked(b);
+      }
+   }
+}
+      
+/** 
+ * make all of the widgets in the group the same size as size hint
+ * of largest widget.
+ */
+void 
+WuQWidgetGroup::resizeAllToLargestSizeHint()
+{
+   int largestWidth  = -1;
+   int largestHeight = -1;
+   
+   for (int i = 0; i < widgets.size(); i++) {
+      const QSize size = widgets.at(i)->sizeHint();
+      if (size.width() > largestWidth) {
+         largestWidth = size.width();
+      }
+      if (size.height() > largestHeight) {
+         largestHeight = size.height();
+      }
+   }
+   
+   if ((largestWidth > 0) &&
+       (largestHeight > 0)) {
+      QSize newSize(largestWidth, largestHeight);
+      
+      for (int i = 0; i < widgets.size(); i++) {
+         widgets.at(i)->setFixedSize(newSize);
+      }
    }
 }
       

@@ -45,6 +45,7 @@
 #include <QToolTip>
 
 #include "BrainModelSurface.h"
+#include "BrainModelSurfaceBorderLandmarkIdentification.h"
 #include "BrainModelVolume.h"
 #include "BrainModelVolumeSureFitSegmentation.h"
 #include "BrainModelVolumeVoxelColoring.h"
@@ -56,20 +57,22 @@
 #include "GuiFilesModified.h"
 #include "GuiFileSelectionButton.h"
 #include "GuiGraphWidget.h"
+#include "GuiStereotaxicSpaceComboBox.h"
 #include "GuiStructureComboBox.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowFileActions.h"
+#include "GuiSpeciesComboBox.h"
 #include "GuiVolumeSureFitSegmentationDialog.h"
 #include "GuiVolumeSelectionControl.h"
 #include "StatisticHistogram.h"
 #include "ParamsFile.h"
-#include "QtCheckBoxSelectionDialog.h"
 #include "QtListBoxSelectionDialog.h"
 #include "QtUtilities.h"
 #include "SpecFile.h"
 #include "Species.h"
 #include "StringUtilities.h"
 #include "VolumeFile.h"
+#include "WuQDataEntryDialog.h"
 
 #include "global_variables.h"
 
@@ -77,12 +80,16 @@
  * Constructor.
  */
 GuiVolumeSureFitSegmentationDialog::GuiVolumeSureFitSegmentationDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setAttribute(Qt::WA_DeleteOnClose);
    initializeGraphScaleFlag = true;
-   typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
+   typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
    peakHistogram = NULL;
+   anatomicalVolumeOptionsGroupBox = NULL;
+   segmentationVolumeOptionsGroupBox = NULL;
+   volumeSelectionGroupBox = NULL;
+   mode = MODE_NONE;
 
    setWindowTitle("SureFit Segmentation Operations");
    
@@ -204,7 +211,7 @@ GuiVolumeSureFitSegmentationDialog::slotCloseButton()
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    dsv->setAnatomyThresholdValid(false);
    GuiBrainModelOpenGL::updateAllGL();
-   QtDialog::close();
+   WuQDialog::close();
 }
       
 /**
@@ -214,7 +221,7 @@ void
 GuiVolumeSureFitSegmentationDialog::show()
 {
    showPage(pagesStackedWidget->widget(0));
-   QtDialog::show();
+   WuQDialog::show();
    slotEnableDisablePushButtons();
 }
 
@@ -280,7 +287,7 @@ GuiVolumeSureFitSegmentationDialog::slotDirectoryPushButton()
  * see if the current directory is set to the caret installation directory.
  */
 bool 
-GuiVolumeSureFitSegmentationDialog::currentDirectoryIsCaretInstalltionDirectory()
+GuiVolumeSureFitSegmentationDialog::currentDirectoryIsCaretInstallationDirectory()
 {
    const QString currentPath = QDir::currentPath();
    const bool inInstallDir =  (currentPath.contains("caret/bin") ||
@@ -297,7 +304,7 @@ GuiVolumeSureFitSegmentationDialog::updateCurrentDirectoryPage()
 {   
    QString msg;
    
-   if (currentDirectoryIsCaretInstalltionDirectory()) {
+   if (currentDirectoryIsCaretInstallationDirectory()) {
       msg = 
          "<font color=red>"
          "The current path needs to be changed as it is currently set to<br>"
@@ -334,20 +341,21 @@ GuiVolumeSureFitSegmentationDialog::createSubjectInfoPage()
    //
    // Species information
    //
-   QPushButton* speciesPushButton = new QPushButton("Species...");
-   speciesPushButton->setAutoDefault(false);
-   QObject::connect(speciesPushButton, SIGNAL(clicked()),
-                    this, SLOT(slotSpeciesPushButton()));
-   speciesPushButton->setToolTip(
-                 "Press this button select from\n"
-                 "a list of valid species.");
-   speciesLineEdit = new QLineEdit;
-   speciesLineEdit->setToolTip(
-                 "Press the Species push button on the\n"
-                 "left to select from a list of valid species.");
-   QObject::connect(speciesLineEdit, SIGNAL(textChanged(const QString&)),
+   QLabel* speciesLabel = new QLabel("Species");
+   speciesComboBox = new GuiSpeciesComboBox;
+   speciesComboBox->setSelectedSpecies(theMainWindow->getBrainSet()->getSpecies());
+   QObject::connect(speciesComboBox, SIGNAL(activated(int)),
                     this, SLOT(slotEnableDisablePushButtons()));
    
+   //
+   // Stereotaxic space
+   //
+   QLabel* stereotaxicSpaceLabel = new QLabel("Stereotaxic Space");
+   stereotaxicSpaceComboBox = new GuiStereotaxicSpaceComboBox;
+   stereotaxicSpaceComboBox->setSelectedStereotaxicSpace(theMainWindow->getBrainSet()->getStereotaxicSpace());
+   QObject::connect(stereotaxicSpaceComboBox, SIGNAL(activated(int)),
+                    this, SLOT(slotEnableDisablePushButtons()));
+                    
    //
    // Subject information
    //
@@ -372,12 +380,14 @@ GuiVolumeSureFitSegmentationDialog::createSubjectInfoPage()
    // Arrange the widgets in a grid layout
    //
    QGridLayout* gridLayout = new QGridLayout;
-   gridLayout->addWidget(speciesPushButton, 0, 0);
-   gridLayout->addWidget(speciesLineEdit, 0, 1);
-   gridLayout->addWidget(subjectLabel, 1, 0);
-   gridLayout->addWidget(subjectLineEdit, 1, 1);
-   gridLayout->addWidget(structureLabel, 2, 0);
-   gridLayout->addWidget(structureComboBox, 2, 1);
+   gridLayout->addWidget(speciesLabel, 0, 0);
+   gridLayout->addWidget(speciesComboBox, 0, 1);
+   gridLayout->addWidget(stereotaxicSpaceLabel, 1, 0);
+   gridLayout->addWidget(stereotaxicSpaceComboBox, 1, 1);
+   gridLayout->addWidget(subjectLabel, 2, 0);
+   gridLayout->addWidget(subjectLineEdit, 2, 1);
+   gridLayout->addWidget(structureLabel, 3, 0);
+   gridLayout->addWidget(structureComboBox, 3, 1);
    gridLayout->setColumnStretch(0, 0);
    
    //
@@ -389,34 +399,6 @@ GuiVolumeSureFitSegmentationDialog::createSubjectInfoPage()
    layout->addStretch();
    
    return w;
-}
-
-/**
- * Called when species push button pressed.
- */
-void 
-GuiVolumeSureFitSegmentationDialog::slotSpeciesPushButton()
-{
-   std::vector<QString> values;
-   Species::getAllSpecies(values);
-   
-   int defaultIndex = 0;
-   const QString currentValue = speciesLineEdit->text();
-   for (int i = 0; i < static_cast<int>(values.size()); i++) {
-      if (currentValue == values[i]) {
-         defaultIndex = i;
-         break;
-      }
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                  "Choose Species",
-                                  "",
-                                  values,
-                                  defaultIndex);
-   if (lbsd.exec() == QDialog::Accepted) {
-      speciesLineEdit->setText(lbsd.getSelectedText());
-   }
 }
 
 /**
@@ -509,10 +491,12 @@ GuiVolumeSureFitSegmentationDialog::createVolumeFileTypePage()
 {
    fileTypeAfniRadioButton  = new QRadioButton("AFNI");
    fileTypeNiftiRadioButton = new QRadioButton("NIFTI");
+   fileTypeNiftiGzipRadioButton = new QRadioButton("NIFTI-GZIP");
    
    QButtonGroup* buttGroup = new QButtonGroup(this);
    buttGroup->addButton(fileTypeAfniRadioButton);  
    buttGroup->addButton(fileTypeNiftiRadioButton); 
+   buttGroup->addButton(fileTypeNiftiGzipRadioButton);
    QObject::connect(buttGroup, SIGNAL(buttonClicked(int)),
                     this, SLOT(slotEnableDisablePushButtons()));
           
@@ -528,6 +512,7 @@ GuiVolumeSureFitSegmentationDialog::createVolumeFileTypePage()
    QVBoxLayout* layout = new QVBoxLayout(w);
    layout->addWidget(fileTypeAfniRadioButton);
    layout->addWidget(fileTypeNiftiRadioButton);
+   layout->addWidget(fileTypeNiftiGzipRadioButton);
    layout->addWidget(infoLabel);
    layout->addStretch();
    
@@ -541,10 +526,55 @@ QWidget*
 GuiVolumeSureFitSegmentationDialog::createVolumeSelectionPage()
 {
    //
-   // Control for selecting the volume that is to be processed
+   // Mode radio buttons
    //
-   volumeSelectionControl = new GuiVolumeSelectionControl(0,
+   modeAnatomicalVolumeProcessingRadioButton = 
+      new QRadioButton("Anatomical Volume Segmentation");
+   modeSegmentationVolumeProcessingRadioButton =
+      new QRadioButton("Segmentation Volume Post Processing");
+   
+   //
+   // Button group to keep mode buttons mutually exclusive
+   //
+   QButtonGroup* modeButtonGroup = new QButtonGroup(this);
+   modeButtonGroup->addButton(modeAnatomicalVolumeProcessingRadioButton);
+   modeButtonGroup->addButton(modeSegmentationVolumeProcessingRadioButton);
+   QObject::connect(modeButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(slotEnableDisablePushButtons()));
+                    
+   //
+   // Group box for mode buttons
+   //
+   QGroupBox* modeGroupBox = new QGroupBox("Segmentation Mode");
+   QVBoxLayout* modeGroupLayout = new QVBoxLayout(modeGroupBox);
+   modeGroupLayout->addWidget(modeAnatomicalVolumeProcessingRadioButton);
+   modeGroupLayout->addWidget(modeSegmentationVolumeProcessingRadioButton);
+   modeGroupBox->setFixedSize(modeGroupBox->sizeHint());
+   
+   //
+   // Control for selecting the anatomical volume
+   //
+   volumeAnatomySelectionControl = new GuiVolumeSelectionControl(0,
                                                           true,
+                                                          false,
+                                                          false,
+                                                          false,
+                                                          false,
+                                                          false,
+                                                          false,
+                               GuiVolumeSelectionControl::LABEL_MODE_FILE_LABEL_AND_NAME,
+                                                          "volumeAnatomySelectionControl",
+                                                          false,
+                                                          false,
+                                                          false);
+   QObject::connect(volumeAnatomySelectionControl, SIGNAL(signalSelectionChanged()),
+                    this, SLOT(slotEnableDisablePushButtons()));
+   
+   //
+   // Control for selecting the segmentation volume
+   //
+   volumeSegmentationSelectionControl = new GuiVolumeSelectionControl(0,
+                                                          false,
                                                           false,
                                                           false,
                                                           false,
@@ -552,15 +582,26 @@ GuiVolumeSureFitSegmentationDialog::createVolumeSelectionPage()
                                                           true,
                                                           false,
                                GuiVolumeSelectionControl::LABEL_MODE_FILE_LABEL_AND_NAME,
-                                                          "volumeSelectionControl",
+                                                          "volumeSegmentationSelectionControl",
                                                           false,
                                                           false,
                                                           false);
-   QObject::connect(volumeSelectionControl, SIGNAL(signalSelectionChanged()),
+   QObject::connect(volumeSegmentationSelectionControl, SIGNAL(signalSelectionChanged()),
                     this, SLOT(slotEnableDisablePushButtons()));
+                    
+   //
+   // Group box and layout for volume selection
+   //
+   volumeSelectionGroupBox = new QGroupBox("Volume Selection");
+   QVBoxLayout* volumeSelectionGroupLayout = new QVBoxLayout(volumeSelectionGroupBox);
+   volumeSelectionGroupLayout->addWidget(volumeAnatomySelectionControl);
+   volumeSelectionGroupLayout->addWidget(volumeSegmentationSelectionControl);
+   volumeSelectionGroupBox->setFixedSize(volumeSelectionGroupBox->sizeHint());
+   
    QWidget* w = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(w);
-   layout->addWidget(volumeSelectionControl);
+   layout->addWidget(modeGroupBox);
+   layout->addWidget(volumeSelectionGroupBox);
    layout->addStretch();
    
    return w;
@@ -588,10 +629,10 @@ void
 GuiVolumeSureFitSegmentationDialog::updateVolumeAttributesPage()
 {
    QString voxelRangeMessage;
-   VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
-   if (vf != NULL) {
+   VolumeFile* vfa = volumeAnatomySelectionControl->getSelectedVolumeFile();
+   if (vfa != NULL) {
       float minVoxel, maxVoxel;
-      vf->getMinMaxVoxelValues(minVoxel, maxVoxel);
+      vfa->getMinMaxVoxelValues(minVoxel, maxVoxel);
       std::ostringstream s1;
       QString fontStart1, fontEnd1;
       if (minVoxel != 0.0) {
@@ -603,7 +644,7 @@ GuiVolumeSureFitSegmentationDialog::updateVolumeAttributesPage()
          fontStart2 = "<font color=red>";
          fontEnd2 = "</font>";
       }
-      s1 << "The selected volume's voxels range from " 
+      s1 << "The selected anatomy volume's voxels range from " 
          << fontStart1.toAscii().constData()
          << minVoxel 
          << fontEnd1.toAscii().constData()
@@ -612,9 +653,36 @@ GuiVolumeSureFitSegmentationDialog::updateVolumeAttributesPage()
          << maxVoxel 
          << fontEnd2.toAscii().constData()
          << ".";
-      voxelRangeMessage = s1.str().c_str();
+      voxelRangeMessage += s1.str().c_str();
    }
-   
+/*
+   VolumeFile* vfb = volumeAnatomySelectionControl->getSelectedVolumeFile();
+   if (vfb != NULL) {
+      float minVoxel, maxVoxel;
+      vfa->getMinMaxVoxelValues(minVoxel, maxVoxel);
+      std::ostringstream s1;
+      QString fontStart1, fontEnd1;
+      if (minVoxel != 0.0) {
+         fontStart1 = "<font color=red>";
+         fontEnd1 = "</font>";
+      }
+      QString fontStart2, fontEnd2;
+      if (maxVoxel != 255.0) {
+         fontStart2 = "<font color=red>";
+         fontEnd2 = "</font>";
+      }
+      s1 << "The selected anatomy volume's voxels range from " 
+         << fontStart1.toAscii().constData()
+         << minVoxel 
+         << fontEnd1.toAscii().constData()
+         << " to " 
+         << fontStart2.toAscii().constData()
+         << maxVoxel 
+         << fontEnd2.toAscii().constData()
+         << ".";
+      voxelRangeMessage += s1.str().c_str();
+   }
+*/
    std::ostringstream str;
    str << "The volume must be in an LPI (-x is left, -y is posterior, -z is inferior)<br>"
        << "orientation.<br>"
@@ -626,8 +694,8 @@ GuiVolumeSureFitSegmentationDialog::updateVolumeAttributesPage()
        << "<br>"
        << "The voxel size must be 1mm in each axis.<br>"
        << "<br>"
-       << "The voxels must be in the range 0 to 255.<br>";
-   if (vf != NULL) {
+       << "The ANATOMY voxels must be in the range 0 to 255.<br>";
+   if (vfa != NULL) {
       str << voxelRangeMessage.toAscii().constData() << "<br>";
    }
    str << "<br>"
@@ -840,12 +908,41 @@ GuiVolumeSureFitSegmentationDialog::createSegmentationSelectionsPage()
    
    generateSegmentationCheckBox = new QCheckBox("Generate Segmentation");
    generateSegmentationCheckBox->setChecked(true);
+   QObject::connect(generateSegmentationCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotEnableDisableSelectionCheckBoxes()));
    
    fillVentriclesCheckBox = new QCheckBox("Fill Ventricles");
    fillVentriclesCheckBox->setChecked(true);
    
-   automaticErrorCorrectionCheckBox = new QCheckBox("Automatic Error Correction");
-   automaticErrorCorrectionCheckBox->setChecked(true);
+   volumeErrorCorrectionCheckBox = new QCheckBox("Volume Error Correction Method");
+   volumeErrorCorrectionCheckBox->setChecked(true);
+   QObject::connect(volumeErrorCorrectionCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotEnableDisableSelectionCheckBoxes()));
+   
+   volumeErrorCorrectionMethodComboBox = new QComboBox;
+   std::vector<BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD> errorCorrectionValues;
+   std::vector<QString> errorCorrectionNames;
+   BrainModelVolumeSureFitSegmentation::getErrorCorrectionMethodsAndNames(
+      errorCorrectionNames, errorCorrectionValues);
+   int defaultErrorIndex = 0;
+   for (unsigned int i = 0; i < errorCorrectionNames.size(); i++) {
+      if (errorCorrectionValues[i] !=
+          BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD_NONE) {
+         volumeErrorCorrectionMethodComboBox->addItem(
+            errorCorrectionNames[i],
+            static_cast<int>(errorCorrectionValues[i]));
+         if (errorCorrectionValues[i] ==
+             BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD_SUREFIT_AND_GRAPH) {
+            defaultErrorIndex = volumeErrorCorrectionMethodComboBox->count() - 1;
+         }
+      }
+   }
+   volumeErrorCorrectionMethodComboBox->setCurrentIndex(defaultErrorIndex);
+   
+   QHBoxLayout* errorCorrectionLayout = new QHBoxLayout;
+   errorCorrectionLayout->addWidget(volumeErrorCorrectionCheckBox);
+   errorCorrectionLayout->addWidget(volumeErrorCorrectionMethodComboBox);
+   errorCorrectionLayout->addStretch();
    
    generateRawAndFiducialSurfaceCheckBox = new QCheckBox("Generate Raw and Fiducial Surfaces");
    generateRawAndFiducialSurfaceCheckBox->setChecked(true);
@@ -869,35 +966,65 @@ GuiVolumeSureFitSegmentationDialog::createSegmentationSelectionsPage()
    generateEllipsoidSurfaceCheckBox = new QCheckBox("Generate Ellipsoid Surface (for Flattening)");
    generateEllipsoidSurfaceCheckBox->setChecked(true);
    
+   generateSphericalSurfaceCheckBox = new QCheckBox("Generate Spherical Surface");
+   generateSphericalSurfaceCheckBox->setChecked(false);
+   
+   generateCompMedWallSurfaceCheckBox = new QCheckBox("Generate Compressed Medial Wall Surface");
+   generateCompMedWallSurfaceCheckBox->setChecked(false);
+   
    generateHullCheckBox = new QCheckBox("Generate Cerebral Hull");
    generateHullCheckBox->setChecked(true);
    
-   identifySulciCheckBox = new QCheckBox("Create Curvature, Depth, and Paint Attributes");
-   identifySulciCheckBox->setChecked(true);
+   generateDepthCurvatureGeographyCheckBox = new QCheckBox("Create Curvature, Depth, and Geography Attributes");
+   generateDepthCurvatureGeographyCheckBox->setChecked(true);
+   
+   generateLandmarkBordersCheckBox = new QCheckBox("Create Flatten and Registration Landmark Borders");
+   generateLandmarkBordersCheckBox->setChecked(true);
    
    autoSaveFilesCheckBox = new QCheckBox("Auto Save Generated Data Files");
    autoSaveFilesCheckBox->setChecked(true);
    
    //
+   // Group box and layout for anatomical volume controls
+   //
+   anatomicalVolumeOptionsGroupBox = 
+      new QGroupBox("Anatomical Volume Options");
+   QVBoxLayout* anatomicalVolumeGroupLayout =
+      new QVBoxLayout(anatomicalVolumeOptionsGroupBox);
+   anatomicalVolumeGroupLayout->addWidget(disconnectEyeCheckBox);
+   anatomicalVolumeGroupLayout->addLayout(hindbrainLayout);
+   anatomicalVolumeGroupLayout->addWidget(cutCorpusCallosumCheckBox);
+   anatomicalVolumeGroupLayout->addWidget(generateSegmentationCheckBox);
+   anatomicalVolumeGroupLayout->addWidget(fillVentriclesCheckBox);
+
+   //
+   // Group box and layout for segmentation volume options
+   //
+   segmentationVolumeOptionsGroupBox = 
+      new QGroupBox("Segmentation Volume Options");
+   QVBoxLayout* segmentationVolumeGroupLayout =
+      new QVBoxLayout(segmentationVolumeOptionsGroupBox);
+   segmentationVolumeGroupLayout->addLayout(errorCorrectionLayout);
+   segmentationVolumeGroupLayout->addWidget(generateRawAndFiducialSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateSurfaceLimitPolygonsCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateTopologicallyCorrectFiducialSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateInflatedSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateVeryInflatedSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateEllipsoidSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateSphericalSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateCompMedWallSurfaceCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateHullCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateDepthCurvatureGeographyCheckBox);
+   segmentationVolumeGroupLayout->addWidget(generateLandmarkBordersCheckBox);
+   segmentationVolumeGroupLayout->addWidget(autoSaveFilesCheckBox);
+
+   //
    // widget and layout for page
    //
    QWidget* w = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(w);
-   layout->addWidget(disconnectEyeCheckBox);
-   layout->addLayout(hindbrainLayout);
-   layout->addWidget(cutCorpusCallosumCheckBox);
-   layout->addWidget(generateSegmentationCheckBox);
-   layout->addWidget(fillVentriclesCheckBox);
-   layout->addWidget(automaticErrorCorrectionCheckBox);
-   layout->addWidget(generateRawAndFiducialSurfaceCheckBox);
-   layout->addWidget(generateSurfaceLimitPolygonsCheckBox);
-   layout->addWidget(generateTopologicallyCorrectFiducialSurfaceCheckBox);
-   layout->addWidget(generateInflatedSurfaceCheckBox);
-   layout->addWidget(generateVeryInflatedSurfaceCheckBox);
-   layout->addWidget(generateEllipsoidSurfaceCheckBox);
-   layout->addWidget(generateHullCheckBox);
-   layout->addWidget(identifySulciCheckBox);
-   layout->addWidget(autoSaveFilesCheckBox);
+   layout->addWidget(anatomicalVolumeOptionsGroupBox);
+   layout->addWidget(segmentationVolumeOptionsGroupBox);
    layout->addStretch();
    
    return w;
@@ -956,6 +1083,8 @@ GuiVolumeSureFitSegmentationDialog::slotGenerateTopologicallyCorrectFiducialSurf
 void 
 GuiVolumeSureFitSegmentationDialog::slotEnableDisableSelectionCheckBoxes()
 {
+   anatomicalVolumeOptionsGroupBox->setEnabled(false);
+   segmentationVolumeOptionsGroupBox->setEnabled(false);
    disconnectEyeCheckBox->setEnabled(false);
    disconnectHindbrainCheckBox->setEnabled(false);
    cutCorpusCallosumCheckBox->setEnabled(false);
@@ -966,40 +1095,83 @@ GuiVolumeSureFitSegmentationDialog::slotEnableDisableSelectionCheckBoxes()
    generateInflatedSurfaceCheckBox->setEnabled(false);
    generateVeryInflatedSurfaceCheckBox->setEnabled(false);
    generateEllipsoidSurfaceCheckBox->setEnabled(false);
+   generateSphericalSurfaceCheckBox->setEnabled(false);
+   generateCompMedWallSurfaceCheckBox->setEnabled(false);
    generateHullCheckBox->setEnabled(false);
-   automaticErrorCorrectionCheckBox->setEnabled(false);
-   identifySulciCheckBox->setEnabled(false);
+   volumeErrorCorrectionCheckBox->setEnabled(false);
+   volumeErrorCorrectionMethodComboBox->setEnabled(false);
+   generateDepthCurvatureGeographyCheckBox->setEnabled(false);
+   generateLandmarkBordersCheckBox->setEnabled(false);
    
-   const VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
-   if (vf == NULL) {
+   const VolumeFile* anatomyVolumeFile = volumeAnatomySelectionControl->getSelectedVolumeFile();
+   const VolumeFile* segmentationVolumeFile = volumeSegmentationSelectionControl->getSelectedVolumeFile();
+   if ((anatomyVolumeFile == NULL) &&
+       (segmentationVolumeFile == NULL)) {
       return;
    }
    
-   const bool anatValid = (volumeSelectionControl->getSelectedVolumeType()
-                            == VolumeFile::VOLUME_TYPE_ANATOMY);
+   const bool anatValid = ((anatomyVolumeFile != NULL) &&
+                           (mode == MODE_ANATOMICAL_VOLUME_SEGMENTATION));
    if (anatValid) {
+      anatomicalVolumeOptionsGroupBox->setEnabled(true);
       disconnectEyeCheckBox->setEnabled(true);
       disconnectHindbrainCheckBox->setEnabled(true);
       cutCorpusCallosumCheckBox->setEnabled(true);
       generateSegmentationCheckBox->setEnabled(true);
       fillVentriclesCheckBox->setEnabled(true);
-      automaticErrorCorrectionCheckBox->setEnabled(true);
+      volumeErrorCorrectionCheckBox->setEnabled(true);
    }
    
-   if (volumeSelectionControl->getSelectedVolumeType() == VolumeFile::VOLUME_TYPE_SEGMENTATION) {
-      automaticErrorCorrectionCheckBox->setEnabled(true);
+   switch (mode) {
+      case MODE_NONE:
+         break;
+      case MODE_ANATOMICAL_VOLUME_SEGMENTATION:
+         if (anatValid &&
+             generateSegmentationCheckBox->isChecked()) {
+            segmentationVolumeOptionsGroupBox->setEnabled(true);
+         }
+         break;
+      case MODE_SEMENTATION_VOLUME_POST_PROCESSING:
+         if (segmentationVolumeFile != NULL) {
+            segmentationVolumeOptionsGroupBox->setEnabled(true);
+         }
+         break;
    }
-   generateRawAndFiducialSurfaceCheckBox->setEnabled(true);
-   const bool createRawFidValid = generateRawAndFiducialSurfaceCheckBox->isChecked() &&
-                                  generateRawAndFiducialSurfaceCheckBox->isEnabled();
-   generateSurfaceLimitPolygonsCheckBox->setEnabled(createRawFidValid);
-   generateTopologicallyCorrectFiducialSurfaceCheckBox->setEnabled(createRawFidValid);
-   generateInflatedSurfaceCheckBox->setEnabled(createRawFidValid);
-   generateVeryInflatedSurfaceCheckBox->setEnabled(createRawFidValid);
-   generateEllipsoidSurfaceCheckBox->setEnabled(createRawFidValid);
-   identifySulciCheckBox->setEnabled(createRawFidValid);
-   generateHullCheckBox->setEnabled(identifySulciCheckBox->isEnabled() &&
-                                    identifySulciCheckBox->isChecked());
+
+   if (segmentationVolumeOptionsGroupBox->isEnabled()) {
+      volumeErrorCorrectionCheckBox->setEnabled(true);
+      generateRawAndFiducialSurfaceCheckBox->setEnabled(true);
+      const bool createRawFidValid = generateRawAndFiducialSurfaceCheckBox->isChecked() &&
+                                     generateRawAndFiducialSurfaceCheckBox->isEnabled();
+      generateSurfaceLimitPolygonsCheckBox->setEnabled(createRawFidValid);
+      generateTopologicallyCorrectFiducialSurfaceCheckBox->setEnabled(createRawFidValid);
+      generateInflatedSurfaceCheckBox->setEnabled(createRawFidValid);
+      generateVeryInflatedSurfaceCheckBox->setEnabled(createRawFidValid);
+      generateEllipsoidSurfaceCheckBox->setEnabled(createRawFidValid);
+      generateSphericalSurfaceCheckBox->setEnabled(createRawFidValid);
+      generateCompMedWallSurfaceCheckBox->setEnabled(createRawFidValid);
+      generateDepthCurvatureGeographyCheckBox->setEnabled(createRawFidValid);
+      const bool validLandmarkSpaceFlag =
+         BrainModelSurfaceBorderLandmarkIdentification::isStereotaxicSpaceSupported(
+                                           theMainWindow->getBrainSet()->getStereotaxicSpace());
+      generateLandmarkBordersCheckBox->setEnabled((anatomyVolumeFile != NULL) &&
+                                                  createRawFidValid &&
+                                                  (generateInflatedSurfaceCheckBox->isEnabled() &&
+                                                   generateInflatedSurfaceCheckBox->isChecked()) &&
+                                                  (generateVeryInflatedSurfaceCheckBox->isEnabled() &&
+                                                   generateVeryInflatedSurfaceCheckBox->isChecked()) &&
+                                                  (generateEllipsoidSurfaceCheckBox->isEnabled() &&
+                                                   generateEllipsoidSurfaceCheckBox->isChecked()) &&
+                                                  (generateDepthCurvatureGeographyCheckBox->isEnabled() &&
+                                                   generateDepthCurvatureGeographyCheckBox->isChecked()) &&
+                                                  validLandmarkSpaceFlag);
+      generateHullCheckBox->setEnabled(generateDepthCurvatureGeographyCheckBox->isEnabled() &&
+                                       generateDepthCurvatureGeographyCheckBox->isChecked());
+   }
+   
+   volumeErrorCorrectionMethodComboBox->setEnabled(
+      volumeErrorCorrectionCheckBox->isEnabled() &&
+      volumeErrorCorrectionCheckBox->isChecked());
 }      
 
 /**
@@ -1044,8 +1216,8 @@ GuiVolumeSureFitSegmentationDialog::slotBackPushButton()
          //
          // Doing anatomy volume ?
          //
-         const bool anatValid = (volumeSelectionControl->getSelectedVolumeType()
-                               == VolumeFile::VOLUME_TYPE_ANATOMY);
+         const bool anatValid = (volumeAnatomySelectionControl->getSelectedVolumeFile()
+                                 != NULL);
          if (anatValid == false) {
             //
             // Since no anatomical volume, go to volume attributes page
@@ -1081,15 +1253,19 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
    //
    if (currentPage == subjectInfoPage) {
       QString msg;
+      const StereotaxicSpace space = stereotaxicSpaceComboBox->getSelectedStereotaxicSpace();
       const Structure::STRUCTURE_TYPE hemisphere = structureComboBox->getSelectedStructure();
-      const QString species = speciesLineEdit->text();
+      const Species species = speciesComboBox->getSelectedSpecies();
       const QString subject = subjectLineEdit->text();
       
+      if (space.isValid() == false) {
+         msg.append("Steretaxic Space is invalid.");
+      }
       if (hemisphere == Structure::STRUCTURE_TYPE_INVALID) {
          msg.append("Hemisphere must be not be Unknown.\n");
       }
-      if (species.isEmpty()) {
-         msg.append("You must enter a species.  Use the \"Species...\" push button.\n");
+      if (species.isValid() == false) {
+         msg.append("The species is invalid.\n");
       }
       if (subject.isEmpty()) {
          msg.append("You must enter a subject.\n");
@@ -1103,12 +1279,14 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       //
       // Update brain set
       //
-      const bool dataChanged = ((theMainWindow->getBrainSet()->getStructure() != hemisphere) ||
+      const bool dataChanged = ((theMainWindow->getBrainSet()->getStructure()  != hemisphere) ||
                                 (theMainWindow->getBrainSet()->getSpecies()    != species) ||
-                                (theMainWindow->getBrainSet()->getSubject()    != subject));
+                                (theMainWindow->getBrainSet()->getSubject()    != subject) ||
+                                (theMainWindow->getBrainSet()->getStereotaxicSpace() != space));
       theMainWindow->getBrainSet()->setStructure(hemisphere);
-      theMainWindow->getBrainSet()->setSpecies(species);
+      theMainWindow->getBrainSet()->setSpecies(Species(species));
       theMainWindow->getBrainSet()->setSubject(subject);
+      theMainWindow->getBrainSet()->setStereotaxicSpace(space);
       
       //
       // Update spec file if needed
@@ -1119,8 +1297,9 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
          try {
             specFile.readFile(specFileName);
             specFile.setStructure(theMainWindow->getBrainSet()->getStructure().getTypeAsString());
-            specFile.setSpecies(theMainWindow->getBrainSet()->getSpecies());
+            specFile.setSpecies(theMainWindow->getBrainSet()->getSpecies().getName());
             specFile.setSubject(theMainWindow->getBrainSet()->getSubject());
+            specFile.setSpace(theMainWindow->getBrainSet()->getStereotaxicSpace());
             specFile.writeFile(specFileName);
          }
          catch (FileException&) {
@@ -1178,7 +1357,7 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
             //
          }
          const bool updateSpecFile = ((specFile.getStructure() != theMainWindow->getBrainSet()->getStructure().getTypeAsString()) ||
-                                      (specFile.getSpecies()    != theMainWindow->getBrainSet()->getSpecies()) ||
+                                      (specFile.getSpecies().getName()    != theMainWindow->getBrainSet()->getSpecies().getName()) ||
                                       (specFile.getSubject()    != theMainWindow->getBrainSet()->getSubject()) ||
                                       (specFileCommentTextEdit->document()->isModified()));
          if (updateSpecFile) {
@@ -1195,153 +1374,175 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       }
    }
    
+   VolumeFile* vfa = volumeAnatomySelectionControl->getSelectedVolumeFile();
+   const VolumeFile* vfs = volumeSegmentationSelectionControl->getSelectedVolumeFile();
+
    //
    // If the current page is the volume selection page
    //
    if (currentPage == volumeSelectionPage) {
-      const VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
-      if (vf == NULL) {
+      if ((vfa == NULL) && (vfs == NULL)) {
          QMessageBox::critical(this, "ERROR", "You must select a volume.");
          return;
       }
       
-      switch (volumeSelectionControl->getSelectedVolumeType()) {
-         case VolumeFile::VOLUME_TYPE_ANATOMY:
-            if (vf != bmv->getSelectedVolumeAnatomyFile()) {
+      if (vfa != NULL) {
+         if (vfa != bmv->getSelectedVolumeAnatomyFile()) {
+            if (QMessageBox::warning(this, "Warning",
+                  "The anatomy volume selected for segmenting is "
+                     "different than the anatomy volume selected on "
+                     "the Display Control Dialog.", 
+                  (QMessageBox::Ok | QMessageBox::Cancel),
+                  QMessageBox::Cancel)
+                     == QMessageBox::Cancel) {
+               return;
+            }
+         }
+      }
+
+      if (vfs != NULL) {
+         if (vfs != bmv->getSelectedVolumeSegmentationFile()) {
+            if (QMessageBox::warning(this, "Warning",
+                  "The segmentation volume selected for processing is "
+                     "different than the segmentation volume selected "
+                     "on the Display Control Dialog.", 
+                  (QMessageBox::Ok | QMessageBox::Cancel),
+                  QMessageBox::Cancel)
+                     == QMessageBox::Cancel) {
+               return;
+            }
+         }
+      }
+      
+      switch (mode) {
+         case MODE_NONE:
+            break;
+         case MODE_ANATOMICAL_VOLUME_SEGMENTATION:
+            break;
+         case MODE_SEMENTATION_VOLUME_POST_PROCESSING:
+            if (vfa == NULL) {
                if (QMessageBox::warning(this, "Warning",
-                     "The anatomy volume selected for segmenting is "
-                        "different than the anatomy volume selected on "
-                        "the Display Control Dialog.", 
+                     "No anatomical volume is selected.  The anatomical "
+                        "volume is required if you want to generate "
+                        "landmark borders.", 
                      (QMessageBox::Ok | QMessageBox::Cancel),
                      QMessageBox::Cancel)
                         == QMessageBox::Cancel) {
                   return;
                }
             }
-            break;
-         case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
-            break;
-         case VolumeFile::VOLUME_TYPE_PAINT:
-            break;
-         case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
-            break;
-         case VolumeFile::VOLUME_TYPE_RGB:
-            break;
-         case VolumeFile::VOLUME_TYPE_ROI:
-            break;
-         case VolumeFile::VOLUME_TYPE_SEGMENTATION:
-            if (vf != bmv->getSelectedVolumeSegmentationFile()) {
-               if (QMessageBox::warning(this, "Warning",
-                     "The segmentation volume selected for processing is "
-                        "different than the segmentation volume selected "
-                        "on the Display Control Dialog.", 
-                     (QMessageBox::Ok | QMessageBox::Cancel),
-                     QMessageBox::Cancel)
-                        == QMessageBox::Cancel) {
-                  return;
-               }
-            }
-            break;
-         case VolumeFile::VOLUME_TYPE_VECTOR:
-            break;
-         case VolumeFile::VOLUME_TYPE_UNKNOWN:
             break;
       }
    }
    
+   QString msg;
+         
    //
    // If the current page is the attributes page
    //
    if (currentPage == volumeAttributesPage) {
-      VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
-      if (vf == NULL) {
+      if ((vfa == NULL) && (vfs == NULL)) {
          QMessageBox::critical(this, "ERROR", "You must select a volume.");
          return;
       }
-      VolumeFile::ORIENTATION orient[3];
-      vf->getOrientation(orient);
-      float origin[3];
-      vf->getOrigin(origin);
-      float spacing[3];
-      vf->getSpacing(spacing);
       
-      QString msg;
-      
-      bool orientationError = false;
-      if (orient[0] != VolumeFile::ORIENTATION_LEFT_TO_RIGHT) {
-         msg.append("The X axis must be in left-to-right orientation.\n");
-         orientationError = true;
-      }
-      if (orient[1] != VolumeFile::ORIENTATION_POSTERIOR_TO_ANTERIOR) {
-         msg.append("The Y axis must be in posterior-to-anterior orientation.\n");
-         orientationError = true;
-      }
-      if (orient[2] != VolumeFile::ORIENTATION_INFERIOR_TO_SUPERIOR) {
-         msg.append("The Z axis must be in inferior-to-superior orientation.\n");
-         orientationError = true;
-      }
-      if (orientationError) {
-         msg.append("Press the OK button to close this message dialog.  After doing so,\n"
-                    "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab\n"
-                    "labeled \"Orientation\".\n");
-      }
-      
-      float minVoxel, maxVoxel;
-      vf->getMinMaxVoxelValues(minVoxel, maxVoxel);
-      if ((minVoxel < 0.0) || (maxVoxel > 255.0) || (maxVoxel <= 1.0)) {
-         std::ostringstream str;
-         str << "Voxels must be in the range (0.0, 255.0).\n"
-             << "The selected volume's range is (" << minVoxel << ", " << maxVoxel << ").\n"
-             << "Press the OK button to close this message dialog.  After doing so,"
-             << "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab"
-             << "labeled \"Data\" and then press the button labeled \"Rescale Voxels\".";
-         if (msg.isEmpty() == false) {
-            msg.append("\n");
+      if (vfa != NULL) {
+         VolumeFile::ORIENTATION orient[3];
+         vfa->getOrientation(orient);
+         
+         bool orientationError = false;
+         if (orient[0] != VolumeFile::ORIENTATION_LEFT_TO_RIGHT) {
+            msg.append("The X axis must be in left-to-right orientation.\n");
+            orientationError = true;
          }
-         msg.append(str.str().c_str());
+         if (orient[1] != VolumeFile::ORIENTATION_POSTERIOR_TO_ANTERIOR) {
+            msg.append("The Y axis must be in posterior-to-anterior orientation.\n");
+            orientationError = true;
+         }
+         if (orient[2] != VolumeFile::ORIENTATION_INFERIOR_TO_SUPERIOR) {
+            msg.append("The Z axis must be in inferior-to-superior orientation.\n");
+            orientationError = true;
+         }
+         if (orientationError) {
+            msg.append("Press the OK button to close this message dialog.  After doing so,\n"
+                       "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab\n"
+                       "labeled \"Orientation\".\n");
+         }
+         
+         float minVoxel, maxVoxel;
+         vfa->getMinMaxVoxelValues(minVoxel, maxVoxel);
+         if ((minVoxel < 0.0) || (maxVoxel > 255.0) || (maxVoxel <= 1.0)) {
+            std::ostringstream str;
+            str << "Voxels must be in the range (0.0, 255.0).\n"
+                << "The selected volume's range is (" << minVoxel << ", " << maxVoxel << ").\n"
+                << "Press the OK button to close this message dialog.  After doing so,"
+                << "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab"
+                << "labeled \"Data\" and then press the button labeled \"Rescale Voxels\".";
+            if (msg.isEmpty() == false) {
+               msg.append("\n");
+            }
+            msg.append(str.str().c_str());
+         }
       }
       
+      if (vfs != NULL) {
+         VolumeFile::ORIENTATION orient[3];
+         vfs->getOrientation(orient);
+         float origin[3];
+         vfs->getOrigin(origin);
+         float spacing[3];
+         vfs->getSpacing(spacing);
+         
+         bool orientationError = false;
+         if (orient[0] != VolumeFile::ORIENTATION_LEFT_TO_RIGHT) {
+            msg.append("The X axis must be in left-to-right orientation.\n");
+            orientationError = true;
+         }
+         if (orient[1] != VolumeFile::ORIENTATION_POSTERIOR_TO_ANTERIOR) {
+            msg.append("The Y axis must be in posterior-to-anterior orientation.\n");
+            orientationError = true;
+         }
+         if (orient[2] != VolumeFile::ORIENTATION_INFERIOR_TO_SUPERIOR) {
+            msg.append("The Z axis must be in inferior-to-superior orientation.\n");
+            orientationError = true;
+         }
+         if (orientationError) {
+            msg.append("Press the OK button to close this message dialog.  After doing so,\n"
+                       "select \"Edit Volume Attributes\" from the Volume Menu.  Press the tab\n"
+                       "labeled \"Orientation\".\n");
+         }
+      }
       if (msg.isEmpty() == false) {
          QMessageBox::critical(this, "ERROR", msg);
          return;
       }
 
       bool voxelSizeOK = true;
-      for (int i = 0; i < 3; i++) {
-         if ((spacing[i] < 0.99) || (spacing[i] > 1.01)) {
-            voxelSizeOK = false;
-         }
-      }
-      if (voxelSizeOK == false) {
-         std::ostringstream str;
-         str << "Warning the voxels are not 1.0 mm.  They are\n"
-             << "(" << spacing[0] 
-             << ", " << spacing[1]
-             << ", " << spacing[2]
-             << ")."
-             << "0.5 mm voxels are acceptable for monkeys."
-             << "   Do you want to continue?";
-         if (QMessageBox::warning(this, 
-                                  "Warning", 
-                                  str.str().c_str(), 
-                                 (QMessageBox::Yes | QMessageBox::No),
-                                 QMessageBox::No)
-                                    == QMessageBox::No) {
-            return;
+      if (vfa != NULL) {
+         float anatomySpacing[3];
+         vfa->getSpacing(anatomySpacing);
+         for (int i = 0; i < 3; i++) {
+            if ((anatomySpacing[i] < 0.99) || (anatomySpacing[i] > 1.01)) {
+               voxelSizeOK = false;
+            }
          }
       }
       
-      if ((origin[0] >= 0.0) || (origin[1] >= 0.0) || (origin[2] >= 0.0)) {
-         QString msg("At least one origin value is greater than or equal to zero."
-                         "This indicates that the origin may not be at the Anterior"
-                         "commissure.  Do you want to continue ?");
-         if (QMessageBox::warning(this, 
-                                  "Warning", 
-                                  msg,
-                                 (QMessageBox::Yes | QMessageBox::No),
-                                 QMessageBox::No)
-                                    == QMessageBox::No) {
-            return;
+      if (vfa != NULL) {
+         float anatomyOrigin[3];
+         vfa->getOrigin(anatomyOrigin);
+         if ((anatomyOrigin[0] >= 0.0) || (anatomyOrigin[1] >= 0.0) || (anatomyOrigin[2] >= 0.0)) {
+            QString msg("At least one anatomy origin value is greater than or equal to zero."
+                            "This indicates that the origin may not be at the Anterior"
+                            "commissure.  Do you want to continue ?");
+            if (QMessageBox::warning(this, 
+                                     "Warning", 
+                                     msg,
+                                    (QMessageBox::Yes | QMessageBox::No),
+                                    QMessageBox::No)
+                                       == QMessageBox::No) {
+               return;
+            }
          }
       }
    }
@@ -1355,6 +1556,9 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
       }
       else if (fileTypeNiftiRadioButton->isChecked()) {
          typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
+      }
+      else if (fileTypeNiftiGzipRadioButton->isChecked()) {
+         typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
       }
       else {
          QMessageBox::critical(this, "ERROR", "Choose a volume file write type.");
@@ -1437,8 +1641,9 @@ GuiVolumeSureFitSegmentationDialog::slotNextPushButton()
          //
          // Doing anatomy volume ?
          //
-         const bool anatValid = (volumeSelectionControl->getSelectedVolumeType()
-                               == VolumeFile::VOLUME_TYPE_ANATOMY);
+         const bool anatValid = 
+            ((volumeAnatomySelectionControl->getSelectedVolumeFile() != NULL) &&
+             (mode == MODE_ANATOMICAL_VOLUME_SEGMENTATION));
          if (anatValid == false) {
             //
             // Skip to segmentation page
@@ -1476,7 +1681,8 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
          //
          // Set species, subject, and hemisphere
          //
-         speciesLineEdit->setText(theMainWindow->getBrainSet()->getSpecies()); 
+         stereotaxicSpaceComboBox->setSelectedStereotaxicSpace(theMainWindow->getBrainSet()->getStereotaxicSpace());
+         speciesComboBox->setSelectedSpecies(theMainWindow->getBrainSet()->getSpecies()); 
          subjectLineEdit->setText(theMainWindow->getBrainSet()->getSubject());
          structureComboBox->setStructure(theMainWindow->getBrainSet()->getStructure().getType());
       }
@@ -1494,6 +1700,7 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
       if (page == volumeFileTypePage) {
          fileTypeAfniRadioButton->setChecked(false);
          fileTypeNiftiRadioButton->setChecked(false);
+         fileTypeNiftiGzipRadioButton->setChecked(false);
          switch (typeOfVolumesToWrite) {
             case VolumeFile::FILE_READ_WRITE_TYPE_RAW:
                break;
@@ -1504,6 +1711,9 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
                break;
             case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI:
                fileTypeNiftiRadioButton->setChecked(true);
+               break;
+            case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP:
+               fileTypeNiftiGzipRadioButton->setChecked(true);
                break;
             case VolumeFile::FILE_READ_WRITE_TYPE_SPM_OR_MEDX: 
                break;
@@ -1524,7 +1734,7 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
             std::ostringstream str;
             str << QDir::currentPath().toAscii().constData()
                 << QString(QDir::separator()).toAscii().constData()
-                << theMainWindow->getBrainSet()->getSpecies().toAscii().constData()
+                << theMainWindow->getBrainSet()->getSpecies().getName().toAscii().constData()
                 << "."
                 << theMainWindow->getBrainSet()->getSubject().toAscii().constData()
                 << "."
@@ -1534,6 +1744,31 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
          }
          specFileNameLineEdit->setText(name);
          slotSpecFileSelected(name);
+      }
+      
+      //
+      // If about to show volume selection page
+      //
+      if (page == volumeSelectionPage) {
+         //
+         // anatomy selected and no anatomy files but have segmentation files
+         //
+         if ((volumeAnatomySelectionControl->getSelectedVolumeType() 
+                == VolumeFile::VOLUME_TYPE_ANATOMY) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles() <= 0) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles() > 0)) {
+            volumeAnatomySelectionControl->setSelectedVolumeType(VolumeFile::VOLUME_TYPE_SEGMENTATION);
+         }
+         
+         //
+         // segmentation selected and no segmentation files but have anatomy files
+         //
+         if ((volumeSegmentationSelectionControl->getSelectedVolumeType() 
+                == VolumeFile::VOLUME_TYPE_SEGMENTATION) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles() <= 0) &&
+             (theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles() > 0)) {
+                  volumeSegmentationSelectionControl->setSelectedVolumeType(VolumeFile::VOLUME_TYPE_ANATOMY);
+         }
       }
       
       //
@@ -1557,13 +1792,13 @@ GuiVolumeSureFitSegmentationDialog::showPage(QWidget* page,
          //
          // Get the selected volume
          //
-         VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
-         if (vf != NULL) {
+         VolumeFile* vfa = volumeAnatomySelectionControl->getSelectedVolumeFile();
+         if (vfa != NULL) {
             if (peakHistogram != NULL) {
                delete peakHistogram;
                peakHistogram = NULL;
             }
-            peakHistogram = vf->getHistogram();
+            peakHistogram = vfa->getHistogram();
             loadHistogramIntoGraph();
 
             //
@@ -1810,13 +2045,14 @@ GuiVolumeSureFitSegmentationDialog::slotEnableDisablePushButtons()
    QWidget* currentPage = pagesStackedWidget->currentWidget();
    
    if (currentPage == changeDirectoryPage) {
-      if (currentDirectoryIsCaretInstalltionDirectory() == false) {
+      if (currentDirectoryIsCaretInstallationDirectory() == false) {
          nextValid = true;
       }
    }
    else if (currentPage == subjectInfoPage) {
       backValid = true;
-      if ((speciesLineEdit->text().isEmpty() == false) &&
+      if (speciesComboBox->getSelectedSpecies().isValid() &&
+          stereotaxicSpaceComboBox->getSelectedStereotaxicSpace().isValid() &&
           (subjectLineEdit->text().isEmpty() == false) &&
           (structureComboBox->getSelectedStructure() != Structure::STRUCTURE_TYPE_INVALID)) {
          nextValid = true;
@@ -1830,20 +2066,52 @@ GuiVolumeSureFitSegmentationDialog::slotEnableDisablePushButtons()
    }
    else if (currentPage == volumeSelectionPage) {
       backValid = true;
-      if (volumeSelectionControl->getSelectedVolumeFile() != NULL) {
-         nextValid = true;
+      volumeSelectionGroupBox->setEnabled(false);
+      volumeAnatomySelectionControl->setEnabled(false);
+      volumeSegmentationSelectionControl->setEnabled(false);
+      
+      mode = MODE_NONE;
+      if (modeAnatomicalVolumeProcessingRadioButton->isChecked()) {
+         mode = MODE_ANATOMICAL_VOLUME_SEGMENTATION;
+      }
+      else if (modeSegmentationVolumeProcessingRadioButton->isChecked()) {
+         mode = MODE_SEMENTATION_VOLUME_POST_PROCESSING;
+      }
+      
+      switch (mode) {
+         case MODE_NONE:
+            break;
+         case MODE_ANATOMICAL_VOLUME_SEGMENTATION:
+            volumeSelectionGroupBox->setEnabled(true);
+            volumeAnatomySelectionControl->setEnabled(true);
+            if (volumeAnatomySelectionControl->getSelectedVolumeFile() != NULL) {
+               nextValid = true;
+            }
+            break;
+         case MODE_SEMENTATION_VOLUME_POST_PROCESSING:
+            volumeSelectionGroupBox->setEnabled(true);
+            volumeAnatomySelectionControl->setEnabled(true);
+            volumeSegmentationSelectionControl->setEnabled(true);
+            if (volumeSegmentationSelectionControl->getSelectedVolumeFile() != NULL) {
+               nextValid = true;
+            }
+            break;
       }
    }
    else if (currentPage == volumeFileTypePage) {
       if (fileTypeAfniRadioButton->isChecked()) {
          typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_AFNI;
       }
+      else if (fileTypeNiftiGzipRadioButton->isChecked()) {
+         typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
+      }
       else if (fileTypeNiftiRadioButton->isChecked()) {
          typeOfVolumesToWrite = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
       }
       backValid = true;
       nextValid = (fileTypeAfniRadioButton->isChecked() ||
-                   fileTypeNiftiRadioButton->isChecked());
+                   fileTypeNiftiRadioButton->isChecked() ||
+                   (fileTypeNiftiGzipRadioButton->isChecked()));
    }
    else if (currentPage == volumeAttributesPage) {
       backValid = true;
@@ -1878,42 +2146,24 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
       return true;
    }
    
-   VolumeFile* anatomyVolume = NULL;
-   VolumeFile* segmentationVolume = NULL;
-   VolumeFile* vf = NULL;
+   VolumeFile* anatomyVolume = volumeAnatomySelectionControl->getSelectedVolumeFile();
+   VolumeFile* segmentationVolume = volumeSegmentationSelectionControl->getSelectedVolumeFile();
+
    //
    // Get the selected volume
    //
-   switch (volumeSelectionControl->getSelectedVolumeType()) {
-      case VolumeFile::VOLUME_TYPE_ANATOMY:
-         anatomyVolume = volumeSelectionControl->getSelectedVolumeFile();
+   switch (mode) {
+      case MODE_NONE:
+         break;
+      case MODE_ANATOMICAL_VOLUME_SEGMENTATION:
          if (anatomyVolume == NULL) {
-            QMessageBox::critical(this, "ERROR", "No anatomy volume is selected.");
-            return true;
+            QMessageBox::critical(this, "ERROR", "No anatomical volume selected");
          }
-         vf = anatomyVolume;
          break;
-      case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
-         break;
-      case VolumeFile::VOLUME_TYPE_PAINT:
-         break;
-      case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
-         break;
-      case VolumeFile::VOLUME_TYPE_RGB:
-         break;
-      case VolumeFile::VOLUME_TYPE_ROI:
-         break;
-      case VolumeFile::VOLUME_TYPE_SEGMENTATION:
-         segmentationVolume = volumeSelectionControl->getSelectedVolumeFile();
+      case MODE_SEMENTATION_VOLUME_POST_PROCESSING:
          if (segmentationVolume == NULL) {
-            QMessageBox::critical(this, "ERROR", "No segmentation volume is selected.");
-            return true;
+            QMessageBox::critical(this, "ERROR", "No segmentation volume selected");
          }
-         vf = segmentationVolume;
-         break;
-      case VolumeFile::VOLUME_TYPE_VECTOR:
-         break;
-      case VolumeFile::VOLUME_TYPE_UNKNOWN:
          break;
    }
    
@@ -1923,18 +2173,33 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    }
    
    const float zeros[3] = { 0.0, 0.0, 0.0 };
-   int acIJK[3];
-   float offset[3];
-   if (vf->convertCoordinatesToVoxelIJK(zeros, acIJK, offset) == false) {
-      if (QMessageBox::warning(this, "WARNING", 
-                                 "The Anterior Commissure is not located inside the volume."
-                                 "If you are segmenting a partial hemisphere, this is "
-                                 "probably okay.  If you are segmenting a full hemisphere,"
-                                 "the origin of the volume is probably not set correctly.",
-                                 (QMessageBox::Ok | QMessageBox::Cancel),
-                                 QMessageBox::Cancel)
-                                    == QMessageBox::Cancel) {
-         return true;
+   int acIJK[3] = { 0, 0, 0 };
+   if (anatomyVolume != NULL) {
+      if (anatomyVolume->convertCoordinatesToVoxelIJK(zeros, acIJK) == false) {
+         if (QMessageBox::warning(this, "WARNING", 
+                                    "The Anterior Commissure is not located inside the volume."
+                                    "If you are segmenting a partial hemisphere, this is "
+                                    "probably okay.  If you are segmenting a full hemisphere,"
+                                    "the origin of the volume is probably not set correctly.",
+                                    (QMessageBox::Ok | QMessageBox::Cancel),
+                                    QMessageBox::Cancel)
+                                       == QMessageBox::Cancel) {
+            return true;
+         }
+      }
+   }
+   else if (segmentationVolume != NULL) {
+      if (segmentationVolume->convertCoordinatesToVoxelIJK(zeros, acIJK) == false) {
+         if (QMessageBox::warning(this, "WARNING", 
+                                    "The Anterior Commissure is not located inside the volume."
+                                    "If you are segmenting a partial hemisphere, this is "
+                                    "probably okay.  If you are segmenting a full hemisphere,"
+                                    "the origin of the volume is probably not set correctly.",
+                                    (QMessageBox::Ok | QMessageBox::Cancel),
+                                    QMessageBox::Cancel)
+                                       == QMessageBox::Cancel) {
+            return true;
+         }
       }
    }
    
@@ -1968,35 +2233,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
         generateRawAndFiducialSurfaceCheckBox->isEnabled()) &&
        (generateEllipsoidSurfaceCheckBox->isChecked() &&
         generateEllipsoidSurfaceCheckBox->isEnabled())) {
-      std::vector<QString> cutFaceLabels;
-      switch (hemisphere) {
-         case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-            cutFaceLabels.push_back("Negative X (Lateral)");
-            cutFaceLabels.push_back("Positive X (Medial)");
-            break;
-         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-            cutFaceLabels.push_back("Negative X (Medial)");
-            cutFaceLabels.push_back("Positive X (Lateral)");
-            break;
-         case Structure::STRUCTURE_TYPE_CEREBELLUM:
-            cutFaceLabels.push_back("Negative X");
-            cutFaceLabels.push_back("Positive X");
-            break;
-         case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-            cutFaceLabels.push_back("Negative X");
-            cutFaceLabels.push_back("Positive X");
-            break;
-         case Structure::STRUCTURE_TYPE_INVALID:
-            cutFaceLabels.push_back("Negative X");
-            cutFaceLabels.push_back("Positive X");
-            break;
-      }
-      cutFaceLabels.push_back("Negative Y (Posterior)");
-      cutFaceLabels.push_back("Positive Y (Anterior)");
-      cutFaceLabels.push_back("Negative Z (Inferior)");
-      cutFaceLabels.push_back("Positive Z (Superior)");
-      std::vector<bool> defaultChecks(cutFaceLabels.size(), false);
-      
+        
       //
       // Check parameters file for padding from previous runs
       //
@@ -2008,17 +2245,15 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
       pf->getParameter(ParamsFile::keyOldPadPosY, posY);
       pf->getParameter(ParamsFile::keyOldPadNegZ, negZ);
       pf->getParameter(ParamsFile::keyOldPadPosZ, posZ);
-      defaultChecks[0] = (negX != 0);
-      defaultChecks[1] = (posX != 0);
-      defaultChecks[2] = (negY != 0);
-      defaultChecks[3] = (posY != 0);
-      defaultChecks[4] = (negZ != 0);
-      defaultChecks[5] = (posZ != 0);
       
       QApplication::beep();
-      QtCheckBoxSelectionDialog pad(this,
-                  "Partial Hemisphere Padding",
-                  "If the volume being reconstructed is a full hemisphere,\n"
+      
+      //
+      // Dialog for optional padding
+      //
+      WuQDataEntryDialog pad(this);
+      pad.setWindowTitle("Partial Hemisphere Padding");
+      pad.setTextAtTop("If the volume being reconstructed is a full hemisphere,\n"
                   "no padding is needed.  In this case, leave all checkboxes\n"
                   "unchecked and press the \"OK\" button.\n"
                   "\n"
@@ -2027,15 +2262,61 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
                   "reconstructing the surface, the volume will be padded where\n"
                   "cuts have been made.  This padding is necessary so that \n"
                   "the surface can be flattened in Caret.  After identifying\n"
-                  "the cuts, press the \"OK\" button to continue.\n"
-                  "\n",
-                  cutFaceLabels,
-                  defaultChecks);
+                  "the cuts, press the \"OK\" button to continue.",
+                  false);
+      QCheckBox* negxCheckBox = pad.addCheckBox("Negative X", negX != 0);
+      QCheckBox* posxCheckBox = pad.addCheckBox("Positive X", posX != 0);
+      QCheckBox* negyCheckBox = pad.addCheckBox("Negative Y (Posterior)", negY != 0);
+      QCheckBox* posyCheckBox = pad.addCheckBox("Positive Y (Anterior)", posY != 0);
+      QCheckBox* negzCheckBox = pad.addCheckBox("Negative Z (Inferior)", negZ != 0);
+      QCheckBox* poszCheckBox = pad.addCheckBox("Positive Z (Superior)", posZ != 0);
+      switch (hemisphere) {
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+            negxCheckBox->setText("Negative X (Lateral)");
+            posxCheckBox->setText("Positive X (Medial)");
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+            negxCheckBox->setText("Negative X (Medial)");
+            posxCheckBox->setText("Positive X (Lateral)");
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+         case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+         case Structure::STRUCTURE_TYPE_ALL:
+         case Structure::STRUCTURE_TYPE_INVALID:
+            break;
+      }
+      QSpinBox* paddingAmountSpinBox = pad.addSpinBox("Padding Slices",
+                                                       30, 1, 500, 1);     
       if (pad.exec() == QDialog::Accepted) {
-         for (int i = 0; i < 6; i++) {
-            if (pad.getCheckBoxStatus(i)) {
-               paddingAmount[i] = 30;
-            }
+         if (negxCheckBox->isChecked()) {
+            paddingAmount[0] = paddingAmountSpinBox->value();
+         }
+         if (posxCheckBox->isChecked()) {
+            paddingAmount[1] = paddingAmountSpinBox->value();
+         }
+         if (negyCheckBox->isChecked()) {
+            paddingAmount[2] = paddingAmountSpinBox->value();
+         }
+         if (posyCheckBox->isChecked()) {
+            paddingAmount[3] = paddingAmountSpinBox->value();
+         }
+         if (negzCheckBox->isChecked()) {
+            paddingAmount[4] = paddingAmountSpinBox->value();
+         }
+         if (poszCheckBox->isChecked()) {
+            paddingAmount[5] = paddingAmountSpinBox->value();
          }
          
          //
@@ -2049,7 +2330,6 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
          pf->setParameter(ParamsFile::keyOldPadPosZ, paddingAmount[5]);
          try {
             theMainWindow->getBrainSet()->writeParamsFile(pf->getFileName());
-            //pf->writeFile(pf->getFileName());
          }
          catch (FileException&) {
          }
@@ -2060,7 +2340,17 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    }
          
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         
+    
+   BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD
+      errorCorrectionMethod = BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD_NONE;
+   if (volumeErrorCorrectionCheckBox->isEnabled() &&
+       volumeErrorCorrectionCheckBox->isChecked()) {
+      errorCorrectionMethod = 
+         static_cast<BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD>(
+            volumeErrorCorrectionMethodComboBox->itemData(
+               volumeErrorCorrectionMethodComboBox->currentIndex()).toInt());
+   }
+   
    //
    // Segmentation algorithm
    //
@@ -2085,8 +2375,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
                                         generateSegmentationCheckBox->isEnabled(),
                                      fillVentriclesCheckBox->isChecked() &&
                                         fillVentriclesCheckBox->isEnabled(),
-                                     automaticErrorCorrectionCheckBox->isChecked() &&
-                                        automaticErrorCorrectionCheckBox->isEnabled(),
+                                     errorCorrectionMethod,
                                      generateRawAndFiducialSurfaceCheckBox->isChecked() &&
                                         generateRawAndFiducialSurfaceCheckBox->isEnabled(),
                                      (generateSurfaceLimitPolygonsCheckBox->isChecked() == false),
@@ -2098,10 +2387,16 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
                                         generateVeryInflatedSurfaceCheckBox->isEnabled(),
                                      generateEllipsoidSurfaceCheckBox->isChecked() &&
                                         generateEllipsoidSurfaceCheckBox->isEnabled(),
+                                     generateSphericalSurfaceCheckBox->isChecked() &&
+                                        generateSphericalSurfaceCheckBox->isEnabled(),
+                                     generateCompMedWallSurfaceCheckBox->isChecked() &&
+                                        generateCompMedWallSurfaceCheckBox->isEnabled(),
                                      generateHullCheckBox->isChecked() &&
                                         generateHullCheckBox->isEnabled(),
-                                     identifySulciCheckBox->isChecked() &&
-                                        identifySulciCheckBox->isEnabled(),
+                                     generateDepthCurvatureGeographyCheckBox->isChecked() &&
+                                        generateDepthCurvatureGeographyCheckBox->isEnabled(),
+                                     generateLandmarkBordersCheckBox->isChecked() &&
+                                        generateLandmarkBordersCheckBox->isEnabled(),
                                      autoSaveFilesCheckBox->isChecked());
 
    //
@@ -2114,7 +2409,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    segmentationTime = 0.0;
    try {
       bmvs.execute();
-      QtDialog::show();  // use this otherwise initial page gets shown
+      WuQDialog::show();  // use this otherwise initial page gets shown
       segmentationTime = algorithmTimer.elapsed() * 0.001;
       
       //
@@ -2138,7 +2433,7 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
    catch (BrainModelAlgorithmException& e) {
       QApplication::restoreOverrideCursor();
       QMessageBox::critical(this, "ERROR", e.whatQString());
-      QtDialog::show();  // use this otherwise initial page gets shown
+      WuQDialog::show();  // use this otherwise initial page gets shown
       segmentationTime = algorithmTimer.elapsed() * 0.001;
       return true;
    }
@@ -2170,14 +2465,17 @@ GuiVolumeSureFitSegmentationDialog::performSegmentation()
 void 
 GuiVolumeSureFitSegmentationDialog::updateDialog()
 {
-   volumeSelectionControl->updateControl();
-   const VolumeFile* vf = volumeSelectionControl->getSelectedVolumeFile();
+   volumeAnatomySelectionControl->updateControl();
+   volumeSegmentationSelectionControl->updateControl();
+   const VolumeFile* vfa = volumeAnatomySelectionControl->getSelectedVolumeFile();
+   const VolumeFile* vfs = volumeSegmentationSelectionControl->getSelectedVolumeFile();
 
-   if (vf == NULL) {
+   if ((vfa == NULL) &&
+       (vfs == NULL)) {
       //
       // clear entries on first page and close dialog
       //
-      QtDialog::close();
+      WuQDialog::close();
    }
 }
 

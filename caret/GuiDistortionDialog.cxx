@@ -47,8 +47,9 @@
  * Constructor
  */
 GuiDistortionDialog::GuiDistortionDialog(QWidget* parent, BrainModelSurface* bmsIn)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    bms = bmsIn;
    
    setWindowTitle("Distortion Measurement");
@@ -211,24 +212,58 @@ GuiDistortionDialog::done(int r)
    if (r == QDialog::Accepted) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       QString arealName(arealDistortionNameLineEdit->text());
-      if (arealDistortionColumnComboBox->currentIndex() == 
-         GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NONE) {
-         arealName = "";
-      }
       
-      QString linearName(linearDistortionNameLineEdit->text());
-      if (linearDistortionColumnComboBox->currentIndex() == 
-         GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NONE) {
-         linearName = "";
+      //
+      // Area Distortion selections
+      //
+      int arealDistortionColumn = arealDistortionColumnComboBox->currentIndex();
+      if (arealDistortionColumn == 
+          GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NEW) {
+         arealDistortionColumn = BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW;
       }
-   
+      else if (arealDistortionColumn == 
+               GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NONE) {
+         arealDistortionColumn = BrainModelSurfaceDistortion::DISTORTION_COLUMN_DO_NOT_GENERATE;
+      }
+      const QString arealDistortionName(arealDistortionNameLineEdit->text());
+      if (arealDistortionColumn != BrainModelSurfaceDistortion::DISTORTION_COLUMN_DO_NOT_GENERATE) {
+         if (arealDistortionName.isEmpty()) {
+            QMessageBox::critical(this, "Error",
+                                  "Name for areal distortion must be provided.");
+            return;
+         }
+      }
+
+      //
+      // Linear Distortion selections
+      //
+      int linearDistortionColumn = linearDistortionColumnComboBox->currentIndex();
+      if (linearDistortionColumn == 
+          GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NEW) {
+         linearDistortionColumn = BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW;
+      }
+      else if (linearDistortionColumn == 
+               GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NONE) {
+         linearDistortionColumn = BrainModelSurfaceDistortion::DISTORTION_COLUMN_DO_NOT_GENERATE;
+      }
+      const QString linearDistortionName(linearDistortionNameLineEdit->text());
+      if (linearDistortionColumn != BrainModelSurfaceDistortion::DISTORTION_COLUMN_DO_NOT_GENERATE) {
+         if (linearDistortionName.isEmpty()) {
+            QMessageBox::critical(this, "Error",
+                                  "Name for linear distortion must be provided.");
+            return;
+         }
+      }
+
       BrainModelSurfaceDistortion bmsd(theMainWindow->getBrainSet(),
                                        bms,
                                        referenceSurfaceComboBox->getSelectedBrainModelSurface(),
                                        bms->getTopologyFile(),
                                        theMainWindow->getBrainSet()->getSurfaceShapeFile(),
-                                       arealName,
-                                       linearName);
+                                       arealDistortionColumn,
+                                       linearDistortionColumn,
+                                       arealDistortionName,
+                                       linearDistortionName);
       try {
          bmsd.execute();
       }

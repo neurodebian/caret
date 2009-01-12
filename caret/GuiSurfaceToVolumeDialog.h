@@ -27,7 +27,7 @@
 #ifndef __GUI_SURFACE_TO_VOLUME_DIALOG_H__
 #define __GUI_SURFACE_TO_VOLUME_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "StereotaxicSpace.h"
@@ -46,7 +46,7 @@ class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
 
 /// Dialog for converting a surface to a volume.
-class GuiSurfaceToVolumeDialog : public QtDialog {
+class GuiSurfaceToVolumeDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -61,7 +61,8 @@ class GuiSurfaceToVolumeDialog : public QtDialog {
       
       /// Constructor
       GuiSurfaceToVolumeDialog(QWidget* parent, const DIALOG_MODE modeIn,
-                               const QString& dialogTitle);
+                               const QString& dialogTitle,
+                               const bool showSurfaceSelectionOptionsFlag = true);
       
       /// Destructor
       ~GuiSurfaceToVolumeDialog();
@@ -113,7 +114,7 @@ class GuiSurfaceToVolumeDialog : public QtDialog {
       
       /// get the metric conversion mode
       BrainModelSurfaceToVolumeConverter::CONVERSION_MODE getMetricConversionMode() const;
-
+      
    private slots:
       /// called when a volume space is selected
       void slotVolumeSpaceSelection(int item);

@@ -40,7 +40,7 @@
 #include "GuiGraphWidget.h"
 #include "GuiHistogramDisplayDialog.h"
 #include "StatisticHistogram.h"
-#include "QtSaveWidgetAsImagePushButton.h"
+#include "WuQSaveWidgetAsImagePushButton.h"
 #include "QtUtilities.h"
 #include "StatisticDataGroup.h"
 
@@ -51,16 +51,20 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
                                        const QString& titleCaption,
                                        const std::vector<float>& values,
                                        const bool showGrayWhitePeaks,
-                                       const bool modal, 
-                                       Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                       Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
-   if (modal == false) {
+/*
+   setModal(true);
+   if (modalFlag == false) {
+      setModal(false);
+      
       //
       // Delete this dialog when user presses close button
       //
       setAttribute(Qt::WA_DeleteOnClose);
    }
+*/
    
    histogramGraphIndex = -1;
    histogram96GraphIndex = -1;
@@ -174,9 +178,8 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
    max96Label = new QLabel(blanks);
    rangeLabel = new QLabel(blanks);
    range96Label = new QLabel(blanks);
-   statsGroup = new QGroupBox("Statistics");
-   histogramLayoutWidgetLayout->addWidget(statsGroup);
-   QGridLayout* statsGroupLayout = new QGridLayout(statsGroup);
+   statsGroupBox = new QGroupBox("Statistics");
+   QGridLayout* statsGroupLayout = new QGridLayout(statsGroupBox);
    statsGroupLayout->addWidget(new QLabel(" "), 0, 0);
    statsGroupLayout->addWidget(new QLabel("All "), 0, 1);
    statsGroupLayout->addWidget(new QLabel("   "), 0, 2);
@@ -201,7 +204,7 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
    statsGroupLayout->addWidget(rangeLabel, 6, 1);
    statsGroupLayout->addWidget(new QLabel("   "), 6, 2);
    statsGroupLayout->addWidget(range96Label, 6, 3);
-   statsGroup->setFixedSize(statsGroup->sizeHint());
+   statsGroupBox->setFixedSize(statsGroupBox->sizeHint());
    
    //
    // Min/Max/Peak Gray/White Values
@@ -269,11 +272,8 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
    //
    // Save as Image button
    //
-   QtSaveWidgetAsImagePushButton* saveAsImageButton = 
-              new QtSaveWidgetAsImagePushButton("Save As Image...",
-                                                0,
-                                                histogramLayoutWidget);
-   buttonsLayout->addWidget(saveAsImageButton);
+   WuQSaveWidgetAsImagePushButton* saveAsImageButton = 
+              new WuQSaveWidgetAsImagePushButton("Save As Image...", this);
    saveAsImageButton->setFixedSize(saveAsImageButton->sizeHint());
                     
    if (isModal()) {
@@ -281,7 +281,6 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
       // OK button
       //
       QPushButton* okButton = new QPushButton("OK");
-      buttonsLayout->addWidget(okButton);
       QObject::connect(okButton, SIGNAL(clicked()),
                      this, SLOT(accept()));
                      
@@ -290,11 +289,14 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
       //
       QPushButton* cancelButton = new QPushButton("Cancel");
       cancelButton->setAutoDefault(false);
-      buttonsLayout->addWidget(cancelButton);
       QObject::connect(cancelButton, SIGNAL(clicked()),
                      this, SLOT(reject()));
       
-      QtUtilities::makeButtonsSameSize(okButton, cancelButton);
+      buttonsLayout->addWidget(okButton);
+      buttonsLayout->addWidget(saveAsImageButton);
+      buttonsLayout->addWidget(cancelButton);
+
+      QtUtilities::makeButtonsSameSize(okButton, saveAsImageButton, cancelButton);
    }
    else {
       //
@@ -303,16 +305,18 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
       QPushButton* closeButton = new QPushButton("Close");
       closeButton->setAutoDefault(false);
       closeButton->setFixedSize(closeButton->sizeHint());
-      buttonsLayout->addWidget(closeButton);
       QObject::connect(closeButton, SIGNAL(clicked()),
                      this, SLOT(slotCloseButton()));
+
+      buttonsLayout->addWidget(saveAsImageButton);
+      buttonsLayout->addWidget(closeButton);
    }
    
    //
    // Stats and white Gray
    //
    QHBoxLayout* statsGrayWhiteLayout = new QHBoxLayout;
-   statsGrayWhiteLayout->addWidget(statsGroup);
+   statsGrayWhiteLayout->addWidget(statsGroupBox);
    if (whiteGrayGroupBox != NULL) {
       statsGrayWhiteLayout->addWidget(whiteGrayGroupBox);
    }
@@ -519,8 +523,8 @@ GuiHistogramDisplayDialog::slotSmoothPushButton()
 void 
 GuiHistogramDisplayDialog::slotShowHideStatsPushButton()
 {
-   statsGroup->setHidden(! statsGroup->isHidden());
-   if (statsGroup->isHidden()) {
+   statsGroupBox->setHidden(! statsGroupBox->isHidden());
+   if (statsGroupBox->isHidden()) {
       showHideStatsPushButton->setText("Show Statistics");
    }
    else {

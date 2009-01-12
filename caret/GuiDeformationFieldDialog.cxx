@@ -55,8 +55,9 @@
  * Constructor.
  */
 GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    dialogMode = MODE_TYPE_NONE;
    
    setWindowTitle("Create Deformation Field");
@@ -94,7 +95,7 @@ GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
    //
    // atlas surface
    //
-   atlasIndivGridLayout->addWidget(new QLabel("Atlas Surface  "), 0, 0);
+   atlasIndivGridLayout->addWidget(new QLabel("Atlas Spherical Surface  "), 0, 0);
    atlasSurfaceComboBox = new GuiBrainModelSelectionComboBox(
                                                         false,
                                                         true,
@@ -107,7 +108,7 @@ GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
    //
    // indiv source topo file
    //
-   QPushButton* indivTopoFilePushButton = new QPushButton("Indiv Topo File...");
+   QPushButton* indivTopoFilePushButton = new QPushButton("Indiv Closed Topo File...");
    indivTopoFilePushButton->setAutoDefault(false);
    QObject::connect(indivTopoFilePushButton, SIGNAL(clicked()),
                     this, SLOT(slotIndivTopoFilePushButton()));
@@ -119,7 +120,7 @@ GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
    //
    // indiv source coord file
    //
-   QPushButton* indivCoordFilePushButton = new QPushButton("Indiv Coord File...");
+   QPushButton* indivCoordFilePushButton = new QPushButton("Indiv Spherical Coord File...");
    indivCoordFilePushButton->setAutoDefault(false);
    QObject::connect(indivCoordFilePushButton, SIGNAL(clicked()),
                     this, SLOT(slotIndivCoordFilePushButton()));
@@ -130,7 +131,7 @@ GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
    //
    // indiv target coord file
    //
-   QPushButton* indivDeformedCoordFilePushButton = new QPushButton("Indiv Deformed Coord File...");
+   QPushButton* indivDeformedCoordFilePushButton = new QPushButton("Indiv Deformed Spherical Coord File...");
    indivDeformedCoordFilePushButton->setAutoDefault(false);
    QObject::connect(indivDeformedCoordFilePushButton, SIGNAL(clicked()),
                     this, SLOT(slotIndivDeformedCoordFilePushButton()));
@@ -150,7 +151,7 @@ GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
    //
    // Source surface
    //
-   indivAtlasGridLayout->addWidget(new QLabel("Source Surface"), 0, 0);
+   indivAtlasGridLayout->addWidget(new QLabel("Source Spherical Surface"), 0, 0);
    surfaceComboBox = new GuiBrainModelSelectionComboBox(
                                                         false,
                                                         true,
@@ -163,7 +164,7 @@ GuiDeformationFieldDialog::GuiDeformationFieldDialog(QWidget* parent)
    //
    // deformed surface
    //
-   indivAtlasGridLayout->addWidget(new QLabel("Deformed Surface"), 1, 0);
+   indivAtlasGridLayout->addWidget(new QLabel("Deformed Spherical Surface"), 1, 0);
    deformedSurfaceComboBox = new GuiBrainModelSelectionComboBox(
                                                         false,
                                                         true,
@@ -280,10 +281,10 @@ GuiDeformationFieldDialog::slotIndivTopoFilePushButton()
    fd.setDirectory(QDir::currentPath());
    fd.setModal(true);
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
-   fd.setWindowTitle("Choose Topology File");
+   fd.setWindowTitle("Choose Closed Topology File");
    fd.setFileMode(WuQFileDialog::ExistingFile);
-   fd.setFilter(FileFilters::getTopographyFileFilter());
-   fd.selectFilter(FileFilters::getTopographyFileFilter());
+   fd.setFilter(FileFilters::getTopologyClosedFileFilter());
+   fd.selectFilter(FileFilters::getTopologyClosedFileFilter());
    if (fd.exec() == QDialog::Accepted) {
       QStringList sl = fd.selectedFiles();
       if (sl.isEmpty() == false) {
@@ -305,10 +306,10 @@ GuiDeformationFieldDialog::slotIndivCoordFilePushButton()
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
-   fd.setWindowTitle("Choose Coordinate File");
+   fd.setWindowTitle("Choose Spherical Coordinate File");
    fd.setFileMode(WuQFileDialog::ExistingFile);
-   fd.setFilter(FileFilters::getCoordinateGenericFileFilter());
-   fd.selectFilter(FileFilters::getCoordinateGenericFileFilter());
+   fd.setFilter(FileFilters::getCoordinateSphericalFileFilter());
+   fd.selectFilter(FileFilters::getCoordinateSphericalFileFilter());
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          indivCoordFileLineEdit->setText(fd.selectedFiles().at(0));
@@ -328,10 +329,10 @@ GuiDeformationFieldDialog::slotIndivDeformedCoordFilePushButton()
    fd.setModal(true);
    fd.setDirectory(QDir::currentPath());
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
-   fd.setWindowTitle("Choose Coordinate File");
+   fd.setWindowTitle("Choose Deformed Spherical Coordinate File");
    fd.setFileMode(WuQFileDialog::ExistingFile);
-   fd.setFilter(FileFilters::getCoordinateGenericFileFilter());
-   fd.selectFilter(FileFilters::getCoordinateGenericFileFilter());
+   fd.setFilter(FileFilters::getCoordinateSphericalFileFilter());
+   fd.selectFilter(FileFilters::getCoordinateSphericalFileFilter());
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          indivDeformedCoordFileLineEdit->setText(fd.selectedFiles().at(0));
@@ -359,11 +360,23 @@ GuiDeformationFieldDialog::done(int r)
                   QMessageBox::critical(this, "ERROR", "No Surface is selected.");
                   return;
                }
+               if (bms->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
+                  QMessageBox::critical(this,
+                                        "ERROR",
+                                        "The source surface must be spherical.");
+                  return;
+               }
                
                const BrainModelSurface* defBms = deformedSurfaceComboBox->getSelectedBrainModelSurface();
                if (defBms == NULL) {
                   QApplication::restoreOverrideCursor();
                   QMessageBox::critical(this, "ERROR", "No Deformed Surface is selected.");
+                  return;
+               }
+               if (defBms->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
+                  QMessageBox::critical(this,
+                                        "ERROR",
+                                        "The deformed surface must be spherical.");
                   return;
                }
 
@@ -412,11 +425,11 @@ GuiDeformationFieldDialog::done(int r)
                specFileName.append(SpecFile::getSpecFileExtension());
                SpecFile indivSpecFile;
                indivSpecFile.setFileName(specFileName);
-               indivSpecFile.addToSpecFile(SpecFile::closedTopoFileTag,
+               indivSpecFile.addToSpecFile(SpecFile::getClosedTopoFileTag(),
                                            indivTopoFileName, "", false);
-               indivSpecFile.addToSpecFile(SpecFile::sphericalCoordFileTag,
+               indivSpecFile.addToSpecFile(SpecFile::getSphericalCoordFileTag(),
                                            indivCoordFileName, "", false);
-               indivSpecFile.addToSpecFile(SpecFile::sphericalCoordFileTag,
+               indivSpecFile.addToSpecFile(SpecFile::getSphericalCoordFileTag(),
                                            indivDeformedCoordFileName, "", false);
                indivSpecFile.setAllFileSelections(SpecFile::SPEC_TRUE);                            
                

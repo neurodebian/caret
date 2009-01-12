@@ -49,10 +49,10 @@ class BrainModelSurfaceROICreateBorderUsingMetricShape : public BrainModelSurfac
       
       // constructor
       BrainModelSurfaceROICreateBorderUsingMetricShape(BrainSet* bs,
-                                        BrainModelSurface* bmsIn,
-                                        BrainModelSurfaceROINodeSelection* surfaceROIIn,
+                                        const BrainModelSurface* bmsIn,
+                                        const BrainModelSurfaceROINodeSelection* surfaceROIIn,
                                         const MODE modeIn,
-                                        MetricFile* metricFileIn,
+                                        const MetricFile* metricFileIn,
                                         const int metricColumnNumberIn,
                                         const QString& borderNameIn,
                                         const int startNodeIn,
@@ -68,30 +68,31 @@ class BrainModelSurfaceROICreateBorderUsingMetricShape : public BrainModelSurfac
       // get the border that was created by create border mode
       Border getBorder() const; 
       
-   protected:
+   protected:      
+      /// mode for search
+      const MODE mode;
+
       /// metric file
-      MetricFile* metricFile;
+      const MetricFile* metricFile;
       
       /// metric column number
-      int metricColumnNumber;
+      const int metricColumnNumber;
       
       /// name for border
-      QString borderName;
+      const QString borderName;
       
+      /// border start node
+      const int borderStartNode;
+      
+      /// border end node
+      const int borderEndNode;
+      
+      /// border sampling density
+      const float borderSamplingDensity;
+
       /// border created
       Border border;
 
-      /// border start node
-      int borderStartNode;
-      
-      /// border end node
-      int borderEndNode;
-      
-      /// border sampling density
-      float borderSamplingDensity;
-      
-      /// mode for search
-      MODE mode;
 };
  
 #endif // __BRAIN_MODEL_SURFACE_ROI_CREATE_BORDER_USING_METRIC_SHAPE_H__

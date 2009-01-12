@@ -29,15 +29,17 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class CellFile;
 class QCheckBox;
+class QToolButton;
 class QtTableDialog;
+class WuQWidgetGroup;
 
 /// dialog for cell and foci reports
-class GuiCellAndFociReportDialog : public QtDialog {
+class GuiCellAndFociReportDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -51,15 +53,34 @@ class GuiCellAndFociReportDialog : public QtDialog {
       /// get the table dialog containing the results
       QtTableDialog* getResultsTableDialog() { return resultsTableDialog; }
       
+   protected slots:
+      // called when attributes all on button clicked
+      void slotAttributesAllOnToolButton();
+      
+      // called when attributes all off button clicked
+      void slotAttributesAllOffToolButton();
+      
+      // called when attributes core on button clicked
+      void slotAttributesCoreOnToolButton();
+      
+      // called when paint attributes all on button clicked
+      void slotPaintAttributesAllOnToolButton();
+      
+      // called when paint attributes all off button clicked
+      void slotPaintAttributesAllOffToolButton();
+      
    protected:
       // called when ok/cancel button pressed
       virtual void done(int r);
+      
+      // creat cell selection section
+      QWidget* createCellSelectionSection();
       
       // create the surface section
       QWidget* createSurfaceSection();
       
       // create the cell/foci section
-      QWidget* createCellFociSection(const QString& typeString);
+      QWidget* createCellFociSection();
                                  
       // create the paint section
       QWidget* createPaintSection();
@@ -69,6 +90,9 @@ class GuiCellAndFociReportDialog : public QtDialog {
       
       /// table dialog containing results
       QtTableDialog* resultsTableDialog;
+      
+      /// include only displayed cell/foci checkbox
+      QCheckBox* includeDisplayedCellsOnlyCheckBox;
       
       /// number check box
       QCheckBox* numberCheckBox;
@@ -85,6 +109,9 @@ class GuiCellAndFociReportDialog : public QtDialog {
       /// area check box
       QCheckBox* areaCheckBox;
       
+      /// region of interest check box
+      QCheckBox* regionOfInterestCheckBox;
+      
       /// size check box
       QCheckBox* sizeCheckBox;
       
@@ -95,15 +122,48 @@ class GuiCellAndFociReportDialog : public QtDialog {
       QCheckBox* commentCheckBox;
       
       /// hemisphere check box
-      QCheckBox* hemisphereCheckBox;
+      QCheckBox* structureCheckBox;
       
       /// class check box
       QCheckBox* classCheckBox;
       
-      /// study check box
-      QCheckBox* studyCheckBox;
+      /// study name check box
+      QCheckBox* studyNameCheckBox;
       
-      /// paint name check boxes
+      /// study PMID check box
+      QCheckBox* studyPMIDCheckBox;
+      
+      /// study format check box
+      QCheckBox* studyDataFormatCheckBox;
+      
+      /// study data type check box
+      QCheckBox* studyDataTypeCheckBox;
+      
+      /// study stereotaxic space
+      QCheckBox* studyStereotaxicSpaceCheckBox;
+      
+      /// study table number check box
+      QCheckBox* studyTableNumberCheckBox;
+      
+      /// study table sub header check box
+      QCheckBox* studyTableSubHeaderCheckBox;
+      
+      /// study figure number check box
+      QCheckBox* studyFigureNumberCheckBox;
+      
+      /// study figure panel check box
+      QCheckBox* studyFigurePanelCheckBox;
+      
+      /// study page reference number check box
+      QCheckBox* studyPageReferenceNumberCheckBox;
+
+      /// study page reference subheader check box
+      QCheckBox* studyPageReferenceSubHeaderCheckBox;
+            
+      /// study page number check box
+      QCheckBox* studyPageNumberCheckBox;
+      
+      /// paint data type check boxes
       std::vector<QCheckBox*> paintNameCheckBoxes;
       
       /// file type string (cell or foci)
@@ -117,6 +177,24 @@ class GuiCellAndFociReportDialog : public QtDialog {
       
       /// combo box for right hem surface selection
       GuiBrainModelSelectionComboBox* rightHemSelectionComboBox;
+      
+      /// combo box for cerebellum surface selection
+      GuiBrainModelSelectionComboBox* cerebellumSelectionComboBox;
+      
+      /// all attributes on tool button
+      QToolButton *allAttributesOnToolButton;
+      
+      /// all attributes off tool button
+      QToolButton *allAttributesOffToolButton;
+      
+      /// core attributes on tool button
+      QToolButton *coreAttributesOnToolButton;
+      
+      /// widget group for all attributes
+      WuQWidgetGroup* allAttributesWidgetGroup;
+      
+      /// widget group for all attributes
+      WuQWidgetGroup* coreAttributesWidgetGroup;      
       
 };
 

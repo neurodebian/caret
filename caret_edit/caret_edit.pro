@@ -12,12 +12,18 @@ include(../caret_qmake_include.pro)
 win32 {
    debug {
       LIBS +=  ..\caret_widgets\debug\libCaretWidgets.a \
+               ..\caret_brain_set\debug\libCaretBrainSet.a \
+               ..\caret_files\debug\libCaretFiles.a \
+               ..\caret_uniformize\debug\libCaretUniformize.a \
                ..\caret_common\debug\libCaretCommon.a \
                ..\caret_statistics\debug\libCaretStatistics.a 
    }
 
    release {
       LIBS +=  ..\caret_widgets\release\libCaretWidgets.a \
+               ..\caret_brain_set\release\libCaretBrainSet.a \
+               ..\caret_files\release\libCaretFiles.a \
+               ..\caret_uniformize\release\libCaretUniformize.a \
                ..\caret_common\release\libCaretCommon.a \
                ..\caret_statistics\release\libCaretStatistics.a 
    }
@@ -29,12 +35,18 @@ win32::debug {
 
 macx {
    LIBS += -L../caret_widgets -lCaretWidgets \
+           -L../caret_brain_set -lCaretBrainSet \
+           -L../caret_files  -lCaretFiles \
+           -L../caret_uniformize -lCaretUniformize \
            -L../caret_common  -lCaretCommon \
            -L../caret_statistics -lCaretStatistics 
 }
 
 unix:!macx {
    LIBS += -L../caret_widgets -lCaretWidgets \
+           -L../caret_brain_set -lCaretBrainSet \
+           -L../caret_files  -lCaretFiles \
+           -L../caret_uniformize -lCaretUniformize \
            -L../caret_common  -lCaretCommon \
            -L../caret_statistics -lCaretStatistics 
 
@@ -45,6 +57,9 @@ unix:!macx {
 }
 
 LIBS += $$VTK_LIBS
+contains( DEFINES, HAVE_MINC ) {
+   LIBS += $$NETCDF_LIBS
+}  
 
 # Input
 #HEADERS += 

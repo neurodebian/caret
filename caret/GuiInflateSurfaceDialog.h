@@ -26,13 +26,13 @@
 #ifndef __GUI_INFLATE_SURFACE_DIALOG_H__
 #define __GUI_INFLATE_SURFACE_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QSpinBox;
 class QDoubleSpinBox;
 
 /// Dialog for surface inflation
-class GuiInflateSurfaceDialog : public QtDialog {
+class GuiInflateSurfaceDialog : public WuQDialog {
    Q_OBJECT
    
    public:

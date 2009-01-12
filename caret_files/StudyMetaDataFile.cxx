@@ -43,6 +43,7 @@
 #include <QDomElement>
 #include <QDomNode>
 #include <QDomText>
+#include <QRegExp>
 
 #include "AbstractFile.h"
 #include "CellFile.h"
@@ -50,11 +51,10 @@
 #include "CellStudyInfo.h"
 #include "CommaSeparatedValueFile.h"
 #include "FileUtilities.h"
+#include "FociProjectionFile.h"
 #include "PubMedArticleFile.h"
 #include "SpecFile.h"
-#include "StudyMetaAnalysisFile.h"
 #include "StudyMetaDataFile.h"
-#include "StringTable.h"
 #include "SystemUtilities.h"
 #include "VocabularyFile.h"
 
@@ -88,21 +88,6 @@ StudyMetaData::StudyMetaData(const CellStudyInfo& csi)
    setDocumentObjectIdentifier(csi.getURL());
 }
 
-/**
- * constructor.
- */
-StudyMetaData::StudyMetaData(const StudyMetaAnalysisFile* smaf)
-{
-   clear();
-   setName(smaf->getName());
-   setTitle(smaf->getTitle());
-   setAuthors(smaf->getAuthors());
-   setCitation(smaf->getCitation());
-   setDocumentObjectIdentifier(smaf->getDoiURL());
-   metaAnalysisStudies = *(smaf->getMetaAnalysisStudies());
-   setMetaAnalysisFlag(smaf->getMetaAnalysisStudies()->getNumberOfStudies() > 0);
-}
-      
 /**
  * Destructor
  */
@@ -153,12 +138,12 @@ StudyMetaData::copyHelper(const StudyMetaData& smd)
    projectID = smd.projectID;
    pubMedID = smd.pubMedID;
    quality = smd.quality;
+   species = smd.species;
    stereotaxicSpace = smd.stereotaxicSpace;
    stereotaxicSpaceDetails = smd.stereotaxicSpaceDetails;
    studyDataFormat = smd.studyDataFormat;
    studyDataType = smd.studyDataType;
    title = smd.title;
-   metaAnalysisFlag = smd.metaAnalysisFlag;
    
    //
    // DO NOT COPY THESE MEMBERS !!!
@@ -190,8 +175,6 @@ StudyMetaData::copyHelper(const StudyMetaData& smd)
       addProvenance(new Provenance(*(smd.getProvenance(i))));
    }
    
-   metaAnalysisStudies = smd.metaAnalysisStudies;
-   
    parentStudyMetaDataFile = savedParentStudyMetaDataFile;
    setModified();
 }
@@ -217,13 +200,13 @@ StudyMetaData::clear()
    dateAndTimeStamps = "";
    pubMedID = projectID;  // user can override later
    quality = "";
+   species = "";
    stereotaxicSpace = "";
    stereotaxicSpaceDetails = "";
    studyDataFormat = "";
    studyDataType = "";
    studyDataModifiedFlag = false;
    title = "";
-   metaAnalysisFlag = false;
    
    for (unsigned int i = 0; i < tables.size(); i++) {
       delete tables[i];
@@ -244,8 +227,6 @@ StudyMetaData::clear()
       delete provenances[i];
    }
    provenances.clear();
-   
-   metaAnalysisStudies.clear();
 }
 
 /**
@@ -518,6 +499,7 @@ StudyMetaData::operator==(const StudyMetaData& cci) const
            (partitioningSchemeAbbreviation == cci.partitioningSchemeAbbreviation) &&
            (partitioningSchemeFullName == cci.partitioningSchemeFullName) &&
            (quality == cci.quality) &&
+           (species == cci.species) &&
            (stereotaxicSpace == cci.stereotaxicSpace) &&
            (stereotaxicSpaceDetails == cci.stereotaxicSpaceDetails) &&
            (studyDataFormat == cci.studyDataFormat) &&
@@ -592,6 +574,9 @@ StudyMetaData::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == "quality") {
             quality = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
+         else if (elem.tagName() == "species") {
+            species = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
          else if (elem.tagName() == "stereotaxicSpace") {
             stereotaxicSpace = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
@@ -607,16 +592,23 @@ StudyMetaData::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == "title") {
             title = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
+         else if (elem.tagName() == "mslID") {
+            mslID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "parentID") {
+            parentID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "coreDataCompleted") {
+            coreDataCompleted = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "completed") {
+            completed = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "publicAccess") {
+            publicAccess = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
          else if (elem.tagName() == "url") {  // obsolete
             oldURL = AbstractFile::getXmlElementFirstChildAsString(elem);
-         }
-         else if (elem.tagName() == "metaAnalysisFlag") {
-            if (AbstractFile::getXmlElementFirstChildAsString(elem) == "true") {
-               metaAnalysisFlag = true;
-            }
-            else {
-               metaAnalysisFlag = false;
-            }
          }
          else if (elem.tagName() == "provenance") {
             //
@@ -642,10 +634,6 @@ StudyMetaData::readXML(QDomNode& nodeIn) throw (FileException)
             Provenance* p = new Provenance;
             p->readXML(node);
             addProvenance(p);
-         }
-         else if ((elem.tagName() == "AssociatedStudies") ||
-                  (elem.tagName() == "StudyNamePubMedID")) {
-            metaAnalysisStudies.readXML(node);
          }
          else {
             std::cout << "WARNING: unrecognized StudyMetaData element ignored: "
@@ -699,20 +687,20 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "name", name);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "partitioningSchemeAbbreviation", partitioningSchemeAbbreviation);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "partitioningSchemeFullName", partitioningSchemeFullName);
-   AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "projectID", projectID);
-   AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "pubMedID", pubMedID);
-   AbstractFile::addXmlCdataElement( xmlDoc, studyElement, "quality", quality);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "projectID", projectID);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "pubMedID", pubMedID);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "quality", quality);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "species", species); 
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "stereotaxicSpace", stereotaxicSpace);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "stereotaxicSpaceDetails", stereotaxicSpaceDetails);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "studyDataFormat", studyDataFormat);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "studyDataType", studyDataType);
    AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "title", title);
-   if (metaAnalysisFlag) {
-      AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "metaAnalysisFlag", "true");
-   }
-   else {
-      AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "metaAnalysisFlag", "false");
-   }
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "mslID", mslID);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "parentID", parentID);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "coreDataCompleted", coreDataCompleted);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "completed", completed);
+   AbstractFile::addXmlCdataElement(xmlDoc, studyElement, "publicAccess", publicAccess);
 
    //
    // Add tables
@@ -741,283 +729,12 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
    for (int i = 0; i < getNumberOfProvenances(); i++) {
       provenances[i]->writeXML(xmlDoc, studyElement);
    }
-   
-   //
-   // Add meta-analysis studies
-   //
-   metaAnalysisStudies.writeXML(xmlDoc, studyElement);
-   
+      
    //
    // Add to parent
    //
    parentElement.appendChild(studyElement);
 }
-
-/**
- * write the data into a comma separated value file
- */
-void 
-StudyMetaData::writeDataIntoCommaSeparatedValueFile(const std::vector<StudyMetaData*>& studyInfo,
-                                         CommaSeparatedValueFile& csvf) throw (FileException)
-{
-   const int numInfo = static_cast<int>(studyInfo.size());
-   if (numInfo <= 0) {
-      return;
-   }
-   
-   //
-   // Column numbers for info
-   //
-   int numCols = 0;
-   const int authorsCol = numCols++;
-   const int citationCol = numCols++;
-   const int commentCol = numCols++;
-   const int doiCol = numCols++;
-   const int keywordsCol = numCols++;
-   const int meshCol = numCols++;
-   const int nameCol = numCols++;
-   const int partSchemeAbbrevCol = numCols++;
-   const int partSchemeFullNameCol = numCols++;
-   const int projectIDCol = numCols++;
-   const int pubMedCol = numCols++;
-   const int qualityCol = numCols++;
-   const int spaceCol = numCols++;
-   const int spaceDetailsCol = numCols++;
-   const int studyDataFormatCol = numCols++;
-   const int studyDataTypeCol = numCols++;
-   const int timeStampCol = numCols++;
-   const int titleCol = numCols++;
-   
-   //
-   // Load the table
-   //
-   StringTable* st = new StringTable(numInfo, numCols, "Study Metadata");
-   st->setColumnTitle(authorsCol, "Authors");
-   st->setColumnTitle(citationCol, "Citation");
-   st->setColumnTitle(commentCol, "Comment");
-   st->setColumnTitle(doiCol, "Document Object Identifier");
-   st->setColumnTitle(keywordsCol, "Keywords");
-   st->setColumnTitle(meshCol, "Medical Subject Headings");
-   st->setColumnTitle(nameCol, "Name");
-   st->setColumnTitle(partSchemeAbbrevCol, "Partitioning Scheme Abbreviation");
-   st->setColumnTitle(partSchemeFullNameCol, "Partitioning Scheme Full Name");
-   st->setColumnTitle(projectIDCol, "Project ID");
-   st->setColumnTitle(pubMedCol, "PubMed ID");
-   st->setColumnTitle(qualityCol, "Quality");
-   st->setColumnTitle(spaceCol, "Stereotaxic Space");
-   st->setColumnTitle(spaceDetailsCol, "Stereotaxic Space Details");
-   st->setColumnTitle(studyDataFormatCol, "Study Data Format");
-   st->setColumnTitle(studyDataTypeCol, "Study Data Type");
-   st->setColumnTitle(timeStampCol, "TimeStamp");
-   st->setColumnTitle(titleCol, "Title");
-   
-   for (int i = 0; i < numInfo; i++) {
-      const StudyMetaData& smd = *(studyInfo[i]);
-      //
-      // Update data and time stamp if modified flag is set
-      //
-      if (smd.studyDataModifiedFlag) {
-         smd.dateAndTimeStamps = AbstractFile::generateDateAndTimeStamp()
-                                     + ";"
-                                     + smd.dateAndTimeStamps;
-         smd.studyDataModifiedFlag = false;
-      }
-
-      st->setElement(i, authorsCol, smd.getAuthors());
-      st->setElement(i, citationCol, smd.getCitation());
-      st->setElement(i, commentCol, smd.getComment());
-      st->setElement(i, doiCol, smd.getDocumentObjectIdentifier());
-      st->setElement(i, keywordsCol, smd.getKeywords());
-      st->setElement(i, meshCol, smd.getMedicalSubjectHeadings());
-      st->setElement(i, nameCol, smd.getName());
-      st->setElement(i, partSchemeAbbrevCol, smd.getPartitioningSchemeAbbreviation());
-      st->setElement(i, partSchemeFullNameCol, smd.getPartitioningSchemeFullName());
-      st->setElement(i, projectIDCol, smd.getProjectID());
-      st->setElement(i, qualityCol, smd.getQuality());
-      st->setElement(i, timeStampCol, smd.getDateAndTimeStamps());
-      st->setElement(i, pubMedCol, smd.getPubMedID());
-      st->setElement(i, spaceCol, smd.getStereotaxicSpace());
-      st->setElement(i, spaceDetailsCol, smd.getStereotaxicSpaceDetails());
-      st->setElement(i, studyDataFormatCol, smd.getStudyDataFormat());
-      st->setElement(i, studyDataTypeCol, smd.getStudyDataType());
-      st->setElement(i, titleCol, smd.getTitle());
-   }
-   
-   csvf.addDataSection(st);
-}
-
-/**
- * read the data from a StringTable.
- */
-void 
-StudyMetaData::readDataFromStringTable(std::vector<StudyMetaData*>& studyMetaData,
-                                        const StringTable& st) throw (FileException)
-{
-   if (st.getTableTitle() != "Study Metadata") {
-      throw FileException("String table for StudyMetaData does not have name Study Metadata");
-   }
-   
-   studyMetaData.clear();
-
-   int authorsCol = -1;
-   int citationCol = -1;
-   int commentCol = -1;
-   int doiCol = -1;
-   int keywordsCol = -1;
-   int meshCol = -1;
-   int nameCol = -1;
-   int partitioningSchemeAbbrevCol = -1;
-   int partitioningSchemeFullNameCol = -1;
-   int projectIDCol = -1;
-   int qualityCol = -1;
-   int timeStampCol = -1;
-   int pubMedCol = -1;
-   int spaceCol = -1;
-   int spaceDetailsCol = -1;
-   int studyDataFormatCol = -1;
-   int studyDataTypeCol = -1;
-   int titleCol = -1;
-   int urlCol = -1;
-   
-   const int numCols = st.getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = st.getColumnTitle(i).toLower();
-      if (name == "authors") {
-         authorsCol = i;
-      }
-      else if (name == "citation") {
-         citationCol = i;
-      }
-      else if (name == "comment") {
-         commentCol = i;
-      }
-      else if (name == "document object identifier") {
-         doiCol = i;
-      }
-      else if (name == "keywords") {
-         keywordsCol = i;
-      }
-      else if (name == "medical subject headings") {
-         meshCol = i;
-      }
-      else if (name == "name") {
-         nameCol = i;
-      }
-      else if (name == "partitioning scheme abbreviation") {
-         partitioningSchemeAbbrevCol = i;
-      }
-      else if (name == "partitioning scheme full name") {
-         partitioningSchemeFullNameCol = i;
-      }
-      else if (name == "project id") {
-         projectIDCol = i;
-      }
-      else if ((name == "provenance-time-stamp") ||
-               (name == "time stamp")) {
-         timeStampCol = i;
-      }
-      else if (name == "pubmed id") {
-         pubMedCol = i;
-      }
-      else if (name == "quality") {
-         qualityCol = i;
-      }
-      else if (name == "stereotaxic space") {
-         spaceCol = i;
-      }
-      else if (name == "stereotaxic space details") {
-         spaceDetailsCol = i;
-      }
-      else if (name == "study data format") {
-         studyDataFormatCol = i;
-      }
-      else if (name == "study data type") {
-         studyDataTypeCol = i;
-      }
-      else if (name == "title") {
-         titleCol = i;
-      }
-      else if (name == "url") {
-         urlCol = i;
-      }
-      else {
-            std::cout << "WARNING: unrecognized StudyMetaData element in string table ignored: "
-                      << name.toAscii().constData()
-                      << std::endl;
-      }
-   }
-   
-   const int numItems = st.getNumberOfRows();
-   for (int i = 0; i < numItems; i++) {
-      StudyMetaData* smd = new StudyMetaData;
-      
-      if (authorsCol >= 0) {
-        smd->setAuthors(st.getElement(i, authorsCol));
-      }
-      if (citationCol >= 0) {
-         smd->setCitation(st.getElement(i, citationCol));
-      }
-      if (commentCol >= 0) {
-         smd->setComment(st.getElement(i, commentCol));
-      }
-      if (doiCol >= 0) {
-         smd->setDocumentObjectIdentifier(st.getElement(i, doiCol));
-      }
-      if (keywordsCol >= 0) {
-         smd->setKeywords(st.getElement(i, keywordsCol));
-      }
-      if (meshCol >= 0) {
-         smd->setMedicalSubjectHeadings(st.getElement(i, meshCol));
-      }
-      if (nameCol >= 0) {
-         smd->setName(st.getElement(i, nameCol));
-      }
-      if (partitioningSchemeAbbrevCol >= 0) {
-         smd->setPartitioningSchemeAbbreviation(st.getElement(i, partitioningSchemeAbbrevCol));
-      }
-      if (partitioningSchemeFullNameCol >= 0) {
-         smd->setPartitioningSchemeFullName(st.getElement(i, partitioningSchemeFullNameCol));
-      }
-      if (projectIDCol >= 0) {
-         smd->setProjectID(st.getElement(i, projectIDCol));
-      }
-      if (timeStampCol >= 0) {
-         smd->setDateAndTimeStamps(st.getElement(i, projectIDCol));
-      }
-      if (pubMedCol >= 0) {
-         smd->setPubMedID(st.getElement(i, pubMedCol));
-      }
-      if (qualityCol >= 0) {
-         smd->setQuality(st.getElement(i, qualityCol));
-      }
-      if (spaceCol >= 0) {
-         smd->setStereotaxicSpace(st.getElement(i, spaceCol));
-      }
-      if (spaceDetailsCol >= 0) {
-         smd->setStereotaxicSpaceDetails(st.getElement(i, spaceDetailsCol));
-      }
-      if (studyDataFormatCol >= 0) {
-         smd->setStudyDataFormat(st.getElement(i, studyDataFormatCol));
-      }
-      if (studyDataTypeCol >= 0) {
-         smd->setStudyDataType(st.getElement(i, studyDataTypeCol));
-      }
-      if (titleCol >= 0) {
-         smd->setTitle(st.getElement(i, titleCol));
-      }
-      if (urlCol >= 0) {
-         //
-         // Older files had both DOI and URL but DOI takes precedence
-         //
-         const QString oldURL = st.getElement(i, urlCol);
-         if (smd->getDocumentObjectIdentifier().isEmpty()) {
-            smd->setDocumentObjectIdentifier(oldURL);
-         }
-      }      
-      
-      studyMetaData.push_back(smd);
-   }
-}      
 
 /**
  * get the study data format entries.
@@ -1054,11 +771,8 @@ StudyMetaData::getStudyDataTypeEntries(std::vector<QString>& entries)
    entries.push_back("TMS");
    entries.push_back("DTI");
    entries.push_back("MEG");
-   entries.push_back("human");
-   entries.push_back("macaque");
-   entries.push_back("rat");
-   entries.push_back("mouse");
-   entries.push_back("ape");
+   entries.push_back("Single Unit Neurophysiology");
+   entries.push_back("Multi-Unit Neurophysiology");
    std::sort(entries.begin(), entries.end());
    entries.push_back("Other");
 }
@@ -1221,17 +935,65 @@ StudyMetaData::setTitle(const QString& s)
 }
 
 /**
- * set meta-analysis flag.
+ * set MSL ID.
  */
 void 
-StudyMetaData::setMetaAnalysisFlag(const bool b)
+StudyMetaData::setMslID(const QString& s)
 {
-   if (b != metaAnalysisFlag) {
-      metaAnalysisFlag = b;
-      setModified();
+   if (mslID != s) {
+      mslID = s;
+      setModified(); 
    }
 }
 
+/**
+ * set parent ID.
+ */
+void  
+StudyMetaData::setParentID(const QString& s)
+{
+   if (parentID != s) {
+      parentID = s;
+      setModified(); 
+   }
+}
+
+/**
+ * set core metadata.
+ */
+void  
+StudyMetaData::setCoreDataCompleted(const QString& s)
+{
+   if (coreDataCompleted != s) {
+      coreDataCompleted = s;
+      setModified(); 
+   }
+}
+
+/**
+ * set completed.
+ */
+void  
+StudyMetaData::setCompleted(const QString& s)
+{
+   if (completed != s) {
+      completed = s;
+      setModified(); 
+   }
+}
+
+/**
+ * set public access.
+ */
+void 
+StudyMetaData::setPublicAccess(const QString& s)
+{
+   if (publicAccess != s) {
+      publicAccess = s;
+      setModified(); 
+   }
+}
+      
 /**
  * set authors.
  */
@@ -1256,6 +1018,18 @@ StudyMetaData::setCitation(const QString& s)
    }
 }
 
+/**
+ * set species.
+ */
+void 
+StudyMetaData::setSpecies(const QString& s)
+{
+   if (species != s) {
+      species = s;
+      setModified();
+   }
+}
+      
 /**
  * set stereotaxic space.
  */
@@ -1372,14 +1146,33 @@ StudyMetaData::setModified()
 }      
 
 /**
+ * get medical subject headings.
+ */
+void 
+StudyMetaData::getMedicalSubjectHeadings(std::vector<QString>& meshOut) const
+{
+   meshOut.clear();
+   
+   const QStringList sl = getMedicalSubjectHeadings().split(';', QString::SkipEmptyParts);
+   for (int k = 0; k < sl.size(); k++) {
+      const QString m = sl.at(k).trimmed();
+      if (m.isEmpty() == false) {
+         meshOut.push_back(m);
+      }
+   }
+}
+      
+/**
  * get the keywords.
  */
 void 
 StudyMetaData::getKeywords(std::vector<QString>& keywordsOut) const
 {
+   static QRegExp regEx(";|\\*|\\|");
+   
    keywordsOut.clear();
    
-   const QStringList sl = getKeywords().split(';', QString::SkipEmptyParts);
+   const QStringList sl = getKeywords().split(regEx, QString::SkipEmptyParts);
    for (int k = 0; k < sl.size(); k++) {
       const QString kw = sl.at(k).trimmed();
       if (kw.isEmpty() == false) {
@@ -1388,6 +1181,34 @@ StudyMetaData::getKeywords(std::vector<QString>& keywordsOut) const
    }
 }
 
+/**
+ * see if study contains a keyword.
+ */
+bool 
+StudyMetaData::containsKeyword(const QString& kw) const
+{
+   std::vector<QString> words;
+   getKeywords(words);
+   if (std::find(words.begin(), words.end(), kw) != words.end()) {
+      return true;
+   }
+   return false;
+}
+      
+/**
+ * see if study contains a sub header short names.
+ */
+bool 
+StudyMetaData::containsSubHeaderShortName(const QString& shsn) const
+{
+   std::vector<QString> shortNames;
+   getAllTableSubHeaderShortNames(shortNames);
+   if (std::find(shortNames.begin(), shortNames.end(), shsn) != shortNames.end()) {
+      return true;
+   }
+   return false;
+}
+      
 /**
  * get all table sub header short names in this study.
  */
@@ -1406,6 +1227,24 @@ StudyMetaData::getAllTableSubHeaderShortNames(std::vector<QString>& tableSubHead
          if (shortName.isEmpty() == false) {
             tableSubHeaderShortNamesOut.push_back(shortName);
          }
+      }
+   }
+}
+      
+/**
+ * get all table headers.
+ */
+void 
+StudyMetaData::getAllTableHeaders(std::vector<QString>& headersOut) const
+{
+   headersOut.clear();
+   
+   const int numTables = getNumberOfTables();
+   for (int i = 0; i < numTables; i++) {
+      const Table* table = getTable(i);
+      const QString h = table->getHeader().trimmed();
+      if (h.isEmpty() == false) {
+         headersOut.push_back(h);
       }
    }
 }
@@ -1674,85 +1513,6 @@ StudyMetaData::Figure::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
-/**
- * write the data into a comma separated value file.
- */
-void 
-StudyMetaData::Figure::writeDataIntoCommaSeparatedValueFile(const std::vector<Figure*>& figures,
-                                                CommaSeparatedValueFile& csvf)  throw (FileException)
-{
-   const int numRows = static_cast<int>(figures.size());
-   if (numRows <= 0) {
-      return;
-   }
-   
-   //
-   // Column numbers for info
-   //
-   int numCols = 0;
-   const int legendCol = numCols++;
-   const int numberCol = numCols++;
-   
-   StringTable* st = new StringTable(numRows, numCols, "Study Metadata Figure");
-   st->setColumnTitle(legendCol, "Legend");
-   st->setColumnTitle(numberCol, "Number");
-   
-   for (int i = 0; i < numRows; i++) {
-      const Figure& f = *(figures[i]);
-      st->setElement(i, legendCol, f.getLegend());
-      st->setElement(i, numberCol, f.getNumber());
-   }
-   
-   csvf.addDataSection(st);
-}
-
-/**
- * read the data from a StringTable.
- */
-void 
-StudyMetaData::Figure::readDataFromStringTable(std::vector<Figure*>& figures,
-                                               const StringTable& st) throw (FileException)
-{
-   if (st.getTableTitle() != "Study Metadata Figure") {
-      throw FileException("String table for StudyMetaData::Figure does not have name Study Metadata Figure");
-   }
-   
-   figures.clear();
-
-   int legendCol = -1;
-   int numberCol = -1;
-   
-   const int numCols = st.getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = st.getColumnTitle(i).toLower();
-      if (name == "legend") {
-         legendCol = i;
-      }
-      else if (name == "number") {
-         numberCol = i;
-      }
-      else {
-            std::cout << "WARNING: unrecognized StudyMetaData::Figure element in string table ignored: "
-                      << name.toAscii().constData()
-                      << std::endl;
-      }
-   }
-   
-   const int numRows = st.getNumberOfRows();
-   for (int i = 0; i < numRows; i++) {
-      Figure* f = new Figure;
-      
-      if (legendCol >= 0) {
-         f->setLegend(st.getElement(i, legendCol));
-      }
-      if (numberCol >= 0) {
-         f->setNumber(st.getElement(i, numberCol));
-      }
-      
-      figures.push_back(f);
-   }
-}
-
 //====================================================================================
 //
 // Figure Panel class
@@ -1982,115 +1742,6 @@ StudyMetaData::Figure::Panel::writeXML(QDomDocument& xmlDoc,
    // Add to parent
    //
    parentElement.appendChild(element);
-}
-
-/**
- * write the data into a comma separated value file
- */
-void 
-StudyMetaData::Figure::Panel::writeDataIntoCommaSeparatedValueFile(const std::vector<Panel*>& panels,
-                                                       CommaSeparatedValueFile& csvf)  throw (FileException)
-{
-   const int numRows = static_cast<int>(panels.size());
-   if (numRows <= 0) {
-      return;
-   }
-   
-   //
-   // Column numbers for info
-   //
-   int numCols = 0;
-   const int descriptionCol = numCols++;
-   const int panelNumberOrLetterCol = numCols++;
-   const int taskDescriptionCol = numCols++;
-   const int taskBaselineCol = numCols++;
-   const int testAttributesCol = numCols++;
-
-   StringTable* st = new StringTable(numRows, numCols, "Study Metadata Figure Panel");
-   st->setColumnTitle(descriptionCol, "Description");
-   st->setColumnTitle(panelNumberOrLetterCol, "Number/Letter");
-   st->setColumnTitle(taskDescriptionCol, "Task Description");
-   st->setColumnTitle(taskBaselineCol, "Task Baseline");
-   st->setColumnTitle(testAttributesCol, "Test Attributes");
-
-   for (int i = 0; i < numRows; i++) {
-      const Panel& p = *(panels[i]);
-      st->setElement(i, descriptionCol, p.getDescription());
-      st->setElement(i, panelNumberOrLetterCol, p.getPanelNumberOrLetter());
-      st->setElement(i, taskDescriptionCol, p.getTaskDescription());
-      st->setElement(i, taskBaselineCol, p.getTaskBaseline());
-      st->setElement(i, testAttributesCol, p.getTestAttributes());
-   }
-   
-   csvf.addDataSection(st);
-}
-
-/**
- * read the data from a StringTable.
- */
-void 
-StudyMetaData::Figure::Panel::readDataFromStringTable(std::vector<Panel*>& panels,
-                                                      const StringTable& st) throw (FileException)
-{
-   if (st.getTableTitle() != "Study Metadata Figure Panel") {
-      throw FileException("String table for StudyMetaData::Figure::Panel does not have name Study Metadata Figure Panel");
-   }
-   
-   panels.clear();
-
-   int descriptionCol = -1;
-   int panelNumberOrLetterCol = -1;
-   int taskDescriptionCol = -1;
-   int taskBaselineCol = -1;
-   int testAttributesCol = -1;
-
-   const int numCols = st.getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = st.getColumnTitle(i).toLower();
-      if (name == "description") {
-         descriptionCol = i;
-      }
-      else if (name == "number/letter") {
-         panelNumberOrLetterCol = i;
-      }
-      else if (name == "task description") {
-         taskDescriptionCol = i;
-      }
-      else if (name == "task baseline") {
-         taskBaselineCol = i;
-      }
-      else if (name == "test attributes") {
-         testAttributesCol = i;
-      }
-      else {
-            std::cout << "WARNING: unrecognized StudyMetaData::Figure::Panel element in string table ignored: "
-                      << name.toAscii().constData()
-                      << std::endl;
-      }
-   }
-   
-   const int numRows = st.getNumberOfRows();
-   for (int i = 0; i < numRows; i++) {
-      Panel* p = new Panel;
-      
-      if (descriptionCol >= 0) {
-         p->setDescription(st.getElement(i, descriptionCol));
-      }
-      if (panelNumberOrLetterCol >= 0) {
-         p->setPanelNumberOrLetter(st.getElement(i, panelNumberOrLetterCol));
-      }
-      if (taskDescriptionCol >= 0) {
-         p->setTaskDescription(st.getElement(i, taskDescriptionCol));
-      }
-      if (taskBaselineCol >= 0) {
-         p->setTaskBaseline(st.getElement(i, taskBaselineCol));
-      }
-      if (testAttributesCol >= 0) {
-         p->setTestAttributes(st.getElement(i, testAttributesCol));
-      }
-      
-      panels.push_back(p);
-   }
 }
 
 //====================================================================================
@@ -2449,135 +2100,6 @@ StudyMetaData::Table::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
-/**
- * write the data into a comma separated value file.
- */
-void 
-StudyMetaData::Table::writeDataIntoCommaSeparatedValueFile(const std::vector<Table*>& tables,
-                                               CommaSeparatedValueFile& csvf) throw (FileException)
-{
-   const int numRows = static_cast<int>(tables.size());
-   if (numRows <= 0) {
-      return;
-   }
-   
-   //
-   // Column numbers for info
-   //
-   int numCols = 0;
-   const int footerCol = numCols++;
-   const int headerCol = numCols++;
-   const int numberCol = numCols++;
-   const int sizeUnitsCol = numCols++;
-   const int statTypeCol = numCols++;
-   const int statDescripCol = numCols++;
-   const int voxelDimCol = numCols++;
-   
-   StringTable* st = new StringTable(numRows, numCols, "Study Metadata Table");
-   st->setColumnTitle(footerCol, "Footer");
-   st->setColumnTitle(headerCol, "Header");
-   st->setColumnTitle(numberCol, "Number");
-   st->setColumnTitle(sizeUnitsCol, "Size Units");
-   st->setColumnTitle(statTypeCol, "Statistic Type");
-   st->setColumnTitle(statDescripCol, "Statistic Description");
-   st->setColumnTitle(voxelDimCol, "Voxel Dimension");
-   
-   for (int i = 0; i < numRows; i++) {
-      const Table& t = *(tables[i]);
-      st->setElement(i, footerCol, t.getFooter());
-      st->setElement(i, headerCol, t.getHeader());
-      st->setElement(i, numberCol, t.getNumber());
-      st->setElement(i, sizeUnitsCol, t.getSizeUnits());
-      st->setElement(i, statTypeCol, t.getStatisticType());
-      st->setElement(i, statDescripCol, t.getStatisticDescription());
-      st->setElement(i, voxelDimCol, t.getVoxelDimensions());
-   }
-   
-   csvf.addDataSection(st);
-}
-
-/**
- * read the data from a StringTable.
- */
-void 
-StudyMetaData::Table::readDataFromStringTable(std::vector<Table*>& tables,
-                                              const StringTable& st) throw (FileException)
-{
-   if (st.getTableTitle() != "Study Metadata Table") {
-      throw FileException("String table for StudyMetaData::Table does not have name Study Metadata Table");
-   }
-   
-   tables.clear();
-
-   int footerCol = -1;
-   int headerCol = -1;
-   int numberCol = -1;
-   int sizeUnitsCol = -1;
-   int statTypeCol = -1;
-   int statDescripCol = -1;
-   int voxelDimCol = -1;
-   
-   const int numCols = st.getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = st.getColumnTitle(i).toLower();
-      if (name == "footer") {
-         footerCol = i;
-      }
-      else if (name == "header") {
-         headerCol = i;
-      }
-      else if (name == "number") {
-         numberCol = i;
-      }
-      else if (name == "size units") {
-         sizeUnitsCol = i;
-      }
-      else if (name == "statistic type") {
-         statTypeCol = i;
-      }
-      else if (name == "statistic description") {
-         statDescripCol = i;
-      }
-      else if (name == "voxel dimension") {
-         voxelDimCol = i;
-      }
-      else {
-            std::cout << "WARNING: unrecognized StudyMetaData::Table element in string table ignored: "
-                      << name.toAscii().constData()
-                      << std::endl;
-      }
-   }
-   
-   const int numRows = st.getNumberOfRows();
-   for (int i = 0; i < numRows; i++) {
-      Table* t = new Table;
-      
-      if (footerCol >= 0) {
-         t->setFooter(st.getElement(i, footerCol));
-      }
-      if (headerCol >= 0) {
-         t->setHeader(st.getElement(i, headerCol));
-      }
-      if (numberCol >= 0) {
-         t->setNumber(st.getElement(i, numberCol));
-      }
-      if (sizeUnitsCol >= 0) {
-         t->setSizeUnits(st.getElement(i, sizeUnitsCol));
-      }
-      if (statTypeCol >= 0) {
-         t->setStatisticType(st.getElement(i, statTypeCol));
-      }
-      if (statDescripCol >= 0) {
-         t->setStatisticDescription(st.getElement(i, statDescripCol));
-      }
-      if (voxelDimCol >= 0) {
-         t->setVoxelDimensions(st.getElement(i, voxelDimCol));
-      }
-      
-      tables.push_back(t);
-   }
-}
-
 //====================================================================================
 //
 // SubHeader class
@@ -2845,125 +2367,6 @@ StudyMetaData::SubHeader::writeXML(QDomDocument& xmlDoc,
    // Add to parent
    //
    parentElement.appendChild(element);
-}
-
-/**
- * write the data into a comma separated value file.
- */
-void 
-StudyMetaData::SubHeader::writeDataIntoCommaSeparatedValueFile(const std::vector<SubHeader*>& subHeaders,
-                                                          CommaSeparatedValueFile& csvf)  throw (FileException)
-{
-   const int numRows = static_cast<int>(subHeaders.size());
-   if (numRows <= 0) {
-      return;
-   }
-   
-   //
-   // Column numbers for info
-   //
-   int numCols = 0;
-   const int nameCol = numCols++;
-   const int numberCol = numCols++;
-   const int shortNameCol = numCols++;
-   const int taskDescriptionCol = numCols++;
-   const int taskBaselineCol = numCols++;
-   const int testAttributesCol = numCols++;
-
-   StringTable* st = new StringTable(numRows, numCols, "Study Metadata Sub Header");
-   st->setColumnTitle(nameCol, "Name");
-   st->setColumnTitle(numberCol, "Number");
-   st->setColumnTitle(shortNameCol, "Short Name");
-   st->setColumnTitle(taskDescriptionCol, "Task Description");
-   st->setColumnTitle(taskBaselineCol, "Task Baseline");
-   st->setColumnTitle(testAttributesCol, "Test Attributes");
-
-   for (int i = 0; i < numRows; i++) {
-      const SubHeader& sh = *(subHeaders[i]);
-      st->setElement(i, nameCol, sh.getName());
-      st->setElement(i, numberCol, sh.getNumber());
-      st->setElement(i, shortNameCol, sh.getShortName());
-      st->setElement(i, taskDescriptionCol, sh.getTaskDescription());
-      st->setElement(i, taskBaselineCol, sh.getTaskBaseline());
-      st->setElement(i, testAttributesCol, sh.getTestAttributes());
-   }
-   
-   csvf.addDataSection(st);
-}
-
-/**
- * read the data from a StringTable.
- */
-void 
-StudyMetaData::SubHeader::readDataFromStringTable(std::vector<SubHeader*>& subHeaders,
-                                                         const StringTable& st) throw (FileException)
-{
-   if (st.getTableTitle() != "Study Metadata Sub Header") {
-      throw FileException("String table for StudyMetaData::SubHeader does not have name Study Metadata Table Sub Header");
-   }
-   
-   subHeaders.clear();
-
-   int nameCol = -1;
-   int numberCol = -1;
-   int shortNameCol = -1;
-   int taskDescriptionCol = -1;
-   int taskBaselineCol = -1;
-   int testAttributesCol = -1;
-
-   const int numCols = st.getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = st.getColumnTitle(i).toLower();
-      if (name == "name") {
-         nameCol = i;
-      }
-      else if (name == "number") {
-         numberCol = i;
-      }
-      else if (name == "shortname") {
-         shortNameCol = i;
-      }
-      else if (name == "task description") {
-         taskDescriptionCol = i;
-      }
-      else if (name == "task baseline") {
-         taskBaselineCol = i;
-      }
-      else if (name == "test attributes") {
-         testAttributesCol = i;
-      }
-      else {
-            std::cout << "WARNING: unrecognized StudyMetaData::SubHeader element in string table ignored: "
-                      << name.toAscii().constData()
-                      << std::endl;
-      }
-   }
-   
-   const int numRows = st.getNumberOfRows();
-   for (int i = 0; i < numRows; i++) {
-      SubHeader* sh = new SubHeader;
-      
-      if (nameCol >= 0) {
-         sh->setName(st.getElement(i, nameCol));
-      }
-      if (numberCol >= 0) {
-         sh->setNumber(st.getElement(i, numberCol));
-      }
-      if (shortNameCol >= 0) {
-         sh->setShortName(st.getElement(i, shortNameCol).trimmed());
-      }
-      if (taskDescriptionCol >= 0) {
-         sh->setTaskDescription(st.getElement(i, taskDescriptionCol));
-      }
-      if (taskBaselineCol >= 0) {
-         sh->setTaskBaseline(st.getElement(i, taskBaselineCol));
-      }
-      if (testAttributesCol >= 0) {
-         sh->setTestAttributes(st.getElement(i, testAttributesCol));
-      }
-      
-      subHeaders.push_back(sh);
-   }
 }
 
 //====================================================================================
@@ -3566,7 +2969,7 @@ StudyMetaDataFile::StudyMetaDataFile(const StudyMetaDataFile& smdf)
                   FILE_IO_NONE,     // XML base64
                   FILE_IO_NONE,     // XML gzip base64 
                   FILE_IO_NONE,     // other format
-                  FILE_IO_READ_ONLY)     // csvf
+                  FILE_IO_NONE)     // csvf
 {
    copyHelper(smdf);
 }
@@ -3744,51 +3147,6 @@ StudyMetaDataFile::clear()
 }
 
 /**
- * given a study, report any meta-analysis studies of which it is a member.
- */
-void 
-StudyMetaDataFile::getMetaAnalysisStudiesForStudy(const StudyMetaData* mySMD,
-                                                  std::vector<QString>& metaAnalysisStudyPMIDsOut) const
-{
-   metaAnalysisStudyPMIDsOut.clear();
-   
-   //
-   // Get the studies PubMed and Project IDs
-   //
-   const QString myPMID = mySMD->getPubMedID();
-   const QString myProjectID = mySMD->getProjectID();
-   
-   //
-   // Loop through studies
-   //
-   const int num = getNumberOfStudyMetaData();
-   for (int i = 0; i < num; i++) {
-      const StudyMetaData* smd = getStudyMetaData(i);
-      //
-      // Skip study for which meta-analysis is sought
-      //
-      if (smd != mySMD) {
-         //
-         // Get the associated studies
-         //
-         const StudyNamePubMedID* ms = smd->getMetaAnalysisStudies();
-         const int numMetaStudies = ms->getNumberOfStudies();
-         for (int j = 0; j < numMetaStudies; j++) {
-            QString msName, msPMID;
-            ms->getStudyNameAndPubMedID(j, msName, msPMID);
-            //
-            // Does ID match?
-            //
-            if ((myPMID == msPMID) ||
-                (myProjectID == msPMID)) {
-               metaAnalysisStudyPMIDsOut.push_back(smd->getPubMedID());
-            }
-         }
-      }
-   }
-}
-                                          
-/**
  * delete studies with the given names.
  */
 void 
@@ -3939,6 +3297,28 @@ StudyMetaDataFile::getCommaSeparatedFileSupport(bool& readFromCSV,
 }
 
 /**
+ * get all medical subject headings.
+ */
+void 
+StudyMetaDataFile::getAllMedicalSubjectHeadings(std::vector<QString>& meshOut) const
+{
+   meshOut.clear();
+   
+   std::set<QString> meshSet;
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      std::vector<QString> mesh;
+      smd->getMedicalSubjectHeadings(mesh);
+      meshSet.insert(mesh.begin(), mesh.end());
+   }
+   
+   meshOut.insert(meshOut.end(),
+                  meshSet.begin(), meshSet.end());
+}
+      
+/**
  * get all keywords.
  */
 void 
@@ -3959,7 +3339,210 @@ StudyMetaDataFile::getAllKeywords(std::vector<QString>& allKeywords) const
    allKeywords.insert(allKeywords.end(),
                       keywordSet.begin(), keywordSet.end());
 }
+
+/**
+ * get all citations.
+ */
+void 
+StudyMetaDataFile::getAllCitations(std::vector<QString>& allCitations) const
+{
+   allCitations.clear();
+   
+   //
+   // Get keywords from studies used by displayed foci
+   //
+   const int numStudies = getNumberOfStudyMetaData();
+   std::set<QString> citationSet;
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString citation = smd->getCitation();
+      if (citation.isEmpty() == false) {
+         citationSet.insert(citation);
+      }
+   }
+   
+   allCitations.insert(allCitations.end(),
+                       citationSet.begin(), citationSet.end());
+}
+
+/**
+ * get all data formats.
+ */
+void 
+StudyMetaDataFile::getAllDataFormats(std::vector<QString>& allDataFormats) const
+{
+   allDataFormats.clear();
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   std::set<QString> dataFormatSet;
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString dataFormat = smd->getStudyDataFormat();
+      if (dataFormat.isEmpty() == false) {
+         dataFormatSet.insert(dataFormat);
+      }
+   }
+   
+   allDataFormats.insert(allDataFormats.end(),
+                         dataFormatSet.begin(), dataFormatSet.end());
+}
+
+/**
+ * get all data types.
+ */
+void 
+StudyMetaDataFile::getAllDataTypes(std::vector<QString>& allDataTypes) const
+{
+   allDataTypes.clear();
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   std::set<QString> dataTypeSet;
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString dataType = smd->getStudyDataType();
+      if (dataType.isEmpty() == false) {
+         dataTypeSet.insert(dataType);
+      }
+   }
+   
+   allDataTypes.insert(allDataTypes.end(),
+                       dataTypeSet.begin(), dataTypeSet.end());
+}
  
+/**
+ * get all keywords used by displayed foci.
+ */
+void 
+StudyMetaDataFile::getAllKeywordsUsedByDisplayedFoci(const FociProjectionFile* fpf,
+                                            std::vector<QString>& keywordsOut) const
+{
+   keywordsOut.clear();
+   
+   //
+   // Get studies used by foci
+   //
+   std::vector<bool> studyIsUsedByFocus;
+   getStudiesLinkedByDisplayedFoci(fpf, studyIsUsedByFocus);
+   const int numStudies = static_cast<int>(studyIsUsedByFocus.size());
+   
+   //
+   // Get keywords from studies used by displayed foci
+   //
+   std::set<QString> keywordSet;
+   for (int i = 0; i < numStudies; i++) {
+      if (studyIsUsedByFocus[i]) {
+         const StudyMetaData* smd = getStudyMetaData(i);
+         std::vector<QString> studyKeywords;
+         smd->getKeywords(studyKeywords);
+         keywordSet.insert(studyKeywords.begin(), studyKeywords.end());
+      }
+   }
+   
+   keywordsOut.insert(keywordsOut.end(),
+                      keywordSet.begin(), keywordSet.end());
+   
+/*   
+   const int numStudies = getNumberOfStudyMetaData();
+   std::vector<bool> studyIsUsedByFocus(numStudies, false);
+   
+   //
+   // Find studies used by displayed foci
+   //
+   const int numFoci = fpf->getNumberOfCellProjections();
+   for (int i = 0; i < numFoci; i++) {
+      const CellProjection* focus = fpf->getCellProjection(i);
+      if (focus->getDisplayFlag()) {
+         //
+         // Loop through studies used by focus
+         //      
+         const StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
+         const int numLinks = smdls.getNumberOfStudyMetaDataLinks();
+         for (int j = 0; j < numLinks; j++) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+            const int studyIndex = getStudyIndexFromLink(smdl);
+            if ((studyIndex >= 0) && 
+                (studyIndex < numStudies)) {
+               studyIsUsedByFocus[studyIndex] = true;
+            }
+         }
+      }
+   }
+
+   //
+   // Get keywords from studies used by displayed foci
+   //
+   std::set<QString> keywordSet;
+   for (int i = 0; i < numStudies; i++) {
+      if (studyIsUsedByFocus[i]) {
+         const StudyMetaData* smd = getStudyMetaData(i);
+         std::vector<QString> studyKeywords;
+         smd->getKeywords(studyKeywords);
+         keywordSet.insert(studyKeywords.begin(), studyKeywords.end());
+      }
+   }
+   
+   keywordsOut.insert(keywordsOut.end(),
+                      keywordSet.begin(), keywordSet.end());
+*/
+}
+      
+/**
+ * get studies that are linked by displayed foci.
+ */
+void 
+StudyMetaDataFile::getStudiesLinkedByDisplayedFoci(const FociProjectionFile* fpf,
+                                                std::vector<bool>& studyLinkedByFocusOut) const
+{
+   const int numStudies = getNumberOfStudyMetaData();
+   studyLinkedByFocusOut.resize(numStudies);
+   std::fill(studyLinkedByFocusOut.begin(), studyLinkedByFocusOut.end(), false);
+   
+   //
+   // Find studies used by displayed foci
+   //
+   const int numFoci = fpf->getNumberOfCellProjections();
+   for (int i = 0; i < numFoci; i++) {
+      const CellProjection* focus = fpf->getCellProjection(i);
+      if (focus->getDisplayFlag()) {
+         //
+         // Loop through studies used by focus
+         //      
+         const StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
+         const int numLinks = smdls.getNumberOfStudyMetaDataLinks();
+         for (int j = 0; j < numLinks; j++) {
+            const StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+            const int studyIndex = getStudyIndexFromLink(smdl);
+            if ((studyIndex >= 0) && 
+                (studyIndex < numStudies)) {
+               studyLinkedByFocusOut[studyIndex] = true;
+            }
+         }
+      }
+   }
+}
+      
+/**
+ * get all table headers.
+ */
+void 
+StudyMetaDataFile::getAllTableHeaders(std::vector<QString>& headersOut) const
+{
+   headersOut.clear();
+
+   std::set<QString> headerSet;
+   
+   const int numStudies = getNumberOfStudyMetaData();
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      std::vector<QString> tableHeaders;
+      smd->getAllTableHeaders(tableHeaders);
+      headerSet.insert(tableHeaders.begin(), tableHeaders.end());
+   }
+   
+   headersOut.insert(headersOut.end(),
+                     headerSet.begin(), headerSet.end());
+}
+      
 /**
  * get all table subheader short names.
  */
@@ -3983,6 +3566,41 @@ StudyMetaDataFile::getAllTableSubHeaderShortNames(std::vector<QString>& allShort
 }
 
 /**
+ * get all table subheader short names used by displayed foci.
+ */
+void 
+StudyMetaDataFile::getAllTableSubHeaderShortNamesUsedByDisplayedFoci(
+                                          const FociProjectionFile* fpf,
+                                          std::vector<QString>& allShortNamesOut) const
+{
+   allShortNamesOut.clear();
+   
+   //
+   // Get studies used by foci
+   //
+   std::vector<bool> studyIsUsedByFocus;
+   getStudiesLinkedByDisplayedFoci(fpf, studyIsUsedByFocus);
+   const int numStudies = static_cast<int>(studyIsUsedByFocus.size());
+   
+   std::set<QString> shortNameSet;
+   
+   //
+   // Get names used by displayed foci
+   //
+   for (int i = 0; i < numStudies; i++) {
+      if (studyIsUsedByFocus[i]) {
+         const StudyMetaData* smd = getStudyMetaData(i);
+         std::vector<QString> studyTableSubHeaderShortNames;
+         smd->getAllTableSubHeaderShortNames(studyTableSubHeaderShortNames);
+         shortNameSet.insert(studyTableSubHeaderShortNames.begin(), studyTableSubHeaderShortNames.end());
+      }
+   }
+   
+   allShortNamesOut.insert(allShortNamesOut.end(),
+                           shortNameSet.begin(), shortNameSet.end());
+}
+      
+/**
  * clear study meta data modified (prevents date and time stamp updates).
  */
 void 
@@ -3995,148 +3613,6 @@ StudyMetaDataFile::clearAllStudyMetaDataElementsModified()
    }
 }
                               
-/**
- * check for any studies matching those in meta-analysis file.
- */
-void 
-StudyMetaDataFile::checkForMatchingStudies(const StudyMetaAnalysisFile* smaf,
-                                           std::vector<int>& matchingStudyMetaDataFileStudyNumbers,
-                                           std::vector<int>& matchingMetaAnalysisFileStudyIndices) const
-{
-   matchingStudyMetaDataFileStudyNumbers.clear();
-   matchingMetaAnalysisFileStudyIndices.clear();
-   
-   const StudyNamePubMedID* metaStudies = smaf->getMetaAnalysisStudies();
-   const int numMetaAnalysisStudies = metaStudies->getNumberOfStudies();
-   
-   //
-   // Look for existing studies with matching name or PubMed ID
-   //
-   std::set<int> studyIndices;
-   std::set<int> metaIndices;
-   for (int i = 0; i < numMetaAnalysisStudies; i++) {
-      QString name, pubMedID;
-      metaStudies->getStudyNameAndPubMedID(i, name, pubMedID);
-      const int nameIndex = getStudyIndexFromName(name);
-      if (nameIndex >= 0) {
-         studyIndices.insert(nameIndex);
-         metaIndices.insert(i);
-      }
-      
-      const int pubMedIndex = getStudyIndexFromPubMedID(pubMedID);
-      if (pubMedIndex >= 0) {
-         studyIndices.insert(pubMedIndex);
-         metaIndices.insert(i);
-      }
-   }
-   
-   //
-   // Remove any duplicates (must be sorted for "unique()" to function properly)
-   //
-   matchingStudyMetaDataFileStudyNumbers.insert(
-      matchingStudyMetaDataFileStudyNumbers.end(),
-      studyIndices.begin(), 
-      studyIndices.end());
-      
-   matchingMetaAnalysisFileStudyIndices.insert(
-      matchingMetaAnalysisFileStudyIndices.end(),
-      metaIndices.begin(), 
-      metaIndices.end());
-}
-                                   
-/**
- * add meta-analysis study.
- */
-void 
-StudyMetaDataFile::addMetaAnalysisStudy(const StudyMetaAnalysisFile* smaf,
-                                        const bool createMetaAnalysisStudiesFlag,
-                                        const bool fetchDataFromPubMedFlag) throw (FileException)
-{
-   StudyMetaData* smd = new StudyMetaData(smaf);
-   addStudyMetaData(smd);
-   
-   if (createMetaAnalysisStudiesFlag) {
-      const StudyNamePubMedID* pmids = smd->getMetaAnalysisStudies();
-      createStudiesFromMetaAnalysisStudiesWithPubMedDotCom(pmids,
-                                                           fetchDataFromPubMedFlag);
-   }
-}
-      
-/**
- * create new studies from these associated studies.
- */
-void 
-StudyMetaDataFile::createStudiesFromMetaAnalysisStudiesWithPubMedDotCom(const StudyNamePubMedID* ms,
-                                                                        const bool fetchDataFromPubMedFlag) throw (FileException)
-{
-   QString errorMessage;
-   
-/*
-   //
-   // Check for existing studies that use the "new" PubMed IDs
-   //
-   const int num = ms->getNumberOfStudies();
-   int errorCount = 0;
-   for (int i = 0; i < num; i++) {
-      QString name, pubMedID;
-      ms->getStudyNameAndPubMedID(i, name, pubMedID);
-      const int indx = getStudyIndexFromPubMedID(pubMedID);
-      if (indx >= 0) {
-         if (errorMessage.isEmpty()) {
-            errorMessage += "ERROR, no studies created because studies with these Indices/PubMed IDs exist:\n";
-         }
-         errorMessage += (" ("
-                          + QString::number(indx + 1)   // index 1..N on dialog
-                          + ", "
-                          + pubMedID
-                          + ")");
-         if (errorCount >= 5) {
-            errorMessage += "\n";
-            errorCount = 0;
-         }
-         else {
-            errorCount++;
-         }
-      }
-   }      
-   if (errorMessage.isEmpty() == false) {
-      throw FileException(errorMessage);
-   }
-*/   
-   
-   //
-   // Add the new PubMed IDs by creating new studies
-   //
-   const int num = ms->getNumberOfStudies();
-   for (int i = 0; i < num; i++) {
-      QString name, pubMedID;
-      ms->getStudyNameAndPubMedID(i, name, pubMedID);
-      StudyMetaData* smd = new StudyMetaData;
-      smd->setName(name);
-      if (pubMedID.isEmpty() == false) {
-         smd->setPubMedID(pubMedID);
-         
-         //
-         // Should data be downloaded from PubMed?
-         //
-         if (fetchDataFromPubMedFlag) {
-            if (smd->getPubMedIDIsAProjectID() == false) {
-               try {
-                  smd->updateDataFromPubMedDotComUsingPubMedID();
-               }
-               catch (FileException& e) {
-                  errorMessage += e.whatQString();
-               }
-            }
-         }
-      }
-      addStudyMetaData(smd);
-   }
-   if (errorMessage.isEmpty() == false) {
-      throw FileException(errorMessage);
-   }
-}
-      
 /**
  * retrieve data from PubMed using PubMed ID for all studies.
  */
@@ -4202,31 +3678,11 @@ StudyMetaDataFile::addProvenanceToStudiesWithoutProvenanceEntries(const QString&
 }
                                                           
 /**
- * write the file's data into a comma separated values file (throws exception if not supported).
- */
-void 
-StudyMetaDataFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& /*csv*/) throw (FileException)
-{
-   throw FileException("StudyMetaDataFile cannot write to a comma separated value file.");
-}
-
-
-/**
- * read the file's data from a comma separated values file (throws exception if not supported).
- */
-void 
-StudyMetaDataFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& /*csv*/) throw (FileException)
-{
-   throw FileException("StudyMetaDataFile cannot read from a comma separated value file.");
-}
-
-
-/**
  * Read the contents of the file (header has already been read).
  */
 void 
-StudyMetaDataFile::readFileData(QFile& file,
-                                QTextStream& stream,
+StudyMetaDataFile::readFileData(QFile& /*file*/,
+                                QTextStream& /*stream*/,
                                 QDataStream& /*binStream*/,
                                 QDomElement& rootElement) throw (FileException)
 {
@@ -4282,11 +3738,7 @@ StudyMetaDataFile::readFileData(QFile& file,
          throw FileException(filename, "Reading in Other format not supported.");
          break;
       case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-         {
-            CommaSeparatedValueFile csvf;
-            csvf.readFromTextStream(file, stream);
-            readDataFromCommaSeparatedValuesTable(csvf);
-         }
+         throw FileException(filename, "Reading in Comma Separated File format not supported.");
          break;
    }
    
@@ -4301,7 +3753,7 @@ StudyMetaDataFile::readFileData(QFile& file,
  * Write the file's data (header has already been written).
  */
 void 
-StudyMetaDataFile::writeFileData(QTextStream& stream,
+StudyMetaDataFile::writeFileData(QTextStream& /*stream*/,
                                  QDataStream& /*binStream*/,
                                  QDomDocument& xmlDoc,
                                  QDomElement& rootElement) throw (FileException)
@@ -4336,11 +3788,7 @@ StudyMetaDataFile::writeFileData(QTextStream& stream,
          throw FileException(filename, "Writing in Other format not supported.");
          break;
       case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
-         {
-            CommaSeparatedValueFile csvf;
-            writeDataIntoCommaSeparatedValueFile(csvf);
-            csvf.writeToTextStream(stream);
-         }
+         throw FileException(filename, "Writing in Comma Separated File format not supported.");
          break;
    }
 }

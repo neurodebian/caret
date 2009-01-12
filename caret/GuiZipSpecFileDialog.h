@@ -27,13 +27,13 @@
  */
 /*LICENSE_END*/
 
-#include "QtDialogNonModal.h"
+#include "WuQDialog.h"
 
 class QLineEdit;
 class PreferencesFile;
 
 /// class for the zip spec file dialog
-class GuiZipSpecFileDialog : public QtDialogNonModal {
+class GuiZipSpecFileDialog : public WuQDialog {
    Q_OBJECT
    
    public:

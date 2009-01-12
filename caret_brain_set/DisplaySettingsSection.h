@@ -30,11 +30,11 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 /// DisplaySettingsSection is a class that maintains parameters for
 /// controlling the display of section data.
-class DisplaySettingsSection : public DisplaySettings {
+class DisplaySettingsSection : public DisplaySettingsNodeAttributeFile {
    public:
       enum SELECTION_TYPE {
          SELECTION_TYPE_SINGLE,
@@ -60,12 +60,6 @@ class DisplaySettingsSection : public DisplaySettings {
       /// set the selection type
       void setSelectionType(SELECTION_TYPE type);
       
-      /// Get the selected column
-      int getSelectedColumn() const;
-      
-      /// Set the selected file index
-      void setSelectedColumn(const int col);
-      
       /// get the minimum selected section
       int getMinimumSelectedSection() const;
       
@@ -78,11 +72,20 @@ class DisplaySettingsSection : public DisplaySettings {
       /// set the maximum selected section
       void setMaximumSelectedSection(const int sect);
       
+      /// get section highlighting
+      void getSectionHighlighting(int& sectionToHighlightOut, 
+                                  bool& highlightEveryXOut) const;
+      
+      /// set section highlighting
+      void setSectionHighlighting(const int sectionToHighlightIn,
+                                  const bool highlightEveryXIn);
+                                  
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
    private:
       /// update section selections
@@ -91,15 +94,17 @@ class DisplaySettingsSection : public DisplaySettings {
       /// type of section selection
       SELECTION_TYPE selectionType;
       
-      /// selected column
-      mutable int selectedColumn;
-      
       /// minimum selected section for each column
       mutable int minimumSelectedSection;
       
       /// maximum selected section for each column
       mutable int maximumSelectedSection;
       
+      /// section highlighting
+      int sectionToHighlight;
+      
+      /// highlight every X sections
+      bool sectionHighlightEveryX;      
 };
 
 #endif // __DISPLAY_SETTINGS_SECTION_H__

@@ -59,7 +59,7 @@
  * constructor.
  */
 GuiPaintNameEditorDialog::GuiPaintNameEditorDialog(QWidget* parent)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    addColumnTitlesToPaintNameLayoutFlag = true;
    
@@ -244,7 +244,7 @@ GuiPaintNameEditorDialog::loadPaintNames()
    //
    // Sort the names alphabetically
    //
-   nameSort.sortByName();
+   nameSort.sortByNameCaseSensitive();
    const int numberOfPaintNamesForDisplay = nameSort.getNumberOfItems();
    
    //
@@ -407,7 +407,7 @@ GuiPaintNameEditorDialog::loadPaintNames()
    for (int i = 0; i < numberOfPaintNamesForDisplay; i++) {
       int indx;
       QString name;
-      nameSort.getNameAndIndex(i, indx, name);
+      nameSort.getSortedNameAndIndex(i, indx, name);
       
       paintFileIndices[i] = indx;
       paintIndexLabels[i]->setText(QString::number(indx));
@@ -557,7 +557,7 @@ GuiPaintNameEditorDialog::slotReassignButtonClicked(int indx)
       //
       WuQDataEntryDialog ed(this);
       ed.setWindowTitle("Choose Reassignment Name");
-      ed.setTextAtTop("Choose New Name");
+      ed.setTextAtTop("Choose New Name", false);
       QListWidget* lw = ed.addListWidget("", names);
       if (ed.exec() == WuQDataEntryDialog::Accepted) {
          const int itemIndex = lw->currentRow();

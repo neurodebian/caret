@@ -30,12 +30,10 @@
 #include "NodeAttributeFile.h"
 
 class DeformationMapFile;
+class MniObjSurfaceFile;
 class vtkPolyData;
 
 /// RGB Paint File - associates RGB Values with each node
-/**
- *
- */
 class RgbPaintFile : public NodeAttributeFile {
    private:
     
@@ -187,6 +185,9 @@ class RgbPaintFile : public NodeAttributeFile {
       /// Import colors from a SUMA file.
       void importFromSuma(const QString& name) throw (FileException);
       
+      /// get the colors from a MNI OBJ surface file
+      void importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException);
+      
       /// set the rgb paints for a node
       void setRgb(const int nodeNumber, const int columnNumber,
                   const float red, const float green, const float blue);
@@ -227,8 +228,9 @@ class RgbPaintFile : public NodeAttributeFile {
       void setNumberOfNodesAndColumns(const int numNodes, const int numColumns);
 };
 
-#ifdef _RGB_PAINT_FILE_MAIN_
+#endif  // __RGB_PAINT_FILE_H__
 
+#ifdef _RGB_PAINT_FILE_MAIN_
    const QString RgbPaintFile::tagCommentRed = "tag-comment-red";
    const QString RgbPaintFile::tagCommentGreen = "tag-comment-green";
    const QString RgbPaintFile::tagCommentBlue = "tag-comment-blue";
@@ -238,7 +240,5 @@ class RgbPaintFile : public NodeAttributeFile {
    const QString RgbPaintFile::tagScaleRed = "tag-scale-red";
    const QString RgbPaintFile::tagScaleGreen = "tag-scale-green";
    const QString RgbPaintFile::tagScaleBlue = "tag-scale-blue";
-
 #endif // _RGB_PAINT_FILE_MAIN_
 
-#endif  // __RGB_PAINT_FILE_H__

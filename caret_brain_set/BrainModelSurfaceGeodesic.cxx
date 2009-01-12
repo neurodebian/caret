@@ -53,7 +53,7 @@
  */
 BrainModelSurfaceGeodesic::BrainModelSurfaceGeodesic(
                                           BrainSet* bs,
-                                          BrainModelSurface* surfaceIn,
+                                          const BrainModelSurface* surfaceIn,
                                           MetricFile* metricFileIn,
                                           const int metricFileColumnIn,
                                           const QString& metricColumnNameIn,
@@ -61,18 +61,17 @@ BrainModelSurfaceGeodesic::BrainModelSurfaceGeodesic(
                                           const int geodesicDistanceFileColumnIn,
                                           const QString& geodesicDistanceColumnNameIn,
                                           const int rootNodeNumberIn,
-                                          BrainModelSurfaceROINodeSelection* surfaceROIIn)
-   : BrainModelAlgorithm(bs)
+                                          const BrainModelSurfaceROINodeSelection* surfaceROIIn)
+   : BrainModelAlgorithm(bs),
+     surface(surfaceIn),
+     metricFile(metricFileIn),
+     metricFileColumn(metricFileColumnIn),
+     metricColumnName(metricColumnNameIn),
+     geodesicDistanceFile(geodesicDistanceFileIn),
+     geodesicDistanceFileColumn(geodesicDistanceFileColumnIn),
+     geodesicDistanceColumnName(geodesicDistanceColumnNameIn),
+     rootNodeNumber(rootNodeNumberIn)
 {
-   surface    = surfaceIn;
-   metricFile = metricFileIn;
-   metricFileColumn = metricFileColumnIn;
-   metricColumnName = metricColumnNameIn;
-   geodesicDistanceFile = geodesicDistanceFileIn;
-   geodesicDistanceFileColumn = geodesicDistanceFileColumnIn;
-   geodesicDistanceColumnName = geodesicDistanceColumnNameIn;
-   
-   rootNodeNumber   = rootNodeNumberIn;
    
    const int numNodes = surface->getNumberOfNodes();
    nodeInROI.resize(surface->getNumberOfNodes(), false);

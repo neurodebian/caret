@@ -28,13 +28,13 @@
 
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QLabel;
 class QTextBrowser;
 
 /// Dialog for displaying a volume topology error report
-class GuiVolumeTopologyReportDialog : public QtDialog {
+class GuiVolumeTopologyReportDialog : public WuQDialog {
    Q_OBJECT
    
    public:

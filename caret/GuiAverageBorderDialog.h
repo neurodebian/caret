@@ -29,7 +29,7 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QLineEdit;
@@ -37,7 +37,7 @@ class QListWidget;
 class QDoubleSpinBox;
 
 /// class for creating average border files
-class GuiAverageBorderDialog : public QtDialog {
+class GuiAverageBorderDialog : public WuQDialog {
    Q_OBJECT
    
    public:

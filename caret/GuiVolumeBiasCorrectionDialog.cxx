@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include <QApplication>
 #include <QGridLayout>
 #include <QLabel>
@@ -48,7 +50,7 @@
  * constructor.
  */
 GuiVolumeBiasCorrectionDialog::GuiVolumeBiasCorrectionDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Anatomy Volume Bias Correction");
    
@@ -187,7 +189,7 @@ GuiVolumeBiasCorrectionDialog::show()
 {
    slotMinGrayValueSpinBox(minGrayValueSpinBox->value());
    slotMaxWhiteValueSpinBox(maxWhiteValueSpinBox->value());
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -260,7 +262,7 @@ GuiVolumeBiasCorrectionDialog::slotHistogramPushButton()
                                              FileUtilities::basename(vf->getFileName()),
                                              values,
                                              true,
-                                             false);
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
       ghd->show();
 
       QApplication::restoreOverrideCursor();

@@ -28,19 +28,25 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <stack>
 
 #include "BorderFile.h"
+#include "BorderProjectionFile.h"
 #include "BrainModelBorderSet.h"
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceConnectedSearchMetric.h"
+#include "BrainModelSurfaceGeodesic.h"
 #include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainSet.h"
 #include "BrainSetNodeAttribute.h"
 #include "DebugControl.h"
+#include "GeodesicDistanceFile.h"
 #include "LatLonFile.h"
+#include "MathUtilities.h"
 #include "MetricFile.h"
 #include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
+#include "StringUtilities.h"
 #include "SurfaceShapeFile.h"
 #include "TopologyFile.h"
 #include "TopologyHelper.h"
@@ -55,6 +61,40 @@ BrainModelSurfaceROINodeSelection::BrainModelSurfaceROINodeSelection(BrainSet* b
    update();
 }
 
+/**
+ * copy constructor.
+ */
+BrainModelSurfaceROINodeSelection::BrainModelSurfaceROINodeSelection(
+                            const BrainModelSurfaceROINodeSelection& roi)
+{
+   copyHelper(roi);
+}
+
+/**
+ * Assignment operator.
+ */
+BrainModelSurfaceROINodeSelection& 
+BrainModelSurfaceROINodeSelection::operator=(const BrainModelSurfaceROINodeSelection& roi)
+{
+   if (this != &roi) {
+      copyHelper(roi);
+   }
+   
+   return *this;
+}
+
+/**
+ * copy helper used by copy constructor and assignment operator.
+ */
+void 
+BrainModelSurfaceROINodeSelection::copyHelper(const BrainModelSurfaceROINodeSelection& roi)
+{
+   brainSet = roi.brainSet;
+   nodeSelectedFlags = roi.nodeSelectedFlags;
+   displaySelectedNodes = roi.displaySelectedNodes;
+   selectionDescription = roi.selectionDescription;
+}
+      
 /**
  * destructor.
  */
@@ -91,6 +131,7 @@ BrainModelSurfaceROINodeSelection::deselectAllNodes()
 {
    update();
    std::fill(nodeSelectedFlags.begin(), nodeSelectedFlags.end(), 0);
+   selectionDescription = "";
 }
 
 /**
@@ -106,9 +147,44 @@ BrainModelSurfaceROINodeSelection::selectAllNodes(const BrainModelSurface* selec
    
    return processNewNodeSelections(SELECTION_LOGIC_NORMAL,
                                    selectionSurface,
-                                   nodeFlags);
+                                   nodeFlags,
+                                   "All Nodes");
 }
 
+/**
+ * select nodes that are edges.
+ */
+QString 
+BrainModelSurfaceROINodeSelection::selectNodesThatAreEdges(const SELECTION_LOGIC selectionLogic,
+                                                           const BrainModelSurface* selectionSurface)
+{
+   update();
+   
+   brainSet->classifyNodes(selectionSurface->getTopologyFile());
+   
+   const unsigned int numNodes = nodeSelectedFlags.size();
+   std::vector<int> nodeFlags(numNodes, 0);
+   
+   bool thereAreEdgeNodesFlag = false;
+   for (unsigned int i = 0; i < numNodes; i++) {
+      const BrainSetNodeAttribute* bna = brainSet->getNodeAttributes(i);
+      if (bna->getClassification() ==
+          BrainSetNodeAttribute::CLASSIFICATION_TYPE_EDGE) {
+         nodeFlags[i] = 1;
+         thereAreEdgeNodesFlag = true;
+      }
+   }
+   
+   if (thereAreEdgeNodesFlag == false) {
+      return "There are no edges in the surface.";
+   }
+   
+   return processNewNodeSelections(selectionLogic,
+                                   selectionSurface,
+                                   nodeFlags,
+                                   "Edge Nodes");
+}
+      
 /**
  * update (usually called if number of nodes changes).
  */
@@ -229,10 +305,79 @@ BrainModelSurfaceROINodeSelection::invertSelectedNodes(const BrainModelSurface* 
          newNodeSelections[i] = 1;
       }
    }
-   return processNewNodeSelections(SELECTION_LOGIC_NORMAL,
+   
+   const QString descriptionSaved = selectionDescription;
+   const QString msg = processNewNodeSelections(SELECTION_LOGIC_NORMAL,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   "Invert Selection");
+   selectionDescription = descriptionSaved;
+   addToSelectionDescription("", "Invert Selection");
+   
+   return msg;
 }
+
+/**
+ * select nodes within geodesic distance.
+ */
+QString 
+BrainModelSurfaceROINodeSelection::selectNodesWithinGeodesicDistance(
+                                          const SELECTION_LOGIC selectionLogic,
+                                          const BrainModelSurface* selectionSurface,
+                                          const int nodeNumber,
+                                          const float geodesicDistance)
+{
+   const int numNodes = selectionSurface->getNumberOfNodes();
+   if ((nodeNumber < 0) ||
+       (nodeNumber >= numNodes)) {
+      return "Invalid node number for selecting nodes with geodesic.";
+   }
+   
+   GeodesicDistanceFile geodesicDistanceFile;
+   BrainModelSurfaceGeodesic geodesic(brainSet,
+                                      (BrainModelSurface*)selectionSurface,
+                                      NULL,
+                                      -1,
+                                      "",
+                                      &geodesicDistanceFile,
+                                      -1,
+                                      "GeoDist",
+                                      nodeNumber,
+                                      NULL);
+   try {
+      geodesic.execute();
+   }
+   catch (BrainModelAlgorithmException&) {
+      return ("Selecting nodes with geodesic failed for node number "
+              + QString::number(nodeNumber));
+   }
+        
+   if ((geodesicDistanceFile.getNumberOfNodes() == numNodes) &&
+       (geodesicDistanceFile.getNumberOfColumns() >= 1)) {
+      std::vector<int> newNodeSelections(numNodes, 0);
+      
+      for (int i = 0; i < numNodes; i++) {
+         if (geodesicDistanceFile.getNodeParentDistance(i, 0)
+             < geodesicDistance) {
+            newNodeSelections[i] = 1;
+         }
+      }
+      newNodeSelections[nodeNumber] = 1;
+      
+      const QString& description = 
+         ("Nodes within  "
+          + QString::number(geodesicDistance, 'f', 3)
+          + " geodesic distance of node number "
+          + QString::number(nodeNumber));
+         
+      return processNewNodeSelections(selectionLogic,
+                                      selectionSurface,
+                                      newNodeSelections,
+                                      description);
+   }
+   return ("Selecting nodes with geodesic failed for node number "
+           + QString::number(nodeNumber));
+}                                                
       
 /**
  * select nodes with paint (returns error message).
@@ -255,7 +400,7 @@ BrainModelSurfaceROINodeSelection::selectNodesWithPaint(
    }
    const int paintIndex = pf->getPaintIndexFromName(paintName);
    if (paintIndex < 0) {
-      return "ERROR: Paint name not found in paint file.";
+      return "ERROR: Paint name " + paintName + "not found in paint file.";
    }
    
    const int numNodes = pf->getNumberOfNodes();
@@ -267,9 +412,16 @@ BrainModelSurfaceROINodeSelection::selectNodesWithPaint(
       }
    }
    
+   const QString& description = 
+      ("Nodes assigned the name "
+       + paintName
+       + " in column named "
+       + pf->getColumnName(paintFileColumnNumber));
+      
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   description);
 }
                           
 /**
@@ -333,7 +485,8 @@ BrainModelSurfaceROINodeSelection::selectNodesWithinBorder(
 
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   "Nodes within borders named " + borderName);
 }
                              
 /**
@@ -375,9 +528,22 @@ BrainModelSurfaceROINodeSelection::selectNodesWithLatLong(
       }
    }
    
+   const QString description =
+      ("Node with latitude range ("
+       + QString::number(minimumLatitude, 'f', 4)
+       + ", "
+       + QString::number(maximumLatitude, 'f', 4)
+       + ") and longitude range ("
+       + QString::number(minimumLongitude, 'f', 4)
+       + ", "
+       + QString::number(maximumLongitude, 'f', 4)
+       + ")");
+       
+       
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   description);
 }
                             
 /**
@@ -415,9 +581,20 @@ BrainModelSurfaceROINodeSelection::selectNodesWithMetric(
       }
    }
       
+   const QString description = 
+      ("Nodes in range ("
+       + QString::number(minimumMetricValue, 'f', 3)
+       + ", "
+       + QString::number(maximumMetricValue, 'f', 3)
+       + ") in "
+       + fileType
+       + " column named "
+       + metricFile->getColumnName(metricFileColumnNumber));
+       
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   description);
 }
                            
 /**
@@ -475,9 +652,22 @@ BrainModelSurfaceROINodeSelection::selectConnectedNodesWithMetric(
       return bmae.whatQString();
    }
    
+   const QString description = 
+      ("Nodes in range ("
+       + QString::number(minimumMetricValue, 'f', 3)
+       + ", "
+       + QString::number(maximumMetricValue, 'f', 3)
+       + ") in "
+       + fileType
+       + " column named "
+       + metricFile->getColumnName(metricFileColumnNumber)
+       + " connected to node "
+       + QString::number(connectedToNodeNumber));
+       
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   description);
 }
                            
 /**
@@ -548,7 +738,8 @@ BrainModelSurfaceROINodeSelection::selectNodesThatAreCrossovers(
    
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   newNodeSelections);
+                                   newNodeSelections,
+                                   "Nodes identified as crossovers");
 }
 
 /**
@@ -605,7 +796,42 @@ BrainModelSurfaceROINodeSelection::dilate(const BrainModelSurface* selectionSurf
       //
       nodeSelectedFlags = nodesDilated;
    }
+   
+   addToSelectionDescription("",
+                             ("Dilated "
+                              + QString::number(numberOfIterations)
+                              + " iterations"));
 }
+
+/**
+ * dilate around the node (adds node's neighbors to ROI).
+ */
+void 
+BrainModelSurfaceROINodeSelection::dilateAroundNode(const BrainModelSurface* selectionSurface,
+                                                    const int nodeNumber)
+{
+   QString topologyHelperErrorMessage;
+   const TopologyHelper* th = getSelectionSurfaceTopologyHelper(selectionSurface,
+                                                                topologyHelperErrorMessage);
+   if (th == NULL) {
+      return;
+   }
+   
+   update();
+   
+   //
+   // Put node's neighbors into the ROI
+   //
+   int numNeighbors = 0;
+   const int* neighbors = th->getNodeNeighbors(nodeNumber, numNeighbors);
+   
+   //
+   // Add neighbors to the ROI
+   //
+   for (int j = 0; j < numNeighbors; j++) {
+      nodeSelectedFlags[neighbors[j]] = 1;
+   }
+}      
 
 /**
  * dilate but only add nodes with selected paint.
@@ -685,6 +911,16 @@ BrainModelSurfaceROINodeSelection::dilatePaintConstrained(const BrainModelSurfac
       //
       nodeSelectedFlags = nodesDilated;
    }
+   
+   const QString description =
+      ("Dilated "
+       + QString::number(numberOfIterations)
+       + " iterations nodes with paint name "
+       + paintName
+       + " in paint column "
+       + paintFile->getColumnName(paintColumnNumber));
+   addToSelectionDescription("",
+                             description);
 }
                   
 /**
@@ -738,6 +974,8 @@ BrainModelSurfaceROINodeSelection::boundaryOnly(const BrainModelSurface* bms)
    // Output boundary
    //
    nodeSelectedFlags = boundaryNodes;
+   
+   addToSelectionDescription("", "Boundary nodes only");
 }
 
 /**
@@ -797,7 +1035,50 @@ BrainModelSurfaceROINodeSelection::erode(const BrainModelSurface* selectionSurfa
       //
       nodeSelectedFlags = nodesEroded;
    }
+
+   addToSelectionDescription("",
+                             ("Eroded "
+                              + QString::number(numberOfIterations)
+                              + " iterations"));
 }
+
+/**
+ * exclude nodes in a region.
+ */
+void
+BrainModelSurfaceROINodeSelection::excludeNodesInRegion(
+                          const BrainModelSurface* selectionSurface,
+                          const float regionExtent[6])
+{
+   update();
+   const int numNodes = static_cast<int>(nodeSelectedFlags.size());
+   
+   const CoordinateFile* cf = selectionSurface->getCoordinateFile();
+   
+   for (int i = 0; i < numNodes; i++) {
+      if (nodeSelectedFlags[i] != 0) {
+         const float* xyz = cf->getCoordinate(i);
+         if ((xyz[0] > regionExtent[0]) &&
+             (xyz[0] < regionExtent[1]) &&
+             (xyz[1] > regionExtent[2]) &&
+             (xyz[1] < regionExtent[3]) &&
+             (xyz[2] > regionExtent[4]) &&
+             (xyz[2] < regionExtent[5])) {
+            nodeSelectedFlags[i] = 0;
+         }
+      }
+   }
+   
+   const QString description =
+      ("Excluded in region extent "
+        "(" + QString::number(regionExtent[0], 'f', 3) 
+             + ", " + QString::number(regionExtent[1], 'f', 3) + ") "
+         "(" + QString::number(regionExtent[2], 'f', 3) 
+             + ", " + QString::number(regionExtent[3], 'f', 3) + ") "
+         "(" + QString::number(regionExtent[4], 'f', 3) 
+             + ", " + QString::number(regionExtent[5], 'f', 3) + ") ");
+   addToSelectionDescription("", description);
+}                                      
   
 /**
  * limit the extent of the ROI.
@@ -824,6 +1105,16 @@ BrainModelSurfaceROINodeSelection::limitExtent(const BrainModelSurface* selectio
          }
       }
    }
+   
+   const QString description =
+      ("Limit extent "
+        "(" + QString::number(extent[0], 'f', 3) 
+             + ", " + QString::number(extent[1], 'f', 3) + ") "
+         "(" + QString::number(extent[2], 'f', 3) 
+             + ", " + QString::number(extent[3], 'f', 3) + ") "
+         "(" + QString::number(extent[4], 'f', 3) 
+             + ", " + QString::number(extent[5], 'f', 3) + ") ");
+   addToSelectionDescription("", description);
 }      
 
 /**
@@ -833,7 +1124,8 @@ QString
 BrainModelSurfaceROINodeSelection::processNewNodeSelections(
                                              const SELECTION_LOGIC selectionLogic,
                                              const BrainModelSurface* selectionSurface,
-                                             std::vector<int>& newNodeSelections)
+                                             std::vector<int>& newNodeSelections,
+                                             const QString& description)
 {
    QString topologyHelperErrorMessage;
    const TopologyHelper* th = getSelectionSurfaceTopologyHelper(selectionSurface,
@@ -886,9 +1178,54 @@ BrainModelSurfaceROINodeSelection::processNewNodeSelections(
       }
    }
    
+   //
+   // Update description of selection
+   //
+   QString logicText;
+   switch (selectionLogic) {
+      case SELECTION_LOGIC_NORMAL:
+         logicText = "";
+         selectionDescription = "";
+         break;
+      case SELECTION_LOGIC_AND:
+         logicText = "AND";
+         break;
+      case SELECTION_LOGIC_OR:
+         logicText = "OR";
+         break;
+      case SELECTION_LOGIC_AND_NOT:
+         logicText = "AND-NOT";
+         break;
+   }
+   addToSelectionDescription(logicText, description);
+   
    return "";
 }
 
+/**
+ * add to the selection description.
+ */
+void 
+BrainModelSurfaceROINodeSelection::addToSelectionDescription(const QString& selectionLogicText,
+                                                             const QString& descriptionIn)
+{
+   QString description = descriptionIn;
+   StringUtilities::lineWrapString(70, description);
+   if (selectionDescription.isEmpty() == false) {
+      selectionDescription += "\n";
+   }
+   selectionDescription += (selectionLogicText
+                            + " "
+                            + description);
+                            
+   if (DebugControl::getDebugOn()) {
+      std::cout << "ROI: " 
+                << selectionDescription.toAscii().constData()
+                << std::endl
+                << std::endl;
+   }
+}
+                                     
 /**
  * get the topolgy helper for selection surface (returns NULL if unavailable).
  */
@@ -994,6 +1331,230 @@ BrainModelSurfaceROINodeSelection::getExtentOfSelectedNodes(
    }
 }      
 
+/**
+ * get node with most lateral X Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMostLateralXCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return mostLateralXNode;
+}
+
+/**
+ * get node with most medial X Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMostMedialXCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return mostMedialXNode;
+}
+
+/**
+ * get node with minimum X Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMinimumXCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return minXNode;
+}
+
+/**
+ * get node with maximum X Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMaximumXCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return maxXNode;
+}
+
+/**
+ * get node with minimum Y Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMinimumYCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return minYNode;
+}
+
+/**
+ * get node with maximum Y Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMaximumYCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return maxYNode;
+}
+
+/**
+ * get node with minimum Z Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMinimumZCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return minZNode;
+}
+
+/**
+ * get node with maximum Z Coordinate.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNodeWithMaximumZCoordinate(const BrainModelSurface* surface) const
+{
+   int minXNode, maxXNode, minYNode, maxYNode, minZNode, maxZNode;
+   int mostMedialXNode, mostLateralXNode;
+   int absMinXNode, absMaxXNode, absMinYNode, absMaxYNode, absMinZNode, absMaxZNode;
+   getNodesWithMinMaxXYZValues(surface,
+                               mostMedialXNode,
+                               mostLateralXNode,
+                               minXNode, 
+                               maxXNode,
+                               minYNode,
+                               maxYNode,
+                               minZNode,
+                               maxZNode,
+                               absMinXNode,
+                               absMaxXNode,
+                               absMinYNode,
+                               absMaxYNode,
+                               absMinZNode,
+                               absMaxZNode);
+                                    
+   return maxZNode;
+}   
+   
 /**
  * get the nodes that have min/max x/y/z values.
  * If structure is invalid medial/lateral nodes will too be invalid (-1)
@@ -1134,6 +1695,39 @@ BrainModelSurfaceROINodeSelection::getNodesWithMinMaxXYZValues(
 }                                       
 
 /**
+ * get the surface area of the ROI.
+ */
+float 
+BrainModelSurfaceROINodeSelection::getSurfaceAreaOfROI(const BrainModelSurface* surface) const
+{
+   float surfaceArea = 0.0;
+   
+   const TopologyFile* tf = surface->getTopologyFile();
+   const CoordinateFile* cf = surface->getCoordinateFile();
+
+   const int numTiles = tf->getNumberOfTiles();
+   for (int i = 0; i < numTiles; i++) {
+      int n1, n2, n3;
+      tf->getTile(i, n1, n2, n3);
+      const float tileArea = MathUtilities::triangleArea(cf->getCoordinate(n1),
+                                                         cf->getCoordinate(n2),
+                                                         cf->getCoordinate(n3));
+     
+      double numMarked = 0.0;
+      if (nodeSelectedFlags[n1]) numMarked += 1.0;
+      if (nodeSelectedFlags[n2]) numMarked += 1.0;
+      if (nodeSelectedFlags[n3]) numMarked += 1.0;
+      
+      if (tileArea > 0.0) {
+         surfaceArea += (numMarked / 3.0) * tileArea;
+      }
+   }
+   
+   return surfaceArea;
+}
+      
+
+/**
  * set the ROI selection into file.
  */
 void 
@@ -1144,6 +1738,7 @@ BrainModelSurfaceROINodeSelection::setRegionOfInterestIntoFile(NodeRegionOfInter
    for (int i = 0; i < numNodes; i++) {
       nroi.setNodeSelected(i, (nodeSelectedFlags[i] != 0));
    }
+   nroi.setRegionOfInterestDescription(selectionDescription);
 }
 
 /**
@@ -1167,6 +1762,7 @@ BrainModelSurfaceROINodeSelection::getRegionOfInterestFromFile(const NodeRegionO
          nodeSelectedFlags[i] = 0;
       }
    }
+   selectionDescription = nroi.getRegionOfInterestDescription();
 }      
 
 /**
@@ -1186,6 +1782,7 @@ BrainModelSurfaceROINodeSelection::expandSoNodesAreWithinAndConnected(const Brai
       nodeSelectedFlags[node1] = 1;
       nodeSelectedFlags[node2] = 1;
    }
+   const std::vector<int> nodesThatMayNotBeErodedFlags = nodeSelectedFlags;
    
    //
    // Dilate the ROI until node1 and node2 are both in the ROI
@@ -1196,11 +1793,11 @@ BrainModelSurfaceROINodeSelection::expandSoNodesAreWithinAndConnected(const Brai
       dilate(selectionSurface, 1);
       dilateCounterGetNodesIntoROI++;
    }   
-   //if (DebugControl::getDebugOn()) {
+   if (DebugControl::getDebugOn()) {
       std::cout << dilateCounterGetNodesIntoROI << " iterations needed to get nodes "
                 << node1 << " and " << node2
                 << " into the ROI" << std::endl;
-   //}
+   }
    
    //
    // do until the two nodes are connected
@@ -1229,11 +1826,11 @@ BrainModelSurfaceROINodeSelection::expandSoNodesAreWithinAndConnected(const Brai
       }
    }
    
-   //if (DebugControl::getDebugOn()) {
+   if (DebugControl::getDebugOn()) {
       std::cout << dilateCounterConnectNodes << " iterations needed to connect nodes "
                 << node1 << " and " << node2
                 << " in the ROI" << std::endl;
-   //}
+   }
    
    //
    // Was the ROI dilated in order to get the nodes into the ROI
@@ -1255,7 +1852,10 @@ BrainModelSurfaceROINodeSelection::expandSoNodesAreWithinAndConnected(const Brai
          //
          // Erode one itereation
          //
-         erodeButMaintainNodeConnection(selectionSurface, 1, node1, node2);
+         erodeButMaintainNodeConnection(selectionSurface, 
+                                        nodesThatMayNotBeErodedFlags,
+                                        1, node1, node2);
+
 /*
          erode(selectionSurface, 1);
          
@@ -1276,10 +1876,10 @@ BrainModelSurfaceROINodeSelection::expandSoNodesAreWithinAndConnected(const Brai
       }
    }
    
-   //if (DebugControl::getDebugOn()) {
+   if (DebugControl::getDebugOn()) {
       std::cout << numberOfErodeIterations << " erosion iterations were performed "
                 << std::endl;
-   //}
+   }
 }
 
 /**
@@ -1439,6 +2039,129 @@ BrainModelSurfaceROINodeSelection::erodeButMaintainNodeConnection(const BrainMod
    }
 }
 
+/**
+ * erode the selected nodes but maintain a connection between two nodes.
+ */
+void 
+BrainModelSurfaceROINodeSelection::erodeButMaintainNodeConnection(const BrainModelSurface* selectionSurface,
+                                             const std::vector<int>& nodesThatMayNotBeErodedIn,
+                                             int numberOfIterations,
+                                             const int node1,
+                                             const int node2)
+{
+   QString topologyHelperErrorMessage;
+   const TopologyHelper* th = getSelectionSurfaceTopologyHelper(selectionSurface,
+                                                                topologyHelperErrorMessage);
+   if (th == NULL) {
+      return;
+   }
+   
+   update();
+   const int numNodes = static_cast<int>(nodeSelectedFlags.size());
+   
+   //
+   // Keeps track of nodes that cannot be eroded without breaking the connection
+   //
+   std::vector<int> nodesThatMayNotBeEroded = nodesThatMayNotBeErodedIn;
+   nodesThatMayNotBeEroded.resize(numNodes, 0);
+   nodesThatMayNotBeEroded[node1] = 1;
+   nodesThatMayNotBeEroded[node2] = 1;
+   
+   //
+   // For specified number of dilation iterations
+   //
+   for (int iter = 0; iter < numberOfIterations; iter++) {
+      //
+      // Output for eroding
+      //
+      std::vector<int> nodesSelectedThisIteration = nodeSelectedFlags;
+   
+      //
+      // Keeps track of nodes that were eroded this iteration
+      //
+      std::vector<int> nodesErodedThisIteration;
+      
+      //
+      // Check each node
+      //
+      for (int i = 0; i < numNodes; i++) {
+         // 
+         // Is this node in the ROI
+         //
+         if (nodeSelectedFlags[i]) {
+            //
+            // Get node's neighbors
+            //
+            int numNeighbors = 0;
+            const int* neighbors = th->getNodeNeighbors(i, numNeighbors);
+            
+            //
+            // If a neighbor is not in the ROI, take "this" node out of ROI
+            //
+            for (int j = 0; j < numNeighbors; j++) {
+               if (nodeSelectedFlags[neighbors[j]] == 0) {
+                  //
+                  // Make sure node can be eroded
+                  //
+                  if (nodesThatMayNotBeEroded[i] == 0) {
+                     nodesSelectedThisIteration[i] = 0;
+                     nodesErodedThisIteration.push_back(i);
+                     break;
+                  }
+               }
+            }
+         }
+      }
+   
+      //
+      // See if nodes are NOT connected
+      //
+      if (areNodesConnected(selectionSurface, nodesSelectedThisIteration, node1, node2) == false) {
+         //
+         // Reset to status before this iterations erosion
+         //
+         nodesSelectedThisIteration = nodeSelectedFlags;
+
+         //
+         // Examine each node that was eroded this pass to see if it caused the 
+         // break in the connection
+         //
+         const int num = static_cast<int>(nodesErodedThisIteration.size());
+         for (int m = 0; m < num; m++) {
+            //
+            // Get node that was eroded
+            //
+            const int nodeNum = nodesErodedThisIteration[m];
+            
+            //
+            // Can this node be eroded
+            //
+            if (nodesThatMayNotBeEroded[nodeNum] == 0) {
+               //
+               // Remove the node from the ROI
+               //
+               nodesSelectedThisIteration[nodeNum] = 0;
+               
+               //
+               // See if nodes are NOT connected
+               //
+               if (areNodesConnected(selectionSurface, nodesSelectedThisIteration, node1, node2) == false) {
+                  //
+                  // Put node back in ROI and do not allow node to be eroded
+                  //
+                  nodesSelectedThisIteration[nodeNum] = 1;
+                  nodesThatMayNotBeEroded[nodeNum] = 1;
+               }
+            }
+         }
+      }
+      
+      //
+      // Output erosion
+      //
+      nodeSelectedFlags = nodesSelectedThisIteration;
+   }
+}
    
 /**
  * select nodes within border (returns error message).
@@ -1489,5 +2212,485 @@ BrainModelSurfaceROINodeSelection::selectNodesWithinBorder(
    //
    return processNewNodeSelections(selectionLogic,
                                    selectionSurface,
-                                   nodeFlags);
+                                   nodeFlags,
+                                   "Within Border Named " + border.getName());
 }
+
+/**
+ * select nodes within border (returns error message).
+ */
+QString 
+BrainModelSurfaceROINodeSelection::selectNodesWithinBorderOnSphere(
+                                      const SELECTION_LOGIC selectionLogic,
+                                      const BrainModelSurface* sphericalSurface,
+                                      const BorderProjection* borderProjection)
+{
+   //
+   // Copy sphere and orient so COG on positive Z-Axis
+   //
+   BrainModelSurface surface(*sphericalSurface);
+
+   //
+   // Create topology helper
+   //
+   const TopologyHelper* th = 
+      surface.getTopologyFile()->getTopologyHelper(false, true, false);
+
+   //
+   // Get the center of gravity of the border projection
+   //
+   float cog[3];
+   borderProjection->getCenterOfGravity(surface.getCoordinateFile(),
+                                        th,
+                                        cog);
+   //
+   // Copy sphere and orient so COG on positive Z-Axis
+   //
+   surface.orientPointToPositiveZAxis(cog);
+   
+   //
+   // Unproject the border
+   //
+   Border border;
+   borderProjection->unprojectBorderProjection(surface.getCoordinateFile(),
+                                               th,
+                                               border);
+   
+   //
+   // Select the nodes
+   //
+   const QString message = selectNodesWithinBorder(selectionLogic,
+                                                 &surface,
+                                                 &border,
+                                                 true,
+                                                 1.0);
+
+   if (DebugControl::getDebugOn()) {
+      try {
+         CoordinateFile cf = *surface.getCoordinateFile();
+         cf.writeFile("Sphere_Orient_For_Border_Inclusion.coord");
+         BorderProjectionFile bpf;
+         bpf.addBorderProjection(*borderProjection);
+         bpf.writeFile("Sphere_Orient_For_Border_Inclusion.borderproj");
+         NodeRegionOfInterestFile roiFile;
+         setRegionOfInterestIntoFile(roiFile);
+         roiFile.writeFile("Sphere_Orient_For_Border_Inclusion.roi");
+      }
+      catch (FileException&) {
+      }
+   }
+   
+   return message;
+}                                   
+
+/**
+ * discard islands with islands that have fewer than specified number of nodes.
+ */
+int 
+BrainModelSurfaceROINodeSelection::discardIslands(const BrainModelSurface* selectionSurface,
+                                                  const int minimumNumberOfNodesInIslandsKept)
+{
+   std::vector<int> islandRootNode;
+   std::vector<int> islandNumNodes;
+   std::vector<int> nodeRootNeighbor;
+   const int numPieces = findIslands(selectionSurface,
+                                     islandRootNode, 
+                                     islandNumNodes, 
+                                     nodeRootNeighbor);
+   
+   //
+   // See if there are any islands
+   //
+   if (numPieces <= 1) {
+      return 0;
+   }
+
+   const int numNodes = selectionSurface->getNumberOfNodes();
+   
+   //
+   // Deselect all nodes that are not 
+   // connected to the node with the most connected neighbors
+   //
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numPieces; j++) {
+         if (islandRootNode[j] == nodeRootNeighbor[i]) {
+            if (islandNumNodes[j] < minimumNumberOfNodesInIslandsKept) {
+               nodeSelectedFlags[i] = false;
+            }
+            break;
+         }
+      }
+   }
+   
+   addToSelectionDescription("",
+                             ("Removed "
+                              + QString::number(numPieces - 1)
+                              + " islands containing less than "
+                              + QString::number(minimumNumberOfNodesInIslandsKept)
+                              + " nodes."));
+   return numPieces - 1;
+}      
+
+/**
+ * discard islands keeps the largest contiguous piece (returns number of islands removed).
+ */
+int 
+BrainModelSurfaceROINodeSelection::discardIslands(const BrainModelSurface* selectionSurface)
+{
+   std::vector<int> islandRootNode;
+   std::vector<int> islandNumNodes;
+   std::vector<int> nodeRootNeighbor;
+   const int numPieces = findIslands(selectionSurface,
+                                     islandRootNode, 
+                                     islandNumNodes, 
+                                     nodeRootNeighbor);
+   
+   //
+   // See if there are any islands
+   //
+   if (numPieces <= 1) {
+      return 0;
+   }
+
+   const int numNodes = selectionSurface->getNumberOfNodes();
+
+   //
+   // find node with most connected neighbors
+   //
+   int mostNeighborsNode = -1;
+   int mostNeighbors = 0;
+   for (int j = 0; j < numPieces; j++) {
+      if (islandNumNodes[j] > 0) {
+         if (DebugControl::getDebugOn()) {
+            std::cout << islandRootNode[j] << " is connected to " << islandNumNodes[j]
+                      << " nodes." << std::endl;
+         }
+      }
+      if (islandNumNodes[j] > mostNeighbors) {
+         mostNeighborsNode = islandRootNode[j];
+         mostNeighbors     = islandNumNodes[j];
+      }
+   }
+   
+   if (DebugControl::getDebugOn()) {
+      std::cout << mostNeighborsNode << " has the most neighbors = "
+                << mostNeighbors << std::endl;
+   }
+   
+   //
+   // Deselect all nodes that are not 
+   // connected to the node with the most connected neighbors
+   //
+   if (mostNeighborsNode >= 0) {
+      for (int i = 0; i < numNodes; i++) {
+         if (nodeRootNeighbor[i] != mostNeighborsNode) {
+            nodeSelectedFlags[i] = false;
+         }
+      }
+   }
+   
+   addToSelectionDescription("",
+                             ("Removed "
+                              + QString::number(numPieces - 1)
+                              + " islands."));
+   return numPieces - 1;
+}
+
+/**
+ * find islands (number of disjoint groups of nodes).
+ * Returns number disjoint connected pieces of surface.
+ * Return value of 1 indicates no islands (one connected piece of surface).
+ * Return value of 0 indicates no topology.
+ * Return value greater than 1 indicates islands.
+ *
+ * islandRootNode - contains a node in the piece of surface and the number of
+ *                  elements is the number returned by this method.
+ * islandNumNodes - is the number of nodes in the piece of surface and the
+ *                  number of elements is the number returned by this method.
+ * nodeRootNeighbor - is the "islandRootNode" for the node "i" and the number
+ *                    of elements is the number of nodes in the surface.
+ */
+int 
+BrainModelSurfaceROINodeSelection::findIslands(const BrainModelSurface* selectionSurface,
+                                               std::vector<int>& islandRootNode,
+                                               std::vector<int>& islandNumNodes,
+                                               std::vector<int>& nodeRootNeighbor)
+{
+   update();
+
+   islandRootNode.clear();
+   islandNumNodes.clear();
+   nodeRootNeighbor.clear();
+    
+   //
+   // Get this topology file's topology helper (DO NOT DELETE IT)
+   //
+   QString topologyHelperErrorMessage;
+   const TopologyHelper* topologyHelper = getSelectionSurfaceTopologyHelper(selectionSurface,
+                                                                topologyHelperErrorMessage);
+   const int numNodes = topologyHelper->getNumberOfNodes();
+   
+   if (numNodes == 0) {
+      return 0;
+   }
+   
+   if (numNodes == 1) {
+      for (int i = 0; i < numNodes; i++) {
+         if (nodeSelectedFlags[i]) {
+            if (topologyHelper->getNodeHasNeighbors(i)) {
+               islandRootNode.push_back(i);
+               islandNumNodes.push_back(1);
+               nodeRootNeighbor.push_back(i);
+               break;
+            }
+         }
+      }
+      return static_cast<int>(islandRootNode.size());
+   }
+   
+   nodeRootNeighbor.resize(numNodes);
+   std::fill(nodeRootNeighbor.begin(), nodeRootNeighbor.end(), -1);
+
+   std::vector<int> numConnectedNeighbors(numNodes, 0);
+   std::vector<int> visited(numNodes, 0);
+   
+   //
+   // Mark all nodes without neighbors or NOT in ROI as visited
+   //
+   for (int i = 0; i < numNodes; i++) {
+      if ((topologyHelper->getNodeHasNeighbors(i) == false) ||
+          (nodeSelectedFlags[i] == 0)) {
+         visited[i] = 1;
+      }
+   } 
+ 
+   //
+   // Search the surface marking all connected nodes.
+   //
+   for (int n = 0; n < numNodes; n++) {
+      if (visited[n] == 0) {
+         
+         const int nodeNumberIn = n;
+         const int origNeighbor = n;
+         
+         std::stack<int> st;
+         st.push(nodeNumberIn);
+         
+         while(!st.empty()) {
+            const int nodeNumber = st.top();
+            st.pop();
+            
+            if (visited[nodeNumber] == 0) {
+               visited[nodeNumber] = 1;
+               nodeRootNeighbor[nodeNumber] = origNeighbor;
+               numConnectedNeighbors[origNeighbor]++;
+               std::vector<int> neighbors;
+               topologyHelper->getNodeNeighbors(nodeNumber, neighbors);
+               for (int i = 0; i < static_cast<int>(neighbors.size()); i++) {
+                  const int node = neighbors[i];
+                  if (visited[node] == 0) {
+                     st.push(node);
+                  }
+               }
+            }
+         }
+      }
+   }
+   
+   //
+   // set the islands
+   //
+   for (int j = 0; j < numNodes; j++) {
+      if (numConnectedNeighbors[j] > 0) {
+         islandRootNode.push_back(j);
+         islandNumNodes.push_back(numConnectedNeighbors[j]);
+         if (DebugControl::getDebugOn()) {
+            std::cout << j << " is connected to " << numConnectedNeighbors[j]
+                      << " nodes." << std::endl;
+         }
+      }
+   }   
+   
+   return static_cast<int>(islandRootNode.size());
+}
+
+/**
+ * find islands and place each in an ROI.
+ */
+std::vector<BrainModelSurfaceROINodeSelection*> 
+BrainModelSurfaceROINodeSelection::findIslands(const BrainModelSurface* selectionSurface)
+{
+   std::vector<BrainModelSurfaceROINodeSelection*> islandsOut;
+   
+   //
+   // Determine islands
+   //
+   std::vector<int> islandRootNode, islandNumNodes, nodeRootNeighbor;
+   const int numIslands = findIslands(selectionSurface,
+                                      islandRootNode,
+                                      islandNumNodes,
+                                      nodeRootNeighbor);
+                                      
+   if (numIslands > 0) {
+      const int numNodes = selectionSurface->getNumberOfNodes();
+      
+      //
+      // Contains mapping of Root node to ROI index
+      //
+      std::vector<int> rootNodeToRoiIndex(numNodes, -1);
+
+      //
+      // Create new ROIs for each island
+      //
+      for (int i = 0; i < numIslands; i++) {
+         rootNodeToRoiIndex[islandRootNode[i]] = i;
+         islandsOut.push_back(new BrainModelSurfaceROINodeSelection(brainSet));
+      }
+      
+      //
+      // Loop through nodes
+      //
+      for (int i = 0; i < numNodes; i++) {
+         //
+         // Assign node to proper ROI
+         //
+         const int roiNodeNumber = nodeRootNeighbor[i];
+         if (roiNodeNumber >= 0) {
+            const int roiIndex = rootNodeToRoiIndex[roiNodeNumber];
+            islandsOut[roiIndex]->setNodeSelected(i, true);
+         }
+      }
+      
+/*
+      for (int i = 0; i < numIslands; i++) {
+         const int rootNode = islandRootNode[i];
+         
+         //
+         // Create an ROI containing nodes in the island
+         //
+         BrainModelSurfaceROINodeSelection* island
+            = new BrainModelSurfaceROINodeSelection(brainSet);
+         for (int j = 0; j < numNodes; j++) {
+            if (nodeRootNeighbor[j] == rootNode) {
+               island->setNodeSelected(j, true);
+            }
+         }
+         islandsOut.push_back(island);
+      }
+*/
+   }
+   
+   return islandsOut;
+}
+
+/**
+ * find node int ROI nearest the XYZ.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNearestNodeInROI(
+                                    const BrainModelSurface* selectionSurface,
+                                    const float xyz[3]) const
+{
+   //update();
+   
+   const CoordinateFile* cf = selectionSurface->getCoordinateFile();
+   
+   int nearestNodeNumber = -1;
+   float nearestNodeDistanceSquared = std::numeric_limits<float>::max();
+   
+   const int numNodes = selectionSurface->getNumberOfNodes();
+
+   for (int i = 0; i < numNodes; i++) {
+      if (nodeSelectedFlags[i]) {
+         const float distSQ = cf->getDistanceToPointSquared(i, xyz);
+         if (distSQ < nearestNodeDistanceSquared) {
+            nearestNodeNumber = i;
+            nearestNodeDistanceSquared = distSQ;
+         }
+      }
+   }
+
+   return nearestNodeNumber;
+}
+
+/**
+ * find node int ROI nearest the XYZ.
+ */
+int 
+BrainModelSurfaceROINodeSelection::getNearestNodeInROI(
+                             const BrainModelSurface* selectionSurface,
+                             const float x, 
+                             const float y, 
+                             const float z) const
+{
+   const float xyz[3] = { x, y, z };
+   return getNearestNodeInROI(selectionSurface, xyz);
+}
+      
+/**
+ * logically and this roi with another roi (returns error message).
+ */
+QString 
+BrainModelSurfaceROINodeSelection::logicallyAND(const BrainModelSurfaceROINodeSelection* otherROI)
+{
+   update();
+   
+   const int numNodes = getNumberOfNodes();
+   if (numNodes != otherROI->getNumberOfNodes()) {
+      return "Unable to AND ROIs because they have a different number of nodes.";
+   }
+   
+   for (int i = 0; i < numNodes; i++) {
+      if (nodeSelectedFlags[i] &&
+          otherROI->nodeSelectedFlags[i]) {
+         nodeSelectedFlags[i] = true;
+      }
+      else {
+         nodeSelectedFlags[i] = false;
+      }
+   }
+   
+   selectionDescription = 
+      "["
+      + selectionDescription
+      + "] AND ["
+      + otherROI->selectionDescription
+      + "]";
+      
+   return "";
+}
+
+/**
+ * logically or this roi with another roi (returns error message).
+ */
+QString 
+BrainModelSurfaceROINodeSelection::logicallyOR(const BrainModelSurfaceROINodeSelection* otherROI)
+{
+   update();
+   
+   const int numNodes = getNumberOfNodes();
+   if (numNodes != otherROI->getNumberOfNodes()) {
+      return "Unable to AND ROIs because they have a different number of nodes.";
+   }
+   
+   for (int i = 0; i < numNodes; i++) {
+      if (nodeSelectedFlags[i] ||
+          otherROI->nodeSelectedFlags[i]) {
+         nodeSelectedFlags[i] = true;
+      }
+      else {
+         nodeSelectedFlags[i] = false;
+      }
+   }
+   selectionDescription = 
+      "["
+      + selectionDescription
+      + "] AND ["
+      + otherROI->selectionDescription
+      + "]";
+      
+   return "";
+}
+      
+      
+

@@ -44,18 +44,31 @@ class BrainModelSurfaceCurvature : public BrainModelAlgorithm {
       
       /// Constructor
       BrainModelSurfaceCurvature(BrainSet* bs,
-                                 BrainModelSurface* surfaceIn,
+                                 const BrainModelSurface* surfaceIn,
                                  SurfaceShapeFile* shapeFileIn,
                                  const int meanCurvatureColumnIn,
                                  const int gaussianCurvatureColumnIn,
                                  const QString& meanCurvatureNameIn,
-                                 const QString& gaussianCurvatureNameIn);
+                                 const QString& gaussianCurvatureNameIn,
+                                 const bool computePrincipalCurvatures = false);
       
       /// Destructor
       ~BrainModelSurfaceCurvature();
       
       /// execute the algorithm
       virtual void execute() throw (BrainModelAlgorithmException);
+      
+      /// get the mean curvature column (0..N-1)
+      int getMeanCurvatureColumnNumber() const { return meanCurvatureColumn; }
+      
+      /// get the mean curvature column (0..N-1)
+      int getGaussianCurvatureColumnNumber() const { return gaussianCurvatureColumn; }
+      
+      /// get the k-max (k1, first principal curvature) column (0..N-1)
+      int getKMaxColumnNumber() const { return kMaxColumn; }
+      
+      /// get the k-min (k2, second principal curvature) column (0..N-1)
+      int getKMinColumnNumber() const { return kMinColumn; }
       
    protected:
       /// point (xyz) used when computing surface curvature
@@ -65,12 +78,14 @@ class BrainModelSurfaceCurvature : public BrainModelAlgorithm {
       };
 
 
-      /// least squares computation
-      void leastSquares(const int num,
+      /// determine the curvatures
+      void determineCurvature(const int num,
                         const std::vector<CurvePoint3D>& dc,
                         const std::vector<CurvePoint3D>& dn,
                         float& gauss,
-                        float& mean);
+                        float& mean,
+                        float& kmax,
+                        float& kmin);
       
       /// project to a plane?
       void projectToPlane(const float projected[3],
@@ -100,6 +115,14 @@ class BrainModelSurfaceCurvature : public BrainModelAlgorithm {
       /// name for gaussian curvature column
       QString gaussianCurvatureName;
       
+      /// k-max (k1, first principal curvature) column
+      int kMaxColumn;
+      
+      /// k-min (k2, second principal curvature) column
+      int kMinColumn;
+      
+      /// compute the principal curvatures
+      bool computePrincipalCurvatures;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_CURVATURE_H__

@@ -55,11 +55,13 @@
 #include "ContourFile.h"
 #include "CutsFile.h"
 #include "DeformationFieldFile.h"
+#include "DeformationMapFile.h"
 #include "FileFilters.h"
 #include "FileUtilities.h"
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
+#include "FociSearchFile.h"
 #include "GeodesicDistanceFile.h"
 #include "GiftiDataArrayFile.h"
 #include "GuiBrainModelSelectionComboBox.h"
@@ -85,6 +87,7 @@
 #include "RgbPaintFile.h"
 #include "SectionFile.h"
 #include "StereotaxicSpace.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
@@ -105,7 +108,7 @@ static const bool alwaysSaveAllProbAtlasVolumes = true;
  * constructor.
  */
 GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    fileOptionsWidgetGroup = NULL;
    setWindowTitle("Save Data File");
@@ -246,7 +249,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    filterNames << FileFilters::getFociFileFilter();
    filterNames << FileFilters::getFociColorFileFilter();
    filterNames << FileFilters::getFociProjectionFileFilter();
-   filterNames << FileFilters::getFociVolumeFileFilter();
+   filterNames << FileFilters::getFociSearchFileFilter();
    filterNames << FileFilters::getGeodesicDistanceFileFilter();
    if (GiftiDataArrayFile::getGiftiXMLEnabled()) {
       filterNames << FileFilters::getGiftiCoordinateFileFilter();
@@ -266,6 +269,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    filterNames << FileFilters::getRgbPaintFileFilter();
    filterNames << FileFilters::getSceneFileFilter();
    filterNames << FileFilters::getSectionFileFilter();
+   filterNames << FileFilters::getStudyCollectionFileFilter();
    filterNames << FileFilters::getStudyMetaDataFileFilter();
    filterNames << FileFilters::getSurfaceShapeFileFilter();
    filterNames << FileFilters::getSurfaceVectorFileFilter();
@@ -311,6 +315,15 @@ GuiDataFileSaveDialog::~GuiDataFileSaveDialog()
 }
 
 /**
+ * get the selected file name.
+ */
+QString 
+GuiDataFileSaveDialog::getSelectedFileName() const
+{
+   return fileNameLineEdit->text();
+}
+      
+/**
  * get the file filter.
  */
 QString 
@@ -347,15 +360,22 @@ GuiDataFileSaveDialog::selectFileType(const QString& fileFilterName)
 void 
 GuiDataFileSaveDialog::slotFileNamePushButton()
 {
-   const QString name = WuQFileDialog::getSaveFileName(this,
-                                                       "Select File Name",
-                                                       QDir::currentPath(),
-                                                       fileTypeComboBox->currentText(),
-                                                       0,
-                                                       WuQFileDialog::DontConfirmOverwrite);
-   if (name.isEmpty() == false) {
-      fileNameLineEdit->setText(name);
-   }
+   PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+   
+   WuQFileDialog fd(this);
+   fd.setHistory(pf->getRecentDataFileDirectories());
+   fd.setWindowTitle("Select File Name");
+   fd.setDirectory(QDir::currentPath());
+   fd.setFilters(QStringList(fileTypeComboBox->currentText()));
+   fd.setFileMode(WuQFileDialog::AnyFile);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
+   fd.setConfirmOverwrite(false);
+   if (fd.exec() == Accepted) { 
+      if (fd.selectedFiles().count() > 0) {
+         const QString name = fd.selectedFiles().at(0);
+         fileNameLineEdit->setText(name);
+      }                      
+   }            
 }
       
 /**
@@ -554,6 +574,17 @@ GuiDataFileSaveDialog::createFociOptionsSection()
                                          "");
    fociRightSurfaceSelectionComboBox->setSelectedBrainModel(theMainWindow->getBrainModelSurface());
 
+   //
+   // right surface
+   //
+   QLabel* cerebellumSurfaceSelectionLabel = new QLabel("Cerebellum Surface");
+   fociCerebellumSurfaceSelectionComboBox = 
+      new GuiBrainModelSelectionComboBox(false,
+                                         true,
+                                         false,
+                                         "");
+   fociCerebellumSurfaceSelectionComboBox->setSelectedBrainModel(theMainWindow->getBrainModelSurface());
+
    QGroupBox* groupBox = new QGroupBox("Foci Options");
    QGridLayout* gridLayout = new QGridLayout(groupBox);
    gridLayout->addWidget(fociSaveOriginalCoordinatesRadioButton, 0, 0, 1, 1, Qt::AlignLeft);
@@ -562,6 +593,8 @@ GuiDataFileSaveDialog::createFociOptionsSection()
    gridLayout->addWidget(fociLeftSurfaceSelectionComboBox, 2, 1);
    gridLayout->addWidget(rightSurfaceSelectionLabel, 3, 0, Qt::AlignLeft);
    gridLayout->addWidget(fociRightSurfaceSelectionComboBox, 3, 1);
+   gridLayout->addWidget(cerebellumSurfaceSelectionLabel, 4, 0, Qt::AlignLeft);
+   gridLayout->addWidget(fociCerebellumSurfaceSelectionComboBox, 4, 1);
    gridLayout->setColumnStretch(0, 0);
    gridLayout->setColumnStretch(1, 100);
    return groupBox;
@@ -584,7 +617,262 @@ GuiDataFileSaveDialog::selectImageFile(const ImageFile* imageFile)
       }
    }
 }
+
+/**
+ * select a file.
+ */
+void 
+GuiDataFileSaveDialog::selectFile(AbstractFile* af)
+{
+   BrainSet* bs = theMainWindow->getBrainSet();
+
+   QString fileFilterName;
+   if (dynamic_cast<AreaColorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getAreaColorFileFilter();
+   }
+   else if (dynamic_cast<ArealEstimationFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getArealEstimationFileFilter();
+   }
+   else if (dynamic_cast<BorderColorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getBorderColorFileFilter();
+   }
+   else if (dynamic_cast<BorderFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getBorderGenericFileFilter();
+   }
+   else if (dynamic_cast<BorderProjectionFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getBorderProjectionFileFilter();
+   }
+   else if (dynamic_cast<CellColorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getCellColorFileFilter();
+   }
+   else if (dynamic_cast<CutsFile*>(af) != NULL) {
+      //
+      // CUTS MUST BE BEFORE CELL SINCE CUTS DERIVED FROM CELL
+      //
+      fileFilterName = FileFilters::getCutsFileFilter();
+   }
+   else if (dynamic_cast<FociFile*>(af) != NULL) {
+      //
+      // FOCI MUST BE BEFORE CELL SINCE FOCI DERIVED FROM CELL
+      //
+      fileFilterName = FileFilters::getFociFileFilter();
+   }
+   else if (dynamic_cast<ContourCellFile*>(af) != NULL) {
+      //
+      // CONTOUR CELL MUST BE BEFORE CELL SINCE CONTOUR CELL DERIVED FROM CELL
+      //
+      fileFilterName = FileFilters::getContourCellFileFilter();
+   }
+   else if (dynamic_cast<CellFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getCellFileFilter();
+   }
+   else if (dynamic_cast<FociProjectionFile*>(af) != NULL) {
+      //
+      // FOCI MUST BE BEFORE CELL SINCE FOCI DERIVED FROM CELL
+      //
+      fileFilterName = FileFilters::getFociProjectionFileFilter();
+   }
+   else if (dynamic_cast<CellProjectionFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getCellProjectionFileFilter();
+   }
+   else if (dynamic_cast<CocomacConnectivityFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getCocomacFileFilter();
+   }
+   else if (dynamic_cast<ContourCellColorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getContourCellColorFileFilter();
+   }
+   else if (dynamic_cast<ContourFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getContourFileFilter();
+   }
+   else if (dynamic_cast<CoordinateFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getCoordinateGenericFileFilter();
+      for (int i = 0; i < bs->getNumberOfBrainModels(); i++) {
+         BrainModelSurface* bms = bs->getBrainModelSurface(i);
+         if (bms != NULL) {
+            if (bms->getCoordinateFile() == af) {
+               coordinateSurfaceSelectionComboBox->setSelectedBrainModel(bms);
+               break;
+            }
+         }
+      }
+   }
+   else if (dynamic_cast<DeformationFieldFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getDeformationFieldFileFilter();
+   }
+   else if (dynamic_cast<DeformationMapFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getDeformationMapFileFilter();
+   }
+   else if (dynamic_cast<FociColorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getFociColorFileFilter();
+   }
+   else if (dynamic_cast<FociSearchFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getFociSearchFileFilter();
+   }
+   else if (dynamic_cast<GeodesicDistanceFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getGeodesicDistanceFileFilter();
+   }
+   else if (dynamic_cast<ImageFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getImageSaveFileFilter();
+      selectImageFile(dynamic_cast<ImageFile*>(af));
+   }
+   else if (dynamic_cast<LatLonFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getLatitudeLongitudeFileFilter();
+   }
+   else if (dynamic_cast<SurfaceShapeFile*>(af) != NULL) {
+      //
+      // SHAPE MUST BE BEFORE METRIC SINCE SHAPE DERIVED FROM METRIC
+      //
+      fileFilterName = FileFilters::getSurfaceShapeFileFilter();
+   }
+   else if (dynamic_cast<MetricFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getMetricFileFilter();
+   }
+   else if (dynamic_cast<ProbabilisticAtlasFile*>(af) != NULL) {
+      //
+      // PROB ATLAS MUST BE BEFORE PAINT SINCE PROB ATLAS DERIVED FROM PAINT
+      //
+      fileFilterName = FileFilters::getProbAtlasFileFilter();
+   }
+   else if (dynamic_cast<PaintFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getPaintFileFilter();
+   }
+   else if (dynamic_cast<PaletteFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getPaletteFileFilter();
+   }
+   else if (dynamic_cast<ParamsFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getParamsFileFilter();
+   }
+   else if (dynamic_cast<RgbPaintFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getRgbPaintFileFilter();
+   }
+   else if (dynamic_cast<SceneFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getSceneFileFilter();
+   }
+   else if (dynamic_cast<SectionFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getSectionFileFilter();
+   }
+   else if (dynamic_cast<StudyCollectionFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getStudyCollectionFileFilter();
+   }
+   else if (dynamic_cast<StudyMetaDataFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getStudyMetaDataFileFilter();
+   }
+   else if (dynamic_cast<SurfaceVectorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getSurfaceVectorFileFilter();
+   }
+   else if (dynamic_cast<TopographyFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getTopographyFileFilter();
+   }
+   else if (dynamic_cast<TopologyFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getTopologyGenericFileFilter();
+      topologySelectionComboBox->setSelectedTopologyFile(dynamic_cast<TopologyFile*>(af));
+   }
+   else if (dynamic_cast<TransformationMatrixFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getTransformationMatrixFileFilter();
+   }
+   else if (dynamic_cast<VocabularyFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getVocabularyFileFilter();
+   }
+   else if (dynamic_cast<VolumeFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getVolumeGenericFileFilter();
+      bool gotItFlag = false;
+      VolumeFile* vf = dynamic_cast<VolumeFile*>(af);
+      for (int i = 0; i < bs->getNumberOfVolumeAnatomyFiles(); i++) {
+         if (bs->getVolumeAnatomyFile(i) == vf) {
+            volumeAnatomyFileSelectionComboBox->setSelectedVolumeFile(vf);
+            fileFilterName = FileFilters::getVolumeAnatomyFileFilter();
+            gotItFlag = true;
+            break;
+         }
+      }
       
+      if (gotItFlag == false) {
+         for (int i = 0; i < bs->getNumberOfVolumeFunctionalFiles(); i++) {
+            if (bs->getVolumeFunctionalFile(i) == vf) {
+               volumeFunctionalFileSelectionComboBox->setSelectedVolumeFile(vf);
+               fileFilterName = FileFilters::getVolumeFunctionalFileFilter();
+               gotItFlag = true;
+               break;
+            }
+         }
+      }
+      
+      if (gotItFlag == false) {
+         for (int i = 0; i < bs->getNumberOfVolumePaintFiles(); i++) {
+            if (bs->getVolumePaintFile(i) == vf) {
+               volumePaintFileSelectionComboBox->setSelectedVolumeFile(vf);
+               fileFilterName = FileFilters::getVolumePaintFileFilter();
+               gotItFlag = true;
+               break;
+            }
+         }
+      }
+      
+      if (gotItFlag == false) {
+         for (int i = 0; i < bs->getNumberOfVolumeProbAtlasFiles(); i++) {
+            if (bs->getVolumeProbAtlasFile(i) == vf) {
+               volumeProbAtlasFileSelectionComboBox->setSelectedVolumeFile(vf);
+               fileFilterName = FileFilters::getVolumeProbAtlasFileFilter();
+               gotItFlag = true;
+               break;
+            }
+         }
+      }
+      
+      if (gotItFlag == false) {
+         for (int i = 0; i < bs->getNumberOfVolumeRgbFiles(); i++) {
+            if (bs->getVolumeRgbFile(i) == vf) {
+               volumeRgbFileSelectionComboBox->setSelectedVolumeFile(vf);
+               fileFilterName = FileFilters::getVolumeRgbFileFilter();
+               gotItFlag = true;
+               break;
+            }
+         }
+      }
+      
+      if (gotItFlag == false) {
+         for (int i = 0; i < bs->getNumberOfVolumeSegmentationFiles(); i++) {
+            if (bs->getVolumeSegmentationFile(i) == vf) {
+               volumeSegmentationFileSelectionComboBox->setSelectedVolumeFile(vf);
+               fileFilterName = FileFilters::getVolumeSegmentationFileFilter();
+               gotItFlag = true;
+               break;
+            }
+         }
+      }
+      
+      if (gotItFlag == false) {
+         for (int i = 0; i < bs->getNumberOfVolumeVectorFiles(); i++) {
+            if (bs->getVolumeVectorFile(i) == vf) {
+               volumeVectorFileSelectionComboBox->setSelectedVolumeFile(vf);
+               fileFilterName = FileFilters::getVolumeVectorFileFilter();
+               gotItFlag = true;
+               break;
+            }
+         }
+      }
+   }
+   else if (dynamic_cast<VtkModelFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getVtkModelFileFilter();
+   }
+   else if (dynamic_cast<WustlRegionFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getWustlRegionFileFilter();
+   }      
+   else {
+      QMessageBox::critical(this,
+                             "ERROR",
+                             "PROGRAM ERROR: Unrecongnized file type for selection: "
+                             + QString(af->getDescriptiveName()));
+      return;
+   }
+   
+   //
+   // Select the file type
+   //
+   selectFileType(fileFilterName);
+   slotLoadParametersForFileType();
+}
+
 /**
  * create the image options section.
  */
@@ -1185,6 +1473,8 @@ GuiDataFileSaveDialog::createGiftiOptionsSection()
    QLabel* surfaceLabel = new QLabel("Surface");
    giftiSurfaceSelectionControl = 
       new GuiBrainModelSelectionComboBox(false, true, false, "");
+   QObject::connect(giftiSurfaceSelectionControl, SIGNAL(currentIndexChanged(int)),
+                    this, SLOT(slotLoadParametersForFileType()));
    giftiSurfaceSelectionControl->setSelectedBrainModel(theMainWindow->getBrainModelSurface());
 
    QGroupBox* groupBox = new QGroupBox("GIFTI Surface Options");
@@ -1502,8 +1792,8 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
    else if (filterName == FileFilters::getFociProjectionFileFilter()) {
       af = brainSet->getFociProjectionFile();
    }
-   else if (filterName == FileFilters::getFociVolumeFileFilter()) {
-      af = brainSet->getVolumeFociFile();
+   else if (filterName == FileFilters::getFociSearchFileFilter()) {
+      af = brainSet->getFociSearchFile();
    }
    else if (filterName == FileFilters::getGeodesicDistanceFileFilter()) {
       af = brainSet->getGeodesicDistanceFile();
@@ -1600,6 +1890,9 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
    else if (filterName == FileFilters::getSectionFileFilter()) {
       af = brainSet->getSectionFile();
    }
+   else if (filterName == FileFilters::getStudyCollectionFileFilter()) {
+      af = brainSet->getStudyCollectionFile();
+   }
    else if (filterName == FileFilters::getStudyMetaDataFileFilter()) {
       af = brainSet->getStudyMetaDataFile();
    }
@@ -1632,6 +1925,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
       if (volumeAnatomyFileSelectionComboBox->getAllVolumesSelected()) {
          if (brainSet->getNumberOfVolumeAnatomyFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumeAnatomyFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumeAnatomyVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumeAnatomyWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1656,6 +1950,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
       if (volumeFunctionalFileSelectionComboBox->getAllVolumesSelected()) {
          if (brainSet->getNumberOfVolumeFunctionalFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumeFunctionalFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumeFunctionalVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumeFunctionalWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1680,6 +1975,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
       if (volumePaintFileSelectionComboBox->getAllVolumesSelected()) {
          if (brainSet->getNumberOfVolumePaintFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumePaintFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumePaintVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumePaintWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1705,6 +2001,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
           alwaysSaveAllProbAtlasVolumes) {
          if (brainSet->getNumberOfVolumeProbAtlasFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumeProbAtlasFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumeProbAtlasVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumeProbAtlasWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1729,6 +2026,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
       if (volumeRgbFileSelectionComboBox->getAllVolumesSelected()) {
          if (brainSet->getNumberOfVolumeRgbFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumeRgbFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumeRgbVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumeRgbWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1753,6 +2051,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
       if (volumeSegmentationFileSelectionComboBox->getAllVolumesSelected()) {
          if (brainSet->getNumberOfVolumeSegmentationFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumeSegmentationFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumeSegmentationVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumeSegmentationWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1777,6 +2076,7 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
       if (volumeVectorFileSelectionComboBox->getAllVolumesSelected()) {
          if (brainSet->getNumberOfVolumeVectorFiles() > 0) {
             VolumeFile* temp = brainSet->getVolumeVectorFile(0);
+            af = temp;
             fileName = temp->getFileName();
             volumeVectorVolumeDataTypeComboBox->setVolumeVoxelDataType(temp->getVoxelDataType());
             volumeVectorWriteCompressedCheckBox->setChecked(temp->getDataFileWasZipped());
@@ -1992,7 +2292,7 @@ void
 GuiDataFileSaveDialog::done(int r)
 {
    
-   if (r == QDialog::Accepted) {
+   if (r == GuiDataFileSaveDialog::Accepted) {
       BrainSet* brainSet = theMainWindow->getBrainSet();
       QString fileName = fileNameLineEdit->text();
       
@@ -2233,8 +2533,8 @@ GuiDataFileSaveDialog::done(int r)
          }
          else if (filterName == FileFilters::getFociFileFilter()) {
             if (addFileExtensionCheckBox->isChecked()) {
-               if (fileName.endsWith(SpecFile::getCellFileExtension()) == false) {
-                  fileName += SpecFile::getCellFileExtension();
+               if (fileName.endsWith(SpecFile::getFociFileExtension()) == false) {
+                  fileName += SpecFile::getFociFileExtension();
                }
             }
             if (fociSaveOriginalCoordinatesRadioButton->isChecked()) {
@@ -2245,7 +2545,10 @@ GuiDataFileSaveDialog::done(int r)
             else if (fociSaveProjectedCoordinatesRadioButton->isChecked()) {
                const BrainModelSurface* leftBms = fociLeftSurfaceSelectionComboBox->getSelectedBrainModelSurface();
                const BrainModelSurface* rightBms = fociRightSurfaceSelectionComboBox->getSelectedBrainModelSurface();
-               if ((leftBms == NULL) && (rightBms == NULL)) {
+               const BrainModelSurface* cerebellumBms = fociCerebellumSurfaceSelectionComboBox->getSelectedBrainModelSurface();
+               if ((leftBms == NULL) 
+                   && (rightBms == NULL)
+                   && (cerebellumBms == NULL)) {
                   QString msg("There is no surface selected for which foci should be saved.");
                   QApplication::restoreOverrideCursor();
                   QMessageBox::critical(this, "ERROR", msg, QMessageBox::Ok);
@@ -2254,6 +2557,7 @@ GuiDataFileSaveDialog::done(int r)
                brainSet->writeFociFile(fileName, 
                                        leftBms, 
                                        rightBms, 
+                                       cerebellumBms,
                                        fileFormat, 
                                        metadataCommentTextEdit->toPlainText());
             }
@@ -2272,12 +2576,12 @@ GuiDataFileSaveDialog::done(int r)
                                   SpecFile::getFociProjectionFileExtension());
             brainSet->writeFociProjectionFile(fileName);
          }
-         else if (filterName == FileFilters::getFociVolumeFileFilter()) {
-            FociFile* fvf = brainSet->getVolumeFociFile();
-            updateMetadataAndName(fvf,
+         else if (filterName == FileFilters::getFociSearchFileFilter()) {
+            FociSearchFile* fsf = brainSet->getFociSearchFile();
+            updateMetadataAndName(fsf,
                                   fileName,
-                                  SpecFile::getFociFileExtension());
-            brainSet->writeVolumeFociFile(fileName);
+                                  SpecFile::getFociSearchFileExtension());
+            brainSet->writeFociSearchFile(fileName);
          }
          else if (filterName == FileFilters::getGeodesicDistanceFileFilter()) {
             GeodesicDistanceFile* gdf = brainSet->getGeodesicDistanceFile();
@@ -2303,7 +2607,7 @@ GuiDataFileSaveDialog::done(int r)
                              coordinateStereotaxicSpaceComboBox->currentText());
             updateMetadataAndName(cf,
                                   fileName,
-                                  SpecFile::getGiftiFileExtension());
+                                  SpecFile::getGiftiCoordinateFileExtension());
             brainSet->writeCoordinateFile(fileName,
                                           coordinateTypeComboBox->getSurfaceType(),
                                           cf);
@@ -2315,7 +2619,7 @@ GuiDataFileSaveDialog::done(int r)
             MetricFile* mf = brainSet->getMetricFile();
             updateMetadataAndName(mf,
                                   fileName,
-                                  SpecFile::getGiftiFileExtension());
+                                  SpecFile::getGiftiFunctionalFileExtension());
             mf->setFileWriteType(fileFormat);
             brainSet->writeMetricFile(fileName);
          }
@@ -2323,7 +2627,7 @@ GuiDataFileSaveDialog::done(int r)
             PaintFile* pf = brainSet->getPaintFile();
             updateMetadataAndName(pf,
                                   fileName,
-                                  SpecFile::getGiftiFileExtension());
+                                  SpecFile::getGiftiLabelFileExtension());
             pf->setFileWriteType(fileFormat);
             brainSet->writePaintFile(fileName);
          }
@@ -2331,7 +2635,7 @@ GuiDataFileSaveDialog::done(int r)
             SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
             updateMetadataAndName(ssf,
                                   fileName,
-                                  SpecFile::getGiftiFileExtension());
+                                  SpecFile::getGiftiShapeFileExtension());
             ssf->setFileWriteType(fileFormat);
             brainSet->writeSurfaceShapeFile(fileName);
          }
@@ -2342,7 +2646,7 @@ GuiDataFileSaveDialog::done(int r)
                                      fileName,
                                      "");
                updateFileNamesFileExtension(fileName,
-                                            SpecFile::getGiftiFileExtension());
+                                            SpecFile::getGiftiSurfaceFileExtension());
                brainSet->writeSurfaceFile(fileName,
                                           bms->getSurfaceType(),
                                           bms,
@@ -2355,7 +2659,7 @@ GuiDataFileSaveDialog::done(int r)
             if (tf != NULL) {
                updateMetadataAndName(tf,
                                      fileName,
-                                     SpecFile::getGiftiFileExtension());
+                                     SpecFile::getGiftiTopologyFileExtension());
                brainSet->writeTopologyFile(fileName, 
                                            topologyTypeComboBox->getTopologyType(), 
                                            tf);
@@ -2433,6 +2737,13 @@ GuiDataFileSaveDialog::done(int r)
                                   fileName,
                                   SpecFile::getSectionFileExtension());
             brainSet->writeSectionFile(fileName);
+         }
+         else if (filterName == FileFilters::getStudyCollectionFileFilter()) {
+            StudyCollectionFile* scf = brainSet->getStudyCollectionFile();
+            updateMetadataAndName(scf,
+                                  fileName,
+                                  SpecFile::getStudyCollectionFileExtension());
+            brainSet->writeStudyCollectionFile(fileName);
          }
          else if (filterName == FileFilters::getStudyMetaDataFileFilter()) {
             StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
@@ -2982,6 +3293,9 @@ GuiDataFileSaveDialog::done(int r)
             throw FileException(msg);
          }
 
+         PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+         pf->addToRecentDataFileDirectories(FileUtilities::dirname(fileName), true);
+
          QApplication::restoreOverrideCursor();
       }
       catch (FileException& e) {
@@ -2995,6 +3309,6 @@ GuiDataFileSaveDialog::done(int r)
       }
    }
    
-   QDialog::done(r);
+   WuQDialog::done(r);
 }
 

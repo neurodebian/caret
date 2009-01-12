@@ -445,7 +445,7 @@ BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmNamesAndValues(
  * get the average voxel parameters.
  */
 void 
-BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmMetricAverageVoxelParameters(float neighborsOut) const
+BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmMetricAverageVoxelParameters(float& neighborsOut) const
 {
    neighborsOut = averageVoxelNeighbors;
 }
@@ -463,7 +463,7 @@ BrainModelVolumeToSurfaceMapperAlgorithmParameters::setAlgorithmMetricAverageVox
  * get the maximum voxel parameters.
  */
 void 
-BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmMetricMaximumVoxelParameters(float neighborsOut) const
+BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmMetricMaximumVoxelParameters(float& neighborsOut) const
 {
    neighborsOut = maximumVoxelNeighbors;
 }
@@ -481,7 +481,7 @@ BrainModelVolumeToSurfaceMapperAlgorithmParameters::setAlgorithmMetricMaximumVox
  * get the strongest voxel parameters.
  */
 void 
-BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmMetricStrongestVoxelParameters(float neighborsOut) const
+BrainModelVolumeToSurfaceMapperAlgorithmParameters::getAlgorithmMetricStrongestVoxelParameters(float& neighborsOut) const
 {
    neighborsOut = strongestVoxelNeighbors;
 }

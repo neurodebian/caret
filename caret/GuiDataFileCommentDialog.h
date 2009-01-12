@@ -30,7 +30,7 @@
 #include <set>
 
 #include "AbstractFile.h"
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class AbstractFileHeaderUpdater;
 class BrainModelBorderFileInfo;
@@ -41,16 +41,24 @@ class QGridLayout;
 class QLineEdit;
 class QTabWidget;
 class QTextEdit;
+class RgbPaintFile;
 class VolumeFile;
 
 /// Dialog that displays a scrolling text widget
-class GuiDataFileCommentDialog : public QtDialog {
+class GuiDataFileCommentDialog : public WuQDialog {
    Q_OBJECT
    
    public:
       /// Constructor for an Abstract File subclass in memory
       GuiDataFileCommentDialog(QWidget* parent, 
                                AbstractFile* af);
+      
+      /// Constructor for an RGB Paint File Column Color in memory
+      GuiDataFileCommentDialog(QWidget* parent, 
+                               RgbPaintFile* rgbPaintFileIn,
+                               const int rgbPaintColumnIn,
+                               const int rgbColorComponentIn);
+                               
       
       /// The constructor for an AbstractFile subclass in a file.
       GuiDataFileCommentDialog(QWidget* parent, 
@@ -96,7 +104,8 @@ class GuiDataFileCommentDialog : public QtDialog {
          DIALOG_MODE_VOLUME_FILE_NAME,
          DIALOG_MODE_VOLUME_FILE_IN_MEMORY,
          DIALOG_MODE_NODE_ATTRIBUTE_FILE_COLUMN_IN_MEMORY,
-         DIALOG_MODE_BORDER_FILE_INFO_IN_MEMORY
+         DIALOG_MODE_BORDER_FILE_INFO_IN_MEMORY,
+         DIALOG_MODE_RGB_PAINT_FILE_IN_MEMORY
       };
       
       /// create the dialog in the specified mode
@@ -155,6 +164,15 @@ class GuiDataFileCommentDialog : public QtDialog {
       
       /// volume file label for a volume file in memory
       QLineEdit* volumeFileLabelLineEdit;
+      
+      /// the rgb paint file
+      RgbPaintFile* rgbPaintFile;
+      
+      /// the rgb paint file column
+      int rgbPaintColumn;
+      
+      /// the rgb paint file column color component
+      int rgbColorComponent;
 };
 
 #endif  // __GUI_DATA_FILE_COMMENT_DIALOG_H__

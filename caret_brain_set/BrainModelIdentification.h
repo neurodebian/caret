@@ -29,6 +29,7 @@
 
 #include <QObject>
 
+#include "BrainModelOpenGLSelectedItem.h"
 #include "SceneFile.h"
 #include "StudyMetaDataFile.h"
 
@@ -36,6 +37,8 @@ class BrainModelOpenGL;
 class BrainModelSurface;
 class BrainModelVolume;
 class BrainSet;
+class CellProjection;
+class FociFile;
 class StudyMetaDataLink;
 class StudyMetaDataLinkSet;
 class VolumeFile;
@@ -162,8 +165,14 @@ class BrainModelIdentification : public QObject {
       /// foci geography information should be displayed
       bool getDisplayFociGeographyInformation() const { return idFilter.displayFociGeographyInformation; }
       
+      /// foci region of interest information should be displayed
+      bool getDisplayFociRegionOfInterestInformation() const { return idFilter.displayFociRegionOfInterestInformation; }
+      
       /// foci size information should be displayed
       bool getDisplayFociSizeInformation() const { return idFilter.displayFociSizeInformation; }
+      
+      /// foci structure information should be displayed
+      bool getDisplayFociStructureInformation() const { return idFilter.displayFociStructureInformation; }
       
       /// foci statistic information should be displayed
       bool getDisplayFociStatisticInformation() const { return idFilter.displayFociStatisticInformation; }
@@ -407,8 +416,14 @@ class BrainModelIdentification : public QObject {
       /// foci geography information should be displayed
       void setDisplayFociGeographyInformation(const bool displayIt) { idFilter.displayFociGeographyInformation = displayIt; }
       
+      /// foci region of interest information should be displayed
+      void setDisplayFociRegionOfInterestInformation(const bool displayIt) { idFilter.displayFociRegionOfInterestInformation = displayIt; }
+      
       /// foci size information should be displayed
       void setDisplayFociSizeInformation(const bool displayIt) { idFilter.displayFociSizeInformation = displayIt; }
+      
+      /// foci structure information should be displayed
+      void setDisplayFociStructureInformation(const bool displayIt) { idFilter.displayFociStructureInformation = displayIt; }
       
       /// foci statistic information should be displayed
       void setDisplayFociStatisticInformation(const bool displayIt) { idFilter.displayFociStatisticInformation = displayIt; }
@@ -581,6 +596,12 @@ class BrainModelIdentification : public QObject {
       // all identification off (if any on, all turned off, otherwise all off) 
       void toggleAllIdentificationOnOff();
       
+      // all identification on
+      void setAllIdentificationOn();
+      
+      // all identification off
+      void setAllIdentificationOff();
+      
    protected:
       /// class for identification filtering
       class IdFilter {
@@ -592,7 +613,7 @@ class BrainModelIdentification : public QObject {
             ~IdFilter();
             
             // turn all off
-            void allOff();
+            void allOff(const bool turnSubFlagsOff = true);
             
             // turn all on
             void allOn();
@@ -849,8 +870,14 @@ class BrainModelIdentification : public QObject {
             /// foci geography information should be displayed
             bool displayFociGeographyInformation;
             
+            /// foci region of interest information should be displayed
+            bool displayFociRegionOfInterestInformation;
+            
             /// foci size information should be displayed
             bool displayFociSizeInformation;
+            
+            /// foci structure information should be displayed
+            bool displayFociStructureInformation;
             
             /// foci statistic information should be displayed
             bool displayFociStatisticInformation;
@@ -869,16 +896,9 @@ class BrainModelIdentification : public QObject {
                                            BrainSet* brainSet,
                                            BrainModelSurface* bms);
       
-      // get the identification text for a meta-analysis studies attached to the input study
-      QString getIdentificationTextForMetaAnalysisStudies(const StudyMetaData* smd);
-      
-      // get the identification text for a meta-analysis study
-      QString getIdentificationTextForMetaAnalysisStudy(const QString& pubMedID);
-      
       // get the identification text for studies
       QString getIdentificationTextForStudies(const StudyMetaDataFile* smdf,
-                                              const StudyMetaDataLinkSet& smdls,
-                                              const bool showMetaAnalysisFlag);
+                                              const StudyMetaDataLinkSet& smdls);
                                               
       // get the identification text for a study
       QString getIdentificationTextForStudy(const StudyMetaData* smd,
@@ -900,6 +920,13 @@ class BrainModelIdentification : public QObject {
       // get identification text for foci
       QString getIdentificationTextForFoci();
       
+      // get identification text for a single focus
+      QString getIdentificationTextForSingleFocus(
+                                            BrainModelOpenGLSelectedItem focusID,
+                                            CellProjection* focus,
+                                            FociProjectionFile* fociProjectionFile,
+                                            const bool volumeFlag);
+                                            
       // get identification text for voxel
       QString getIdentificationTextForVoxel();
       
@@ -953,6 +980,10 @@ class BrainModelIdentification : public QObject {
       QString linkToVocabulary(BrainSet* brainSet,
                                const QString& name);
       
+      // make a list of names separated by semicolon possible links to vocabulary
+      QString linkStringToVocabulary(BrainSet* brainSet,
+                                     const QString& s);
+                                     
       /// translate special HTML characters to HTML special characters
       QString htmlTranslate(const QString& ss) const;
       

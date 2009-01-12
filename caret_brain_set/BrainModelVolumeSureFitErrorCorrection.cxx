@@ -79,6 +79,8 @@ BrainModelVolumeSureFitErrorCorrection::BrainModelVolumeSureFitErrorCorrection(
    }
    
    outputVolume = NULL;
+   
+   errorCorrectionWasSuccessfulFlag = false;
 }
 
 /**
@@ -86,14 +88,21 @@ BrainModelVolumeSureFitErrorCorrection::BrainModelVolumeSureFitErrorCorrection(
  */
 BrainModelVolumeSureFitErrorCorrection::~BrainModelVolumeSureFitErrorCorrection()
 {
+   if (outputVolume != NULL) {
+      delete outputVolume;
+      outputVolume = NULL;
+   }
    if (segmentationVolume != NULL) {
       delete segmentationVolume;
+      segmentationVolume = NULL;
    }
    if (radialPositionMapVolume != NULL) {
       delete radialPositionMapVolume;
+      radialPositionMapVolume = NULL;
    }
    
-   if (saveIntermediateFiles == false) {
+   if ((saveIntermediateFiles == false) &&
+       (errorCorrectionWasSuccessfulFlag)) {
       for (unsigned int i = 0; i < intermediateFileNames.size(); i++) {
          QFile::remove(intermediateFileNames[i]);
       }
@@ -141,7 +150,14 @@ BrainModelVolumeSureFitErrorCorrection::execute() throw (BrainModelAlgorithmExce
       QDir intermedDir(intermediateFilesSubDirectory);
       if (intermedDir.exists() == false) {
          QDir temp(".");
-         temp.mkdir(intermediateFilesSubDirectory);
+         if (temp.mkdir(intermediateFilesSubDirectory) == false) {
+            throw BrainModelAlgorithmException(
+               "Unable to create temporary directory named \""
+               + intermediateFilesSubDirectory 
+               + "\" in \""
+               + temp.absolutePath()
+               + " for use by Automatic Error Correction.");
+         }
       }
       
       //
@@ -164,6 +180,8 @@ BrainModelVolumeSureFitErrorCorrection::execute() throw (BrainModelAlgorithmExce
          std::cout << "Surface and measurements time: " << genTime << std::endl;
          std::cout << "Correct errors time: " << errorTime << std::endl;
       }
+      
+      errorCorrectionWasSuccessfulFlag = true;
    }
    catch (BrainModelAlgorithmException& e) {
       removeProgressDialog();
@@ -235,8 +253,10 @@ BrainModelVolumeSureFitErrorCorrection::generateSurfaceAndMeasurements(const Vol
                                                            false,  // very inflated
                                                            true,   // ellipsoid
                                                            false,  // sphere
+                                                           false,  // cmw
                                                            true,   // finger smoothing
                                                            false,  // scale to fiducial
+                                                           1.0,    // No iteration scaling
                                                            &metricMeasurements);
                                                            
    //
@@ -2523,7 +2543,7 @@ BrainModelVolumeSureFitErrorCorrection::patchInvagination(VolumeFile& sbpdata,
    VolumeFile sapdata;
 	readIntermediateVolume(sapdata, "Segment.AfterPatch");
    VolumeFile voxdataflat = sapdata;
-   VolumeFile::VoxelIJK seed;
+   VoxelIJK seed;
    voxdataflat.findBiggestObjectWithinMask(extent, 255.0, 255.0, seed);
    voxdataflat.floodFillWithVTK(seed, 255, 255, 0);
 	writeIntermediateVolume(voxdataflat, "Segment.AfterPatch.flood");
@@ -2779,6 +2799,15 @@ BrainModelVolumeSureFitErrorCorrection::readIntermediateVolume(VolumeFile& vf,
             name.append(SpecFile::getAnalyzeVolumeFileExtension());
             break;
          case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI:
+            {
+               name.append(SpecFile::getNiftiVolumeFileExtension());
+               const QString compressName = name + ".gz";
+               if (QFile::exists(compressName)) {
+                  name = compressName;
+               }
+            }
+            break;
+         case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP:
             {
                name.append(SpecFile::getNiftiVolumeFileExtension());
                const QString compressName = name + ".gz";

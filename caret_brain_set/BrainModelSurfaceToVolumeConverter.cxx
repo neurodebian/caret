@@ -40,6 +40,7 @@
 #include <QDateTime>
 
 #include "BrainModelSurface.h"
+#include "BrainModelSurfacePointProjector.h"
 #include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainModelSurfaceToVolumeConverter.h"
 #include "BrainSet.h"
@@ -106,6 +107,8 @@ BrainModelSurfaceToVolumeConverter::BrainModelSurfaceToVolumeConverter(
       case StereotaxicSpace::SPACE_AFNI_TALAIRACH:
          break;
       case StereotaxicSpace::SPACE_FLIRT:
+         break;
+      case StereotaxicSpace::SPACE_FLIRT_222:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;
@@ -348,15 +351,33 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
       const float thickness = outerBoundary - innerBoundary;
 
       //
+      // Copy the user's surface since we don't want to modify it
+      //
+      BrainModelSurface thickSurface(*surface);
+      surface = &thickSurface;
+      cf = surface->getCoordinateFile();
+         
+      //
+      // Translate by half voxel 
+      // JWH Jun 14
+      //
+      //TransformationMatrix tm;
+      //tm.setTranslation(voxelSize[0] * 0.5,
+      //                  voxelSize[1] * 0.5,
+      //                  voxelSize[2] * 0.5);
+      //thickSurface.applyTransformationMatrix(tm);
+                  
+      //
       // Creating a segmentation volume ?
       if (createSegmentationFlag) {
+/* MOVE UP to 375
          //
          // Copy the user's surface since we don't want to modify it
          //
          BrainModelSurface thickSurface(*surface);
          surface = &thickSurface;
          cf = surface->getCoordinateFile();
-         
+*/
          //
          // See if surface in native space
          //
@@ -380,6 +401,21 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
             case Structure::STRUCTURE_TYPE_CEREBELLUM:
                offset = 1.0;
                break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+               offset = 1.0;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               offset = 1.0;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               offset = 1.0;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               offset = 1.0;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                offset = 1.0;
                break;
@@ -419,6 +455,13 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
                break;
             case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
             case Structure::STRUCTURE_TYPE_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                break;
          }
@@ -511,33 +554,37 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
             surface->expandSurface(nodeDelta);
          }
       }
-      else if (thickness > 0.0) {
-         //
-         // Copy the user's surface since we don't want to modify it
-         //
-         BrainModelSurface thickSurface(*surface);
-         surface = &thickSurface;
-         cf = surface->getCoordinateFile();
-         
-         //
-         // Shrink nodes "inward" by half of thickness then
-         // intersect and expand surface
-         //
-         float nodeDelta = innerBoundary;  //-(thickness * 0.5);
-         surface->expandSurface(nodeDelta);
-         const int steps = static_cast<int>(thickness / thicknessStep);
-         progressDialogTotalSteps = (steps + 1) * numTiles;
-         for (int i = 0; i <= steps; i++) {
-            conversionIntersectTilesAndVoxels();
-            if (i < steps) {
-               surface->expandSurface(thicknessStep);
+      else {
+         if (thickness > 0.0) {
+/* MOVE UP to 375
+                  //
+                  // Copy the user's surface since we don't want to modify it
+                  //
+                  BrainModelSurface thickSurface(*surface);
+                  surface = &thickSurface;
+                  cf = surface->getCoordinateFile();
+*/                  
+                                 
+            //
+            // Shrink nodes "inward" by half of thickness then
+            // intersect and expand surface
+            //
+            float nodeDelta = innerBoundary;  //-(thickness * 0.5);
+            surface->expandSurface(nodeDelta);
+            const int steps = static_cast<int>(thickness / thicknessStep);
+            progressDialogTotalSteps = (steps + 1) * numTiles;
+            for (int i = 0; i <= steps; i++) {
+               conversionIntersectTilesAndVoxels();
+               if (i < steps) {
+                  surface->expandSurface(thicknessStep);
+               }
             }
          }
-      }
-      else {
-         progressDialogTotalSteps = numTiles;
-         cf = surface->getCoordinateFile();
-         conversionIntersectTilesAndVoxels();
+         else {
+            progressDialogTotalSteps = numTiles;
+            cf = surface->getCoordinateFile();
+            conversionIntersectTilesAndVoxels();
+         }
       }
    }
    catch (BrainModelAlgorithmException& e) {
@@ -601,6 +648,8 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
       case StereotaxicSpace::SPACE_AFNI_TALAIRACH:
          break;
       case StereotaxicSpace::SPACE_FLIRT:
+         break;
+      case StereotaxicSpace::SPACE_FLIRT_222:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;
@@ -668,6 +717,9 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
    volume->appendToFileComment(comm);
 
    brainSet->addVolumeFile(volume->getVolumeType(), volume, "", true, false);
+   if (volume->getVolumeType() == VolumeFile::VOLUME_TYPE_PROB_ATLAS) {
+      brainSet->synchronizeProbAtlasVolumeRegionNames();
+   }
    
    if (nodeToVoxelMappingEnabled) {
       if (nodeToVoxelMappingFileName.isEmpty()) {
@@ -709,6 +761,8 @@ BrainModelSurfaceToVolumeConverter::resampleVolumeToStandardSpace()
       case StereotaxicSpace::SPACE_AFNI_TALAIRACH:
          break;
       case StereotaxicSpace::SPACE_FLIRT:
+         break;
+      case StereotaxicSpace::SPACE_FLIRT_222:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;
@@ -1392,9 +1446,15 @@ BrainModelSurfaceToVolumeConverter::intersectTriangleWithVoxel(vtkTriangle* tria
    
    //
    // Convert the volume index into a coordinate
+   // coordinate returned is center of voxel so adjust to get corner
    //
-   float xyz[3];
-   volume->getVoxelCoordinate(ijk, false, xyz);
+   float xyzCenter[3];
+   volume->getVoxelCoordinate(ijk, xyzCenter);
+   const float xyz[3] = { 
+                           xyzCenter[0] - (dx * 0.5),
+                           xyzCenter[1] - (dy * 0.5),
+                           xyzCenter[2] - (dz * 0.5)
+                        };
    
    //
    // Vertices of the voxel, Lower and Upper

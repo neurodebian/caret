@@ -74,8 +74,14 @@ class CellProjection : public CellBase {
                                 const bool pasteOntoSurfaceFlag,
                                 float xyzOut[3]) const;
 
-      /// called to read from an XML structure
-      virtual void readXML(QDomNode& node) throw (FileException);
+      /// get the volume position
+      void getVolumeXYZ(float xyzOut[3]) const;
+      
+      /// set the volume position
+      void setVolumeXYZ(const float xyzIn[3]);
+      
+      /// called to read from an XML DOM structure
+      virtual void readXMLWithDOM(QDomNode& node) throw (FileException);
       
       /// called to write to an XML structure
       virtual void writeXML(QDomDocument& xmlDoc,
@@ -94,7 +100,13 @@ class CellProjection : public CellBase {
       /// set element from text (used by SAX XML parser)
       void setElementFromText(const QString& elementName,
                               const QString& textValue);
-                              
+        
+      /// get duplicate cell projection flag
+      bool getDuplicateFlag() const { return duplicateFlag; }
+      
+      /// set the duplicate cell projection flag
+      void setDuplicateFlag(const bool b);
+      
    protected:
       /// called when data modified
       void setModified();
@@ -177,6 +189,12 @@ class CellProjection : public CellBase {
       /// OUTSIDE TRIANGLE fracRJ
       float fracRJ;
       
+      /// position of focus in a volume
+      float volumeXYZ[3];
+      
+      /// duplicate flag (used when near both cerebral and cerebellar)
+      bool duplicateFlag;
+      
       /// cell projection file which the projection is a member of
       CellProjectionFile* cellProjectionFile;
       
@@ -237,9 +255,14 @@ class CellProjection : public CellBase {
       /// tag for reading and writing cells
       static const QString tagFracRJ;
       
+      /// tag for reading and writing cells
+      static const QString tagVolumeXYZ;
+      
+      /// tag for reading and writing cells
+      static const QString tagDuplicateFlag;
+      
    friend class CellFileProjector; 
    friend class CellProjectionFile;
-   friend class CellProjectionFileSaxReader;
    friend class CellProjectionUnprojector;
    friend class FociFileToPalsProjector;
 };
@@ -261,6 +284,8 @@ class CellProjection : public CellBase {
       const QString CellProjection::tagPosFiducial = "posFiducial";
       const QString CellProjection::tagFracRI = "fracRI";
       const QString CellProjection::tagFracRJ = "fracRJ";
+      const QString CellProjection::tagVolumeXYZ = "volumeXYZ";
+      const QString CellProjection::tagDuplicateFlag = "duplicateFlag";
 
       const QString CellProjection::tagInsideTriangle = "INSIDE";
       const QString CellProjection::tagOutsideTriangle = "OUTSIDE";
@@ -298,8 +323,8 @@ class CellProjectionFile : public AbstractFile {
       /// version number of this file
       int versionNumber;
       
-      // read the file with a SAX parser
-      void readFileWithSaxParser(QFile& file) throw (FileException);
+      // read the file with an XML stream reader
+      void readFileWithXmlStreamReader(QFile& file) throw (FileException);
                                  
       /// read file version 1 data
       void readFileVersion1(QTextStream&, const int numProjections,
@@ -348,8 +373,8 @@ class CellProjectionFile : public AbstractFile {
       /// append a cell projection file to this cell projection file
       void append(const CellProjectionFile& cpf);
       
-      /// append a cell file
-      void append(const CellFile& cf);
+      /// append a fiducial cell file
+      void appendFiducialCellFile(const CellFile& cf);
       
       /// assign colors to these cell projections
       void assignColors(ColorFile& cf, const CellBase::CELL_COLOR_MODE colorMode);
@@ -382,6 +407,11 @@ class CellProjectionFile : public AbstractFile {
       /// get the version number of this file
       int getVersionNumber() const { return versionNumber; }
       
+      /// get cell class indices sorted by name case insensitive
+      void getCellClassIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                           const bool reverseOrderFlag,
+                                           const bool limitToDisplayedCellsFlag) const;
+      
       /// get number of cell classes
       int getNumberOfCellClasses() const { return cellClasses.size(); }
       
@@ -403,6 +433,18 @@ class CellProjectionFile : public AbstractFile {
       /// set the status of all cell classes
       void setAllCellClassStatus(const bool selected);
       
+      /// transfer table subheader short name to cell classes
+      void transferTableSubHeaderShortNameToCellClass(const StudyMetaDataLink& smdl,
+                                                      const QString& shortName);
+      
+      /// set the search status of all cells
+      void setAllSearchStatus(const bool inSearchFlag);
+      
+      /// get cell unique name indices sorted by name case insensitive
+      void getCellUniqueNameIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                          const bool reverseOrderFlag,
+                                          const bool limitToDisplayedCellsFlag) const;
+      
       /// get number of cell unique names
       int getNumberOfCellUniqueNames() const { return cellUniqueNames.size(); }
       
@@ -423,6 +465,9 @@ class CellProjectionFile : public AbstractFile {
       
       /// set the status of all cell unique names
       void setAllCellUniqueNameStatus(const bool selected);
+      
+      /// get indices of displayed cell projections
+      void getIndicesOfDisplayedCells(std::vector<int>& indicesOut) const;
       
       /// get a cell projection
       CellProjection* getCellProjection(const int i) {
@@ -466,10 +511,27 @@ class CellProjectionFile : public AbstractFile {
                                             const TopologyFile* leftTF,
                                             const CoordinateFile* rightCF,
                                             const TopologyFile* rightTF,
+                                            const CoordinateFile* cerebellumCF,
+                                            const TopologyFile* cerebellumTF,
                                             CellFile& cellFileOut) const;
-                       
+      
+      // get all cell areas
+      void getAllCellAreas(std::vector<QString>& allAreasOut) const;
+      
+      // get all comments
+      void getAllCellComments(std::vector<QString>& allCommentsOut) const;
+      
+      // get all cell geography
+      void getAllCellGeography(std::vector<QString>& allGeographyOut) const;
+      
       /// delete cell projection at specified index
       void deleteCellProjection(const int index);
+      
+      // get all cell regions of interest
+      void getAllCellRegionsOfInterest(std::vector<QString>& allRegionsOfInterestOut) const;
+      
+      /// delete all duplicate cell projections
+      void deleteAllDuplicateCellProjections();
       
       /// delete cell projections with name
       void deleteCellProjectionsWithName(const QString& name);
@@ -522,8 +584,19 @@ class CellProjectionFile : public AbstractFile {
       /// clear all highlight flags
       void clearAllHighlightFlags();
       
+      /// get PubMedID's of all linked studies
+      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs,
+                                                const bool displayedFociOnlyFlag = false) const;
+      
       /// update cell PubMed ID if cell name matches study name
       void updatePubMedIDIfCellNameMatchesStudyName(const StudyMetaDataFile* smdf);
+      
+      /// update cell class if linked to table subheader
+      void updateCellClassWithLinkedStudyTableSubheaderShortNames(const StudyMetaDataFile* smdf);
+      
+      /// update cell class with linked tabel subheader name, linked figure panel task
+      /// description, or page reference subheader short name
+      void updateCellClassWithLinkedTableFigureOrPageReference(const StudyMetaDataFile* smdf);
       
       /// find out if comma separated file conversion supported
       virtual void getCommaSeparatedFileSupport(bool& readFromCSV,
@@ -537,8 +610,9 @@ class CellProjectionFile : public AbstractFile {
       
 };
 
-#ifdef __CELL_PROJECTION_FILE_MAIN__
+#endif // __CELL_PROJECTION_FILE_H__
 
+#ifdef __CELL_PROJECTION_FILE_MAIN__
    const QString CellProjectionFile::tagFileVersion = "tag-version";
    const QString CellProjectionFile::tagNumberOfCellProjections = 
                                          "tag-number-of-cell-projections";
@@ -548,8 +622,5 @@ class CellProjectionFile : public AbstractFile {
    const QString CellProjectionFile::tagCommentTitle = "tag-title";
    const QString CellProjectionFile::tagCommentAuthors = "tag-authors";
    const QString CellProjectionFile::tagCommentCitation = "tag-citation";
-   const QString CellProjectionFile::tagCommentStereotaxicSpace = "tag-space";
-   
+   const QString CellProjectionFile::tagCommentStereotaxicSpace = "tag-space";   
 #endif // __CELL_PROJECTION_FILE_MAIN__
-
-#endif // __CELL_PROJECTION_FILE_H__

@@ -25,49 +25,79 @@
 
 #include <iostream>
 
+#include <QButtonGroup>
+#include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
+#include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QRadioButton>
+#include <QScrollArea>
+#include <QSpinBox>
+#include <QTextEdit>
 #include "WuQDataEntryDialog.h"
 
 /**
  * constructor.
  */
 WuQDataEntryDialog::WuQDataEntryDialog(QWidget* parent,
+                                       const bool addScrollBarsFlag,
                                        Qt::WindowFlags f)
-   : QDialog(parent, f)
+   : WuQDialog(parent, f)
 {
    //
-   // Layout for user's widgets
+   // Widget and Layout for user's widgets
    //
-   widgetGridLayout = new QGridLayout;
+   QWidget* widgetForGridLayout = new QWidget;
+   widgetGridLayout = new QGridLayout(widgetForGridLayout);
    
    //
-   // Labels for text at top
+   // Labels for text at top, hidden until set by user
    //
    textAtTopLabel = new QLabel;
-   textAtTopLabel->setWordWrap(true);
+   textAtTopLabel->setHidden(true);
+   
+   //
+   // ButtonGroup for radio buttons
+   //
+   radioButtonGroup = new QButtonGroup(this);
    
    //
    // Button box for dialog's buttons
    //
-   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
-                                                      QDialogButtonBox::Cancel);
+   buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                    QDialogButtonBox::Cancel);
    QObject::connect(buttonBox, SIGNAL(accepted()),
                     this, SLOT(slotOKButtonPressed()));
    QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(reject()));
    
    //
+   // May use scrolling
+   //
+   QScrollArea* scrollArea = NULL;
+   if (addScrollBarsFlag) {
+      scrollArea = new QScrollArea;
+      scrollArea->setWidget(widgetForGridLayout);
+      scrollArea->setWidgetResizable(true);
+   }
+   
+   //
    // Layout for dialog
    //
    QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(textAtTopLabel);
-   dialogLayout->addLayout(widgetGridLayout);
+   if (scrollArea != NULL) {
+      dialogLayout->addWidget(scrollArea);
+   }
+   else {
+      dialogLayout->addWidget(widgetForGridLayout);
+   }
    dialogLayout->addWidget(buttonBox);
 }
                    
@@ -115,11 +145,164 @@ WuQDataEntryDialog::dataEnteredIsValid()
  * set text at top of dialog (text is automatically wrapped).
  */
 void 
-WuQDataEntryDialog::setTextAtTop(const QString& s)
+WuQDataEntryDialog::setTextAtTop(const QString& s,
+                                 const bool wrapTheText)
 {
    textAtTopLabel->setText(s);
+   textAtTopLabel->setWordWrap(wrapTheText);
+   
+   if (s.isEmpty()) {
+      textAtTopLabel->setHidden(true);
+   }
+   else {
+      textAtTopLabel->setHidden(false);
+   }
 }
       
+/**
+ * add widgets to the next available row in the dialog.
+ */
+void 
+WuQDataEntryDialog::addWidgetsToNextRow(QWidget* leftColumnWidget,
+                                        QWidget* rightColumnWidget)
+{
+   //
+   // add widgets to the next row
+   //
+   const int rowNumber = widgetGridLayout->rowCount();
+   if (leftColumnWidget != NULL) {
+      widgetGridLayout->addWidget(leftColumnWidget, rowNumber, 0);
+   }
+   if (rightColumnWidget != NULL) {
+      widgetGridLayout->addWidget(rightColumnWidget, rowNumber, 1);
+   }
+}
+
+/**
+ * add widget to next available row in the dialog.
+ */
+QWidget* 
+WuQDataEntryDialog::addWidget(const QString& labelText,
+                              QWidget* widget)
+{
+   //
+   // Create the label
+   //
+   QLabel* label = new QLabel(labelText);
+   
+   //
+   // Keep pointer to widget
+   //
+   widgets.push_back(widget);
+   
+   //
+   // add widget to layout
+   //
+   addWidgetsToNextRow(label, widget);
+   
+   return widget;
+}
+                     
+/**
+ * add a check box.
+ */
+QCheckBox* 
+WuQDataEntryDialog::addCheckBox(const QString& text,
+                                const bool defaultValue)
+{
+   //
+   // Create check box
+   //
+   QCheckBox* cb = new QCheckBox(text);
+   cb->setChecked(defaultValue);
+
+   //
+   // Keep pointer to widget
+   //
+   widgets.push_back(cb);
+   
+   //
+   // add widget to both columns of layout
+   //
+   const int rowNumber = widgetGridLayout->rowCount();
+   widgetGridLayout->addWidget(cb, rowNumber, 0, 1, 2, Qt::AlignLeft);
+   
+   return cb;
+}
+
+/**
+ * get radio button selected (-1 if none, value is sequence added).
+ */
+int 
+WuQDataEntryDialog::getRadioButtonSelected() const
+{
+   return radioButtonGroup->checkedId();
+}
+
+/**
+ * add a radio button (all radio buttons will be mutually exclusive).
+ */
+QRadioButton* 
+WuQDataEntryDialog::addRadioButton(const QString& text,
+                                   const bool defaultValue)
+{
+   //
+   // Create radio button
+   //
+   QRadioButton* rb = new QRadioButton(text);
+   rb->setChecked(defaultValue);
+
+   //
+   // Add to radio button group
+   //
+   const int buttNum = radioButtonGroup->buttons().count();
+   radioButtonGroup->addButton(rb, buttNum);
+   
+   //
+   // Keep pointer to widget
+   //
+   widgets.push_back(rb);
+   
+   //
+   // add widget to both columns of layout
+   //
+   const int rowNumber = widgetGridLayout->rowCount();
+   widgetGridLayout->addWidget(rb, rowNumber, 0, 1, 2, Qt::AlignLeft);
+   
+   return rb;
+}                                   
+                             
+/**
+ * add a combo box.
+ */
+QComboBox* 
+WuQDataEntryDialog::addComboBox(const QString& labelText,
+                                const QStringList& comboBoxItems,
+                                const QList<QVariant>* comboBoxItemsUserData)
+{
+   //
+   // Create combo box
+   //
+   QComboBox* comboBox = new QComboBox;
+   for (int i = 0; i < comboBoxItems.size(); i++) {
+      QVariant userData;
+      if (comboBoxItemsUserData != NULL) {
+         if (i < comboBoxItemsUserData->size()) {
+            userData = (*comboBoxItemsUserData).at(i);
+         }
+      }
+      comboBox->addItem(comboBoxItems.at(i), 
+                        userData);
+   }
+   
+   //
+   // Add to dialog
+   //
+   addWidget(labelText, comboBox);
+   
+   return comboBox;
+}
+                       
 /**
  * add line edit.
  */
@@ -134,16 +317,9 @@ WuQDataEntryDialog::addLineEditWidget(const QString& labelText,
    le->setText(defaultText);
 
    //
-   // Keep pointer to widget
+   // Add to dialog
    //
-   widgets.push_back(le);
-   
-   //
-   // add widget to layout
-   //
-   const int rowNumber = widgetGridLayout->rowCount();
-   widgetGridLayout->addWidget(new QLabel(labelText), rowNumber, 0);
-   widgetGridLayout->addWidget(le, rowNumber, 1);
+   addWidget(labelText, le);
    
    return le;
 }
@@ -160,18 +336,112 @@ WuQDataEntryDialog::addListWidget(const QString& labelText,
    //
    QListWidget* lw = new QListWidget;
    lw->addItems(listBoxItems);
+   if (listBoxItems.count() > 0) {
+      lw->setCurrentRow(0);
+   }
    
    //
-   // Keep pointer to widget
+   // Add to dialog
    //
-   widgets.push_back(lw);
-   
-   //
-   // add widget to layout
-   //
-   const int rowNumber = widgetGridLayout->rowCount();
-   widgetGridLayout->addWidget(new QLabel(labelText), rowNumber, 0);
-   widgetGridLayout->addWidget(lw, rowNumber, 1);
-   
+   addWidget(labelText, lw);
+      
    return lw;
 }
+
+/**
+ * add spin box.
+ */
+QSpinBox* 
+WuQDataEntryDialog::addSpinBox(const QString& labelText,
+                               const int defaultValue,
+                               const int minimumValue,
+                               const int maximumValue,
+                               const int singleStep)
+{
+   //
+   // Create spin box
+   //
+   QSpinBox* sb = new QSpinBox;
+   sb->setMinimum(minimumValue);
+   sb->setMaximum(maximumValue);
+   sb->setSingleStep(singleStep);
+   sb->setValue(defaultValue);
+   
+   //
+   // Add to dialog
+   //
+   addWidget(labelText, sb);
+   
+   return sb;
+}                            
+
+/**
+ * add double spin box.
+ */
+QDoubleSpinBox* 
+WuQDataEntryDialog::addDoubleSpinBox(const QString& labelText,
+                                     const float defaultValue,
+                                     const float minimumValue,
+                                     const float maximumValue,
+                                     const float singleStep,
+                                     const int numberOfDecimals)
+{
+   //
+   // Create spin box
+   //
+   QDoubleSpinBox* sb = new QDoubleSpinBox;
+   sb->setMinimum(minimumValue);
+   sb->setMaximum(maximumValue);
+   sb->setSingleStep(singleStep);
+   sb->setValue(defaultValue);
+   sb->setDecimals(numberOfDecimals);
+   
+   //
+   // Add to dialog
+   //
+   addWidget(labelText, sb);
+   
+   return sb;
+}                                     
+
+/**
+ * add a text edit.
+ */
+QTextEdit* 
+WuQDataEntryDialog::addTextEdit(const QString& labelText,
+                                const QString& defaultText,
+                                const bool readOnlyFlag)                       
+{
+   //
+   // Create text edit
+   //
+   QTextEdit* te = new QTextEdit;
+   te->setReadOnly(readOnlyFlag);
+   te->setPlainText(defaultText);
+   
+   //
+   // add to dialog
+   //
+   addWidget(labelText, te);
+   
+   return te;
+}
+
+/**
+ * set the OK button text.
+ */
+void 
+WuQDataEntryDialog::setOkButtonText(const QString& s)
+{
+   buttonBox->button(QDialogButtonBox::Ok)->setText(s);
+}
+
+/**
+ * set the Cancel button text.
+ */
+void 
+WuQDataEntryDialog::setCancelButtonText(const QString& s)
+{
+   buttonBox->button(QDialogButtonBox::Cancel)->setText(s);
+}
+      

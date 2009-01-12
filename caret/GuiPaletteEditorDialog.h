@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class Palette;
 
@@ -41,7 +41,7 @@ class QSignalMapper;
 class QDoubleSpinBox;
 
 /// class for dialog used to edit palette files
-class GuiPaletteEditorDialog : public QtDialog {
+class GuiPaletteEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:

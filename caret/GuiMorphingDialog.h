@@ -26,7 +26,7 @@
 #ifndef __GUI_MORPHING_DIALOG_H__
 #define __GUI_MORPHING_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "BrainModelSurfaceMorphing.h"
 
@@ -36,7 +36,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 
 /// Dialog for morphing
-class GuiMorphingDialog : public QtDialog {
+class GuiMorphingDialog : public WuQDialog {
    Q_OBJECT
    
    public:

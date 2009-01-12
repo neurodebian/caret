@@ -62,6 +62,13 @@ class WuQWidgetGroup : public QObject {
       // make the group's widgets hidden
       void setHidden(bool hidden);
       
+      // make all of the widgets in the group the same size as size hint
+      // of largest widget
+      void resizeAllToLargestSizeHint();
+      
+      // set status of all checkboxes
+      void setAllCheckBoxesChecked(const bool b);
+      
    protected:
       /// keeps track of the widgets
       QVector<QWidget*> widgets;

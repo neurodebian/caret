@@ -494,10 +494,10 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
 
    //
    // Index of surface
-   const int modelIndex = bms->getBrainModelIndex();
-   if (modelIndex < 0) {
-      throw BrainModelAlgorithmException("Surface has invalid brain model index.");
-   }
+   //const int modelIndex = bms->getBrainModelIndex();
+   //if (modelIndex < 0) {
+   //   throw BrainModelAlgorithmException("Surface has invalid brain model index.");
+   //}
    
    //
    // Get the topology helper with node info sorted
@@ -518,7 +518,6 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
       // Is node potentially in a cluster
       //
       if (surfaceROI->getNodeSelected(i)) {
-      //if (bsnc->getNodeColorSource(modelIndex, i) == colorSource) {
          //
          // Flag as inside the cluster
          //
@@ -534,7 +533,6 @@ BrainModelSurfaceClusterToBorderConverter::executeNew() throw (BrainModelAlgorit
             // Is it on the boundary of a cluster
             //
             if (surfaceROI->getNodeSelected(neighbors[j]) == false) {
-            //if (bsnc->getNodeColorSource(modelIndex, neighbors[j]) != colorSource) {
                nodeStatus[i] = STATUS_BOUNDARY;
                break;
             }

@@ -146,7 +146,7 @@ PreferencesFile::clear()
    randomSeedOverrideFlag = false;
    randomSeedOverrideValue = 1;
    
-   preferredVolumeWriteType = VolumeFile::FILE_READ_WRITE_TYPE_AFNI;
+   preferredVolumeWriteType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
    
    caretTipIndex = 0;
    caretTipsEnabled = false;
@@ -361,6 +361,19 @@ PreferencesFile::getRecentDataFileDirectories(std::vector<QString>& dirs) const
 {
    dirs = recentDataFileDirectories;
 }      
+
+/**
+ * get the recent data file directories.
+ */
+QStringList 
+PreferencesFile::getRecentDataFileDirectories() const
+{
+   QStringList sl;
+   for (unsigned int i = 0; i < recentDataFileDirectories.size(); i++) {
+      sl << recentDataFileDirectories[i];
+   }
+   return sl;
+}
 
 /**
  * add to recent copied spec files.
@@ -938,6 +951,9 @@ PreferencesFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream&
             else if (value == "NIFTI") {
                preferredVolumeWriteType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI;
             }
+            else if (value == "NIFTI_GZIP") {
+               preferredVolumeWriteType = VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP;
+            }
             else if (value == "SPM") {
                preferredVolumeWriteType = VolumeFile::FILE_READ_WRITE_TYPE_SPM_OR_MEDX;
             }
@@ -1166,6 +1182,9 @@ PreferencesFile::writeFileData(QTextStream& stream, QDataStream&,
          break;
       case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI:
          volType = "NIFTI";
+         break;
+      case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP:
+         volType = "NIFTI_GZIP";
          break;
       case VolumeFile::FILE_READ_WRITE_TYPE_SPM_OR_MEDX:
          volType = "SPM";

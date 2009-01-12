@@ -804,8 +804,10 @@ class DeformationMapFile  : public AbstractFile{
       void swapSourceAndTargetFiles();
 };
 
-#ifdef DEFORMATION_MAP_FILE_DEFINE
 
+#endif // __DEFORMATION_MAP_FILE__CLASS_H__
+
+#ifdef DEFORMATION_MAP_FILE_DEFINE
 const QString DeformationMapFile::deformMapFileVersion = "deform-map-file-version";
 
 const QString DeformationMapFile::deformedFileNamePrefixTag = "deformed-file-name-prefix";
@@ -856,7 +858,4 @@ const QString DeformationMapFile::outputSpecFileTag = "output-spec-file";
 const QString DeformationMapFile::startOfDataTag = "DATA-START";
 
 const QString DeformationMapFile::inverseDeformationFlagTag = "inverse-deformation";
-
 #endif  // DEFORMATION_MAP_FILE_DEFINE
-
-#endif // __DEFORMATION_MAP_FILE__CLASS_H__

@@ -38,6 +38,7 @@ class FociProjectionFile;
 class BrainModelSurfacePointProjector;
 class BrainSet;
 class MapFmriAtlasSpecFileInfo;
+class StudyMetaDataFile;
 
 /// This class is used to project a FocusFile to a BrainModelSurface and store the 
 /// results in a cell projection file.
@@ -46,18 +47,30 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       /// Constructor
       FociFileToPalsProjector(BrainSet* brainSetIn,
                               FociProjectionFile* fociProjectionFileIn,
+                              const StudyMetaDataFile* studyMetaDataFileIn,
                               const int firstFocusIndexIn,
+                              const int lastFocusIndexIn,
                               const float projectOntoSurfaceAboveDistanceIn,
-                              const bool projectOntoSurfaceFlagIn);
+                              const bool projectOntoSurfaceFlagIn,
+                              const bool projectToCerebellumFlagIn,
+                              const float cerebralCutoffIn,
+                              const float cerebellumCutoffIn);
                           
       /// Destructor
       ~FociFileToPalsProjector();
       
       /// project the foci
       void execute() throw (BrainModelAlgorithmException);
-              
+        
+      /// default cutoff for distance to cerebral cortex
+      static float getDefaultCerebralCutoffDistance() { return 2.0; }
+      
+      /// default cutoff for distance to cerebellum
+      static float getDefaultCerebellumCutoffDistance() { return 4.0; }
+      
       /// set the index of the first focus to project
-      void setFirstFocusIndex(const int firstFocusIndexIn);
+      void setFirstFocusIndex(const int firstFocusIndexIn,
+                              const int lastFocusIndexIn);
       
    protected:
       //
@@ -104,10 +117,11 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
             
       };
       
-      /// project a single cell 
+      // project a single cell 
       void projectFocus(CellProjection& cp,
                         BrainModelSurface* bms,
-                        BrainModelSurfacePointProjector* pointProjector);
+                        BrainModelSurfacePointProjector* pointProjector,
+                        const BrainModelSurface* searchSurface);
 
       // convert space names to identical spaces
       static void spaceNameConvert(QString& spaceName);
@@ -115,20 +129,47 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       // load the needed point projectors
       void loadNeededPointProjectors(const std::vector<PointProjector>& projectorsNeeded) throw (BrainModelAlgorithmException);
 
+      // find the surface for the specified space and structure
+      BrainModelSurface* findSearchSurface(const QString& spaceName,
+                                           const Structure::STRUCTURE_TYPE structure);
+                                           
+      // get distance of focus from a surface
+      float getDistanceToSurface(const CellProjection* cp,
+                                 const PointProjector* pp) const;
+                                 
+      // get point projector for space and structure
+      PointProjector* getPointProjector(const QString& spaceName,
+                                        const Structure::STRUCTURE_TYPE structure);
+                                              
       // spaces currently loaded
       std::vector<PointProjector*> pointProjectors;
       
       // the file that is to be projected
       FociProjectionFile* fociProjectionFile;
       
+      // the study metadata file
+      const StudyMetaDataFile* studyMetaDataFile;
+      
       // the first focus that is to be projected
       int firstFocusIndex;
       
+      // the last focus that is to be projected (if -1 do all)
+      int lastFocusIndex;
+      
       // project onto surface distance
-      float projectOntoSurfaceAboveDistance;
+      const float projectOntoSurfaceAboveDistance;
       
       // project onto surface flag
-      bool projectOntoSurfaceFlag;
+      const bool projectOntoSurfaceFlag;
+      
+      /// project to cerebellum flag
+      bool projectToCerebellumFlag;
+                                    
+      /// cerebral cortext cutoff
+      float cerebralCutoff;
+      
+      /// cerebellum cutoff
+      float cerebellumCutoff;
       
       /// atlases available for mapping foci
       std::vector<MapFmriAtlasSpecFileInfo> availableAtlases;

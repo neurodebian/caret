@@ -47,9 +47,10 @@ QtMultipleInputDialog::QtMultipleInputDialog(QWidget* parent,
                                              const std::vector<QString>& rowValues,
                                              const bool enableCancelButton,
                                              const bool modalIn,
-                                             Qt::WFlags f)
-   : QtDialog(parent, modalIn, f)
+                                             Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalIn);
    setWindowTitle(title);
 
    QVBoxLayout* layout = new QVBoxLayout;

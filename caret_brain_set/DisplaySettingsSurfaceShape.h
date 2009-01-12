@@ -30,11 +30,11 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 /// DisplaySettingsSurfaceShape is a class that maintains parameters for controlling
 /// the display of surface shape data files.
-class DisplaySettingsSurfaceShape : public DisplaySettings {
+class DisplaySettingsSurfaceShape : public DisplaySettingsNodeAttributeFile {
    public:
       /// color map for display
       enum SURFACE_SHAPE_COLOR_MAP {
@@ -55,13 +55,6 @@ class DisplaySettingsSurfaceShape : public DisplaySettings {
       /// Update any selections due to changes in loaded surface shape file
       void update();
       
-      /// get column selected for display
-      int getSelectedDisplayColumn(const int model) const;
-      
-      /// set column for display
-      void setSelectedDisplayColumn(const int model,
-                                    const int sdc);
-     
       /// get the color map for display
       SURFACE_SHAPE_COLOR_MAP getColorMap() const { return colorMap; }
       
@@ -98,27 +91,17 @@ class DisplaySettingsSurfaceShape : public DisplaySettings {
       /// set interpolate palette colors flag
       void setInterpolatePaletteColors(const int ic) { interpolatePaletteColors = ic; }
       
-      /// get apply to left and right structures flag
-      bool getApplySelectionToLeftAndRightStructuresFlag() const 
-             { return applySelectionToLeftAndRightStructuresFlag; }
-      
-      /// set apply to left and right structures flag
-      void setApplySelectionToLeftAndRightStructuresFlag(const bool b) 
-             { applySelectionToLeftAndRightStructuresFlag = b; }
-      
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
-                       
-      /// for node attribute files - all column selections for each surface are the same
-      virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
       
+      // get the columns for palette and color mapping (negative if invalid)
+      int getShapeColumnForPaletteAndColorMapping() const;
+                                                     
    private:
-      /// selected column for display
-      std::vector<int> displayColumn;
-      
       /// color map for display
       SURFACE_SHAPE_COLOR_MAP colorMap;
    
@@ -136,9 +119,6 @@ class DisplaySettingsSurfaceShape : public DisplaySettings {
       
       /// selected palette index
       int paletteIndex;
-      
-      /// apply coloring with corresponding structures
-      bool applySelectionToLeftAndRightStructuresFlag;
 };
 
 #endif

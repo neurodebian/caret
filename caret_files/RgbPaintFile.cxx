@@ -31,6 +31,7 @@
 
 #include "DeformationMapFile.h"
 #include "FileUtilities.h"
+#include "MniObjSurfaceFile.h"
 #include "RgbPaintFile.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
@@ -703,6 +704,14 @@ RgbPaintFile::importFromSuma(const QString& name) throw (FileException)
    }
 }
 
+/**
+ * get the coordinates from a MNI OBJ surface file.
+ */
+void 
+RgbPaintFile::importFromMniObjSurfaceFile(const MniObjSurfaceFile& /*mni*/) throw (FileException)
+{
+}
+      
 /** 
  * Import colors from a vtk surface file
  */

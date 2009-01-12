@@ -1,3 +1,7 @@
+
+#ifndef __GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__
+#define __GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__
+
 /*LICENSE_START*/
 /*
  *  Copyright 1995-2002 Washington University School of Medicine
@@ -23,232 +27,253 @@
  */
 /*LICENSE_END*/
 
-
-#ifndef __VE_GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__
-#define __VE_GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__
-
-#include <QString>
 #include <vector>
 
-#include "QtDialog.h"
-
-#include "BrainModelSurfaceROINodeSelection.h"
+#include "WuQWizard.h"
 
 class BrainModelSurface;
+class CoordinateFile;
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
-class GuiPaintColumnNamesComboBox;
-//class GuiTopologyFileComboBox;
-class GiftiNodeDataFile;
-class NodeAttributeFile;
+class GuiSurfaceROIOperationPage;
+class GuiSurfaceROINodeSelectionPage;
+class GuiSurfaceROIReportPage;
+class GuiSurfaceROISurfaceAndTopologySelectionPage;
+class GuiTopologyFileComboBox;
+class MetricFile;
 class QCheckBox;
 class QComboBox;
+class QDoubleSpinBox;
 class QLabel;
 class QLineEdit;
-class QRadioButton;
 class QSpinBox;
+class QRadioButton;
 class QStackedWidget;
 class QTextEdit;
-class QDoubleSpinBox;
-class QTabWidget;
-class QVBoxLayout;
-class TopologyFile;
 
-/// Dialog for performing surface region of interest queries 
-class GuiSurfaceRegionOfInterestDialog : public QtDialog {
+/// wizard dialog for surface region of interest operations
+class GuiSurfaceRegionOfInterestDialog: public WuQWizard {
    Q_OBJECT
    
    public:
-      /// Constructor
+      // constructor
       GuiSurfaceRegionOfInterestDialog(QWidget* parent);
       
-      /// Destructor
+      // destructor
       ~GuiSurfaceRegionOfInterestDialog();
       
-      /// get the query paint column
-      int getQueryPaintColumn() const;
-      
-      /// update the dialog (typically due to file changes)
+      // update the dialog (typically due to file changes)
       void updateDialog();
       
-      /// set border name for query
+      // set border name for query
       void setBorderNameForQuery(const QString& borderName);
       
-      /// set paint index for query
+      // set paint index for query
       void setPaintIndexForQuery(const int paintIndex);
       
-      /// set metric node for query
+      // set metric node for query
       void setMetricNodeForQuery(const int metricNodeForQueryIn);
       
-      /// set shape node for query
+      // set shape node for query
       void setShapeNodeForQuery(const int shapeNodeForQueryIn);
       
-      /// set node for geodesic query
+      // set node for geodesic query
       void setNodeForGeodesicQuery(const int nodeNumber);
       
-      /// set open border start node
-      void setCreateBorderOpenStartNode(const int nodeNumber);
+      // set linear border start node
+      void setCreateLinearBorderStartNode(const int nodeNumber);
       
-      /// set open border end node
-      void setCreateBorderOpenEndNode(const int nodeNumber);
+      // set linear border end node
+      void setCreateLinearBorderEndNode(const int nodeNumber);
+
+      // get the query paint column
+      int getQueryPaintColumn() const;
+      
+      // get the operation coordinate file
+      CoordinateFile* getOperationCoordinateFile();
+      
+      // get a COPY of operation surface with operation topology (user must delete object)
+      BrainModelSurface* getCopyOfOperationSurface();
       
    public slots:
       // show the dialog
       void show();
       
-   private slots:
-      /// called when dialog closed
-      void close();
+      // called when dialog closed
+      void reject();
       
-      /// called when help button is pressed
-      void slotHelpButton();
+   protected:
+      // page identifiers
+      enum PAGE_ID {
+         // operation surface page identifier
+         PAGE_ID_OPERATION_SURFACE_AND_TOPOLOGY,
+         // node selection page identifier
+         PAGE_ID_NODE_SELECTION,
+         // operation page
+         PAGE_ID_OPERATION,
+         // report page
+         PAGE_ID_REPORT
+      };
       
-      /// Called to assign paint to nodes
-      void slotAssignPaintToNodes();
+      // node selection page
+      GuiSurfaceROINodeSelectionPage* roiNodeSelectionPage;
       
-      /// called when an assign paint column name column selected
-      void slotAssignPaintColumn(int item);
+      // surface selection page
+      GuiSurfaceROISurfaceAndTopologySelectionPage* surfaceSelectionPage;
       
-      /// called when create volume from displayed query nodes push button pressed
-      void slotCreateVolumeFromQueryNodesButton();
+      // operation page
+      GuiSurfaceROIOperationPage* operationPage;
       
-      /// called when select nodes button pressed
-      void slotSelectNodesButton();
-      
-      /// call when invert nodes button pressed
-      void slotInvertNodeSelectionPushButton();
-      
-      /// called when deselect nodes button pressed
-      void slotDeselectNodesButton();
-      
-      /// called when create report button pressed
-      void slotCreateReportButton();
-      
-      /// called when create paint subregion report button pressed
-      void slotCreatePaintReportButton();
-      
-      /// called when disconnect nodes button is pressed
-      void slotDisconnectNodes();
-      
-      ///  called when border name from list push button pressed
-      void slotBorderNameFromListPushButton();
-      
-      ///  called when border name from mouse push button pressed
-      void slotBorderNameFromMousePushButton();
-      
-      /// called when paint name from list push button pressed
-      void slotPaintNameFromListPushButton();
-      
-      /// called when paint name from mouse push button pressed
-      void slotPaintNameFromMousePushButton();
-      
-      /// called when report save push button pressed
-      void slotSavePushButton();
-      
-      /// called when report clear push button pressed
-      void slotClearPushButton();
-      
-      ///  Called to change the mouse mode to select the node for the geodesic query.
-      void slotGeodesicNodePushButton();
+      // report page
+      GuiSurfaceROIReportPage* reportPage;
+};
 
-      /// called when geodesic push button pressed
-      void slotGeodesicPushButton();
+/// surface region of interest report page
+class GuiSurfaceROIReportPage : public QWizardPage {
+   Q_OBJECT
+   
+   public:
+      // constructor
+      GuiSurfaceROIReportPage(GuiSurfaceRegionOfInterestDialog* roiDialogIn);
+   
+      // destructor
+      ~GuiSurfaceROIReportPage();
       
-      /// called to default geodesic column names
-      void slotUpdateGeodesicColumnNames();
+      // clean up the page
+      void cleanupPage();
       
-      /// called when a metric mode is selected
-      void slotMetricModeSelection(int metricMode);
+      // initialize the page
+      void initializePage();
       
-      /// called when an operation mode is selected
-      void slotOperationMode(int item);
+      // validate the page
+      bool validatePage();
       
-      /// called when one of the query mode radio buttons is selected
-      void slotSelectionMode(int);
+      // is page complete
+      bool isComplete();
+   
+      // update the page
+      void updatePage();
       
-      /// called when show selected nodes toggle is changed
-      void slotShowSelectedNodes(bool on);
+      // set the report page's text edit
+      void setReportText(const QString& S);
       
-      /// update the operation topology label
-      void slotSurfaceSelection();
+   protected slots:
+      // called when save report to text file button pressed
+      void slotSaveReportToTextFile();
       
-      /// called when topology is changed
-      //void slotTopologySelection();
+      // called when clear report button pressed
+      void slotClearReportTextEdit();
       
-      /// called to display smoothing dialog
-      void slotSmoothNodes();
+   protected:
+      /// parent ROI dialog
+      GuiSurfaceRegionOfInterestDialog* roiDialog;
       
-      /// Called to create shape correlation report.
-      void slotCorrelationShapeReport();
+      // the report text edit
+      QTextEdit* reportTextEdit;
+      
+};
 
-      /// Called when metric all on pushbutton is pressed
-      void slotMetricAllOnPushButton();
+/// surface region of interest operation page
+class GuiSurfaceROIOperationPage : public QWizardPage {
+   Q_OBJECT
+   
+   public:
+      // constructor
+      GuiSurfaceROIOperationPage(GuiSurfaceRegionOfInterestDialog* roiDialogIn,
+                                 GuiSurfaceROIReportPage* reportPageIn);
+   
+      // destructor
+      ~GuiSurfaceROIOperationPage();
       
-      /// Called when metric all off pushbutton is pressed
-      void slotMetricAllOffPushButton();
+      // clean up the page
+      void cleanupPage();
       
-      /// Called when paint all on pushbutton is pressed
-      void slotPaintAllOnPushButton();
+      // initialize the page
+      void initializePage();
       
-      /// Called when paint all off pushbutton is pressed
-      void slotPaintAllOffPushButton();
+      // validate the page
+      bool validatePage();
       
-      /// Called when shape all on pushbutton is pressed
-      void slotShapeAllOnPushButton();
+      // is page complete
+      bool isComplete();
+   
+      // update the page
+      void updatePage();
       
-      /// Called when shape all off pushbutton is pressed
-      void slotShapeAllOffPushButton();
+   protected slots:
+      // called when an operation is selected
+      void slotOperationSelectionComboBox(int);
       
-      /// Called when a shape mode is selected.
-      void slotShapeModeSelection(int shapeMode);
-
-      /// Called to assign metrics for a node
-      void slotAssignMetricToNodes();
+      // called to assign metric
+      void slotAssignMetricPushButton();
       
-      /// Called to assign surface shape for a node
-      void slotAssignSurfaceShapeToNodes();
+      // called to assign paint
+      void slotAssignPaintPushButton();
       
-      /// Called to create the prob atlas report
-      void slotCreateProbAtlasReport();
-      
-      /// Called to create shape cluster report
-      void slotShapeClusterReport();
-      
-      /// Called to set create borders from clusters name
-      void slotBorderClusterNamePushButton();
-      
-      /// Called run create borders from clusters
-      void slotCreateBordersFromClusters();
+      // called to assign shape
+      void slotAssignShapePushButton();
       
       /// called to run compute integrated folding index
       void slotComputeIntegratedFoldingIndex();
       
-      /// called to create a border from the ROI
-      void slotCreateBorderFromROIPushButton();
+      /// called to run the folding measurements
+      void slotFoldingMeasurements();
       
-      /// called to set name of border for border from ROI
-      void slotCreateBorderFromROINamePushButton();
+      /// Called to set create borders from clusters name.
+      void slotArealBorderClusterNamePushButton();
+
+      /// Called run create borders from clusters.
+      void slotCreateArealBordersFromClusters();
+
+      /// Called to set linear border name
+      void slotLinearCreateBorderFromROINamePushButton();
       
-      /// called to select start node for border from ROI
-      void slotCreateBorderFromROIStartNodePushButton();
+      /// called to set linear border start node
+      void slotCreateLinearBorderFromROIStartNodePushButton();
       
-      /// called to select start node for border from ROI
-      void slotCreateBorderFromROIEndNodePushButton();
+      /// called to set linear border end node
+      void slotCreateLinearBorderFromROIEndNodePushButton();
       
-      /// called when load ROI button is pressed
-      void slotLoadROIPushButton();
+      /// called to create the linear border
+      void slotCreateLinearBorderFromROIPushButton();
+
+      /// called to create a volume ROI from ROI nodes
+      void slotCreateVolumeFromQueryNodesButton();
       
-      /// called when save ROI button is pressed
-      void slotSaveROIPushButton();
+      /// called to disconnect node in ROI
+      void slotDisconnectNodes();
       
-      /// called when dilate button is pressed
-      void slotDilatePushButton();
+      /// called to update geodesic column names
+      void slotGeodesicUpdateColumnNames();
       
-      /// called when erode button is pressed
-      void slotErodePushButton();
+      /// called when geodesic choose node with mouse button pressed
+      void slotGeodesicNodePushButton();
       
-   private:
-   
+      /// called to create geodesic
+      void slotGeodesicPushButton();
+      
+      /// called to generate prob atlas overlap report
+      void slotCreateProbAtlasOverlapReport();
+      
+      /// called to smooth nodes
+      void slotSmoothNodesPushButtonPressed();
+      
+      /// called to create paint region report
+      void slotCreatePaintReportButton();
+      
+      /// called to create statistical report
+      void slotCreateStatisticalReportButton();
+      
+      /// called to create shape correleation report
+      void slotCorrelationShapeReportPushButton();
+      
+      /// called to create shape cluster report
+      void slotShapeClusterReportPushButton();
+      
+      /// called to create metric cluster report
+      void slotMetricClusterReportPushButton();
+      
+   protected:
       /// operation mode
       enum OPERATION_MODE {
          OPERATION_MODE_ASSIGN_METRIC,
@@ -259,466 +284,527 @@ class GuiSurfaceRegionOfInterestDialog : public QtDialog {
          OPERATION_MODE_CREATE_BORDERS_FROM_ROI,
          OPERATION_MODE_CREATE_VOLUME_ROI,
          OPERATION_MODE_DISCONNECT_NODES,
+         OPERATION_MODE_FOLDING_MEASUREMENTS,
          OPERATION_MODE_GEODESIC,
+         OPERATION_MODE_METRIC_CLUSTER_ANALYSIS,
          OPERATION_MODE_PROB_ATLAS_OVERLAP,
          OPERATION_MODE_SMOOTH_NODES,
-         OPERATION_MODE_STATISTICAL_REPORT,
          OPERATION_MODE_STATISTICAL_PAINT_REPORT,
+         OPERATION_MODE_STATISTICAL_REPORT,
          OPERATION_MODE_SHAPE_CORRELATION,
          OPERATION_MODE_SHAPE_CLUSTER_ANALYSIS
       };
       
-      /// selction mode (type of attribute used to select)
-      enum SELECTION_MODE {
-         SELECTION_MODE_ENTIRE_SURFACE,
-         SELECTION_MODE_NODES_WITH_PAINT,
-         SELECTION_MODE_NODES_WITHIN_BORDER,
-         SELECTION_MODE_NODES_WITHIN_LATLON,
-         SELECTION_MODE_NODES_WITH_METRIC,
-         SELECTION_MODE_NODES_WITH_SHAPE,
-         SELECTION_MODE_NODES_WITH_CROSSOVERS,
-         SELECTION_MODE_NONE
-      };
+      // create the assign metric page
+      QWidget* createAssignMetricPage();
       
-      /// get the query mode
-      SELECTION_MODE selectionMode;
+      // create the assign paint page
+      QWidget* createAssignPaintPage();
       
-      /// get the selection logic
-      BrainModelSurfaceROINodeSelection::SELECTION_LOGIC
-                                                     getSelectionLogic() const;
-      /// create the node selection section
-      QWidget* createNodeSelectionSection();
+      // create the assign shape page
+      QWidget* createAssignShapePage();
+      
+      // create the compute integrated folding index page
+      QWidget* createComputeIntegratedFoldingIndexPage();
+      
+      // create the folding measurements page
+      QWidget* createFoldingMeasurementsPage();
+      
+      // create the create borders from clusters page
+      QWidget* createCreateArealBordersPage();
+      
+      // create the create linear borders page
+      QWidget* createLinearBordersPage();
+      
+      // create the create volume roi page
+      QWidget* createCreateVolumeROIPage();
+      
+      // create the disconnect nodes page
+      QWidget* createDisconnectNodesPage();
+      
+      // create the geodesic page
+      QWidget* createGeodesicPage();
+      
+      // create the metric cluster analysis page
+      QWidget* createMetricClusterAnalysisPage();
+      
+      // create the probabilistic atlas overlap page
+      QWidget* createProbAtlasOverlapPage();
+      
+      // create the smoothing page
+      QWidget* createSmoothingPage();
+      
+      // create the statistical paint report page
+      QWidget* createPaintReportPage();
+      
+      // create the statistical report page
+      QWidget* createStatisticalReportPage();
+      
+      // create the shape correlation page
+      QWidget* createShapeCorrelationPage();
+      
+      // create the shape cluster analysis page
+      QWidget* createShapeClusterAnalysisPage();
+      
+      // run a metric or shape cluster report
+      void runMetricShapeClusterAnalysis(MetricFile* metricShapeFile,
+                                         MetricFile* distortionMetricFile,
+                                         const int distortionMetricColumn,
+                                         const std::vector<bool>& metricShapeColumnsSelected,
+                                         const float thresholdValue,
+                                   const bool separateReportWithSemicolonsFlag);
+                                         
+      /// parent ROI dialog
+      GuiSurfaceRegionOfInterestDialog* roiDialog;
+     
+      /// the report page
+      GuiSurfaceROIReportPage* reportPage;
+      
+      /// operation selection combo box
+      QComboBox* operationSelectionComboBox;
+      
+      /// stacked widget for operations
+      QStackedWidget* operationsStackedWidget;
 
-      /// create the node selection with paint section
-      void createNodeSelectionPaint();
+      /// the assign metric page
+      QWidget* assignMetricPage;
       
-      /// create the node selection with border section
-      void createNodeSelectionBorder();
+      /// the assign paint page
+      QWidget* assignPaintPage;
       
-      /// create the node selection with latlon
-      void createNodeSelectionLatLon();
+      /// the assign shape page
+      QWidget* assignShapePage;
       
-      /// create the node selection with metric
-      void createNodeSelectionMetric();
+      /// the compute integrated folding index page
+      QWidget* computeIntegratedFoldingIndexPage;
       
-      /// create the node selection with shape
-      void createNodeSelectionShape();
+      /// the create borders from clusters page
+      QWidget* createArealBordersPage;
       
-      /// create the assign metric operation section
-      void createOperationAssignMetric();
+      /// the folding measurements page
+      QWidget* foldingMeasurementsPage;
       
-      /// create the assign paint operation section
-      void createOperationAssignPaint();
+      /// the create linear borders page
+      QWidget* linearBordersPage;
       
-      /// create the prob atlas analysis operation section
-      void createOperationProbAtlas();
+      /// the create volume roi page
+      QWidget* createVolumeROIPage;
       
-      /// create the assign surface shape operation section
-      void createOperationAssignSurfaceShape();
+      /// the disconnect nodes page
+      QWidget* disconnectNodesPage;
       
-      /// create the borders around clusters section
-      void createOperationsBordersAroundClusters();
+      /// the geodesic page
+      QWidget* geodesicPage;
       
-      /// create the border from ROI
-      void createOperationsBordersFromROI();
+      /// the metric cluster analysis page
+      QWidget* metricClusterAnalysisPage;
       
-      /// create the create volume ROI operation section
-      void createOperationCreateVolumeROI();
+      /// the probabilistic atlas overlap page
+      QWidget* probAtlasOverlapPage;
       
-      /// create the disconnect nodes operation section
-      void createOperationDisconnectNodes();
+      /// the smoothing page
+      QWidget* smoothingPage;
       
-      /// create the geodesic operation section
-      void createOperationGeodesicDistance();
+      /// the statistical paint report page
+      QWidget* paintReportPage;
       
-      /// create the integrated folding index operation
-      void createOperationIntegratedFoldingIndex();
+      /// the statistical report page
+      QWidget* statisticalReportPage;
       
-      /// create the statistical report operation section
-      void createOperationStatisticalReport();
+      /// the shape correlation page
+      QWidget* shapeCorrelationPage;
       
-      /// create the statistical report on paint subregion operation section
-      void createOperationStatisticalPaintReport();
+      /// the shape cluster analysis page
+      QWidget* shapeClusterAnalysisPage;
       
-      /// create the smoothnodes operation section
-      void createOperationSmoothNodes();
+      /// assign metric column selection
+      GuiNodeAttributeColumnSelectionComboBox* assignMetricColumnSelectionComboBox;
       
-      /// create the surface shape correlation coefficient section
-      void createShapeCorrelationCoefficientReport();
+      /// assign metric column name line edit
+      QLineEdit* assignMetricColumnNameLineEdit;
       
-      /// create the surface shape cluster section
-      void createShapeClusterReport();
-      
-      /// create the query page
-      void createQuerySelectionPage();
-      
-      /// create the attribute page
-      void createAttributeSelectionPage();
-      
-      /// Create the report header (returns true if no nodes in query)
-      bool createReportHeader(const QString& headerText, 
-                              const bool tabSeparateReportIn,
-                              float& roiAreaOut);
+      /// assign metric value double spin box
+      QDoubleSpinBox* assignMetricValueDoubleSpinBox;
 
-      /// create the report page
-      void createReportPage();
+      /// assign paint column selection
+      GuiNodeAttributeColumnSelectionComboBox* assignPaintColumnSelectionComboBox;
       
-      /// create the report
-      void createReport(const QString& headerText,
-                        const bool tabSeparateFlag,
-                        const bool doConclusion);
+      /// assign paint column name line edit
+      QLineEdit* assignPaintColumnNameLineEdit;
       
-      /// reset the marked nodes and update/clear the report header
-      void resetMarkedNodesAndReportHeader(const bool deselectNodesInROI);
-      
-      /// update a node attribute file's categories
-      void updateNodeAttributeGroupBox(
-                                 QVBoxLayout* layout,
-                                 std::vector<QCheckBox*>& checkBoxes,
-                                 NodeAttributeFile* naf);
-                                 
-      /// update a node attribute file's categories
-      void updateNodeAttributeGroupBox(
-                                 QVBoxLayout* layout,
-                                 std::vector<QCheckBox*>& checkBoxes,
-                                 GiftiNodeDataFile* naf);
-                                 
-      // /// perform ROI
-      //void metricAndSurfaceShapeROI(const bool metricFlag);
-      
-      // /// perform ROI
-      //void paintROI(const BrainModelSurface* bms, const double roiArea);
-      
-      /// select all nodes
-      void selectNodesAll();
-      
-      /// select nodes by border
-      void selectNodesBorder();
-      
-      /// select nodes by lat/lon
-      void selectNodesLatLon();
-      
-      /// select nodes by metric
-      void selectNodesMetric();
-      
-      /// select nodes by shape
-      void selectNodesShape();
-      
-      /// select nodes by paint
-      void selectNodesPaint();
-      
-      /// select nodes by crossovers
-      void selectNodesCrossovers();
-      
-      /// update the number of selected nodes labels
-      void updateNumberOfSelectedNodesLabel();
-      
-      /// query page for how ROI selected
-      QWidget* queryPage;
-      
-      /// attributes page for controlling query output
-      QWidget* attributesPage;
-      
-      /// report page
-      QWidget* reportPage;
-      
-      /// selection mode combo box
-      QComboBox* selectionModeComboBox;
-      
-      /// nodes with crossovers widget
-      QWidget* nodesWithCrossoversWidget;
-      
-      /// entire surface empty widget
-      QWidget* queryEntireSurfaceWidget;
-      
-      /// widget containing nodes within lat/lon items
-      QWidget* nodesWithinLatLonQVBox;
-      
-      /// widget containing nodes with metric items
-      QWidget* nodesWithMetricQVBox;
-      
-      /// widget containing nodes with paint items
-      QWidget* nodesWithPaintQVBox;
-      
-      /// query control widget stack
-      QStackedWidget* queryControlWidgetStack;
-      
-      /// layout for metric
-      QVBoxLayout* metricOutputLayout;
-      
-      /// line edit for lower metric threshold
-      QDoubleSpinBox* metricLowerThresholdDoubleSpinBox;
-      
-      /// line edit for upper metric threshold
-      QDoubleSpinBox* metricUpperThresholdDoubleSpinBox;
-      
-      /// metric all nodes radio button
-      QRadioButton* metricAllNodesRadioButton;
-      
-      /// metric choose nodes with mouse radio button
-      QRadioButton* metricChooseNodesRadioButton;
-      
-      /// metric node number label
-      QLabel* metricNodeNumberLabel;
-      
-      /// check buttons for metric attribute selections
-      std::vector<QCheckBox*> metricCheckBoxes;
-      
-      /// layout for paint output
-      QVBoxLayout* paintOutputLayout;
-      
-      /// check buttons for paint selections
-      std::vector<QCheckBox*> paintCheckBoxes;
-      
-      /// layout for surface shape
-      QVBoxLayout* shapeOutputLayout;
-      
-      /// check buttons for surface shape selections
-      std::vector<QCheckBox*> surfaceShapeCheckBoxes;
-      
-      /// report text editor
-      QTextEdit* reportTextEdit;
-      
-      /// nodes with paint category combo box
-      GuiNodeAttributeColumnSelectionComboBox* paintWithNameCategoryComboBox;
-      
-      /// nodes with paint selected name label
-      QLabel* paintWithNameSelectedLabel;
+      /// assign paint name line edit
+      QLineEdit* assignPaintNameLineEdit;
 
-      /// selected paint index
-      int paintWithNameIndex;
+      /// assign shape column selection
+      GuiNodeAttributeColumnSelectionComboBox* assignShapeColumnSelectionComboBox;
       
-      /// borders widget
-      QWidget* nodesWithinBorderQVBox;
+      /// assign shape column name line edit
+      QLineEdit* assignShapeColumnNameLineEdit;
       
-      /// selected border name label
-      QLabel* borderNameSelectedLabel;
+      /// assign shape value double spin box
+      QDoubleSpinBox* assignShapeValueDoubleSpinBox;
       
-      /// name of the selected border
-      QString selectedBorderName;
+      /// semicolon separet integrated folding index report
+      QCheckBox* semicolonSeparateFoldingIndexReportCheckBox;
       
-      /// lat min double spin box
-      QDoubleSpinBox* latLowerRangeDoubleSpinBox;
+      /// areal border name line edit
+      QLineEdit* clusterArealBorderNameLineEdit;
       
-      /// lat max double spin box
-      QDoubleSpinBox* latUpperRangeDoubleSpinBox;
+      /// areal border auto project check box
+      QCheckBox* clusterArealBorderAutoProjectCheckBox;
       
-      /// lon min double spin box
-      QDoubleSpinBox* lonLowerRangeDoubleSpinBox;
+      /// linear border name line edit
+      QLineEdit* createLinearBorderFromROINameLineEdit;
       
-      /// lon min double spin box
-      QDoubleSpinBox* lonUpperRangeDoubleSpinBox;
+      /// linear border sampling density double spin box
+      QDoubleSpinBox* createLinearBorderFromROISamplingDensityDoubleSpinBox;
       
-      /// if true, indicates tile is in ROI
-      std::vector<bool> tileInROI;
+      /// linear border automatic radio button
+      QRadioButton* createLinearBorderFromROIAutomaticRadioButton;
       
-      /// tile area
-      std::vector<float> tileArea;
+      /// linear border manual radio button
+      QRadioButton* createLinearBorderFromROIManualRadioButton;
       
-      /// combo box for operation surface
-      GuiBrainModelSelectionComboBox* operationSurfaceComboBox;
+      /// linear border start node spin box
+      QSpinBox* createLinearBorderFromROIStartNodeSpinBox;
       
-      /// combo box topology file
-      //GuiTopologyFileComboBox* topologyComboBox;
+      /// linear border end node spin box
+      QSpinBox* createLinearBorderFromROIEndNodeSpinBox;
       
-      /// tab separate check box
-      QCheckBox* tabSeparateReportCheckBox;
-      
-      /// tab separate the report
-      bool tabSeparateReport;
-      
-      /// combo box for selecting border surface
-      GuiBrainModelSelectionComboBox* borderSurfaceComboBox;
-      
-      /// metric node for query
-      int metricNodeForQuery;
-      
-      /// shape node for query
-      int shapeNodeForQuery;
-      
-      /// number of nodes selected label
-      QLabel* numberOfNodesSelectedLabel;
-      
-      /// show selected nodes check box
-      QCheckBox* showSelectedNodesCheckBox;
-      
-      /// select logic combo box
-      QComboBox* selectionLogicComboBox;
-      
-      /// operation combo box
-      QComboBox* operationComboBox;
-      
-      /// operations widget stack
-      QStackedWidget* operationsWidgetStack;
-      
-      /// assign metric operation widget
-      QWidget* operationAssignMetricWidget;
-      
-      /// assign paint operation widget
-      QWidget* operationAssignPaintWidget;
-      
-      /// assign surface shape operation widget
-      QWidget* operationAssignSurfaceShapeWidget;
-      
-      /// create borders around clusters widget
-      QWidget* operationCreateBordersFromClustersWidget;
-      
-      /// create border from ROI widget
-      QWidget* operationCreateBordersFromROIWidget;
-      
-      /// volume ROI operation widget
-      QWidget* operationCreateVolumeRoiWidget;
-      
-      /// disconnect nodes operation widget
-      QWidget* operationDisconnectNodesWidget;
-      
-      /// statistical paint subregion report operation widget
-      QWidget* operationStatisticalPaintReportWidget;
-      
-      /// tabe separate paint report widget
-      QCheckBox* tabSeparatePaintReportCheckBox;
-      
-      /// statistical report operation widget
-      QWidget* operationStatisticalReportWidget;
-      
-      /// smooth nodes operation widget
-      QWidget* operationSmoothNodesWidget;
-      
-      /// shape cluster analysis
-      QWidget* operationShapeClusterWidget;
-      
-      /// geodesic operations widget
-      QWidget* operationGeodesicWidget;
-      
-      /// integrated folding index operations widget
-      QWidget* operationComputeIntegratedFoldingIndexWidget;
-      
-      /// shape correlation coefficient widget
-      QWidget* operationShapeCorrelationWidget;
-      
-      /// report header that describes node selection
-      QString reportHeader;
-      
-      /// assign paint name combo box
-      GuiNodeAttributeColumnSelectionComboBox* paintColumnAssignComboBox;
-      
-      /// assign paint name column name
-      QLineEdit* paintColumnAssignNameLineEdit;
-      
-      /// assign paint name 
-      QLineEdit* paintAssignNameLineEdit;
-      
-      /// geodesic node number spin box
+      /// geodesic node spin box
       QSpinBox* geodesicNodeSpinBox;
       
-      /// shape correlation column combo box
-      GuiNodeAttributeColumnSelectionComboBox* shapeCorrelationColumnComboBox;
-      
-      /// shape correlation tab separate check box
-      QCheckBox* shapeCorrelationTabSeparateCheckBox;
-      
-      /// group box for shape selection items
-      QWidget* nodesWithShapeQVBox;
-      
-      /// shape lower threshold line edit
-      QDoubleSpinBox* shapeLowerThresholdDoubleSpinBox;
-
-      /// shape upper threshold line edit
-      QDoubleSpinBox* shapeUpperThresholdDoubleSpinBox;
-      
-      /// shape radio button
-      QRadioButton* shapeAllNodesRadioButton;
-
-      /// shape radio button
-      QRadioButton* shapeChooseNodesRadioButton;
-
-      /// shape node number label
-      QLabel* shapeNodeNumberLabel;
-      
-      /// metric column assign combo box
-      GuiNodeAttributeColumnSelectionComboBox* metricColumnAssignComboBox;
-      
-      /// metric column name line edit
-      QLineEdit* metricColumnAssignNameLineEdit;
-      
-      /// metric column assign line 
-      QDoubleSpinBox* metricValueDoubleSpinBox;
-      
-      /// surface shape column assign combo box
-      GuiNodeAttributeColumnSelectionComboBox* surfaceShapeColumnAssignComboBox;
-      
-      /// surface shape column name line edit
-      QLineEdit* surfaceShapeColumnAssignNameLineEdit;
-      
-      /// surface shape column assign line 
-      QDoubleSpinBox* surfaceShapeValueDoubleSpinBox;
-      
-      /// geodesic metric file column combo box
+      /// geodesic's metric column selection
       GuiNodeAttributeColumnSelectionComboBox* geodesicMetricColumnComboBox;
       
-      /// geodesic metric column name line edit
+      /// geodesic's metric column name line edit
       QLineEdit* geodesicMetricColumnNameLineEdit;
       
-      /// geodesic distance file column combo box
+      /// geodesic's geodesic column selection
       GuiNodeAttributeColumnSelectionComboBox* geodesicDistanceColumnComboBox;
       
-      /// geodesic distance column name line edit
+      /// geodesic's geodesic column name line edit
       QLineEdit* geodesicDistanceColumnNameLineEdit;
       
-      /// paint region combo box
+      /// prob atlas overlap separate with semicolons check box
+      QCheckBox* probAtlasOverlapSemicolonSeparateCheckBox;
+      
+      /// paint region report's paint column selection combo box
       GuiNodeAttributeColumnSelectionComboBox* paintRegionReportColumnComboBox;
       
-      /// prob atlas operation widget
-      QWidget* operationProbAtlasWidget;
+      /// paint report metric column areal distortion
+      GuiNodeAttributeColumnSelectionComboBox* paintRegionReportDistortionCorrectionMetricColumnComboBox;
       
-      /// prob atlas separate with tab option
-      QCheckBox* probAtlasTabSeparateCheckBox;
+      /// paint region report separate with semicolons
+      QCheckBox* paintReportSeparateWithSemicolonsCheckBox;
       
-      /// the separator character
-      QString separatorCharacter;
+      /// statistical report metric column areal distortion
+      GuiNodeAttributeColumnSelectionComboBox* statisticalReportDistortionCorrectionMetricColumnComboBox;
       
-      /// shape cluster report threshold float spin box
+      /// statistical report separate with semicolons
+      QCheckBox* statisticalReportSeparateWithSemicolonsCheckBox;
+      
+      /// shape correlation combo box
+      GuiNodeAttributeColumnSelectionComboBox* shapeCorrelationColumnComboBox;
+      
+      /// shape correlation report separate with semicolons
+      QCheckBox* shapeCorrelationSeparateWithSemicolonsCheckBox;
+      
+      /// shape cluster metric distortion column combo box
+      GuiNodeAttributeColumnSelectionComboBox* shapeClusterMetricArealDistortionComboBox;
+      
+      /// shape cluster threshold double spin box
       QDoubleSpinBox* shapeClusterThresholdDoubleSpinBox;
       
-      /// check box for shape cluster report separate with tabs
-      QCheckBox* shapeClusterTabSeparateCheckBox;
+      /// shape cluster report separate with semicolons
+      QCheckBox* shapeClusterSeparateWithSemicolonsCheckBox;
       
-      /// line edit for name for border around clusters
-      QLineEdit* clusterBorderNameLineEdit;
+      /// metric cluster metric distortion column combo box
+      GuiNodeAttributeColumnSelectionComboBox* metricClusterMetricArealDistortionComboBox;
       
-      /// auto project borders around clusters
-      QCheckBox* clusterBorderAutoProjectCheckBox;
+      /// metric cluster threshold double spin box
+      QDoubleSpinBox* metricClusterThresholdDoubleSpinBox;
       
-      /// distortion correction for statistical report
-      GuiNodeAttributeColumnSelectionComboBox* distortionCorrectionMetricColumnComboBox;
-
-      /// tab widget for dialog
-      QTabWidget* tabWidget;
+      /// metric cluster report separate with semicolons
+      QCheckBox* metricClusterSeparateWithSemicolonsCheckBox;
       
-      /// name for create border from ROI line edit
-      QLineEdit* createBorderFromROINameLineEdit;
-
-      /// create border automatic radio button
-      QRadioButton* createBorderFromROIAutomaticRadioButton;
-      
-      /// create border choose nodes radio button
-      QRadioButton* createBorderFromROIManualRadioButton;
-      
-      /// create border start node spin box
-      QSpinBox* createBorderFromROIStartNodeSpinBox;
-      
-      /// create border end node spin box
-      QSpinBox* createBorderFromROIEndNodeSpinBox;
-      
-      /// create border from roi node selection widget
-      QWidget* createBorderFromROINodeSelectionWidget;
-      
-      /// create border from roi sampling density
-      QDoubleSpinBox* createBorderFromROISamplingDensityDoubleSpinBox;
-      
-      /// value of show selected nodes when dialog was closed
-      bool showSelectedNodesCheckBoxValueWhenDialogClosed;
+   friend class GuiSurfaceRegionOfInterestDialog;
 };
 
-#endif // __VE_GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__
+/// surface region of interest surface topology selection page
+class GuiSurfaceROISurfaceAndTopologySelectionPage : public QWizardPage {
+   Q_OBJECT
+   
+   public:
+      // constructor
+      GuiSurfaceROISurfaceAndTopologySelectionPage(GuiSurfaceRegionOfInterestDialog* roiDialogIn);
+   
+      // destructor
+      ~GuiSurfaceROISurfaceAndTopologySelectionPage();
+      
+      // clean up the page
+      void cleanupPage();
+      
+      // initialize the page
+      void initializePage();
+      
+      // validate the page
+      bool validatePage();
+      
+      // is page complete
+      bool isComplete();
+   
+      // update the page
+      void updatePage();
+      
+      // get the operation coordinate file
+      CoordinateFile* getOperationCoordinateFile();
+      
+      // get a COPY of operation surface with operation topology (user must delete object)
+      BrainModelSurface* getCopyOfOperationSurface();
+      
+   protected slots:
+      // called when a surface is selected
+      void slotOperationSurfaceSelectionComboBox();
+      
+      // called when topology is selected
+      void slotOperationTopologyComboBox();
+      
+   protected:
+      // parent ROI dialog
+      GuiSurfaceRegionOfInterestDialog* roiDialog;
+     
+      /// operation surface selection control
+      GuiBrainModelSelectionComboBox* operationSurfaceSelectionComboBox;
+     
+      /// operation topology selection control
+      GuiTopologyFileComboBox* operationTopologyComboBox;
+};
 
+/// surface region of interest node selection page
+class GuiSurfaceROINodeSelectionPage : public QWizardPage {
+   Q_OBJECT 
+   
+   public:
+      // constructor
+      GuiSurfaceROINodeSelectionPage(GuiSurfaceRegionOfInterestDialog* roiDialogIn);
+   
+      // destructor
+      ~GuiSurfaceROINodeSelectionPage();
+      
+      // clean up the page
+      void cleanupPage();
+      
+      // initialize the page
+      void initializePage();
+      
+      // validate the page
+      bool validatePage();
+      
+      // is page complete
+      bool isComplete();
+   
+      // update the page
+      void updatePage();
+      
+   protected slots:
+      // called when a selection source is made
+      void slotSelectionSourceComboBox(int);
+      
+      // called when select nodes push button pressed
+      void slotSelectedNodesPushButton();
+      
+      // called when delselect nodes push button pressed
+      void slotDeselectNodesPushButton();
+      
+      // called when invert push button pressed
+      void slotInvertNodesPushButton();
+      
+      // called when load ROI push button pressed
+      void slotLoadROIPushButton();
+      
+      // called when save ROI push button pressed
+      void slotSaveROIPushButton();
+      
+      // called when dilate ROI push button pressed
+      void slotDilateROIPushButton();
+      
+      // called when erode ROI push button pressed
+      void slotErodeROIPushButton();
+      
+      // called when remove islands button pressed
+      void slotRemoveIslands();
+      
+      // called when paint name from list pushbutton pressed
+      void slotSelectPaintNameFromListPushButton();
+      
+      // called when paint select node with mouse pushbutton pressed
+      void slotSelectPaintNameNodeWithMousePushButton();
+      
+      // called when border name from list pushbutton pressed
+      void slotSelectBorderNameFromListPushButton();
+      
+      // called when border select with mouse pushbutton pressed
+      void slotSelectBorderNameWithMousePushButton();
+      
+      // called when metric threshold radio button clicked
+      void slotMetricSelectionButtonGroup();
+      
+      // called when shape threshold radio button clicked
+      void slotShapeSelectionButtonGroup();
+      
+      // update selected number of nodes label
+      void updateNumberOfSelectedNodesLabel();
+      
+      // called when show selected nodes checkbox toggled
+      void slotShowSelectedNodesCheckBox(bool);
+      
+   protected:
+      /// selection source (source of node selection)
+      enum SELECTION_SOURCE {
+         SELECTION_SOURCE_ALL_NODES,
+         SELECTION_SOURCE_NODES_WITHIN_BORDER,
+         SELECTION_SOURCE_NODES_WITH_CROSSOVERS,
+         SELECTION_SOURCE_NODES_WITH_EDGES,
+         SELECTION_SOURCE_NODES_WITHIN_LATLON,
+         SELECTION_SOURCE_NODES_WITH_METRIC,
+         SELECTION_SOURCE_NODES_WITH_PAINT,
+         SELECTION_SOURCE_NODES_WITH_SHAPE
+      };
+      
+     // parent ROI dialog
+     GuiSurfaceRegionOfInterestDialog* roiDialog;
+     
+     // create the node selection source options widget
+     QStackedWidget* createNodeSelectionSourceOptionsWidget();
+     
+     /// selection source combo box
+     QComboBox* selectionSourceComboBox;
+     
+     /// selection logic combo box
+     QComboBox* selectionLogicComboBox;
+     
+     /// number of nodes selected label
+     QLabel* numberOfNodesSelectedLabel;
+     
+     /// show selected nodes check box
+     QCheckBox* showSelectedNodesCheckBox;
+     
+     /// deselect nodes push button
+     QPushButton* deselectNodesPushButton;
+     
+     /// dilate nodes push button
+     QPushButton* dilateSelectedNodesPushButton;
+     
+     /// erode nodes push button
+     QPushButton* erodeSelectedNodesPushButton;
+     
+     /// invert nodes push button
+     QPushButton* invertSelectedNodesPushButton;
+     
+     /// remove islands nodes push button
+     QPushButton* removeIslandsPushButton;
+     
+     /// load ROI push button
+     QPushButton* loadROIPushButton;
+     
+     /// save ROI push button
+     QPushButton* saveROIPushButton;
+     
+     /// selection options stacked widget
+     QStackedWidget* selectionSourceOptionsStackedWidget;
+     
+     /// selection options for all nodes
+     QWidget* selectionSourceOptionsAllNodesWidget;
+     
+     /// selection options for borders
+     QWidget* selectionSourceOptionsBordersWidget;
+     
+     /// border flat surface selection control
+     GuiBrainModelSelectionComboBox* borderFlatSurfaceSelectionComboBox;
+     
+     /// border name selection label
+     QLabel* borderNameSelectionLabel;
+     
+     /// selection options for crossovers
+     QWidget* selectionSourceOptionsCrossoversWidget;
+     
+     /// selection options for edges
+     QWidget* selectionSourceOptionsEdgesWidget;
+     
+     /// selection options for lat/long
+     QWidget* selectionSourceOptionsLatLongWidget;
+     
+     /// lat min double spin box
+     QDoubleSpinBox* latLowerRangeDoubleSpinBox;
+      
+     /// lat max double spin box
+     QDoubleSpinBox* latUpperRangeDoubleSpinBox;
+   
+     /// lon min double spin box
+     QDoubleSpinBox* lonLowerRangeDoubleSpinBox;
+   
+     /// lon min double spin box
+     QDoubleSpinBox* lonUpperRangeDoubleSpinBox;
+      
+     /// selection options for metric
+     QWidget* selectionSourceOptionsMetricWidget;
+     
+     /// metric column selection combo box
+     GuiNodeAttributeColumnSelectionComboBox* metricColumnSelectionComboBox;
+     
+     /// metric range lower double spin box;
+     QDoubleSpinBox* metricSelectionLowerDoubleSpinBox;
+     
+     /// metric range upper double spin box;
+     QDoubleSpinBox* metricSelectionUpperDoubleSpinBox;
+     
+     /// metric selection all nodes radio button
+     QRadioButton* metricSelectionAllNodesRadioButton;
+     
+     /// metric selection connect to node with mouse radio button
+     QRadioButton* metricSelectionConnectedToNodeRadioButton;
+     
+     /// metric selection node number label
+     QLabel* metricSelectionNodeNumberLabel;
+     
+     /// metric selection node value label
+     QLabel* metricSelectionNodeValueLabel;
+     
+     /// selection options for paint
+     QWidget* selectionSourceOptionsPaintWidget;
+     
+     /// paint column selection combo box
+     GuiNodeAttributeColumnSelectionComboBox* paintColumnSelectionComboBox;
+     
+     /// paint name selection label
+     QLabel* paintNameSelectionLabel;
+     
+     /// selection options for shape
+     QWidget* selectionSourceOptionsShapeWidget;
+     
+     /// shape column selection combo box
+     GuiNodeAttributeColumnSelectionComboBox* shapeColumnSelectionComboBox;
+     
+     /// shape range lower double spin box;
+     QDoubleSpinBox* shapeSelectionLowerDoubleSpinBox;
+     
+     /// shape range upper double spin box;
+     QDoubleSpinBox* shapeSelectionUpperDoubleSpinBox;
+     
+     /// shape selection all nodes radio button
+     QRadioButton* shapeSelectionAllNodesRadioButton;
+     
+     /// shape selection connect to node with mouse radio button
+     QRadioButton* shapeSelectionConnectedToNodeRadioButton;
+     
+     /// shape selection node number label
+     QLabel* shapeSelectionNodeNumberLabel;
+     
+     /// shape selection node value label
+     QLabel* shapeSelectionNodeValueLabel;
+     
+   friend class GuiSurfaceRegionOfInterestDialog;
+};
+
+#endif // __GUI_SURFACE_REGION_OF_INTEREST_DIALOG_H__

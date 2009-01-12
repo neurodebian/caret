@@ -29,14 +29,14 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QGridLayout;
 class QLineEdit;
 class QScrollArea;
 
 /// Dialog for editing a parameters file
-class GuiParamsFileEditorDialog : public QtDialog {
+class GuiParamsFileEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:

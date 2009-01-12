@@ -617,8 +617,9 @@ AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite)
    //
    // Update origin (always LPI) Note that AFNI has origin in center of voxel
    //
-   float origin[3];
-   firstVolume->getOrigin(origin);
+   float volumeOrigin[3];
+   firstVolume->getOrigin(volumeOrigin);
+/*
    float originTemp[3] = {  
                             std::fabs(origin[0] + spacing[0]*0.5),
                             std::fabs(origin[1] + spacing[1]*0.5),
@@ -626,6 +627,8 @@ AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite)
                          }; 
    
    AfniAttribute orig(AfniAttribute::NAME_ORIGIN, originTemp, 3);
+*/
+   AfniAttribute orig(AfniAttribute::NAME_ORIGIN, volumeOrigin, 3);
    addAttribute(orig);
    
    //

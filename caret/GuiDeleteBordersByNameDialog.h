@@ -29,12 +29,12 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QListWidget;
 
 /// class to delete borders by name
-class GuiDeleteBordersByNameDialog : public QtDialog {
+class GuiDeleteBordersByNameDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -53,8 +53,9 @@
  * Constructor
  */
 GuiResectionDialog::GuiResectionDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Resectioning");
    
    //

@@ -23,9 +23,12 @@
  */
 /*LICENSE_END*/
 
+#include <cmath>
 #include <iostream>
 
+#include <QColor>
 #include <QDateTime>
+#include <QImageWriter>
 
 #include "DebugControl.h"
 #include "FileUtilities.h"
@@ -62,6 +65,8 @@ ImageFile::ImageFile(const QImage& img)
                   FILE_IO_NONE,
                   FILE_IO_NONE,
                   FILE_IO_NONE,
+                  FILE_IO_NONE,
+                  FILE_IO_NONE,
                   FILE_IO_READ_AND_WRITE)  // be sure to update all constructors
 {
    clear();
@@ -95,6 +100,340 @@ ImageFile::empty() const
    return (image.width() <= 0);
 }
 
+/**
+ * find inclusive bounds (Left, top, right, bottom) of image object (pixel not background color).
+ */
+void 
+ImageFile::findImageObject(const QImage& image,
+                           const int backgroundColor[3],
+                           int objectBoundsOut[4]) 
+{
+   //
+   // Dimensions of image
+   //
+   const int numX = image.width();
+   const int numY = image.height();
+   
+   //
+   // Initialize output
+   //
+   objectBoundsOut[0] = 0;
+   objectBoundsOut[1] = 0;
+   objectBoundsOut[2] = numX - 1;
+   objectBoundsOut[3] = numY - 1;
+
+   //
+   // Find left
+   //
+   bool gotPixelFlag = false;
+   for (int i = 0; i < numX; i++) {
+      for (int j = 0; j < numY; j++) {
+         const QRgb pixel = image.pixel(i, j);
+         if ((qRed(pixel) != backgroundColor[0]) ||
+             (qGreen(pixel) != backgroundColor[1]) ||
+             (qBlue(pixel)  != backgroundColor[2])) {
+            objectBoundsOut[0] = i;
+            gotPixelFlag = true;
+            break;
+         }  
+      }
+      if (gotPixelFlag) {
+         break;
+      }
+   }
+   
+   //
+   // Find right
+   //
+   gotPixelFlag = false;
+   for (int i = (numX - 1); i >= 0; i--) {
+      for (int j = 0; j < numY; j++) {
+         const QRgb pixel = image.pixel(i, j);
+         if ((qRed(pixel) != backgroundColor[0]) ||
+             (qGreen(pixel) != backgroundColor[1]) ||
+             (qBlue(pixel)  != backgroundColor[2])) {
+            objectBoundsOut[2] = i;
+            gotPixelFlag = true;
+            break;
+         }  
+      }
+      if (gotPixelFlag) {
+         break;
+      }
+   }
+   
+   //
+   // Find top
+   //
+   gotPixelFlag = false;
+   for (int j = 0; j < numY; j++) {
+      for (int i = 0; i < numX; i++) {
+         const QRgb pixel = image.pixel(i, j);
+         if ((qRed(pixel) != backgroundColor[0]) ||
+             (qGreen(pixel) != backgroundColor[1]) ||
+             (qBlue(pixel)  != backgroundColor[2])) {
+            objectBoundsOut[1] = j;
+            gotPixelFlag = true;
+            break;
+         }  
+      }
+      if (gotPixelFlag) {
+         break;
+      }
+   }
+   
+   //
+   // Find bottom
+   //
+   gotPixelFlag = false;
+   for (int j = (numY - 1); j >= 0; j--) {
+      for (int i = 0; i < numX; i++) {
+         const QRgb pixel = image.pixel(i, j);
+         if ((qRed(pixel) != backgroundColor[0]) ||
+             (qGreen(pixel) != backgroundColor[1]) ||
+             (qBlue(pixel)  != backgroundColor[2])) {
+            objectBoundsOut[3] = j;
+            gotPixelFlag = true;
+            break;
+         }  
+      }
+      if (gotPixelFlag) {
+         break;
+      }
+   }
+}
+      
+/**
+ * add a margin to an image.
+ */
+void 
+ImageFile::addMargin(QImage& image,
+                     const int marginSize,
+                     const int backgroundColor[3])
+{
+   if (marginSize <= 0) {
+      return;
+   }
+   
+   //
+   // Add margin
+   //
+   const int width = image.width();
+   const int height = image.height();
+   const int newWidth = width + marginSize * 2;
+   const int newHeight = height + marginSize * 2;
+   QRgb backgroundColorRGB = qRgba(backgroundColor[0], 
+                                   backgroundColor[1],
+                                   backgroundColor[2],
+                                   0);
+   
+   //
+   // Insert image
+   //
+   ImageFile imageFile;
+   imageFile.setImage(QImage(newWidth, newHeight, image.format()));
+   imageFile.getImage()->fill(backgroundColorRGB);
+   try {
+      imageFile.insertImage(image, marginSize, marginSize);
+      image = (*imageFile.getImage());
+   }
+   catch (FileException&) {
+   }
+}
+
+/**
+ * add a margin to an image.
+ */
+void 
+ImageFile::addMargin(QImage& image,
+                     const int marginSizeX,
+                     const int marginSizeY,
+                     const int backgroundColor[3])
+{
+   if ((marginSizeX <= 0) && (marginSizeY <= 0)) {
+      return;
+   }
+   
+   //
+   // Add margin
+   //
+   const int width = image.width();
+   const int height = image.height();
+   const int newWidth = width + marginSizeX * 2;
+   const int newHeight = height + marginSizeY * 2;
+   QRgb backgroundColorRGB = qRgba(backgroundColor[0], 
+                                   backgroundColor[1],
+                                   backgroundColor[2],
+                                   0);
+   
+   //
+   // Insert image
+   //
+   ImageFile imageFile;
+   imageFile.setImage(QImage(newWidth, newHeight, image.format()));
+   imageFile.getImage()->fill(backgroundColorRGB);
+   try {
+      imageFile.insertImage(image, marginSizeX, marginSizeY);
+      image = (*imageFile.getImage());
+   }
+   catch (FileException&) {
+   }
+}
+
+/**
+ * crop an image by removing the background from the image.
+ */
+void 
+ImageFile::cropImageRemoveBackground(QImage& image,
+                                     const int marginSize,
+                                     const int backgroundColor[3])
+{
+   //
+   // Get cropping bounds
+   //
+   int leftTopRightBottom[4];
+   ImageFile::findImageObject(image,
+                              backgroundColor,
+                              leftTopRightBottom);
+   if (DebugControl::getDebugOn()) {
+      std::cout 
+         << "cropping: "
+         << leftTopRightBottom[0]
+         << " "        
+         << leftTopRightBottom[1]
+         << " "        
+         << leftTopRightBottom[2]
+         << " "        
+         << leftTopRightBottom[3]
+         << std::endl;
+   }
+    
+   //
+   // If cropping is valid
+   //
+   const int width = leftTopRightBottom[2] - leftTopRightBottom[0] + 1;
+   const int height = leftTopRightBottom[3] - leftTopRightBottom[1] + 1;
+   if ((width > 0) &&
+       (height > 0)) {
+      image = image.copy(leftTopRightBottom[0],
+                         leftTopRightBottom[1],
+                         width,
+                         height);
+   
+      //
+      // Process margin
+      //
+      if (marginSize > 0) {
+         ImageFile::addMargin(image,
+                              marginSize,
+                              backgroundColor);
+      }
+   }
+}
+
+/**
+ * combine images retaining aspect and stretching and filling if needed.
+ */
+void 
+ImageFile::combinePreservingAspectAndFillIfNeeded(const std::vector<QImage>& images,
+                                            const int numImagesPerRow,
+                                            const int backgroundColor[3],
+                                            QImage& imageOut)
+{
+   const int numImages = static_cast<int>(images.size());
+   if (numImages <= 0) {
+      return;
+   }
+   if (numImages == 1) {
+      imageOut = images[0];
+      return;
+   }
+   
+   QRgb backgroundColorRGB = qRgba(backgroundColor[0], 
+                                   backgroundColor[1],
+                                   backgroundColor[2],
+                                   0);
+   //
+   // Resize all images but do not stretch
+   // need to retain aspect ratio but all must 
+   // be the same size in X & Y
+   //
+   
+   //
+   // Find max width and height of input images
+   //
+   int maxImageWidth = 0;
+   int maxImageHeight = 0;
+   for (int i = 0; i < numImages; i++) {
+      //
+      // Track max width/height
+      //
+      maxImageWidth = std::max(maxImageWidth, images[i].width());
+      maxImageHeight = std::max(maxImageHeight, images[i].height());
+   }
+
+   //
+   // Compute size of output image and create it
+   //
+   const int outputImageSizeX = maxImageWidth * numImagesPerRow;
+   const int numberOfRows = (numImages / numImagesPerRow)
+                          + (((numImages % numImagesPerRow) != 0) ? 1 : 0);
+   const int outputImageSizeY = maxImageHeight * numberOfRows;
+   imageOut = QImage(outputImageSizeX,
+                     outputImageSizeY,
+                     images[0].format());
+   imageOut.fill(backgroundColorRGB);
+   
+
+   //
+   // Loop through the images
+   //   
+   int rowCounter = 0;
+   int columnCounter = 0;
+   for (int i = 0; i < numImages; i++) {
+      //
+      // Scale image
+      //
+      const QImage imageScaled = images[i].scaled(maxImageWidth,
+                                                  maxImageHeight,
+                                                  Qt::KeepAspectRatio,
+                                                  Qt::SmoothTransformation);
+                                    
+      //
+      // Compute position of where image should be inserted
+      //
+      const int marginX = (maxImageWidth - imageScaled.width()) / 2;
+      const int marginY = (maxImageHeight - imageScaled.height()) / 2;
+      const int positionX = columnCounter * maxImageWidth + marginX;
+      const int positionY = rowCounter * maxImageHeight + marginY;
+      
+      //
+      // Insert into output image
+      //
+      try {
+         ImageFile::insertImage(imageScaled,
+                                imageOut,
+                                positionX,
+                                positionY);
+      }
+      catch (FileException& e) {
+         std::cout << "QImageFile::insertImage() error: "
+                   << e.whatQString().toAscii().constData()
+                   << std::endl;
+      }
+      
+      //
+      // Update row and column counters
+      //
+      columnCounter++;
+      if (columnCounter >= numImagesPerRow) {
+         columnCounter = 0;
+         rowCounter++;
+      }
+   }
+   
+}
+                                                        
 /**
  * read the file (overridden since file has no header).
  */
@@ -214,11 +553,49 @@ ImageFile::insertImage(const QImage& otherImage,
 }
                        
 /**
+ * insert an image into another image.
+ */
+void 
+ImageFile::insertImage(const QImage& insertThisImage,
+                       QImage& intoThisImage,
+                       const int positionX,
+                       const int positionY) throw (FileException)
+{
+   if (positionX < 0) {
+      throw FileException("X position is less than zero.");
+   }
+   if (positionY < 0) {
+      throw FileException("Y position is less than zero.");
+   }
+   
+   const int otherWidth = insertThisImage.width();
+   const int otherHeight = insertThisImage.height();
+   
+   const int myWidth = intoThisImage.width();
+   const int myHeight = intoThisImage.height();
+   
+   if ((otherWidth + positionX) > myWidth) {
+      throw FileException("This image is not large enough to insert other image.");
+   }
+   if ((otherHeight + positionY) > myHeight) {
+      throw FileException("This image is not large enough to insert other image.");
+   }
+   
+   for (int i = 0; i < otherWidth; i++) {
+      for (int j = 0; j < otherHeight; j++) {
+         intoThisImage.setPixel(positionX + i,
+                                positionY + j, 
+                                insertThisImage.pixel(i, j));
+      }
+   }
+}
+                       
+/**
  * compare a file for unit testing (tolerance ignored).
  */
 bool 
 ImageFile::compareFileForUnitTesting(const AbstractFile* af,
-                                     const float /*tolerance*/,
+                                     const float tolerance,
                                      QString& messageOut) const
 {
    //
@@ -254,7 +631,11 @@ ImageFile::compareFileForUnitTesting(const AbstractFile* af,
    int pixelCount = 0;
    for (int i = 0; i < width; i++) {
       for (int j = 0; j < height; j++) {
-         if (image.pixel(i, j) != otherImage->pixel(i, j)) {
+         QColor im1 = image.pixel(i, j);
+         QColor im2 = otherImage->pixel(i, j);
+         if ((std::fabs(im1.red() - im2.red()) > tolerance) ||
+             (std::fabs(im1.green() - im2.green()) > tolerance) ||
+             (std::fabs(im1.blue() - im2.blue()) > tolerance)) {
             pixelCount++;
          }
       }
@@ -282,11 +663,39 @@ ImageFile::writeFile(const QString& fileNameIn) throw (FileException)
    }
    filename = fileNameIn;
    
+   QString errorMessage;
+   if (image.width() <= 0) {
+      errorMessage = "Image width is zero.";
+   }
+   if (image.height() <= 0) {
+      if (errorMessage.isEmpty() == false) errorMessage += "\n";
+      errorMessage = "Image height is zero.";
+   }
+   if (errorMessage.isEmpty() == false) {
+      throw FileException(FileUtilities::basename(filename)
+                          + "  " + errorMessage);
+   }
+   
    QString format(StringUtilities::makeUpperCase(FileUtilities::filenameExtension(filename)));
    if (format == "JPG") {
       format = "JPEG";
    }
-   image.save(filename, format.toAscii().constData());
+   
+   QImageWriter writer(filename);
+   writer.setFormat(format.toAscii().constData());
+   writer.setFileName(filename);
+   if (writer.write(image) == false) {
+      throw FileException(writer.errorString());
+   }
+   
+   //image.save(filename, format.toAscii().constData());
+   
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(filename, getFileWritePermissions());
+   }
    
    clearModified();
 }

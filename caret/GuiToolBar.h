@@ -37,6 +37,7 @@ class GuiMainWindow;
 #include "BrainModelSurface.h"
 
 class GuiBrainSetAndModelSelectionControl;
+class GuiToolBarActions;
 class QComboBox;
 class QDoubleSpinBox;
 class QMainWindow;
@@ -50,7 +51,7 @@ class GuiToolBar : public QToolBar {
       /// Constructor
       GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
                  GuiBrainModelOpenGL* brainModelOpenGLIn,
-                 const bool mainWindowFlag);
+                 const BrainModel::BRAIN_MODEL_VIEW_NUMBER viewWindowNumberIn);
       
       /// Destructor
       ~GuiToolBar();
@@ -61,8 +62,14 @@ class GuiToolBar : public QToolBar {
       /// update the view controls based upon the loaded brain model
       void updateViewControls();
       
+      /// clear all yoking
+      static void clearAllYoking();
+      
       /// update all toolbars (typically called when new surfaces loaded)
       static void updateAllToolBars(const bool additionalFilesLoaded);
+      
+      /// set yoke status
+      void setYokeStatus(const bool b);
       
       /// called when a standard view is selected
       void setViewSelection(const BrainModel::STANDARD_VIEWS standardView);      
@@ -70,6 +77,10 @@ class GuiToolBar : public QToolBar {
       /// update mouse mode combo box
       void updateMouseModeComboBox();
       
+      /// get the viewing window used by this toolbar
+      BrainModel::BRAIN_MODEL_VIEW_NUMBER getViewWindowNumber() const 
+           { return viewWindowNumber; }
+           
    signals:
       /// Signal emitted when the model selection combo box is changed.  Normally,
       /// this signal does not need to be used by the parent of the toolbar.  The
@@ -178,12 +189,18 @@ class GuiToolBar : public QToolBar {
       /// Windows OpenGL widget
       GuiBrainModelOpenGL* brainModelOpenGL;
       
+      /// toolbar's actions
+      GuiToolBarActions* toolBarActions;
+      
       /// Keeps track of toolbars so that they can be updated when
       /// the models change.
       static std::vector<GuiToolBar*> allToolBars;
       
       /// mouse mode combo box
       QComboBox* mouseModeComboBox;
+      
+      /// the viewing window used by this toolbar
+      BrainModel::BRAIN_MODEL_VIEW_NUMBER viewWindowNumber;
       
 };
 

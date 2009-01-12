@@ -46,7 +46,7 @@
  * constructor.
  */
 GuiVolumeTopologyReportDialog::GuiVolumeTopologyReportDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Topology Error Report");
    
@@ -162,7 +162,7 @@ GuiVolumeTopologyReportDialog::GuiVolumeTopologyReportDialog(QWidget* parent)
    QObject::connect(closeButton, SIGNAL(clicked()),
                     this, SLOT(slotCloseButton()));
                     
-   QtUtilities::makeButtonsSameSize(applyButton, closeButton);
+   QtUtilities::makeButtonsSameSize(applyButton, closeButton);   
 }
 
 /**
@@ -179,7 +179,8 @@ void
 GuiVolumeTopologyReportDialog::show()
 {
    clearDialog();
-   QtDialog::show();
+   WuQDialog::show();
+   slotApplyButton();
 }
 
 /**
@@ -213,15 +214,24 @@ GuiVolumeTopologyReportDialog::slotApplyButton()
    
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    
+/*
    const int numCavities = vf->getNumberOfSegmentationCavities();
    const int numObjects  = vf->getNumberOfSegmentationObjects();
    const int eulerCount = vf->getEulerNumberForSegmentationVolume();
    const int numHoles = numObjects + numCavities - eulerCount; //(eulerCount - 2) / (-2);
-   
-   setLabel(numberOfCavitiesLabel, numCavities, 0);
+*/   
+   int numObjects,
+       numberOfCavities,
+       numberOfHoles,
+       eulerCount;
+   vf->getSegmentationTopologyInformation(numObjects,
+                                      numberOfCavities,
+                                      numberOfHoles,
+                                      eulerCount);
+   setLabel(numberOfCavitiesLabel, numberOfCavities, 0);
    setLabel(numberOfObjectsLabel, numObjects, 1);
    setLabel(eulerCountLabel, eulerCount, 2);
-   setLabel(numberOfHolesLabel, numHoles, 0);
+   setLabel(numberOfHolesLabel, numberOfHoles, 0);
    
    QApplication::restoreOverrideCursor();
    QApplication::beep();

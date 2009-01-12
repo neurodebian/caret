@@ -39,12 +39,19 @@ class TopologyFile;
 /// Class to compute distortion between two surfaces
 class BrainModelSurfaceDistortion : public BrainModelAlgorithm {
    public:
+      enum DISTORTION_COLUMNS {
+         DISTORTION_COLUMN_CREATE_NEW = -1,
+         DISTORTION_COLUMN_DO_NOT_GENERATE = -2
+      };
+
       /// Constructor
       BrainModelSurfaceDistortion(BrainSet* brainSetIn,
                              BrainModelSurface* surfaceIn,
                              BrainModelSurface* referenceSurfaceIn,
                              TopologyFile* topologyFileIn,
                              SurfaceShapeFile* surfaceShapeFileIn,
+                             const int arealDistortionColumnIn,
+                             const int linearDistortionColumnIn,
                              const QString& arealDistortionNameIn,
                              const QString& linearDistortionNameIn);
                              
@@ -84,6 +91,12 @@ class BrainModelSurfaceDistortion : public BrainModelAlgorithm {
       
       /// areal distortion saved for statistical calculation
       std::vector<float> arealDistortionForStatistics;
+      
+      /// areal distortion column number
+      int arealDistortionColumn;
+      
+      /// linear distortion column number
+      int linearDistortionColumn;
 };
 
 #endif  // __VE_BRAIN_SURFACE_DISTORTION_H__

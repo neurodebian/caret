@@ -38,6 +38,12 @@ class SceneFile : public AbstractFile {
       /// scene information
       class SceneInfo {
          public:
+            /// Constructor for Node Attributes with Multiple Overlays
+            explicit SceneInfo(const QString& nameIn,
+                               const QString& modelNameIn,
+                               const int overlayNumberIn,
+                               const QString& valueIn);
+                               
             /// Constructor
             explicit SceneInfo(const QString& nameIn,
                       const QString& modelNameIn,
@@ -118,6 +124,12 @@ class SceneFile : public AbstractFile {
             /// get default surfaces special name
             static QString getDefaultSurfacesName() { return "___DEFAULT___"; }
                         
+            /// get the overlay number (-1 if invalid)
+            int getOverlayNumber() const { return overlayNumber; }
+            
+            /// set the overlay number
+            void setOverlayNumber(const int on) { overlayNumber = on; }
+            
             /// set the name
             void setName(const QString& n) { name = n; }
             
@@ -128,6 +140,12 @@ class SceneFile : public AbstractFile {
             void setValue(const QString& v) { value = v; }
             
          protected:
+            /// initialize the scene info
+            void initialize(const QString& nameIn,
+                            const QString& modelNameIn,
+                            const int overlayNumberIn,
+                            const QString& valueIn);
+                            
             /// the name
             QString name;
             
@@ -136,6 +154,9 @@ class SceneFile : public AbstractFile {
             
             /// the value
             QString value;
+            
+            /// the overlay number
+            int overlayNumber;
          
       };
       
@@ -261,6 +282,9 @@ class SceneFile : public AbstractFile {
       /// get a scene from the scene name (NULL if not found)
       const Scene* getSceneFromName(const QString& sceneName) const;
       
+      /// get a scene index from the scene name (-1 if not found)
+      int getSceneIndexFromName(const QString& sceneName) const;
+      
       /// append a scene file to this one
       void append(SceneFile& sf) throw (FileException);
       
@@ -276,6 +300,11 @@ class SceneFile : public AbstractFile {
       /// add paths to all of the scene spec file's data file names
       void addPathToAllSpecFileDataFileNames(const QString& path);
       
+      /// transfer a scene class from one scene to other scene(s)
+      void transferSceneClass(const int fromSceneNumber,
+                              const std::vector<int>& toSceneNumbers,
+                              const QString& nameOfClassToTransfer) throw (FileException);
+                                                              
       /// remove paths from all of the scene' spec file data names for a file on disk
       static void removePathsFromAllSpecFileDataFileNames(const QString& sceneFileName)
                                                         throw (FileException);
@@ -312,6 +341,9 @@ class SceneFile : public AbstractFile {
       /// scene name attribute name
       static const QString sceneNameAttributeName;
       
+      /// name for overlay attribute
+      static const QString overlayAttributeName;
+      
       /// name for model attribute
       static const QString modelAttributeName;
       
@@ -319,14 +351,16 @@ class SceneFile : public AbstractFile {
       static const QString valueAttributeName;
 };
 
+
+#endif // SCENE_FILE
+
 #ifdef __SCENE_FILE_MAIN__
 const QString SceneFile::sceneTagName = "Scene";
 const QString SceneFile::sceneNameTagName = "SceneName";
 const QString SceneFile::sceneClassTagName = "Class";
 const QString SceneFile::sceneNameAttributeName = "name";
 const QString SceneFile::modelAttributeName = "model";
+const QString SceneFile::overlayAttributeName = "overlay";
 const QString SceneFile::valueAttributeName   = "value";
 #endif // __SCENE_FILE_MAIN__
-
-#endif // SCENE_FILE
 

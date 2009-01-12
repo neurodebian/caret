@@ -67,6 +67,7 @@ GuiFilesModified::getAllFilesModified() const
       foci &&
       fociColor &&
       fociProjection &&
+      fociSearch &&
       geodesic &&
       images &&
       latLon &&
@@ -78,6 +79,8 @@ GuiFilesModified::getAllFilesModified() const
       rgbPaint &&
       scene &&
       section &&
+      studyCollection &&
+      studyMetaData &&
       surfaceShape &&
       surfaceVector &&
       topography &&
@@ -116,6 +119,7 @@ GuiFilesModified::setStatusForAll(const bool status)
    foci = status;
    fociColor = status;
    fociProjection = status;
+   fociSearch = status;
    geodesic = status;
    images = status;
    latLon = status;
@@ -127,6 +131,8 @@ GuiFilesModified::setStatusForAll(const bool status)
    rgbPaint = status;
    scene = status;
    section = status;
+   studyCollection = studyCollection;
+   studyMetaData = studyMetaData;
    surfaceShape = status;
    surfaceVector = status;
    topography = status;

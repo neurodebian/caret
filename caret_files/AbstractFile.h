@@ -459,6 +459,12 @@ class AbstractFile {
       // generate a date and time timestamp
       static QString generateDateAndTimeStamp();
       
+      /// set permission assigned to files as they are written
+      static void setFileWritePermissions(const QFile::Permissions& pin) { fileWritePermissions = pin; }
+      
+      /// get permission assigned to files as they are written
+      static QFile::Permissions getFileWritePermissions() { return fileWritePermissions; }
+      
    protected:    
       /// Constructor  
       AbstractFile(const QString& descriptiveName,
@@ -681,6 +687,9 @@ class AbstractFile {
       /// the unique file naming counter
       static int uniqueFileNameCounter;
       
+      /// permission assigned to files as they are written
+      static QFile::Permissions fileWritePermissions;
+      
    protected:
       /// time to read the file in seconds
       float timeToReadFileInSeconds;
@@ -726,8 +735,9 @@ class AbstractFile {
       static const QString headerTagSubject;
 };
 
-#ifdef _ABSTRACT_MAIN_
+#endif //  __VE_ABSTRACT_FILE_H__
 
+#ifdef _ABSTRACT_MAIN_
    const QString AbstractFile::xmlHeaderTagName = "FileHeader";
    const QString AbstractFile::xmlHeaderElementTagName = "Element";
    const QString AbstractFile::xmlHeaderElementName = "Name";
@@ -763,8 +773,7 @@ class AbstractFile {
    int AbstractFile::defaultFileNameNumberOfNodes = 0;
    int AbstractFile::uniqueFileNameCounter = 0;
    
+   QFile::Permissions AbstractFile::fileWritePermissions(0);
 #endif //  _ABSTRACT_MAIN_
 
-
-#endif //  __VE_ABSTRACT_FILE_H__
 

@@ -218,7 +218,8 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
          }
          else if (qName == GiftiCommon::tagMatrix) {
             state = STATE_DATA_ARRAY_MATRIX;
-            matrix = dataArray->getMatrix();
+            dataArray->addMatrix(GiftiMatrix());
+            matrix = dataArray->getMatrix(dataArray->getNumberOfMatrices() - 1);
          }
          else {
             std::ostringstream str;

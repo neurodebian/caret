@@ -60,6 +60,7 @@ CommandVolumePadVolume::getScriptBuilderParameters(ScriptBuilderParameters& para
    paramsOut.addInt("Pad Pos Y", 0, 0);
    paramsOut.addInt("Pad Neg Z", 0, 0);
    paramsOut.addInt("Pad Pos Z", 0, 0);
+   paramsOut.addBoolean("Erode Padding Flag", true);
 }
 
 /**
@@ -79,8 +80,13 @@ CommandVolumePadVolume::getHelpInformation() const
        + indent9 + "<pad-pos-y>\n"
        + indent9 + "<pad-neg-z>\n"
        + indent9 + "<pad-pos-z>\n"
+       + indent9 + "<erode-padding-flag>\n"
        + indent9 + "\n"
        + indent9 + "Add padding (empty voxels) around a volume.\n"
+       + indent9 + "\n"
+       + indent9 + "If \"erode-padding-flag\" is \"true\", the padding\n"
+       + indent9 + "will be slightly eroded just as in the SureFit\n"
+       + indent9 + "segmentation algorithm.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -110,6 +116,8 @@ CommandVolumePadVolume::executeCommand() throw (BrainModelAlgorithmException,
       parameters->getNextParameterAsInt("pad-neg-z"),
       parameters->getNextParameterAsInt("pad-pos-z")
    };
+   const bool erodePaddingFlag =
+      parameters->getNextParameterAsBoolean("Erode Padding Flag");
    checkForExcessiveParameters();
 
    //
@@ -121,7 +129,8 @@ CommandVolumePadVolume::executeCommand() throw (BrainModelAlgorithmException,
    //
    // pad the volume
    //
-   volume.padSegmentation(padding);
+   volume.padSegmentation(padding,
+                          erodePaddingFlag);
    
    //
    // Write the volume

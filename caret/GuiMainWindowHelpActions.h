@@ -29,6 +29,7 @@
 
 #include <QObject>
 
+class GuiHelpAssistantWindow;
 class QAction;
 class QWidget;
 
@@ -54,6 +55,15 @@ class GuiMainWindowHelpActions : public QObject {
       
       /// caret help action
       QAction* getCaretHelpAction() { return caretHelpAction; }
+      
+      /// caret help action
+      QAction* getCaretHelpAssistantAction() { return caretHelpAssistantAction; }
+      
+      /// caret online help action
+      QAction* getOnlineCaretHelpAction() { return caretOnlineHelpAction; }
+      
+      /// caret users list email archive help action
+      QAction* getCaretUsersListArchiveAction() { return caretUsersListArchiveAction; }
       
       /// caret tips action
       QAction* getCaretTipsAction() { return caretTipsAction; }
@@ -89,6 +99,15 @@ class GuiMainWindowHelpActions : public QObject {
       /// display caret help browser
       void helpMenuCaretHelp();
 
+      /// display caret help assistant
+      void helpMenuCaretHelpAssistant();
+
+      /// display online caret help
+      void helpMenuOnlineCaretHelp();
+      
+      /// display caret users email archive
+      void slotCaretUsersListArchiveAction();
+      
       /// display caret tips dialog
       void helpMenuCaretTips();
 
@@ -120,6 +139,15 @@ class GuiMainWindowHelpActions : public QObject {
       /// caret help action
       QAction* caretHelpAction;
       
+      /// caret help assistant action
+      QAction* caretHelpAssistantAction;
+      
+      /// caret users list archive action
+      QAction* caretUsersListArchiveAction;
+      
+      /// caret online help action
+      QAction* caretOnlineHelpAction;
+      
       /// caret tips action
       QAction* caretTipsAction;
       
@@ -137,6 +165,9 @@ class GuiMainWindowHelpActions : public QObject {
       
       /// sums tutorial action
       QAction* sumsTutorialsAction;
+      
+      /// Qt Assistant Client for Helpl
+      GuiHelpAssistantWindow* assistantWindow;
 };
 
 #endif // __GUI_MAIN_WINDOW_HELP_ACTIONS_H__

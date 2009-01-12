@@ -185,9 +185,10 @@ class StudyMetaDataLink {
       static const QString tagPageReferenceSubHeaderNumber;
       
    friend class CellBase;
-   friend class CellProjectionFileSaxReader;
    friend class StudyMetaDataLinkSet;
 };
+
+#endif // __STUDY_META_DATA_LINK_H__
 
 #ifdef __STUDY_META_DATA_LINK_MAIN__
       const QString StudyMetaDataLink::tagStudyMetaDataLink = "StudyMetaDataLink";
@@ -200,6 +201,3 @@ class StudyMetaDataLink {
       const QString StudyMetaDataLink::tagPageReferencePageNumber = "pageReferencePageNumber";
       const QString StudyMetaDataLink::tagPageReferenceSubHeaderNumber = "pageReferenceSubHeaderNumber";
 #endif // __STUDY_META_DATA_LINK_MAIN__
-
-#endif // __STUDY_META_DATA_LINK_H__
-

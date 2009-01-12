@@ -25,12 +25,16 @@
 
 #include <QApplication>
 #include <QButtonGroup>
+#include <QCheckBox>
+#include <QDoubleSpinBox>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QPushButton>
 #include <QMessageBox>
 #include <QRadioButton>
+
+#include "GuiFociPalsProjectionDialog.h"
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
@@ -39,7 +43,6 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
-#include "GuiFociPalsProjectionDialog.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -48,16 +51,10 @@
  * Constructor.
  */
 GuiFociPalsProjectionDialog::GuiFociPalsProjectionDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Foci Projection to PALS Atlas");
-   
-   //
-   // Vertical box for all items in dialog
-   //
-   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
-   dialogLayout->setMargin(5);
-   dialogLayout->setSpacing(2);
    
    //
    // Project onto surface option
@@ -89,26 +86,63 @@ GuiFociPalsProjectionDialog::GuiFociPalsProjectionDialog(QWidget* parent)
    // Spatial projection type options box
    //
    QGroupBox* projectionTypeGroupBox = new QGroupBox("Spatial Projection Type");
-   dialogLayout->addWidget(projectionTypeGroupBox);
    QVBoxLayout* projectionTypeLayout = new QVBoxLayout(projectionTypeGroupBox);
    projectionTypeLayout->addLayout(ontoSurfaceHBoxLayout);
    projectionTypeLayout->addWidget(maintainOffsetFromSurfaceRadioButton);
    
+   //
+   // cerebellum cutoff distances
+   //
+   QLabel* cerebellarCutoffLabel = new QLabel("Cerebellum Cutoff (R2)");
+   cerebellarCutoffDistanceDoubleSpinBox = new QDoubleSpinBox;
+   cerebellarCutoffDistanceDoubleSpinBox->setMinimum(0.0);
+   cerebellarCutoffDistanceDoubleSpinBox->setMaximum(1000000000.0);
+   cerebellarCutoffDistanceDoubleSpinBox->setSingleStep(1.0);
+   cerebellarCutoffDistanceDoubleSpinBox->setDecimals(2);
+   cerebellarCutoffDistanceDoubleSpinBox->setValue(
+      FociFileToPalsProjector::getDefaultCerebellumCutoffDistance());
+   QLabel* cerebralCutoffLabel = new QLabel("Cerebral Cutoff (R1)");
+   cerebralCutoffDistanceDoubleSpinBox = new QDoubleSpinBox;
+   cerebralCutoffDistanceDoubleSpinBox->setMinimum(0.0);
+   cerebralCutoffDistanceDoubleSpinBox->setMaximum(1000000000.0);
+   cerebralCutoffDistanceDoubleSpinBox->setSingleStep(1.0);
+   cerebralCutoffDistanceDoubleSpinBox->setDecimals(2);
+   cerebralCutoffDistanceDoubleSpinBox->setValue(
+      FociFileToPalsProjector::getDefaultCerebralCutoffDistance());
+   
+   //
+   // Cerebellar Options group box
+   //
+   cerebellarOptionsGroupBox = new QGroupBox("Allow Projection to Cerebellum");
+   cerebellarOptionsGroupBox->setCheckable(true);
+   cerebellarOptionsGroupBox->setChecked(true);
+   QGridLayout* cerebellaOptionsLayout = new QGridLayout(cerebellarOptionsGroupBox);
+   cerebellaOptionsLayout->addWidget(cerebralCutoffLabel, 0, 0);
+   cerebellaOptionsLayout->addWidget(cerebralCutoffDistanceDoubleSpinBox, 0, 1);
+   cerebellaOptionsLayout->addWidget(cerebellarCutoffLabel, 1, 0);
+   cerebellaOptionsLayout->addWidget(cerebellarCutoffDistanceDoubleSpinBox, 1, 1);
+   
    QLabel* notesLabel = new QLabel(
-      "Caret determines the hemisphere of foci using the\n"
-      "sign of the X-coordinate.  Negative implies left\n"
-      "hemisphere, positive implies right hemisphere.");
+      "If Allow Projection to Cerebellum is selected:\n"
+      "   ** A ratio of (distance-to-cerebral-cortext divided by\n"
+      "                  distance-to-cerebellum) is computed.\n"
+      "   ** If this ratio is less than \"Cerebral Cutoff (R1)\",\n"
+      "      the focus is assigned to the left or right cerebral\n"
+      "      cortex based upon the X-coordinate of the focus.\n"
+      "   ** If this ratio is greater than \"Cerebellum Cutoff (R2)\"\n"
+      "      the focus is assigned to the cerebellum.\n"
+      "   ** If the ratio is between the two cutoffs, the focus is\n"
+      "      assigned to both the cerebellum and also the left or  \n"
+      "      right cerebral cortex.\n");
    QGroupBox* noteGroupBox = new QGroupBox("Important Information");
    QVBoxLayout* notesLayout = new QVBoxLayout(noteGroupBox);
    notesLayout->addWidget(notesLabel);
-   dialogLayout->addWidget(noteGroupBox);
 
    //
    // Horizontal layout for buttons
    //
    QHBoxLayout* buttonsLayout = new QHBoxLayout;
    buttonsLayout->setSpacing(2);
-   dialogLayout->addLayout(buttonsLayout);
    
    //
    // OK button
@@ -137,6 +171,17 @@ GuiFociPalsProjectionDialog::GuiFociPalsProjectionDialog(QWidget* parent)
    QObject::connect(helpButton, SIGNAL(clicked()),
                     this, SLOT(slotHelpButton()));
                     
+   //
+   // Vertical box for all items in dialog
+   //
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
+   dialogLayout->setMargin(5);
+   dialogLayout->setSpacing(2);
+   dialogLayout->addWidget(cerebellarOptionsGroupBox);
+   dialogLayout->addWidget(projectionTypeGroupBox);
+   dialogLayout->addWidget(noteGroupBox);
+   dialogLayout->addLayout(buttonsLayout);
+   
    QtUtilities::makeButtonsSameSize(okButton, cancelButton, helpButton);
 }
 
@@ -174,13 +219,24 @@ GuiFociPalsProjectionDialog::done(int r)
       FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
       
       //
+      // Get cutoff distances
+      //
+      const float cerebralCutoffDistance = cerebralCutoffDistanceDoubleSpinBox->value();
+      const float cerebellarCutoffDistance = cerebellarCutoffDistanceDoubleSpinBox->value();
+      
+      //
       // Project the foci
       //
       FociFileToPalsProjector fociProjector(theMainWindow->getBrainSet(),
                                             fpf,
+                                            theMainWindow->getBrainSet()->getStudyMetaDataFile(),
                                             0,
+                                            -1,
                                             surfaceOffsetDoubleSpinBox->value(),
-                                            projectOntoSurfaceRadioButton->isChecked());
+                                            projectOntoSurfaceRadioButton->isChecked(),
+                                            cerebellarOptionsGroupBox->isChecked(),
+                                            cerebralCutoffDistance,
+                                            cerebellarCutoffDistance);
       try {
          fociProjector.execute();
       }

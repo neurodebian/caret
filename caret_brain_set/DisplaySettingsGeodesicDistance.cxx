@@ -129,7 +129,8 @@ DisplaySettingsGeodesicDistance::showScene(const SceneFile::Scene& scene, QStrin
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsGeodesicDistance::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsGeodesicDistance::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    GeodesicDistanceFile* gdf = brainSet->getGeodesicDistanceFile();
 

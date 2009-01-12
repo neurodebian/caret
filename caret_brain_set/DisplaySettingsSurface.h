@@ -45,6 +45,7 @@ class DisplaySettingsSurface : public DisplaySettings {
           DRAW_MODE_NODES_AND_LINKS,
           DRAW_MODE_TILES,
           DRAW_MODE_TILES_WITH_LIGHT,
+          DRAW_MODE_TILES_WITH_LIGHT_NO_BACK,
           DRAW_MODE_TILES_LINKS_NODES,
           DRAW_MODE_NONE
       };
@@ -154,14 +155,6 @@ class DisplaySettingsSurface : public DisplaySettings {
       /// get the partial view
       PARTIAL_VIEW_TYPE getPartialView() const { return partialView; };
       
-      /// get section highlighting
-      void getSectionHighlighting(int& sectionToHighlightOut, 
-                                  bool& highlightEveryXOut) const;
-      
-      /// set section highlighting
-      void setSectionHighlighting(const int sectionToHighlightIn,
-                                  const bool highlightEveryXIn);
-                                  
       /// Get show surface axes info
       void getSurfaceAxesInfo(bool& showAxes,
                               bool& showLetters,
@@ -182,6 +175,12 @@ class DisplaySettingsSurface : public DisplaySettings {
       /// set the identify node color
       void setIdentifyNodeColor(const IDENTIFY_NODE_COLOR idc) { identifyNodeColor = idc; }
       
+      /// get the opacity
+      float getOpacity() const { return opacity; }
+      
+      /// set the opacity
+      void setOpacity(const float opacityIn) { opacity = opacityIn; };
+      
       /// Reinitialize all display settings
       void reset();
       
@@ -192,7 +191,8 @@ class DisplaySettingsSurface : public DisplaySettings {
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
    private:
       /// the drawing mode
@@ -228,12 +228,6 @@ class DisplaySettingsSurface : public DisplaySettings {
       /// the partial view
       PARTIAL_VIEW_TYPE partialView;
       
-      /// section highlighting
-      int sectionToHighlight;
-      
-      /// highlight every X sections
-      bool sectionHighlightEveryX;
-      
       /// the viewing projection
       VIEWING_PROJECTION viewingProjection;
       
@@ -254,6 +248,9 @@ class DisplaySettingsSurface : public DisplaySettings {
       
       /// identify node color
       IDENTIFY_NODE_COLOR identifyNodeColor;
+      
+      /// surface opacity
+      float opacity;
 };
 
 #endif // __VE_DISPLAY_SETTINGS_SURFACE_H__

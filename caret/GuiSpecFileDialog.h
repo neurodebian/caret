@@ -27,19 +27,24 @@
 #ifndef __GUI_SPEC_FILE_DIALOG_H__
 #define __GUI_SPEC_FILE_DIALOG_H__
 
-#include "QtDialog.h"
-#include "QtMainWindow.h"
+#include <QMainWindow>
 
 #include "BrainModelSurface.h"
 #include "SpecFile.h"
 #include "TransformationMatrixFile.h"
+#include "WuQDialog.h"
 
 //
 // forward declarations to avoid include files
 //
+class GuiCategoryComboBox;
+class GuiSpeciesComboBox;
+class GuiSpecFileDialogMainWindow;
+class GuiStereotaxicSpaceComboBox;
 class GuiStructureComboBox;
 class QButtonGroup;
 class QCheckBox;
+class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
@@ -47,10 +52,9 @@ class QPushButton;
 class QScrollArea;
 class QToolButton;
 class QVBoxLayout;
-class GuiSpecFileDialogMainWindow;
 
 /// Dialog for making selections from the specification file.
-class GuiSpecFileDialog : public QtDialog {
+class GuiSpecFileDialog : public WuQDialog {
  
    Q_OBJECT
    
@@ -102,7 +106,7 @@ class GuiSpecFileDialog : public QtDialog {
 };
 
 /// MainWindow placed in the Spec File Dialog
-class GuiSpecFileDialogMainWindow : public QtMainWindow {
+class GuiSpecFileDialogMainWindow : public QMainWindow {
    Q_OBJECT
 
    public:
@@ -150,15 +154,6 @@ class GuiSpecFileDialogMainWindow : public QtMainWindow {
       
       /// Called when a delete (X) button is pressed
       void deleteButtonGroupSlot(int buttonNumber);
-      
-      /// Called when space button is pressed
-      void slotSpacePushButton();
-      
-      /// Called when species button is pressed
-      void slotSpeciesPushButton();
-      
-      /// Called when category button is pressed
-      void slotCategoryPushButton();
       
       /// Called when the toolbar all button is pressed
       void slotToolBarAllButton();
@@ -367,14 +362,14 @@ class GuiSpecFileDialogMainWindow : public QtMainWindow {
       /// group box containing  files
       QGroupBox* fociGroup;
       
-      /// group box containing volume foci files
-      QGroupBox* fociVolumeGroup;
-      
       /// group box containing  files
       QGroupBox* fociColorGroup;
       
       /// group box containing  files
       QGroupBox* fociProjGroup;
+      
+      /// group box containing files
+      QGroupBox* fociSearchGroup;
       
       /// group box containing image files
       QGroupBox* imagesGroup;
@@ -457,6 +452,9 @@ class GuiSpecFileDialogMainWindow : public QtMainWindow {
       /// group box for surface parameters
       QGroupBox* surfaceParametersGroup;
       
+      /// group box for study collection files
+      QGroupBox* studyCollectionGroup;
+      
       /// group box for study metadata files
       QGroupBox* studyMetaDataGroup;
       
@@ -508,14 +506,14 @@ class GuiSpecFileDialogMainWindow : public QtMainWindow {
       /// flag set when user removes a file from the spec file
       bool specFileNeedsToBeWritten;
       
-      /// space line edit
-      QLineEdit* spaceLineEdit;
+      /// space combo box
+      GuiStereotaxicSpaceComboBox* spaceComboBox;
 
-      /// species line edit
-      QLineEdit* speciesLineEdit;
+      /// species combo box
+      GuiSpeciesComboBox* speciesComboBox;
       
-      /// category line edit
-      QLineEdit* categoryLineEdit;
+      /// category combo box
+      GuiCategoryComboBox* categoryComboBox;
 
       /// subject line edit
       QLineEdit* subjectLineEdit;
@@ -527,16 +525,16 @@ class GuiSpecFileDialogMainWindow : public QtMainWindow {
       QString savedComment;
       
       /// species value at time spec file loaded into dialog
-      QString savedSpecies;
+      Species savedSpecies;
 
       /// structure value at time spec file loaded into dialog
       Structure::STRUCTURE_TYPE savedStructure;
 
       /// space value at time spec file loaded into dialog
-      QString savedSpace;
+      StereotaxicSpace savedStereotaxicSpace;
 
       /// category value at time spec file loaded into dialog
-      QString savedCategory;
+      Category savedCategory;
       
       /// category value at time spec file loaded into dialog
       QString savedSubject;

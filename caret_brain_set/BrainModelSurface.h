@@ -35,12 +35,15 @@
 #include "Structure.h"
 
 class BorderFile;
+class BorderProjection;
 class BrainModelSurfaceROINodeSelection;
 class BrainVoyagerFile;
 class CellProjectionFile;
 class DeformationFieldFile;
 class LatLonFile;
 class MetricFile;
+class MniObjSurfaceFile;
+class PaintFile;
 class RgbPaintFile;
 class SurfaceShapeFile;
 class SurfaceVectorFile;
@@ -71,6 +74,11 @@ class BrainModelSurface : public BrainModel {
       
       /// Plane for modifying coordinates
       enum COORDINATE_PLANE {
+         COORDINATE_PLANE_NONE,
+         COORDINATE_PLANE_MOVE_POSITIVE_X_TO_ZERO,
+         COORDINATE_PLANE_MOVE_NEGATIVE_X_TO_ZERO,
+         COORDINATE_PLANE_MOVE_POSITIVE_Y_TO_ZERO,
+         COORDINATE_PLANE_MOVE_NEGATIVE_Y_TO_ZERO,
          COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO,
          COORDINATE_PLANE_MOVE_NEGATIVE_Z_TO_ZERO,
          COORDINATE_PLANE_RESTORE
@@ -88,6 +96,12 @@ class BrainModelSurface : public BrainModel {
 
       /// add a node to the surface
       void addNode(const float xyz[3]);
+      
+      /// Align to standard orientation (flat or spherical)
+      void alignToStandardOrientation(const BrainModelSurface* fiducialSurface,
+                                      const BorderProjection* centralSulcusBorderProjection,
+                                      const bool generateSphericalLatitudeLongitude,
+                                      const bool scaleToFiducialArea);
       
       /// Align to standard orientation (flat or spherical)
       void alignToStandardOrientation(const int ventralTipCentralSulcusNode, 
@@ -209,8 +223,10 @@ class BrainModelSurface : public BrainModel {
                                                   const bool createVeryInflated,
                                                   const bool createEllipsoid,
                                                   const bool createSphere,
+                                                  const bool createCompressedMedialWall,
                                                   const bool enableFingerSmoothing,
                                                   const bool scaleToMatchFiducialArea,
+                                                  const float iterationsScale,
                                                   MetricFile* metricMeasurementsFile) const;
       
       /// convert "this" surface to VTK PolyData
@@ -265,6 +281,9 @@ class BrainModelSurface : public BrainModel {
       /// import from a brain voyager file
       void importFromBrainVoyagerFile(const BrainVoyagerFile& bvf) throw (FileException);
       
+      /// import from a MNI OBJ Surface File
+      void importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException);
+      
       /// import from a VTK surface file
       void importFromVtkFile(vtkPolyData* polyData,
                              const QString& fileName) throw (FileException);
@@ -288,8 +307,7 @@ class BrainModelSurface : public BrainModel {
       void readCoordinateFile(const QString& filename) throw(FileException);
       
       /// read the specified surface file
-      void readSurfaceFile(const QString& filename,
-                           bool& normalsValidOut) throw(FileException);
+      void readSurfaceFile(const QString& filename) throw(FileException);
       
       /// write the surface file
       void writeSurfaceFile(const QString& filename,
@@ -346,6 +364,9 @@ class BrainModelSurface : public BrainModel {
       
       /// get the area of the surface
       float getSurfaceArea(const TopologyFile* tfin = NULL) const;
+      
+      // get the volume displacment of the surface
+      float getSurfaceVolumeDisplacement() const;
       
       /// Get the area of a tile in the surface
       float getTileArea(const int tileNum) const;
@@ -441,12 +462,16 @@ class BrainModelSurface : public BrainModel {
 
       /// orient nodes with paint to be on negative Z axis 
       /// (returns true if matching nodes were NOT found)
-      bool orientPaintedNodesToNegativeZAxis(const std::vector<QString> paintNames,
+      bool orientPaintedNodesToNegativeZAxis(const PaintFile* paintFile,
+                                             const std::vector<QString> paintNames,
                                              const int paintColumn,
                                              QString& errorMessage);
           
       /// orient a sphere so that the point is placed on the negative Z axis
       void orientPointToNegativeZAxis(const float p[3]);
+      
+      /// orient a sphere so that the point is placed on the positive Z axis
+      void orientPointToPositiveZAxis(const float p[3]);
       
       /// linearly smooth the surface
       void linearSmoothing(const float strength, const int iterations,

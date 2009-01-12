@@ -36,8 +36,10 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGlobalStatic>
 #include <QGroupBox>
 #include <QImage>
+#include <QImageWriter>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
@@ -66,7 +68,7 @@
 #endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
 
-#include "BrainModelRunCaretUtilityProgram.h"
+#include "BrainModelRunExternalProgram.h"
 #include "BrainSet.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
@@ -83,7 +85,7 @@
  * Constructor.
  */
 GuiRecordingDialog::GuiRecordingDialog(QWidget* parent) 
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Recording");
    
@@ -440,7 +442,9 @@ GuiRecordingDialog::createOutputMovieSection()
    movieFileTypeComboBox->setCurrentIndex(mpeg1Index);
 #endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
-   
+   movieFileTypeComboBox->addItem("JPEG Images",
+                                  static_cast<int>(MOVIE_FILE_TYPE_JPEG_IMAGES));
+                                  
    //
    // Movie name label and line edit
    //
@@ -549,6 +553,13 @@ GuiRecordingDialog::slotCreateMovieButton()
          break;
       case MOVIE_FILE_TYPE_AVI_VTK:
          createMovieWithAviVTK();
+      case MOVIE_FILE_TYPE_JPEG_IMAGES:
+         QMessageBox::information(this, 
+                                  "INFO",
+                                  "You will need to use a program such as \n"
+                                  "Apple's iMovie or Microsoft's Media \n"
+                                  "encoder to create a movie from the \n"
+                                  "sequence of images.");
          break;
    }
 }
@@ -651,8 +662,6 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
    QFile file(mpegParamsName);
    if (file.open(QIODevice::WriteOnly)) {
       
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      
       QTextStream stream(&file);
       
       stream << "PATTERN IBBPBBPBBPBBPBBP" << "\n";
@@ -724,6 +733,8 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
          msg.append("Run it by double-clicking it or run it from the command line.");
          QMessageBox::information(this, "Command File Created", msg);
          
+         QApplication::restoreOverrideCursor();
+         
          return;
       }
 #endif
@@ -732,7 +743,9 @@ GuiRecordingDialog::createMovieWithMpegCreate(const QString& movieName)
       //
       // Run the program to convert images into an MPEG movie
       //
-      BrainModelRunCaretUtilityProgram cup("mpeg_encode", mpegParamsName, false, true);
+      BrainModelRunExternalProgram cup("mpeg_encode", 
+                                       QStringList(mpegParamsName), 
+                                       true);
       try {
          cup.execute();
       }
@@ -830,6 +843,9 @@ GuiRecordingDialog::addImageToRecording(const QImage& imageIn)
          break;
       case MOVIE_FILE_TYPE_AVI_VTK:
          addImageToAviVTK(image);
+         break;
+      case MOVIE_FILE_TYPE_JPEG_IMAGES:
+         addImageToJpeg(image);
          break;
    }
    
@@ -963,6 +979,33 @@ GuiRecordingDialog::addImageToAviVTK(const QImage& /*image*/)
 #endif // HAVE_VTK5
 }
 
+/**
+ * add image to movie for JPEG images.
+ */
+void 
+GuiRecordingDialog::addImageToJpeg(const QImage& image)
+{
+   //
+   // Create name of image
+   //
+   const QString outputName(
+      QString().sprintf("record_image_%06d.jpg", static_cast<int>(imageCounter)));
+      
+   //
+   // Write the image
+   //
+   QImageWriter writer(outputName);
+   writer.setFormat("JPG");
+   if (writer.write(image) == false) {
+      QMessageBox::critical(this,
+                            "ERROR",
+                            "Error writing " + outputName);
+      return;
+   }
+   
+   imageNames.push_back(outputName);
+}
+      
 /**
  * add image to movie being created with mpeg_create.
  */

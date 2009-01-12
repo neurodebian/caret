@@ -26,7 +26,7 @@
 #ifndef __GUI_NODE_ATTRIBUTE_FILE_CLEAR_RESET_DIALOG_H__
 #define __GUI_NODE_ATTRIBUTE_FILE_CLEAR_RESET_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "GuiFilesModified.h"
 #include "GuiNodeFileType.h"
@@ -35,7 +35,7 @@ class GuiNodeAttributeColumnSelectionComboBox;
 class QRadioButton;
 
 /// dialog for clearing a node attribute file, clearing a column, or resetting a column
-class GuiNodeAttributeFileClearResetDialog : public QtDialog {
+class GuiNodeAttributeFileClearResetDialog : public WuQDialog {
    Q_OBJECT
    
    public:

@@ -7,7 +7,7 @@ TEMPLATE = app
 #
 # For JPEG support with static linking
 #
-QTPLUGIN += qgif qjpeg
+QTPLUGIN += qgif qjpeg qtiff
 LIBS     += -L$(QTDIR)/plugins/imageformats
 
 CONFIG   += qt console
@@ -67,6 +67,18 @@ macx {
 	        -L../caret_statistics -lCaretStatistics \
 	        -L../caret_common -lCaretCommon 
 
+   contains ( DEFINES, HAVE_ITK ) {
+      LIBS += $$ITK_LIBS
+   }
+   
+   LIBS += $$VTK_LIBS
+   
+   contains( DEFINES, HAVE_MINC ) {
+      LIBS += $$NETCDF_LIBS
+   }
+}
+
+unix {
    PRE_TARGETDEPS +=  \
            ../caret_command_operations/libCaretCommandOperations.a \
            ../caret_brain_set/libCaretBrainSet.a \
@@ -78,15 +90,6 @@ macx {
            ../caret_common/libCaretCommon.a \
            ../caret_widgets/libCaretWidgets.a
 
-   contains ( DEFINES, HAVE_ITK ) {
-      LIBS += $$ITK_LIBS
-   }
-   
-   LIBS += $$VTK_LIBS
-   
-   contains( DEFINES, HAVE_MINC ) {
-      LIBS += $$NETCDF_LIBS
-   }
 }
 
 unix:!macx {

@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class CaretScriptFile;
 class CommandBase;
@@ -39,7 +39,7 @@ class QScrollArea;
 class QVBoxLayout;
 
 /// class for constructing and editing caret command scripts
-class GuiCaretCommandScriptBuilderDialog : public QtDialog {
+class GuiCaretCommandScriptBuilderDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -65,6 +65,9 @@ class GuiCaretCommandScriptBuilderDialog : public QtDialog {
       
       // called when close button pressed
       void slotClosePushButton();
+      
+      // called when help button pressed
+      void slotHelpPushButton();
       
       // called to add a new command 
       void slotAddCommand(GuiCaretCommandContainerWidget* addAfterWidget);

@@ -379,8 +379,36 @@ Border::addBorderLink(const float xyz[3],
       linkRadii.push_back(radius);
       linkFlatNormal.push_back(0.0);
       linkFlatNormal.push_back(0.0);
-      linkFlatNormal.push_back(0.0);
+      linkFlatNormal.push_back(1.0);
       linkSection.push_back(section);
+      if (borderFile != NULL) {
+         borderFile->setModified();
+      }
+   }
+}
+
+/**
+ * insert a border link before the specified link number (use number of links for end).
+ */
+void 
+Border::insertBorderLink(const int linkIndex,
+                         const float xyz[3], 
+                         const int section, 
+                         const float radius)
+{
+   if (linkIndex >= getNumberOfLinks()) {
+      addBorderLink(xyz, section, radius);
+   }
+   else if (linkIndex >= 0) {
+      const int offset3 = linkIndex * 3;
+      linkXYZ.insert(linkXYZ.begin() + offset3, xyz[2]);
+      linkXYZ.insert(linkXYZ.begin() + offset3, xyz[1]);
+      linkXYZ.insert(linkXYZ.begin() + offset3, xyz[0]);
+      linkRadii.insert(linkRadii.begin() + linkIndex, radius);
+      linkSection.insert(linkSection.begin() + linkIndex, section);
+      linkFlatNormal.insert(linkFlatNormal.begin() + offset3, 0.0);
+      linkFlatNormal.insert(linkFlatNormal.begin() + offset3, 0.0);
+      linkFlatNormal.insert(linkFlatNormal.begin() + offset3, 1.0);
       if (borderFile != NULL) {
          borderFile->setModified();
       }
@@ -455,6 +483,108 @@ Border::removeLink(const int linkNumber)
    }
 }
 
+/**
+ * remove intersecting loops in a border.
+ */
+void 
+Border::removeIntersectingLoops(const char axisXYZ) throw (FileException)
+{
+   if ((axisXYZ != 'X') &&
+       (axisXYZ != 'Y') &&
+       (axisXYZ != 'Z')) {
+      throw FileException("PROGRAM ERROR axis passed to \"Border::removeIntersectingLoops\""
+                          "must be one of X, Y, or Z");
+   }
+   
+   bool done = false;
+   while (done == false) {
+      done = true;
+      const int numLinks = getNumberOfLinks();
+      
+      //
+      // Loop through links
+      //
+      bool foundIntersectionFlag = false;
+      for (int i = 0; i < (numLinks - 3); i++) {    
+         const float* p13D = getLinkXYZ(i);
+         const float* p23D = getLinkXYZ(i + 1);     
+         
+         //
+         // Loop through links after "i"
+         //
+         for (int j = i + 2; j < (numLinks - 1); j++) {
+            //
+            // Do not test first and last
+            //
+            if ((i == 0) &&
+                (j == (numLinks - 2))) {
+               continue;
+            }
+            
+            const float* q13D = getLinkXYZ(j);
+            const float* q23D = getLinkXYZ(j + 1);
+            
+            //
+            // Convert 3D to Planar 2D
+            //
+            float p1[2], p2[2], q1[2], q2[2];
+            switch (axisXYZ) {
+               case 'X':
+                  p1[0] = p13D[1];
+                  p1[1] = p13D[2];
+                  p2[0] = p23D[1];
+                  p2[1] = p23D[2];
+                  q1[0] = q13D[1];
+                  q1[1] = q13D[2];
+                  q2[0] = q23D[1];
+                  q2[1] = q23D[2];
+                  break;
+               case 'Y':
+                  p1[0] = p13D[0];
+                  p1[1] = p13D[2];
+                  p2[0] = p23D[0];
+                  p2[1] = p23D[2];
+                  q1[0] = q13D[0];
+                  q1[1] = q13D[2];
+                  q2[0] = q23D[0];
+                  q2[1] = q23D[2];
+                  break;
+               case 'Z':
+                  p1[0] = p13D[0];
+                  p1[1] = p13D[1];
+                  p2[0] = p23D[0];
+                  p2[1] = p23D[1];
+                  q1[0] = q13D[0];
+                  q1[1] = q13D[1];
+                  q2[0] = q23D[0];
+                  q2[1] = q23D[1];
+                  break;
+            }
+            
+            //
+            // Do the segments intersect?
+            //
+            float intersection[2];
+            if (MathUtilities::lineIntersection2D(p1, p2, q1, q2, intersection)) {
+               //
+               // Remove links between intersection
+               //
+               for (int k = j; k >= (i + 1); k--) {
+                  removeLink(k);
+               }
+               foundIntersectionFlag = true;
+               done = false;
+               break;
+            }
+         } // for j...
+         
+         if (foundIntersectionFlag) {
+            break;
+         }
+      } // for i...
+   }
+}
+      
 /**
  * smooth the border links.
  */
@@ -620,6 +750,16 @@ Border::resampleBorderToNumberOfLinks(const int newNumberOfLinks)
       borderFile->setModified();
    }
 }
+
+/**
+ * orient the links counter-clockwise.
+ */
+void 
+Border::orientLinksCounterClockwise()
+{
+   orientLinksClockwise();
+   reverseBorderLinks();
+}      
 
 /**
  * Orient the links in the border clockwise.
@@ -852,6 +992,78 @@ Border::getBounds(float bounds[6]) const
 }
 
 /**
+ * get the center of gravity of the border (returns true if valid).
+ */
+bool 
+Border::getCenterOfGravity(float cogXYZOut[3]) const
+{
+   double sum[3] = { 0.0, 0.0, 0.0 };
+   double numSum = 0.0;
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      const float* pos = getLinkXYZ(i);
+      sum[0] += pos[0];
+      sum[1] += pos[1];
+      sum[2] += pos[2];
+      numSum += 1.0;
+   }
+   
+   if (numSum >= 1.0) {
+      cogXYZOut[0] = sum[0] / numSum;
+      cogXYZOut[1] = sum[1] / numSum;
+      cogXYZOut[2] = sum[2] / numSum;
+      return true;
+   }
+   
+   return false;
+}      
+
+/**
+ * get the link number nearest to a coordinate.
+ */
+int 
+Border::getLinkNumberNearestToCoordinate(const float xyz[3]) const
+{
+   int nearestLinkNumber = -1;
+   float nearestDistanceSQ = std::numeric_limits<float>::max();
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      const float* pos = getLinkXYZ(i);
+      const float distSQ = MathUtilities::distanceSquared3D(xyz, pos);
+      if (distSQ < nearestDistanceSQ) {
+         nearestDistanceSQ = distSQ;
+         nearestLinkNumber = i;
+      }
+   }
+   
+   return nearestLinkNumber;
+}
+      
+/**
+ * get the link number furthest from a coordinate.
+ */
+int 
+Border::getLinkNumberFurthestFromCoordinate(const float xyz[3]) const
+{
+   int furthestLinkNumber = -1;
+   float furthestDistanceSQ = -1.0;
+   
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < (numLinks - 1); i++) {
+      const float* pos = getLinkXYZ(i);
+      const float distSQ = MathUtilities::distanceSquared3D(xyz, pos);
+      if (distSQ > furthestDistanceSQ) {
+         furthestDistanceSQ = distSQ;
+         furthestLinkNumber = i;
+      }
+   }
+   
+   return furthestLinkNumber;
+}
+      
+/**
  * See if 3D points are inside a 3D border (transform all to screen axis).
  */
 void 
@@ -986,16 +1198,27 @@ Border::pointsInsideBorder2D(const float* points, const int numPoints,
    //
    const float scaleFactor = 1000.0;
 
-   const int numLinks = getNumberOfLinks();
+   //
+   // Copy the border and orient CCW
+   //
+   Border border = *this;
+   const int numLinks = border.getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      float pos[3];
+      border.getLinkXYZ(i, pos);
+      pos[2] = 0.0;
+      border.setLinkXYZ(i, pos);
+   }
+   border.orientLinksCounterClockwise();
 
    std::vector<float> polygon;
    int numToSkip = 1;
    int numInPolygon = 0;
    for (int i = 0; i < (numLinks - 1); i++) {
-      const float* pos = getLinkXYZ(i);
+      const float* pos = border.getLinkXYZ(i);
       polygon.push_back(pos[0] * scaleFactor);
       polygon.push_back(pos[1] * scaleFactor);
-      polygon.push_back(pos[2] * scaleFactor);
+      polygon.push_back(0.0); //JWH 5/14/2008 pos[2] * scaleFactor);
       numInPolygon++;
       i += numToSkip; 
    }
@@ -1004,11 +1227,11 @@ Border::pointsInsideBorder2D(const float* points, const int numPoints,
    }
       
    float bounds[6];
-   getBounds(bounds);
-   bounds[0] *= scaleFactor;
-   bounds[1] *= scaleFactor;
-   bounds[2] *= scaleFactor;
-   bounds[3] *= scaleFactor;
+   border.getBounds(bounds);
+   bounds[0] *= scaleFactor - 1.0;
+   bounds[1] *= scaleFactor + 1.0;
+   bounds[2] *= scaleFactor - 1.0;
+   bounds[3] *= scaleFactor + 1.0;
    bounds[4] = -1.0;
    bounds[5] =  1.0;
    
@@ -1016,22 +1239,22 @@ Border::pointsInsideBorder2D(const float* points, const int numPoints,
    
    for (int i = 0; i < numPoints; i++) {
       float xyz[3];
-      xyz[0] = points[i*3]   * scaleFactor;
-      xyz[1] = points[i*3+1] * scaleFactor;
-      xyz[2] = points[i*3+2] * scaleFactor;
-      int result = 0;
+      xyz[0] = points[i*3];
+      xyz[1] = points[i*3+1];
+      xyz[2] = points[i*3+2];
 
       bool checkIt = true;
       if (checkNonNegativeZPointsOnly) {
          if (xyz[2] < zMinimum) {
             checkIt = false;
          }
-         xyz[2] = 0.0;
       }
-      else {
-         xyz[2] = 0.0;
-      }
+
+      int result = 0;
       if (checkIt) {
+         xyz[0] *= scaleFactor;
+         xyz[1] *= scaleFactor;
+         xyz[2]  = 0.0;
          result = MathUtilities::pointInPolygon(xyz,
                                              numInPolygon,
                                              (float*)&polygon[0],

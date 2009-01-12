@@ -79,10 +79,11 @@
  */
 GuiMapFmriDialog::GuiMapFmriDialog(QWidget* parent,
                                    const bool runningAsPartOfCaretIn,
-                                   bool modal,
-                                   Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                   bool modalFlag,
+                                   Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    dataMappingType = DATA_MAPPING_TYPE_NONE;
    
    readAtlases();
@@ -215,7 +216,7 @@ GuiMapFmriDialog::slotCloseOrCancelButton()
       }
    }
    
-   QtDialog::close();
+   WuQDialog::close();
 }
 
 /**
@@ -228,7 +229,7 @@ GuiMapFmriDialog::done(int r)
    // Do nothing - overriding this method prevents the window from closing
    // when the Finish button is pressed.
    //
-   QtDialog::done(r);
+   WuQDialog::done(r);
 }
 
 /**
@@ -1241,7 +1242,7 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                   //
                   // Add the metric file to the spec file
                   //
-                  sf.addToSpecFile(SpecFile::paintFileTag, metricName, "", false);
+                  sf.addToSpecFile(SpecFile::getPaintFileTag(), metricName, "", false);
                   
                   //
                   // Write the spec file
@@ -2064,7 +2065,7 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                   //
                   // Add the metric file to the spec file
                   //
-                  sf.addToSpecFile(SpecFile::metricFileTag, metricName, "", false);
+                  sf.addToSpecFile(SpecFile::getMetricFileTag(), metricName, "", false);
                   
                   //
                   // Write the spec file
@@ -2779,7 +2780,7 @@ void
 GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
 {
    bool enableMetricMultiFidOptions = false;  
-   bool enablePaintMultiFidOptions = true; 
+   bool enablePaintMultiFidOptions = false; 
    switch (dataMappingType) {
       case DATA_MAPPING_TYPE_NONE:
          break;
@@ -2796,7 +2797,7 @@ GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
    //
    GuiMapFmriAtlasDialog fad(this, &atlasSpecFileInfo,
                              theMainWindow->getBrainSet()->getPreferencesFile(),
-                             theMainWindow->getBrainSet()->getSpecies(),
+                             theMainWindow->getBrainSet()->getSpecies().getName(),
                              theMainWindow->getBrainSet()->getStructure().getTypeAsString(),
                              false,
                              enableMetricMultiFidOptions, enablePaintMultiFidOptions);
@@ -2845,7 +2846,8 @@ GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
                                         mapToAllCasesFlag);
       }
       
-      if (atlasCoordFileNames.empty() == false) {
+      if ((atlasCoordFileNames.empty() == false) ||
+          (atlasAvgCoordFileName.isEmpty() == false)) {
          //
          // Create the mapping set for use atlas to map to caret metric file
          //
@@ -2929,7 +2931,8 @@ GuiMapFmriDialog::getFiducialSurfaces(std::vector<BrainModelSurface*>& surfaces,
       BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(i);
       if (bms != NULL) {
          haveAnySurface = true;
-         if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+         if ((bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_RAW) ||
+             (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL)) {
             surfaces.push_back(bms);
          }
       }

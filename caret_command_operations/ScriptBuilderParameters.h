@@ -67,9 +67,11 @@ class ScriptBuilderParameters {
       
             /// constructor
             Parameter(const TYPE typeIn,
-                      const QString descriptionIn) {
+                      const QString& descriptionIn,
+                      const QString& optionalSwitchIn = "") {
                type        = typeIn;
                description = descriptionIn;
+               optionalSwitch = optionalSwitchIn;
             }
             
             /// destructor
@@ -81,11 +83,22 @@ class ScriptBuilderParameters {
             /// get the description
             QString getDescription() const { return description; }
             
+            /// get the optional switch
+            QString getOptionalSwitch() const { return optionalSwitch; }
+            
             /// get the file filter 
-            QStringList getFileFilters() const { return fileFilters; }
+            void getFileParameters(QStringList& fileFiltersOut,
+                                   QString& defaultFileNameOut) const { 
+               fileFiltersOut = fileFilters; 
+               defaultFileNameOut = defaultFileName;
+            }
             
             /// set the file filter 
-            void setFileFilters(const QStringList& ff) { fileFilters = ff; }
+            void setFileParameters(const QStringList& fileFiltersIn,
+                                   const QString& defaultFileNameIn) { 
+               fileFilters = fileFiltersIn;
+               defaultFileName = defaultFileNameIn;
+            }
             
             /// get float parameters
             void getFloatParameters(float& defaultFloatValueOut,
@@ -201,6 +214,9 @@ class ScriptBuilderParameters {
             /// variable list default value
             QString defaultVariableListValue;
             
+            /// default file name;
+            QString defaultFileName;
+            
             /// default boolean value
             bool defaultBooleanValue;
             
@@ -209,6 +225,9 @@ class ScriptBuilderParameters {
             
             /// list of item descriptions
             std::vector<QString> listOfItemDescriptions;
+            
+            /// the optional switch
+            QString optionalSwitch;
       };
       
       // constructor
@@ -234,19 +253,25 @@ class ScriptBuilderParameters {
       
       // add a file
       void addFile(const QString& descriptionIn,
-                   const QStringList& fileFiltersIn);
+                   const QStringList& fileFiltersIn,
+                   const QString& defaultFileName = "",
+                   const QString& optionalSwitchIn = "");
                        
       // add a file
       void addFile(const QString& descriptionIn,
-                   const QString& fileFilterIn);
+                   const QString& fileFilterIn,
+                   const QString& defaultFileName = "",
+                   const QString& optionalSwitchIn = "");
                        
       // add multiple files
       void addMultipleFiles(const QString& descriptionIn,
-                            const QString& fileFilterIn);
+                            const QString& fileFilterIn,
+                            const QString& defaultFileName = "");
                             
       // add multiple files
       void addMultipleFiles(const QString& descriptionIn,
-                            const QStringList& fileFiltersIn);
+                            const QStringList& fileFiltersIn,
+                            const QString& defaultFileName = "");
                             
       // add a flag
       //void addFlag(const QString& descriptionIn);

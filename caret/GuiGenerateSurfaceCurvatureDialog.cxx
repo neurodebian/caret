@@ -25,7 +25,7 @@
 
 #include <QApplication>
 #include <QGridLayout>
-#include <QGroupBox>>
+#include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
@@ -48,8 +48,9 @@
  * Constructor
  */
 GuiGenerateSurfaceCurvatureDialog::GuiGenerateSurfaceCurvatureDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Generate Curvature");
    
    //

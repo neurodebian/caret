@@ -97,7 +97,7 @@
  * Constructor for Main Window containing text area and toolbars.
  */
 GuiIdentifyMainWindow::GuiIdentifyMainWindow(GuiIdentifyDialog* parent) 
-                      : QtMainWindow(parent)
+                      : QMainWindow(parent)
 {
    //
    // Tab widget for filtering and text display
@@ -164,16 +164,25 @@ GuiIdentifyMainWindow::createToolBar()
    //
    // Copy highlighted text to clipboard
    //
+/*
    QAction* copyAction = new QAction("Copy", this);
    copyAction->setEnabled(false);
-   QObject::connect(copyAction, SIGNAL(triggered()),
+   QObject::connect(copyAction, SIGNAL(triggered(bool)),
                     textDisplayBrowser, SLOT(copy()));
    copyAction->setToolTip(
                  "Highlight text with the mouse and\n"
                  "then press this button to copy\n"
                  "the highlighted text to the clipboard.");
+*/
    QToolButton* copyButton = new QToolButton;
-   copyButton->setDefaultAction(copyAction);
+   copyButton->setText("Copy");
+   //copyButton->setDefaultAction(copyAction);
+   QObject::connect(copyButton, SIGNAL(clicked()),
+                    textDisplayBrowser, SLOT(copy()));
+   copyButton->setToolTip(
+                 "Highlight text with the mouse and\n"
+                 "then press this button to copy\n"
+                 "the highlighted text to the clipboard.");
    toolbar->addWidget(copyButton);
 
    //
@@ -227,6 +236,22 @@ GuiIdentifyMainWindow::createTextDisplayWidget()
 QWidget* 
 GuiIdentifyMainWindow::createDisplayFilterWidget()
 {
+   //
+   // all on/off buttons
+   //
+   QPushButton* allOnPushButton = new QPushButton("All On");
+   allOnPushButton->setAutoDefault(false);
+   QObject::connect(allOnPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotAllOn()));
+   QPushButton* allOffPushButton = new QPushButton("All Off");
+   allOffPushButton->setAutoDefault(false);
+   QObject::connect(allOffPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotAllOff()));
+   QHBoxLayout* allOnOffButtonLayout = new QHBoxLayout;
+   allOnOffButtonLayout->addWidget(allOnPushButton);
+   allOnOffButtonLayout->addWidget(allOffPushButton);
+   allOnOffButtonLayout->addStretch();
+   
    //
    // show node  info check box  
    //
@@ -380,6 +405,13 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
                     this, SLOT(slotFociGeographyAction(bool)));
                     
    //
+   // show foci region of interest info check box
+   //
+   showFociRegionOfInterestInfoCheckBox = new QCheckBox("Region of Interest");
+   QObject::connect(showFociRegionOfInterestInfoCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotFociRegionOfInterestAction(bool)));
+                    
+   //
    // show foci size info check box
    //
    showFociSizeInfoCheckBox = new QCheckBox("Extent");
@@ -392,6 +424,13 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
    showFociStatisticInfoCheckBox = new QCheckBox("Statistic");
    QObject::connect(showFociStatisticInfoCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(slotFociStatisticAction(bool)));
+                    
+   //
+   // show foci structure info check box
+   //
+   showFociStructureInfoCheckBox = new QCheckBox("Structure");
+   QObject::connect(showFociStructureInfoCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotFociStructureAction(bool)));
                     
    //
    // show foci comment info check box
@@ -412,10 +451,12 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
    fociGroupLayout->addWidget(showFociCommentInfoCheckBox);
    fociGroupLayout->addWidget(showFociGeographyInfoCheckBox);
    fociGroupLayout->addWidget(showFociNameInfoCheckBox);
+   fociGroupLayout->addWidget(showFociRegionOfInterestInfoCheckBox);
    fociGroupLayout->addWidget(showFociSizeInfoCheckBox);
    fociGroupLayout->addWidget(showFociOriginalStereotaxicPositionInfoCheckBox);
    fociGroupLayout->addWidget(showFociStereotaxicPositionInfoCheckBox);
    fociGroupLayout->addWidget(showFociStatisticInfoCheckBox);
+   fociGroupLayout->addWidget(showFociStructureInfoCheckBox);
    
    //
    // Show voxel info check box
@@ -866,6 +907,7 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
    QWidget* w = new QWidget;
    QVBoxLayout* l = new QVBoxLayout(w);
    l->setSpacing(15);
+   l->addLayout(allOnOffButtonLayout);
    l->addLayout(sigDigitsLayout);
    l->addWidget(showNodeInfoGroupBox);
    l->addWidget(showBorderInfoCheckBox);
@@ -915,8 +957,10 @@ GuiIdentifyMainWindow::updateFilteringSelections()
    showFociStereotaxicPositionInfoCheckBox->setChecked(bmi->getDisplayFociStereotaxicPositionInformation());
    showFociAreaInfoCheckBox->setChecked(bmi->getDisplayFociAreaInformation());
    showFociGeographyInfoCheckBox->setChecked(bmi->getDisplayFociGeographyInformation());
+   showFociRegionOfInterestInfoCheckBox->setChecked(bmi->getDisplayFociRegionOfInterestInformation());
    showFociSizeInfoCheckBox->setChecked(bmi->getDisplayFociSizeInformation());
    showFociStatisticInfoCheckBox->setChecked(bmi->getDisplayFociStatisticInformation());
+   showFociStructureInfoCheckBox->setChecked(bmi->getDisplayFociStructureInformation());
    showFociCommentInfoCheckBox->setChecked(bmi->getDisplayFociCommentInformation());
    showVoxelInfoCheckBox->setChecked(bmi->getDisplayVoxelInformation());
    showStudyMetaAnalysisInfoGroupBox->setChecked(bmi->getDisplayStudyMetaAnalysisInformation());
@@ -1031,13 +1075,25 @@ GuiIdentifyMainWindow::appendText(const QString& qs)
 }
 
 /**
- *  all on/off button.
+ *  all on button.
  */
 void 
-GuiIdentifyMainWindow::slotAllOnOff()
+GuiIdentifyMainWindow::slotAllOn()
 {
    BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
-   bmi->toggleAllIdentificationOnOff();
+   bmi->setAllIdentificationOn();
+   updateToolBarButtons();
+   updateFilteringSelections();
+}
+
+/**
+ *  all off button.
+ */
+void 
+GuiIdentifyMainWindow::slotAllOff()
+{
+   BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+   bmi->setAllIdentificationOff();
    updateToolBarButtons();
    updateFilteringSelections();
 }
@@ -1133,6 +1189,16 @@ GuiIdentifyMainWindow::slotFociGeographyAction(bool val)
 }
 
 /**
+ * display foci region of interest information toolbar button.
+ */
+void 
+GuiIdentifyMainWindow::slotFociRegionOfInterestAction(bool val)
+{
+   BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+   bmi->setDisplayFociRegionOfInterestInformation(val);
+}
+      
+/**
  * display foci size information toolbar button.
  */
 void 
@@ -1150,6 +1216,16 @@ GuiIdentifyMainWindow::slotFociStatisticAction(bool val)
 {
    BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
    bmi->setDisplayFociStatisticInformation(val);
+}
+
+/**
+ * display foci structure information toolbar button.
+ */
+void 
+GuiIdentifyMainWindow::slotFociStructureAction(bool val)
+{
+   BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
+   bmi->setDisplayFociStructureInformation(val);
 }
 
 /**
@@ -1849,7 +1925,7 @@ GuiIdentifyMainWindow::updateToolBarButtons()
  * The constructor.
  */
 GuiIdentifyDialog::GuiIdentifyDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    //resize(400, 200);
 

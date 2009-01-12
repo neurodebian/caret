@@ -23,48 +23,42 @@ unix:!macx {
 
 # Input
 HEADERS += \
-      QtCheckBoxSelectionDialog.h \
-      QtCheckBoxSelectionLineEditDialog.h \
-      QtDataEntryDialog.h \
-      QtDialog.h \
-      QtDialogModal.h \
-      QtDialogNonModal.h \
       QtDialogWizard.h \
-      QtInputDialog.h \
 	   QtListBoxSelectionDialog.h \
-      QtMainWindow.h \
-      QtMessageBox.h \
 	   QtMultipleInputDialog.h \
 	   QtRadioButtonSelectionDialog.h \
-      QtSaveWidgetAsImagePushButton.h \
+      QtScriptInputDialog.h \
       QtTableDialog.h \
 	   QtTextEditDialog.h \
       QtTextFileEditorDialog.h \
 	   QtUtilities.h \
       WuQDataEntryDialog.h \
+      WuQDialog.h \
       WuQFileDialog.h \
-      WuQWidgetGroup.h
+      WuQMessageBox.h \
+      WuQMultiPageDialog.h \
+      WuQSaveWidgetAsImagePushButton.h \
+      WuQSeparatorLine.h \
+      WuQWidgetGroup.h \
+      WuQWizard.h
 
 SOURCES += \
-      QtCheckBoxSelectionDialog.cxx \
-      QtCheckBoxSelectionLineEditDialog.cxx \
-      QtDataEntryDialog.cxx \
-      QtDialog.cxx \
-      QtDialogModal.cxx \
-      QtDialogNonModal.cxx \
       QtDialogWizard.cxx \
-      QtInputDialog.cxx \
 	   QtListBoxSelectionDialog.cxx \
-      QtMainWindow.cxx \
-      QtMessageBox.cxx \
 	   QtMultipleInputDialog.cxx \
 	   QtRadioButtonSelectionDialog.cxx \
-      QtSaveWidgetAsImagePushButton.cxx \
+      QtScriptInputDialog.cxx \
       QtTableDialog.cxx \
 	   QtTextEditDialog.cxx \
       QtTextFileEditorDialog.cxx \
 	   QtUtilities.cxx \
       WuQDataEntryDialog.cxx \
+      WuQDialog.cxx \
       WuQFileDialog.cxx \
-      WuQWidgetGroup.cxx
+      WuQMessageBox.cxx \
+      WuQMultiPageDialog.cxx \
+      WuQSaveWidgetAsImagePushButton.cxx \
+      WuQSeparatorLine.cxx \
+      WuQWidgetGroup.cxx \
+      WuQWizard.cxx 
 

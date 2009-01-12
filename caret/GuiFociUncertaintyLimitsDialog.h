@@ -27,13 +27,16 @@
 #ifndef __VE_GUI_FOCI_UNCERTAINTY_LIMITS_DIALOG_H__
 #define __VE_GUI_FOCI_UNCERTAINTY_LIMITS_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
+class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
+class QDoubleSpinBox;
+class QGroupBox;
 class QLineEdit;
 
 /// This dialog creates an RGB Paint file from foci proximities to surface.
-class GuiFociUncertaintyLimitsDialog : public QtDialog {
+class GuiFociUncertaintyLimitsDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -43,25 +46,51 @@ class GuiFociUncertaintyLimitsDialog : public QtDialog {
       /// Destructor
       ~GuiFociUncertaintyLimitsDialog();
        
-   private slots:
-      /// called when OK button pressed.
-      void accept();
-      
    private:
+      /// called when OK or Cancel button pressed
+      void done(int r);
+      
+      /// create the left surface widgets
+      QGroupBox* createLeftSurfaceWidgets();
+      
+      /// create the right surface widgets
+      QGroupBox* createRightSurfaceWidgets();
+      
+      /// create the limits widgets
+      QWidget* createLimitsWidgets();
+      
+      /// group box for right surface
+      QGroupBox* rightSurfaceGroupBox;
+      
+      /// group box for left surface
+      QGroupBox* leftSurfaceGroupBox;
+      
+      /// left surface combo box
+      GuiBrainModelSelectionComboBox* leftSurfaceComboBox;
+      
+      /// right surface combo box
+      GuiBrainModelSelectionComboBox* rightSurfaceComboBox;
+      
       /// lower uncertainty limit
-      QLineEdit* lowerLimitLineEdit;
+      QDoubleSpinBox* lowerLimitDoubleSpinBox;
       
       /// middle uncertainty limit
-      QLineEdit* middleLimitLineEdit;
+      QDoubleSpinBox* middleLimitDoubleSpinBox;
       
       /// upper uncertainty limit
-      QLineEdit* upperLimitLineEdit;
+      QDoubleSpinBox* upperLimitDoubleSpinBox;
       
-      /// rgb paint column new name
-      QLineEdit* rgbPaintColumnNewName;
+      /// rgb paint left column new name
+      QLineEdit* rgbPaintLeftColumnNewNameLineEdit;
+      
+      /// rgb paint right column new name
+      QLineEdit* rgbPaintRightColumnNewNameLineEdit;
       
       /// rgb paint column selection combo box
-      GuiNodeAttributeColumnSelectionComboBox* rgbPaintSelectionComboBox;
+      GuiNodeAttributeColumnSelectionComboBox* rgbPaintLeftSelectionComboBox;
+      
+      /// rgb paint column selection combo box
+      GuiNodeAttributeColumnSelectionComboBox* rgbPaintRightSelectionComboBox;
       
       /// lower limit saved between dialogs
       static float lowerLimit;

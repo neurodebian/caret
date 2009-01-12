@@ -39,6 +39,7 @@
 #include "CommaSeparatedValueFile.h"
 #include "ContourCellColorFile.h"
 #include "FociColorFile.h"
+#include "NameIndexSort.h"
 #include "StringTable.h"
 
 /**
@@ -137,6 +138,7 @@ ColorFile::append(const ColorFile& cf)
       cf.getPointLineSizeByIndex(i, pointSize, lineSize);
       
       const ColorStorage::SYMBOL symbol = cf.getSymbolByIndex(i);
+      const QString sumsColorID = cf.getSumsColorIDByIndex(i);
       
       /// if color already exists, replace its color components
       bool match;
@@ -145,9 +147,10 @@ ColorFile::append(const ColorFile& cf)
          setColorByIndex(indx, name, r, g, b, a);
          setPointLineSizeByIndex(indx, pointSize, lineSize);
          setSymbolByIndex(indx, symbol);
+         setSumsColorIDByIndex(indx, sumsColorID);
       }
       else {
-         addColor(name, r, g, b, a, pointSize, lineSize, symbol); 
+         addColor(name, r, g, b, a, pointSize, lineSize, symbol, sumsColorID); 
       }
    }
    
@@ -157,6 +160,37 @@ ColorFile::append(const ColorFile& cf)
    appendFileComment(cf);
 }
 
+/**
+ * add a color if it does not exist.
+ */
+int
+ColorFile::addColorIfItDoesNotExist(const QString& name,
+                                    const unsigned char r, 
+                                    const unsigned char g, 
+                                    const unsigned char b,
+                                    const unsigned char alpha,
+                                    const float pointSize, 
+                                    const float lineSize,
+                                    ColorStorage::SYMBOL symbol,
+                                    const QString& colorIdIn)
+{
+   bool exactMatch = false;
+   int indx = getColorIndexByName(name, exactMatch);
+   if ((indx < 0) || (exactMatch == false)) {
+      indx = addColor(name,
+                      r,
+                      g,
+                      b,
+                      alpha,
+                      pointSize,
+                      lineSize,
+                      symbol,
+                      colorIdIn);
+   }
+   
+   return indx;
+}
+                   
 /** 
  * Add a color to the color file.  Returns the index of the color.
  */
@@ -165,7 +199,8 @@ ColorFile::addColor(const QString& name,
                     const unsigned char r, const unsigned char g, const unsigned char b,
                     const unsigned char alpha,
                     const float pointSize, const float lineSize,
-                    ColorStorage::SYMBOL symbol)
+                    ColorStorage::SYMBOL symbol,
+                    const QString& colorIdIn)
 {
    if ((colors.size() == 0) && (name != "???")) {
       colors.push_back(ColorStorage("???", 170, 170, 170, 255, 2.0, 1.0, ColorStorage::SYMBOL_OPENGL_POINT));
@@ -197,10 +232,39 @@ ColorFile::addColor(const QString& name,
    }
 
    setModified();
-   colors.push_back(ColorStorage(name, r, g, b, alpha, pointSize, lineSize, symbol));
+   colors.push_back(ColorStorage(name, r, g, b, alpha, pointSize, lineSize, symbol, colorIdIn));
    return colors.size() - 1;
 }
 
+/**
+ * get color indices sorted by name case insensitive.
+ */
+void 
+ColorFile::getColorIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                       const bool reverseOrderFlag) const
+{
+   indicesSortedByNameOut.clear();
+   const int num = getNumberOfColors();
+   
+   //
+   // Sort indices by name
+   //
+   NameIndexSort nis;
+   for (int i = 0; i < num; i++) {
+      nis.add(i, getColorNameByIndex(i));
+   }
+   nis.sortByNameCaseInsensitive();
+   
+   indicesSortedByNameOut.resize(num, 0);
+   for (int i = 0; i < num; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+      
 /**
  * Get a color by its index (no validity check is made for the index).
  */
@@ -257,6 +321,15 @@ ColorFile::getColorNameByIndex(const int indx) const
 }
 
 /**
+ * set color name by index.
+ */
+void 
+ColorFile::setColorNameByIndex(const int indx, const QString& name)
+{
+   colors[indx].setName(name);
+}
+                           
+/**
  * get the symbol by the color index.
  */
 ColorFile::ColorStorage::SYMBOL 
@@ -265,6 +338,29 @@ ColorFile::getSymbolByIndex(const int indx) const
    return colors[indx].getSymbol();
 }      
  
+/**
+ * get the sums color id by index.
+ */
+QString 
+ColorFile::getSumsColorIDByIndex(const int indx) const
+{
+   return colors[indx].getSuMSColorID();
+}
+
+/**
+ * see if a color exists.
+ */
+bool 
+ColorFile::getColorExists(const QString& name) const
+{
+   bool exactMatch = false;
+   const int indx = getColorIndexByName(name, exactMatch);
+   if ((indx >= 0) && exactMatch) {
+      return true;
+   }
+   
+   return false;
+}      
 /**
  * Get a color by its name.  Returns indx of color if a matching color is 
  * found, else -1.
@@ -427,6 +523,17 @@ ColorFile::setSymbolByIndex(const int indx, const ColorFile::ColorStorage::SYMBO
    setModified();
 }
       
+/**
+ * set the SuMS color id by index.
+ */
+void 
+ColorFile::setSumsColorIDByIndex(const int indx,
+                                 const QString& idIn)
+{
+   colors[indx].setSuMSColorID(idIn);
+   setModified();
+}
+
 /**
  * set selection status of all colors
  */
@@ -591,6 +698,7 @@ ColorFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) th
    const int pointSizeCol = numCols++;
    const int lineSizeCol  = numCols++;
    const int symbolCol    = numCols++;
+   const int idCol        = numCols++;
    
    //
    // Create and add to string table
@@ -604,6 +712,7 @@ ColorFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) th
    ct->setColumnTitle(pointSizeCol, "Point-Size");
    ct->setColumnTitle(lineSizeCol, "Line-Size");
    ct->setColumnTitle(symbolCol, "Symbol");
+   ct->setColumnTitle(idCol, "SuMSColorID");
    
    //
    // Load the data
@@ -620,6 +729,7 @@ ColorFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) th
       ct->setElement(i, pointSizeCol, color->getPointSize());
       ct->setElement(i, lineSizeCol, color->getLineSize());
       ct->setElement(i, symbolCol, ColorStorage::symbolToText(color->getSymbol()));
+      ct->setElement(i, idCol, color->getSuMSColorID());
    }
    
    StringTable* headerTable = new StringTable(0, 0);
@@ -634,7 +744,9 @@ ColorFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) th
 void 
 ColorFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& csv) throw (FileException)
 {
+   const QString filenameSaved(filename);
    clear();
+   filename = filenameSaved;
    
    const StringTable* ct = csv.getDataSectionByName("Colors");   
    if (ct == NULL) {
@@ -649,6 +761,7 @@ ColorFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& 
    int pointSizeCol = -1;
    int lineSizeCol  = -1;
    int symbolCol    = -1;
+   int idCol        = -1;
 
    int numCols = ct->getNumberOfColumns();
    for (int i = 0; i < numCols; i++) {
@@ -677,6 +790,9 @@ ColorFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& 
       else if (columnTitle == "symbol") {
          symbolCol = i;   
       }
+      else if (columnTitle == "sumscolorid") {
+         idCol = i;   
+      }
    }
   
    for (int i = 0; i < ct->getNumberOfRows(); i++) {
@@ -687,6 +803,7 @@ ColorFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& 
       float pointSize = cs.getPointSize();
       ColorStorage::SYMBOL symbol = cs.getSymbol();
       QString name("unnamed color");
+      QString id;
       
       if (nameCol >= 0) {
          name = ct->getElement(i, nameCol);
@@ -712,6 +829,9 @@ ColorFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& 
       if (symbolCol >= 0) {
          symbol = ColorStorage::textToSymbol(ct->getElement(i, symbolCol));
       }
+      if (idCol >= 0) {
+         id = ct->getElement(i, idCol);
+      }
       
       addColor(name,
                red, 
@@ -720,7 +840,8 @@ ColorFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& 
                alpha,
                pointSize,
                lineSize,
-               symbol);
+               symbol,
+               id);
    }
 
    //
@@ -947,7 +1068,8 @@ ColorFile::ColorStorage::ColorStorage(const QString& nameIn,
              const unsigned char red, const unsigned char green, 
              const unsigned char blue, const unsigned char alpha,
              const float pointSizeIn, const float lineSizeIn,
-             const SYMBOL symbolIn) {
+             const SYMBOL symbolIn,
+             const QString& sumsIDIn) {
    name = nameIn;
    rgba[0] = red;
    rgba[1] = green;
@@ -957,6 +1079,7 @@ ColorFile::ColorStorage::ColorStorage(const QString& nameIn,
    pointSize = pointSizeIn;
    lineSize = lineSizeIn;
    selected = true;
+   sumsColorID = sumsIDIn;
 }
 
 /**
@@ -1156,6 +1279,24 @@ ColorFile::ColorStorage::setRgba(const unsigned char r,
 }
 
 /**
+ * get the color id.
+ */
+QString 
+ColorFile::ColorStorage::getSuMSColorID() const
+{
+   return sumsColorID;
+}
+
+/**
+ * set the color id.
+ */
+void 
+ColorFile::ColorStorage::setSuMSColorID(const QString& id)
+{
+   sumsColorID = id;
+}            
+
+/**
  * symbol enum to text.
  */
 QString 
@@ -1297,6 +1438,9 @@ ColorFile::ColorStorage::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == "symbol") {
             symbol = textToSymbol(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
+         else if (elem.tagName() == "sumscolorid") {
+            sumsColorID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
          else {
             std::cout << "WARNING: unrecognized CellData element: "
                       << elem.tagName().toAscii().constData()
@@ -1330,6 +1474,7 @@ ColorFile::ColorStorage::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlTextElement(xmlDoc, colorDataElement, "lineSize", lineSize);
    const QString symbolStr(symbolToText(symbol));
    AbstractFile::addXmlCdataElement(xmlDoc, colorDataElement, "symbol", symbolStr);
+   AbstractFile::addXmlCdataElement(xmlDoc, colorDataElement, "sumscolorid", sumsColorID);
    
    //
    // Add class instance's data to the parent

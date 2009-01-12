@@ -73,7 +73,8 @@ class ColorFile : public AbstractFile {
                          const unsigned char red, const unsigned char green, 
                          const unsigned char blue, const unsigned char alpha,
                          const float pointSizeIn, const float lineSizeIn,
-                         const SYMBOL symmbolIn = SYMBOL_OPENGL_POINT);
+                         const SYMBOL symmbolIn = SYMBOL_OPENGL_POINT,
+                         const QString& sumsIDIn = "");
                                      
             // destructor
             virtual ~ColorStorage();
@@ -142,6 +143,12 @@ class ColorFile : public AbstractFile {
                         const unsigned char b,
                         const unsigned char a);
             
+            // get the SuMS color id
+            QString getSuMSColorID() const;
+            
+            // set the SuMS color id
+            void setSuMSColorID(const QString& id);
+            
             // called to read from an XML structure.
             void readXML(QDomNode& nodeIn) throw (FileException);
 
@@ -176,6 +183,9 @@ class ColorFile : public AbstractFile {
             
             /// the symbol
             SYMBOL symbol;
+            
+            /// color id
+            QString sumsColorID;
       };   
       
    protected:    
@@ -215,7 +225,16 @@ class ColorFile : public AbstractFile {
                    const unsigned char r, const unsigned char g, const unsigned char b,
                    const unsigned char alpha = 255,
                    const float pointSize = 2.0, const float lineSize = 1.0,
-                   ColorStorage::SYMBOL symbol = ColorStorage::SYMBOL_OPENGL_POINT);
+                   ColorStorage::SYMBOL symbol = ColorStorage::SYMBOL_OPENGL_POINT,
+                   const QString& colorIdIn = "");
+                   
+      /// add a color if it does not exist
+      int addColorIfItDoesNotExist(const QString& name,
+                   const unsigned char r, const unsigned char g, const unsigned char b,
+                   const unsigned char alpha = 255,
+                   const float pointSize = 2.0, const float lineSize = 1.0,
+                   ColorStorage::SYMBOL symbol = ColorStorage::SYMBOL_OPENGL_POINT,
+                   const QString& colorIdIn = "");
                    
       /// append a color file to this one
       void append(const ColorFile& cf);
@@ -244,6 +263,10 @@ class ColorFile : public AbstractFile {
       /// Get a color (const method)
       const ColorStorage* getColor(const int indx) const { return &colors[indx]; }
 
+      /// get color indices sorted by name case insensitive
+      void getColorIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                       const bool reverseOrderFlag) const;
+      
       /// get color by index
       void getColorByIndex(const int index,
                            unsigned char& red, unsigned char& green, unsigned char& blue) const;
@@ -260,8 +283,18 @@ class ColorFile : public AbstractFile {
       /// get the symbol by the color index
       ColorStorage::SYMBOL getSymbolByIndex(const int indx) const;
       
+      /// get the SuMS color id by index
+      QString getSumsColorIDByIndex(const int indx) const;
+      
+      /// set the SuMS color id by index
+      void setSumsColorIDByIndex(const int indx,
+                                 const QString& idIn);
+                             
       /// get color name by index
       QString getColorNameByIndex(const int index) const;
+                           
+      /// set color name by index
+      void setColorNameByIndex(const int index, const QString& name);
                            
       /// get color index by name
       int getColorIndexByName(const QString& name, bool& exactMatch) const;
@@ -276,6 +309,9 @@ class ColorFile : public AbstractFile {
                           bool& exactMatch,
                           unsigned char& red, unsigned char& green, unsigned char& blue,
                           unsigned char& alpha) const;
+      
+      /// see if a color exists
+      bool getColorExists(const QString& name) const;
       
       /// get color selected
       bool getSelected(const int index) const { return colors[index].getSelected(); }

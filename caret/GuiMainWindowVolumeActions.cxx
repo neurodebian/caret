@@ -24,12 +24,16 @@
 /*LICENSE_END*/
 
 #include <iostream>
+#include <set>
 #include <sstream>
 
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
 #include <QMessageBox>
+#include <QSpinBox>
 
+#include "AreaColorFile.h"
 #include "AtlasSpaceFile.h"
 #include "BrainSet.h"
 #include "BrainModelVolume.h"
@@ -43,7 +47,6 @@
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowVolumeActions.h"
-#include "QtMultipleInputDialog.h"
 #include "GuiVolumeCreateDialog.h"
 #include "GuiVolumeHandleFinderDialog.h"
 #include "GuiVolumeReconstructionDialog.h"
@@ -51,10 +54,9 @@
 #include "GuiVolumeSelectionDialog.h"
 #include "GuiVolumeSureFitSegmentationDialog.h"
 #include "GuiVolumeTopologyReportDialog.h"
-#include "QtCheckBoxSelectionDialog.h"
 #include "QtTextEditDialog.h"
-
 #include "VolumeFile.h"
+#include "WuQDataEntryDialog.h"
 #include "global_variables.h"
 #include "vtkTransform.h"
 
@@ -114,12 +116,6 @@ GuiMainWindowVolumeActions::GuiMainWindowVolumeActions(GuiMainWindow* mainWindow
    QObject::connect(surefitSegmentationAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSureFitSegmentation()));
 
-   surefitMultiHemSegmentationAction = new QAction(mainWindowParent);
-   surefitMultiHemSegmentationAction->setText("SureFit Operations (Multi-Hem Segmentation IN DEVELOPMENT)");
-   surefitMultiHemSegmentationAction->setObjectName("surefitMultiHemSegmentationAction");
-   QObject::connect(surefitMultiHemSegmentationAction, SIGNAL(triggered(bool)),
-                    this, SLOT(slotSureFitMultiHemSegmentation()));
-
    padSegmentationAction = new QAction(mainWindowParent);
    padSegmentationAction->setText("Pad Volume...");
    padSegmentationAction->setObjectName("padSegmentationAction");
@@ -133,7 +129,7 @@ GuiMainWindowVolumeActions::GuiMainWindowVolumeActions(GuiMainWindow* mainWindow
                     this, SLOT(slotSegmentRemoveIslands()));
 
    topologyReportAction = new QAction(mainWindowParent);
-   topologyReportAction->setText("Topoogy Error Report...");
+   topologyReportAction->setText("Topology Error Report...");
    topologyReportAction->setObjectName("topologyReportAction");
    QObject::connect(topologyReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotSegmentationTopologyReport()));
@@ -192,6 +188,12 @@ GuiMainWindowVolumeActions::GuiMainWindowVolumeActions(GuiMainWindow* mainWindow
    editPaintVolumeAction->setObjectName("editPaintVolumeAction");
    QObject::connect(editPaintVolumeAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotPaintEditVoxels()));
+
+   paintVolumeGenerateColorsAction = new QAction(mainWindowParent);
+   paintVolumeGenerateColorsAction->setText("Generate Colors for Paints without Colors");
+   paintVolumeGenerateColorsAction->setObjectName("paintVolumeGenerateColorsAction");
+   QObject::connect(paintVolumeGenerateColorsAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotGenerateColorsForPaints()));
 
    mathOperationsVolumeAction = new QAction(mainWindowParent);
    mathOperationsVolumeAction->setText("Mathematical Operations...");
@@ -256,15 +258,46 @@ GuiMainWindowVolumeActions::slotShowVoxelDimensionExtent()
       int extent[6];
       VolumeFile* vf = bmv->getMasterVolumeFile();
       if (vf != NULL) {
-         vf->getNonZeroVoxelExtent(extent);
-         std::ostringstream str;
-         str << "Non-zero voxel dimensional extent: " << std::endl
-             << "   Parasagittal: (" << extent[0] << ", " << extent[1] << ")" << std::endl
-             << "   Coronal:      (" << extent[2] << ", " << extent[3] << ")" << std::endl
-             << "   Horizontal:   (" << extent[4] << ", " << extent[5] << ")" << std::endl;
+         float coordExtent[6];
+         vf->getNonZeroVoxelExtent(extent, coordExtent);
+         QString str = 
+            ("Non-zero voxel dimensional extent: \n" 
+             "   Parasagittal: (" 
+                + QString::number(extent[0])
+                + ", " 
+                + QString::number(extent[1])
+                + ")\n"
+             "   Coronal:      (" 
+                + QString::number(extent[2])
+                + ", " 
+                + QString::number(extent[3])
+                + ")\n"
+             "   Horizontal:   (" 
+                + QString::number(extent[4])
+                + ", " 
+                + QString::number(extent[5]) 
+                + ")\n"
+               );
       
+         str += (
+            "\nCoordinate range (centers of voxels):\n"
+            "   X: ("
+               + QString::number(coordExtent[0], 'f', 2)
+               + ", "
+               + QString::number(coordExtent[1], 'f', 2)
+               + ")\n"
+            "   Y: ("
+               + QString::number(coordExtent[2], 'f', 2)
+               + ", "
+               + QString::number(coordExtent[3], 'f', 2)
+               + ")\n"
+            "   Z: ("
+               + QString::number(coordExtent[4], 'f', 2)
+               + ", "
+               + QString::number(coordExtent[5], 'f', 2)
+               + ")\n");
          QMessageBox* mb = new QMessageBox("Voxel Dimensional Extent",
-                                        str.str().c_str(),
+                                        str,
                                         QMessageBox::NoIcon,
                                         QMessageBox::Ok,
                                         Qt::NoButton,
@@ -313,67 +346,50 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
 {
    BrainModelVolume* bmv = theMainWindow->getBrainModelVolume();
    if (bmv != NULL) {
-      std::vector<QString> itemLabels;
       
-      int itemIndex = 0;
+      //
+      // Dialog for choosing volume to which apply rotation is applied
+      //
+      WuQDataEntryDialog ded(theMainWindow);
+      ded.setWindowTitle("Apply Rotation");
       
       //
       // Primary overlay
       //
-      int primaryOverlayIndex = -1;
+      QCheckBox* primaryOverlayCheckBox = NULL;
       VolumeFile* primaryOverlay = bmv->getOverlayPrimaryVolumeFile();
       if (primaryOverlay != NULL) {
          QString name("Primary Overlay: ");
          name.append(FileUtilities::basename(primaryOverlay->getFileName()));
-         itemLabels.push_back(name);
-         primaryOverlayIndex = itemIndex;
-         itemIndex++;
+         primaryOverlayCheckBox = ded.addCheckBox(name, true);
       }
       
       //
       // Secondary overlay
       //
-      int secondaryOverlayIndex = -1;
+      QCheckBox* secondaryOverlayCheckBox = NULL;
       VolumeFile* secondaryOverlay = bmv->getOverlaySecondaryVolumeFile();
       if (secondaryOverlay != NULL) {
          QString name("Secondary Overlay: ");
          name.append(FileUtilities::basename(secondaryOverlay->getFileName()));
-         itemLabels.push_back(name);
-         secondaryOverlayIndex = itemIndex;
-         itemIndex++;
+         secondaryOverlayCheckBox = ded.addCheckBox(name, true);
       }
       
       //
       // Underlay
       //
-      int underlayIndex = -1;
+      QCheckBox* underlayCheckBox = NULL;
       VolumeFile* underlay = bmv->getUnderlayVolumeFile();
       if (underlay != NULL) {
          QString name("Underlay: ");
          name.append(FileUtilities::basename(underlay->getFileName()));
-         itemLabels.push_back(name);
-         underlayIndex = itemIndex;
-         itemIndex++;
+         underlayCheckBox = ded.addCheckBox(name, true);
       }
-      
-      //
-      // Default apply to all 
-      //
-      std::vector<bool> itemSelections(itemLabels.size(), "true");
-      
-      //
-      // Create the checkbox dialog
-      //
-      QtCheckBoxSelectionDialog cbsd(theMainWindow,
-                                     "Apply Rotation",
-                                     "Apply to these volumes:",
-                                     itemLabels,
-                                     itemSelections);
       
       //
       // Did user press OK ?
       //
-      if (cbsd.exec() == QDialog::Accepted) {
+      if (ded.exec() == QDialog::Accepted) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    
          vtkTransform* transform = vtkTransform::New();
@@ -399,8 +415,8 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
          //
          // Apply to primary overlay volume
          //
-         if (primaryOverlayIndex >= 0) {
-            if (cbsd.getCheckBoxStatus(primaryOverlayIndex)) {
+         if (primaryOverlayCheckBox != NULL) {
+            if (primaryOverlayCheckBox->isChecked()) {
                primaryOverlay->applyTransformationMatrix(transform);
             }
          }
@@ -408,8 +424,8 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
          //
          // Apply to secondary overlay volume
          //
-         if (secondaryOverlayIndex >= 0) {
-            if (cbsd.getCheckBoxStatus(secondaryOverlayIndex)) {
+         if (secondaryOverlayCheckBox != NULL) {
+            if (secondaryOverlayCheckBox->isChecked()) {
                secondaryOverlay->applyTransformationMatrix(transform);
             }
          }
@@ -417,8 +433,8 @@ GuiMainWindowVolumeActions::slotTransformApplyRotation()
          //
          // Apply to underlay volume
          //
-         if (underlayIndex >= 0) {
-            if (cbsd.getCheckBoxStatus(underlayIndex)) {
+         if (underlayCheckBox != NULL) {
+            if (underlayCheckBox->isChecked()) {
                underlay->applyTransformationMatrix(transform);
             }
          }
@@ -457,6 +473,35 @@ GuiMainWindowVolumeActions::slotPaintEditVoxels()
    theMainWindow->getVolumePaintEditorDialog(true);
 }
 
+/**
+ * slot for generating colors for non-matching paint names.
+ */
+void 
+GuiMainWindowVolumeActions::slotGenerateColorsForPaints()
+{
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+   
+   std::set<QString> uniquePaintNames;
+   for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumePaintFiles(); i++) {
+      VolumeFile* vf = theMainWindow->getBrainSet()->getVolumePaintFile(i);
+      const int num = vf->getNumberOfRegionNames();
+      for (int j = 0; j < num; j++) {
+         uniquePaintNames.insert(vf->getRegionNameFromIndex(j));
+      }
+      vf->setVoxelColoringInvalid();
+   }
+   
+   std::vector<QString> paintNames(uniquePaintNames.begin(), uniquePaintNames.end());
+   ColorFile* cf = theMainWindow->getBrainSet()->getAreaColorFile();
+   cf->generateColorsForNamesWithoutColors(paintNames, true);
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+   GuiFilesModified fm;
+   fm.setAreaColorModified();
+   theMainWindow->fileModificationUpdate(fm);
+   
+   QApplication::restoreOverrideCursor();
+}
+      
 /**
  * called to convert prob atlas volume to a functional volume.
  */
@@ -533,8 +578,23 @@ GuiMainWindowVolumeActions::slotSegmentationCerebralHull()
       
       if (vf != NULL) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         
+         //
+         // Expand around edges with empty slices
+         //
+         VolumeFile segmentVolumeExpanded(*vf);
+         int expDim[3];
+         segmentVolumeExpanded.getDimensions(expDim);
+         const int expSlices = 7;
+         const int resizeCrop[6] = { 
+            -expSlices, expDim[0] + expSlices,
+            -expSlices, expDim[1] + expSlices,
+            -expSlices, expDim[2] + expSlices
+         };
+         segmentVolumeExpanded.resize(resizeCrop);
+
          try {
-            theMainWindow->getBrainSet()->generateCerebralHullVtkFile(vf, true);
+            theMainWindow->getBrainSet()->generateCerebralHullVtkFile(&segmentVolumeExpanded, true);
          }
          catch (BrainModelAlgorithmException& e) {
             QApplication::restoreOverrideCursor();
@@ -599,30 +659,27 @@ GuiMainWindowVolumeActions::slotSegmentPad()
       VolumeFile* vf = bmv->getSelectedVolumeSegmentationFile();
       
       if (vf != NULL) {
-         std::vector<QString> labels, values;
-         labels.push_back("X Left      ");   values.push_back("0");
-         labels.push_back("X Right     ");   values.push_back("0");
-         labels.push_back("Y Posterior ");   values.push_back("0");
-         labels.push_back("Y Anterior  ");   values.push_back("0");
-         labels.push_back("Z Inferior  ");   values.push_back("0");
-         labels.push_back("Z Superior  ");   values.push_back("0");
-         QtMultipleInputDialog mip(theMainWindow,
-                                   "Pad Segmentation Volume",
-                                   "",
-                                   labels,
-                                   values,
-                                   true,
-                                   true);
-         if (mip.exec() == QDialog::Accepted) {
+         WuQDataEntryDialog ded(theMainWindow);
+         ded.setWindowTitle("Padding Options");
+         QSpinBox* xLeftSpinBox = ded.addSpinBox("X Left", 0, 10000, 1);
+         QSpinBox* xRightSpinBox = ded.addSpinBox("X Right", 0, 10000, 1);
+         QSpinBox* yPosteriorSpinBox = ded.addSpinBox("Y Posterior", 0, 10000, 1);
+         QSpinBox* yAnteriorSpinBox = ded.addSpinBox("Y Anterior", 0, 10000, 1);
+         QSpinBox* zInferiorSpinBox = ded.addSpinBox("Z Inferior", 0, 10000, 1);
+         QSpinBox* zSuperiorSpinBox = ded.addSpinBox("Z Superior", 0, 10000, 1);
+         QCheckBox* erodePaddingCheckBox = ded.addCheckBox("Erode Padding", true);
+         if (ded.exec() == QDialog::Accepted) {
             QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-            std::vector<int> values;
-            mip.getValues(values);
-            int padding[6];
-            for (int i = 0; i < 6; i++) {
-               padding[i] = values[i];
-            }
+            const int padding[6] = {
+               xLeftSpinBox->value(),
+               xRightSpinBox->value(),
+               yPosteriorSpinBox->value(),
+               yAnteriorSpinBox->value(),
+               zInferiorSpinBox->value(),
+               zSuperiorSpinBox->value()
+            };
             
-            vf->padSegmentation(padding);
+            vf->padSegmentation(padding, erodePaddingCheckBox->isChecked());
             GuiFilesModified fm;
             fm.setVolumeModified();
             theMainWindow->fileModificationUpdate(fm);
@@ -642,15 +699,6 @@ GuiMainWindowVolumeActions::slotSureFitSegmentation()
    GuiVolumeSureFitSegmentationDialog* sd = new GuiVolumeSureFitSegmentationDialog(theMainWindow);
    sd->show();
    sd->activateWindow();
-}
-
-/**
- * Segment the selected anatomical volume multi hem.
- */
-void
-GuiMainWindowVolumeActions::slotSureFitMultiHemSegmentation()
-{
-   theMainWindow->getVolumeSureFitMultiHemSegmentationDialog(true);
 }
 
 /**

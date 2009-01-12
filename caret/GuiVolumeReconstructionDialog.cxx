@@ -49,12 +49,16 @@
 #include "VolumeFile.h"
 #include "global_variables.h"
 
-/// Constructor
+/**
+ * Constructor.
+ */
 GuiVolumeReconstructionDialog::GuiVolumeReconstructionDialog(QWidget* parent,
                                                       VolumeFile* segmentationVolumeFileIn,
-                                                      bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                                      bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
+   
    segmentationVolumeFile = segmentationVolumeFileIn;
    
    setWindowTitle("Volume Reconstruction Into Surface");
@@ -70,8 +74,9 @@ GuiVolumeReconstructionDialog::GuiVolumeReconstructionDialog(QWidget* parent,
    // Type of surface to generate
    //   
    surfaceTypeComboBox = new QComboBox;
-   surfaceTypeComboBox->addItem("Brain Model Surface");
-   surfaceTypeComboBox->addItem("VTK Model");
+   surfaceTypeComboBox->insertItem(SURFACE_TYPE_BRAIN_MODEL, "Brain Model Surface");
+   surfaceTypeComboBox->insertItem(SURFACE_TYPE_SOLID_STRUCTURE, "Solid Structure VTK Model");
+   surfaceTypeComboBox->insertItem(SURFACE_TYPE_VTK_MODEL, "VTK Model");
    QObject::connect(surfaceTypeComboBox, SIGNAL(activated(int)),
                     this, SLOT(slotSurfaceTypeComboBox(int)));
    QGroupBox* surfaceTypeGroupBox = new QGroupBox("Surface Type");
@@ -141,6 +146,9 @@ GuiVolumeReconstructionDialog::GuiVolumeReconstructionDialog(QWidget* parent,
    QtUtilities::makeButtonsSameSize(okButton, cancelButton);
    
    switch (theMainWindow->getBrainSet()->getStructure().getType()) {
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
       case Structure::STRUCTURE_TYPE_INVALID:
          leftHemisphereCheckBox->setChecked(false);
          rightHemisphereCheckBox->setChecked(false);
@@ -157,6 +165,22 @@ GuiVolumeReconstructionDialog::GuiVolumeReconstructionDialog(QWidget* parent,
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
          leftHemisphereCheckBox->setChecked(true);
          rightHemisphereCheckBox->setChecked(true);
+         break;         
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+         leftHemisphereCheckBox->setChecked(false);
+         rightHemisphereCheckBox->setChecked(false);
+         break;         
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+         leftHemisphereCheckBox->setChecked(false);
+         rightHemisphereCheckBox->setChecked(false);
+         break;         
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+         leftHemisphereCheckBox->setChecked(false);
+         rightHemisphereCheckBox->setChecked(false);
+         break;         
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+         leftHemisphereCheckBox->setChecked(false);
+         rightHemisphereCheckBox->setChecked(false);
          break;         
    }
    
@@ -199,20 +223,28 @@ GuiVolumeReconstructionDialog::done(int r)
       
       BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE reconMode =
                      BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_SUREFIT_SURFACE;
-      if (surfaceTypeComboBox->currentIndex() != 0) {
-         if (maximumPolygonsCheckBox->isChecked()) {
-            reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_VTK_MODEL_MAXIMUM_POLYGONS;
-         }
-         else {
-            reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_VTK_MODEL;
-         }
+      switch (static_cast<SURFACE_TYPE>(surfaceTypeComboBox->currentIndex())) {
+         case SURFACE_TYPE_BRAIN_MODEL:
+            if (maximumPolygonsCheckBox->isChecked()) {
+               reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_SUREFIT_SURFACE_MAXIMUM_POLYGONS;
+            }
+            else {
+               reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_SUREFIT_SURFACE;
+            }
+            break;
+         case SURFACE_TYPE_SOLID_STRUCTURE:
+            reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_SOLID_STRUCTURE;
+            break;
+         case SURFACE_TYPE_VTK_MODEL:
+            if (maximumPolygonsCheckBox->isChecked()) {
+               reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_VTK_MODEL_MAXIMUM_POLYGONS;
+            }
+            else {
+               reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_VTK_MODEL;
+            }
+            break;
       }
-      else {
-         if (maximumPolygonsCheckBox->isChecked()) {
-            reconMode = BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_SUREFIT_SURFACE_MAXIMUM_POLYGONS;
-         }
-      }
-
+ 
       const bool doHyper = hypersmoothCheckBox->isChecked() &&
                            (reconMode != BrainModelVolumeToSurfaceConverter::RECONSTRUCTION_MODE_VTK_MODEL);
             

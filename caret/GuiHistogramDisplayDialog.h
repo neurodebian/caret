@@ -28,7 +28,7 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class GuiGraphWidget;
 class StatisticHistogram;
@@ -40,7 +40,7 @@ class QSpinBox;
 class QSlider;
 
 /// Dialog for displaying a histogram
-class GuiHistogramDisplayDialog : public QtDialog {
+class GuiHistogramDisplayDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -49,8 +49,7 @@ class GuiHistogramDisplayDialog : public QtDialog {
                          const QString& titleCaption,
                          const std::vector<float>& values,
                          const bool showGrayWhitePeaks,
-                         const bool modal, 
-                         Qt::WFlags f = 0);
+                         Qt::WindowFlags f = 0);
       
       /// Destructor
       ~GuiHistogramDisplayDialog();
@@ -99,7 +98,7 @@ class GuiHistogramDisplayDialog : public QtDialog {
       QComboBox* displayModeComboBox;
       
       /// group box for stats
-      QGroupBox* statsGroup;
+      QGroupBox* statsGroupBox;
       
       /// show/hide stats push button
       QPushButton* showHideStatsPushButton;
@@ -153,7 +152,7 @@ class GuiHistogramDisplayDialog : public QtDialog {
       QLabel* whiteMaxLabel;
       
       /// widget containing the histogram
-      QWidget* histogramLayoutWidget;
+      //QWidget* histogramLayoutWidget;
       
       /// the normal histogram
       StatisticHistogram* histogram;

@@ -41,6 +41,11 @@ DisplaySettingsModels::DisplaySettingsModels(BrainSet* bsIn)
    lightLines = false;
    lightVertices = true;
    lightPolygons = true;
+   
+   showPolygons = true;
+   showTriangles = true;
+   showLines = true;
+   showVertices = false;
 }
 
 /**
@@ -136,6 +141,18 @@ DisplaySettingsModels::showScene(const SceneFile::Scene& scene, QString& errorMe
             else if (infoName == "model-lightPolygons") {
                si->getValue(lightPolygons);
             }
+            else if (infoName == "showPolygons") {
+               si->getValue(showPolygons);
+            }
+            else if (infoName == "showTriangles") {
+               si->getValue(showTriangles);
+            }
+            else if (infoName == "showLines") {
+               si->getValue(showLines);
+            }
+            else if (infoName == "showVertices") {
+               si->getValue(showVertices);
+            }
          }
       }
    }
@@ -145,7 +162,8 @@ DisplaySettingsModels::showScene(const SceneFile::Scene& scene, QString& errorMe
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsModels::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsModels::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    const int num = brainSet->getNumberOfVtkModelFiles();
 
@@ -190,6 +208,14 @@ DisplaySettingsModels::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
                                         lightLines));
    sc.addSceneInfo(SceneFile::SceneInfo("model-lightPolygons",
                                         lightPolygons));
+   sc.addSceneInfo(SceneFile::SceneInfo("showPolygons",
+                                        showPolygons));
+   sc.addSceneInfo(SceneFile::SceneInfo("showTriangles",
+                                        showTriangles));
+   sc.addSceneInfo(SceneFile::SceneInfo("showLines",
+                                        showLines));
+   sc.addSceneInfo(SceneFile::SceneInfo("showVertices",
+                                        showVertices));
    
    scene.addSceneClass(sc);
 }

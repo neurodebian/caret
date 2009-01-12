@@ -25,6 +25,7 @@
 /*LICENSE_END*/
 
 #include <iostream>
+#include <set>
 
 #include <QDomElement>
 #include <QDomNode>
@@ -65,8 +66,15 @@ VocabularyFile::~VocabularyFile()
 int 
 VocabularyFile::addVocabularyEntry(const VocabularyEntry& ve)
 {
-   vocabularyEntries.push_back(ve);
-   const int indx = getNumberOfVocabularyEntries() - 1;
+   int indx = getVocabularyEntryIndexFromName(ve.getAbbreviation());
+   if (indx >= 0) {
+      VocabularyEntry* vocabExistsNow = getVocabularyEntry(indx);
+      *vocabExistsNow = ve;
+   }
+   else {
+      vocabularyEntries.push_back(ve);
+      indx = getNumberOfVocabularyEntries() - 1;
+   }
    vocabularyEntries[indx].vocabularyFile = this;
    setModified();
    return indx;
@@ -266,6 +274,26 @@ VocabularyFile::writeFileData(QTextStream& stream,
          }
          break;
    }
+}
+
+/**
+ * get indices to all linked studies.
+ */
+void 
+VocabularyFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const
+{
+   std::set<QString> pmidSet;
+   const int numVocab = getNumberOfVocabularyEntries();
+   for (int i = 0; i < numVocab; i++) {
+      const VocabularyEntry* ve = getVocabularyEntry(i);
+      const StudyMetaDataLinkSet smdl = ve->getStudyMetaDataLinkSet();
+      std::vector<QString> pmids;
+      smdl.getAllLinkedPubMedIDs(pmids);
+      pmidSet.insert(pmids.begin(), pmids.end());
+   }
+   studyPMIDs.clear();
+   studyPMIDs.insert(studyPMIDs.end(),
+                     pmidSet.begin(), pmidSet.end());
 }
 
 /**
@@ -589,6 +617,8 @@ VocabularyFile::VocabularyEntry::VocabularyEntry(const QString& abbreviationIn,
                                                  const QString& classNameIn,
                                                  const QString& vocabularyIDIn,
                                                  const QString& descriptionIn,
+                                                 const QString& ontologySourceIn,
+                                                 const QString& termIDIn,
                                                  const int studyNumberIn)
 {
    clear();
@@ -597,6 +627,8 @@ VocabularyFile::VocabularyEntry::VocabularyEntry(const QString& abbreviationIn,
    setClassName(classNameIn);
    setVocabularyID(vocabularyIDIn);
    setDescription(descriptionIn);
+   setOntologySource(ontologySourceIn);
+   setTermID(termIDIn);
    setStudyNumber(studyNumberIn);
 }
   
@@ -638,6 +670,8 @@ VocabularyFile::VocabularyEntry::copyHelper(const VocabularyEntry& ve)
    abbreviation = ve.abbreviation;
    fullName     = ve.fullName;
    className    = ve.className;
+   ontologySource = ve.ontologySource;
+   termID       = ve.termID;
    vocabularyID = ve.vocabularyID;
    description  = ve.description;
    studyNumber  = ve.studyNumber;
@@ -695,6 +729,38 @@ VocabularyFile::VocabularyEntry::setClassName(const QString& s)
    setModified();
 }
 
+/**
+ * get ontology source values.
+ */
+void 
+VocabularyFile::VocabularyEntry::getOntologySourceValues(std::vector<QString>& ontologySourceValues)
+{
+   ontologySourceValues.clear();
+   ontologySourceValues.push_back("BIRNLex");
+   ontologySourceValues.push_back("NIFSTD");
+   ontologySourceValues.push_back("NeuroNames");
+}
+            
+/**
+ * set the ontology source.
+ */
+void 
+VocabularyFile::VocabularyEntry::setOntologySource(const QString& s)
+{
+   ontologySource = s;
+   setModified();
+}
+
+/**
+ * set the term id.
+ */
+void 
+VocabularyFile::VocabularyEntry::setTermID(const QString& s)
+{
+   termID = s;
+   setModified();
+}
+            
 /**
  * set the vocabulary ID.
  */
@@ -775,6 +841,12 @@ VocabularyFile::VocabularyEntry::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == "description") {
             description = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
+         else if (elem.tagName() == "ontologySource") {
+            ontologySource = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "termID") {
+            termID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
          else if (elem.tagName() == "studyNumber") {
             studyNumber = AbstractFile::getXmlElementFirstChildAsInt(elem);
          }
@@ -816,6 +888,8 @@ VocabularyFile::VocabularyEntry::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "className", className);
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "vocabularyID", vocabularyID);
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "description", description);
+   AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "ontologySource", ontologySource);
+   AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "termID", termID);
    AbstractFile::addXmlCdataElement(xmlDoc, vocabularyDataElement, "studyNumber", QString::number(studyNumber));
    studyMetaDataLinkSet.writeXML(xmlDoc, vocabularyDataElement);
    //
@@ -844,6 +918,8 @@ VocabularyFile::VocabularyEntry::writeDataIntoStringTable(const std::vector<Voca
    const int classNameCol = numCols++;
    const int vocabularyIDCol = numCols++;
    const int descriptionCol = numCols++;
+   const int ontologySourceCol = numCols++;
+   const int termIDCol = numCols++;
    const int studyPubMedIDCol = numCols++;
    const int studyNumberCol = numCols++;
    
@@ -856,6 +932,8 @@ VocabularyFile::VocabularyEntry::writeDataIntoStringTable(const std::vector<Voca
    table.setColumnTitle(classNameCol, "Class Name");
    table.setColumnTitle(vocabularyIDCol, "Vocabulary ID");
    table.setColumnTitle(descriptionCol, "Description");
+   table.setColumnTitle(ontologySourceCol, "Ontology Source");
+   table.setColumnTitle(termIDCol, "Term ID");
    table.setColumnTitle(studyNumberCol, "Study Number");
    table.setColumnTitle(studyPubMedIDCol, "StudyMetaDataLink");
    for (int i = 0; i < num; i++) {
@@ -866,6 +944,8 @@ VocabularyFile::VocabularyEntry::writeDataIntoStringTable(const std::vector<Voca
       table.setElement(i, vocabularyIDCol, ve.getVocabularyID());
       table.setElement(i, descriptionCol, ve.getDescription());
       table.setElement(i, studyNumberCol, ve.getStudyNumber());
+      table.setElement(i, ontologySourceCol, ve.getOntologySource());
+      table.setElement(i, termIDCol, ve.getTermID());
       const int numLinks = ve.getStudyMetaDataLinkSet().getNumberOfStudyMetaDataLinks();
       if (numLinks > 1) {
          throw FileException("Vocabulary Entry \""
@@ -898,6 +978,8 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
    int classNameCol = -1;
    int vocabularyIDCol = -1;
    int descriptionCol = -1;
+   int ontologySourceCol = -1;
+   int termIDCol = -1;
    int studyNumberCol = -1;
    int studyPubMedIDCol = -1;
 
@@ -918,6 +1000,12 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
       }
       else if (name == "description") {
          descriptionCol = i;
+      }
+      else if (name == "ontology source") {
+         ontologySourceCol = i;
+      }
+      else if (name == "term id") {
+         termIDCol = i;
       }
       else if (name == "study number") {
          studyNumberCol = i;
@@ -947,6 +1035,12 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
       if (descriptionCol >= 0) {
         ve.setDescription(table.getElement(i, descriptionCol));
       }
+      if (ontologySourceCol >= 0) {
+         ve.setOntologySource(table.getElement(i, ontologySourceCol));
+      }
+      if (termIDCol >= 0) {
+         ve.setTermID(table.getElement(i, termIDCol));
+      }
       if (studyPubMedIDCol >= 0) {
          StudyMetaDataLink smdl;
          smdl.setLinkFromCodedText(table.getElement(i, studyPubMedIDCol));
@@ -967,6 +1061,7 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
 /**
  * get full description of all fields for display to user.
  */
+/*
 QString 
 VocabularyFile::VocabularyEntry::getFullDescriptionForDisplayToUser(const bool useHTML) const
 {
@@ -1018,6 +1113,24 @@ VocabularyFile::VocabularyEntry::getFullDescriptionForDisplayToUser(const bool u
       s += newLine;
    } 
    
+   if (ontologySource.isEmpty() == false) {
+      if (useHTML) s += boldStart;
+      s += "Ontology Source";
+      if (useHTML) s += boldEnd;
+      s += ": ";
+      s += ontologySource;
+      s += newLine;
+   }
+   
+   if (termID.isEmpty() == false) {
+      if (useHTML) s += boldStart;
+      s += "Term ID";
+      if (useHTML) s += boldEnd;
+      s += ": ";
+      s += termID;
+      s += newLine;
+   }
+   
    if (vocabularyFile != NULL) {
       if ((studyNumber >= 0) && (studyNumber < vocabularyFile->getNumberOfStudyInfo())) {
          const CellStudyInfo* csi = vocabularyFile->getStudyInfo(studyNumber);
@@ -1030,4 +1143,4 @@ VocabularyFile::VocabularyEntry::getFullDescriptionForDisplayToUser(const bool u
    
    return s;
 }            
-
+*/

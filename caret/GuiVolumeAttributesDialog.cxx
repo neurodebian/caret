@@ -72,9 +72,10 @@
  * Constructor.
  */
 GuiVolumeAttributesDialog::GuiVolumeAttributesDialog(QWidget* parent, 
-                                                     const bool modal, Qt::WFlags f)
-   : QtDialog(parent, modal, f)
+                                                     const bool modalFlag, Qt::WindowFlags f)
+   : WuQDialog(parent, f)
 {
+   setModal(modalFlag);
    setWindowTitle("Volume Attributes Editor");
    
    //
@@ -586,7 +587,7 @@ GuiVolumeAttributesDialog::slotHistogramButton()
                                              FileUtilities::basename(vf->getFileName()),
                                              values,
                                              showPeaksFlag,
-                                             false);
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
       ghd->show();
    }
    
@@ -599,6 +600,22 @@ GuiVolumeAttributesDialog::slotHistogramButton()
 void
 GuiVolumeAttributesDialog::createResamplingPage()
 {
+   //
+   // Resampling method
+   //
+   QLabel* resamplingMethodLabel = new QLabel("Interpolation Method");
+   resamplingMethodComboBox = new QComboBox;
+   resamplingMethodComboBox->addItem("Cubic (Best Quality)",
+                               static_cast<int>(VolumeFile::INTERPOLATION_TYPE_CUBIC));
+   resamplingMethodComboBox->addItem("Linear",
+                               static_cast<int>(VolumeFile::INTERPOLATION_TYPE_LINEAR));
+   resamplingMethodComboBox->addItem("Nearest Neighbor (use for Paint and Atlas)",
+                               static_cast<int>(VolumeFile::INTERPOLATION_TYPE_NEAREST_NEIGHBOR));
+   QHBoxLayout* resamplingLayout = new QHBoxLayout;
+   resamplingLayout->addWidget(resamplingMethodLabel);
+   resamplingLayout->addWidget(resamplingMethodComboBox);
+   resamplingLayout->addStretch();
+   
    //
    // spin boxes for resampling
    //
@@ -631,6 +648,7 @@ GuiVolumeAttributesDialog::createResamplingPage()
    resamplingPage = new QWidget;
    QVBoxLayout* resamplePageLayout = new QVBoxLayout(resamplingPage);
    resamplePageLayout->addLayout(resampleLayout);
+   resamplePageLayout->addLayout(resamplingLayout);
    resamplePageLayout->addStretch();
    tabWidget->addTab(resamplingPage, "Resample");
    
@@ -687,7 +705,13 @@ GuiVolumeAttributesDialog::resampleVolume()
                                  "all be positive for resampling to function correctly.");
          return;
       }
-      vf->resampleToSpacing(spacing);
+      
+      const int methodIndex = resamplingMethodComboBox->currentIndex();
+      const VolumeFile::INTERPOLATION_TYPE interpolationType =
+         static_cast<VolumeFile::INTERPOLATION_TYPE>(
+            resamplingMethodComboBox->itemData(methodIndex).toInt());
+            
+      vf->resampleToSpacing(spacing, interpolationType);
       loadVolumeParameters();
       loadVolumeResampling();
    }
@@ -850,7 +874,7 @@ GuiVolumeAttributesDialog::createCoordinatesPage()
    //
    // origin
    //
-   QLabel* originLabel = new QLabel("Origin");
+   QLabel* originLabel = new QLabel("Origin at Center\nof First Voxel");
    originXDoubleSpinBox = new QDoubleSpinBox;
    originXDoubleSpinBox->setMinimum(-5000.0);
    originXDoubleSpinBox->setMaximum(5000.0);
@@ -1188,24 +1212,6 @@ GuiVolumeAttributesDialog::slotParamsStandardSpacePushButton()
          matchingSpaces[indx].getOrigin(origin);
          matchingSpaces[indx].getVoxelSize(spacing);
          
-         //
-         // Are crosshairs at center of the voxel?
-         //
-         if (BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel()) {
-            //
-            // Move origin one-half voxel to left
-            //
-            const float halfVoxelOffsetToLeft[3] = {
-               (-spacing[0] * 0.5),
-               (-spacing[1] * 0.5),
-               (-spacing[2] * 0.5)
-            };
-            
-            origin[0] += halfVoxelOffsetToLeft[0];
-            origin[1] += halfVoxelOffsetToLeft[1];
-            origin[2] += halfVoxelOffsetToLeft[2];
-         }
-         
          voxelSizeXDoubleSpinBox->setValue(spacing[0]);
          voxelSizeYDoubleSpinBox->setValue(spacing[1]);
          voxelSizeZDoubleSpinBox->setValue(spacing[2]);
@@ -1243,24 +1249,6 @@ GuiVolumeAttributesDialog::slotMainWindowXHairPushButton()
       -(acSlices[2] * voxelSize[2])
    };
    
-   //
-   // Are crosshairs at center of the voxel?
-   //
-   if (BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel()) {
-      //
-      // Move origin one-half voxel to left
-      //
-      const float halfVoxelOffsetToLeft[3] = {
-         (-voxelSize[0] * 0.5),
-         (-voxelSize[1] * 0.5),
-         (-voxelSize[2] * 0.5)
-      };
-      
-      origin[0] += halfVoxelOffsetToLeft[0];
-      origin[1] += halfVoxelOffsetToLeft[1];
-      origin[2] += halfVoxelOffsetToLeft[2];
-   }
-
    originXDoubleSpinBox->setValue(origin[0]);
    originYDoubleSpinBox->setValue(origin[1]);
    originZDoubleSpinBox->setValue(origin[2]);
@@ -1292,24 +1280,6 @@ GuiVolumeAttributesDialog::slotParamsAcPushButton()
          -(z * voxelSize[2])
       };
       
-      //
-      // Are voxel coords at center of the voxel?
-      //
-      if (BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel()) {
-         //
-         // Move origin one-half voxel to left
-         //
-         const float halfVoxelOffsetToLeft[3] = {
-            (-voxelSize[0] * 0.5),
-            (-voxelSize[1] * 0.5),
-            (-voxelSize[2] * 0.5)
-         };
-         
-         origin[0] += halfVoxelOffsetToLeft[0];
-         origin[1] += halfVoxelOffsetToLeft[1];
-         origin[2] += halfVoxelOffsetToLeft[2];
-      }
-
       originXDoubleSpinBox->setValue(origin[0]);
       originYDoubleSpinBox->setValue(origin[1]);
       originZDoubleSpinBox->setValue(origin[2]);
@@ -1345,23 +1315,6 @@ GuiVolumeAttributesDialog::slotParamsWholeAcPushButton()
          -(z * voxelSize[2])
       };
       
-      //
-      // Are voxel coords at center of the voxel?
-      //
-      if (BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel()) {
-         //
-         // Move origin one-half voxel to left
-         //
-         const float halfVoxelOffsetToLeft[3] = {
-            (-voxelSize[0] * 0.5),
-            (-voxelSize[1] * 0.5),
-            (-voxelSize[2] * 0.5)
-         };
-         
-         origin[0] += halfVoxelOffsetToLeft[0];
-         origin[1] += halfVoxelOffsetToLeft[1];
-         origin[2] += halfVoxelOffsetToLeft[2];
-      }
 
       originXDoubleSpinBox->setValue(origin[0]);
       originYDoubleSpinBox->setValue(origin[1]);
@@ -1492,24 +1445,6 @@ GuiVolumeAttributesDialog::slotAcPushButton()
          -(acxyz[2] * voxelSize[2])
       };
       
-      //
-      // Are voxel coords at center of the voxel?
-      //
-      if (BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel()) {
-         //
-         // Move origin one-half voxel to left
-         //
-         const float halfVoxelOffsetToLeft[3] = {
-            (-voxelSize[0] * 0.5),
-            (-voxelSize[1] * 0.5),
-            (-voxelSize[2] * 0.5)
-         };
-         
-         origin[0] += halfVoxelOffsetToLeft[0];
-         origin[1] += halfVoxelOffsetToLeft[1];
-         origin[2] += halfVoxelOffsetToLeft[2];
-      }
-
       originXDoubleSpinBox->setValue(origin[0]);
       originYDoubleSpinBox->setValue(origin[1]);
       originZDoubleSpinBox->setValue(origin[2]);

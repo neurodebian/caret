@@ -43,6 +43,8 @@ class StereotaxicSpace {
          SPACE_AFNI_TALAIRACH,
          /// FLIRT space
          SPACE_FLIRT,
+         /// FLIRT 222 space
+         SPACE_FLIRT_222,
          /// macaque atlas
          SPACE_MACAQUE_F6,
          /// Macaque F99
@@ -106,19 +108,22 @@ class StereotaxicSpace {
       StereotaxicSpace(const QString& nameIn);
       
       /// constructor
-      StereotaxicSpace(const QString& nameIn,
-                       const int dimensionsIn[3],
-                       const float originIn[3],
-                       const float voxelSizeIn[3]);
-                       
-      /// constructor
       StereotaxicSpace();
       
       /// destructor
       ~StereotaxicSpace();
       
-      /// equality operator (just checkes that names are the same)
-      bool operator==(const StereotaxicSpace& ss) { return (name == ss.name); }
+      /// equality operator 
+      bool operator==(const StereotaxicSpace& ss) { return (space == ss.space); }
+      
+      /// equality operator 
+      bool operator!=(const StereotaxicSpace& ss) { return (space != ss.space); }
+      
+      /// reset
+      void reset();
+      
+      /// is a valid space (not unknown)
+      bool isValid() const { return (space != SPACE_UNKNOWN); }
       
       /// get the space
       SPACE getSpace() const { return space; }
@@ -153,10 +158,19 @@ class StereotaxicSpace {
       /// is the name that of a valid stereotaxic space
       static bool validStereotaxicSpaceName(const QString& name);
       
-   protected:
       /// set data from space
       void setDataFromSpace(const SPACE spaceIn);
       
+      /// set data from space name
+      void setDataFromSpaceName(const QString& spaceNameIn);
+      
+   protected:
+      /// constructor
+      StereotaxicSpace(const QString& nameIn,
+                       const int dimensionsIn[3],
+                       const float originIn[3],
+                       const float voxelSizeIn[3]);
+                       
       /// set the space data
       void setData(const QString& nameIn,
                   const int dimX, const int dimY, const int dimZ,

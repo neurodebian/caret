@@ -30,6 +30,7 @@
 
 #include <QAction>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLayout>
@@ -57,7 +58,7 @@
 GuiCommaSeparatedValueFileEditor::GuiCommaSeparatedValueFileEditor(QWidget* parent,
                                                      AbstractFile* dataFileIn,
                                                      const GuiFilesModified& filesModified)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    //
    // Request that this dialog be deleted when closed
@@ -74,7 +75,7 @@ GuiCommaSeparatedValueFileEditor::GuiCommaSeparatedValueFileEditor(QWidget* pare
    //
    // Get the layout for the dialog
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
 
    //
    // Layout dialog items
@@ -82,14 +83,12 @@ GuiCommaSeparatedValueFileEditor::GuiCommaSeparatedValueFileEditor(QWidget* pare
    dialogLayout->addWidget(editorMainWindow);
    
    //
-   // Hide apply button
-   //   
-   getApplyPushButton()->hide();
-   
+   // Dialog buttons
    //
-   // Connect slots for push buttons
-   //
-   QObject::connect(this, SIGNAL(signalCloseButtonPressed()),
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
+   buttonBox->button(QDialogButtonBox::Close)->setAutoDefault(false);
+   dialogLayout->addWidget(buttonBox);
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(slotCloseButtonPressed()));
 }
 
@@ -116,7 +115,7 @@ void
 GuiCommaSeparatedValueFileEditor::slotCloseButtonPressed()
 {
    editorMainWindow->checkForFileChanges();
-   QtDialogNonModal::close();
+   WuQDialog::close();
 }      
       
 //--------------------------------------------------------------------------------

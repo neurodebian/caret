@@ -88,7 +88,8 @@ DisplaySettingsCuts::showScene(const SceneFile::Scene& scene, QString& /*errorMe
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsCuts::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsCuts::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& /*errorMessage*/)
 {
    if (onlyIfSelected) {
       if (displayCuts == false) {

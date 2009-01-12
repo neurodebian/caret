@@ -95,6 +95,7 @@
 #include "DisplaySettingsProbabilisticAtlas.h"
 #include "DisplaySettingsRgbPaint.h"
 #include "DisplaySettingsScene.h"
+#include "DisplaySettingsSection.h"
 #include "DisplaySettingsStudyMetaData.h"
 #include "DisplaySettingsSurfaceShape.h"
 #include "DisplaySettingsSurfaceVectors.h"
@@ -105,13 +106,17 @@
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
+#include "FociSearchFile.h"
 #include "GeodesicDistanceFile.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiDataFileCommentDialog.h"
 #include "GuiDisplayControlDialog.h"
+#include "GuiDisplayControlSurfaceOverlayWidget.h"
 #include "GuiFilesModified.h"
+#include "GuiFociSearchWidget.h"
 #include "GuiHistogramDisplayDialog.h"
+#include "GuiIdentifyDialog.h"
 #include "GuiMainWindow.h"
 #include "GuiSpecAndSceneFileCreationDialog.h"
 #include "GuiStudyMetaDataLinkCreationDialog.h"
@@ -124,10 +129,10 @@
 #include "MetricFile.h"
 #include "PaintFile.h"
 #include "ProbabilisticAtlasFile.h"
-#include <QDoubleSpinBox>
+#include "QtListBoxSelectionDialog.h"
 #include "QtMultipleInputDialog.h"
 #include "QtRadioButtonSelectionDialog.h"
-#include "QtSaveWidgetAsImagePushButton.h"
+#include "WuQSaveWidgetAsImagePushButton.h"
 #include "QtUtilities.h"
 #include "QtTextEditDialog.h"
 #include "RgbPaintFile.h"
@@ -140,6 +145,8 @@
 #include "TopographyFile.h"
 #include "TransformationMatrixFile.h"
 #include "VtkModelFile.h"
+#include "WuQDataEntryDialog.h"
+#include "WuQMessageBox.h"
 #include "WuQWidgetGroup.h"
 #include "WustlRegionFile.h"
 
@@ -150,13 +157,13 @@
  * The Constructor
  */
 GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    GuiBrainModelOpenGL::getPointSizeRange(minPointSize, maxPointSize);
    maxPointSize = 100000.0;
    GuiBrainModelOpenGL::getLineWidthRange(minLineSize, maxLineSize);
    
-   pageOverlayUnderlaySurface = NULL;
+   pageOverlayUnderlaySurfaceNew = NULL;
    surfaceModelIndex = -1;
    
    creatingDialog = true;
@@ -164,13 +171,6 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    
    setSizeGripEnabled(true);
    setWindowTitle("Display Control");
-   
-   //
-   // Vertical box for all items in dialog
-   //
-   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
-   dialogLayout->setMargin(5);
-   dialogLayout->setSpacing(5);
    
    //
    // Actions for back and forward tool buttons
@@ -210,19 +210,30 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    pageSelLayout->setStretchFactor(pageBackToolButton, 0);
    pageSelLayout->setStretchFactor(pageForwardToolButton, 0);
    pageSelLayout->setStretchFactor(pageComboBox, 100);
-   dialogLayout->addLayout(pageSelLayout);
    
    //
    // Create the surface selection page
    //
-   surfaceModelGroupBox = new QGroupBox("Surface Coloration Applies To");
-   dialogLayout->addWidget(surfaceModelGroupBox);
-   QVBoxLayout* surfaceModelGroupLayout = new QVBoxLayout(surfaceModelGroupBox);
+   QLabel* surfaceModelLabel = new QLabel("Surface");
    surfaceModelIndexComboBox = new QComboBox;
-   surfaceModelGroupLayout->addWidget(surfaceModelIndexComboBox);
    QObject::connect(surfaceModelIndexComboBox, SIGNAL(activated(int)),
                     this, SLOT(slotSurfaceModelIndexComboBox(int)));
-                    
+   
+   //
+   // Overlay selection combo box
+   //
+   QLabel* overlayNumberLabel = new QLabel("Overlay");
+   overlayNumberComboBox = new QComboBox;
+   for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfSurfaceOverlays(); i++) {
+      overlayNumberComboBox->addItem(theMainWindow->getBrainSet()->getSurfaceOverlay(i)->getName());
+   }
+   QObject::connect(overlayNumberComboBox, SIGNAL(activated(int)),
+                    this, SLOT(slotOverlayNumberComboBox(int)));
+   overlayNumberWidgetGroup = new WuQWidgetGroup(this);
+   overlayNumberWidgetGroup->addWidget(overlayNumberLabel);
+   overlayNumberWidgetGroup->addWidget(overlayNumberComboBox);
+   updateOverlayNumberComboBox();
+   
    //
    // Shape apply left/right named columns
    //
@@ -236,7 +247,6 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
                                                           "surfaces.");
    QObject::connect(shapeApplySelectionToLeftAndRightStructuresFlagCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(readShapeL2LR2R()));
-   surfaceModelGroupLayout->addWidget(shapeApplySelectionToLeftAndRightStructuresFlagCheckBox);
    
    //
    // Metric apply left/right named columns
@@ -251,7 +261,6 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
                                                           "surfaces.");
    QObject::connect(metricApplySelectionToLeftAndRightStructuresFlagCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(readMetricL2LR2R()));
-   surfaceModelGroupLayout->addWidget(metricApplySelectionToLeftAndRightStructuresFlagCheckBox);
    
    //
    // paint apply left/right named columns
@@ -266,7 +275,6 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
                                                           "surfaces.");
    QObject::connect(paintApplySelectionToLeftAndRightStructuresFlagCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(readPaintL2LR2R()));
-   surfaceModelGroupLayout->addWidget(paintApplySelectionToLeftAndRightStructuresFlagCheckBox);
    
    //
    // RGB Paint apply left/right named columns
@@ -281,7 +289,6 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
                                                           "surfaces.");
    QObject::connect(rgbApplySelectionToLeftAndRightStructuresFlagCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(readRgbPaintL2LR2R()));
-   surfaceModelGroupLayout->addWidget(rgbApplySelectionToLeftAndRightStructuresFlagCheckBox);
    
    //
    // prob atlas apply left/right named columns
@@ -295,18 +302,29 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
                                                                                   "surfaces.");
    QObject::connect(probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(readProbAtlasSurfaceL2LR2R()));
-   surfaceModelGroupLayout->addWidget(probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox);
                     
-   surfaceModelGroupBox->setMaximumHeight(surfaceModelGroupBox->sizeHint().height());
+   //
+   // Group box for surface and overlay selection
+   //
+   surfaceModelGroupBox = new QGroupBox("Coloration Applies To");
+   QGridLayout* surfaceModelGridLayout = new QGridLayout(surfaceModelGroupBox);
+   surfaceModelGridLayout->addWidget(surfaceModelLabel, 0, 0);
+   surfaceModelGridLayout->addWidget(surfaceModelIndexComboBox, 0, 1);
+   surfaceModelGridLayout->addWidget(overlayNumberLabel, 1, 0);
+   surfaceModelGridLayout->addWidget(overlayNumberComboBox, 1, 1);
+   surfaceModelGridLayout->addWidget(shapeApplySelectionToLeftAndRightStructuresFlagCheckBox, 2, 0, 1, 2);
+   surfaceModelGridLayout->addWidget(metricApplySelectionToLeftAndRightStructuresFlagCheckBox, 3, 0, 1, 2);
+   surfaceModelGridLayout->addWidget(paintApplySelectionToLeftAndRightStructuresFlagCheckBox, 4, 0, 1, 2);
+   surfaceModelGridLayout->addWidget(rgbApplySelectionToLeftAndRightStructuresFlagCheckBox, 5, 0, 1, 2);
+   surfaceModelGridLayout->addWidget(probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox, 6, 0, 1, 2);
+   //surfaceModelGroupBox->setMaximumHeight(surfaceModelGroupBox->sizeHint().height());
+   surfaceModelGridLayout->setColumnStretch(0, 0);
+   surfaceModelGridLayout->setColumnStretch(1, 1000);
 
-#undef HAVE_SCROLL_VIEW
-#define HAVE_SCROLL_VIEW
-#ifdef HAVE_SCROLL_VIEW   
    //
    // Scroll widget for widget stack containing all sub pages
    //
    widgetStackScrollArea = new QScrollArea;
-   dialogLayout->addWidget(widgetStackScrollArea);
    widgetStackScrollArea->setWidgetResizable(true);
    widgetStackScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
    widgetStackScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -316,15 +334,21 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    //
    pageWidgetStack = new QStackedWidget;
    widgetStackScrollArea->setWidget(pageWidgetStack);
-#else  // HAVE_SCROLL_VIEW
-   //
-   // Widget stack for all sub pages
-   //
-   pageWidgetStack = new QStackedWidget;
-   dialogLayout->addWidget(pageWidgetStack);
-#endif // HAVE_SCROLL_VIEW
-#undef HAVE_SCROLL_VIEW
 
+   //
+   // Vertical box for all items in dialog
+   //
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
+   dialogLayout->setMargin(5);
+   dialogLayout->setSpacing(5);
+   dialogLayout->addLayout(pageSelLayout);
+   dialogLayout->addWidget(surfaceModelGroupBox);
+   dialogLayout->addWidget(widgetStackScrollArea);
+   dialogLayout->setStretchFactor(pageSelLayout, 0);
+   dialogLayout->setStretchFactor(surfaceModelGroupBox, 0);
+   dialogLayout->setStretchFactor(widgetStackScrollArea, 100);
+   //dialogLayout->addStretch();
+   
    //
    // Volume Pages
    //
@@ -375,14 +399,26 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    fociColorGridLayout  = NULL;
    fociClassButtonGroup = NULL;
    fociClassGridLayout  = NULL;
-   numValidFociClasses  = 0;
-   numValidFociColors   = 0;
+   //numValidFociClasses  = 0;
+   //numValidFociColors   = 0;
    pageFociMain = NULL;
    pageFociClass = NULL;
    pageFociColor = NULL;
    pageFociKeyword = NULL;
    pageFociName = NULL;
+   pageFociSearch = NULL;
+   fociSearchWidget = NULL;
    pageFociTable = NULL;
+   numberOfFociKeywordCheckBoxesShownInGUI = 0;
+   numberOfFociTableCheckBoxesShownInGUI = 0;
+   numberOfFociNameCheckBoxesShownInGUI = 0;
+   numberOfFociClassCheckBoxesShownInGUI = 0;
+   numberOfFociColorCheckBoxesShownInGUI = 0;
+   fociShowKeywordsOnlyForDisplayedFociCheckBox = NULL;
+   fociShowNamesOnlyForDisplayedFociCheckBox    = NULL;
+   fociShowTablesOnlyForDisplayedFociCheckBox   = NULL;
+   fociShowClassesOnlyForDisplayedFociCheckBox  = NULL;
+   fociShowColorsOnlyForDisplayedFociCheckBox   = NULL;
    
    pageGeodesicMain = NULL;
    geodesicSelectionGridLayout = NULL;
@@ -397,7 +433,9 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    metricCommentButtonGroup = NULL;
    metricSubPageSelectionsLayout = NULL;
    metricMetaDataButtonGroup = NULL;
+   metricHistogramButtonGroup = NULL;
    numValidMetrics = 0;
+   pageMetricMiscellaneous = NULL;
    pageMetricSettings = NULL;
    pageMetricSelection = NULL;
    
@@ -408,9 +446,11 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    
    paintColumnMetaDataButtonGroup = NULL;
    paintColumnSelectionGridLayout = NULL;
-   pagePaintColumn = NULL;
-   
+   pagePaintColumn = NULL;   
+   pagePaintMain = NULL;
    pagePaintName = NULL;
+   
+   pageSectionMain = NULL;
    
    numValidProbAtlasSurfaceChannels   = 0;
    probAtlasSurfaceSubPageChannelLayout = NULL;
@@ -437,6 +477,7 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    pageRegionMain = NULL;
    
    pageRgbPaintMain = NULL;
+   pageRgbPaintSelection = NULL;
    
    pageSceneMain = NULL;
    skipScenePageUpdate = false;
@@ -447,6 +488,7 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    pageSurfaceShapeSettings = NULL;
    surfaceShapeSubSelectionsLayout = NULL;
    surfaceShapeMetaDataButtonGroup = NULL;
+   surfaceShapeHistogramButtonGroup = NULL;
    numValidSurfaceShape = 0;
    
    pageSurfaceAndVolume = NULL;
@@ -477,12 +519,12 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    //
    // Save as image button
    //
-   QtSaveWidgetAsImagePushButton* saveAsImageButton =
-              new QtSaveWidgetAsImagePushButton("Save As Image...",
-                                                0,
+   WuQSaveWidgetAsImagePushButton* saveAsImageButton =
+              new WuQSaveWidgetAsImagePushButton("Save As Image...",
                                                 this);
    saveAsImageButton->setAutoDefault(false);
    buttonsLayout->addWidget(saveAsImageButton);
+   saveAsImageButton->hide();   // HIDE SAVE AS IMAGE BUTTON ***************
    
    //
    // Help button
@@ -528,7 +570,7 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    // Default to O/U Volume page if there are volumes and no surfaces
    //
    if (validSurfaceData) {
-      showDisplayControlPage(PAGE_NAME_SURFACE_OVERLAY_UNDERLAY, false);
+      showDisplayControlPage(PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW, false);
    }
    else if (validVolumeData) {
       showDisplayControlPage(PAGE_NAME_VOLUME_SELECTION, false);
@@ -556,44 +598,6 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    resize(585, 740);
 }
    
-/** 
- * print the size of the pages.
- */
-void 
-GuiDisplayControlDialog::printPageSizes()
-{
-   if (DebugControl::getDebugOn()) {
-      std::cout << std::endl;
-      std::cout << "Display Control Page Sizes and Size Hints: " << std::endl;
-      printPageSizesHelper("Areal Estimation Page", pageArealEstimation);
-      //printPageSizesHelper("Border Page", borderPage);
-      //printPageSizesHelper("Cell Page", cellPage);
-      //printPageSizesHelper("CoCoMac Page", cocomacPage);
-      //printPageSizesHelper("Contour Page", contourPage);
-      printPageSizesHelper("Deformation Field Page", pageDeformationField);
-      //printPageSizesHelper("Foci Page", fociPage);
-      printPageSizesHelper("Geodesic Page", pageGeodesicMain);
-      printPageSizesHelper("Lat Lon Page", pageLatLonMain);
-      //printPageSizesHelper("Metric Page", metricPage);
-      printPageSizesHelper("Misc Page", pageSurfaceMisc);
-      //printPageSizesHelper("Models Page", modelsPage);
-      printPageSizesHelper("O/U Surface Page", pageOverlayUnderlaySurface);
-      printPageSizesHelper("O/U Volume Page", pageVolumeSelection);
-      printPageSizesHelper("Page Page", pagePaintColumn);
-      //printPageSizesHelper("Prob Atlas Surface Page", probAtlasSurfacePage);
-      //printPageSizesHelper("Prob Atlas Volume Page", probAtlasVolumePage);
-      printPageSizesHelper("Regions File Main Page", pageRegionMain);
-      printPageSizesHelper("Rgb Paint Main Page", pageRgbPaintMain);
-      //printPageSizesHelper("Shape Main Page", shapeMainPage);
-      printPageSizesHelper("Surface and Volume Page", pageSurfaceAndVolume);
-      //printPageSizesHelper("Surface Vector Page", surfaceVectorMainPage);
-      printPageSizesHelper("Topography Page", pageTopography);
-      printPageSizesHelper("Page Widget Stack", pageWidgetStack);
-      printPageSizesHelper("Display Control Dialog", this);
-      std::cout << std::endl;
-   }
-}
-
 /**
  * called when help button pressed.
  */
@@ -623,7 +627,6 @@ GuiDisplayControlDialog::resizeEvent(QResizeEvent* re)
 
    if (DebugControl::getDebugOn()) {
       std::cout << "Display Control Dialog Resized: " << std::endl;
-      printPageSizesHelper("", this);
       std::cout << std::endl;
    }
 }
@@ -638,12 +641,66 @@ GuiDisplayControlDialog::contextMenuEvent(QContextMenuEvent* /*e*/)
    // Popup menu for selection of pages
    //
    QMenu menu(this);
-   QObject::connect(&menu, SIGNAL(triggered(QAction*)),
-                    this, SLOT(popupMenuSelection(QAction*)));
+   
+   //
+   // Add capture image of dialog to clipboard
+   //
+   addImageCaptureToMenu(&menu);
+   menu.addSeparator();
+   
+   //
+   // Page selection
+   //
+   QMenu* pageSelectionMenu = new QMenu("Page");
+   QObject::connect(pageSelectionMenu, SIGNAL(triggered(QAction*)),
+                    this, SLOT(slotPageSelectionPopupMenu(QAction*)));
    for (int i = 0; i < pageComboBox->count(); i++) {
-      QAction* action = menu.addAction(pageComboBox->itemText(i));
+      QAction* action = pageSelectionMenu->addAction(pageComboBox->itemText(i));
       action->setData(QVariant(i));
    }
+   menu.addMenu(pageSelectionMenu);
+   
+   //
+   // Add the overlay selection menus
+   //
+   BrainSet* brainSet = theMainWindow->getBrainSet();
+   for (int m = (brainSet->getNumberOfSurfaceOverlays() -1); m >= 0; m--) {
+      //
+      // Get the overlay and its valid data types
+      //
+      const BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(m);
+      std::vector<BrainModelSurfaceOverlay::OVERLAY_SELECTIONS> dataTypes;
+      std::vector<QString> dataTypeNames;
+      bmsOverlay->getDataTypesAndNames(dataTypes, dataTypeNames);
+      const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS selectedOverlay =
+         bmsOverlay->getOverlay(getSurfaceModelIndex());
+      const int numDataTypes = static_cast<int>(dataTypes.size());
+      
+      //
+      // Create the menu
+      //
+      QMenu* overlayMenu = new QMenu(bmsOverlay->getName());
+      QObject::connect(overlayMenu, SIGNAL(triggered(QAction*)),
+                       this, SLOT(slotOverlaySelectionPopupMenu(QAction*)));
+      for (int i = 0; i < numDataTypes; i++) {
+         QAction* action = overlayMenu->addAction(dataTypeNames[i]);
+         const int dataOverlayNumberAndItem = (m * 1000) + static_cast<int>(dataTypes[i]);
+         action->setData(QVariant(dataOverlayNumberAndItem));
+         if (selectedOverlay == dataTypes[i]) {
+            action->setCheckable(true);
+            action->setChecked(true);
+         }
+      }
+      
+      //
+      // Add overlay selection to popup menu
+      //
+      menu.addMenu(overlayMenu);
+   }
+   
+   //
+   // Popup the menu
+   //
    menu.exec(QCursor::pos());
 }      
 
@@ -661,21 +718,6 @@ GuiDisplayControlDialog::sizeHint() const
    return sz;
 }
 */
-/**
- * print the sizes of each page when debugging is on.
- */
-void 
-GuiDisplayControlDialog::printPageSizesHelper(const QString& pageName,
-                                        QWidget* thePage)
-{
-   if (thePage != NULL) {
-      QSize sizeHint = thePage->sizeHint();
-      QSize theSize  = thePage->size();
-      std::cout << "   " << pageName.toAscii().constData()
-                << " size " << theSize.width() << ", " << theSize.height()
-                << " hint " << sizeHint.width() << ", " << sizeHint.height() << std::endl;
-   }
-}                          
 
 /**
  * get the name of a page.
@@ -686,7 +728,7 @@ GuiDisplayControlDialog::getPageName(const PAGE_NAME pageName) const
    QString s("Unknown");
    
    switch (pageName) {
-      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY:
+      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW:
          s = "Overlay/Underlay - Surface";
          break;
       case PAGE_NAME_VOLUME_SETTINGS:
@@ -752,6 +794,9 @@ GuiDisplayControlDialog::getPageName(const PAGE_NAME pageName) const
       case PAGE_NAME_FOCI_NAME:
          s = "Foci Name";
          break;
+      case PAGE_NAME_FOCI_SEARCH:
+         s = "Foci Search";
+         break;
       case PAGE_NAME_FOCI_TABLE:
          s = "Foci Table";
          break;
@@ -763,6 +808,9 @@ GuiDisplayControlDialog::getPageName(const PAGE_NAME pageName) const
          break;
       case PAGE_NAME_LATLON:
          s = "Lat/Lon";
+         break;
+      case PAGE_NAME_METRIC_MISCELLANEOUS:
+         s = "Metric Miscellaneous";
          break;
       case PAGE_NAME_METRIC_SELECTION:
          s = "Metric Selection";
@@ -777,7 +825,10 @@ GuiDisplayControlDialog::getPageName(const PAGE_NAME pageName) const
          s = "Models Settings";
          break;
       case PAGE_NAME_PAINT_COLUMN:
-         s = "Paint Columns";
+         s = "Paint Selection";
+         break;
+      case PAGE_NAME_PAINT_MAIN:
+         s = "Paint Main";
          break;
       case PAGE_NAME_PAINT_NAMES:
          s = "Paint Names";
@@ -803,11 +854,17 @@ GuiDisplayControlDialog::getPageName(const PAGE_NAME pageName) const
       case PAGE_NAME_REGION:
          s = "Region";
          break;
-      case PAGE_NAME_RGB_PAINT:
-         s = "RGB Paint";
+      case PAGE_NAME_RGB_PAINT_MAIN:
+         s = "RGB Paint Settings";
+         break;
+      case PAGE_NAME_RGB_PAINT_SELECTION:
+         s = "RGB Paint Selection";
          break;
       case PAGE_NAME_SCENE:
          s = "Scene";
+         break;
+      case PAGE_NAME_SECTION_MAIN:
+         s = "Section Main";
          break;
       case PAGE_NAME_SHAPE_SELECTION:
          s = "Surface Shape Selection";
@@ -856,6 +913,7 @@ GuiDisplayControlDialog::updateDataValidityFlags()
    
    validSurfaceData = haveSurfaceFlag;
    validVolumeData = (brainSet->getBrainModelVolume() != NULL);
+   validVolumeFunctionalData = (brainSet->getNumberOfVolumeFunctionalFiles() > 0);
    validArealEstimationData = (brainSet->getArealEstimationFile()->getNumberOfColumns() > 0);
    validBorderData = ((bmbs->getNumberOfBorders() > 0) ||
                              (theMainWindow->getBrainSet()->getVolumeBorderFile()->getNumberOfBorders() > 0));
@@ -865,9 +923,7 @@ GuiDisplayControlDialog::updateDataValidityFlags()
    validCocomacData = (brainSet->getCocomacFile()->empty() == false);
    validContourData = (brainSet->getBrainModelContours() != NULL);
    validDeformationFieldData = (brainSet->getDeformationFieldFile()->getNumberOfColumns() > 0);
-   validFociData = ((theMainWindow->getBrainSet()->getFociProjectionFile()->getNumberOfCellProjections() > 0)  ||
-                       (theMainWindow->getBrainSet()->getVolumeFociFile()->empty() == false) ||
-                       theMainWindow->getBrainSet()->getHaveTransformationDataFociFiles());
+   validFociData = ((theMainWindow->getBrainSet()->getFociProjectionFile()->getNumberOfCellProjections() > 0));
    validGeodesicData = (brainSet->getGeodesicDistanceFile()->getNumberOfColumns() > 0);
    validImageData = (brainSet->getNumberOfImageFiles() > 0);
    validLatLonData = (brainSet->getLatLonFile()->getNumberOfColumns() > 0);
@@ -881,6 +937,7 @@ GuiDisplayControlDialog::updateDataValidityFlags()
                       (brainSet->getNumberOfVolumePaintFiles() > 0));
    validRgbPaintData = (brainSet->getRgbPaintFile()->getNumberOfColumns() > 0);
    validSceneData = true;  // always valid
+   validSectionData = (brainSet->getSectionFile()->getNumberOfColumns() > 0);
    validShapeData = (brainSet->getSurfaceShapeFile()->getNumberOfColumns() > 0);
    validSurfaceAndVolumeData = (brainSet->getBrainModelSurfaceAndVolume() != NULL);
    validSurfaceVectorData = (brainSet->getSurfaceVectorFile()->getNumberOfColumns() > 0);
@@ -907,8 +964,8 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
    pageComboBoxItems.clear();
    
    if (validSurfaceData) {
-      pageComboBox->addItem(getPageName(PAGE_NAME_SURFACE_OVERLAY_UNDERLAY));
-      pageComboBoxItems.push_back(PAGE_NAME_SURFACE_OVERLAY_UNDERLAY);
+      pageComboBox->addItem(getPageName(PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW));
+      pageComboBoxItems.push_back(PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW);
    }
    if (validVolumeData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_VOLUME_SELECTION));
@@ -987,6 +1044,10 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
       pageComboBoxItems.push_back(PAGE_NAME_FOCI_NAME);
    }
    if (validFociData) {
+      pageComboBox->addItem(getPageName(PAGE_NAME_FOCI_SEARCH));
+      pageComboBoxItems.push_back(PAGE_NAME_FOCI_SEARCH);
+   }
+   if (validFociData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_FOCI_TABLE));
       pageComboBoxItems.push_back(PAGE_NAME_FOCI_TABLE);
    }
@@ -1003,10 +1064,14 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
       pageComboBoxItems.push_back(PAGE_NAME_LATLON);
    }
    if (validMetricData) {
+      pageComboBox->addItem(getPageName(PAGE_NAME_METRIC_MISCELLANEOUS));
+      pageComboBoxItems.push_back(PAGE_NAME_METRIC_MISCELLANEOUS);
+   }
+   if (validMetricData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_METRIC_SELECTION));
       pageComboBoxItems.push_back(PAGE_NAME_METRIC_SELECTION);
    }
-   if (validMetricData) {
+   if (validMetricData || validVolumeFunctionalData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_METRIC_SETTINGS));
       pageComboBoxItems.push_back(PAGE_NAME_METRIC_SETTINGS);
    }
@@ -1019,6 +1084,8 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
       pageComboBoxItems.push_back(PAGE_NAME_MODELS_SETTINGS);
    }
    if (validPaintData) {
+      pageComboBox->addItem(getPageName(PAGE_NAME_PAINT_MAIN));
+      pageComboBoxItems.push_back(PAGE_NAME_PAINT_MAIN);
       pageComboBox->addItem(getPageName(PAGE_NAME_PAINT_COLUMN));
       pageComboBoxItems.push_back(PAGE_NAME_PAINT_COLUMN);
       pageComboBox->addItem(getPageName(PAGE_NAME_PAINT_NAMES));
@@ -1053,12 +1120,18 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
       pageComboBoxItems.push_back(PAGE_NAME_REGION);
    }
    if (validRgbPaintData) {
-      pageComboBox->addItem(getPageName(PAGE_NAME_RGB_PAINT));
-      pageComboBoxItems.push_back(PAGE_NAME_RGB_PAINT);
+      pageComboBox->addItem(getPageName(PAGE_NAME_RGB_PAINT_MAIN));
+      pageComboBoxItems.push_back(PAGE_NAME_RGB_PAINT_MAIN);
+      pageComboBox->addItem(getPageName(PAGE_NAME_RGB_PAINT_SELECTION));
+      pageComboBoxItems.push_back(PAGE_NAME_RGB_PAINT_SELECTION);
    }
    if (validSceneData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_SCENE));
       pageComboBoxItems.push_back(PAGE_NAME_SCENE);
+   }
+   if (validSectionData) {
+      pageComboBox->addItem(getPageName(PAGE_NAME_SECTION_MAIN));
+      pageComboBoxItems.push_back(PAGE_NAME_SECTION_MAIN);
    }
    if (validShapeData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_SHAPE_SELECTION));
@@ -1112,10 +1185,82 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
 }
 
 /**
+ * called when popup menu overlay selection is made.
+ */
+void 
+GuiDisplayControlDialog::slotOverlaySelectionPopupMenu(QAction* action)
+{
+   //
+   // Get overlay number and selection
+   //
+   const int item = action->data().toInt();
+   const int overlayNumber = item / 1000;
+   const int dataTypeValue = item % 1000;
+   
+   //
+   // Set the overlay
+   //
+   BrainModelSurfaceOverlay* bmsOverlay = 
+      theMainWindow->getBrainSet()->getSurfaceOverlay(overlayNumber);
+   const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS dataType =
+      static_cast<BrainModelSurfaceOverlay::OVERLAY_SELECTIONS>(dataTypeValue);
+   bmsOverlay->setOverlay(getSurfaceModelIndex(),
+                          dataType);
+   
+   //
+   // Update the dialog
+   //
+   switch (bmsOverlay->getOverlay(dataType)) {
+      case BrainModelSurfaceOverlay::OVERLAY_NONE:
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION:
+         updateArealEstimationItems();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_COCOMAC:
+         updateCocomacItems();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_METRIC:
+         updateMetricSelectionPage();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_PAINT:
+         updatePaintColumnPage();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS:
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT:
+         updateRgbPaintItems();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_SECTIONS:
+         updateSectionMainPage();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_SHOW_CROSSOVERS:
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_SHOW_EDGES:
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE:
+         updateShapeSelections();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY:
+         updateTopographyItems();
+         break;
+      case BrainModelSurfaceOverlay::OVERLAY_GEOGRAPHY_BLENDING:
+         break;
+   }
+   updateSurfaceOverlayWidgets();
+   
+   const int indx = pageComboBox->currentIndex();
+   initializeSelectedOverlay(static_cast<PAGE_NAME>(pageComboBoxItems[indx]));
+   //updateOverlayNumberComboBox();
+   
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL();
+}
+      
+/**
  * called when popup menu selection is made.
  */
 void
-GuiDisplayControlDialog::popupMenuSelection(QAction* action)
+GuiDisplayControlDialog::slotPageSelectionPopupMenu(QAction* action)
 {
    // get integer from action->data
    const int item = action->data().toInt();
@@ -1156,7 +1301,7 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
                                                 const bool updatePagesVisited)
 {
    bool enableSurfaceModelIndexComboBox = false;
-   
+   bool enableSurfaceModelOverlayNumberComboBox = false;
    pageComboBox->blockSignals(true);
    for (int i = 0; i < static_cast<int>(pageComboBoxItems.size()); i++) {
       if (pageComboBoxItems[i] == pageName) {
@@ -1174,12 +1319,12 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
    probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->setHidden(true);
    
    switch(pageName) {
-      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY:
-         if (pageOverlayUnderlaySurface == NULL) {
-            createOverlayUnderlaySurfacePage();
+      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW:
+         if (pageOverlayUnderlaySurfaceNew == NULL) {
+            createOverlayUnderlaySurfacePageNew();
             updateAllItemsInDialog(true, false);
          }
-         pageWidgetStack->setCurrentWidget(pageOverlayUnderlaySurface);
+         pageWidgetStack->setCurrentWidget(pageOverlayUnderlaySurfaceNew);
          enableSurfaceModelIndexComboBox = true;
          break;
       case PAGE_NAME_AREAL_ESTIMATION:
@@ -1188,6 +1333,8 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
             updateArealEstimationItems();
          }
          pageWidgetStack->setCurrentWidget(pageArealEstimation);
+         enableSurfaceModelIndexComboBox = true;
+         enableSurfaceModelOverlayNumberComboBox = true;
          break;
       case PAGE_NAME_BORDER_MAIN:
          if (pageBorderMain == NULL) {
@@ -1308,6 +1455,14 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageFociName);
          break;
+      case PAGE_NAME_FOCI_SEARCH:
+         if (pageFociSearch == NULL) {
+            createFociSearchPage();
+            updateFociSearchPage(true);
+         }
+         pageFociSearch->updateGeometry();
+         pageWidgetStack->setCurrentWidget(pageFociSearch);
+         break;
       case PAGE_NAME_FOCI_TABLE:
          if (pageFociTable == NULL) {
             createFociTablePage();
@@ -1336,6 +1491,13 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageLatLonMain);
          break;
+      case PAGE_NAME_METRIC_MISCELLANEOUS:
+         if (pageMetricMiscellaneous == NULL) {
+            createMetricMiscellaneousPage();
+            updateMetricMiscellaneousPage();
+         }
+         pageWidgetStack->setCurrentWidget(pageMetricMiscellaneous);
+         break;
       case PAGE_NAME_METRIC_SELECTION:
          if (pageMetricSelection == NULL) {
             createMetricSelectionPage();
@@ -1343,6 +1505,7 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageMetricSelection);
          enableSurfaceModelIndexComboBox = true;
+         enableSurfaceModelOverlayNumberComboBox = true;
          metricApplySelectionToLeftAndRightStructuresFlagCheckBox->setHidden(false);
          break;
       case PAGE_NAME_METRIC_SETTINGS:
@@ -1350,6 +1513,7 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
             createMetricSettingsPage();
             updateMetricSettingsPage();
          }
+         updateMetricSettingsThresholdColumnComboBox();
          pageWidgetStack->setCurrentWidget(pageMetricSettings);
          break;
       case PAGE_NAME_MODELS_MAIN:
@@ -1366,6 +1530,13 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageModelsSettings);
          break;
+      case PAGE_NAME_PAINT_MAIN:
+         if (pagePaintMain == NULL) {
+            createPaintMainPage();
+            updatePaintMainPage();
+         }
+         pageWidgetStack->setCurrentWidget(pagePaintMain);
+         break;
       case PAGE_NAME_PAINT_COLUMN:
          if (pagePaintColumn == NULL) {
             createPaintColumnPage();
@@ -1373,6 +1544,7 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pagePaintColumn);
          enableSurfaceModelIndexComboBox = true;
+         enableSurfaceModelOverlayNumberComboBox = true;
          paintApplySelectionToLeftAndRightStructuresFlagCheckBox->setHidden(false);
          break;
       case PAGE_NAME_PAINT_NAMES:
@@ -1433,13 +1605,21 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageRegionMain);
          break;
-      case PAGE_NAME_RGB_PAINT:
+      case PAGE_NAME_RGB_PAINT_MAIN:
          if (pageRgbPaintMain == NULL) {
-            createRgbPaintPage();
-            updateRgbPaintItems();
+            createRgbPaintMainPage();
+            updateRgbPaintMainPage();
          }
          pageWidgetStack->setCurrentWidget(pageRgbPaintMain);
+         break;
+      case PAGE_NAME_RGB_PAINT_SELECTION:
+         if (pageRgbPaintSelection == NULL) {
+            createRgbPaintSelectionPage();
+            updateRgbPaintSelectionPage();
+         }
+         pageWidgetStack->setCurrentWidget(pageRgbPaintSelection);
          enableSurfaceModelIndexComboBox = true;
+         enableSurfaceModelOverlayNumberComboBox = true;
          rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->setHidden(false);
          break;
       case PAGE_NAME_SCENE:
@@ -1451,6 +1631,13 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          pageWidgetStack->setCurrentWidget(pageSceneMain);
          sceneListBox->blockSignals(false);
          break;
+      case PAGE_NAME_SECTION_MAIN:
+         if (pageSectionMain == NULL) {
+            createSectionMainPage();
+            updateSectionMainPage();
+         }
+         pageWidgetStack->setCurrentWidget(pageSectionMain);
+         break;
       case PAGE_NAME_SHAPE_SELECTION:
          if (pageSurfaceShapeSelections == NULL) {
             createShapeSelectionPage();
@@ -1458,6 +1645,7 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageSurfaceShapeSelections);
          enableSurfaceModelIndexComboBox = true;
+         enableSurfaceModelOverlayNumberComboBox = true;
          shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->setHidden(false);
          break;
       case PAGE_NAME_SHAPE_SETTINGS:
@@ -1465,6 +1653,7 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
             createShapeSettingsPage();
             updateShapeSettings();
          }
+         updateShapeSettingsColorMappingComboBox();
          pageWidgetStack->setCurrentWidget(pageSurfaceShapeSettings);
          break;
       case PAGE_NAME_SURFACE_AND_VOLUME:
@@ -1564,7 +1753,9 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
    }
 
 
-   surfaceModelGroupBox->setHidden(enableSurfaceModelIndexComboBox == false);
+   surfaceModelGroupBox->setHidden((enableSurfaceModelIndexComboBox == false) &&
+                                   (enableSurfaceModelOverlayNumberComboBox == false));
+   overlayNumberWidgetGroup->setHidden(enableSurfaceModelOverlayNumberComboBox == false);
    
    //
    // Scroll to top of page and left
@@ -1580,6 +1771,134 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
    pageBackToolButton->setEnabled(pagesVisitedIndex > 0);
    pageForwardToolButton->setEnabled(pagesVisitedIndex 
                                      < static_cast<int>((pagesVisited.size() - 1)));
+                                     
+   if (enableSurfaceModelOverlayNumberComboBox) {
+      initializeSelectedOverlay(pageName);
+   }
+}
+      
+/**
+ * initialize the overlay for control be a page.
+ */
+void 
+GuiDisplayControlDialog::initializeSelectedOverlay(const PAGE_NAME pageName)
+{
+   BrainModelSurfaceOverlay::OVERLAY_SELECTIONS surfaceOverlay =
+                          BrainModelSurfaceOverlay::OVERLAY_NONE;
+   switch (pageName) {
+      case PAGE_NAME_AREAL_ESTIMATION:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_AREAL_ESTIMATION;
+         break;
+      case PAGE_NAME_BORDER_MAIN:
+      case PAGE_NAME_BORDER_COLOR:
+      case PAGE_NAME_BORDER_NAME:
+      case PAGE_NAME_CELL_MAIN:
+      case PAGE_NAME_CELL_CLASS:
+      case PAGE_NAME_CELL_COLOR:
+         break;
+      case PAGE_NAME_COCOMAC_DISPLAY:
+      case PAGE_NAME_COCOMAC_INFORMATION:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_COCOMAC;
+         break;
+      case PAGE_NAME_CONTOUR_MAIN:
+      case PAGE_NAME_CONTOUR_CLASS:
+      case PAGE_NAME_CONTOUR_COLOR:
+      case PAGE_NAME_DEFORMATION_FIELD:
+      case PAGE_NAME_FOCI_MAIN:
+      case PAGE_NAME_FOCI_CLASS:
+      case PAGE_NAME_FOCI_COLOR:
+      case PAGE_NAME_FOCI_KEYWORD:
+      case PAGE_NAME_FOCI_NAME:
+      case PAGE_NAME_FOCI_SEARCH:
+      case PAGE_NAME_FOCI_TABLE:
+      case PAGE_NAME_GEODESIC:
+      case PAGE_NAME_IMAGES:
+      case PAGE_NAME_LATLON:
+         break;
+      case PAGE_NAME_METRIC_MISCELLANEOUS:
+      case PAGE_NAME_METRIC_SELECTION:
+      case PAGE_NAME_METRIC_SETTINGS:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_METRIC;
+         break;
+      case PAGE_NAME_MODELS_MAIN:
+      case PAGE_NAME_MODELS_SETTINGS:
+         break;
+      case PAGE_NAME_PAINT_COLUMN:
+      case PAGE_NAME_PAINT_MAIN:
+      case PAGE_NAME_PAINT_NAMES:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_PAINT;
+         break;
+      case PAGE_NAME_PROB_ATLAS_SURFACE_MAIN:
+      case PAGE_NAME_PROB_ATLAS_SURFACE_AREA:
+      case PAGE_NAME_PROB_ATLAS_SURFACE_CHANNEL:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS;
+         break;
+      case PAGE_NAME_PROB_ATLAS_VOLUME_MAIN:
+      case PAGE_NAME_PROB_ATLAS_VOLUME_AREA:
+      case PAGE_NAME_PROB_ATLAS_VOLUME_CHANNEL:
+      case PAGE_NAME_REGION:
+         break;
+      case PAGE_NAME_RGB_PAINT_MAIN:
+      case PAGE_NAME_RGB_PAINT_SELECTION:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT;
+         break;
+      case PAGE_NAME_SCENE:
+         break;
+      case PAGE_NAME_SECTION_MAIN:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_SECTIONS;
+         break;
+      case PAGE_NAME_SHAPE_SELECTION:
+      case PAGE_NAME_SHAPE_SETTINGS:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE;
+         break;
+      case PAGE_NAME_SURFACE_AND_VOLUME:
+      case PAGE_NAME_SURFACE_MISC:
+      case PAGE_NAME_SURFACE_VECTOR_SELECTION:
+      case PAGE_NAME_SURFACE_VECTOR_SETTINGS:
+      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW:
+         break;
+      case PAGE_NAME_TOPOGRAPHY:
+         surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY;
+         break;
+      case PAGE_NAME_VOLUME_SELECTION:
+      case PAGE_NAME_VOLUME_SETTINGS:
+      case PAGE_NAME_VOLUME_SURFACE_OUTLINE:
+      case PAGE_NAME_INVALID:
+         break;
+   }
+   
+   updateOverlayNumberComboBox();
+   
+   if (surfaceOverlay != BrainModelSurfaceOverlay::OVERLAY_NONE) {
+      BrainSet* brainSet = theMainWindow->getBrainSet();
+      int defaultItem = -1;
+      for (int m = 0; m < brainSet->getNumberOfSurfaceOverlays(); m++) {
+         const BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(m);
+         if (bmsOverlay->getOverlay(getSurfaceModelIndex()) == surfaceOverlay) {
+            defaultItem = m;
+         }
+      }
+      
+      if (defaultItem >= 0) {
+         overlayNumberComboBox->setCurrentIndex(defaultItem);
+         slotOverlayNumberComboBox(defaultItem);
+      }
+   }
+}
+      
+/**
+ * update the overlay number combo box.
+ */
+void 
+GuiDisplayControlDialog::updateOverlayNumberComboBox()
+{
+   for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfSurfaceOverlays(); i++) {
+      BrainModelSurfaceOverlay* bmsOverlay = theMainWindow->getBrainSet()->getSurfaceOverlay(i);
+      const QString text = (bmsOverlay->getName()
+                            + " ==> "
+                            + bmsOverlay->getDataTypeName(getSurfaceModelIndex()));
+      overlayNumberComboBox->setItemText(i, text);
+   }
 }
       
 /**
@@ -2472,6 +2791,7 @@ GuiDisplayControlDialog::createOverlayUnderlayVolumeSettingsPage()
    pageVolumeSettingsWidgetGroup->addWidget(volumeSegmentationTranslucencyDoubleSpinBox);
    pageVolumeSettingsWidgetGroup->addWidget(volumeOverlayOpacityDoubleSpinBox);
    pageVolumeSettingsWidgetGroup->addWidget(vectorVolumeSparsitySpinBox);
+   pageVolumeSettingsWidgetGroup->addWidget(volumeMontageGroupBox);
    pageVolumeSettingsWidgetGroup->addWidget(volumeMontageRowsSpinBox);
    pageVolumeSettingsWidgetGroup->addWidget(volumeMontageColumnsSpinBox);
    pageVolumeSettingsWidgetGroup->addWidget(volumeMontageSliceIncrementSpinBox);
@@ -2679,7 +2999,8 @@ GuiDisplayControlDialog::slotVolumeAnimateStartPushButton()
       // Get the slices that have data
       //
       int extent[6];
-      vf->getNonZeroVoxelExtent(extent);
+      float voxelExtent[6];
+      vf->getNonZeroVoxelExtent(extent, voxelExtent);
       
       //
       // Get the currently selected slices of the volume
@@ -2774,7 +3095,7 @@ GuiDisplayControlDialog::slotAnatomyVolumeHistogram()
                                              FileUtilities::basename(vf->getFileName()),
                                              values,
                                              true,
-                                             false);
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
          ghd->show();
          QApplication::restoreOverrideCursor();
       }
@@ -4455,13 +4776,6 @@ GuiDisplayControlDialog::updateCocomacItems()
 {
    updatePageSelectionComboBox();
 
-   if (pageOverlayUnderlaySurface != NULL) {
-      primaryOverlayCocomacButton->setEnabled(validCocomacData);
-      secondaryOverlayCocomacButton->setEnabled(validCocomacData);
-      underlayCocomacButton->setEnabled(validCocomacData);
-      cocomacSelectionLabel->setEnabled(validCocomacData);
-   }
-
    updateCocomacDisplayPage();
    updateCocomacInformationPage();
 }
@@ -4909,10 +5223,11 @@ GuiDisplayControlDialog::updateSurfaceVectorSelectionPage()
       surfaceVectorButtonGroup->addButton(rb, i);
       surfaceVectorRadioButtons.push_back(rb);
       
-      QPushButton* pb = new QPushButton("?");
+      QToolButton* pb = new QToolButton;
+      pb->setText("?");
       pb->setObjectName("pb");
-      pb->setFixedSize(pb->sizeHint());
-      pb->setAutoDefault(false);
+      //pb->setFixedSize(pb->sizeHint());
+      //pb->setAutoDefault(false);
       surfaceVectorCommentButtonGroup->addButton(pb, i);
       surfaceVectorCommentPushButtons.push_back(pb);
       
@@ -4993,6 +5308,8 @@ GuiDisplayControlDialog::readSurfaceVectorSelectionPage()
          svf->setColumnName(i, name);
       }
    }
+   DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
+   dssv->setSelectedColumn(surfaceModelIndex, surfaceVectorButtonGroup->checkedId());
    
    GuiFilesModified fm;
    fm.setSurfaceVectorModified();
@@ -5011,7 +5328,7 @@ GuiDisplayControlDialog::readSurfaceVectorSettingsPage()
    }
    DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
    
-   dssv->setSelectedColumn(surfaceModelIndex, surfaceVectorButtonGroup->checkedId());
+   //dssv->setSelectedColumn(surfaceModelIndex, surfaceVectorButtonGroup->checkedId());
    dssv->setDisplayMode(static_cast<DisplaySettingsSurfaceVectors::DISPLAY_MODE>(
                           surfaceVectorDisplayModeComboBox->currentIndex()));
    dssv->setSparseDisplayDistance(surfaceVectorSparseDistanceSpinBox->value());
@@ -5059,12 +5376,16 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    //
    //
    int numRows = 0;
+   const int LEFT_VOLUME_INTERACTION_ROW = numRows++;
+   const int RIGHT_VOLUME_INTERACTION_ROW = numRows++;
+   const int CEREBELLUM_VOLUME_INTERACTION_ROW = numRows++;
    const int FIDUCIAL_ROW     = numRows++;
    const int DRAW_MODE_ROW    = numRows++;
    const int PARTIAL_VIEW_ROW = numRows++;
    const int PROJECTION_ROW   = numRows++;
    const int BRIGHTNESS_ROW = numRows++;
    const int CONTRAST_ROW   = numRows++;
+   const int OPACITY_ROW = numRows++;
    const int NODE_SIZE_ROW  = numRows++;
    const int LINK_SIZE_ROW  = numRows++;
    const int IDENTIFY_COLOR_ROW = numRows++;
@@ -5075,6 +5396,40 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    gridLayout->setSpacing(2);
    miscVBoxLayout->addLayout(gridLayout);
    //gridLayout->setColumnMaximumWidth(1, 200);
+   
+   //
+   // Fiducial volume interaction surface selection
+   //
+   gridLayout->addWidget(new QLabel("Left Fiducial Volume Interaction"), LEFT_VOLUME_INTERACTION_ROW, 0, Qt::AlignLeft);
+   miscLeftFiducialVolumeInteractionComboBox = new GuiBrainModelSelectionComboBox(false, true, false,
+                                                               "", 0, 
+                                                               "miscLeftFiducialVolumeInteractionComboBox",
+                                                               false,
+                                                               true);
+   miscLeftFiducialVolumeInteractionComboBox->setSurfaceStructureRequirement(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+   gridLayout->addWidget(miscLeftFiducialVolumeInteractionComboBox, LEFT_VOLUME_INTERACTION_ROW, 1, 1, 2, Qt::AlignLeft);
+   QObject::connect(miscLeftFiducialVolumeInteractionComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readMiscSelections()));
+   gridLayout->addWidget(new QLabel("Right Fiducial Volume Interaction"), RIGHT_VOLUME_INTERACTION_ROW, 0, Qt::AlignLeft);
+   miscRightFiducialVolumeInteractionComboBox = new GuiBrainModelSelectionComboBox(false, true, false,
+                                                               "", 0, 
+                                                               "miscRightFiducialVolumeInteractionComboBox",
+                                                               false,
+                                                               true);
+   miscRightFiducialVolumeInteractionComboBox->setSurfaceStructureRequirement(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+   gridLayout->addWidget(miscRightFiducialVolumeInteractionComboBox, RIGHT_VOLUME_INTERACTION_ROW, 1, 1, 2, Qt::AlignLeft);
+   QObject::connect(miscRightFiducialVolumeInteractionComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readMiscSelections()));
+   gridLayout->addWidget(new QLabel("Cerebellum Fiducial Volume Interaction"), CEREBELLUM_VOLUME_INTERACTION_ROW, 0, Qt::AlignLeft);
+   miscCerebellumFiducialVolumeInteractionComboBox = new GuiBrainModelSelectionComboBox(false, true, false,
+                                                               "", 0, 
+                                                               "miscCerebellumFiducialVolumeInteractionComboBox",
+                                                               false,
+                                                               true);
+   miscCerebellumFiducialVolumeInteractionComboBox->setSurfaceStructureRequirement(Structure::STRUCTURE_TYPE_CEREBELLUM);
+   gridLayout->addWidget(miscCerebellumFiducialVolumeInteractionComboBox, CEREBELLUM_VOLUME_INTERACTION_ROW, 1, 1, 2, Qt::AlignLeft);
+   QObject::connect(miscCerebellumFiducialVolumeInteractionComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readMiscSelections()));
    
    //
    // Active fiducial surface selection
@@ -5109,6 +5464,8 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
                                     "Tiles without Lighting");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT,
                                     "Tiles with Lighting (Default)");
+   miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_TILES_WITH_LIGHT_NO_BACK,
+                                    "Tiles with Lighting No Backfacing Tiles");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_TILES_LINKS_NODES,
                                     "Tiles, Links, and Nodes (surface editing)");
    miscDrawModeComboBox->insertItem(DisplaySettingsSurface::DRAW_MODE_NONE,
@@ -5161,24 +5518,46 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    // Brightness line edit and label
    //
    gridLayout->addWidget(new QLabel("Brightness"), BRIGHTNESS_ROW, 0, Qt::AlignLeft);
-   miscBrightnessLineEdit = new QLineEdit;
-   miscBrightnessLineEdit->setMaximumWidth(maxWidth);
-   gridLayout->addWidget(miscBrightnessLineEdit, BRIGHTNESS_ROW, 1, Qt::AlignLeft);
-   miscBrightnessLineEdit->setText(QString("%1").arg(dsn->getNodeBrightness(), 0, 'f', 3));
-   QObject::connect(miscBrightnessLineEdit, SIGNAL(returnPressed()),
+   miscBrightnessDoubleSpinBox = new QDoubleSpinBox;
+   miscBrightnessDoubleSpinBox->setMinimum(-10000);
+   miscBrightnessDoubleSpinBox->setMaximum(10000);
+   miscBrightnessDoubleSpinBox->setSingleStep(10.0);
+   miscBrightnessDoubleSpinBox->setDecimals(2);
+   miscBrightnessDoubleSpinBox->setMaximumWidth(maxWidth);
+   gridLayout->addWidget(miscBrightnessDoubleSpinBox, BRIGHTNESS_ROW, 1, Qt::AlignLeft);
+   miscBrightnessDoubleSpinBox->setValue(dsn->getNodeBrightness());
+   QObject::connect(miscBrightnessDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readMiscSelections()));
    
    //
    // Contrast line edit and label
    //
    gridLayout->addWidget(new QLabel("Contrast"), CONTRAST_ROW, 0, Qt::AlignLeft);
-   miscContrastLineEdit = new QLineEdit;
-   miscContrastLineEdit->setMaximumWidth(maxWidth);
-   gridLayout->addWidget(miscContrastLineEdit, CONTRAST_ROW, 1, Qt::AlignLeft);
-   miscContrastLineEdit->setText(QString("%1").arg(dsn->getNodeContrast(), 0, 'f', 3));
-   QObject::connect(miscContrastLineEdit, SIGNAL(returnPressed()),
+   miscContrastDoubleSpinBox = new QDoubleSpinBox;
+   miscContrastDoubleSpinBox->setMaximumWidth(maxWidth);
+   miscContrastDoubleSpinBox->setMinimum(-10000);
+   miscContrastDoubleSpinBox->setMaximum(10000);
+   miscContrastDoubleSpinBox->setSingleStep(0.1);
+   miscContrastDoubleSpinBox->setDecimals(2);
+   gridLayout->addWidget(miscContrastDoubleSpinBox, CONTRAST_ROW, 1, Qt::AlignLeft);
+   miscContrastDoubleSpinBox->setValue(dsn->getNodeContrast());
+   QObject::connect(miscContrastDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readMiscSelections()));
    
+   //
+   // Opacity spin box and label
+   //
+   gridLayout->addWidget(new QLabel("Opacity"), OPACITY_ROW, 0, Qt::AlignLeft);
+   opacityDoubleSpinBox = new QDoubleSpinBox;
+   opacityDoubleSpinBox->setMinimum(0.0);
+   opacityDoubleSpinBox->setMaximum(1.0);
+   opacityDoubleSpinBox->setSingleStep(0.1);
+   opacityDoubleSpinBox->setDecimals(2);
+   opacityDoubleSpinBox->setMaximumWidth(maxWidth);
+   gridLayout->addWidget(opacityDoubleSpinBox, OPACITY_ROW, 1, Qt::AlignLeft);
+   QObject::connect(opacityDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readMiscSelections()));
+                    
    //
    // Node Size spin box and label
    //
@@ -5360,6 +5739,36 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    // Limit size of page
    //
    pageSurfaceMisc->setFixedSize(pageSurfaceMisc->sizeHint());
+   
+   //
+   // Widget group for all items in surf misc page
+   //
+   surfaceMiscWidgetGroup = new WuQWidgetGroup(this);
+   surfaceMiscWidgetGroup->addWidget(miscLeftFiducialVolumeInteractionComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscRightFiducialVolumeInteractionComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscCerebellumFiducialVolumeInteractionComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscActiveFiducialComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscDrawModeComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscPartialViewComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscProjectionComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscBrightnessDoubleSpinBox);
+   surfaceMiscWidgetGroup->addWidget(miscContrastDoubleSpinBox);
+   surfaceMiscWidgetGroup->addWidget(opacityDoubleSpinBox);
+   surfaceMiscWidgetGroup->addWidget(miscNodeSizeSpinBox);
+   surfaceMiscWidgetGroup->addWidget(miscLinkSizeSpinBox);
+   surfaceMiscWidgetGroup->addWidget(miscIdentifyNodeColorComboBox);
+   surfaceMiscWidgetGroup->addWidget(miscShowNormalsCheckBox);
+   surfaceMiscWidgetGroup->addWidget(miscTotalForcesCheckBox);
+   surfaceMiscWidgetGroup->addWidget(miscAngularForcesCheckBox);
+   surfaceMiscWidgetGroup->addWidget(miscLinearForcesCheckBox);
+   surfaceMiscWidgetGroup->addWidget(miscForceVectorLengthDoubleSpinBox);
+   surfaceMiscWidgetGroup->addWidget(miscAxesShowLettersCheckBox);
+   surfaceMiscWidgetGroup->addWidget(miscAxesShowTickMarksCheckBox);
+   surfaceMiscWidgetGroup->addWidget(miscAxesLengthDoubleSpinBox);
+   surfaceMiscWidgetGroup->addWidget(miscAxesOffsetDoubleSpinBox[0]);
+   surfaceMiscWidgetGroup->addWidget(miscAxesOffsetDoubleSpinBox[1]);
+   surfaceMiscWidgetGroup->addWidget(miscAxesOffsetDoubleSpinBox[2]);
+   surfaceMiscWidgetGroup->addWidget(miscAxesGroupBox);
 }
 
 /**
@@ -5373,18 +5782,27 @@ GuiDisplayControlDialog::updateMiscItems()
       return;
    }
    
+   surfaceMiscWidgetGroup->blockSignals(true);
+   
    //
    // Display settings for nodes
    //
    DisplaySettingsSurface* dsn = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
  
+   miscLeftFiducialVolumeInteractionComboBox->updateComboBox();
+   miscLeftFiducialVolumeInteractionComboBox->setSelectedBrainModel(theMainWindow->getBrainSet()->getLeftFiducialVolumeInteractionSurface());
+   miscRightFiducialVolumeInteractionComboBox->updateComboBox();
+   miscRightFiducialVolumeInteractionComboBox->setSelectedBrainModel(theMainWindow->getBrainSet()->getRightFiducialVolumeInteractionSurface());
+   miscCerebellumFiducialVolumeInteractionComboBox->updateComboBox();
+   miscCerebellumFiducialVolumeInteractionComboBox->setSelectedBrainModel(theMainWindow->getBrainSet()->getCerebellumFiducialVolumeInteractionSurface());
    miscActiveFiducialComboBox->updateComboBox();
    miscActiveFiducialComboBox->setSelectedBrainModel(theMainWindow->getBrainSet()->getActiveFiducialSurface());
    miscDrawModeComboBox->setCurrentIndex(dsn->getDrawMode());
    miscPartialViewComboBox->setCurrentIndex(dsn->getPartialView());
    miscProjectionComboBox->setCurrentIndex(dsn->getViewingProjection());
-   miscBrightnessLineEdit->setText(QString::number(dsn->getNodeBrightness(), 'f', 2));
-   miscContrastLineEdit->setText(QString::number(dsn->getNodeContrast(), 'f', 2));
+   miscBrightnessDoubleSpinBox->setValue(dsn->getNodeBrightness());
+   miscContrastDoubleSpinBox->setValue(dsn->getNodeContrast());
+   opacityDoubleSpinBox->setValue(dsn->getOpacity());
    miscNodeSizeSpinBox->setValue(dsn->getNodeSize());
    miscLinkSizeSpinBox->setValue(dsn->getLinkSize());
    miscShowNormalsCheckBox->setChecked(dsn->getShowNormals());
@@ -5403,6 +5821,8 @@ GuiDisplayControlDialog::updateMiscItems()
    miscAxesOffsetDoubleSpinBox[0]->setValue(offset[0]);
    miscAxesOffsetDoubleSpinBox[1]->setValue(offset[1]);
    miscAxesOffsetDoubleSpinBox[2]->setValue(offset[2]);
+
+   surfaceMiscWidgetGroup->blockSignals(false);
 }
 
 /**
@@ -5415,6 +5835,16 @@ GuiDisplayControlDialog::readMiscSelections()
       return;
    }
    
+   //
+   // Update fiducial/volume interaction surfaces
+   //
+   theMainWindow->getBrainSet()->setLeftFiducialVolumeInteractionSurface(
+      miscLeftFiducialVolumeInteractionComboBox->getSelectedBrainModelSurface());
+   theMainWindow->getBrainSet()->setRightFiducialVolumeInteractionSurface(
+      miscRightFiducialVolumeInteractionComboBox->getSelectedBrainModelSurface());
+   theMainWindow->getBrainSet()->setCerebellumFiducialVolumeInteractionSurface(
+      miscCerebellumFiducialVolumeInteractionComboBox->getSelectedBrainModelSurface());
+      
    //
    // Update active fiducial surface
    //
@@ -5437,8 +5867,9 @@ GuiDisplayControlDialog::readMiscSelections()
                        miscPartialViewComboBox->currentIndex()));
    dsn->setViewingProjection(static_cast<DisplaySettingsSurface::VIEWING_PROJECTION>(
                        miscProjectionComboBox->currentIndex()));
-   dsn->setNodeBrightness(miscBrightnessLineEdit->text().toFloat());
-   dsn->setNodeContrast(miscContrastLineEdit->text().toFloat());
+   dsn->setNodeBrightness(miscBrightnessDoubleSpinBox->value());
+   dsn->setNodeContrast(miscContrastDoubleSpinBox->value());
+   dsn->setOpacity(opacityDoubleSpinBox->value());
    dsn->setNodeSize(miscNodeSizeSpinBox->value());
    dsn->setLinkSize(miscLinkSizeSpinBox->value());
    dsn->setShowNormals(miscShowNormalsCheckBox->isChecked());
@@ -5996,14 +6427,6 @@ GuiDisplayControlDialog::updateProbAtlasSurfaceAreaPage(const bool filesWereChan
 void 
 GuiDisplayControlDialog::updateProbAtlasSurfaceOverlayUnderlaySelection()
 {
-   if (pageOverlayUnderlaySurface != NULL) {
-      probAtlasSurfaceSelectionLabel->setEnabled(validProbAtlasSurfaceData);
-      primaryOverlayProbAtlasSurfaceButton->setEnabled(validProbAtlasSurfaceData);
-      secondaryOverlayProbAtlasSurfaceButton->setEnabled(validProbAtlasSurfaceData);
-      underlayProbAtlasSurfaceButton->setEnabled(validProbAtlasSurfaceData);
-      probAtlasSurfaceSelectionLabel->setEnabled(validProbAtlasSurfaceData);
-      probAtlasSurfaceInfoPushButton->setEnabled(validProbAtlasSurfaceData);
-   }   
 }
 
 /**
@@ -6030,16 +6453,7 @@ GuiDisplayControlDialog::updateProbAtlasSurfaceItems(const bool filesChanged)
  */
 void
 GuiDisplayControlDialog::createTopographyPage()
-{
-  
-   //
-   // Combo box for file selection
-   //
-   topographyFileComboBox = new QComboBox;
-   topographyFileComboBox->setToolTip("Choose Topography Column");
-   QObject::connect(topographyFileComboBox, SIGNAL(activated(int)),
-                    this, SLOT(topographyFileSelection(int)));
-   
+{  
    //
    // Eccentricity/Polar Angle.
    //
@@ -6052,8 +6466,10 @@ GuiDisplayControlDialog::createTopographyPage()
    QButtonGroup* topographyButtonGroup = new QButtonGroup(this);
    QObject::connect(topographyButtonGroup, SIGNAL(buttonClicked(int)),
                     this, SLOT(topographyTypeSelection(int)));
-   topographyButtonGroup->addButton(topographyTypeEccentricityRadioButton);
-   topographyButtonGroup->addButton(topographyPolarAngleRadioButton);
+   topographyButtonGroup->addButton(topographyTypeEccentricityRadioButton,
+      static_cast<int>(DisplaySettingsTopography::TOPOGRAPHY_DISPLAY_ECCENTRICITY));
+   topographyButtonGroup->addButton(topographyPolarAngleRadioButton,
+      static_cast<int>(DisplaySettingsTopography::TOPOGRAPHY_DISPLAY_POLAR_ANGLE));
    
    //
    //  Group box for display mode
@@ -6070,7 +6486,6 @@ GuiDisplayControlDialog::createTopographyPage()
    pageTopography = new QWidget;
    pageWidgetStack->addWidget(pageTopography); // adds to dialog
    QVBoxLayout* topographyLayout = new QVBoxLayout(pageTopography);
-   topographyLayout->addWidget(topographyFileComboBox);
    topographyLayout->addWidget(topographyGroup);
    topographyLayout->addStretch();
 }
@@ -6081,41 +6496,9 @@ GuiDisplayControlDialog::createTopographyPage()
 void 
 GuiDisplayControlDialog::readTopographySelections()
 {
+   updateSurfaceOverlayWidgets();
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    GuiBrainModelOpenGL::updateAllGL(NULL);   
-}
-
-/**
- * update topography overlay/underlay selection.
- */
-void 
-GuiDisplayControlDialog::updateTopographyOverlayUnderlaySelection()
-{
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
-   
-   TopographyFile* tf = theMainWindow->getBrainSet()->getTopographyFile();
-   const int numCols = tf->getNumberOfColumns();
-   DisplaySettingsTopography* dst = theMainWindow->getBrainSet()->getDisplaySettingsTopography();
-   
-   topographySelectionComboBox->clear();
-   
-   bool valid = false;
-   if (numCols > 0) {
-      valid = true;
-      for (int i = 0; i < numCols; i++) {
-         QString name(QString("Column %1").arg(i + 1));
-         topographySelectionComboBox->addItem(name);
-      }
-      topographySelectionComboBox->setCurrentIndex(dst->getSelectedColumn(surfaceModelIndex));
-   }
-   
-   topographySelectionComboBox->setEnabled(validTopographyData);
-   primaryOverlayTopographyButton->setEnabled(validTopographyData);
-   secondaryOverlayTopographyButton->setEnabled(validTopographyData);
-   underlayTopographyButton->setEnabled(validTopographyData);
-   topographySelectionLabel->setEnabled(validTopographyData);
 }
 
 /**
@@ -6125,30 +6508,12 @@ void
 GuiDisplayControlDialog::updateTopographyItems()
 {
    updatePageSelectionComboBox();
-   updateTopographyOverlayUnderlaySelection();
 
    if (pageTopography == NULL) {
       return;
    }
    
-   TopographyFile* tf = theMainWindow->getBrainSet()->getTopographyFile();
-   const int numCols = tf->getNumberOfColumns();
    DisplaySettingsTopography* dst = theMainWindow->getBrainSet()->getDisplaySettingsTopography();
-   
-   topographyFileComboBox->clear();
-   
-   bool valid = false;
-   if (numCols > 0) {
-      valid = true;
-      for (int i = 0; i < numCols; i++) {
-         QString name(QString("Column %1").arg(i + 1));
-         topographyFileComboBox->addItem(name);
-      }
-      topographyFileComboBox->setCurrentIndex(dst->getSelectedColumn(surfaceModelIndex));
-      
-      topographyFileComboBox->setToolTip(
-                    tf->getColumnName(dst->getSelectedColumn(surfaceModelIndex)));
-   }
    
    switch(dst->getDisplayType()) {
       case DisplaySettingsTopography::TOPOGRAPHY_DISPLAY_ECCENTRICITY:
@@ -6158,19 +6523,8 @@ GuiDisplayControlDialog::updateTopographyItems()
          topographyPolarAngleRadioButton->setChecked(true);
          break;
    }
-   
-   topographyFileComboBox->setEnabled(validTopographyData);
-   
+      
    pageTopography->setEnabled(validTopographyData);
-}
-
-void
-GuiDisplayControlDialog::topographyFileSelection(int fileNumber)
-{
-   DisplaySettingsTopography* dst = theMainWindow->getBrainSet()->getDisplaySettingsTopography();
-   dst->setSelectedColumn(surfaceModelIndex, fileNumber);
-   
-   readTopographySelections();   
 }
 
 void
@@ -6661,6 +7015,19 @@ GuiDisplayControlDialog::createScenePage()
                     this, SLOT(slotCreateSpecFromSelectedScenesPushButton()));
                     
    //
+   // Transfer Identify Window Filters
+   //
+   QPushButton* transferIdentityWindowFiltersPushButton = new QPushButton("Transfer Identify Window Filters...");
+   transferIdentityWindowFiltersPushButton->setAutoDefault(false);
+   transferIdentityWindowFiltersPushButton->setToolTip("Choose a scene from a dialog\n"
+                                                       "that will be popped-up and its\n"
+                                                       "identity window filters will be\n"
+                                                       "transferred to the selected scenes.");
+   QObject::connect(transferIdentityWindowFiltersPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotTransferIdentityWindowFiltersPushButton()));
+                    
+
+   //
    // Make all of the buttons the same size
    //
    std::vector<QPushButton*> buttVect;
@@ -6668,17 +7035,21 @@ GuiDisplayControlDialog::createScenePage()
    buttVect.push_back(appendScenePushButton);
    buttVect.push_back(insertScenePushButton);
    buttVect.push_back(replaceScenePushButton);
+   QtUtilities::makeButtonsSameSize(buttVect);
+   buttVect.clear();
    buttVect.push_back(deleteScenePushButton);
    buttVect.push_back(checkAllScenesPushButton);
    buttVect.push_back(unloadFilesPushButton);
    buttVect.push_back(createSpecFromSelectedScenesPushButton);
+   buttVect.push_back(transferIdentityWindowFiltersPushButton);
    QtUtilities::makeButtonsSameSize(buttVect);
    
    //
    // Grid for buttons
    //
    QGridLayout* buttonsLayout = new QGridLayout;
-   sceneLayout->addLayout(buttonsLayout);
+   sceneLayout->addLayout(buttonsLayout, 0);
+   sceneLayout->setAlignment(buttonsLayout, Qt::AlignLeft);
    sceneLayout->setSpacing(0);
    buttonsLayout->addWidget(showScenePushButton, 0, 0);
    buttonsLayout->addWidget(appendScenePushButton, 1, 0);
@@ -6688,6 +7059,7 @@ GuiDisplayControlDialog::createScenePage()
    buttonsLayout->addWidget(checkAllScenesPushButton, 1, 1);
    buttonsLayout->addWidget(unloadFilesPushButton, 2, 1);
    buttonsLayout->addWidget(createSpecFromSelectedScenesPushButton, 3, 1);
+   buttonsLayout->addWidget(transferIdentityWindowFiltersPushButton, 4, 1);
    
 /*
    QVBoxLayout* buttonsLayout = new QVBoxLayout;
@@ -6749,6 +7121,77 @@ GuiDisplayControlDialog::createScenePage()
    pageSceneMain->setFixedSize(pageSceneMain->sizeHint());
 }
 
+/**
+ * called to transfer identity window filters.
+ */
+void 
+GuiDisplayControlDialog::slotTransferIdentityWindowFiltersPushButton()
+{
+   SceneFile* sf = theMainWindow->getBrainSet()->getSceneFile();
+   if (sf->getNumberOfScenes() <= 0) {
+      QMessageBox::critical(this, "ERROR", "There are no scenes.");
+      return;
+   }
+   
+   const std::vector<int> selectedScenes = getSelectedScenes();
+   if (selectedScenes.empty()) {
+      QMessageBox::critical(this, "ERROR", "There are no selected scenes.");
+      return;
+   }
+   
+   //
+   // Get scene names
+   //
+   QStringList sceneNames;
+   for (int i = 0; i < sf->getNumberOfScenes(); i++) {
+      const SceneFile::Scene* scene = sf->getScene(i);
+      sceneNames << scene->getName();
+   }
+   
+   //
+   // Get scene for source of identify filters
+   //
+   WuQDataEntryDialog ded(this);
+   ded.setWindowTitle("Choose Scene for Filters");
+   ded.setTextAtTop("Choose scene from which the\n"
+                    "Identify Filters will be copied.",
+                    false);
+   QListWidget* lw = ded.addListWidget("", sceneNames);
+   QCheckBox* windowCB = ded.addCheckBox("Apply to Identify Window", true);
+   QCheckBox* sceneCB = ded.addCheckBox("Apply to Scenes Selected on Display Control", false);
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+      const int sceneNumber = lw->currentRow();
+      if ((sceneNumber >= 0) &&
+          (sceneNumber < sf->getNumberOfScenes())) {
+         if (sceneCB->isChecked()) {
+            sf->transferSceneClass(sceneNumber,
+                                   selectedScenes,
+                                   "BrainModelIdentification");
+         }
+         
+         if (windowCB->isChecked()) {
+            QString msg;
+            theMainWindow->getBrainSet()->showSceneIdentificationFilters(
+               sf->getScene(sceneNumber),
+               msg);
+            GuiIdentifyDialog* idWindow = theMainWindow->getIdentifyDialog(false);
+            idWindow->updateDialog();
+            
+            if (msg.isEmpty() == false) {
+               WuQMessageBox::critical(this,
+                                       "ERROR",
+                                       msg);
+            }
+         }
+      }
+      else {
+         WuQMessageBox::critical(this,
+                                 "ERROR",
+                                 "No scene was selected.");
+      }
+   }
+}
+      
 /**
  * called to create a spec file from files used in selected scenes.
  */
@@ -6827,6 +7270,15 @@ GuiDisplayControlDialog::slotSceneListBox(int item)
    SceneFile* sf = theMainWindow->getBrainSet()->getSceneFile();
    if ((item >= 0) && (item < sf->getNumberOfScenes())) {
       SceneFile::Scene* scene = sf->getScene(item);
+      
+      //
+      // Clear all Left-to-Left and Right-to-Right items
+      //
+      shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      metricApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      paintApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
       
       QString errorMessage;
       
@@ -7290,7 +7742,8 @@ GuiDisplayControlDialog::updateSceneItems()
    SceneFile* sf = theMainWindow->getBrainSet()->getSceneFile();
    for (int i = 0; i < sf->getNumberOfScenes(); i++) {
       const SceneFile::Scene* ss = sf->getScene(i);
-      sceneListBox->addItem(ss->getName());
+      const QString name(ss->getName());
+      sceneListBox->addItem(name);
    }
    if ((item >= 0) && (item < static_cast<int>(sceneListBox->count()))) {
       setSelectedSceneItem(item);
@@ -7303,6 +7756,128 @@ GuiDisplayControlDialog::updateSceneItems()
    pageSceneMain->setEnabled(validSceneData);
 }
 
+/**
+ * apply a scene (set display settings).
+ */
+void 
+GuiDisplayControlDialog::showScene(const SceneFile::Scene& scene,
+                                   QString& errorMessage)
+{
+   bool haveFociSearchInSceneFlag = false;
+   const int numClasses = scene.getNumberOfSceneClasses();
+   for (int nc = 0; nc < numClasses; nc++) {
+      const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
+      if (sc->getName() == "GuiDisplayControlDialog") {
+         const int num = sc->getNumberOfSceneInfo();
+         for (int i = 0; i < num; i++) {
+            const SceneFile::SceneInfo* si = sc->getSceneInfo(i);
+            const QString infoName = si->getName();
+
+            if (infoName == "fociShowKeywordsOnlyForDisplayedFociCheckBox") {
+               if (fociShowKeywordsOnlyForDisplayedFociCheckBox != NULL) {
+                  fociShowKeywordsOnlyForDisplayedFociCheckBox->setChecked(si->getValueAsBool());
+               }
+            }
+            else if (infoName == "fociShowNamesOnlyForDisplayedFociCheckBox") {
+               if (fociShowNamesOnlyForDisplayedFociCheckBox != NULL) {
+                  fociShowNamesOnlyForDisplayedFociCheckBox->setChecked(si->getValueAsBool());
+               }
+            }
+            else if (infoName == "fociShowTablesOnlyForDisplayedFociCheckBox") {
+               if (fociShowTablesOnlyForDisplayedFociCheckBox != NULL) {
+                  fociShowTablesOnlyForDisplayedFociCheckBox->setChecked(si->getValueAsBool());
+               }
+            }
+            else if (infoName == "fociShowClassesOnlyForDisplayedFociCheckBox") {
+               if (fociShowClassesOnlyForDisplayedFociCheckBox != NULL) {
+                  fociShowClassesOnlyForDisplayedFociCheckBox->setChecked(si->getValueAsBool());
+               }
+            }
+            else if (infoName == "fociShowColorsOnlyForDisplayedFociCheckBox") {
+               if (fociShowColorsOnlyForDisplayedFociCheckBox != NULL) {
+                  fociShowColorsOnlyForDisplayedFociCheckBox->setChecked(si->getValueAsBool());
+               }
+            }
+         }
+      }
+      else if (sc->getName() == "GuiFociSearchWidget") {
+         haveFociSearchInSceneFlag = true;
+      }
+   }
+   
+   //
+   // May need to create the foci search page
+   //
+   if (haveFociSearchInSceneFlag) {
+      if (pageFociSearch == NULL) {
+         createFociSearchPage();
+         updateFociSearchPage(true);
+         pageFociSearch->updateGeometry();
+      }
+      if (fociSearchWidget != NULL) {
+         fociSearchWidget->showScene(scene, errorMessage);
+      }
+   }
+}
+
+/**
+ * create a scene (read display settings).
+ */
+std::vector<SceneFile::SceneClass>
+GuiDisplayControlDialog::saveScene()
+{
+   SceneFile::SceneClass sc("GuiDisplayControlDialog");
+   if (fociShowKeywordsOnlyForDisplayedFociCheckBox != NULL) {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowKeywordsOnlyForDisplayedFociCheckBox", 
+                                            fociShowKeywordsOnlyForDisplayedFociCheckBox->isChecked()));
+   }
+   else {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowKeywordsOnlyForDisplayedFociCheckBox", 
+                                            false));
+   }
+   if (fociShowNamesOnlyForDisplayedFociCheckBox != NULL) {
+       sc.addSceneInfo(SceneFile::SceneInfo("fociShowNamesOnlyForDisplayedFociCheckBox", 
+                                            fociShowNamesOnlyForDisplayedFociCheckBox->isChecked()));
+   }
+   else {
+       sc.addSceneInfo(SceneFile::SceneInfo("fociShowNamesOnlyForDisplayedFociCheckBox", 
+                                            false));
+   }
+   if (fociShowTablesOnlyForDisplayedFociCheckBox != NULL) {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowTablesOnlyForDisplayedFociCheckBox", 
+                                           fociShowTablesOnlyForDisplayedFociCheckBox->isChecked()));
+   }
+   else {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowTablesOnlyForDisplayedFociCheckBox", 
+                                           false));
+   }
+   if (fociShowClassesOnlyForDisplayedFociCheckBox != NULL) {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowClassesOnlyForDisplayedFociCheckBox", 
+                                           fociShowClassesOnlyForDisplayedFociCheckBox->isChecked()));
+   }
+   else {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowClassesOnlyForDisplayedFociCheckBox", 
+                                           false));
+   }
+   if (fociShowColorsOnlyForDisplayedFociCheckBox != NULL) {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowColorsOnlyForDisplayedFociCheckBox", 
+                                           fociShowColorsOnlyForDisplayedFociCheckBox->isChecked()));
+   }   
+   else {
+      sc.addSceneInfo(SceneFile::SceneInfo("fociShowColorsOnlyForDisplayedFociCheckBox", 
+                                           false));
+   }
+   
+   std::vector<SceneFile::SceneClass> sceneClasses;
+   sceneClasses.push_back(sc);
+   std::vector<SceneFile> scenseClasses;
+   if (fociSearchWidget != NULL) {
+      sceneClasses.push_back(fociSearchWidget->saveScene());
+   }
+
+   return sceneClasses;
+}
+                             
 /**
  * Create the region page.
  */
@@ -7571,29 +8146,311 @@ GuiDisplayControlDialog::updateRegionItems()
       regionGraphUserScaleMaxLineEdit->setText(QString::number(maxScale));
    }
 }
+   
+/**
+ * called for RGB Paint Red comment display.
+ */
+void 
+GuiDisplayControlDialog::rgbPaintRedCommentSelection(int col)
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
+                                                                 rpf,
+                                                                 col,
+                                                                 0);
+   dfcd->show();
+   //displayDataInfoDialog(rpf->getFileTitle(), rpf->getCommentRed(col));
+}
+
+/**
+ * called for RGB Paint Green comment display.
+ */
+void 
+GuiDisplayControlDialog::rgbPaintGreenCommentSelection(int col)
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
+                                                                 rpf,
+                                                                 col,
+                                                                 1);
+   dfcd->show();
+//   displayDataInfoDialog(rpf->getFileTitle(), rpf->getCommentGreen(col));
+}
+
+/**
+ * called for RGB Paint Blue comment display.
+ */
+void 
+GuiDisplayControlDialog::rgbPaintBlueCommentSelection(int col)
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
+                                                                 rpf,
+                                                                 col,
+                                                                 2);
+   dfcd->show();
+//   displayDataInfoDialog(rpf->getFileTitle(), rpf->getCommentBlue(col));
+}
       
+/**
+ * called for RGB Paint Red histogram display.
+ */
+void 
+GuiDisplayControlDialog::rgbPaintRedHistogramSelection(int col)
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   if ((col >= 0) && (col <= rpf->getNumberOfColumns())) {
+      const int numNodes = rpf->getNumberOfNodes();
+      std::vector<float> values(numNodes);
+      for (int i = 0; i < numNodes; i++) {
+         float r, g, b;
+         rpf->getRgb(i, col, r, g, b);
+         values[i] = r;
+      }
+      
+      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
+                                             rpf->getColumnName(col),
+                                             values,
+                                             false,
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
+      ghd->show();
+   }
+}
+
+/**
+ * called for RGB Paint Green histogram display.
+ */
+void 
+GuiDisplayControlDialog::rgbPaintGreenHistogramSelection(int col)
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   if ((col >= 0) && (col <= rpf->getNumberOfColumns())) {
+      const int numNodes = rpf->getNumberOfNodes();
+      std::vector<float> values(numNodes);
+      for (int i = 0; i < numNodes; i++) {
+         float r, g, b;
+         rpf->getRgb(i, col, r, g, b);
+         values[i] = g;
+      }
+      
+      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
+                                             rpf->getColumnName(col),
+                                             values,
+                                             false,
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
+      ghd->show();
+   }
+}
+
+/**
+ * called for RGB Paint Blue histogram display.
+ */
+void 
+GuiDisplayControlDialog::rgbPaintBlueHistogramSelection(int col)
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   if ((col >= 0) && (col <= rpf->getNumberOfColumns())) {
+      const int numNodes = rpf->getNumberOfNodes();
+      std::vector<float> values(numNodes);
+      for (int i = 0; i < numNodes; i++) {
+         float r, g, b;
+         rpf->getRgb(i, col, r, g, b);
+         values[i] = b;
+      }
+      
+      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
+                                             rpf->getColumnName(col),
+                                             values,
+                                             false,
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
+      ghd->show();
+   }
+}
+      
+/**
+ * update rgb paint selection page.
+ */
+void 
+GuiDisplayControlDialog::updateRgbPaintSelectionPage()
+{
+   if (pageRgbPaintSelection == NULL) {
+      return;
+   }
+   
+   const DisplaySettingsRgbPaint* dsrgb = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
+   const RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   const int numRowsInDialog = static_cast<int>(rgbSelectionRadioButtons.size());
+   const int numCols = rpf->getNumberOfColumns();
+
+   //
+   // Create new items as needed
+   //   
+   for (int i = numRowsInDialog; i < numCols; i++) {
+      QRadioButton* rb = new QRadioButton(" ");
+      rgbSelectionRadioButtonsButtonGroup->addButton(rb, i);
+      rgbSelectionRadioButtons.push_back(rb);
+
+      QToolButton* redCommentButton = new QToolButton;
+      redCommentButton->setText("?");
+      redCommentButton->setToolTip("Show comment for this color.");
+      rgbSelectionRedCommentButtonGroup->addButton(redCommentButton, i);
+
+      QToolButton* redHistogramButton = new QToolButton;
+      redHistogramButton->setToolTip("Show histogram for this color.");
+      redHistogramButton->setText("H");
+      rgbSelectionRedHistogramButtonGroup->addButton(redHistogramButton, i);
+
+      QToolButton* greenCommentButton = new QToolButton;
+      greenCommentButton->setToolTip("Show comment for this color.");
+      greenCommentButton->setText("?");
+      rgbSelectionGreenCommentButtonGroup->addButton(greenCommentButton, i);
+
+      QToolButton* greenHistogramButton = new QToolButton;
+      greenHistogramButton->setToolTip("Show histogram for this color.");
+      greenHistogramButton->setText("H");
+      rgbSelectionGreenHistogramButtonGroup->addButton(greenHistogramButton, i);
+
+      QToolButton* blueCommentButton = new QToolButton;
+      blueCommentButton->setToolTip("Show comment for this color.");
+      blueCommentButton->setText("?");
+      rgbSelectionBlueCommentButtonGroup->addButton(blueCommentButton, i);
+
+      QToolButton* blueHistogramButton = new QToolButton;
+      blueHistogramButton->setToolTip("Show histogram for this color.");
+      blueHistogramButton->setText("H");
+      rgbSelectionBlueHistogramButtonGroup->addButton(blueHistogramButton, i);
+
+      QLineEdit* nameLineEdit = new QLineEdit;
+      nameLineEdit->setMinimumWidth(350);
+      QObject::connect(nameLineEdit, SIGNAL(returnPressed()),
+                       this, SLOT(readRgbPaintPageSelection()));
+      rgbSelectionNameLineEdits.push_back(nameLineEdit);
+      
+      QLabel* colLabel = new QLabel(QString::number(i + 1));
+      rgbSelectionPageGridLayout->addWidget(colLabel, i + 1, 0, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(rb, i + 1, 1, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(redCommentButton, i + 1, 2, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(redHistogramButton, i + 1, 3, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(greenCommentButton, i + 1, 4, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(greenHistogramButton, i + 1, 5, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(blueCommentButton, i + 1, 6, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(blueHistogramButton, i + 1, 7, Qt::AlignHCenter);
+      rgbSelectionPageGridLayout->addWidget(nameLineEdit, i + 1, 8, Qt::AlignLeft);
+
+      WuQWidgetGroup* wg = new WuQWidgetGroup(this);
+      wg->addWidget(colLabel);
+      wg->addWidget(rb);
+      wg->addWidget(redCommentButton);
+      wg->addWidget(greenCommentButton);
+      wg->addWidget(blueCommentButton);
+      wg->addWidget(redHistogramButton);
+      wg->addWidget(greenHistogramButton);
+      wg->addWidget(blueHistogramButton);
+      wg->addWidget(nameLineEdit);
+      rgbSelectionRowWidgetGroup.push_back(wg);
+      
+   }
+   
+   //
+   // Update all items
+   //
+   for (int i = 0; i < numCols; i++) {
+      rgbSelectionNameLineEdits[i]->setText(rpf->getColumnName(i));
+      rgbSelectionRowWidgetGroup[i]->setHidden(false);
+   }
+   
+   //
+   // Hide unneeded items
+   //
+   for (int i = numCols; i < numRowsInDialog; i++) {
+      rgbSelectionRowWidgetGroup[i]->setHidden(true);
+   }
+   
+   //
+   // Update selection check box
+   //
+   rgbSelectionRadioButtonsButtonGroup->blockSignals(true);
+   const int num = dsrgb->getSelectedDisplayColumn(surfaceModelIndex,
+                                       overlayNumberComboBox->currentIndex());
+   if ((num >= 0) && (num < rpf->getNumberOfColumns())) {
+      rgbSelectionRadioButtons[num]->setChecked(true);
+   }
+   rgbSelectionRadioButtonsButtonGroup->blockSignals(false);
+   
+   pageRgbPaintSelection->setEnabled(validRgbPaintData);
+}
+      
+/**
+ * create the rgb paint selection page.
+ */
+void 
+GuiDisplayControlDialog::createRgbPaintSelectionPage()
+{
+   //
+   // widget for rgb paint items
+   //
+   pageRgbPaintSelection = new QWidget;
+   pageWidgetStack->addWidget(pageRgbPaintSelection);   // adds to dialog
+
+   //
+   // Layout for selection
+   //
+   rgbSelectionPageGridLayout = new QGridLayout;
+   rgbSelectionPageGridLayout->addWidget(new QLabel("Col"), 0, 0);
+   rgbSelectionPageGridLayout->addWidget(new QLabel("Sel"), 0, 1);
+   rgbSelectionPageGridLayout->addWidget(new QLabel("Red"), 0, 2, 1, 2, Qt::AlignHCenter);
+   rgbSelectionPageGridLayout->addWidget(new QLabel("Green"), 0, 4, 1, 2, Qt::AlignHCenter);
+   rgbSelectionPageGridLayout->addWidget(new QLabel("Blue"), 0, 6, 1, 2, Qt::AlignHCenter);
+   rgbSelectionPageGridLayout->addWidget(new QLabel("Column Name"), 0, 8);
+   rgbSelectionPageGridLayout->setColumnStretch(0, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(1, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(2, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(3, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(4, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(5, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(6, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(7, 0);
+   rgbSelectionPageGridLayout->setColumnStretch(8, 1000);
+   //
+   // Selection button groups
+   //
+   rgbSelectionRadioButtonsButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionRadioButtonsButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintFileSelection(int)));
+   rgbSelectionRedCommentButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionRedCommentButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintRedCommentSelection(int)));
+   rgbSelectionGreenCommentButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionGreenCommentButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintGreenCommentSelection(int)));
+   rgbSelectionBlueCommentButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionBlueCommentButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintBlueCommentSelection(int)));                    
+   rgbSelectionRedHistogramButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionRedHistogramButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintRedHistogramSelection(int)));
+   rgbSelectionGreenHistogramButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionGreenHistogramButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintGreenHistogramSelection(int)));
+   rgbSelectionBlueHistogramButtonGroup = new QButtonGroup(this);
+   QObject::connect(rgbSelectionBlueHistogramButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(rgbPaintBlueHistogramSelection(int)));
+   //
+   // Vertical Box Layout for all rgb paint items
+   //
+   QVBoxLayout* rgbLayout = new QVBoxLayout(pageRgbPaintSelection);
+   rgbLayout->addLayout(rgbSelectionPageGridLayout);
+   rgbLayout->addStretch();
+}
+
 /**
  * Create the RGB Paint page
  */
 void
-GuiDisplayControlDialog::createRgbPaintPage()
+GuiDisplayControlDialog::createRgbPaintMainPage()
 {
-   //
-   //
-   // label combo box for file selection
-   //
-   rgbSelectionComboBox = new QComboBox;
-   rgbSelectionComboBox->setToolTip( "Choose RGB Paint File");
-   QObject::connect(rgbSelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(rgbPaintFileSelection(int)));
-                    
-   const int CHECK_COLUMN   = 0;
-   const int NAME_COLUMN    = CHECK_COLUMN + 1;
+   const int NAME_COLUMN    = 0;
    const int THRESH_COLUMN  = NAME_COLUMN + 1;
-   const int NEG_MAX_COLUMN = THRESH_COLUMN + 1;
-   const int POS_MAX_COLUMN = NEG_MAX_COLUMN + 1;
-   const int COMMENT_COLUMN = POS_MAX_COLUMN + 1;
-   //const int NUM_COLUMNS    = COMMENT_COLUMN + 1;
    
    const int TITLE_ROW = 0;
    const int RED_ROW   = TITLE_ROW + 1;
@@ -7609,115 +8466,61 @@ GuiDisplayControlDialog::createRgbPaintPage()
    //
    // Grid Column titles
    //
-   rgbGridLayout->addWidget(new QLabel(" "), TITLE_ROW, CHECK_COLUMN);
    rgbGridLayout->addWidget(new QLabel("Name"), TITLE_ROW, NAME_COLUMN, 
                             Qt::AlignLeft);
    rgbGridLayout->addWidget(new QLabel("Threshold"), TITLE_ROW, THRESH_COLUMN,  
                             Qt::AlignHCenter);
-   rgbGridLayout->addWidget(new QLabel("Neg Max"), TITLE_ROW, NEG_MAX_COLUMN,  
-                            Qt::AlignLeft);
-   rgbGridLayout->addWidget(new QLabel("Pos Max"), TITLE_ROW, POS_MAX_COLUMN,  
-                            Qt::AlignLeft);
-   rgbGridLayout->addWidget(new QLabel("Comment"), TITLE_ROW, COMMENT_COLUMN,
-                            Qt::AlignHCenter);
     
-   //
-   // Button group for comment "?" pushbuttons
-   //
-   QButtonGroup* commentButtonGroup = new QButtonGroup(this);
-   QObject::connect(commentButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(rgbPaintCommentSelection(int)));
-   
    //
    // Red row
    //
    rgbRedCheckBox = new QCheckBox("Red");
-   rgbGridLayout->addWidget(rgbRedCheckBox, RED_ROW, CHECK_COLUMN);
+   rgbGridLayout->addWidget(rgbRedCheckBox, RED_ROW, NAME_COLUMN);
    QObject::connect(rgbRedCheckBox, SIGNAL(clicked()),
-                    this, SLOT(readRgbPaintSelections()));
-   rgbRedNameLabel = new QLabel("                    ");
-   rgbRedNameLabel->setFixedSize(rgbRedNameLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbRedNameLabel, RED_ROW, NAME_COLUMN);
-   rgbRedThreshLineEdit = new QLineEdit;
-   QSize qs = rgbRedThreshLineEdit->sizeHint();
-   qs.setWidth(qs.width() / 2);
-   rgbRedThreshLineEdit->setFixedSize(qs);
-   rgbGridLayout->addWidget(rgbRedThreshLineEdit, RED_ROW, THRESH_COLUMN);
-   QObject::connect(rgbRedThreshLineEdit, SIGNAL(returnPressed()),
-                    this, SLOT(readRgbPaintSelections()));
-   rgbRedNegMaxLabel = new QLabel("            ");
-   rgbRedNegMaxLabel->setFixedSize(rgbRedNegMaxLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbRedNegMaxLabel, RED_ROW, NEG_MAX_COLUMN);
-   rgbRedPosMaxLabel = new QLabel("            ");
-   rgbRedPosMaxLabel->setFixedSize(rgbRedPosMaxLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbRedPosMaxLabel, RED_ROW, POS_MAX_COLUMN);
-   QPushButton* redCommentPushButton = new QPushButton("?");
-   rgbGridLayout->addWidget(redCommentPushButton, RED_ROW, COMMENT_COLUMN);
-   QSize infoButtonSize = redCommentPushButton->sizeHint();
-   infoButtonSize.setWidth(40);
-   redCommentPushButton->setFixedSize(infoButtonSize);
-   redCommentPushButton->setAutoDefault(false);
-   redCommentPushButton->setToolTip( "Show Red Comment");
-   commentButtonGroup->addButton(redCommentPushButton);
+                    this, SLOT(readRgbPaintPageMain()));
+   rgbRedThreshDoubleSpinBox = new QDoubleSpinBox;
+   rgbRedThreshDoubleSpinBox->setMinimum(-99999999.0);
+   rgbRedThreshDoubleSpinBox->setMaximum(999999999.0);
+   rgbRedThreshDoubleSpinBox->setSingleStep(1.0);
+   rgbRedThreshDoubleSpinBox->setDecimals(3);
+   rgbGridLayout->addWidget(rgbRedThreshDoubleSpinBox, RED_ROW, THRESH_COLUMN);
+   QObject::connect(rgbRedThreshDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readRgbPaintPageMain()));
    
    //
    // Green row
    //
    rgbGreenCheckBox = new QCheckBox("Green");
-   rgbGridLayout->addWidget(rgbGreenCheckBox, GREEN_ROW, CHECK_COLUMN);
+   rgbGridLayout->addWidget(rgbGreenCheckBox, GREEN_ROW, NAME_COLUMN);
    QObject::connect(rgbGreenCheckBox, SIGNAL(clicked()),
-                    this, SLOT(readRgbPaintSelections()));
-   rgbGreenNameLabel = new QLabel("                    ");
-   rgbGreenNameLabel->setFixedSize(rgbGreenNameLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbGreenNameLabel, GREEN_ROW, NAME_COLUMN);
-   rgbGreenThreshLineEdit = new QLineEdit;
-   rgbGreenThreshLineEdit->setFixedSize(qs);
-   rgbGridLayout->addWidget(rgbGreenThreshLineEdit, GREEN_ROW, THRESH_COLUMN);
-   QObject::connect(rgbGreenThreshLineEdit, SIGNAL(returnPressed()),
-                    this, SLOT(readRgbPaintSelections()));
-   rgbGreenNegMaxLabel = new QLabel("            ");
-   rgbGreenNegMaxLabel->setFixedSize(rgbGreenNegMaxLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbGreenNegMaxLabel, GREEN_ROW, NEG_MAX_COLUMN);
-   rgbGreenPosMaxLabel = new QLabel("            ");
-   rgbGreenPosMaxLabel->setFixedSize(rgbGreenPosMaxLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbGreenPosMaxLabel, GREEN_ROW, POS_MAX_COLUMN);
-   QPushButton* greenCommentPushButton = new QPushButton("?");
-   rgbGridLayout->addWidget(greenCommentPushButton, GREEN_ROW, COMMENT_COLUMN);
-   greenCommentPushButton->setFixedSize(infoButtonSize);
-   greenCommentPushButton->setAutoDefault(false);
-   greenCommentPushButton->setToolTip( "Show Green Comment");
-   commentButtonGroup->addButton(greenCommentPushButton);
+                    this, SLOT(readRgbPaintPageMain()));
+   rgbGreenThreshDoubleSpinBox = new QDoubleSpinBox;
+   rgbGreenThreshDoubleSpinBox->setMinimum(-99999999.0);
+   rgbGreenThreshDoubleSpinBox->setMaximum(999999999.0);
+   rgbGreenThreshDoubleSpinBox->setSingleStep(1.0);
+   rgbGreenThreshDoubleSpinBox->setDecimals(3);
+   rgbGridLayout->addWidget(rgbGreenThreshDoubleSpinBox, GREEN_ROW, THRESH_COLUMN);
+   QObject::connect(rgbGreenThreshDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readRgbPaintPageMain()));
    
    //
    // Blue row
    //
    rgbBlueCheckBox = new QCheckBox("Blue");
-   rgbGridLayout->addWidget(rgbBlueCheckBox, BLUE_ROW, CHECK_COLUMN);
+   rgbGridLayout->addWidget(rgbBlueCheckBox, BLUE_ROW, NAME_COLUMN);
    QObject::connect(rgbBlueCheckBox, SIGNAL(clicked()),
-                    this, SLOT(readRgbPaintSelections()));
-   rgbBlueNameLabel = new QLabel("                    ");
-   rgbBlueNameLabel->setFixedSize(rgbBlueNameLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbBlueNameLabel, BLUE_ROW, NAME_COLUMN);
-   rgbBlueThreshLineEdit = new QLineEdit;
-   rgbBlueThreshLineEdit->setFixedSize(qs);
-   rgbGridLayout->addWidget(rgbBlueThreshLineEdit, BLUE_ROW, THRESH_COLUMN);
-   QObject::connect(rgbBlueThreshLineEdit, SIGNAL(returnPressed()),
-                    this, SLOT(readRgbPaintSelections()));
-   rgbBlueNegMaxLabel = new QLabel("            ");
-   rgbBlueNegMaxLabel->setFixedSize(rgbBlueNegMaxLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbBlueNegMaxLabel, BLUE_ROW, NEG_MAX_COLUMN);
-   rgbBluePosMaxLabel = new QLabel("            ");
-   rgbBluePosMaxLabel->setFixedSize(rgbBluePosMaxLabel->sizeHint());
-   rgbGridLayout->addWidget(rgbBluePosMaxLabel, BLUE_ROW, POS_MAX_COLUMN);
-   QPushButton* blueCommentPushButton = new QPushButton("?");
-   rgbGridLayout->addWidget(blueCommentPushButton, BLUE_ROW, COMMENT_COLUMN);
-   blueCommentPushButton->setFixedSize(infoButtonSize);
-   blueCommentPushButton->setAutoDefault(false);
-   blueCommentPushButton->setToolTip( "Show Blue Comment");
-   commentButtonGroup->addButton(blueCommentPushButton);
+                    this, SLOT(readRgbPaintPageMain()));
+   rgbBlueThreshDoubleSpinBox = new QDoubleSpinBox;
+   rgbBlueThreshDoubleSpinBox->setMinimum(-99999999.0);
+   rgbBlueThreshDoubleSpinBox->setMaximum(999999999.0);
+   rgbBlueThreshDoubleSpinBox->setSingleStep(1.0);
+   rgbBlueThreshDoubleSpinBox->setDecimals(3);
+   rgbGridLayout->addWidget(rgbBlueThreshDoubleSpinBox, BLUE_ROW, THRESH_COLUMN);
+   QObject::connect(rgbBlueThreshDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readRgbPaintPageMain()));
    
    //
-   // Button group fror positive and negative only buttons
+   // Button group for positive and negative only buttons
    //
    QButtonGroup* displayModeButtonGroup = new QButtonGroup(this);
    displayModeButtonGroup->setExclusive(true);
@@ -7738,9 +8541,8 @@ GuiDisplayControlDialog::createRgbPaintPage()
    // Group Box for RGB File selection and parameters (a QWidget is placed in it so that
    // a layout can be added).
    //
-   QGroupBox* rgbFileGroupBox = new QGroupBox("RGB Paint File");
+   QGroupBox* rgbFileGroupBox = new QGroupBox("RGB Color Control");
    QVBoxLayout* rgbFileLayout = new QVBoxLayout(rgbFileGroupBox);
-   rgbFileLayout->addWidget(rgbSelectionComboBox);
    rgbFileLayout->addLayout(rgbGridLayout);
    
    //
@@ -7750,6 +8552,16 @@ GuiDisplayControlDialog::createRgbPaintPage()
    QVBoxLayout* rgbDisplayModeLayout = new QVBoxLayout(rgbDisplayModeGroupBox);
    rgbDisplayModeLayout->addWidget(rgbPositiveOnlyRadioButton);
    rgbDisplayModeLayout->addWidget(rgbNegativeOnlyRadioButton);
+   
+   pageRgbPaintMainWidgetGroup = new WuQWidgetGroup(this);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbRedCheckBox);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbRedThreshDoubleSpinBox);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbGreenCheckBox);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbGreenThreshDoubleSpinBox);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbBlueCheckBox);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbBlueThreshDoubleSpinBox);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbPositiveOnlyRadioButton);
+   pageRgbPaintMainWidgetGroup->addWidget(rgbNegativeOnlyRadioButton);
    
    //
    // widget for rgb paint items
@@ -7774,29 +8586,7 @@ GuiDisplayControlDialog::rgbDisplayModeSelection(int itemNumber)
 {
    DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
    dsrp->setDisplayMode(static_cast<DisplaySettingsRgbPaint::RGB_DISPLAY_MODE>(itemNumber));
-   readRgbPaintSelections();
-}
-
-/**
- * RGB "?" comment pushbutton slot
- */
-void
-GuiDisplayControlDialog::rgbPaintCommentSelection(int buttonNum)
-{
-   DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
-   const int col = dsrp->getSelectedColumn(surfaceModelIndex);
-   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
-   switch(buttonNum) {
-      case 0:
-         displayDataInfoDialog(rpf->getFileTitle(), rpf->getCommentRed(col));
-         break;
-      case 1:
-         displayDataInfoDialog(rpf->getFileTitle(), rpf->getCommentGreen(col));
-         break;
-      case 2:
-         displayDataInfoDialog(rpf->getFileTitle(), rpf->getCommentBlue(col));
-         break;
-   }
+   readRgbPaintPageMain();
 }
 
 /**
@@ -7811,11 +8601,37 @@ GuiDisplayControlDialog::readRgbPaintL2LR2R()
    GuiBrainModelOpenGL::updateAllGL(NULL);   
 }
 
+/**
+ * read the rgb paint selection page.
+ */
+void 
+GuiDisplayControlDialog::readRgbPaintPageSelection()
+{
+   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   const int numCols = rpf->getNumberOfColumns();
+   const int numLineEdits = static_cast<int>(rgbSelectionNameLineEdits.size());
+   
+   bool changeMadeFlag = false;
+   for (int i = 0; i < numCols; i++) {
+      if (i < numLineEdits) {
+         if (rgbSelectionNameLineEdits[i]->text()
+             != rpf->getColumnName(i)) {
+            rpf->setColumnName(i, rgbSelectionNameLineEdits[i]->text());
+            changeMadeFlag = true;
+         }
+      }
+   }
+   
+   if (changeMadeFlag) {
+      updateSurfaceOverlayWidgets();
+   }
+}
+      
 /** 
  * Read the RGB paint selections from the dialog.
  */
 void
-GuiDisplayControlDialog::readRgbPaintSelections()
+GuiDisplayControlDialog::readRgbPaintPageMain()
 {
    if (pageRgbPaintMain == NULL) {
       return;
@@ -7829,9 +8645,9 @@ GuiDisplayControlDialog::readRgbPaintSelections()
    dsrp->setGreenEnabled(rgbGreenCheckBox->isChecked());
    dsrp->setBlueEnabled(rgbBlueCheckBox->isChecked());
 
-   dsrp->setThresholds(rgbRedThreshLineEdit->text().toFloat(),
-                       rgbGreenThreshLineEdit->text().toFloat(),
-                       rgbBlueThreshLineEdit->text().toFloat());
+   dsrp->setThresholds(rgbRedThreshDoubleSpinBox->value(),
+                       rgbGreenThreshDoubleSpinBox->value(),
+                       rgbBlueThreshDoubleSpinBox->value());
                        
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    GuiBrainModelOpenGL::updateAllGL(NULL);   
@@ -7843,87 +8659,26 @@ GuiDisplayControlDialog::readRgbPaintSelections()
 void 
 GuiDisplayControlDialog::updateRgbPaintOverlayUnderlaySelection()      
 {
-   updatePageSelectionComboBox();
-   
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
-   DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
-   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
-   rgbPaintSelectionComboBox->clear();
-   rgbPaintSelectionComboBox->setEnabled(validRgbPaintData);
-   primaryOverlayRgbPaintButton->setEnabled(validRgbPaintData);
-   secondaryOverlayRgbPaintButton->setEnabled(validRgbPaintData);
-   underlayRgbPaintButton->setEnabled(validRgbPaintData);
-   rgbPaintSelectionLabel->setEnabled(validRgbPaintData);
-   rgbPaintInfoPushButton->setEnabled(validRgbPaintData);
-   const int numCols = rpf->getNumberOfColumns();
-   bool valid = false;
-   if (numCols > 0) {
-      valid = true;
-      for (int i = 0; i < numCols; i++) {
-         rgbPaintSelectionComboBox->addItem(rpf->getColumnName(i));
-      }
-      
-      const int column = dsrp->getSelectedColumn(surfaceModelIndex);
-      if ((column >= 0) && (column < numCols)) {
-         rgbPaintSelectionComboBox->setCurrentIndex(column);
-      }
-   }
+   updatePageSelectionComboBox();   
 }
 
 /**
- * Update all rgb paint items in the dialog.
+ * update rgb paint main page.
  */
-void
-GuiDisplayControlDialog::updateRgbPaintItems()
+void 
+GuiDisplayControlDialog::updateRgbPaintMainPage()
 {
-   updatePageSelectionComboBox();
-   updateRgbPaintOverlayUnderlaySelection();
-   
    if (pageRgbPaintMain == NULL) {
       return;
    }
    
+   pageRgbPaintMainWidgetGroup->blockSignals(true);
+   
    DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
    rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsrp->getApplySelectionToLeftAndRightStructuresFlag());
-   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
+   //RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
    
-   rgbSelectionComboBox->clear();
    
-   const int numCols = rpf->getNumberOfColumns();
-   bool valid = false;
-   if (numCols > 0) {
-      valid = true;
-      for (int i = 0; i < numCols; i++) {
-         rgbSelectionComboBox->addItem(rpf->getColumnName(i));
-      }
-      
-      const int column = dsrp->getSelectedColumn(surfaceModelIndex);
-      if ((column >= 0) && (column < numCols)) {
-         rgbSelectionComboBox->setCurrentIndex(column);
-         
-         rgbSelectionComboBox->setToolTip(
-                       rpf->getColumnName(column));
-                       
-         rgbRedNameLabel->setText(rpf->getTitleRed(column));
-         rgbGreenNameLabel->setText(rpf->getTitleGreen(column));
-         rgbBlueNameLabel->setText(rpf->getTitleBlue(column));
-         
-         float minScale, maxScale;
-         rpf->getScaleRed(column, minScale, maxScale);
-         rgbRedNegMaxLabel->setText(QString::number(minScale, 'f', 3));
-         rgbRedPosMaxLabel->setText(QString::number(maxScale, 'f', 3));
-
-         rpf->getScaleGreen(column, minScale, maxScale);
-         rgbGreenNegMaxLabel->setText(QString::number(minScale, 'f', 3));
-         rgbGreenPosMaxLabel->setText(QString::number(maxScale, 'f', 3));
-
-         rpf->getScaleBlue(column, minScale, maxScale);
-         rgbBlueNegMaxLabel->setText(QString::number(minScale, 'f', 3));
-         rgbBluePosMaxLabel->setText(QString::number(maxScale, 'f', 3));
-      }
-   }
    
    switch(dsrp->getDisplayMode()) {
       case DisplaySettingsRgbPaint::RGB_DISPLAY_MODE_POSITIVE:
@@ -7940,15 +8695,25 @@ GuiDisplayControlDialog::updateRgbPaintItems()
 
    float redThresh, greenThresh, blueThresh;
    dsrp->getThresholds(redThresh, greenThresh, blueThresh);
-   rgbRedThreshLineEdit->setText(QString::number(redThresh, 'f', 3));
-   rgbGreenThreshLineEdit->setText(QString::number(greenThresh, 'f', 3));
-   rgbBlueThreshLineEdit->setText(QString::number(blueThresh, 'f', 3));
+   rgbRedThreshDoubleSpinBox->setValue(redThresh);
+   rgbGreenThreshDoubleSpinBox->setValue(greenThresh);
+   rgbBlueThreshDoubleSpinBox->setValue(blueThresh);
 
-   rgbSelectionComboBox->setEnabled(validRgbPaintData);
-   
    pageRgbPaintMain->setEnabled(validRgbPaintData);
+
+   pageRgbPaintMainWidgetGroup->blockSignals(false);
+}
+
+/**
+ * Update all rgb paint items in the dialog.
+ */
+void
+GuiDisplayControlDialog::updateRgbPaintItems()
+{
+   updateRgbPaintOverlayUnderlaySelection();
    
-   updatePageSelectionComboBox();
+   updateRgbPaintMainPage();
+   updateRgbPaintSelectionPage();
 }
 
 /**
@@ -8133,14 +8898,18 @@ void
 GuiDisplayControlDialog::createAndUpdateCellClassCheckBoxes()
 {
    CellProjectionFile* cf = theMainWindow->getBrainSet()->getCellProjectionFile();
-   if (cf != NULL) {
-      numValidCellClasses = cf->getNumberOfCellClasses();
-   }
-   else {
-      numValidCellClasses = 0;
-   }
+   //if (cf != NULL) {
+   //   numValidCellClasses = cf->getNumberOfCellClasses();
+   //}
+   //else {
+   //   numValidCellClasses = 0;
+   //}
       
    const int numExistingCheckBoxes = static_cast<int>(cellClassCheckBoxes.size());
+   
+   std::vector<int> sortedCellClassIndices;
+   cf->getCellClassIndicesSortedByName(sortedCellClassIndices, false, false);
+   numValidCellClasses = static_cast<int>(sortedCellClassIndices.size());
    
    if (cellClassGridLayout == NULL) {
       QWidget* classWidget = new QWidget; 
@@ -8165,7 +8934,8 @@ GuiDisplayControlDialog::createAndUpdateCellClassCheckBoxes()
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidCellClasses) {
-         cellClassCheckBoxes[i]->setText(cf->getCellClassNameByIndex(i));
+         const int classIndex = sortedCellClassIndices[i];
+         cellClassCheckBoxes[i]->setText(cf->getCellClassNameByIndex(classIndex));
          cellClassCheckBoxes[i]->show();
       }
    }
@@ -8174,7 +8944,9 @@ GuiDisplayControlDialog::createAndUpdateCellClassCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidCellClasses; j++) {
-      QCheckBox* cb = new QCheckBox(cf->getCellClassNameByIndex(j));
+      const int classIndex = sortedCellClassIndices[j];
+      cellClassCheckBoxesClassIndex.push_back(classIndex);
+      QCheckBox* cb = new QCheckBox(cf->getCellClassNameByIndex(classIndex));
       cellClassCheckBoxes.push_back(cb);
       cellClassButtonGroup->addButton(cb, j);
       cellClassGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
@@ -8266,8 +9038,12 @@ void
 GuiDisplayControlDialog::createAndUpdateCellColorCheckBoxes()
 {
    CellColorFile* cellColors = theMainWindow->getBrainSet()->getCellColorFile();
-   numValidCellColors = cellColors->getNumberOfColors();
+   //numValidCellColors = cellColors->getNumberOfColors();
    
+   std::vector<int> sortedCellColorIndices;
+   cellColors->getColorIndicesSortedByName(sortedCellColorIndices, false);
+   numValidCellColors = static_cast<int>(sortedCellColorIndices.size());
+
    const int numExistingCheckBoxes = static_cast<int>(cellColorCheckBoxes.size());
    
    if (cellColorGridLayout == NULL) {
@@ -8293,7 +9069,9 @@ GuiDisplayControlDialog::createAndUpdateCellColorCheckBoxes()
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidCellColors) {
-         cellColorCheckBoxes[i]->setText(cellColors->getColorNameByIndex(i));
+         const int colorIndex = sortedCellColorIndices[i];
+         cellColorCheckBoxesColorIndex[i] = colorIndex;
+         cellColorCheckBoxes[i]->setText(cellColors->getColorNameByIndex(colorIndex));
          cellColorCheckBoxes[i]->show();
       }
    }
@@ -8302,7 +9080,9 @@ GuiDisplayControlDialog::createAndUpdateCellColorCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidCellColors; j++) {
-      QCheckBox* cb = new QCheckBox(cellColors->getColorNameByIndex(j));
+      const int colorIndex = sortedCellColorIndices[j];
+      cellColorCheckBoxesColorIndex.push_back(colorIndex);
+      QCheckBox* cb = new QCheckBox(cellColors->getColorNameByIndex(colorIndex));
       cellColorCheckBoxes.push_back(cb);
       cellColorButtonGroup->addButton(cb, j);
       cellColorGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
@@ -8391,7 +9171,8 @@ GuiDisplayControlDialog::updateCellClassPage(const bool cellsWereChanged)
       const int numClasses = cf->getNumberOfCellClasses();   
       if (numClasses == numValidCellClasses) {
          for (int i = 0; i < numValidCellClasses; i++) {
-            cellClassCheckBoxes[i]->setChecked(cf->getCellClassSelectedByIndex(i));
+            const int classIndex = cellClassCheckBoxesClassIndex[i];
+            cellClassCheckBoxes[i]->setChecked(cf->getCellClassSelectedByIndex(classIndex));
          }
       }
       else {
@@ -8421,7 +9202,8 @@ GuiDisplayControlDialog::updateCellColorPage(const bool cellsWereChanged)
    const int numColors = cellColors->getNumberOfColors();   
    if (numColors == numValidCellColors) {
       for (int i = 0; i < numValidCellColors; i++) {
-         cellColorCheckBoxes[i]->setChecked(cellColors->getSelected(i));
+         const int colorIndex = cellColorCheckBoxesColorIndex[i];
+         cellColorCheckBoxes[i]->setChecked(cellColors->getSelected(colorIndex));
       }
    }
    else {
@@ -8441,7 +9223,7 @@ GuiDisplayControlDialog::updateCellItems(const bool filesChanged)
 {
    updatePageSelectionComboBox();
 
-   if (pageOverlayUnderlaySurface != NULL) {
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
       DisplaySettingsCells* dsc = theMainWindow->getBrainSet()->getDisplaySettingsCells();
       layersCellsCheckBox->setChecked(dsc->getDisplayCells());
       layersCellsCheckBox->setEnabled(validCellData);
@@ -8464,7 +9246,7 @@ GuiDisplayControlDialog::showCellsToggleSlot(bool b)
       showCellsCheckBox->setChecked(b);
       showCellsCheckBox->blockSignals(false);
    }
-   if (pageOverlayUnderlaySurface != NULL) {
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
       layersCellsCheckBox->blockSignals(true);
       layersCellsCheckBox->setChecked(b);
       layersCellsCheckBox->blockSignals(false);
@@ -8528,7 +9310,8 @@ GuiDisplayControlDialog::readCellColorPage()
    const int numColors = cellColors->getNumberOfColors();   
    if (numColors == numValidCellColors) {
       for (int i = 0; i < numValidCellColors; i++) {
-         cellColors->setSelected(i, cellColorCheckBoxes[i]->isChecked());
+         const int colorIndex = cellColorCheckBoxesColorIndex[i];
+         cellColors->setSelected(colorIndex, cellColorCheckBoxes[i]->isChecked());
       }
    }
    else {
@@ -8559,7 +9342,8 @@ GuiDisplayControlDialog::readCellClassPage()
    }
    if (numClasses == numValidCellClasses) {
       for (int i = 0; i < numValidCellClasses; i++) {
-         cf->setCellClassSelectedByIndex(i, cellClassCheckBoxes[i]->isChecked());
+         const int classIndex = cellClassCheckBoxesClassIndex[i];
+         cf->setCellClassSelectedByIndex(classIndex, cellClassCheckBoxes[i]->isChecked());
       }
    }
    else {
@@ -8582,7 +9366,7 @@ GuiDisplayControlDialog::updateAllItemsInDialog(const bool filesChanged,
    updatePageSelectionComboBox();
    skipScenePageUpdate = updateResultOfSceneChange;
    
-   updateOverlayUnderlayItems();
+   updateOverlayUnderlayItemsNew();
    updateArealEstimationItems();
    updateBorderItems(filesChanged);
    updateCellItems(filesChanged);
@@ -8603,13 +9387,13 @@ GuiDisplayControlDialog::updateAllItemsInDialog(const bool filesChanged,
    updatePaintItems();
    updateProbAtlasSurfaceItems(filesChanged);
    updateProbAtlasVolumeItems(filesChanged);
+   updateSectionMainPage();
    updateSurfaceAndVolumeItems();
    updateSurfaceVectorItems();
    updateTopographyItems();
    updateVolumeItems();
    
    updatePageSelectionComboBox();
-   
    skipScenePageUpdate = false;
    
    QString title("Display Control");
@@ -8643,6 +9427,15 @@ GuiDisplayControlDialog::createShapeSettingsPage()
    //
    // Selected column information.
    //   
+   QLabel* shapeMinMaxColumnSelectionLabel = new QLabel("Column");
+   shapeMinMaxColumnSelectionComboBox = new GuiNodeAttributeColumnSelectionComboBox(
+                                          GUI_NODE_FILE_TYPE_SURFACE_SHAPE,
+                                          false,
+                                          false,
+                                          false);
+   QObject::connect(shapeMinMaxColumnSelectionComboBox, SIGNAL(activated(int)),
+                    this, SLOT(updateShapeMinMaxMappingSettings()));
+
    QLabel* minMaxLabel = new QLabel("Min/Max ");
    shapeViewMinimumLabel = new QLabel("");
    shapeViewMaximumLabel = new QLabel("");
@@ -8662,12 +9455,14 @@ GuiDisplayControlDialog::createShapeSettingsPage()
    QObject::connect(shapeMaximumMappingDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readShapeSettings()));
    QGridLayout* selectionGridLayout = new QGridLayout;
-   selectionGridLayout->addWidget(minMaxLabel, 0, 0);
-   selectionGridLayout->addWidget(shapeViewMinimumLabel, 0, 1);
-   selectionGridLayout->addWidget(shapeViewMaximumLabel, 0, 2);
-   selectionGridLayout->addWidget(mappingLabel, 1, 0);
-   selectionGridLayout->addWidget(shapeMinimumMappingDoubleSpinBox, 1, 1);
-   selectionGridLayout->addWidget(shapeMaximumMappingDoubleSpinBox, 1, 2);
+   selectionGridLayout->addWidget(shapeMinMaxColumnSelectionLabel, 0, 0);
+   selectionGridLayout->addWidget(shapeMinMaxColumnSelectionComboBox, 0, 1, 1, 2);
+   selectionGridLayout->addWidget(minMaxLabel, 1, 0);
+   selectionGridLayout->addWidget(shapeViewMinimumLabel, 1, 1);
+   selectionGridLayout->addWidget(shapeViewMaximumLabel, 1, 2);
+   selectionGridLayout->addWidget(mappingLabel, 2, 0);
+   selectionGridLayout->addWidget(shapeMinimumMappingDoubleSpinBox, 2, 1);
+   selectionGridLayout->addWidget(shapeMaximumMappingDoubleSpinBox, 2, 2);
 
    //
    // Histogram button
@@ -8684,7 +9479,7 @@ GuiDisplayControlDialog::createShapeSettingsPage()
    QVBoxLayout* selectionLeftLayout = new QVBoxLayout;
    selectionLeftLayout->addLayout(selectionGridLayout);
    selectionLeftLayout->addWidget(histoPushButton);
-   QGroupBox* selectionGroupBox = new QGroupBox("Selected Column");
+   QGroupBox* selectionGroupBox = new QGroupBox("Min Max Mapping");
    QHBoxLayout* selectionGroupLayout = new QHBoxLayout(selectionGroupBox);
    selectionGroupLayout->addLayout(selectionLeftLayout);
    selectionGroupLayout->addStretch();
@@ -8776,6 +9571,8 @@ GuiDisplayControlDialog::createShapeSettingsPage()
    pageSurfaceShapeSettings->setMaximumWidth(400);
    
    pageSurfaceShapeSettingsWidgetGroup = new WuQWidgetGroup(this);
+   pageSurfaceShapeSettingsWidgetGroup->addWidget(shapeMinMaxColumnSelectionLabel);
+   pageSurfaceShapeSettingsWidgetGroup->addWidget(shapeMinMaxColumnSelectionComboBox);
    pageSurfaceShapeSettingsWidgetGroup->addWidget(shapeMinimumMappingDoubleSpinBox);
    pageSurfaceShapeSettingsWidgetGroup->addWidget(shapeMaximumMappingDoubleSpinBox);
    pageSurfaceShapeSettingsWidgetGroup->addWidget(shapeColorMapPaletteComboBox);
@@ -8810,7 +9607,7 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
       surfaceShapeSelectionGridLayout = new QGridLayout(shapeSelectionsGridWidget);
       //surfaceShapeSelectionGridLayout->setMargin(3);
       surfaceShapeSelectionGridLayout->setSpacing(3);
-      surfaceShapeSelectionGridLayout->setColumnMinimumWidth(4, nameMinimumWidth+20);
+      surfaceShapeSelectionGridLayout->setColumnMinimumWidth(5, nameMinimumWidth+20);
       surfaceShapeSelectionGridLayout->addWidget(new QLabel("#"),
                                            0, 0, Qt::AlignRight);
       surfaceShapeSelectionGridLayout->addWidget(new QLabel("View"),
@@ -8819,8 +9616,10 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
                                            0, 2, Qt::AlignHCenter);
       surfaceShapeSelectionGridLayout->addWidget(new QLabel("MD"),
                                            0, 3, Qt::AlignHCenter);
+      surfaceShapeSelectionGridLayout->addWidget(new QLabel("Hist"),
+                                           0, 4, Qt::AlignHCenter);
       surfaceShapeSelectionGridLayout->addWidget(new QLabel("Name"),
-                                           0, 4, Qt::AlignLeft);
+                                           0, 5, Qt::AlignLeft);
       
       //
       // For stretching on  bottom
@@ -8834,6 +9633,7 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
       surfaceShapeSelectionGridLayout->setColumnStretch(2, 0);
       surfaceShapeSelectionGridLayout->setColumnStretch(3, 0);
       surfaceShapeSelectionGridLayout->setColumnStretch(4, 0);
+      surfaceShapeSelectionGridLayout->setColumnStretch(5, 0);
       //surfaceShapeSelectionGridLayout->setRowStretch(rowStretchNumber, 1000);
 
       //
@@ -8872,6 +9672,15 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
    }
    
    //
+   // Create the button group for the surface shape histogram buttons
+   //
+   if (surfaceShapeHistogramButtonGroup == NULL) {
+      surfaceShapeHistogramButtonGroup = new QButtonGroup(this);
+      QObject::connect(surfaceShapeHistogramButtonGroup, SIGNAL(buttonClicked(int)),
+                       this, SLOT(surfaceShapeHistogramColumnSelection(int)));
+   }
+   
+   //
    // Add new widgets as needed
    //
    for (int i = numExistingSurfaceShape; i < numValidSurfaceShape; i++) {
@@ -8894,9 +9703,10 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
       //
       // Comment push button
       //
-      QPushButton* commentPushButton = new QPushButton("?");
-      commentPushButton->setFixedWidth(40);
-      commentPushButton->setAutoDefault(false);
+      QToolButton* commentPushButton = new QToolButton;
+      commentPushButton->setText("?");
+      //commentPushButton->setFixedWidth(40);
+      //commentPushButton->setAutoDefault(false);
       surfaceShapeColumnCommentPushButtons.push_back(commentPushButton);
       surfaceShapeCommentButtonGroup->addButton(commentPushButton, i);
       surfaceShapeSelectionGridLayout->addWidget(commentPushButton, i + 1, 2, Qt::AlignHCenter);
@@ -8904,14 +9714,26 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
       //
       // Metadata push button
       //
-      QPushButton* metaDataPushButton = new QPushButton("M");
+      QToolButton* metaDataPushButton = new QToolButton;
+      metaDataPushButton->setText("M");
       metaDataPushButton->setToolTip("Press the button to set the\n"
                                      "metadata link for this column");
-      metaDataPushButton->setFixedWidth(40);
-      metaDataPushButton->setAutoDefault(false);
+      //metaDataPushButton->setFixedWidth(40);
+      //metaDataPushButton->setAutoDefault(false);
       surfaceShapeColumnMetaDataPushButtons.push_back(metaDataPushButton);
       surfaceShapeMetaDataButtonGroup->addButton(metaDataPushButton, i);
       surfaceShapeSelectionGridLayout->addWidget(metaDataPushButton, i + 1, 3, Qt::AlignHCenter);
+      
+      //
+      // Histogram push button
+      //
+      QToolButton* histogramPushButton = new QToolButton;
+      histogramPushButton->setText("H");
+      histogramPushButton->setToolTip("Press this button to display\n"
+                                      "a histogram for this column.");
+      surfaceShapeColumnHistogramPushButtons.push_back(histogramPushButton);
+      surfaceShapeHistogramButtonGroup->addButton(histogramPushButton, i);
+      surfaceShapeSelectionGridLayout->addWidget(histogramPushButton, i + 1, 4, Qt::AlignHCenter);
       
       //
       // Name line edit
@@ -8920,7 +9742,7 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
       surfaceShapeLineEdit->setText(ssf->getColumnName(i));
       surfaceShapeLineEdit->setMinimumWidth(nameMinimumWidth);
       surfaceShapeColumnNameLineEdits.push_back(surfaceShapeLineEdit);
-      surfaceShapeSelectionGridLayout->addWidget(surfaceShapeLineEdit, i + 1, 4, Qt::AlignLeft);
+      surfaceShapeSelectionGridLayout->addWidget(surfaceShapeLineEdit, i + 1, 5, Qt::AlignLeft);
    }
       
    //
@@ -8936,6 +9758,7 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
             surfaceShapeViewRadioButtons[i]->show();
             surfaceShapeColumnCommentPushButtons[i]->show();
             surfaceShapeColumnMetaDataPushButtons[i]->show();
+            surfaceShapeColumnHistogramPushButtons[i]->show();
             surfaceShapeColumnNameLineEdits[i]->show();
             surfaceShapeColumnNameLineEdits[i]->home(true);
          }
@@ -8950,6 +9773,7 @@ GuiDisplayControlDialog::createAndUpdateSurfaceShapeSelections()
       surfaceShapeViewRadioButtons[i]->hide();
       surfaceShapeColumnCommentPushButtons[i]->hide();
       surfaceShapeColumnMetaDataPushButtons[i]->hide();
+      surfaceShapeColumnHistogramPushButtons[i]->hide();
       surfaceShapeColumnNameLineEdits[i]->hide();
    }
 }
@@ -8971,6 +9795,30 @@ GuiDisplayControlDialog::surfaceShapeMetaDataColumnSelection(int col)
       }
    }
 }
+
+/**
+ * called when a surface shape column histogram H is selected.
+ */
+void 
+GuiDisplayControlDialog::surfaceShapeHistogramColumnSelection(int col)
+{
+   SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
+   if ((col >= 0) && (col < ssf->getNumberOfColumns())) {
+      const int numNodes = ssf->getNumberOfNodes();
+      std::vector<float> values(numNodes);
+      for (int i = 0; i < numNodes; i++) {
+         values[i] = ssf->getValue(i, col);
+      }
+      
+      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
+                                             ssf->getColumnName(col),
+                                             values,
+                                             false,
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
+      ghd->show();
+   }
+}
+      
 /**
  * Called when a surface shape column comment is selected.
  */
@@ -8992,9 +9840,9 @@ GuiDisplayControlDialog::surfaceShapeCommentColumnSelection(int column)
 void 
 GuiDisplayControlDialog::surfaceShapeHistogram()
 {
-   DisplaySettingsSurfaceShape* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
+   //DisplaySettingsSurfaceShape* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
    SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
-   const int column = dss->getSelectedDisplayColumn(surfaceModelIndex);
+   const int column = shapeMinMaxColumnSelectionComboBox->currentIndex();
    if ((column >= 0) && (column < ssf->getNumberOfColumns())) {
       const int numNodes = ssf->getNumberOfNodes();
       std::vector<float> values(numNodes);
@@ -9006,7 +9854,7 @@ GuiDisplayControlDialog::surfaceShapeHistogram()
                                              ssf->getColumnName(column),
                                              values,
                                              false,
-                                             false);
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
 
       ghd->show();
    }
@@ -9030,35 +9878,6 @@ GuiDisplayControlDialog::shapeColorMapSelection(int mapNumber)
 void 
 GuiDisplayControlDialog::updateShapeOverlayUnderlaySelection()
 {
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
-   shapeSelectionComboBox->setEnabled(validShapeData);
-   primaryOverlayShapeButton->setEnabled(validShapeData);
-   secondaryOverlayShapeButton->setEnabled(validShapeData);
-   underlayShapeButton->setEnabled(validShapeData);
-   shapeSelectionLabel->setEnabled(validShapeData);
-   shapeInfoPushButton->setEnabled(validShapeData);
-   
-   //
-   // Update surface shape selection combo boxes
-   //
-   shapeSelectionComboBox->clear();
-   
-   DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
-   SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
-   bool valid = false;
-   if (ssf->getNumberOfColumns() > 0) {
-      valid = true;
-      for (int i = 0; i < ssf->getNumberOfColumns(); i++) {
-         shapeSelectionComboBox->addItem(ssf->getColumnName(i));
-      }
-      shapeSelectionComboBox->setCurrentIndex(dsss->getSelectedDisplayColumn(surfaceModelIndex));
-      
-      shapeSelectionComboBox->setToolTip(
-                    ssf->getColumnName(dsss->getSelectedDisplayColumn(surfaceModelIndex)));
-                    
-   }
 }
 
 /**
@@ -9069,8 +9888,59 @@ GuiDisplayControlDialog::updateShapeItems()
 {
    updatePageSelectionComboBox();
    updateShapeSettings();
+   updateShapeSettingsColorMappingComboBox();
    updateShapeSelections();
    updateShapeOverlayUnderlaySelection();
+}
+      
+/**
+ * update shape min/max mapping settings.
+ */
+void 
+GuiDisplayControlDialog::updateShapeMinMaxMappingSettings()
+{
+   SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
+   if (ssf->getNumberOfColumns() > 0) {
+      const int minMaxCol = shapeMinMaxColumnSelectionComboBox->currentIndex();
+      float colMin, colMax;
+      ssf->getDataColumnMinMax(minMaxCol, colMin, colMax);
+      shapeViewMinimumLabel->setText(QString::number(colMin, 'f', 6));
+      shapeViewMaximumLabel->setText(QString::number(colMax, 'f', 6));
+      
+      ssf->getColumnColorMappingMinMax(minMaxCol, colMin, colMax);
+      shapeMinimumMappingDoubleSpinBox->blockSignals(true);
+      shapeMinimumMappingDoubleSpinBox->setValue(colMin);
+      shapeMinimumMappingDoubleSpinBox->blockSignals(false);
+      shapeMaximumMappingDoubleSpinBox->blockSignals(true);
+      shapeMaximumMappingDoubleSpinBox->setValue(colMax);
+      shapeMaximumMappingDoubleSpinBox->blockSignals(false);
+   }
+}
+      
+/**
+ * update the shape settings color mapping combo box.
+ */
+void 
+GuiDisplayControlDialog::updateShapeSettingsColorMappingComboBox()
+{
+   if (pageSurfaceShapeSettings == NULL) {
+      return;
+   }
+   int columnNumber = -1;
+   
+   BrainSet* brainSet = theMainWindow->getBrainSet();
+   for (int i = 0; i < brainSet->getNumberOfSurfaceOverlays(); i++) {
+      BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(i);
+      if (bmsOverlay->getOverlay(surfaceModelIndex) == BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE) {
+         columnNumber = bmsOverlay->getDisplayColumnSelected(surfaceModelIndex);
+      }
+   }
+   
+   if ((columnNumber >= 0) &&
+       (columnNumber < brainSet->getSurfaceShapeFile()->getNumberOfColumns())) {
+      shapeMinMaxColumnSelectionComboBox->setCurrentIndex(columnNumber);
+      updateShapeMinMaxMappingSettings();
+   }
 }
       
 /**
@@ -9085,20 +9955,13 @@ GuiDisplayControlDialog::updateShapeSettings()
    pageSurfaceShapeSettingsWidgetGroup->blockSignals(true);
    
    DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
-   SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
    
-   if (ssf->getNumberOfColumns() > 0) {
-      float colMin, colMax;
-      ssf->getDataColumnMinMax(dsss->getSelectedDisplayColumn(surfaceModelIndex), colMin, colMax);
-      shapeViewMinimumLabel->setText(QString::number(colMin, 'f', 6));
-      shapeViewMaximumLabel->setText(QString::number(colMax, 'f', 6));
-      
-      ssf->getColumnColorMappingMinMax(dsss->getSelectedDisplayColumn(surfaceModelIndex), colMin, colMax);
-      shapeMinimumMappingDoubleSpinBox->setValue(colMin);
-      shapeMaximumMappingDoubleSpinBox->setValue(colMax);
-      
-      shapeDisplayColorBarCheckBox->setChecked(dsss->getDisplayColorBar());
-   }
+   shapeMinMaxColumnSelectionComboBox->updateComboBox(theMainWindow->getBrainSet()->getSurfaceShapeFile());
+
+   updateShapeMinMaxMappingSettings();
+
+   shapeDisplayColorBarCheckBox->setChecked(dsss->getDisplayColorBar());
+
    shapeNodeIdDeviationComboBox->updateComboBox(theMainWindow->getBrainSet()->getSurfaceShapeFile());
    shapeNodeIdDeviationGroupBox->setChecked(dsss->getNodeUncertaintyEnabled());
    shapeNodeIdDeviationComboBox->setCurrentIndex(dsss->getNodeUncertaintyColumn());
@@ -9155,7 +10018,9 @@ GuiDisplayControlDialog::updateShapeSelections()
    createAndUpdateSurfaceShapeSelections();
    if (surfaceShapeViewButtonGroup != NULL) {
       QRadioButton* rb = dynamic_cast<QRadioButton*>(
-                               surfaceShapeViewButtonGroup->button(dsss->getSelectedDisplayColumn(surfaceModelIndex)));
+                surfaceShapeViewButtonGroup->button(
+                   dsss->getSelectedDisplayColumn(surfaceModelIndex,
+                              overlayNumberComboBox->currentIndex())));
       if (rb != NULL) {
          rb->setChecked(true);
       }
@@ -9175,13 +10040,15 @@ GuiDisplayControlDialog::readShapeColorMapping()
    }
    
    if (pageWidgetStack->currentWidget() == pageSurfaceShapeSettings) {
-      DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
       
       SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
       
-      ssf->setColumnColorMappingMinMax(dsss->getSelectedDisplayColumn(surfaceModelIndex),
+      const int col = shapeMinMaxColumnSelectionComboBox->currentIndex();
+      if ((col >= 0) && (col < ssf->getNumberOfColumns())) {
+         ssf->setColumnColorMappingMinMax(col,
                                        shapeMinimumMappingDoubleSpinBox->value(),
                                        shapeMaximumMappingDoubleSpinBox->value());
+      }
    }
 }
 
@@ -9243,9 +10110,8 @@ GuiDisplayControlDialog::readShapeSelections()
          const QString name(surfaceShapeColumnNameLineEdits[i]->text());
          if (name != ssf->getColumnName(i)) {
             ssf->setColumnName(i, name);
-            if (pageOverlayUnderlaySurface != NULL) {
-               shapeSelectionComboBox->setItemText(i, name);
-            }
+            
+            updateSurfaceOverlayWidgets();
          }
       }
    }
@@ -9254,6 +10120,152 @@ GuiDisplayControlDialog::readShapeSelections()
    fm.setSurfaceShapeModified();
    theMainWindow->fileModificationUpdate(fm);
    GuiBrainModelOpenGL::updateAllGL(NULL);   
+}
+
+/**
+ * create the section page.
+ */
+void 
+GuiDisplayControlDialog::createSectionMainPage()
+{
+   QLabel* sectionNumberLabel = new QLabel("Section Number");
+   sectionNumberLineEdit = new QLineEdit;
+   sectionNumberLineEdit->setFixedWidth(100);
+   QRegExp sectionRX("\\d+[xX]?");
+   sectionNumberLineEdit->setValidator(new QRegExpValidator(sectionRX,
+                                                         sectionNumberLineEdit));
+   QObject::connect(sectionNumberLineEdit, SIGNAL(returnPressed()),
+                    this, SLOT(readSectionMainPage()));
+   sectionNumberLineEdit->setToolTip(
+                 "Enter a number to display a specific section.\n"
+                 "Enter a number followed by \"X\" to view every\n"
+                 "\"number\" sections.\n"
+                 "Example:  \n"
+                 "   10    displays only section ten.\n"
+                 "   10X   displays every 10th section.\n"
+                 "Press the return key when finished.");
+   QHBoxLayout* sectionNumberLayout = new QHBoxLayout;
+   sectionNumberLayout->addWidget(sectionNumberLabel);
+   sectionNumberLayout->addWidget(sectionNumberLineEdit);
+   sectionNumberLayout->addStretch();
+   
+   pageSectionMain = new QWidget;
+   pageWidgetStack->addWidget(pageSectionMain);
+   QVBoxLayout* pageSectionMainLayout = new QVBoxLayout(pageSectionMain);
+   pageSectionMainLayout->addLayout(sectionNumberLayout);
+   pageSectionMainLayout->addStretch();
+   
+   pageSectionMainWidgetGroup = new WuQWidgetGroup(this);
+   pageSectionMainWidgetGroup->addWidget(sectionNumberLineEdit);
+}
+
+/**
+ * update the section page.
+ */
+void 
+GuiDisplayControlDialog::updateSectionMainPage()
+{
+   DisplaySettingsSection* dss = theMainWindow->getBrainSet()->getDisplaySettingsSection();
+   if (pageSectionMain != NULL) {
+      pageSectionMainWidgetGroup->blockSignals(true);
+      int sectionNumber;
+      bool sectionEveryX;
+      dss->getSectionHighlighting(sectionNumber, sectionEveryX);
+      QString sectionText = QString::number(sectionNumber);
+      if (sectionEveryX) {
+         sectionText.append("X");
+      }
+      sectionNumberLineEdit->setText(sectionText);      
+      pageSectionMainWidgetGroup->blockSignals(false);
+   }
+}
+
+/**
+ * read section page.
+ */
+void 
+GuiDisplayControlDialog::readSectionMainPage()
+{
+   DisplaySettingsSection* dss = theMainWindow->getBrainSet()->getDisplaySettingsSection();
+   const QString sectionText = sectionNumberLineEdit->text();
+   const int xPos = sectionText.indexOf('x', 0, Qt::CaseInsensitive);
+   int sectionNumber = 0;
+   if (xPos >= 0) {
+      sectionNumber = sectionText.left(xPos).toInt();
+   }
+   else {
+      sectionNumber = sectionText.toInt();
+   }
+   dss->setSectionHighlighting(sectionNumber, (xPos >= 0));
+   
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL);   
+}
+      
+/**
+ * create the paint main page.
+ */
+void 
+GuiDisplayControlDialog::createPaintMainPage()      
+{
+   //
+   // Medial wall override
+   //
+   paintMedWallCheckBox = new QCheckBox("Enable Medial Wall Override");
+   QObject::connect(paintMedWallCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readPaintMainPageSelections()));
+   paintMedWallColumnComboBox = new GuiNodeAttributeColumnSelectionComboBox(
+                                                     GUI_NODE_FILE_TYPE_PAINT,
+                                                     false,
+                                                     false,
+                                                     false);
+   QObject::connect(paintMedWallColumnComboBox, SIGNAL(itemSelected(int)),
+                    this, SLOT(readPaintMainPageSelections()));
+   QGroupBox* medWallBox = new QGroupBox("Medial Wall Override");
+   QVBoxLayout* medWallBoxLayout = new QVBoxLayout(medWallBox);
+   medWallBoxLayout->addWidget(paintMedWallCheckBox);
+   medWallBoxLayout->addWidget(paintMedWallColumnComboBox);
+
+   QLabel* geoBlendLabel = new QLabel("Geography Blending");
+   geographyBlendingDoubleSpinBox = new QDoubleSpinBox;
+   geographyBlendingDoubleSpinBox->setMinimum(0.0);
+   geographyBlendingDoubleSpinBox->setMaximum(1.0);
+   geographyBlendingDoubleSpinBox->setSingleStep(0.1);
+   geographyBlendingDoubleSpinBox->setDecimals(3);
+   geographyBlendingDoubleSpinBox->setFixedWidth(100);
+   geographyBlendingDoubleSpinBox->setToolTip(
+                   "Geography blending factor: \n"
+                   "color = factor * overlay-color +\n"
+                   "        (1.0 - factor) * underlay-color");
+   QObject::connect(geographyBlendingDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readPaintMainPageSelections()));                    
+   QHBoxLayout* geoBlendLayout = new QHBoxLayout;
+   geoBlendLayout->addWidget(geoBlendLabel);
+   geoBlendLayout->addWidget(geographyBlendingDoubleSpinBox);
+   geoBlendLayout->addStretch();
+   
+   //
+   // Display color key button
+   //
+   QPushButton* colorKeyPushButton = new QPushButton("Display Color Key...");
+   colorKeyPushButton->setFixedSize(colorKeyPushButton->sizeHint());
+   colorKeyPushButton->setAutoDefault(false);
+   QObject::connect(colorKeyPushButton, SIGNAL(clicked()),
+                    theMainWindow, SLOT(displayPaintColorKey()));
+                    
+   pagePaintMain = new QWidget;
+   pageWidgetStack->addWidget(pagePaintMain);
+   QVBoxLayout* pagePaintMainLayout = new QVBoxLayout(pagePaintMain);
+   pagePaintMainLayout->addLayout(geoBlendLayout);
+   pagePaintMainLayout->addWidget(medWallBox);
+   pagePaintMainLayout->addWidget(colorKeyPushButton);
+   pagePaintMainLayout->addStretch();
+   
+   pagePaintMainWidgetGroup = new WuQWidgetGroup(this);
+   pagePaintMainWidgetGroup->addWidget(geographyBlendingDoubleSpinBox);
+   pagePaintMainWidgetGroup->addWidget(paintMedWallCheckBox);
+   pagePaintMainWidgetGroup->addWidget(paintMedWallColumnComboBox);
+   pagePaintMainWidgetGroup->addWidget(colorKeyPushButton);
 }
 
 /**
@@ -9353,46 +10365,17 @@ GuiDisplayControlDialog::createAndUpdatePaintNamePage()
 void
 GuiDisplayControlDialog::createPaintColumnPage()
 {
-   //
-   // Medial wall override
-   //
-   paintMedWallCheckBox = new QCheckBox("Enable Medial Wall Override");
-   QObject::connect(paintMedWallCheckBox, SIGNAL(toggled(bool)),
-                    this, SLOT(readPaintColumnSelections()));
-   paintMedWallColumnComboBox = new GuiNodeAttributeColumnSelectionComboBox(
-                                                     GUI_NODE_FILE_TYPE_PAINT,
-                                                     false,
-                                                     false,
-                                                     false);
-   QObject::connect(paintMedWallColumnComboBox, SIGNAL(itemSelected(int)),
-                    this, SLOT(readPaintColumnSelections()));
-   QGroupBox* medWallBox = new QGroupBox("Medial Wall Override");
-   QVBoxLayout* medWallBoxLayout = new QVBoxLayout(medWallBox);
-   medWallBoxLayout->addWidget(paintMedWallCheckBox);
-   medWallBoxLayout->addWidget(paintMedWallColumnComboBox);
-
    paintColumnButtonGroup = new QButtonGroup(this);
    paintColumnButtonGroup->setExclusive(true);
    QObject::connect(paintColumnButtonGroup, SIGNAL(buttonClicked(int)),
                     this, SLOT(paintColumnSelection(int)));
    
    //
-   // Display color key button
-   //
-   QPushButton* colorKeyPushButton = new QPushButton("Display Color Key...");
-   colorKeyPushButton->setFixedSize(colorKeyPushButton->sizeHint());
-   colorKeyPushButton->setAutoDefault(false);
-   QObject::connect(colorKeyPushButton, SIGNAL(clicked()),
-                    theMainWindow, SLOT(displayPaintColorKey()));
-                    
-   //
    // Create the paint page and its layout
    //
    pagePaintColumn = new QWidget;
    pageWidgetStack->addWidget(pagePaintColumn);
    paintPageLayout = new QVBoxLayout(pagePaintColumn);
-   paintPageLayout->addWidget(medWallBox);
-   paintPageLayout->addWidget(colorKeyPushButton);
    
    //
    // comment button group
@@ -9402,14 +10385,16 @@ GuiDisplayControlDialog::createPaintColumnPage()
                      this, SLOT(paintCommentColumnSelection(int)));
    
    //
-   // 
+   // metadata button group
    //
    paintColumnMetaDataButtonGroup = new QButtonGroup(this);
    QObject::connect(paintColumnMetaDataButtonGroup, SIGNAL(buttonClicked(int)),
                     this, SLOT(paintMetaDataColumnSelection(int)));
                     
+   //
+   // Widget group for paint column page
+   //
    pagePaintColumnWidgetGroup = new WuQWidgetGroup(this);
-   pagePaintColumnWidgetGroup->addWidget(paintMedWallCheckBox);
 }
 
 /**
@@ -9494,9 +10479,10 @@ GuiDisplayControlDialog::createAndUpdatePaintColumnPage()
       //
       // Comment push button
       //
-      QPushButton* commentPushButton = new QPushButton("?");
-      commentPushButton->setFixedWidth(40);
-      commentPushButton->setAutoDefault(false);
+      QToolButton* commentPushButton = new QToolButton;
+      commentPushButton->setText("?");
+      //commentPushButton->setFixedWidth(40);
+      //commentPushButton->setAutoDefault(false);
       paintColumnCommentPushButtons.push_back(commentPushButton);
       paintColumnCommentButtonGroup->addButton(commentPushButton, i);
       paintColumnSelectionGridLayout->addWidget(commentPushButton, i + 1, 2, Qt::AlignHCenter);
@@ -9504,11 +10490,12 @@ GuiDisplayControlDialog::createAndUpdatePaintColumnPage()
       //
       // metadata push button
       //
-      QPushButton* metaDataPushButton = new QPushButton("M");
+      QToolButton* metaDataPushButton = new QToolButton;
+      metaDataPushButton->setText("M");
       metaDataPushButton->setToolTip("Press the button to set the\n"
                                      "metadata link for this column");
-      metaDataPushButton->setFixedWidth(40);
-      metaDataPushButton->setAutoDefault(false);
+      //metaDataPushButton->setFixedWidth(40);
+      //metaDataPushButton->setAutoDefault(false);
       paintColumnMetaDataPushButtons.push_back(metaDataPushButton);
       paintColumnMetaDataButtonGroup->addButton(metaDataPushButton, i);
       paintColumnSelectionGridLayout->addWidget(metaDataPushButton, i + 1, 3, Qt::AlignHCenter);
@@ -9558,39 +10545,6 @@ GuiDisplayControlDialog::createAndUpdatePaintColumnPage()
 void 
 GuiDisplayControlDialog::updatePaintOverlayUnderlaySelection()
 {
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
-
-   DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
-   PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
-   paintSelectionComboBox->clear();
-   if (pf->getNumberOfColumns() > 0) {
-      for (int i = 0; i < pf->getNumberOfColumns(); i++) {
-         paintSelectionComboBox->addItem(pf->getColumnName(i));
-      }
-   
-      const int selCol = dsp->getSelectedColumn(surfaceModelIndex);
-      paintSelectionComboBox->setCurrentIndex(selCol);
-      paintSelectionComboBox->setToolTip(
-                    pf->getColumnName(dsp->getSelectedColumn(surfaceModelIndex)));
-   }
-   paintSelectionComboBox->setEnabled(validPaintData);
-   primaryOverlayPaintButton->setEnabled(validPaintData);
-   secondaryOverlayPaintButton->setEnabled(validPaintData);
-   underlayPaintButton->setEnabled(validPaintData);
-   paintSelectionLabel->setEnabled(validPaintData);
-   paintInfoPushButton->setEnabled(validPaintData);
-   
-   bool geoBlendDataValid = true;
-   if (validPaintData) {
-      if (pf->getGeographyColumnNumber() < 0) {
-         geoBlendDataValid = false;
-      }
-   }
-   underlayGeographyBlendingButton->setEnabled(geoBlendDataValid);
-   geographyBlendingSelectionLabel->setEnabled(geoBlendDataValid);
-   geographyBlendingDoubleSpinBox->setEnabled(geoBlendDataValid);
 }
 
 /**
@@ -9603,11 +10557,49 @@ GuiDisplayControlDialog::updatePaintItems()
    
    updatePaintOverlayUnderlaySelection();
    
+   updatePaintMainPage();
+   
    updatePaintColumnPage();
    
    updatePaintNamePage();
 }
 
+/**
+ * update paint main page.
+ */
+void 
+GuiDisplayControlDialog::updatePaintMainPage()
+{
+   if (pagePaintMain != NULL) {
+      DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
+      pagePaintMainWidgetGroup->blockSignals(true);
+
+      paintMedWallCheckBox->setChecked(dsp->getMedialWallOverrideColumnEnabled());
+      paintMedWallColumnComboBox->setEnabled(dsp->getMedialWallOverrideColumnEnabled());
+      paintMedWallColumnComboBox->updateComboBox(theMainWindow->getBrainSet()->getPaintFile());
+      paintMedWallColumnComboBox->setCurrentIndex(dsp->getMedialWallOverrideColumn());
+   
+      geographyBlendingDoubleSpinBox->setValue(dsp->getGeographyBlending());
+      pagePaintMainWidgetGroup->blockSignals(false);
+   }
+}
+      
+/**
+ * read paint main page.
+ */
+void 
+GuiDisplayControlDialog::readPaintMainPageSelections()
+{
+   DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
+   dsp->setGeographyBlending(geographyBlendingDoubleSpinBox->value());
+   dsp->setMedialWallOverrideColumnEnabled(paintMedWallCheckBox->isChecked());
+   dsp->setMedialWallOverrideColumn(paintMedWallColumnComboBox->currentIndex());
+   paintMedWallColumnComboBox->setEnabled(dsp->getMedialWallOverrideColumnEnabled());
+      
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL);   
+}
+      
 /**
  * update paint name page.
  */
@@ -9638,7 +10630,8 @@ GuiDisplayControlDialog::updatePaintColumnPage()
    paintApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsp->getApplySelectionToLeftAndRightStructuresFlag());
    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
    if (pf->getNumberOfColumns() > 0) {
-      const int selCol = dsp->getSelectedColumn(surfaceModelIndex);
+      const int selCol = dsp->getSelectedDisplayColumn(surfaceModelIndex,
+                                         overlayNumberComboBox->currentIndex());
       //if (pageOverlayUnderlaySurface != NULL) {
       //   paintSelectionComboBox->setCurrentIndex(selCol);
       //}
@@ -9651,17 +10644,14 @@ GuiDisplayControlDialog::updatePaintColumnPage()
    }
    if (paintColumnButtonGroup != NULL) {
       QRadioButton* rb = dynamic_cast<QRadioButton*>(
-                               paintColumnButtonGroup->button(dsp->getSelectedColumn(surfaceModelIndex)));
+         paintColumnButtonGroup->button(
+            dsp->getSelectedDisplayColumn(surfaceModelIndex,
+                                          overlayNumberComboBox->currentIndex())));
       if (rb != NULL) {
          rb->setChecked(true);
       }
    }
 
-   paintMedWallCheckBox->setChecked(dsp->getMedialWallOverrideColumnEnabled());
-   paintMedWallColumnComboBox->setEnabled(dsp->getMedialWallOverrideColumnEnabled());
-   paintMedWallColumnComboBox->updateComboBox(theMainWindow->getBrainSet()->getPaintFile());
-   paintMedWallColumnComboBox->setCurrentIndex(dsp->getMedialWallOverrideColumn());
-   
    pagePaintColumn->setEnabled(validPaintData);
    
    pagePaintColumnWidgetGroup->blockSignals(false);
@@ -9746,7 +10736,6 @@ GuiDisplayControlDialog::readPaintColumnSelections()
    
    if (pagePaintColumn != NULL) {
       PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
-      DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
       if (pf->getNumberOfColumns() > 0) {
          //pf->setSelectedColumn(paintButtonGroup->selectedId());
          
@@ -9758,9 +10747,7 @@ GuiDisplayControlDialog::readPaintColumnSelections()
          }
       }
       
-      dsp->setMedialWallOverrideColumnEnabled(paintMedWallCheckBox->isChecked());
-      dsp->setMedialWallOverrideColumn(paintMedWallColumnComboBox->currentIndex());
-      paintMedWallColumnComboBox->setEnabled(dsp->getMedialWallOverrideColumnEnabled());
+      updateSurfaceOverlayWidgets();
    }
    
    GuiFilesModified fm;
@@ -9992,9 +10979,11 @@ GuiDisplayControlDialog::createAndUpdateModelsMainPage()
       const TransformationMatrix* tm = vmf->getAssociatedTransformationMatrix();
       const QString name(FileUtilities::basename(
                               FileUtilities::filenameWithoutExtension(vmf->getFileName())));
+      modelCheckBoxes[i]->blockSignals(true);
       modelCheckBoxes[i]->setText(name);
       modelCheckBoxes[i]->show();
       modelCheckBoxes[i]->setChecked(vmf->getDisplayFlag());
+      modelCheckBoxes[i]->blockSignals(false);
       modelTransformControls[i]->blockSignals(true);
       modelTransformControls[i]->updateControl();
       modelTransformControls[i]->setSelectedMatrixIndex(tmf->getMatrixIndex(tm));
@@ -10030,16 +11019,16 @@ GuiDisplayControlDialog::createModelsSettingsPage()
    modelsLineSizeDoubleSpinBox = new QDoubleSpinBox; 
    modelsLineSizeDoubleSpinBox->setMinimum(minLineSize);
    modelsLineSizeDoubleSpinBox->setMaximum(maxLineSize);
-   modelsLineSizeDoubleSpinBox->setSingleStep(1.0);
+   modelsLineSizeDoubleSpinBox->setSingleStep(0.1);
    modelsLineSizeDoubleSpinBox->setDecimals(1);
    QObject::connect(modelsLineSizeDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readModelSettingsPage()));
 
    QLabel* vertexSizeLabel = new QLabel("Vertex Size");
    modelsVertexSizeDoubleSpinBox = new QDoubleSpinBox;  
-   modelsVertexSizeDoubleSpinBox->setMinimum(minPointSize);
-   modelsVertexSizeDoubleSpinBox->setMaximum(maxPointSize);
-   modelsVertexSizeDoubleSpinBox->setSingleStep(1.0);
+   modelsVertexSizeDoubleSpinBox->setMinimum(0.1);
+   modelsVertexSizeDoubleSpinBox->setMaximum(50.0);
+   modelsVertexSizeDoubleSpinBox->setSingleStep(0.1);
    modelsVertexSizeDoubleSpinBox->setDecimals(1);
    QObject::connect(modelsVertexSizeDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readModelSettingsPage()));
@@ -10070,10 +11059,30 @@ GuiDisplayControlDialog::createModelsSettingsPage()
                     this, SLOT(readModelSettingsPage()));
                     
    //
+   // Checkboxes for showing attributes of models
+   //
+   modelShowPolygonsCheckBox = new QCheckBox("Show Polygons");
+   QObject::connect(modelShowPolygonsCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readModelSettingsPage()));
+   modelShowTrianglesCheckBox = new QCheckBox("Show Triangles");
+   QObject::connect(modelShowTrianglesCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readModelSettingsPage()));
+   modelShowLinesCheckBox = new QCheckBox("Show Lines");
+   QObject::connect(modelShowLinesCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readModelSettingsPage()));
+   modelShowVerticesCheckBox = new QCheckBox("Show Vertices");
+   QObject::connect(modelShowVerticesCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readModelSettingsPage()));
+
+   //
    // Page and layouts
    //
    pageModelsSettings = new QWidget;
    QVBoxLayout* modelSettingsLayout = new QVBoxLayout(pageModelsSettings);
+   modelSettingsLayout->addWidget(modelShowPolygonsCheckBox);
+   modelSettingsLayout->addWidget(modelShowTrianglesCheckBox);
+   modelSettingsLayout->addWidget(modelShowLinesCheckBox);
+   modelSettingsLayout->addWidget(modelShowVerticesCheckBox);
    modelSettingsLayout->addWidget(sizeWidget, 0, Qt::AlignLeft);
    modelSettingsLayout->addWidget(modelLinesLightingCheckBox);
    modelSettingsLayout->addWidget(modelPolygonsLightingCheckBox);
@@ -10081,6 +11090,18 @@ GuiDisplayControlDialog::createModelsSettingsPage()
    modelSettingsLayout->addStretch();
 
    pageWidgetStack->addWidget(pageModelsSettings);
+   
+   modelSettingsWidgetGroup = new WuQWidgetGroup(this);
+   modelSettingsWidgetGroup->addWidget(modelsOpacityDoubleSpinBox);
+   modelSettingsWidgetGroup->addWidget(modelsLineSizeDoubleSpinBox);
+   modelSettingsWidgetGroup->addWidget(modelsVertexSizeDoubleSpinBox);
+   modelSettingsWidgetGroup->addWidget(modelLinesLightingCheckBox);
+   modelSettingsWidgetGroup->addWidget(modelPolygonsLightingCheckBox);
+   modelSettingsWidgetGroup->addWidget(modelVerticesLightingCheckBox);
+   modelSettingsWidgetGroup->addWidget(modelShowPolygonsCheckBox);
+   modelSettingsWidgetGroup->addWidget(modelShowTrianglesCheckBox);
+   modelSettingsWidgetGroup->addWidget(modelShowLinesCheckBox);
+   modelSettingsWidgetGroup->addWidget(modelShowVerticesCheckBox);
 }
 
 /**
@@ -10105,6 +11126,8 @@ GuiDisplayControlDialog::updateModelSettingsPage()
    if (pageModelsSettings == NULL) {
       return;
    }
+   modelSettingsWidgetGroup->blockSignals(true);
+   
    DisplaySettingsModels* dsm = theMainWindow->getBrainSet()->getDisplaySettingsModels();
    modelsOpacityDoubleSpinBox->setValue(dsm->getOpacity());
    modelsLineSizeDoubleSpinBox->setValue(dsm->getLineWidth());
@@ -10112,8 +11135,15 @@ GuiDisplayControlDialog::updateModelSettingsPage()
    modelLinesLightingCheckBox->setChecked(dsm->getLightLinesEnabled()); 
    modelPolygonsLightingCheckBox->setChecked(dsm->getLightPolygonsEnabled()); 
    modelVerticesLightingCheckBox->setChecked(dsm->getLightVerticesEnabled());
-    
+   
+   modelShowPolygonsCheckBox->setChecked(dsm->getShowPolygons());
+   modelShowTrianglesCheckBox->setChecked(dsm->getShowTriangles());
+   modelShowLinesCheckBox->setChecked(dsm->getShowLines());
+   modelShowVerticesCheckBox->setChecked(dsm->getShowVertices());
+
    pageModelsSettings->setEnabled(validModelData);
+
+   modelSettingsWidgetGroup->blockSignals(false);
 }
 
 /**
@@ -10177,6 +11207,10 @@ GuiDisplayControlDialog::readModelSettingsPage()
    dsm->setLightLinesEnabled(modelLinesLightingCheckBox->isChecked());
    dsm->setLightPolygonsEnabled(modelPolygonsLightingCheckBox->isChecked());
    dsm->setLightVerticesEnabled(modelVerticesLightingCheckBox->isChecked());
+   dsm->setShowPolygons(modelShowPolygonsCheckBox->isChecked());
+   dsm->setShowTriangles(modelShowTrianglesCheckBox->isChecked());
+   dsm->setShowLines(modelShowLinesCheckBox->isChecked());
+   dsm->setShowVertices(modelShowVerticesCheckBox->isChecked());
    
    GuiBrainModelOpenGL::updateAllGL();
 }
@@ -10241,7 +11275,7 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       QWidget* metricSelectionGridWidget = new QWidget;
       metricSelectionGridLayout = new QGridLayout(metricSelectionGridWidget);
       metricSelectionGridLayout->setSpacing(3);
-      metricSelectionGridLayout->setColumnMinimumWidth(5, nameMinimumWidth+20);
+      metricSelectionGridLayout->setColumnMinimumWidth(6, nameMinimumWidth+20);
       metricSelectionGridLayout->addWidget(new QLabel("#"),
                                            0, 0, Qt::AlignRight);
       metricSelectionGridLayout->addWidget(new QLabel("View"),
@@ -10252,8 +11286,10 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
                                            0, 3, Qt::AlignHCenter);
       metricSelectionGridLayout->addWidget(new QLabel("MD"),
                                            0, 4, Qt::AlignHCenter);
+      metricSelectionGridLayout->addWidget(new QLabel("Hist"),
+                                           0, 5, Qt::AlignHCenter);
       metricSelectionGridLayout->addWidget(new QLabel("Name"),
-                                           0, 5, Qt::AlignLeft);
+                                           0, 6, Qt::AlignLeft);
                                            
       //
       // For stretching on  bottom
@@ -10271,6 +11307,7 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       metricSelectionGridLayout->setColumnStretch(3, 0);
       metricSelectionGridLayout->setColumnStretch(4, 0);
       metricSelectionGridLayout->setColumnStretch(5, 0);
+      metricSelectionGridLayout->setColumnStretch(6, 0);
       //metricSelectionGridLayout->setRowStretch(rowStretchNumber, 1000);
       
       //
@@ -10319,6 +11356,15 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
    }
    
    //
+   // Create the button group for the metric histogram buttons
+   //
+   if (metricHistogramButtonGroup == NULL) {
+      metricHistogramButtonGroup = new QButtonGroup(this);
+      QObject::connect(metricHistogramButtonGroup, SIGNAL(buttonClicked(int)),
+                       this, SLOT(metricHistogramColumnSelection(int)));
+   }
+   
+   //
    // Add new widgets as needed
    //
    for (int i = numExistingMetrics; i < numValidMetrics; i++) {
@@ -10349,9 +11395,10 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       //
       // Comment push button
       //
-      QPushButton* commentPushButton = new QPushButton("?");
-      commentPushButton->setFixedWidth(40);
-      commentPushButton->setAutoDefault(false);
+      QToolButton* commentPushButton = new QToolButton;
+      commentPushButton->setText("?");
+      //commentPushButton->setFixedWidth(40);
+      //commentPushButton->setAutoDefault(false);
       metricColumnCommentPushButtons.push_back(commentPushButton);
       metricCommentButtonGroup->addButton(commentPushButton, i);
       metricSelectionGridLayout->addWidget(commentPushButton, i + 1, 3, Qt::AlignHCenter);
@@ -10359,15 +11406,28 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       //
       // Metadata push button
       //
-      QPushButton* metaDataPushButton = new QPushButton("M");
+      QToolButton* metaDataPushButton = new QToolButton;
+      metaDataPushButton->setText("M");
       metaDataPushButton->setToolTip("Press the button to set the\n"
                                      "metadata link for this column");
-      metaDataPushButton->setFixedWidth(40);
-      metaDataPushButton->setAutoDefault(false);
+      //metaDataPushButton->setFixedWidth(40);
+      //metaDataPushButton->setAutoDefault(false);
       metricColumnMetaDataPushButtons.push_back(metaDataPushButton);
       metricMetaDataButtonGroup->addButton(metaDataPushButton, i);
       metricSelectionGridLayout->addWidget(metaDataPushButton, i + 1, 4, Qt::AlignHCenter);
       
+      //
+      // Histogram push button
+      QToolButton* histogramPushButton = new QToolButton;
+      histogramPushButton->setText("H");
+      histogramPushButton->setToolTip("Press the button to view \n"
+                                      "a histogram of this metric\n"
+                                      "column's data.");
+      metricColumnHistogramPushButtons.push_back(histogramPushButton);
+      metricHistogramButtonGroup->addButton(histogramPushButton, i);
+      metricSelectionGridLayout->addWidget(histogramPushButton, i + 1, 5, Qt::AlignHCenter);
+      
+      //
       //
       // Name line edit
       //
@@ -10375,7 +11435,7 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       metricLineEdit->setText(mf->getColumnName(i));
       metricLineEdit->setMinimumWidth(nameMinimumWidth);
       metricColumnNameLineEdits.push_back(metricLineEdit);
-      metricSelectionGridLayout->addWidget(metricLineEdit, i + 1, 5, Qt::AlignLeft);
+      metricSelectionGridLayout->addWidget(metricLineEdit, i + 1, 6, Qt::AlignLeft);
    }
       
    //
@@ -10388,6 +11448,7 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       metricThresholdRadioButtons[i]->show();
       metricColumnCommentPushButtons[i]->show();
       metricColumnMetaDataPushButtons[i]->show();
+      metricColumnHistogramPushButtons[i]->show();
       metricColumnNameLineEdits[i]->show();
       metricColumnNameLineEdits[i]->home(true);
    }
@@ -10401,6 +11462,7 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       metricThresholdRadioButtons[i]->hide();
       metricColumnCommentPushButtons[i]->hide();
       metricColumnMetaDataPushButtons[i]->hide();
+      metricColumnHistogramPushButtons[i]->hide();
       metricColumnNameLineEdits[i]->hide();
    }
    
@@ -10408,20 +11470,55 @@ GuiDisplayControlDialog::createAndUpdateMetricSelectionPage()
       if (DebugControl::getDebugOn()) {
          std::cout << " " << std::endl;
          std::cout << "Metric created " << std::endl;
-         printPageSizesHelper("pageMetricSelection", pageMetricSelection);
          std::cout << " " << std::endl;
       }
    }
 }
 
 /**
- * Page containing metric control.
+ * update the metric misc page.
  */
-void
-GuiDisplayControlDialog::createMetricSettingsPage()
+void 
+GuiDisplayControlDialog::updateMetricMiscellaneousPage()
 {
-   const int floatSpinBoxWidth = 120;
+   if (pageMetricMiscellaneous == NULL) {
+      return;
+   }
    
+   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
+   metricGraphPopupComboBox->setCurrentIndex(dsm->getMDataPlotOnNodeID());
+   float manMin, manMax;
+   const bool manFlag = dsm->getDataPlotManualScaling(manMin, manMax);
+   metricGraphManualScaleCheckBox->setChecked(manFlag);
+   metricGraphManualScaleMinDoubleSpinBox->setValue(manMin);
+   metricGraphManualScaleMaxDoubleSpinBox->setValue(manMax);
+   
+}
+
+/**
+ * read the metric misc page.
+ */
+void 
+GuiDisplayControlDialog::readMetricMiscellaneousPage()
+{
+   if (pageMetricMiscellaneous == NULL) {
+      return;
+   }
+   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
+   dsm->setDataPlotOnNodeID(static_cast<DisplaySettingsMetric::METRIC_DATA_PLOT>(
+                                              metricGraphPopupComboBox->currentIndex()));
+   dsm->setDataPlotManualScaling(metricGraphManualScaleCheckBox->isChecked(),
+                                 metricGraphManualScaleMinDoubleSpinBox->value(),
+                                 metricGraphManualScaleMaxDoubleSpinBox->value());
+
+}
+
+/**
+ * create the metric miscellaneous page.
+ */
+void 
+GuiDisplayControlDialog::createMetricMiscellaneousPage()
+{
    //
    // Animation section
    //
@@ -10454,10 +11551,10 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    metricGraphPopupComboBox->insertItem(DisplaySettingsMetric::METRIC_DATA_PLOT_NODE_AND_NEIGHBORS,
                                         "Node and Neighbors");
    QObject::connect(metricGraphPopupComboBox, SIGNAL(activated(int)),
-                    this, SLOT(readMetricSettingsPage()));
+                    this, SLOT(readMetricMiscellaneousPage()));
    metricGraphManualScaleCheckBox = new QCheckBox("Manual Scaling ");
    QObject::connect(metricGraphManualScaleCheckBox, SIGNAL(toggled(bool)),
-                    this, SLOT(readMetricSettingsPage()));
+                    this, SLOT(readMetricMiscellaneousPage()));
    const float big = 10000.0;
    metricGraphManualScaleMinDoubleSpinBox = new QDoubleSpinBox;
    metricGraphManualScaleMinDoubleSpinBox->setMinimum(-big);
@@ -10465,14 +11562,14 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    metricGraphManualScaleMinDoubleSpinBox->setSingleStep(1.0);
    metricGraphManualScaleMinDoubleSpinBox->setDecimals(3);
    QObject::connect(metricGraphManualScaleMinDoubleSpinBox, SIGNAL(valueChanged(double)),
-                    this, SLOT(readMetricSettingsPage()));
+                    this, SLOT(readMetricMiscellaneousPage()));
    metricGraphManualScaleMaxDoubleSpinBox = new QDoubleSpinBox;
    metricGraphManualScaleMaxDoubleSpinBox->setMinimum(-big);
    metricGraphManualScaleMaxDoubleSpinBox->setMaximum(big);
    metricGraphManualScaleMaxDoubleSpinBox->setSingleStep(1.0);
    metricGraphManualScaleMaxDoubleSpinBox->setDecimals(3);
    QObject::connect(metricGraphManualScaleMaxDoubleSpinBox, SIGNAL(valueChanged(double)),
-                    this, SLOT(readMetricSettingsPage()));
+                    this, SLOT(readMetricMiscellaneousPage()));
    QHBoxLayout* popupGraphShowLayout = new QHBoxLayout;
    popupGraphShowLayout->addWidget(popupGraphLabel);
    popupGraphShowLayout->addWidget(metricGraphPopupComboBox);
@@ -10487,50 +11584,30 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    popupGraphLayout->addLayout(popupGraphShowLayout);
    popupGraphLayout->addLayout(popupGraphScaleLayout);
    popupGraphGroup->setFixedSize(popupGraphGroup->sizeHint());
+ 
+   //
+   // Metric misc page and layout
+   //  
+   pageMetricMiscellaneous = new QWidget;
+   pageWidgetStack->addWidget(pageMetricMiscellaneous);
+   QVBoxLayout* pageMetricMiscLayout = new QVBoxLayout(pageMetricMiscellaneous);
+   pageMetricMiscLayout->addWidget(animateGroupBox);
+   pageMetricMiscLayout->addWidget(popupGraphGroup);
+   pageMetricMiscLayout->addStretch();
    
-   //
-   // Combo boxes for view and threshold column selection and
-   // labels for minimum and maximum values.
-   //
-   const int minColNameWidth = 250;
-   QLabel* viewLabel = new QLabel("View ");
-   metricViewLabel = new QLabel("");
-   metricViewLabel->setMinimumWidth(minColNameWidth);
-   metricViewMinimumLabel = new QLabel("");
-   metricViewMaximumLabel = new QLabel("");
-   QPushButton* viewHistPushButton = new QPushButton("Histogram...");
-   viewHistPushButton->setFixedSize(viewHistPushButton->sizeHint());
-   viewHistPushButton->setAutoDefault(false);
-   QObject::connect(viewHistPushButton, SIGNAL(clicked()),
-                    this, SLOT(metricViewHistogram()));
-   QLabel* threshLabel = new QLabel("Thresh ");
-   metricThresholdLabel = new QLabel("");
-   metricThresholdLabel->setMinimumWidth(minColNameWidth);
-   metricThreshMinimumLabel = new QLabel("");
-   metricThreshMaximumLabel = new QLabel("");
-   QPushButton* threshHistPushButton = new QPushButton("Histogram...");
-   threshHistPushButton->setFixedSize(threshHistPushButton->sizeHint());
-   threshHistPushButton->setAutoDefault(false);
-   QObject::connect(threshHistPushButton, SIGNAL(clicked()),
-                    this, SLOT(metricThreshHistogram()));
-   QGridLayout* selectionGridLayout = new QGridLayout;
-   selectionGridLayout->addWidget(new QLabel("Min"), 0, 2, 1, 1, Qt::AlignHCenter);
-   selectionGridLayout->addWidget(new QLabel("Max"), 0, 3, 1, 1, Qt::AlignHCenter);
-   selectionGridLayout->addWidget(new QLabel("Name"), 0, 4, 1, 1, Qt::AlignLeft);
-   selectionGridLayout->addWidget(viewLabel, 1, 0);
-   selectionGridLayout->addWidget(viewHistPushButton, 1, 1);
-   selectionGridLayout->addWidget(metricViewMinimumLabel, 1, 2);
-   selectionGridLayout->addWidget(metricViewMaximumLabel, 1, 3);
-   selectionGridLayout->addWidget(metricViewLabel, 1, 4);
-   selectionGridLayout->addWidget(threshLabel, 2, 0);
-   selectionGridLayout->addWidget(threshHistPushButton, 2, 1);
-   selectionGridLayout->addWidget(metricThreshMinimumLabel, 2, 2);
-   selectionGridLayout->addWidget(metricThreshMaximumLabel, 2, 3);
-   selectionGridLayout->addWidget(metricThresholdLabel, 2, 4);
-   QGroupBox* selectionGroupBox = new QGroupBox("Current Selection");
-   QHBoxLayout* selectionGroupLayout = new QHBoxLayout(selectionGroupBox);
-   selectionGroupLayout->addLayout(selectionGridLayout);
-   selectionGroupLayout->addStretch();
+   pageMetricSettingsWidgetGroup = new WuQWidgetGroup(this);
+   pageMetricSettingsWidgetGroup->addWidget(metricGraphPopupComboBox);
+   pageMetricSettingsWidgetGroup->addWidget(metricGraphManualScaleMinDoubleSpinBox);
+   pageMetricSettingsWidgetGroup->addWidget(metricGraphManualScaleMaxDoubleSpinBox);
+}
+      
+/**
+ * Page containing metric control.
+ */
+void
+GuiDisplayControlDialog::createMetricSettingsPage()
+{
+   const int floatSpinBoxWidth = 120;
    
    //
    // Color Mapping
@@ -10538,21 +11615,47 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    QButtonGroup* scaleButtonGroup = new QButtonGroup(this);
    QObject::connect(scaleButtonGroup, SIGNAL(buttonClicked(int)),
                     this, SLOT(readMetricSettingsPage()));
-   metricFileAutoScaleRadioButton = new QRadioButton("Auto Scale - Metric");
+   metricFileAutoScaleRadioButton = new QRadioButton("Auto Scale");
    metricFileAutoScaleRadioButton->setToolTip(
+                 "This selection will map the most negative\n"
+                 "and positive values in the view metric to \n"
+                 "the -1.0 and 1.0 values in the selected \n"
+                 "palette.  If you are displaying multiple \n"
+                 "metrics on a surface, identical colors will \n"
+                 "not represent identical values in the \n"
+                 "multiple metrics displayed.  For identical \n"
+                 "colors to represent identical values in \n"
+                 "different metrics, switch to \"Auto Scale - \n"
+                 "Metric Column\".");
+   scaleButtonGroup->addButton(metricFileAutoScaleRadioButton, 
+                               DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO);
+
+   metricFileAutoScaleSpecifiedColumnRadioButton = new QRadioButton("Auto Scale - Metric Column");
+   metricFileAutoScaleSpecifiedColumnRadioButton->setToolTip(
                  "This selection will map the most negative\n"
                  "and positive values in the selected metric\n"
                  "column to the -1.0 and 1.0 values in the\n"
-                 "selected palette.");
-   scaleButtonGroup->addButton(metricFileAutoScaleRadioButton, DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC);
-
+                 "selected palette.  If multiple metrics are \n"
+                 "displayed, identical colors represent \n"
+                 "identical values.");
+   scaleButtonGroup->addButton(metricFileAutoScaleSpecifiedColumnRadioButton, 
+                               DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN);
+   metricFileAutoScaleSpecifiedColumnSelectionComboBox = 
+      new GuiNodeAttributeColumnSelectionComboBox(GUI_NODE_FILE_TYPE_METRIC,
+                                                  false,
+                                                  false,
+                                                  false);
+   QObject::connect(metricFileAutoScaleSpecifiedColumnSelectionComboBox, SIGNAL(itemSelected(int)),
+                    this, SLOT(readMetricSettingsPage()));
+                                                  
    metricFuncVolumeAutoScaleRadioButton = new QRadioButton("Auto Scale - Functional Volume");
    metricFuncVolumeAutoScaleRadioButton->setToolTip(
                  "This selection will map the most negative\n"
                  "and positive values in the selected functional\n"
                  "volume to the -1.0 and 1.0 values in the\n"
                  "selected palette.");
-   scaleButtonGroup->addButton(metricFuncVolumeAutoScaleRadioButton, DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME);
+   scaleButtonGroup->addButton(metricFuncVolumeAutoScaleRadioButton, 
+                               DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME);
 
    metricUserScaleRadioButton = new QRadioButton("User Scale");
    metricUserScaleRadioButton->setToolTip(
@@ -10562,9 +11665,10 @@ GuiDisplayControlDialog::createMetricSettingsPage()
                  "the Neg Min value to the 0.0 value in the \n"
                  "palette, and the Neg Max value to the -1.0\n"
                  "value in the palette.");
-   scaleButtonGroup->addButton(metricUserScaleRadioButton, DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER);
+   scaleButtonGroup->addButton(metricUserScaleRadioButton, 
+                               DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER);
    
-   QLabel* colorMapPosMaxLabel = new QLabel("Pos Max");
+   QLabel* colorMapPosMinMaxLabel = new QLabel("Pos Min/Max");
    metricColorPositiveMaxDoubleSpinBox = new QDoubleSpinBox;
    metricColorPositiveMaxDoubleSpinBox->setMinimum(0);
    metricColorPositiveMaxDoubleSpinBox->setMaximum(10000000.0);
@@ -10576,7 +11680,6 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    QObject::connect(metricColorPositiveMaxDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readMetricSettingsPage()));
                     
-   QLabel* colorMapPosMinLabel = new QLabel("Pos Min (>) ");
    metricColorPositiveMinDoubleSpinBox = new QDoubleSpinBox;
    metricColorPositiveMinDoubleSpinBox->setMinimum(0);
    metricColorPositiveMinDoubleSpinBox->setMaximum(10000000.0);
@@ -10588,7 +11691,7 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    QObject::connect(metricColorPositiveMinDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readMetricSettingsPage()));
    
-   QLabel* colorMapNegMinLabel = new QLabel("Neg Min (<=)");
+   QLabel* colorMapNegMinMaxLabel = new QLabel("Neg Max/Min");
    metricColorNegativeMinDoubleSpinBox = new QDoubleSpinBox;
    metricColorNegativeMinDoubleSpinBox->setMinimum(-10000000.0);
    metricColorNegativeMinDoubleSpinBox->setMaximum(0.0);
@@ -10600,7 +11703,6 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    QObject::connect(metricColorNegativeMinDoubleSpinBox, SIGNAL(valueChanged(double)),
                     this, SLOT(readMetricSettingsPage()));
    
-   QLabel* colorMapNegMaxLabel = new QLabel("Neg Max ");
    metricColorNegativeMaxDoubleSpinBox = new QDoubleSpinBox;
    metricColorNegativeMaxDoubleSpinBox->setMinimum(-10000000.0);
    metricColorNegativeMaxDoubleSpinBox->setMaximum(0.0);
@@ -10618,22 +11720,27 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    
    QGridLayout* colorMapGridLayout = new QGridLayout;
    colorMapGridLayout->setColumnMinimumWidth(0, 25);
-   colorMapGridLayout->addWidget(colorMapPosMaxLabel, 0, 1);
-   colorMapGridLayout->addWidget(metricColorPositiveMaxDoubleSpinBox, 0, 2);
-   colorMapGridLayout->addWidget(colorMapPosMinLabel, 1, 1);
-   colorMapGridLayout->addWidget(metricColorPositiveMinDoubleSpinBox, 1, 2);
-   colorMapGridLayout->addWidget(colorMapNegMinLabel, 2, 1);
-   colorMapGridLayout->addWidget(metricColorNegativeMinDoubleSpinBox, 2, 2);
-   colorMapGridLayout->addWidget(colorMapNegMaxLabel, 3, 1);
-   colorMapGridLayout->addWidget(metricColorNegativeMaxDoubleSpinBox, 3, 2);
+   colorMapGridLayout->addWidget(colorMapPosMinMaxLabel, 0, 1);
+   colorMapGridLayout->addWidget(metricColorPositiveMinDoubleSpinBox, 0, 2);
+   colorMapGridLayout->addWidget(metricColorPositiveMaxDoubleSpinBox, 0, 3);
+   colorMapGridLayout->addWidget(colorMapNegMinMaxLabel, 1, 1);
+   colorMapGridLayout->addWidget(metricColorNegativeMaxDoubleSpinBox, 1, 2);
+   colorMapGridLayout->addWidget(metricColorNegativeMinDoubleSpinBox, 1, 3);
+   QGridLayout* colorScaleGridLayout = new QGridLayout;
+   colorScaleGridLayout->addWidget(metricFileAutoScaleRadioButton, 0, 0, 1, 2);
+   colorScaleGridLayout->addWidget(metricFileAutoScaleSpecifiedColumnRadioButton, 1, 0, 1, 1);
+   colorScaleGridLayout->addWidget(metricFileAutoScaleSpecifiedColumnSelectionComboBox, 1, 1);
+   colorScaleGridLayout->addWidget(metricFuncVolumeAutoScaleRadioButton, 2, 0, 1, 2);
+   colorScaleGridLayout->addWidget(metricUserScaleRadioButton, 3, 0, 1, 2);
    QGroupBox* colorGroupBox = new QGroupBox("Color Mapping");
    QVBoxLayout* colorGroupLayout = new QVBoxLayout(colorGroupBox);
-   colorGroupLayout->addWidget(metricFileAutoScaleRadioButton);
-   colorGroupLayout->addWidget(metricFuncVolumeAutoScaleRadioButton);
-   colorGroupLayout->addWidget(metricUserScaleRadioButton);
+   colorGroupLayout->addLayout(colorScaleGridLayout);
+   colorGroupLayout->setAlignment(colorScaleGridLayout, Qt::AlignLeft);
    colorGroupLayout->addLayout(colorMapGridLayout);
+   colorGroupLayout->setAlignment(colorMapGridLayout, Qt::AlignLeft);
    colorGroupLayout->addWidget(metricColorInterpolateCheckBox);
-   colorGroupBox->setFixedSize(colorGroupBox->sizeHint());
+   colorGroupLayout->setAlignment(metricColorInterpolateCheckBox, Qt::AlignLeft);
+   //colorGroupBox->setFixedSize(colorGroupBox->sizeHint());
    
    //
    // Display Mode Buttons
@@ -10669,12 +11776,13 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    QVBoxLayout* paletteLayout = new QVBoxLayout(paletteGroupBox);
    paletteLayout->addWidget(metricPaletteComboBox);
    paletteLayout->addWidget(metricDisplayColorBarCheckBox);
+   paletteGroupBox->setFixedHeight(paletteGroupBox->sizeHint().height());
    
    //
    // Threshold line edits
    //
    QLabel* threshColLabel = new QLabel("Column");
-   QLabel* threshAvgAreaLabel = new QLabel("Avg Area");
+   QLabel* threshAvgAreaLabel = new QLabel("Average Area");
    QLabel* threshUserLabel = new QLabel("User");
    QLabel* threshPosLabel = new QLabel("Pos");
    QLabel* threshNegLabel = new QLabel("Neg");
@@ -10784,6 +11892,18 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    metricThresholdTypeComboBox->insertItem(DisplaySettingsMetric::METRIC_THRESHOLDING_TYPE_USER_VALUES,
                                            "User");
 
+   QLabel* threshColumnLabel = new QLabel("Column ");
+   metricThresholdSettingColumnSelectionComboBox = 
+      new GuiNodeAttributeColumnSelectionComboBox(GUI_NODE_FILE_TYPE_METRIC,
+                                                  false,
+                                                  false,
+                                                  false);
+   QObject::connect(metricThresholdSettingColumnSelectionComboBox, SIGNAL(activated(int)),
+                    this, SLOT(slotUpateMetricThresholdSettingValues()));
+   QHBoxLayout* threshColumnLayout = new QHBoxLayout;
+   threshColumnLayout->addWidget(threshColumnLabel);
+   threshColumnLayout->addWidget(metricThresholdSettingColumnSelectionComboBox);
+   threshColumnLayout->addStretch();
    QGridLayout* threshLayout = new QGridLayout;
    threshLayout->addWidget(threshColLabel, 0, 1);
    threshLayout->addWidget(threshAvgAreaLabel, 0, 2);
@@ -10799,42 +11919,43 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    QHBoxLayout* threshTypeLayout = new QHBoxLayout;
    threshTypeLayout->addWidget(threshTypeLabel);
    threshTypeLayout->addWidget(metricThresholdTypeComboBox);
-   QVBoxLayout* threshRightLayout = new QVBoxLayout;
-   threshRightLayout->addWidget(metricShowThresholdedRegionsCheckBox);
-   threshRightLayout->addLayout(threshTypeLayout);
-   QGroupBox* thresholdGroupBox = new QGroupBox("Threshold");
-   QHBoxLayout* thresholdGroupLayout = new QHBoxLayout(thresholdGroupBox);
+   threshTypeLayout->addWidget(new QLabel("  "));
+   threshTypeLayout->addWidget(metricShowThresholdedRegionsCheckBox);
+   threshTypeLayout->addStretch();
+   QGroupBox* thresholdGroupBox = new QGroupBox("Threshold Adjustment");
+   QVBoxLayout* thresholdGroupLayout = new QVBoxLayout(thresholdGroupBox);
+   thresholdGroupLayout->addLayout(threshColumnLayout);
+   thresholdGroupLayout->addLayout(threshTypeLayout);
    thresholdGroupLayout->addLayout(threshLayout);
-   thresholdGroupLayout->addLayout(threshRightLayout);
+   thresholdGroupLayout->setAlignment(threshColumnLayout, Qt::AlignLeft);
+   thresholdGroupLayout->setAlignment(threshTypeLayout, Qt::AlignLeft);
+   thresholdGroupLayout->setAlignment(threshLayout, Qt::AlignLeft);
    thresholdGroupBox->setFixedSize(thresholdGroupBox->sizeHint());
    
    //
    // Metric page and all layouts
    //
-   QVBoxLayout* rightLayout = new QVBoxLayout;
-   rightLayout->addWidget(displayModeGroupBox);
-   rightLayout->addWidget(paletteGroupBox);
-   QHBoxLayout* miscLayout = new QHBoxLayout;
-   miscLayout->addWidget(colorGroupBox);
-   miscLayout->addLayout(rightLayout);
-   miscLayout->addStretch();
+   QHBoxLayout* displayModePaletteLayout = new QHBoxLayout;
+   displayModePaletteLayout->addWidget(displayModeGroupBox);
+   displayModePaletteLayout->addWidget(paletteGroupBox);
+   displayModePaletteLayout->addStretch();
    
    pageMetricSettings = new QWidget;
    QVBoxLayout* metricLayout = new QVBoxLayout(pageMetricSettings);
-   metricLayout->addWidget(selectionGroupBox);
-   metricLayout->addLayout(miscLayout);
+   metricLayout->addWidget(colorGroupBox);
+   metricLayout->addLayout(displayModePaletteLayout);
    metricLayout->addWidget(thresholdGroupBox);
-   metricLayout->addWidget(animateGroupBox);
-   metricLayout->addWidget(popupGraphGroup);
-   pageMetricSettings->setFixedSize(pageMetricSettings->sizeHint());
+   metricLayout->addStretch();
+   //pageMetricSettings->setFixedSize(pageMetricSettings->sizeHint());
 
    pageWidgetStack->addWidget(pageMetricSettings);
    
    pageMetricSettingsWidgetGroup = new WuQWidgetGroup(this);
-   pageMetricSettingsWidgetGroup->addWidget(metricGraphPopupComboBox);
-   pageMetricSettingsWidgetGroup->addWidget(metricGraphManualScaleMinDoubleSpinBox);
-   pageMetricSettingsWidgetGroup->addWidget(metricGraphManualScaleMaxDoubleSpinBox);
+   pageMetricSettingsWidgetGroup->addWidget(threshColumnLabel);
+   pageMetricSettingsWidgetGroup->addWidget(metricThresholdSettingColumnSelectionComboBox);
    pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScaleRadioButton);
+   pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScaleSpecifiedColumnRadioButton);
+   pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScaleSpecifiedColumnSelectionComboBox);
    pageMetricSettingsWidgetGroup->addWidget(metricFuncVolumeAutoScaleRadioButton);
    pageMetricSettingsWidgetGroup->addWidget(metricUserScaleRadioButton);
    pageMetricSettingsWidgetGroup->addWidget(metricColorPositiveMaxDoubleSpinBox);
@@ -10855,56 +11976,7 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    pageMetricSettingsWidgetGroup->addWidget(metricThresholdUserNegativeDoubleSpinBox);
    pageMetricSettingsWidgetGroup->addWidget(metricShowThresholdedRegionsCheckBox);
    pageMetricSettingsWidgetGroup->addWidget(metricThresholdTypeComboBox);
-}
-
-/**
- * called when metric view column histogram pushbutton is pressed.
- */
-void 
-GuiDisplayControlDialog::metricViewHistogram()
-{
-   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
-   const int column = dsm->getSelectedDisplayColumn(surfaceModelIndex);
-   if ((column >= 0) && (column < mf->getNumberOfColumns())) {
-      const int numNodes = mf->getNumberOfNodes();
-      std::vector<float> values(numNodes);
-      for (int i = 0; i < numNodes; i++) {
-         values[i] = mf->getValue(i, column);
-      }
-      
-      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
-                                             mf->getColumnName(column),
-                                             values,
-                                             false,
-                                             false);
-      ghd->show();
-   }
-}
-
-/**
- * called when metric thresh column histogram pushbutton is pressed.
- */
-void 
-GuiDisplayControlDialog::metricThreshHistogram()
-{
-   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
-   const int column = dsm->getSelectedThresholdColumn(surfaceModelIndex);
-   if ((column >= 0) && (column < mf->getNumberOfColumns())) {
-      const int numNodes = mf->getNumberOfNodes();
-      std::vector<float> values(numNodes);
-      for (int i = 0; i < numNodes; i++) {
-         values[i] = mf->getValue(i, column);
-      }
-      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
-                                             mf->getColumnName(column),
-                                             values,
-                                             false,
-                                             false);
-      ghd->show();
-   }
-}
+}  
 
 /**
  * Called when a metric palette is selected using the metric palette combo box.
@@ -10924,6 +11996,21 @@ GuiDisplayControlDialog::metricPaletteSelection(int itemNum)
 void
 GuiDisplayControlDialog::metricAnimatePushButtonSelection()
 {
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+   
+   //
+   // Save main window caption
+   //   
+   const QString savedMainWindowCaption = GuiBrainModelOpenGL::getMainWindowCaption();
+   
+   //
+   // Turn off display lists during animation
+   //
+   PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+   const bool displayListStatusFlag = pf->getDisplayListsEnabled();
+   pf->setDisplayListsEnabled(false);
+   theMainWindow->getBrainSet()->clearAllDisplayLists();
+   
    MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
    const int numMetrics = mf->getNumberOfColumns();
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
@@ -10935,15 +12022,17 @@ GuiDisplayControlDialog::metricAnimatePushButtonSelection()
          //
          // Set current metrics
          //
-         dsm->setSelectedDisplayColumn(surfaceModelIndex, i);
-         dsm->setSelectedThresholdColumn(surfaceModelIndex, i);
-         if (pageOverlayUnderlaySurface != NULL) {
-            metricSelectionComboBox->setCurrentIndex(i);
+         dsm->setSelectedDisplayColumn(surfaceModelIndex, -1, i);
+         dsm->setSelectedThresholdColumn(surfaceModelIndex, -1, i);         
+         updateSurfaceOverlayWidgets();
+         
+         if (pageMetricSelection != NULL) {
+            QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(i));
+            rb->setChecked(true);
+            QRadioButton* rbt = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(
+               dsm->getSelectedThresholdColumn(surfaceModelIndex, 0)));
+            rbt->setChecked(true);
          }
-         QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(i));
-         rb->setChecked(true);
-         QRadioButton* rbt = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(dsm->getSelectedThresholdColumn(surfaceModelIndex)));
-         rbt->setChecked(true);
          
          //
          // Assign colors with current metric and save the colors
@@ -10951,7 +12040,7 @@ GuiDisplayControlDialog::metricAnimatePushButtonSelection()
          bsnc->assignColors();
          const int numNodes = mf->getNumberOfNodes();
          const int colorSize = numNodes * 3;
-         unsigned char* colors = new unsigned char[colorSize];
+         float* colors = new float[colorSize];
          for (int k = 0; k < numNodes; k++) {
             const unsigned char* c = bsnc->getNodeColor(surfaceModelIndex, k);
             colors[k * 3] = c[0];
@@ -10960,12 +12049,32 @@ GuiDisplayControlDialog::metricAnimatePushButtonSelection()
          }
          
          //
+         // Debugging information
+         //
+         if (DebugControl::getDebugOn()) {
+            const int nodeNum = DebugControl::getDebugNodeNumber();
+            if ((nodeNum >= 0) && (nodeNum < numNodes)) {
+               const unsigned char* c = bsnc->getNodeColor(surfaceModelIndex, nodeNum);
+               std::cout << "Node "
+                         << nodeNum
+                         << " color ("
+                         << static_cast<int>(c[0])
+                         << ","
+                         << static_cast<int>(c[1])
+                         << ","
+                         << static_cast<int>(c[2])
+                         << ")"
+                         << std::endl;
+            }
+         }
+         
+         //
          // Assign colors with next metric and save the colors
          //
-         dsm->setSelectedDisplayColumn(surfaceModelIndex, i + 1);
-         dsm->setSelectedThresholdColumn(surfaceModelIndex, i + 1);
+         dsm->setSelectedDisplayColumn(surfaceModelIndex, -1, i + 1);
+         dsm->setSelectedThresholdColumn(surfaceModelIndex, -1, i + 1);
          bsnc->assignColors();
-         unsigned char* colors2 = new unsigned char[colorSize];
+         float* colors2 = new float[colorSize];
          for (int k = 0; k < numNodes; k++) {
             const unsigned char* c = bsnc->getNodeColor(surfaceModelIndex, k);
             colors2[k * 3] = c[0];
@@ -10979,7 +12088,7 @@ GuiDisplayControlDialog::metricAnimatePushButtonSelection()
          const float steps = numInterpolateFrames + 1.0;
          float* colorDelta = new float[colorSize];
          for (int k = 0; k < colorSize; k++) {
-            colorDelta[k] = static_cast<float>(colors2[k] - colors[k]) / steps;
+            colorDelta[k] = (colors2[k] - colors[k]) / steps;
          }
          
          for (int j = 0; j <= numInterpolateFrames; j++) {
@@ -10988,29 +12097,54 @@ GuiDisplayControlDialog::metricAnimatePushButtonSelection()
                // Interpolate color deltas
                //
                const int m3 = m * 3;
-               const float rd = colorDelta[m3] * j;
-               const float gd = colorDelta[m3 + 1] * j;
-               const float bd = colorDelta[m3 + 2] * j;
+               const float fj = j;
+               const float rd = colorDelta[m3] * fj;
+               const float gd = colorDelta[m3 + 1] * fj;
+               const float bd = colorDelta[m3 + 2] * fj;
                
                //
                // Assign colors to the nodes
                //
-               const unsigned char n255 = 255;
+               const float n255 = 255.0;
                unsigned char rgb[3];
-               rgb[0] = std::min(static_cast<unsigned char>(colors[m3] + rd), n255);
-               rgb[1] = std::min(static_cast<unsigned char>(colors[m3 + 1] + gd), n255);
-               rgb[2] = std::min(static_cast<unsigned char>(colors[m3 + 2] + bd), n255);
+               rgb[0] = static_cast<unsigned char>(std::min(colors[m3] + rd, n255));
+               rgb[1] = static_cast<unsigned char>(std::min(colors[m3 + 1] + gd, n255));
+               rgb[2] = static_cast<unsigned char>(std::min(colors[m3 + 2] + bd, n255));
                bsnc->setNodeColor(surfaceModelIndex, m, rgb);
                
-/*
-               if (m == 26545) {
-                  std::cout << "metric# " << i << " frame: " << j 
-                            << " rgb: " << static_cast<int>(rgb[0])
-                            << " " << static_cast<int>(rgb[1])
-                            << " " << static_cast<int>(rgb[2])
-                            << std::endl;
+               //
+               // Debugging information
+               //
+               if (DebugControl::getDebugOn()) {
+                  const int nodeNum = DebugControl::getDebugNodeNumber();
+                  if (nodeNum == m) {
+                     const unsigned char* c = bsnc->getNodeColor(surfaceModelIndex, nodeNum);
+                     std::cout << "Node "
+                               << nodeNum
+                               << " color iteration "
+                               << j
+                               << " ("
+                               << static_cast<int>(c[0])
+                               << ","
+                               << static_cast<int>(c[1])
+                               << ","
+                               << static_cast<int>(c[2])
+                               << ")"
+                               << std::endl;
+                  }
                }
-*/
+            }
+            
+            if (DebugControl::getDebugOn()) {
+               const QString caption = 
+                  ("column (1..N) = " 
+                   + (QString::number(i + 1))
+                   + " of "
+                   + QString::number(numMetrics)
+                   + " interpolation = "
+                   + QString::number(j));
+               GuiBrainModelOpenGL::setMainWindowCaption(caption);
+               
             }
                
             //
@@ -11026,32 +12160,54 @@ GuiDisplayControlDialog::metricAnimatePushButtonSelection()
       //
       // Set to last metric and draw it
       //
-      dsm->setSelectedDisplayColumn(surfaceModelIndex, numMetrics - 1);
-      dsm->setSelectedThresholdColumn(surfaceModelIndex, numMetrics - 1);
-      if (pageOverlayUnderlaySurface != NULL) {
-         metricSelectionComboBox->setCurrentIndex(numMetrics - 1);
+      dsm->setSelectedDisplayColumn(surfaceModelIndex, -1, numMetrics - 1);
+      dsm->setSelectedThresholdColumn(surfaceModelIndex, -1, numMetrics - 1);
+      bsnc->assignColors();
+      
+      updateSurfaceOverlayWidgets();
+
+      if (pageMetricSelection != NULL) {
+         QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(numMetrics - 1));
+         rb->setChecked(true);
+         QRadioButton* rb2 = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(dsm->getSelectedThresholdColumn(surfaceModelIndex, 0)));
+         rb2->setChecked(true);
       }
-      QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(numMetrics - 1));
-      rb->setChecked(true);
-      QRadioButton* rb2 = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(dsm->getSelectedThresholdColumn(surfaceModelIndex)));
-      rb2->setChecked(true);
       GuiBrainModelOpenGL::updateAllGL(NULL); 
    }
    else {
       for (int i = 0; i < numMetrics; i++) {
-         dsm->setSelectedDisplayColumn(surfaceModelIndex, i);
-         dsm->setSelectedThresholdColumn(surfaceModelIndex, i);
-         if (pageOverlayUnderlaySurface != NULL) {
-            metricSelectionComboBox->setCurrentIndex(i);
+         dsm->setSelectedDisplayColumn(surfaceModelIndex, -1, i);
+         dsm->setSelectedThresholdColumn(surfaceModelIndex, -1, i);
+         
+         updateSurfaceOverlayWidgets();
+         
+         if (pageMetricSelection != NULL) {
+            QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(i));
+            rb->setChecked(true);
+            QRadioButton* rb2 = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(dsm->getSelectedThresholdColumn(surfaceModelIndex, 0)));
+            rb2->setChecked(true);
          }
-         QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(i));
-         rb->setChecked(true);
-         QRadioButton* rb2 = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(dsm->getSelectedThresholdColumn(surfaceModelIndex)));
-         rb2->setChecked(true);
          bsnc->assignColors();
          GuiBrainModelOpenGL::updateAllGL(NULL);   
       }
    }
+
+   //
+   // Restore main window caption
+   //   
+   GuiBrainModelOpenGL::setMainWindowCaption(savedMainWindowCaption);
+   
+   //
+   // Draw the surfaces
+   //
+   GuiBrainModelOpenGL::updateAllGL(NULL); 
+
+   //
+   // Restore display list status
+   //
+   pf->setDisplayListsEnabled(displayListStatusFlag);
+   
+   QApplication::restoreOverrideCursor();
 }
 
 /**
@@ -11070,14 +12226,16 @@ GuiDisplayControlDialog::updateMetricSelectionPage()
    MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
    if (mf->getNumberOfColumns() > 0) {
       const int numView = metricViewButtonGroup->buttons().count();
-      const int viewCol = dsm->getSelectedDisplayColumn(surfaceModelIndex);
+      const int viewCol = dsm->getSelectedDisplayColumn(surfaceModelIndex,
+               overlayNumberComboBox->currentIndex());
       if ((viewCol >= 0) && (viewCol < numView)) {
          QRadioButton* rb = dynamic_cast<QRadioButton*>(metricViewButtonGroup->button(viewCol));
          rb->setChecked(true);
       }
       
       const int numThresh = metricThresholdButtonGroup->buttons().count();
-      const int threshCol = dsm->getSelectedThresholdColumn(surfaceModelIndex);
+      const int threshCol = dsm->getSelectedThresholdColumn(surfaceModelIndex,
+             overlayNumberComboBox->currentIndex());
       if ((threshCol >= 0) && (threshCol < numThresh)) {
          QRadioButton* rb2 = dynamic_cast<QRadioButton*>(metricThresholdButtonGroup->button(threshCol));
          rb2->setChecked(true);      
@@ -11087,6 +12245,32 @@ GuiDisplayControlDialog::updateMetricSelectionPage()
    pageMetricSelection->setEnabled(validMetricData);
 }
 
+/**
+ * update metric settings threshold column combo box.
+ */
+void 
+GuiDisplayControlDialog::updateMetricSettingsThresholdColumnComboBox()
+{
+   if (pageMetricSettings == NULL) {
+      return;
+   }
+   int columnNumber = -1;
+   
+   BrainSet* brainSet = theMainWindow->getBrainSet();
+   for (int i = 0; i < brainSet->getNumberOfSurfaceOverlays(); i++) {
+      BrainModelSurfaceOverlay* bmsOverlay = brainSet->getSurfaceOverlay(i);
+      if (bmsOverlay->getOverlay(surfaceModelIndex) == BrainModelSurfaceOverlay::OVERLAY_METRIC) {
+         columnNumber = bmsOverlay->getThresholdColumnSelected(surfaceModelIndex);
+      }
+   }
+   
+   if ((columnNumber >= 0) &&
+       (columnNumber < brainSet->getSurfaceShapeFile()->getNumberOfColumns())) {
+      metricThresholdSettingColumnSelectionComboBox->setCurrentIndex(columnNumber);
+      slotUpateMetricThresholdSettingValues();
+   }
+}
+      
 /**
  * update the metric settings page.
  */
@@ -11101,28 +12285,12 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
    if (mf->getNumberOfColumns() > 0) {
-      float colMin, colMax;
-      mf->getDataColumnMinMax(dsm->getSelectedDisplayColumn(surfaceModelIndex), colMin, colMax);
-      metricViewMinimumLabel->setText(QString::number(colMin, 'f', 6));
-      metricViewMaximumLabel->setText(QString::number(colMax, 'f', 6));
-      mf->getDataColumnMinMax(dsm->getSelectedThresholdColumn(surfaceModelIndex), colMin, colMax);
-      metricThreshMinimumLabel->setText(QString::number(colMin, 'f', 6));
-      metricThreshMaximumLabel->setText(QString::number(colMax, 'f', 6));
+      metricThresholdSettingColumnSelectionComboBox->updateComboBox();
       
-      metricViewLabel->setText(mf->getColumnName(dsm->getSelectedDisplayColumn(surfaceModelIndex)));
-      metricThresholdLabel->setText(mf->getColumnName(dsm->getSelectedThresholdColumn(surfaceModelIndex)));
-
-      float negThresh, posThresh;
-      mf->getColumnThresholding(dsm->getSelectedThresholdColumn(surfaceModelIndex),
-                                                                 negThresh,
-                                                                 posThresh);
-      metricThresholdColumnPositiveDoubleSpinBox->setValue(posThresh);
-      metricThresholdColumnNegativeDoubleSpinBox->setValue(negThresh);
-      mf->getColumnAverageThresholding(dsm->getSelectedThresholdColumn(surfaceModelIndex),
-                                                                       negThresh,
-                                                                       posThresh);
-      metricThresholdAveragePositiveDoubleSpinBox->setValue(posThresh);
-      metricThresholdAverageNegativeDoubleSpinBox->setValue(negThresh);
+      //
+      // Threshold settings
+      //
+      slotUpateMetricThresholdSettingValues();
    }
    float negThresh, posThresh;
    dsm->getUserThresholdingValues(negThresh, posThresh);
@@ -11134,8 +12302,11 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
    // Color Mapping auto scale radio buttons, pos/neg max line edits, and interpolate radio button
    //
    switch(dsm->getSelectedOverlayScale()) {
-      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC:
+      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO:
          metricFileAutoScaleRadioButton->setChecked(true);
+         break;
+      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
+         metricFileAutoScaleSpecifiedColumnRadioButton->setChecked(true);
          break;
       case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME:
          metricFuncVolumeAutoScaleRadioButton->setChecked(true);
@@ -11145,6 +12316,10 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
          break;
    }
    
+   metricFileAutoScaleSpecifiedColumnSelectionComboBox->updateComboBox();
+   metricFileAutoScaleSpecifiedColumnSelectionComboBox->setCurrentIndex(
+      dsm->getOverlayScaleSpecifiedColumnNumber());
+      
    float posMinMetric = 0.0, posMaxMetric = 0.0, negMinMetric = 0.0, negMaxMetric = 0.0;
    dsm->getUserScaleMinMax(posMinMetric, posMaxMetric, negMinMetric, negMaxMetric);
    metricColorPositiveMinDoubleSpinBox->setValue(posMinMetric);
@@ -11153,13 +12328,6 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
    metricColorNegativeMaxDoubleSpinBox->setValue(negMaxMetric);
    
    metricColorInterpolateCheckBox->setChecked(dsm->getInterpolateColors());
-   
-   metricGraphPopupComboBox->setCurrentIndex(dsm->getMDataPlotOnNodeID());
-   float manMin, manMax;
-   const bool manFlag = dsm->getDataPlotManualScaling(manMin, manMax);
-   metricGraphManualScaleCheckBox->setChecked(manFlag);
-   metricGraphManualScaleMinDoubleSpinBox->setValue(manMin);
-   metricGraphManualScaleMaxDoubleSpinBox->setValue(manMax);
    
    //
    // Threshold positive and negative
@@ -11205,46 +12373,6 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
 }
       
 /**
- * update metric overlay/underlay selection.
- */
-void 
-GuiDisplayControlDialog::updateMetricOverlayUnderlaySelection()
-{
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
-   
-   //
-   // Update metric combo box on overlay/underlay panel and the 
-   // two combo boxes on the metric sub panel
-   //
-   metricSelectionComboBox->clear();
-   
-   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
-   bool valid = false;
-   if (mf->getNumberOfColumns() > 0) {
-      valid = true;
-      for (int i = 0; i < mf->getNumberOfColumns(); i++) {
-         metricSelectionComboBox->addItem(mf->getColumnName(i));
-      }
-   
-      metricSelectionComboBox->setCurrentIndex(dsm->getSelectedDisplayColumn(surfaceModelIndex));
-      const int colNum = dsm->getSelectedDisplayColumn(surfaceModelIndex);
-      if ((colNum >= 0) && (colNum < mf->getNumberOfColumns())) {
-         metricSelectionComboBox->setToolTip( mf->getColumnName(colNum));
-      }
-   }
-   
-   primaryOverlayMetricButton->setEnabled(validMetricData);
-   secondaryOverlayMetricButton->setEnabled(validMetricData);
-   underlayMetricButton->setEnabled(validMetricData);
-   metricSelectionLabel->setEnabled(validMetricData);
-   metricSelectionComboBox->setEnabled(validMetricData);
-   metricInfoPushButton->setEnabled(validMetricData);
-}
-
-/**
  * Update all metric items in the dialog.
  */
 void
@@ -11255,13 +12383,46 @@ GuiDisplayControlDialog::updateMetricItems()
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    metricApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsm->getApplySelectionToLeftAndRightStructuresFlag());
    
-   
-   updateMetricOverlayUnderlaySelection();
+   updateSurfaceOverlayWidgets();
    
    updateMetricSelectionPage();
    updateMetricSettingsPage();
+   updateMetricSettingsThresholdColumnComboBox();
+   updateMetricMiscellaneousPage();
 }
 
+/**
+ * called when metric threshold setting column combo box value changed.
+ */
+void 
+GuiDisplayControlDialog::slotUpateMetricThresholdSettingValues()
+{
+   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
+   const int threshColumnNumber = metricThresholdSettingColumnSelectionComboBox->currentIndex();
+   if ((threshColumnNumber >= 0) &&
+       (threshColumnNumber < mf->getNumberOfColumns())) {
+      float negThresh, posThresh;
+      mf->getColumnThresholding(threshColumnNumber, 
+                                negThresh,
+                                posThresh);
+      metricThresholdColumnPositiveDoubleSpinBox->blockSignals(true);
+      metricThresholdColumnPositiveDoubleSpinBox->setValue(posThresh);
+      metricThresholdColumnPositiveDoubleSpinBox->blockSignals(false);
+      metricThresholdColumnNegativeDoubleSpinBox->blockSignals(true);
+      metricThresholdColumnNegativeDoubleSpinBox->setValue(negThresh);
+      metricThresholdColumnNegativeDoubleSpinBox->blockSignals(false);
+      mf->getColumnAverageThresholding(threshColumnNumber, 
+                                       negThresh,
+                                       posThresh);
+      metricThresholdAveragePositiveDoubleSpinBox->blockSignals(true);
+      metricThresholdAveragePositiveDoubleSpinBox->setValue(posThresh);
+      metricThresholdAveragePositiveDoubleSpinBox->blockSignals(false);
+      metricThresholdAverageNegativeDoubleSpinBox->blockSignals(true);
+      metricThresholdAverageNegativeDoubleSpinBox->setValue(negThresh);
+      metricThresholdAverageNegativeDoubleSpinBox->blockSignals(false);
+   }
+}
+      
 /**
  * read the metric settings page.
  */
@@ -11293,7 +12454,10 @@ GuiDisplayControlDialog::readMetricSettingsPage()
    // Get auto/user scale, pos/neg max, and interpolate color mapping
    //
    if (metricFileAutoScaleRadioButton->isChecked()) {
-      dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_METRIC);
+      dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO);
+   }
+   else if (metricFileAutoScaleSpecifiedColumnRadioButton->isChecked()) {
+      dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN);
    }
    else if (metricFuncVolumeAutoScaleRadioButton->isChecked()) {
       dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_FUNC_VOLUME);
@@ -11301,6 +12465,8 @@ GuiDisplayControlDialog::readMetricSettingsPage()
    else {
       dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_USER);
    }
+   dsm->setOverlayScaleSpecifiedColumnNumber(metricFileAutoScaleSpecifiedColumnSelectionComboBox->currentIndex());
+   
    dsm->setUserScaleMinMax(metricColorPositiveMinDoubleSpinBox->value(),
                            metricColorPositiveMaxDoubleSpinBox->value(),
                            metricColorNegativeMinDoubleSpinBox->value(),
@@ -11318,18 +12484,14 @@ GuiDisplayControlDialog::readMetricSettingsPage()
    dsm->setSelectedPaletteIndex(metricPaletteComboBox->currentIndex());
    dsm->setDisplayColorBar(metricDisplayColorBarCheckBox->isChecked());
 
-   dsm->setDataPlotOnNodeID(static_cast<DisplaySettingsMetric::METRIC_DATA_PLOT>(
-                                              metricGraphPopupComboBox->currentIndex()));
-   dsm->setDataPlotManualScaling(metricGraphManualScaleCheckBox->isChecked(),
-                                 metricGraphManualScaleMinDoubleSpinBox->value(),
-                                 metricGraphManualScaleMaxDoubleSpinBox->value());
-
    MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
-   if (mf->getNumberOfColumns() > 0) {
-      mf->setColumnThresholding(dsm->getSelectedThresholdColumn(surfaceModelIndex),
+   const int threshColumnNumber = metricThresholdSettingColumnSelectionComboBox->currentIndex();
+   if ((threshColumnNumber >= 0) &&
+       (threshColumnNumber < mf->getNumberOfColumns())) {
+      mf->setColumnThresholding(threshColumnNumber,
                                 metricThresholdColumnNegativeDoubleSpinBox->value(),
                                 metricThresholdColumnPositiveDoubleSpinBox->value());
-      mf->setColumnAverageThresholding(dsm->getSelectedThresholdColumn(surfaceModelIndex),
+      mf->setColumnAverageThresholding(threshColumnNumber,
                                 metricThresholdAverageNegativeDoubleSpinBox->value(),
                                 metricThresholdAveragePositiveDoubleSpinBox->value());
    }
@@ -11372,13 +12534,12 @@ GuiDisplayControlDialog::readMetricSelectionPage()
             const QString name(metricColumnNameLineEdits[i]->text());
             if (name != mf->getColumnName(i)) {
                mf->setColumnName(i, name);
-               if (pageOverlayUnderlaySurface != NULL) {
-                  metricSelectionComboBox->setItemText(i, name);
-               }
             }
          }
       }
    }
+
+   updateSurfaceOverlayWidgets();
    
    GuiFilesModified fm;
    fm.setMetricModified();
@@ -11436,8 +12597,12 @@ void
 GuiDisplayControlDialog::createAndUpdateBorderColorCheckBoxes()
 {
    BorderColorFile* borderColors = theMainWindow->getBrainSet()->getBorderColorFile();
-   numValidBorderColors = borderColors->getNumberOfColors();
+   //numValidBorderColors = borderColors->getNumberOfColors();
    
+   std::vector<int> sortedBorderColorIndices;
+   borderColors->getColorIndicesSortedByName(sortedBorderColorIndices, false);
+   numValidBorderColors = static_cast<int>(sortedBorderColorIndices.size());
+
    const int numExistingCheckBoxes = static_cast<int>(borderColorCheckBoxes.size());
    
    if (borderColorGridLayout == NULL) {
@@ -11463,7 +12628,9 @@ GuiDisplayControlDialog::createAndUpdateBorderColorCheckBoxes()
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidBorderColors) {
-         borderColorCheckBoxes[i]->setText(borderColors->getColorNameByIndex(i));
+         const int colorIndex = sortedBorderColorIndices[i];
+         borderColorCheckBoxesColorIndex[i] = colorIndex;
+         borderColorCheckBoxes[i]->setText(borderColors->getColorNameByIndex(colorIndex));
          borderColorCheckBoxes[i]->show();
       }
    }
@@ -11472,7 +12639,9 @@ GuiDisplayControlDialog::createAndUpdateBorderColorCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidBorderColors; j++) {
-      QCheckBox* cb = new QCheckBox(borderColors->getColorNameByIndex(j));
+      const int colorIndex = sortedBorderColorIndices[j];
+      borderColorCheckBoxesColorIndex.push_back(colorIndex);
+      QCheckBox* cb = new QCheckBox(borderColors->getColorNameByIndex(colorIndex));
       borderColorCheckBoxes.push_back(cb);
       borderColorButtonGroup->addButton(cb, j);      
       borderColorGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
@@ -11560,7 +12729,7 @@ GuiDisplayControlDialog::createAndUpdateBorderNameCheckBoxes()
 {
    borderNames.clear();
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
-   bmbs->getAllBorderNames(borderNames);
+   bmbs->getAllBorderNames(borderNames, false);
    
    numValidBorderNames = static_cast<int>(borderNames.size());
    const int numExistingCheckBoxes = static_cast<int>(borderNameCheckBoxes.size());
@@ -11849,7 +13018,8 @@ GuiDisplayControlDialog::updateBorderColorPage(const bool filesChanged)
    const int numColors = borderColors->getNumberOfColors();   
    if (numColors == numValidBorderColors) {
       for (int i = 0; i < numValidBorderColors; i++) {
-         borderColorCheckBoxes[i]->setChecked(borderColors->getSelected(i));
+         const int colorIndex = borderColorCheckBoxesColorIndex[i];
+         borderColorCheckBoxes[i]->setChecked(borderColors->getSelected(colorIndex));
       }
    }
    else {
@@ -11917,7 +13087,7 @@ GuiDisplayControlDialog::updateBorderItems(const bool filesChanged)
    
    DisplaySettingsBorders* dsb = theMainWindow->getBrainSet()->getDisplaySettingsBorders();
    
-   if (pageOverlayUnderlaySurface != NULL) {
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
       layersBorderCheckBox->setChecked(dsb->getDisplayBorders());
       layersBorderCheckBox->setEnabled(validBorderData);
    }
@@ -11940,7 +13110,7 @@ GuiDisplayControlDialog::showBordersToggleSlot(bool b)
       showBordersCheckBox->setChecked(b);
       showBordersCheckBox->blockSignals(false);
    }
-   if (pageOverlayUnderlaySurface != NULL) {
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
       layersBorderCheckBox->blockSignals(true);
       layersBorderCheckBox->setChecked(b);
       layersBorderCheckBox->blockSignals(false);
@@ -12003,7 +13173,8 @@ GuiDisplayControlDialog::readBorderColorPage()
    const int numColors = borderColors->getNumberOfColors();   
    if (numColors == numValidBorderColors) {
       for (int i = 0; i < numValidBorderColors; i++) {
-         borderColors->setSelected(i, borderColorCheckBoxes[i]->isChecked());
+         const int colorIndex = borderColorCheckBoxesColorIndex[i];
+         borderColors->setSelected(colorIndex, borderColorCheckBoxes[i]->isChecked());
       }
    }
    else {
@@ -12340,6 +13511,15 @@ GuiDisplayControlDialog::slotFociColorModeComboBox(int /*i*/)
 }
       
 /**
+ * called when foci name update button is pressed.
+ */
+void 
+GuiDisplayControlDialog::fociNamesUpdateButtonPressed()
+{
+   updateFociNamePage(true);
+}
+      
+/**
  * create the foci name page.
  */
 void 
@@ -12349,6 +13529,15 @@ GuiDisplayControlDialog::createFociNamePage()
    fociSubPageNamesLayout = new QVBoxLayout(pageFociName);
 
    pageFociNameWidgetGroup = new WuQWidgetGroup(this);
+   
+   //
+   // Show only foci for displayed names checkbox
+   //
+   fociShowNamesOnlyForDisplayedFociCheckBox = 
+      new QCheckBox("List Names Only for Displayed Foci");
+   fociShowNamesOnlyForDisplayedFociCheckBox->setToolTip(
+      "You must press the \"Update\" button\n"
+      "for this option to take effect.");
    
    //
    // All off and all on pushbuttons
@@ -12361,9 +13550,15 @@ GuiDisplayControlDialog::createFociNamePage()
    fociNamesAllOffButton->setAutoDefault(false);
    QObject::connect(fociNamesAllOffButton, SIGNAL(clicked()),
                     this, SLOT(fociNamesAllOff()));
+   QPushButton* fociNameUpdateButton = new QPushButton("Update");
+   fociNameUpdateButton->setAutoDefault(false);
+   QObject::connect(fociNameUpdateButton, SIGNAL(clicked()),
+                    this, SLOT(fociNamesUpdateButtonPressed()));
    QHBoxLayout* allOnOffLayout = new QHBoxLayout;
    allOnOffLayout->addWidget(fociNamesAllOnButton);
    allOnOffLayout->addWidget(fociNamesAllOffButton);
+   allOnOffLayout->addWidget(fociNameUpdateButton);
+   allOnOffLayout->addWidget(fociShowNamesOnlyForDisplayedFociCheckBox);
    allOnOffLayout->addStretch();
    
    //
@@ -12399,14 +13594,22 @@ GuiDisplayControlDialog::createAndUpdateFociNamesCheckBoxes()
 {
    const CellProjectionFile* cpf = theMainWindow->getBrainSet()->getFociProjectionFile();
    const int numExistingCheckBoxes = fociNamesCheckBoxes.size();
-   const int numValidNames = cpf->getNumberOfCellUniqueNames();
-   
+   //const int numValidNames = cpf->getNumberOfCellUniqueNames();
+
+   std::vector<int> sortedFociUniqueNameIndices;
+   cpf->getCellUniqueNameIndicesSortedByName(sortedFociUniqueNameIndices, 
+                                             false,
+                                             fociShowNamesOnlyForDisplayedFociCheckBox->isChecked());
+   const int numValidNames = static_cast<int>(sortedFociUniqueNameIndices.size());
+
    //
    // Update existing check boxes
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidNames) {
-         fociNamesCheckBoxes[i]->setText(cpf->getCellUniqueNameByIndex(i));
+         const int nameIndex = sortedFociUniqueNameIndices[i];
+         fociNamesCheckBoxesNameIndex[i] = nameIndex;
+         fociNamesCheckBoxes[i]->setText(cpf->getCellUniqueNameByIndex(nameIndex));
          fociNamesCheckBoxes[i]->show();
       }
    }
@@ -12415,13 +13618,20 @@ GuiDisplayControlDialog::createAndUpdateFociNamesCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidNames; j++) {
-      QCheckBox* cb = new QCheckBox(cpf->getCellUniqueNameByIndex(j));
+      const int nameIndex = sortedFociUniqueNameIndices[j];
+      fociNamesCheckBoxesNameIndex.push_back(nameIndex);
+      QCheckBox* cb = new QCheckBox(cpf->getCellUniqueNameByIndex(nameIndex));
       fociNamesCheckBoxes.push_back(cb);
       fociNamesGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
       fociNamesButtonGroup->addButton(cb);
       cb->show();
       pageFociNameWidgetGroup->addWidget(cb);
    }
+   
+   //
+   // Set number of displayed checkboxes
+   //
+   numberOfFociNameCheckBoxesShownInGUI = numValidNames;
    
    //
    // Hide existing checkboxes that are not needed
@@ -12438,8 +13648,8 @@ void
 GuiDisplayControlDialog::fociNamesAllOn()
 {
    fociNamesButtonGroup->blockSignals(true);
-   const int numNames = fociNamesCheckBoxes.size();
-   for (int n = 0; n < numNames; n++) {
+   //const int numNames = fociNamesCheckBoxes.size();
+   for (int n = 0; n < numberOfFociNameCheckBoxesShownInGUI; n++) {
       fociNamesCheckBoxes[n]->setChecked(true);
    }
    fociNamesButtonGroup->blockSignals(false);
@@ -12453,8 +13663,8 @@ void
 GuiDisplayControlDialog::fociNamesAllOff()
 {
    fociNamesButtonGroup->blockSignals(true);
-   const int numNames = fociNamesCheckBoxes.size();
-   for (int n = 0; n < numNames; n++) {
+   //const int numNames = fociNamesCheckBoxes.size();
+   for (int n = 0; n < numberOfFociNameCheckBoxesShownInGUI; n++) {
       fociNamesCheckBoxes[n]->setChecked(false);
    }
    fociNamesButtonGroup->blockSignals(false);
@@ -12472,6 +13682,16 @@ GuiDisplayControlDialog::createFociKeywordPage()
    
    pageFociKeywordsWidgetGroup = new WuQWidgetGroup(this);
    
+   //
+   // Show keywords only for displayed foci
+   // DO NOT CONNECT TO READ PAGE
+   //
+   fociShowKeywordsOnlyForDisplayedFociCheckBox
+      = new QCheckBox("List Keywords Only for Displayed Foci");
+   fociShowKeywordsOnlyForDisplayedFociCheckBox->setToolTip(
+      "You must press the \"Update\" button\n"
+      "for this option to take effect.");
+      
    //
    // All off and all on pushbuttons
    //
@@ -12494,6 +13714,7 @@ GuiDisplayControlDialog::createFociKeywordPage()
    allOnOffLayout->addWidget(fociKeywordsAllOnButton);
    allOnOffLayout->addWidget(fociKeywordsAllOffButton);
    allOnOffLayout->addWidget(fociKeywordsUpdateButton);
+   allOnOffLayout->addWidget(fociShowKeywordsOnlyForDisplayedFociCheckBox);
    allOnOffLayout->addStretch();
    
    fociWithoutLinkToStudyWithKeywordsCheckBox = new QCheckBox("Show Foci Without Link to Study With Keywords");
@@ -12554,8 +13775,8 @@ void
 GuiDisplayControlDialog::fociKeywordsAllOn()
 {
    fociKeywordButtonGroup->blockSignals(true);
-   const int numKeywords = fociKeywordCheckBoxes.size();
-   for (int k = 0; k < numKeywords; k++) {
+   //const int numKeywords = fociKeywordCheckBoxes.size();
+   for (int k = 0; k < numberOfFociKeywordCheckBoxesShownInGUI; k++) {
       fociKeywordCheckBoxes[k]->setChecked(true);
    }   
    fociKeywordButtonGroup->blockSignals(false);
@@ -12569,8 +13790,8 @@ void
 GuiDisplayControlDialog::fociKeywordsAllOff()
 {
    fociKeywordButtonGroup->blockSignals(true);
-   const int numKeywords = fociKeywordCheckBoxes.size();
-   for (int k = 0; k < numKeywords; k++) {
+   //const int numKeywords = fociKeywordCheckBoxes.size();
+   for (int k = 0; k < numberOfFociKeywordCheckBoxesShownInGUI; k++) {
       fociKeywordCheckBoxes[k]->setChecked(false);
    }   
    fociKeywordButtonGroup->blockSignals(false);
@@ -12585,14 +13806,22 @@ GuiDisplayControlDialog::createAndUpdateFociKeywordCheckBoxes()
 {
    const int numExistingCheckBoxes = fociKeywordCheckBoxes.size();
    const DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
-   const int numValidKeywords = dssmd->getNumberOfKeywords();
+   //const int numValidKeywords = dssmd->getNumberOfKeywords();
    
+   std::vector<int> sortedFociKeywordIndices;
+   dssmd->getKeywordIndicesSortedByName(sortedFociKeywordIndices, 
+                                        false,
+                                        fociShowKeywordsOnlyForDisplayedFociCheckBox->isChecked());
+   const int numValidKeywords = static_cast<int>(sortedFociKeywordIndices.size());
+
    //
    // Update existing check boxes
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidKeywords) {
-         fociKeywordCheckBoxes[i]->setText(dssmd->getKeywordNameByIndex(i));
+         const int nameIndex = sortedFociKeywordIndices[i];
+         fociKeywordCheckBoxesKeywordIndex[i] = nameIndex;
+         fociKeywordCheckBoxes[i]->setText(dssmd->getKeywordNameByIndex(nameIndex));
          fociKeywordCheckBoxes[i]->show();
       }
    }
@@ -12601,13 +13830,20 @@ GuiDisplayControlDialog::createAndUpdateFociKeywordCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidKeywords; j++) {
-      QCheckBox* cb = new QCheckBox(dssmd->getKeywordNameByIndex(j));
+      const int keywordIndex = sortedFociKeywordIndices[j];
+      fociKeywordCheckBoxesKeywordIndex.push_back(keywordIndex);
+      QCheckBox* cb = new QCheckBox(dssmd->getKeywordNameByIndex(keywordIndex));
       fociKeywordCheckBoxes.push_back(cb);
       fociKeywordGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
       fociKeywordButtonGroup->addButton(cb);
       cb->show();
       pageFociKeywordsWidgetGroup->addWidget(cb);
    }
+   
+   //
+   // Update number of displayed checkboxes
+   //
+   numberOfFociKeywordCheckBoxesShownInGUI = numValidKeywords;
    
    //
    // Hide existing checkboxes that are not needed.
@@ -12628,6 +13864,16 @@ GuiDisplayControlDialog::createFociTablePage()
    
    pageFociTableWidgetGroup = new WuQWidgetGroup(this);
    
+   //
+   // Show keywords only for displayed foci
+   // DO NOT CONNECT TO READ PAGE
+   //
+   fociShowTablesOnlyForDisplayedFociCheckBox
+      = new QCheckBox("List Tables Only for Displayed Foci");
+   fociShowTablesOnlyForDisplayedFociCheckBox->setToolTip(
+      "You must press the \"Update\" button\n"
+      "for this option to take effect.");
+      
    //
    // All off and all on pushbuttons
    //
@@ -12650,6 +13896,7 @@ GuiDisplayControlDialog::createFociTablePage()
    allOnOffLayout->addWidget(fociTablesAllOnButton);
    allOnOffLayout->addWidget(fociTablesAllOffButton);
    allOnOffLayout->addWidget(fociTablesUpdateButton);
+   allOnOffLayout->addWidget(fociShowTablesOnlyForDisplayedFociCheckBox);
    allOnOffLayout->addStretch();
 
    fociWithoutLinkToStudyWithTableSubHeaderCheckBox = new QCheckBox("Show Foci Without Link to Table Subheader");
@@ -12658,7 +13905,6 @@ GuiDisplayControlDialog::createFociTablePage()
                                                           "will be displayed.");
    QObject::connect(fociWithoutLinkToStudyWithTableSubHeaderCheckBox, SIGNAL(toggled(bool)),
                     this, SLOT(readFociTablePage()));
-   pageFociTableWidgetGroup->addWidget(fociWithoutLinkToStudyWithTableSubHeaderCheckBox);
                     
    //
    // Tables check box layout
@@ -12693,8 +13939,8 @@ void
 GuiDisplayControlDialog::fociTablesAllOn()
 {
    fociTablesButtonGroup->blockSignals(true);
-   const int numTables = fociTablesCheckBoxes.size();
-   for (int k = 0; k < numTables; k++) {
+   //const int numTables = fociTablesCheckBoxes.size();
+   for (int k = 0; k < numberOfFociTableCheckBoxesShownInGUI; k++) {
       fociTablesCheckBoxes[k]->setChecked(true);
    }   
    fociTablesButtonGroup->blockSignals(false);
@@ -12708,8 +13954,8 @@ void
 GuiDisplayControlDialog::fociTablesAllOff()
 {
    fociTablesButtonGroup->blockSignals(true);
-   const int numTables = fociTablesCheckBoxes.size();
-   for (int k = 0; k < numTables; k++) {
+   //const int numTables = fociTablesCheckBoxes.size();
+   for (int k = 0; k < numberOfFociTableCheckBoxesShownInGUI; k++) {
       fociTablesCheckBoxes[k]->setChecked(false);
    }   
    fociTablesButtonGroup->blockSignals(false);
@@ -12724,14 +13970,22 @@ GuiDisplayControlDialog::createAndUpdateFociTableCheckBoxes()
 {
    const int numExistingCheckBoxes = fociTablesCheckBoxes.size();
    const DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
-   const int numValidTables = dssmd->getNumberOfSubHeaderNames();
+   //const int numValidTables = dssmd->getNumberOfSubHeaderNames();
    
+   std::vector<int> sortedFociTableNameIndices;
+   dssmd->getSubHeaderIndicesSortedByName(sortedFociTableNameIndices, 
+                                          false,
+                                          fociShowTablesOnlyForDisplayedFociCheckBox->isChecked());
+   const int numValidTables = static_cast<int>(sortedFociTableNameIndices.size());
+
    //
    // Update existing check boxes
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidTables) {
-         fociTablesCheckBoxes[i]->setText(dssmd->getSubHeaderNameByIndex(i));
+         const int tableIndex = sortedFociTableNameIndices[i];
+         fociTablesCheckBoxesTableIndex[i] = tableIndex;
+         fociTablesCheckBoxes[i]->setText(dssmd->getSubHeaderNameByIndex(tableIndex));
          fociTablesCheckBoxes[i]->show();
       }
    }
@@ -12740,13 +13994,20 @@ GuiDisplayControlDialog::createAndUpdateFociTableCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidTables; j++) {
-      QCheckBox* cb = new QCheckBox(dssmd->getSubHeaderNameByIndex(j));
+      const int tableIndex = sortedFociTableNameIndices[j];
+      fociTablesCheckBoxesTableIndex.push_back(tableIndex);
+      QCheckBox* cb = new QCheckBox(dssmd->getSubHeaderNameByIndex(tableIndex));
       fociTablesCheckBoxes.push_back(cb);
       fociTablesGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
       fociTablesButtonGroup->addButton(cb);
       cb->show();
       pageFociTableWidgetGroup->addWidget(cb);
    }
+   
+   //
+   // Number of displayed checkboxes
+   //
+   numberOfFociTableCheckBoxesShownInGUI = numValidTables;
    
    //
    // Hide existing checkboxes that are not needed.
@@ -12771,6 +14032,15 @@ GuiDisplayControlDialog::createFociClassPage()
    pageFociClassWidgetGroup = new WuQWidgetGroup(this);
    
    //
+   // Show only foci for displayed classes checkbox
+   //
+   fociShowClassesOnlyForDisplayedFociCheckBox = 
+      new QCheckBox("List Classes Only for Displayed Foci");
+   fociShowClassesOnlyForDisplayedFociCheckBox->setToolTip(
+      "You must press the \"Update\" button\n"
+      "for this option to take effect.");
+   
+   //
    // All off and all on pushbuttons
    //
    QPushButton* fociClassAllOnButton = new QPushButton("All On");
@@ -12781,10 +14051,16 @@ GuiDisplayControlDialog::createFociClassPage()
    fociClassAllOffButton->setAutoDefault(false);
    QObject::connect(fociClassAllOffButton, SIGNAL(clicked()),
                     this, SLOT(fociClassAllOff()));
+   QPushButton* fociClassUpdateButton = new QPushButton("Update");
+   fociClassUpdateButton->setAutoDefault(false);
+   QObject::connect(fociClassUpdateButton, SIGNAL(clicked()),
+                    this, SLOT(fociClassUpdateButtonPressed()));
                     
    QHBoxLayout* allOnOffLayout = new QHBoxLayout;
    allOnOffLayout->addWidget(fociClassAllOnButton);
    allOnOffLayout->addWidget(fociClassAllOffButton);
+   allOnOffLayout->addWidget(fociClassUpdateButton);
+   allOnOffLayout->addWidget(fociShowClassesOnlyForDisplayedFociCheckBox);
    allOnOffLayout->addStretch();
    
    fociWithoutClassAssignmentsCheckBox = new QCheckBox("Show Foci Without Class Assignments");
@@ -12812,7 +14088,13 @@ void
 GuiDisplayControlDialog::createAndUpdateFociClassCheckBoxes()
 {
    FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
-   numValidFociClasses = ff->getNumberOfCellClasses();
+   //numValidFociClasses = ff->getNumberOfCellClasses();
+   
+   std::vector<int> sortedFociClassIndices;
+   ff->getCellClassIndicesSortedByName(sortedFociClassIndices, 
+                                       false,
+                                       fociShowClassesOnlyForDisplayedFociCheckBox->isChecked());
+   const int numValidFociClasses = static_cast<int>(sortedFociClassIndices.size());
    
    const int numExistingCheckBoxes = static_cast<int>(fociClassCheckBoxes.size());
    
@@ -12839,10 +14121,12 @@ GuiDisplayControlDialog::createAndUpdateFociClassCheckBoxes()
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidFociClasses) {
-         QString name(ff->getCellClassNameByIndex(i));
+         const int classIndex = sortedFociClassIndices[i];
+         QString name(ff->getCellClassNameByIndex(classIndex));
          if (name.isEmpty()) {
             name = "\"Foci that are NOT members of any class\"";
          }
+         fociClassCheckBoxesColorIndex[i] = classIndex;
          fociClassCheckBoxes[i]->setText(name);
          fociClassCheckBoxes[i]->show();
       }
@@ -12852,13 +14136,20 @@ GuiDisplayControlDialog::createAndUpdateFociClassCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidFociClasses; j++) {
-      QCheckBox* cb = new QCheckBox(ff->getCellClassNameByIndex(j));
+      const int classIndex = sortedFociClassIndices[j];
+      fociClassCheckBoxesColorIndex.push_back(classIndex);
+      QCheckBox* cb = new QCheckBox(ff->getCellClassNameByIndex(classIndex));
       fociClassCheckBoxes.push_back(cb);
       fociClassButtonGroup->addButton(cb, j);
       fociClassGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
       cb->show();
       pageFociClassWidgetGroup->addWidget(cb);
    }
+   
+   //
+   // Set number of classes displayed
+   //
+   numberOfFociClassCheckBoxesShownInGUI = numValidFociClasses;
    
    //
    // Hide existing checkboxes that are not needed.
@@ -12874,28 +14165,146 @@ GuiDisplayControlDialog::createAndUpdateFociClassCheckBoxes()
 void
 GuiDisplayControlDialog::fociClassAllOn()
 {
-   FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
-   if (ff != NULL) {
-      ff->setAllCellClassStatus(true);
+   //FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
+   //if (ff != NULL) {
+      //ff->setAllCellClassStatus(true);
+   //}
+   //updateFociItems();
+   fociClassButtonGroup->blockSignals(true);
+   for (int i = 0; i < numberOfFociClassCheckBoxesShownInGUI; i++) {
+       fociClassCheckBoxes[i]->setChecked(true);
    }
-   updateFociItems();
+   fociClassButtonGroup->blockSignals(false);
    readFociClassPage();
 }
 
+/**
+ * called when foci class update button is pressed.
+ */
+void 
+GuiDisplayControlDialog::fociClassUpdateButtonPressed()
+{
+   updateFociClassPage(true);
+}
+      
 /**
  * This slot is called when the foci class all off button is pressed.
  */
 void
 GuiDisplayControlDialog::fociClassAllOff()
 {
-   FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
-   if (ff != NULL) {
-      ff->setAllCellClassStatus(false);
+   //FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
+   //if (ff != NULL) {
+   //   //ff->setAllCellClassStatus(false);
+   //   for (int i = 0; i < numberOfFociClassCheckBoxesShownInGUI; i++) {
+   //       fociClassCheckBoxes[i]->setChecked(false);
+   //   }
+   //}
+   //updateFociItems();
+   fociClassButtonGroup->blockSignals(true);
+   for (int i = 0; i < numberOfFociClassCheckBoxesShownInGUI; i++) {
+       fociClassCheckBoxes[i]->setChecked(false);
    }
-   updateFociItems();
+   fociClassButtonGroup->blockSignals(false);
    readFociClassPage();
 }
 
+/**
+ * create foci search page.
+ */
+void 
+GuiDisplayControlDialog::createFociSearchPage()
+{
+   //
+   // Control of searched foci
+   //
+   showFociInSearchCheckBox = new QCheckBox("Show Only Foci Meeting Search Parameters");
+   QObject::connect(showFociInSearchCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(showFociInSearchToggleSlot(bool)));
+   
+   //
+   // The search widget
+   //
+   fociSearchWidget = new GuiFociSearchWidget(theMainWindow->getBrainSet()->getFociProjectionFile(),
+                                              theMainWindow->getBrainSet()->getFociSearchFile(),
+                                              false);
+                                              
+   //
+   // Widget and layout for page
+   //
+   pageFociSearch = new QWidget;
+   QVBoxLayout* layout = new QVBoxLayout(pageFociSearch);
+   layout->addWidget(showFociInSearchCheckBox);
+   layout->addWidget(fociSearchWidget);
+   layout->addStretch();
+   
+   pageWidgetStack->addWidget(pageFociSearch);
+   
+   updateFociSearchPage(true);
+}
+
+/**
+ * called when foci in search toggled.
+ */
+void 
+GuiDisplayControlDialog::showFociInSearchToggleSlot(bool)
+{
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+   
+   DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
+   try {
+      dsf->setDisplayCellsOnlyIfInSearch(showFociInSearchCheckBox->isChecked());
+      QApplication::restoreOverrideCursor();
+   }
+   catch (FileException& e) {
+      QApplication::restoreOverrideCursor();      
+      QMessageBox::critical(this,
+                            "ERROR",
+                            e.whatQString());
+   }
+   dsf->determineDisplayedFoci();   
+   GuiBrainModelOpenGL::updateAllGL();   
+}
+      
+/**
+ * update foci search page.
+ */
+void 
+GuiDisplayControlDialog::updateFociSearchPage(const bool /*filesChanged*/)
+{
+   if (pageFociSearch == NULL) {
+      return;
+   }
+   
+   DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
+   showFociInSearchCheckBox->blockSignals(true);
+   showFociInSearchCheckBox->setChecked(dsf->getDislayCellsOnlyIfInSearch());
+   showFociInSearchCheckBox->blockSignals(false);
+   
+   fociSearchWidget->updateWidget(theMainWindow->getBrainSet()->getFociProjectionFile(),
+                                  theMainWindow->getBrainSet()->getFociSearchFile());
+}
+
+/**
+ * read the foci search page.
+ */
+void 
+GuiDisplayControlDialog::readFociSearchPage(const bool /*updateDisplay*/)
+{
+   if (pageFociSearch == NULL) {
+      return;
+   }
+}
+      
+/**
+ * called when foci color update button is pressed.
+ */
+void 
+GuiDisplayControlDialog::fociColorUpdateButtonPressed()
+{
+   updateFociColorPage(true);
+}
+      
 /**
  * Foci page containing color selections.
  */
@@ -12909,6 +14318,15 @@ GuiDisplayControlDialog::createFociColorPage()
    fociSubPageColorLayout = new QVBoxLayout(pageFociColor);
    
    //
+   // Show only foci for displayed names checkbox
+   //
+   fociShowColorsOnlyForDisplayedFociCheckBox = 
+      new QCheckBox("List Colors Only for Displayed Foci");
+   fociShowColorsOnlyForDisplayedFociCheckBox->setToolTip(
+      "You must press the \"Update\" button\n"
+      "for this option to take effect.");
+   
+   //
    // All off and all on pushbuttons
    //
    QPushButton* fociColorAllOnButton = new QPushButton("All On");
@@ -12919,9 +14337,15 @@ GuiDisplayControlDialog::createFociColorPage()
    fociColorAllOffButton->setAutoDefault(false);
    QObject::connect(fociColorAllOffButton, SIGNAL(clicked()),
                     this, SLOT(fociColorAllOff()));
+   QPushButton* fociColorUpdateButton = new QPushButton("Update");
+   fociColorUpdateButton->setAutoDefault(false);
+   QObject::connect(fociColorUpdateButton, SIGNAL(clicked()),
+                    this, SLOT(fociColorUpdateButtonPressed()));
    QHBoxLayout* allOnOffLayout = new QHBoxLayout;
    allOnOffLayout->addWidget(fociColorAllOnButton);
    allOnOffLayout->addWidget(fociColorAllOffButton);
+   allOnOffLayout->addWidget(fociColorUpdateButton);
+   allOnOffLayout->addWidget(fociShowColorsOnlyForDisplayedFociCheckBox);
    allOnOffLayout->addStretch();
 
    pageFociColorWidgetGroup = new WuQWidgetGroup(this);
@@ -12951,7 +14375,14 @@ void
 GuiDisplayControlDialog::createAndUpdateFociColorCheckBoxes()
 {
    FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
-   numValidFociColors = fociColors->getNumberOfColors();
+   //numValidFociColors = fociColors->getNumberOfColors();
+   
+   std::vector<int> sortedFociColorIndices;
+   fociColors->getColorIndicesSortedByName(theMainWindow->getBrainSet()->getFociProjectionFile(),
+                                           sortedFociColorIndices, 
+                                           false,
+                              fociShowColorsOnlyForDisplayedFociCheckBox->isChecked());
+   const int numValidFociColors = static_cast<int>(sortedFociColorIndices.size());
    
    const int numExistingCheckBoxes = static_cast<int>(fociColorCheckBoxes.size());
    
@@ -12978,7 +14409,9 @@ GuiDisplayControlDialog::createAndUpdateFociColorCheckBoxes()
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidFociColors) {
-         fociColorCheckBoxes[i]->setText(fociColors->getColorNameByIndex(i));
+         const int colorIndex = sortedFociColorIndices[i];
+         fociColorCheckBoxesColorIndex[i] = colorIndex;
+         fociColorCheckBoxes[i]->setText(fociColors->getColorNameByIndex(colorIndex));
          fociColorCheckBoxes[i]->show();
       }
    }
@@ -12987,13 +14420,20 @@ GuiDisplayControlDialog::createAndUpdateFociColorCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidFociColors; j++) {
-      QCheckBox* cb = new QCheckBox(fociColors->getColorNameByIndex(j));
+      const int colorIndex = sortedFociColorIndices[j];
+      fociColorCheckBoxesColorIndex.push_back(colorIndex);
+      QCheckBox* cb = new QCheckBox(fociColors->getColorNameByIndex(colorIndex));
       fociColorCheckBoxes.push_back(cb);
       fociColorButtonGroup->addButton(cb, j);
       fociColorGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
       cb->show();
       pageFociColorWidgetGroup->addWidget(cb);
    }
+   
+   //
+   // Set number of checkboxes displayed
+   //
+   numberOfFociColorCheckBoxesShownInGUI = numValidFociColors;
    
    //
    // Hide existing checkboxes that are not needed.
@@ -13009,9 +14449,14 @@ GuiDisplayControlDialog::createAndUpdateFociColorCheckBoxes()
 void
 GuiDisplayControlDialog::fociColorAllOn()
 {
-   FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
-   fociColors->setAllSelectedStatus(true);
-   updateFociItems();
+   //FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
+   //fociColors->setAllSelectedStatus(true);
+   //updateFociItems();
+   fociColorButtonGroup->blockSignals(true);
+   for (int i = 0; i < numberOfFociColorCheckBoxesShownInGUI; i++) {
+      fociColorCheckBoxes[i]->setChecked(true);
+   }
+   fociColorButtonGroup->blockSignals(false);
    readFociColorPage();
 }
 
@@ -13021,9 +14466,14 @@ GuiDisplayControlDialog::fociColorAllOn()
 void
 GuiDisplayControlDialog::fociColorAllOff()
 {
-   FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
-   fociColors->setAllSelectedStatus(false);
-   updateFociItems();
+   //FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
+   //fociColors->setAllSelectedStatus(false);
+   //updateFociItems();
+   fociColorButtonGroup->blockSignals(true);
+   for (int i = 0; i < numberOfFociColorCheckBoxesShownInGUI; i++) {
+      fociColorCheckBoxes[i]->setChecked(false);
+   }
+   fociColorButtonGroup->blockSignals(false);
    readFociColorPage();
 }
 
@@ -13083,15 +14533,26 @@ GuiDisplayControlDialog::updateFociClassPage(const bool filesChanged)
    if (ff != NULL) {
       numClasses = ff->getNumberOfCellClasses();  
    }
+
+   for (int i = 0; i < numberOfFociClassCheckBoxesShownInGUI; i++) {
+      const int classIndex = fociClassCheckBoxesColorIndex[i];
+      if (classIndex < numClasses) {
+         fociClassCheckBoxes[i]->setChecked(ff->getCellClassSelectedByIndex(classIndex));
+      }
+   }
+
+/*
    if (numClasses == numValidFociClasses) {
       for (int i = 0; i < numValidFociClasses; i++) {
-         fociClassCheckBoxes[i]->setChecked(ff->getCellClassSelectedByIndex(i));
+         const int classIndex = fociClassCheckBoxesColorIndex[i];
+         fociClassCheckBoxes[i]->setChecked(ff->getCellClassSelectedByIndex(classIndex));
       }
    }
    else {
       std::cerr << "Number of foci class checkboxes does not equal number of foci classes."
                 << std::endl;
    }
+*/
    fociClassButtonGroup->blockSignals(false);
    pageFociClass->setEnabled(validFociData);
    
@@ -13118,15 +14579,26 @@ GuiDisplayControlDialog::updateFociColorPage(const bool filesChanged)
    fociColorButtonGroup->blockSignals(true);
    FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
    const int numColors = fociColors->getNumberOfColors();   
+
+   for (int i = 0; i < numberOfFociColorCheckBoxesShownInGUI; i++) {
+      const int colorIndex = fociColorCheckBoxesColorIndex[i];
+      if (colorIndex < numColors) {
+         fociColorCheckBoxes[i]->setChecked(fociColors->getSelected(colorIndex));
+      }
+   }
+
+/*
    if (numColors == numValidFociColors) {
       for (int i = 0; i < numValidFociColors; i++) {
-         fociColorCheckBoxes[i]->setChecked(fociColors->getSelected(i));
+         const int colorIndex = fociColorCheckBoxesColorIndex[i];
+         fociColorCheckBoxes[i]->setChecked(fociColors->getSelected(colorIndex));
       }
    }
    else {
       std::cerr << "Number of foci color checkboxes does not equal number of foci colors."
                 << std::endl;
    }
+*/
    fociColorButtonGroup->blockSignals(false);
    pageFociColor->setEnabled(validFociData);
 
@@ -13146,21 +14618,34 @@ GuiDisplayControlDialog::updateFociKeywordPage(const bool filesChanged)
    if (filesChanged) {
       createAndUpdateFociKeywordCheckBoxes();
    }
-   DisplaySettingsCells* dsc = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
-   fociWithoutLinkToStudyWithKeywordsCheckBox->setChecked(dsc->getDisplayCellsWithoutLinkToStudyWithKeywords());
    fociKeywordButtonGroup->blockSignals(true);
-   const int numKeywordsInGUI = fociKeywordCheckBoxes.size();
+   DisplaySettingsCells* dsc = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
+   fociWithoutLinkToStudyWithKeywordsCheckBox->blockSignals(true);
+   fociWithoutLinkToStudyWithKeywordsCheckBox->setChecked(dsc->getDisplayCellsWithoutLinkToStudyWithKeywords());
+   fociWithoutLinkToStudyWithKeywordsCheckBox->blockSignals(false);
+   //const int numKeywordsInGUI = fociKeywordCheckBoxes.size();
    const DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
    const int numValidKeywords = dssmd->getNumberOfKeywords();
+   
+   for (int k = 0; k < numberOfFociKeywordCheckBoxesShownInGUI; k++) {
+      const int keywordIndex = fociKeywordCheckBoxesKeywordIndex[k];
+      if (keywordIndex < numValidKeywords) {
+         fociKeywordCheckBoxes[k]->setChecked(dssmd->getKeywordSelected(keywordIndex));
+      }
+   }
+
+/*   
    if (numValidKeywords <= numKeywordsInGUI) {
       for (int k = 0; k < numValidKeywords; k++) {
-         fociKeywordCheckBoxes[k]->setChecked(dssmd->getKeywordSelected(k));
+         const int keywordIndex = fociKeywordCheckBoxesKeywordIndex[k];
+         fociKeywordCheckBoxes[k]->setChecked(dssmd->getKeywordSelected(keywordIndex));
       }
    }
    else {
       std::cout << "Number of foci keyword checkboxes is less than number of study metadata keywords."
                 << std::endl;
    }
+*/
    fociKeywordButtonGroup->blockSignals(false);
    pageFociKeyword->setEnabled(validFociData);
 }
@@ -13180,17 +14665,27 @@ GuiDisplayControlDialog::updateFociNamePage(const bool filesChanged)
    }
    FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
    fociNamesButtonGroup->blockSignals(true);
-   const int numNamesInGUI = fociNamesCheckBoxes.size();
+//   const int numNamesInGUI = fociNamesCheckBoxes.size();
    const int numUniqueNames = ff->getNumberOfCellUniqueNames();
+   
+   for (int k = 0; k < numberOfFociNameCheckBoxesShownInGUI; k++) {
+      const int nameIndex = fociNamesCheckBoxesNameIndex[k];
+      if (nameIndex < numUniqueNames) {
+         fociNamesCheckBoxes[k]->setChecked(ff->getCellUniqueNameSelectedByIndex(nameIndex));
+      }
+   }
+/*
    if (numUniqueNames <= numNamesInGUI) {
       for (int k = 0; k < numUniqueNames; k++) {
-         fociNamesCheckBoxes[k]->setChecked(ff->getCellUniqueNameSelectedByIndex(k));
+         const int nameIndex = fociNamesCheckBoxesNameIndex[k];
+         fociNamesCheckBoxes[k]->setChecked(ff->getCellUniqueNameSelectedByIndex(nameIndex));
       }
    }
    else {
       std::cout << "Number of foci name checkboxes is less than number of unique names if foci file."
                 << std::endl;
    }   
+*/
    fociNamesButtonGroup->blockSignals(false);
    pageFociName->setEnabled(validFociData);
 }
@@ -13209,20 +14704,33 @@ GuiDisplayControlDialog::updateFociTablePage(const bool filesChanged)
       createAndUpdateFociTableCheckBoxes();
    }
    DisplaySettingsCells* dsc = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
+   fociWithoutLinkToStudyWithTableSubHeaderCheckBox->blockSignals(true);
    fociWithoutLinkToStudyWithTableSubHeaderCheckBox->setChecked(dsc->getDisplayCellsWithoutLinkToStudyWithTableSubHeader());
+   fociWithoutLinkToStudyWithTableSubHeaderCheckBox->blockSignals(false);
    const DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
    fociTablesButtonGroup->blockSignals(true);
-   const int numSubHeadersInGUI = fociTablesCheckBoxes.size();
    const int numValidSubHeaders = dssmd->getNumberOfSubHeaderNames();
+   
+   for (int k = 0; k < numberOfFociTableCheckBoxesShownInGUI; k++) {
+      const int tableIndex = fociTablesCheckBoxesTableIndex[k];
+      if (tableIndex < numValidSubHeaders) {
+         fociTablesCheckBoxes[k]->setChecked(dssmd->getSubHeaderNameSelected(tableIndex));
+      }
+   }
+
+/*
+   const int numSubHeadersInGUI = fociTablesCheckBoxes.size();
    if (numValidSubHeaders <= numSubHeadersInGUI) {
       for (int k = 0; k < numValidSubHeaders; k++) {
-         fociTablesCheckBoxes[k]->setChecked(dssmd->getSubHeaderNameSelected(k));
+         const int tableIndex = fociTablesCheckBoxesTableIndex[k];
+         fociTablesCheckBoxes[k]->setChecked(dssmd->getSubHeaderNameSelected(tableIndex));
       }
    }
    else {
       std::cout << "Number of foci subheader checkboxes is less than number of study metadata subheaders."
                 << std::endl; 
    }
+*/
    fociTablesButtonGroup->blockSignals(false);
    pageFociTable->setEnabled(validFociData);
 }
@@ -13235,7 +14743,7 @@ GuiDisplayControlDialog::updateFociItems(const bool filesChanged)
 {
    updatePageSelectionComboBox();
 
-   if (pageOverlayUnderlaySurface != NULL) {
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
       DisplaySettingsCells* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
       layersFociCheckBox->setEnabled(validFociData);
       layersFociCheckBox->setChecked(dsf->getDisplayCells());
@@ -13246,6 +14754,7 @@ GuiDisplayControlDialog::updateFociItems(const bool filesChanged)
    updateFociColorPage(filesChanged);
    updateFociKeywordPage(filesChanged);
    updateFociNamePage(filesChanged);
+   updateFociSearchPage(filesChanged);
    updateFociTablePage(filesChanged);
    updatePageSelectionComboBox();
 }
@@ -13261,7 +14770,7 @@ GuiDisplayControlDialog::showFociToggleSlot(bool b)
       showFociCheckBox->setChecked(b);
       showFociCheckBox->blockSignals(false);
    }
-   if (pageOverlayUnderlaySurface != NULL) {
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
       layersFociCheckBox->blockSignals(true);
       layersFociCheckBox->setChecked(b);
       layersFociCheckBox->blockSignals(false);
@@ -13328,15 +14837,26 @@ GuiDisplayControlDialog::readFociClassPage(const bool updateDisplay)
    }
    FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
    const int numClasses = ff->getNumberOfCellClasses();
+
+   for (int i = 0; i < numberOfFociClassCheckBoxesShownInGUI; i++) {
+      const int classIndex = fociClassCheckBoxesColorIndex[i];
+      if (classIndex < numClasses) {
+         ff->setCellClassSelectedByIndex(classIndex, fociClassCheckBoxes[i]->isChecked());
+      }
+   }
+
+/*
    if (numClasses == numValidFociClasses) {
       for (int i = 0; i < numValidFociClasses; i++) {
-         ff->setCellClassSelectedByIndex(i, fociClassCheckBoxes[i]->isChecked());
+         const int classIndex = fociClassCheckBoxesColorIndex[i];
+         ff->setCellClassSelectedByIndex(classIndex, fociClassCheckBoxes[i]->isChecked());
       }
    }
    else {
       std::cerr << "Number of foci class checkboxes does not equal number of foci classes."
                 << std::endl;
    }
+*/
    DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
    dsf->setDisplayCellsWithoutClassAssignments(fociWithoutClassAssignmentsCheckBox->isChecked());
    if (updateDisplay) {
@@ -13359,15 +14879,26 @@ GuiDisplayControlDialog::readFociColorPage(const bool updateDisplay)
    }
    FociColorFile* fociColors = theMainWindow->getBrainSet()->getFociColorFile();
    const int numColors = fociColors->getNumberOfColors();   
+   
+   for (int i = 0; i < numberOfFociColorCheckBoxesShownInGUI; i++) {
+      const int colorIndex = fociColorCheckBoxesColorIndex[i];
+      if (colorIndex < numColors) {
+         fociColors->setSelected(colorIndex, fociColorCheckBoxes[i]->isChecked());
+      }
+   }
+  
+/*
    if (numColors == numValidFociColors) {
       for (int i = 0; i < numValidFociColors; i++) {
-         fociColors->setSelected(i, fociColorCheckBoxes[i]->isChecked());
+         const int colorIndex = fociColorCheckBoxesColorIndex[i];
+         fociColors->setSelected(colorIndex, fociColorCheckBoxes[i]->isChecked());
       }
    }
    else {
       std::cerr << "Number of foci color checkboxes does not equal number of foci colors."
                 << std::endl;
    }
+*/
    DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
    dsf->setDisplayCellsWithoutMatchingColor(fociWithoutMatchingColorCheckBox->isChecked());
    if (updateDisplay) {
@@ -13390,18 +14921,28 @@ GuiDisplayControlDialog::readFociKeywordPage(const bool updateDisplay)
    }
    pageFociKeywordsWidgetGroup->blockSignals(true);
    
-   const int numKeywordsInGUI = fociKeywordCheckBoxes.size();
+   //const int numKeywordsInGUI = fociKeywordCheckBoxes.size();
    DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
    const int numValidKeywords = dssmd->getNumberOfKeywords();
+   
+   for (int k = 0; k < numberOfFociKeywordCheckBoxesShownInGUI; k++) {
+      const int keywordIndex = fociKeywordCheckBoxesKeywordIndex[k];
+      if (keywordIndex < numValidKeywords) {
+         dssmd->setKeywordSelected(keywordIndex, fociKeywordCheckBoxes[k]->isChecked());
+      }
+   }
+/*   
    if (numValidKeywords <= numKeywordsInGUI) {
       for (int k = 0; k < numValidKeywords; k++) {
-         dssmd->setKeywordSelected(k, fociKeywordCheckBoxes[k]->isChecked());
+         const int keywordIndex = fociKeywordCheckBoxesKeywordIndex[k];
+         dssmd->setKeywordSelected(keywordIndex, fociKeywordCheckBoxes[k]->isChecked());
       }
    }
    else {
       std::cout << "Number of foci keyword checkboxes is less than number of study metadata keywords."
                 << std::endl;
    }
+*/
    DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
    dsf->setDisplayCellsWithoutLinkToStudyWithKeywords(fociWithoutLinkToStudyWithKeywordsCheckBox->isChecked());
    if (updateDisplay) {
@@ -13426,16 +14967,26 @@ GuiDisplayControlDialog::readFociNamePage(const bool updateDisplay)
    pageFociNameWidgetGroup->blockSignals(true);
    
    FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
-   const int numNames = ff->getNumberOfCellUniqueNames();   
+   const int numNames = ff->getNumberOfCellUniqueNames();  
+
+   for (int i = 0; i < numberOfFociNameCheckBoxesShownInGUI; i++) {
+      const int nameIndex = fociNamesCheckBoxesNameIndex[i];
+      if (nameIndex < numNames) {
+         ff->setCellUniqueNameSelectedByIndex(nameIndex, fociNamesCheckBoxes[i]->isChecked());
+      }
+   }
+/*
    if (numNames <= static_cast<int>(fociNamesCheckBoxes.size())) {
       for (int i = 0; i < numNames; i++) {
-         ff->setCellUniqueNameSelectedByIndex(i, fociNamesCheckBoxes[i]->isChecked());
+         const int nameIndex = fociNamesCheckBoxesNameIndex[i];
+         ff->setCellUniqueNameSelectedByIndex(nameIndex, fociNamesCheckBoxes[i]->isChecked());
       }
    }
    else {
       std::cerr << "Number of foci unique name checkboxes is too small when reading foci selections"
                 << std::endl;
    }
+*/
    DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
    if (updateDisplay) {
       dsf->determineDisplayedFoci();   
@@ -13459,17 +15010,29 @@ GuiDisplayControlDialog::readFociTablePage(const bool updateDisplay)
    pageFociTableWidgetGroup->blockSignals(true);
    
    DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
+   const int numValidSubHeaders = dssmd->getNumberOfSubHeaderNames();
+
+   for (int k = 0; k < numberOfFociTableCheckBoxesShownInGUI; k++) {
+      const int tableIndex = fociTablesCheckBoxesTableIndex[k];
+      if (tableIndex < numValidSubHeaders) {
+         dssmd->setSubHeaderNameSelected(tableIndex, fociTablesCheckBoxes[k]->isChecked());
+      }
+   }
+   
+/*
    const int numSubHeadersInGUI = fociTablesCheckBoxes.size();
    const int numValidSubHeaders = dssmd->getNumberOfSubHeaderNames();
    if (numValidSubHeaders <= numSubHeadersInGUI) {
       for (int k = 0; k < numValidSubHeaders; k++) {
-         dssmd->setSubHeaderNameSelected(k, fociTablesCheckBoxes[k]->isChecked());
+         const int tableIndex = fociTablesCheckBoxesTableIndex[k];
+         dssmd->setSubHeaderNameSelected(tableIndex, fociTablesCheckBoxes[k]->isChecked());
       }
    }
    else {
       std::cout << "Number of foci subheader checkboxes is less than number of study metadata subheaders."
                 << std::endl; 
    }
+*/
    DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
    dsf->setDisplayCellsWithoutLinkToStudyWithTableSubHeader(fociWithoutLinkToStudyWithTableSubHeaderCheckBox->isChecked());
    if (updateDisplay) {
@@ -13479,6 +15042,59 @@ GuiDisplayControlDialog::readFociTablePage(const bool updateDisplay)
    pageFociTableWidgetGroup->blockSignals(false);
 }
 
+/**
+ * update surface coloring mode section.
+ */
+void 
+GuiDisplayControlDialog::updateSurfaceColoringModeSection()
+{
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
+      BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
+      const BrainModelSurfaceNodeColoring::COLORING_MODE coloringMode =
+         bsnc->getColoringMode();
+      const int indx = surfaceColoringModeComboBox->findData(
+         static_cast<int>(coloringMode));
+      if (indx >= 0) {
+         surfaceColoringModeComboBox->blockSignals(true);
+         surfaceColoringModeComboBox->setCurrentIndex(indx);
+         surfaceColoringModeComboBox->blockSignals(false);
+      }
+   }
+}
+      
+/**
+ * called when surface coloring mode is changed.
+ */
+void 
+GuiDisplayControlDialog::slotSurfaceColoringModeComboBox()
+{
+   const int indx = surfaceColoringModeComboBox->currentIndex();
+   const BrainModelSurfaceNodeColoring::COLORING_MODE coloringMode =
+      static_cast<BrainModelSurfaceNodeColoring::COLORING_MODE>(
+                surfaceColoringModeComboBox->itemData(indx).toInt());
+   BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
+   bsnc->setColoringMode(coloringMode);
+   bsnc->assignColors();
+   GuiBrainModelOpenGL::updateAllGL();
+}
+      
+/**
+ * called when overlay selection combo box is changed.
+ */
+void 
+GuiDisplayControlDialog::slotOverlayNumberComboBox(int /*item*/)
+{
+   //
+   // Update pages that use the overlay selection combo box
+   //
+   updateArealEstimationItems();
+   updateMetricSelectionPage();
+   updatePaintColumnPage();
+   updateRgbPaintSelectionPage();
+   updateShapeSelections();
+   
+}
+      
 /**
  * Called when a new spec file is loaded
  */
@@ -13494,11 +15110,8 @@ GuiDisplayControlDialog::newSpecFileLoaded()
 void 
 GuiDisplayControlDialog::slotSurfaceModelIndexComboBox(int item)      
 {
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
    if ((item >= 0) && (item < static_cast<int>(surfaceModelIndexComboBoxValues.size()))) { 
-      const int prevItem = surfaceModelIndex; 
+      const int prevSurfaceIndex = surfaceModelIndex; 
       surfaceModelIndex = surfaceModelIndexComboBoxValues[item];
       
       //
@@ -13508,39 +15121,14 @@ GuiDisplayControlDialog::slotSurfaceModelIndexComboBox(int item)
          //
          // Need to copy current selections to ALL
          //
-         BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-         bsnc->setPrimaryOverlay(surfaceModelIndex,
-                static_cast<BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS>(
-                      primaryOverlayButtonGroup->checkedId()));
-         bsnc->setSecondaryOverlay(surfaceModelIndex,
-                static_cast<BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS>(
-                      secondaryOverlayButtonGroup->checkedId()));
-         bsnc->setUnderlay(surfaceModelIndex,
-               static_cast<BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS>(
-                      underlayButtonGroup->checkedId()));
          
-         DisplaySettingsArealEstimation* dsae = theMainWindow->getBrainSet()->getDisplaySettingsArealEstimation();
-         dsae->setSelectedColumn(surfaceModelIndex, arealEstSelectionComboBox->currentIndex());
-
-         DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-         dsm->setSelectedDisplayColumn(surfaceModelIndex, metricSelectionComboBox->currentIndex());
-         dsm->setSelectedThresholdColumn(surfaceModelIndex, dsm->getSelectedThresholdColumn(prevItem));
-
-         DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();    
-         dsp->setSelectedColumn(surfaceModelIndex, paintSelectionComboBox->currentIndex());
-
-         DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
-         dsrp->setSelectedColumn(surfaceModelIndex, rgbPaintSelectionComboBox->currentIndex());
-
-         DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
-         dsss->setSelectedDisplayColumn(surfaceModelIndex, shapeSelectionComboBox->currentIndex());
-
-         DisplaySettingsTopography* dst = theMainWindow->getBrainSet()->getDisplaySettingsTopography();
-         dst->setSelectedColumn(surfaceModelIndex, topographySelectionComboBox->currentIndex());
+         theMainWindow->getBrainSet()->copyOverlaysFromSurface(prevSurfaceIndex); 
+         
+         updateAllItemsInDialog(false, false);
       }
       
       surfaceModelIndexComboBox->blockSignals(true);
-      updateOverlayUnderlayItems();
+      updateOverlayUnderlayItemsNew();
       surfaceModelIndexComboBox->blockSignals(false);
       
       BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
@@ -13595,499 +15183,41 @@ GuiDisplayControlDialog::createSurfaceModelIndexComboBox()
  * Page containing overlay/underlay control.
  */
 void
-GuiDisplayControlDialog::createOverlayUnderlaySurfacePage()
+GuiDisplayControlDialog::createOverlayUnderlaySurfacePageNew()
 {
-   pageOverlayUnderlaySurface = new QWidget;
-   QVBoxLayout* overlayUnderlayMainPageLayout = new QVBoxLayout(pageOverlayUnderlaySurface);
-   pageWidgetStack->addWidget(pageOverlayUnderlaySurface); //, PAGE_NAME_SURFACE_OVERLAY_UNDERLAY);
-                                         
-   const int PRIMARY_COLUMN   = 0;
-   const int SECONDARY_COLUMN = PRIMARY_COLUMN + 1;
-   const int UNDERLAY_COLUMN  = SECONDARY_COLUMN + 1;
-   const int NAME_COLUMN      = UNDERLAY_COLUMN + 1;
-   const int INFO_COLUMN      = NAME_COLUMN + 1;
-   const int COMBO_COLUMN     = INFO_COLUMN + 1;
-   //const int NUM_COLUMNS      = COMBO_COLUMN + 1;
-   
-   //
-   // Grid Layout for overlay/underlay selection
-   //
-   QGroupBox* surfaceAttributesGroupBox = new QGroupBox("Surface Attributes");
-   overlayUnderlayMainPageLayout->addWidget(surfaceAttributesGroupBox);
-   QGridLayout* grid = new QGridLayout(surfaceAttributesGroupBox);
-   int rowNumber = 0;
-   
-   //
-   // Set stretching so that column selection combo boxes will stretch
-   //
-/*
-   grid->setColumnStretch(NAME_COLUMN, 1);
-   grid->setColumnStretch(INFO_COLUMN, 1);
-   grid->setColumnStretch(COMBO_COLUMN, 1000000);
-   grid->setColumnStretch(PRIMARY_COLUMN, 1);
-   grid->setColumnStretch(SECONDARY_COLUMN, 1);
-   grid->setColumnStretch(UNDERLAY_COLUMN, 1);
-*/   
-   //
-   // column titles
-   //
-   grid->addWidget(new QLabel("Primary\nOverlay"),  rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter); 
-   grid->addWidget(new QLabel("Secondary\nOverlay"),  rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter); 
-   grid->addWidget(new QLabel("Underlay"), rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter); 
-   grid->addWidget(new QLabel("Coloring"), rowNumber, NAME_COLUMN, Qt::AlignLeft);
-   rowNumber++;
-   
-   //
-   // Button groups to keep radio buttons set correctly
-   //
-   primaryOverlayButtonGroup = new QButtonGroup(this);
-   QObject::connect(primaryOverlayButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(primaryOverlaySelection(int)));
-                    
-   secondaryOverlayButtonGroup = new QButtonGroup(this);
-   QObject::connect(secondaryOverlayButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(secondaryOverlaySelection(int)));
-                    
-   underlayButtonGroup = new QButtonGroup(this);
-   QObject::connect(underlayButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(underlaySelection(int)));
-                    
-   
-   //
-   // None selections
-   //
-   primaryOverlayNoneButton = new QRadioButton;
-   grid->addWidget(primaryOverlayNoneButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayNoneButton, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
+   pageOverlayUnderlaySurfaceNew = new QWidget;
+   pageWidgetStack->addWidget(pageOverlayUnderlaySurfaceNew);
 
-   secondaryOverlayNoneButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayNoneButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayNoneButton, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-
-   underlayNoneButton = new QRadioButton;
-   grid->addWidget(underlayNoneButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayNoneButton, BrainModelSurfaceNodeColoring::OVERLAY_NONE);
-   grid->addWidget(new QLabel("No Coloring"), rowNumber, NAME_COLUMN);
-   grid->addWidget(new QLabel(" "),    rowNumber, INFO_COLUMN);
-   grid->addWidget(new QLabel(" "),    rowNumber, COMBO_COLUMN); 
-   rowNumber++;
+   QVBoxLayout* overlayUnderlayMainPageLayout = new QVBoxLayout(pageOverlayUnderlaySurfaceNew);
+   BrainSet* brainSet = theMainWindow->getBrainSet();
+   for (int i = (brainSet->getNumberOfSurfaceOverlays() - 1); i >= 0; i--) {
+      GuiDisplayControlSurfaceOverlayWidget* sow = 
+         new GuiDisplayControlSurfaceOverlayWidget(i, this);
+      surfaceOverlayUnderlayWidgets.push_back(sow);
+      overlayUnderlayMainPageLayout->addWidget(sow);
+   }
    
    //
-   // This QString is added to each combo box prior to setting its fixed size so 
-   // that it will display the number of characters in comboSize.  Changing the
-   // number of characters in "comboSize" will change the sizes of the combo boxes
-   // for the different data files.
+   // Coloring mode selections
    //
-   //const QString comboSize("                     ");
-   const int minComboSize = 500;
-   
+   surfaceColoringModeComboBox = new QComboBox;
+   surfaceColoringModeComboBox->addItem("NORMAL",
+                   static_cast<int>(BrainModelSurfaceNodeColoring::COLORING_MODE_NORMAL));
+   surfaceColoringModeComboBox->addItem("BLEND OVERLAYS",
+                   static_cast<int>(BrainModelSurfaceNodeColoring::COLORING_MODE_OVERLAY_BLENDING));
+   QObject::connect(surfaceColoringModeComboBox, SIGNAL(activated(int)),
+                    this, SLOT(slotSurfaceColoringModeComboBox()));
+   surfaceColoringModeComboBox->setToolTip(
+      "BLENDING OVERLAYS blends the colors of the primary, secondary,\n"
+      "and tertiary overlays.  In this mode, opacities are ignored.");
+                       
    //
-   // Areal Estimation Selections
+   // Group box for coloring mode
    //
-   primaryOverlayArealEstButton = new QRadioButton;
-   grid->addWidget(primaryOverlayArealEstButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayArealEstButton, 
-                                     BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION);
-
-   secondaryOverlayArealEstButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayArealEstButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayArealEstButton, 
-                                       BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION);
-
-   underlayArealEstButton = new QRadioButton;
-   grid->addWidget(underlayArealEstButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayArealEstButton, 
-                               BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION);
-   
-   arealEstSelectionLabel = new QLabel("Areal Est");
-   grid->addWidget(arealEstSelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   arealEstInfoPushButton = new QPushButton("?");
-   QSize infoButtonSize = arealEstInfoPushButton->sizeHint();
-   infoButtonSize.setWidth(40);
-   arealEstInfoPushButton->setAutoDefault(false);
-   arealEstInfoPushButton->setFixedSize(infoButtonSize); 
-   grid->addWidget(arealEstInfoPushButton, rowNumber, INFO_COLUMN);
-   arealEstInfoPushButton->setToolTip("Press for Info About Areal Estimation");
-   QObject::connect(arealEstInfoPushButton, SIGNAL(clicked()),
-                    this, SLOT(arealEstInfoPushButtonSelection()));
-   
-   arealEstSelectionComboBox = new QComboBox;
-   //arealEstSelectionComboBox->insertItem(comboSize);
-   arealEstSelectionComboBox->setMinimumWidth(minComboSize);
-   //arealEstSelectionComboBox->setMaximumWidth(1000);
-   //arealEstSelectionComboBox->setFixedSize(arealEstSelectionComboBox->sizeHint());
-   grid->addWidget(arealEstSelectionComboBox, rowNumber, COMBO_COLUMN);
-   arealEstSelectionComboBox->setToolTip("Choose Areal Estimation Column");
-   QObject::connect(arealEstSelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(arealEstFileSelection(int)));
-   rowNumber++;
-
-   //
-   // CoCoMac Selections
-   //
-   primaryOverlayCocomacButton = new QRadioButton;
-   grid->addWidget(primaryOverlayCocomacButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayCocomacButton,
-                                     BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC);
-                                     
-   secondaryOverlayCocomacButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayCocomacButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayCocomacButton,
-                                     BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC);
-   
-   underlayCocomacButton = new QRadioButton;
-   grid->addWidget(underlayCocomacButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayCocomacButton,
-                               BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC);
-   
-   cocomacSelectionLabel = new QLabel("CoCoMac");
-   grid->addWidget(cocomacSelectionLabel, rowNumber, NAME_COLUMN);
-   
-   
-   rowNumber++;
-   
-   //
-   // Metric Selections
-   //
-   primaryOverlayMetricButton = new QRadioButton;
-   grid->addWidget(primaryOverlayMetricButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayMetricButton, BrainModelSurfaceNodeColoring::OVERLAY_METRIC);
-
-   secondaryOverlayMetricButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayMetricButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayMetricButton, BrainModelSurfaceNodeColoring::OVERLAY_METRIC);
-
-   underlayMetricButton = new QRadioButton;
-   grid->addWidget(underlayMetricButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayMetricButton, BrainModelSurfaceNodeColoring::OVERLAY_METRIC);
-   
-   metricSelectionLabel = new QLabel("Metric");
-   grid->addWidget(metricSelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   metricInfoPushButton = new QPushButton("?");
-   metricInfoPushButton->setFixedSize(infoButtonSize);
-   metricInfoPushButton->setAutoDefault(false);
-   grid->addWidget(metricInfoPushButton, rowNumber, INFO_COLUMN);
-   metricInfoPushButton->setToolTip("Press for Info About Metric");
-   QObject::connect(metricInfoPushButton, SIGNAL(clicked()),
-                    this, SLOT(metricInfoPushButtonSelection()));
-   
-   metricSelectionComboBox = new QComboBox;
-   //metricSelectionComboBox->insertItem(comboSize);
-   metricSelectionComboBox->setMinimumWidth(minComboSize);
-   //metricSelectionComboBox->setMaximumWidth(1000);
-   //metricSelectionComboBox->setFixedSize(metricSelectionComboBox->sizeHint());
-   grid->addWidget(metricSelectionComboBox, rowNumber, COMBO_COLUMN);
-   metricSelectionComboBox->setToolTip("Choose Metric Display Column");
-   QObject::connect(metricSelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(metricDisplayColumnSelection(int)));
-   rowNumber++;
-
-   //
-   // Paint Selections
-   //
-   primaryOverlayPaintButton = new QRadioButton;
-   grid->addWidget(primaryOverlayPaintButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayPaintButton, BrainModelSurfaceNodeColoring::OVERLAY_PAINT);
-
-   secondaryOverlayPaintButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayPaintButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayPaintButton, BrainModelSurfaceNodeColoring::OVERLAY_PAINT);
-
-   underlayPaintButton = new QRadioButton;
-   grid->addWidget(underlayPaintButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayPaintButton, BrainModelSurfaceNodeColoring::OVERLAY_PAINT);
-   
-   paintSelectionLabel = new QLabel("Paint");
-   grid->addWidget(paintSelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   paintInfoPushButton = new QPushButton("?");
-   paintInfoPushButton->setFixedSize(infoButtonSize);
-   paintInfoPushButton->setAutoDefault(false);
-   grid->addWidget(paintInfoPushButton, rowNumber, INFO_COLUMN);
-   paintInfoPushButton->setToolTip("Press for Info About Paint");
-   QObject::connect(paintInfoPushButton, SIGNAL(clicked()),
-                    this, SLOT(paintInfoPushButtonSelection()));
-   
-   paintSelectionComboBox = new QComboBox;
-   //paintSelectionComboBox->insertItem(comboSize);
-   paintSelectionComboBox->setMinimumWidth(minComboSize);
-   //paintSelectionComboBox->setMaximumWidth(1000);
-   //paintSelectionComboBox->setFixedSize(paintSelectionComboBox->sizeHint());
-   grid->addWidget(paintSelectionComboBox, rowNumber, COMBO_COLUMN);
-   paintSelectionComboBox->setToolTip("Choose Paint Column");
-   QObject::connect(paintSelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(paintColumnSelection(int)));
-   rowNumber++;
-
-   //
-   // Probabilistic Atlas Selections
-   //
-   primaryOverlayProbAtlasSurfaceButton = new QRadioButton;
-   grid->addWidget(primaryOverlayProbAtlasSurfaceButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayProbAtlasSurfaceButton, 
-                                     BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS);
-
-   secondaryOverlayProbAtlasSurfaceButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayProbAtlasSurfaceButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayProbAtlasSurfaceButton, 
-                                       BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS);
-
-   underlayProbAtlasSurfaceButton = new QRadioButton;
-   grid->addWidget(underlayProbAtlasSurfaceButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayProbAtlasSurfaceButton, 
-                               BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS);
-   
-   probAtlasSurfaceSelectionLabel = new QLabel("ProbAtlas");
-   grid->addWidget(probAtlasSurfaceSelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   probAtlasSurfaceInfoPushButton = new QPushButton("?");
-   grid->addWidget(probAtlasSurfaceInfoPushButton, rowNumber, INFO_COLUMN);
-   probAtlasSurfaceInfoPushButton->setFixedSize(infoButtonSize);
-   probAtlasSurfaceInfoPushButton->setAutoDefault(false);
-   probAtlasSurfaceInfoPushButton->setToolTip("Press for Info About Probabilistic Atlas");
-   QObject::connect(probAtlasSurfaceInfoPushButton, SIGNAL(clicked()),
-                    this, SLOT(probAtlasSurfaceInfoPushButtonSelection()));   
-   rowNumber++;
-   
-   //
-   // RGB Paint Selections
-   //
-   primaryOverlayRgbPaintButton = new QRadioButton;
-   grid->addWidget(primaryOverlayRgbPaintButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayRgbPaintButton, 
-                                     BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT);
-
-   secondaryOverlayRgbPaintButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayRgbPaintButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayRgbPaintButton, 
-                                       BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT);
-
-   underlayRgbPaintButton = new QRadioButton;
-   grid->addWidget(underlayRgbPaintButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayRgbPaintButton, 
-                               BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT);
-   
-   rgbPaintSelectionLabel = new QLabel("RGB");
-   grid->addWidget(rgbPaintSelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   rgbPaintInfoPushButton = new QPushButton("?");
-   rgbPaintInfoPushButton->setFixedSize(infoButtonSize);
-   rgbPaintInfoPushButton->setAutoDefault(false);
-   grid->addWidget(rgbPaintInfoPushButton, rowNumber, INFO_COLUMN);
-   rgbPaintInfoPushButton->setToolTip("Press for Info About RGB Paint");
-   QObject::connect(rgbPaintInfoPushButton, SIGNAL(clicked()),
-                    this, SLOT(rgbPaintInfoPushButtonSelection()));
-   
-   rgbPaintSelectionComboBox = new QComboBox;
-   //rgbPaintSelectionComboBox->insertItem(comboSize);
-   //rgbPaintSelectionComboBox->setFixedSize(rgbPaintSelectionComboBox->sizeHint());
-   rgbPaintSelectionComboBox->setMinimumWidth(minComboSize);
-   //rgbPaintSelectionComboBox->setMaximumWidth(1000);
-   grid->addWidget(rgbPaintSelectionComboBox, rowNumber, COMBO_COLUMN);
-   rgbPaintSelectionComboBox->setToolTip("Choose RGB Paint Column");
-   QObject::connect(rgbPaintSelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(rgbPaintFileSelection(int)));
-   rowNumber++;
-   
-   //
-   // Surface shape Selections
-   //
-   primaryOverlayShapeButton = new QRadioButton;
-   grid->addWidget(primaryOverlayShapeButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayShapeButton, 
-                                    BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
-
-   secondaryOverlayShapeButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayShapeButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayShapeButton, 
-                                       BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
-
-   underlayShapeButton = new QRadioButton;
-   grid->addWidget(underlayShapeButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayShapeButton, 
-                               BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE);
-   
-   shapeSelectionLabel = new QLabel("Shape");
-   grid->addWidget(shapeSelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   shapeInfoPushButton = new QPushButton("?");
-   grid->addWidget(shapeInfoPushButton, rowNumber, INFO_COLUMN);
-   shapeInfoPushButton->setFixedSize(infoButtonSize);
-   shapeInfoPushButton->setAutoDefault(false);
-   shapeInfoPushButton->setToolTip("Press for Info About Surface Shape");
-   QObject::connect(shapeInfoPushButton, SIGNAL(clicked()),
-                    this, SLOT(shapeInfoPushButtonSelection()));
-   
-   shapeSelectionComboBox = new QComboBox;
-   //shapeSelectionComboBox->insertItem(comboSize);
-   //shapeSelectionComboBox->setFixedSize(shapeSelectionComboBox->sizeHint());
-   shapeSelectionComboBox->setMinimumWidth(minComboSize);
-   //shapeSelectionComboBox->setMaximumWidth(1000);
-   grid->addWidget(shapeSelectionComboBox, rowNumber, COMBO_COLUMN);
-   shapeSelectionComboBox->setToolTip("Choose Surface Shape Column");
-   QObject::connect(shapeSelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(shapeColumnSelection(int)));
-   rowNumber++;
-
-   //
-   // Topography Selections
-   //
-   primaryOverlayTopographyButton = new QRadioButton;
-   grid->addWidget(primaryOverlayTopographyButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayTopographyButton, 
-                                     BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY);
-
-   secondaryOverlayTopographyButton = new QRadioButton;
-   grid->addWidget(secondaryOverlayTopographyButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   secondaryOverlayButtonGroup->addButton(secondaryOverlayTopographyButton, 
-                                       BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY);
-
-   underlayTopographyButton = new QRadioButton;
-   grid->addWidget(underlayTopographyButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayTopographyButton, 
-                               BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY);
-   
-   topographySelectionLabel = new QLabel("Topography");
-   grid->addWidget(topographySelectionLabel, rowNumber, NAME_COLUMN); 
-   
-   grid->addWidget(new QLabel(" "), rowNumber, INFO_COLUMN);
-   
-   topographySelectionComboBox = new QComboBox;
-   //topographySelectionComboBox->insertItem(comboSize);
-   //topographySelectionComboBox->setFixedSize(topographySelectionComboBox->sizeHint());
-   topographySelectionComboBox->setMinimumWidth(minComboSize);
-   //topographySelectionComboBox->setMaximumWidth(1000);
-   grid->addWidget(topographySelectionComboBox, rowNumber, COMBO_COLUMN);
-   topographySelectionComboBox->setToolTip("Choose Topography File");
-   QObject::connect(topographySelectionComboBox, SIGNAL(activated(int)),
-                    this, SLOT(topographyFileSelection(int)));
-   rowNumber++;
-   
-   //
-   // Crossovers selections
-   //
-   primaryOverlayCrossoversButton = new QRadioButton;
-   grid->addWidget(primaryOverlayCrossoversButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayCrossoversButton, 
-                                     BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS);
-   grid->addWidget(new QLabel("Crossovers"), rowNumber, NAME_COLUMN);
-   rowNumber++;
-   
-   //
-   // Sections selections
-   //
-   primaryOverlaySectionsButton = new QRadioButton;
-   grid->addWidget(primaryOverlaySectionsButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlaySectionsButton,
-                                     BrainModelSurfaceNodeColoring::OVERLAY_SECTIONS);
-   primaryOverlaySectionsLineEdit = new QLineEdit;
-   primaryOverlaySectionsLineEdit->setFixedWidth(100);
-   QRegExp sectionRX("\\d+[xX]?");
-   primaryOverlaySectionsLineEdit->setValidator(new QRegExpValidator(sectionRX,
-                                                         primaryOverlaySectionsLineEdit));
-   grid->addWidget(primaryOverlaySectionsLineEdit, rowNumber, COMBO_COLUMN);
-   QObject::connect(primaryOverlaySectionsLineEdit, SIGNAL(returnPressed()),
-                    this, SLOT(readOverlayUnderlaySelections()));
-   primaryOverlaySectionsLineEdit->setToolTip(
-                 "Enter a number to display a specific section.\n"
-                 "Enter a number followed by \"X\" to view every\n"
-                 "\"number\" sections.\n"
-                 "Example:  \n"
-                 "   10    displays only section ten.\n"
-                 "   10X   displays every 10th section.");
-   primaryOverlaySectionsLabel = new QLabel("Sections");
-   grid->addWidget(primaryOverlaySectionsLabel, rowNumber, NAME_COLUMN);
-   rowNumber++;
-   
-   //
-   // Edges selections
-   //
-   primaryOverlayEdgesButton = new QRadioButton;
-   grid->addWidget(primaryOverlayEdgesButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   primaryOverlayButtonGroup->addButton(primaryOverlayEdgesButton, 
-                                     BrainModelSurfaceNodeColoring::OVERLAY_SHOW_EDGES);
-   grid->addWidget(new QLabel("Edges"), rowNumber, NAME_COLUMN);
-   rowNumber++;
-   
-   //
-   // Geography blending selections
-   //
-   grid->addWidget(new QLabel(" "), rowNumber, PRIMARY_COLUMN);
-   
-   grid->addWidget(new QLabel(" "), rowNumber, SECONDARY_COLUMN);
-   
-   underlayGeographyBlendingButton = new QRadioButton;
-   grid->addWidget(underlayGeographyBlendingButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   underlayButtonGroup->addButton(underlayGeographyBlendingButton,
-                               BrainModelSurfaceNodeColoring::OVERLAY_GEOGRAPHY_BLENDING);
-                               
-   geographyBlendingSelectionLabel = new QLabel("Geo Blend");
-   grid->addWidget(geographyBlendingSelectionLabel, rowNumber, NAME_COLUMN);
-   
-   grid->addWidget(new QLabel(" "), rowNumber, INFO_COLUMN);
-   geographyBlendingDoubleSpinBox = new QDoubleSpinBox;
-   geographyBlendingDoubleSpinBox->setMinimum(0.0);
-   geographyBlendingDoubleSpinBox->setMaximum(1.0);
-   geographyBlendingDoubleSpinBox->setSingleStep(0.1);
-   geographyBlendingDoubleSpinBox->setDecimals(3);
-   geographyBlendingDoubleSpinBox->setFixedWidth(100);
-   grid->addWidget(geographyBlendingDoubleSpinBox, rowNumber, COMBO_COLUMN);
-   geographyBlendingDoubleSpinBox->setToolTip(
-                   "Geography blending factor: \n"
-                   "color = factor * overlay-color +\n"
-                   "        (1.0 - factor) * underlay-color");
-   QObject::connect(geographyBlendingDoubleSpinBox, SIGNAL(valueChanged(double)),
-                    this, SLOT(readOverlayUnderlaySelections()));                    
-   rowNumber++;
-   
-   //
-   // Lighting
-   //
-   primaryOverlayLightingButton = new QCheckBox;
-   grid->addWidget(primaryOverlayLightingButton, rowNumber, PRIMARY_COLUMN, Qt::AlignHCenter);
-   QObject::connect(primaryOverlayLightingButton, SIGNAL(clicked()),
-                    this, SLOT(primaryOverlayLightSelection()));
-   
-   secondaryOverlayLightingButton = new QCheckBox;
-   grid->addWidget(secondaryOverlayLightingButton, rowNumber, SECONDARY_COLUMN, Qt::AlignHCenter);
-   QObject::connect(secondaryOverlayLightingButton, SIGNAL(clicked()),
-                    this, SLOT(secondaryOverlayLightSelection()));
-   
-   underlayLightingButton = new QCheckBox;
-   grid->addWidget(underlayLightingButton, rowNumber, UNDERLAY_COLUMN, Qt::AlignHCenter);
-   QObject::connect(underlayLightingButton, SIGNAL(clicked()),
-                    this, SLOT(underlayLightSelection()));
-   
-   grid->addWidget(new QLabel("Lighting Enabled"), rowNumber,
-                            NAME_COLUMN, 1, COMBO_COLUMN - NAME_COLUMN + 1);
-   rowNumber++;
-   
-   //
-   // Opacity
-   //
-   grid->addWidget(new QLabel("Opacity "), rowNumber, NAME_COLUMN);   
-   opacityDoubleSpinBox = new QDoubleSpinBox;
-   opacityDoubleSpinBox->setMinimum(0.0);
-   opacityDoubleSpinBox->setMaximum(1.0);
-   opacityDoubleSpinBox->setSingleStep(0.1);
-   opacityDoubleSpinBox->setDecimals(3);
-   opacityDoubleSpinBox->setFixedWidth(100);
-   opacityDoubleSpinBox->setValue(1.0);
-   opacityDoubleSpinBox->setToolTip("Overlay and Underlay Opacity\n"
-                                      "color = opacity * overlay-color +\n"
-                                      "        (1.0 - opacity) * underlay-color");
-   grid->addWidget(opacityDoubleSpinBox, rowNumber, COMBO_COLUMN);
-   QObject::connect(opacityDoubleSpinBox, SIGNAL(valueChanged(double)),
-                    this, SLOT(readOverlayUnderlaySelections()));
-   rowNumber++;
-   
-   //
-   // Fix the size of the stuff
-   //
-   surfaceAttributesGroupBox->setFixedHeight(surfaceAttributesGroupBox->sizeHint().height());
-   //surfaceModelIndexComboBox->setFixedWidth(overlayUnderlayPage->sizeHint().width());
+   QGroupBox* coloringModeGroupBox = new QGroupBox("Coloring Mode");
+   QVBoxLayout* coloringModeLayout = new QVBoxLayout(coloringModeGroupBox);
+   coloringModeLayout->addWidget(surfaceColoringModeComboBox);
+   overlayUnderlayMainPageLayout->addWidget(coloringModeGroupBox);
    
    //
    // Layers selections
@@ -14114,56 +15244,14 @@ GuiDisplayControlDialog::createOverlayUnderlaySurfacePage()
    // Group box for layers
    //
    QGroupBox* layersGroupBox = new QGroupBox("Layers");
-   overlayUnderlayMainPageLayout->addWidget(layersGroupBox);
    QHBoxLayout* layersGroupLayout = new QHBoxLayout(layersGroupBox);
    layersGroupLayout->addWidget(layersBorderCheckBox);
    layersGroupLayout->addWidget(layersCellsCheckBox);
    layersGroupLayout->addWidget(layersFociCheckBox);
-   //layersGroupLayout->addStretch();
-   layersGroupBox->setFixedSize(layersGroupBox->sizeHint());
+   layersGroupLayout->addStretch();
+   overlayUnderlayMainPageLayout->addWidget(layersGroupBox);
    
-   pageOverlayUnderlaySurface->setFixedHeight(pageOverlayUnderlaySurface->sizeHint().height());
-
-}
-
-/**
- * Reads the opacity and geography blending factor text boxes
- */
-void
-GuiDisplayControlDialog::readOverlayUnderlaySelections()
-{
-   if (creatingDialog) {
-      return;
-   }
-   
-   BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-   DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
-   
-   bsnc->setOpacity(opacityDoubleSpinBox->value());
-   
-   bsnc->setGeographyBlending(geographyBlendingDoubleSpinBox->value());
-   
-   const QString sectionText = primaryOverlaySectionsLineEdit->text();
-   const int xPos = sectionText.indexOf('x', 0, Qt::CaseInsensitive);
-   int sectionNumber = 0;
-   if (xPos >= 0) {
-      sectionNumber = sectionText.left(xPos).toInt();
-   }
-   else {
-      sectionNumber = sectionText.toInt();
-   }
-   dss->setSectionHighlighting(sectionNumber, (xPos >= 0));
-   
-   bsnc->assignColors();
-   
-   if ((bsnc->getPrimaryOverlay(surfaceModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-       (bsnc->getSecondaryOverlay(surfaceModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC) ||
-       (bsnc->getUnderlay(surfaceModelIndex) == BrainModelSurfaceNodeColoring::OVERLAY_METRIC)) {
-      BrainModelVolumeVoxelColoring* voxelColoring = theMainWindow->getBrainSet()->getVoxelColoring();
-      voxelColoring->setVolumeFunctionalColoringInvalid();
-   }
-   
-   GuiBrainModelOpenGL::updateAllGL(NULL);      
+   overlayUnderlayMainPageLayout->addStretch();
 }
 
 /**
@@ -14181,8 +15269,7 @@ GuiDisplayControlDialog::applySelected()
    }
    
    switch (currentPageName) {
-      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY:
-         readOverlayUnderlaySelections();
+      case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW:
          break;
       case PAGE_NAME_AREAL_ESTIMATION:
          readArealEstimationSelections();
@@ -14238,6 +15325,9 @@ GuiDisplayControlDialog::applySelected()
       case PAGE_NAME_FOCI_NAME:
          readFociNamePage();
          break;
+      case PAGE_NAME_FOCI_SEARCH:
+         readFociSearchPage();
+         break;
       case PAGE_NAME_FOCI_TABLE:
          readFociTablePage();
          break;
@@ -14249,6 +15339,9 @@ GuiDisplayControlDialog::applySelected()
          break;
       case PAGE_NAME_LATLON:
          readLatLonSelections();
+         break;
+      case PAGE_NAME_METRIC_MISCELLANEOUS:
+         readMetricMiscellaneousPage();
          break;
       case PAGE_NAME_METRIC_SELECTION:
          readMetricSelectionPage();
@@ -14271,8 +15364,14 @@ GuiDisplayControlDialog::applySelected()
       case PAGE_NAME_PAINT_COLUMN:
          readPaintColumnSelections();
          break;
+      case PAGE_NAME_PAINT_MAIN:
+         readPaintMainPageSelections();
+         break;
       case PAGE_NAME_PAINT_NAMES:
          readPaintNameSelections();
+         break;
+      case PAGE_NAME_SECTION_MAIN:
+         readSectionMainPage();
          break;
       case PAGE_NAME_SURFACE_AND_VOLUME:
          readSurfaceAndVolumeSelections();
@@ -14301,8 +15400,11 @@ GuiDisplayControlDialog::applySelected()
       case PAGE_NAME_REGION:
          readRegionSelections();
          break;
-      case PAGE_NAME_RGB_PAINT:
-         readRgbPaintSelections();
+      case PAGE_NAME_RGB_PAINT_MAIN:
+         readRgbPaintPageMain();
+         break;
+      case PAGE_NAME_RGB_PAINT_SELECTION:
+         readRgbPaintPageSelection();
          break;
       case PAGE_NAME_SCENE:
          slotSceneListBox(sceneListBox->currentRow());
@@ -14329,299 +15431,40 @@ GuiDisplayControlDialog::applySelected()
          break;
    }
    
-/*
-   if (pageWidgetStack->visibleWidget() == overlayUnderlayPage) {
-      readOverlayUnderlaySelections();
-   }
-   else if (pageWidgetStack->visibleWidget() == cocomacPage) {
-      readCocomacSelections();
-   }
-   else if (pageWidgetStack->visibleWidget() == contourPage) {
-      readContourSelections();
-   }
-   else if (pageWidgetStack->visibleWidget() == metricPage) {
-      readMetricSelections();
-   }
-   else if (currentPage() == shapeMainPage) {
-      readShapeSelections();
-   }
-   else if (currentPage() == borderPage) {
-      readBorderSelections();
-   }
-   else if (currentPage() == cellPage) {
-      readCellSelections();
-   }
-   else if (currentPage() == fociPage) {
-      readFociSelections();
-   }
-   else if (currentPage() == pageSurfaceMisc) {
-      readMiscSelections();
-   }
-   else if (currentPage() == probAtlasPage) {
-      readProbAtlasSelections();
-   }
-   else if (currentPage() == pageRgbPaintMain) {
-      readRgbPaintSelections();
-   }
-   else if (currentPage() == pageTopography) {
-      readTopographySelections();
-   }
-   else if (currentPage() == volumePage) {
-      readVolumeSelections();
-   }
-*/
 }
 
 /**
- * Called when primary overlay light checkbox is toggled
+ * update surface overlay widgets.
  */
-void
-GuiDisplayControlDialog::primaryOverlayLightSelection()
+void 
+GuiDisplayControlDialog::updateSurfaceOverlayWidgets()
 {
-   BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-   bsnc->setPrimaryOverlayLightingOn(! bsnc->getPrimaryOverlayLightingOn());
-   primaryOverlayLightingButton->setChecked(bsnc->getPrimaryOverlayLightingOn());
-   readOverlayUnderlaySelections();
+   if (pageOverlayUnderlaySurfaceNew != NULL) {
+      const int num = static_cast<int>(surfaceOverlayUnderlayWidgets.size());
+      for (int i = 0; i < num; i++) {
+         surfaceOverlayUnderlayWidgets[i]->updateWidget();
+      }
+   }
 }
-
-/**
- * Called when secondary overlay light checkbox is toggled
- */
-void
-GuiDisplayControlDialog::secondaryOverlayLightSelection()
-{
-   BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-   bsnc->setSecondaryOverlayLightingOn(! bsnc->getSecondaryOverlayLightingOn());
-   secondaryOverlayLightingButton->setChecked(bsnc->getSecondaryOverlayLightingOn());
-   readOverlayUnderlaySelections();
-}
-
-/**
- * Called when underlay light checkbox is toggled
- */
-void
-GuiDisplayControlDialog::underlayLightSelection()
-{
-   BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-   bsnc->setUnderlayLightingOn(! bsnc->getUnderlayLightingOn());
-   underlayLightingButton->setChecked(bsnc->getUnderlayLightingOn());
-   readOverlayUnderlaySelections();
-}
-
+      
 /**
  * Update overlay/underlay toggles buttons and combo boxes.  Uusually called after loading 
  * a spec file, a data file, or when the program wants to change an overlay underlay selection.
  */
 void
-GuiDisplayControlDialog::updateOverlayUnderlayItems()
+GuiDisplayControlDialog::updateOverlayUnderlayItemsNew()
 {
    updatePageSelectionComboBox();
    updateSurfaceModelComboBoxes();
    
-   if (pageOverlayUnderlaySurface != NULL) {
-      BrainModelSurfaceNodeColoring* bsnc = theMainWindow->getBrainSet()->getNodeColoring();
-      const DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
-      
-      QRadioButton* primary = NULL;
-      switch(bsnc->getPrimaryOverlay(surfaceModelIndex)) {
-         case BrainModelSurfaceNodeColoring::OVERLAY_NONE:
-            primary = primaryOverlayNoneButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION:
-            primary = primaryOverlayArealEstButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC:
-            primary = primaryOverlayCocomacButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_METRIC:
-            primary = primaryOverlayMetricButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_PAINT:
-            primary = primaryOverlayPaintButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS:
-            primary = primaryOverlayProbAtlasSurfaceButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT:
-            primary = primaryOverlayRgbPaintButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS:
-            primary = primaryOverlayCrossoversButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SHOW_EDGES:
-            primary = primaryOverlayEdgesButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SECTIONS:
-            primary = primaryOverlaySectionsButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE:
-            primary = primaryOverlayShapeButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY:
-            primary = primaryOverlayTopographyButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_GEOGRAPHY_BLENDING:
-            break;
-      }
-      if (primary != NULL) {
-         if (primary->isChecked() == false) {
-            primary->setChecked(true);
-         }
-      }
-      
-      QRadioButton* secondary = NULL;
-      switch(bsnc->getSecondaryOverlay(surfaceModelIndex)) {
-         case BrainModelSurfaceNodeColoring::OVERLAY_NONE:
-            secondary = secondaryOverlayNoneButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION:
-            secondary = secondaryOverlayArealEstButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC:
-            secondary = secondaryOverlayCocomacButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_METRIC:
-            secondary = secondaryOverlayMetricButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_PAINT:
-            secondary = secondaryOverlayPaintButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS:
-            secondary = secondaryOverlayProbAtlasSurfaceButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT:
-            secondary = secondaryOverlayRgbPaintButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SECTIONS:
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS:
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SHOW_EDGES:
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE:
-            secondary = secondaryOverlayShapeButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY:
-            secondary = secondaryOverlayTopographyButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_GEOGRAPHY_BLENDING:
-            break;
-      }
-      if (secondary != NULL) {
-         if (secondary->isChecked() == false) {
-            secondary->setChecked(true);
-         }
-      }
-      
-      QRadioButton* underlay = NULL;
-      switch(bsnc->getUnderlay(surfaceModelIndex)) {
-         case BrainModelSurfaceNodeColoring::OVERLAY_NONE:
-            underlay = underlayNoneButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_AREAL_ESTIMATION:
-            underlay = underlayArealEstButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_COCOMAC:
-            underlay = underlayCocomacButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_METRIC:
-            underlay = underlayMetricButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_PAINT:
-            underlay = underlayPaintButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS:
-            underlay = underlayProbAtlasSurfaceButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT:
-            underlay = underlayRgbPaintButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SECTIONS:
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SHOW_CROSSOVERS:
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SHOW_EDGES:
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_SURFACE_SHAPE:
-            underlay = underlayShapeButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_TOPOGRAPHY:
-            underlay = underlayTopographyButton;
-            break;
-         case BrainModelSurfaceNodeColoring::OVERLAY_GEOGRAPHY_BLENDING:
-            underlay = underlayGeographyBlendingButton;
-            break;
-      }
-      if (underlay != NULL) {
-         if (underlay->isChecked() == false) {
-            underlay->setChecked(true);
-         }
-      }
-      
-      int sectionNumber;
-      bool sectionEveryX;
-      dss->getSectionHighlighting(sectionNumber, sectionEveryX);
-      QString sectionText = QString::number(sectionNumber);
-      if (sectionEveryX) {
-         sectionText.append("X");
-      }
-      primaryOverlaySectionsLineEdit->setText(sectionText);
-      
-      const SectionFile* sf = theMainWindow->getBrainSet()->getSectionFile();
-      const bool sectionsValid = (sf->getNumberOfColumns() > 0);
-      primaryOverlaySectionsButton->setEnabled(sectionsValid);
-      primaryOverlaySectionsLabel->setEnabled(sectionsValid);
-      primaryOverlaySectionsLineEdit->setEnabled(sectionsValid);
-      
-      primaryOverlayLightingButton->setChecked(bsnc->getPrimaryOverlayLightingOn());
-      secondaryOverlayLightingButton->setChecked(bsnc->getSecondaryOverlayLightingOn());
-      underlayLightingButton->setChecked(bsnc->getUnderlayLightingOn());
-      
-      geographyBlendingDoubleSpinBox->setValue(bsnc->getGeographyBlending());
-      
-      opacityDoubleSpinBox->setValue(bsnc->getOpacity());
-      
-      pageOverlayUnderlaySurface->setEnabled(validSurfaceData);
-   }
+   updateSurfaceOverlayWidgets();
+   updateSurfaceColoringModeSection();
    
    updateArealEstimationItems();
    updateMetricItems();
    updatePaintItems();
    updateShapeItems();
    updateTopographyItems();
-}
-
-/**
- * Primary overlay selection slot.
- */
-void
-GuiDisplayControlDialog::primaryOverlaySelection(int num)
-{
-   theMainWindow->getBrainSet()->getNodeColoring()->setPrimaryOverlay(surfaceModelIndex,
-                static_cast<BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS>(num));
-   readOverlayUnderlaySelections();
-}
-
-/**
- * Secondary overlay selection slot.
- */
-void
-GuiDisplayControlDialog::secondaryOverlaySelection(int num)
-{
-   theMainWindow->getBrainSet()->getNodeColoring()->setSecondaryOverlay(surfaceModelIndex,
-                  static_cast<BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS>(num));
-   readOverlayUnderlaySelections();
-}
-
-/**
- * Underlay selection slot.
- */
-void
-GuiDisplayControlDialog::underlaySelection(int num)
-{
-   theMainWindow->getBrainSet()->getNodeColoring()->setUnderlay(surfaceModelIndex,
-                        static_cast<BrainModelSurfaceNodeColoring::OVERLAY_SELECTIONS>(num));
-   readOverlayUnderlaySelections();
 }
 
 /**
@@ -14638,8 +15481,14 @@ void
 GuiDisplayControlDialog::arealEstFileSelection(int col)
 {
    DisplaySettingsArealEstimation* dsae = theMainWindow->getBrainSet()->getDisplaySettingsArealEstimation();
-   dsae->setSelectedColumn(surfaceModelIndex, col);
-   readOverlayUnderlaySelections();
+   dsae->setSelectedDisplayColumn(surfaceModelIndex, overlayNumberComboBox->currentIndex(), col);
+
+   readArealEstimationSelections();
+   updateArealEstimationItems();
+   
+   updateSurfaceOverlayWidgets();
+   
+/*
    if (arealEstimationSelectionButtonGroup != NULL) {
       arealEstimationSelectionButtonGroup->blockSignals(true);
       const int num = arealEstimationSelectionButtonGroup->buttons().count();
@@ -14648,12 +15497,12 @@ GuiDisplayControlDialog::arealEstFileSelection(int col)
          rb->setChecked(true);
       }
       arealEstimationSelectionButtonGroup->blockSignals(false);
+      
+      updateSurfaceOverlayWidgets();
    }
-   if (pageOverlayUnderlaySurface != NULL) {
-      arealEstSelectionComboBox->blockSignals(true);
-      arealEstSelectionComboBox->setCurrentIndex(col);
-      arealEstSelectionComboBox->blockSignals(false);
-   }
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
+*/
 }
 
 /**
@@ -14668,17 +15517,6 @@ GuiDisplayControlDialog::displayDataInfoDialog(const QString& title, const QStri
    dataInfoDialog->setWindowTitle(title);
    dataInfoDialog->setText(info);
    dataInfoDialog->exec();
-}
-
-/**
- * This slot is called when the areal estimation info push button is clicked.
- */
-void
-GuiDisplayControlDialog::arealEstInfoPushButtonSelection()
-{
-   DisplaySettingsArealEstimation* dsae = theMainWindow->getBrainSet()->getDisplaySettingsArealEstimation();
-   const int col = dsae->getSelectedColumn(surfaceModelIndex);
-   arealEstimationCommentColumnSelection(col);
 }
 
 /**
@@ -14804,9 +15642,10 @@ GuiDisplayControlDialog::createAndUpdateArealEstimationPage()
       //
       // Comment push button
       //
-      QPushButton* commentPushButton = new QPushButton("?");
-      commentPushButton->setAutoDefault(false);
-      commentPushButton->setFixedWidth(40);
+      QToolButton* commentPushButton = new QToolButton; //("?");
+      commentPushButton->setText("?");
+      //commentPushButton->setAutoDefault(false);
+      //commentPushButton->setFixedWidth(40);
       arealEstimationColumnCommentPushButtons.push_back(commentPushButton);
       arealEstimationCommentButtonGroup->addButton(commentPushButton, i);
       arealEstimationSelectionGridLayout->addWidget(commentPushButton, i, 1, Qt::AlignHCenter);
@@ -14814,9 +15653,10 @@ GuiDisplayControlDialog::createAndUpdateArealEstimationPage()
       //
       // Metadata push button
       //
-      QPushButton* metaDataPushButton = new QPushButton("M");
-      metaDataPushButton->setAutoDefault(false);
-      metaDataPushButton->setFixedWidth(40);
+      QToolButton* metaDataPushButton = new QToolButton; //("M");
+      metaDataPushButton->setText("M");
+      //metaDataPushButton->setAutoDefault(false);
+      //metaDataPushButton->setFixedWidth(40);
       arealEstimationColumnMetaDataPushButtons.push_back(metaDataPushButton);
       arealEstimationMetaDataButtonGroup->addButton(metaDataPushButton, i);
       arealEstimationSelectionGridLayout->addWidget(metaDataPushButton, i, 2, Qt::AlignHCenter);
@@ -14834,6 +15674,7 @@ GuiDisplayControlDialog::createAndUpdateArealEstimationPage()
    // Update items already in the dialog
    //
    for (int i = 0; i < numValidArealEstimation; i++) {
+      arealEstimationSelectionRadioButtons[i]->show();
       arealEstimationColumnCommentPushButtons[i]->show();
       arealEstimationColumnMetaDataPushButtons[i]->show();
       arealEstimationNameLineEdits[i]->setText(aef->getColumnName(i));
@@ -14845,6 +15686,7 @@ GuiDisplayControlDialog::createAndUpdateArealEstimationPage()
    // Hide columns that are not needed
    //
    for (int i = numValidArealEstimation; i < numExistingArealEstimation; i++) {
+      arealEstimationSelectionRadioButtons[i]->hide();
       arealEstimationColumnCommentPushButtons[i]->hide();
       arealEstimationColumnMetaDataPushButtons[i]->hide();
       arealEstimationNameLineEdits[i]->hide();
@@ -14873,9 +15715,13 @@ GuiDisplayControlDialog::readArealEstimationSelections()
       }
    }
    updateArealEstimationItems();
+   updateSurfaceOverlayWidgets();
+   
    GuiFilesModified fm;
    fm.setArealEstimationModified();
    theMainWindow->fileModificationUpdate(fm);
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL);   
 }
       
 /**
@@ -14886,7 +15732,6 @@ GuiDisplayControlDialog::updateArealEstimationItems()
 {
    updatePageSelectionComboBox();
 
-   updateArealEstOverlayUnderlaySelections();
    if (pageArealEstimation == NULL) {
       return;
    }
@@ -14895,48 +15740,13 @@ GuiDisplayControlDialog::updateArealEstimationItems()
    arealEstimationSelectionButtonGroup->blockSignals(true);
    const int num = arealEstimationSelectionButtonGroup->buttons().count();
    DisplaySettingsArealEstimation* dsae = theMainWindow->getBrainSet()->getDisplaySettingsArealEstimation();
-   const int col = dsae->getSelectedColumn(surfaceModelIndex);
+   const int col = dsae->getSelectedDisplayColumn(surfaceModelIndex,
+                                                  overlayNumberComboBox->currentIndex());
    if ((col >= 0) && (col < num)) {
       QRadioButton* rb = dynamic_cast<QRadioButton*>(arealEstimationSelectionButtonGroup->button(col));
       rb->setChecked(true);
    }
    arealEstimationSelectionButtonGroup->blockSignals(false);
-}
-
-/**
- * Update the areal estimation selection combo box with the currently loaded areal estimation files
- */
-void
-GuiDisplayControlDialog::updateArealEstOverlayUnderlaySelections()
-{
-   if (pageOverlayUnderlaySurface == NULL) {
-      return;
-   }
-   
-   arealEstSelectionComboBox->clear();
-   
-   ArealEstimationFile* aef = theMainWindow->getBrainSet()->getArealEstimationFile();
-   DisplaySettingsArealEstimation* dsae = theMainWindow->getBrainSet()->getDisplaySettingsArealEstimation();
-   
-   const int numColumns = aef->getNumberOfColumns();
-   
-   bool valid = false;
-   if (numColumns > 0) {
-      valid = true;
-      for (int i = 0; i < numColumns; i++) {
-         arealEstSelectionComboBox->addItem(aef->getColumnName(i));
-      }
-      arealEstSelectionComboBox->setCurrentIndex(dsae->getSelectedColumn(surfaceModelIndex));
-      arealEstSelectionComboBox->setToolTip(
-                    aef->getColumnName(dsae->getSelectedColumn(surfaceModelIndex)));
-   }
-   
-   arealEstSelectionComboBox->setEnabled(valid);
-   primaryOverlayArealEstButton->setEnabled(valid);
-   secondaryOverlayArealEstButton->setEnabled(valid);
-   underlayArealEstButton->setEnabled(valid);
-   arealEstSelectionLabel->setEnabled(valid);
-   arealEstInfoPushButton->setEnabled(valid);
 }
 
 /**
@@ -14956,47 +15766,21 @@ GuiDisplayControlDialog::metricDisplayColumnSelection(int col)
    
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    dsm->setApplySelectionToLeftAndRightStructuresFlag(metricApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
-   dsm->setSelectedDisplayColumn(surfaceModelIndex, col);
-   dsm->setSelectedThresholdColumn(surfaceModelIndex, col);
+   dsm->setSelectedDisplayColumn(surfaceModelIndex, overlayNumberComboBox->currentIndex(), col);
+   dsm->setSelectedThresholdColumn(surfaceModelIndex, overlayNumberComboBox->currentIndex(), col);
    
    if (pageMetricSelection != NULL) {
       metricViewButtonGroup->blockSignals(true);
       metricThresholdButtonGroup->blockSignals(true);
-   }
-   if (pageOverlayUnderlaySurface != NULL) {
-      metricSelectionComboBox->blockSignals(true);
    }
    updateMetricSelectionPage();
    if (pageMetricSelection != NULL) {
       metricViewButtonGroup->blockSignals(false);
       metricThresholdButtonGroup->blockSignals(false);
    }
-   if (pageOverlayUnderlaySurface != NULL) {
-      metricSelectionComboBox->blockSignals(false);
-   }
-
-   if (pageOverlayUnderlaySurface != NULL) {
-      metricSelectionComboBox->blockSignals(true);
-      metricSelectionComboBox->setCurrentIndex(dsm->getSelectedDisplayColumn(surfaceModelIndex));
-      metricSelectionComboBox->blockSignals(false);
-   }
+   
+   updateSurfaceOverlayWidgets();
    readMetricSelectionPage();
-}
-
-/**
- * This slot is called when the metric info push button is clicked.
- */
-void
-GuiDisplayControlDialog::metricInfoPushButtonSelection()
-{
-   DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
-   const int column = dsm->getSelectedDisplayColumn(surfaceModelIndex);
-   if ((column >= 0) && (column < mf->getNumberOfColumns())) {
-      GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
-                                                                    mf, column);
-      dfcd->show();
-   }
 }
 
 /**
@@ -15013,6 +15797,29 @@ GuiDisplayControlDialog::metricCommentColumnSelection(int column)
    }
 }
 
+/**
+ * called when a metric histogram column is selected.
+ */
+void 
+GuiDisplayControlDialog::metricHistogramColumnSelection(int column)
+{
+   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
+   if ((column >= 0) && (column < mf->getNumberOfColumns())) {
+      const int numNodes = mf->getNumberOfNodes();
+      std::vector<float> values(numNodes);
+      for (int i = 0; i < numNodes; i++) {
+         values[i] = mf->getValue(i, column);
+      }
+      
+      GuiHistogramDisplayDialog* ghd = new GuiHistogramDisplayDialog(theMainWindow, 
+                                             mf->getColumnName(column),
+                                             values,
+                                             false,
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
+      ghd->show();
+   }
+}
+      
 /**
  * called when a metric metadata column is selected.
  */
@@ -15038,9 +15845,10 @@ void
 GuiDisplayControlDialog::metricThresholdColumnSelection(int col)
 {
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
-   dsm->setSelectedThresholdColumn(surfaceModelIndex, col);
+   dsm->setSelectedThresholdColumn(surfaceModelIndex, -1, col);
    dsm->setApplySelectionToLeftAndRightStructuresFlag(metricApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    updateMetricSelectionPage();
+   updateSurfaceOverlayWidgets();
    readMetricSelectionPage();
 }
 
@@ -15051,70 +15859,15 @@ void
 GuiDisplayControlDialog::paintColumnSelection(int col)
 {
    DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
-   dsp->setSelectedColumn(surfaceModelIndex, col);
-   if (pageOverlayUnderlaySurface != NULL) {
-      paintSelectionComboBox->setCurrentIndex(col);
-   }
+   dsp->setSelectedDisplayColumn(surfaceModelIndex, overlayNumberComboBox->currentIndex(), col);
    readPaintColumnSelections();
    updatePaintItems();
+   
+   updateSurfaceOverlayWidgets();
    
    // not needed since readPaintSelections makes these calls
    //theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    //GuiBrainModelOpenGL::updateAllGL(NULL);
-}
-
-/**
- * This slot is called when the paint info push button is clicked.
- */
-void
-GuiDisplayControlDialog::paintInfoPushButtonSelection()
-{
-   DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
-   PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
-   const int column = dsp->getSelectedColumn(surfaceModelIndex);
-   if ((column >= 0) && (column < pf->getNumberOfColumns())) {
-      GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
-                                                                    pf, column);
-      dfcd->show();
-   }
-}
-
-/**
- * This slot is called when the rgb paint info push button is clicked.
- */
-void
-GuiDisplayControlDialog::rgbPaintInfoPushButtonSelection()
-{
-   DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
-   RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
-   const int column = dsrp->getSelectedColumn(surfaceModelIndex);
-   if ((column >= 0) && (column < rpf->getNumberOfColumns())) {
-      GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
-                                                                    rpf, column);
-      dfcd->show();
-   }
-}
-
-/**
- * Called when a paint column is selected.
- *
-void
-GuiDisplayControlDialog::probAtlasFileSelection()
-{
-   //PaintFile* pf = theMainWindow->getBrainSet()->getProbabilisticAtlasFile();
-   //pf->setSelectedColumn(col);
-   readOverlayUnderlaySelections();
-}
-*/
-
-/**
- * This slot is called when the paint info push button is clicked.
- */
-void
-GuiDisplayControlDialog::probAtlasSurfaceInfoPushButtonSelection()
-{
-   ProbabilisticAtlasFile* pf = theMainWindow->getBrainSet()->getProbabilisticAtlasSurfaceFile();
-   displayDataInfoDialog(pf->getFileTitle(), "Prob Atlas"); //pf->getComment());
 }
 
 /**
@@ -15124,10 +15877,13 @@ void
 GuiDisplayControlDialog::rgbPaintFileSelection(int col)
 {
    DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
-   dsrp->setSelectedColumn(surfaceModelIndex, col);
+   dsrp->setSelectedDisplayColumn(surfaceModelIndex, overlayNumberComboBox->currentIndex(), col);
 
-   readRgbPaintSelections();
    updateRgbPaintItems();
+   updateSurfaceOverlayWidgets();
+
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL);
 }
 
 /**
@@ -15139,28 +15895,14 @@ GuiDisplayControlDialog::shapeColumnSelection(int col)
    DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
    dsss->setApplySelectionToLeftAndRightStructuresFlag(shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    readShapeColorMapping();   // 
-   dsss->setSelectedDisplayColumn(surfaceModelIndex, col);
+   dsss->setSelectedDisplayColumn(surfaceModelIndex, overlayNumberComboBox->currentIndex(), col);
    //shapeSelectionComboBox->setCurrentIndex(dsss->getSelectedDisplayColumn());
    updateShapeItems();
    
+   updateSurfaceOverlayWidgets();
+   
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    GuiBrainModelOpenGL::updateAllGL(NULL);   
-}
-
-/**
- * This slot is called when the surface shape info push button is clicked.
- */
-void
-GuiDisplayControlDialog::shapeInfoPushButtonSelection()
-{
-   DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
-   SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
-   const int column = dsss->getSelectedDisplayColumn(surfaceModelIndex);
-   if ((column >= 0) && (column < ssf->getNumberOfColumns())) {
-      GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
-                                                                    ssf, column);
-      dfcd->show();
-   }
 }
 
 /**
@@ -15417,8 +16159,12 @@ GuiDisplayControlDialog::readProbAtlasVolumeAreaPage()
    if (bmv == NULL) {
       return;
    }
+   if (theMainWindow->getBrainSet()->getNumberOfVolumeProbAtlasFiles() <= 0) {
+      return;
+   }
+   const VolumeFile* firstVolumeFile = theMainWindow->getBrainSet()->getVolumeProbAtlasFile(0);
+   const int numAreas = firstVolumeFile->getNumberOfRegionNames();
    DisplaySettingsProbabilisticAtlas* dspa = theMainWindow->getBrainSet()->getDisplaySettingsProbabilisticAtlasVolume();
-   const int numAreas = bmv->getNumberOfProbAtlasNames();
    if (numAreas == numValidProbAtlasVolumeAreas) {
       for (int i = 0; i < numAreas; i++) {
          dspa->setAreaSelected(i, probAtlasVolumeAreasCheckBoxes[i]->isChecked());
@@ -15428,7 +16174,6 @@ GuiDisplayControlDialog::readProbAtlasVolumeAreaPage()
       std::cerr << "Number of prob atlas volume area checkboxes does not equal number of "
                 << "prob atlas volume areas." << std::endl;
    }
-   dspa->setThresholdDisplayTypeRatio(probAtlasVolumeThresholdRatioDoubleSpinBox->value());  
    BrainModelVolumeVoxelColoring* vvc = theMainWindow->getBrainSet()->getVoxelColoring();
    vvc->setVolumeProbAtlasColoringInvalid();
    GuiBrainModelOpenGL::updateAllGL(NULL); 
@@ -15536,10 +16281,14 @@ GuiDisplayControlDialog::createAndUpdateProbAtlasVolumeAreaNameCheckBoxes()
 {
    numValidProbAtlasVolumeAreas = 0;
    BrainModelVolume* bmv = theMainWindow->getBrainSet()->getBrainModelVolume();
-   if (bmv != NULL) {
-      numValidProbAtlasVolumeAreas = bmv->getNumberOfProbAtlasNames();
+   if (bmv == NULL) {
+      return;
    }
-   
+   if (theMainWindow->getBrainSet()->getNumberOfVolumeProbAtlasFiles() <= 0) {
+      return;
+   }
+   const VolumeFile* firstVolumeFile = theMainWindow->getBrainSet()->getVolumeProbAtlasFile(0);
+   numValidProbAtlasVolumeAreas = firstVolumeFile->getNumberOfRegionNames();
    const int numExistingCheckBoxes = static_cast<int>(probAtlasVolumeAreasCheckBoxes.size());
    
    if (probAtlasVolumeAreasGridLayout == NULL) {
@@ -15565,7 +16314,7 @@ GuiDisplayControlDialog::createAndUpdateProbAtlasVolumeAreaNameCheckBoxes()
    //
    for (int i = 0; i < numExistingCheckBoxes; i++) {
       if (i < numValidProbAtlasVolumeAreas) {
-         probAtlasVolumeAreasCheckBoxes[i]->setText(bmv->getProbAtlasNameFromIndex(i));
+         probAtlasVolumeAreasCheckBoxes[i]->setText(firstVolumeFile->getRegionNameFromIndex(i));
          probAtlasVolumeAreasCheckBoxes[i]->show();
       }
    }
@@ -15574,7 +16323,7 @@ GuiDisplayControlDialog::createAndUpdateProbAtlasVolumeAreaNameCheckBoxes()
    // Add new checkboxes as needed
    //
    for (int j = numExistingCheckBoxes; j < numValidProbAtlasVolumeAreas; j++) {
-      QCheckBox* cb = new QCheckBox(bmv->getProbAtlasNameFromIndex(j));
+      QCheckBox* cb = new QCheckBox(firstVolumeFile->getRegionNameFromIndex(j));
       probAtlasVolumeAreasCheckBoxes.push_back(cb);
       probAtlasVolumeAreasButtonGroup->addButton(cb, j);
       probAtlasVolumeAreasGridLayout->addWidget(cb, j, 0, 1, 1, Qt::AlignLeft);
@@ -15630,7 +16379,10 @@ GuiDisplayControlDialog::updateProbAtlasVolumeAreaPage(const bool filesChanged)
    BrainModelVolume* bmv = theMainWindow->getBrainSet()->getBrainModelVolume();
    DisplaySettingsProbabilisticAtlas* dspa = theMainWindow->getBrainSet()->getDisplaySettingsProbabilisticAtlasVolume();
    if (bmv != NULL) {
-      numAreas = bmv->getNumberOfProbAtlasNames();
+      if (theMainWindow->getBrainSet()->getNumberOfVolumeProbAtlasFiles() > 0) {
+         const VolumeFile* firstVolumeFile = theMainWindow->getBrainSet()->getVolumeProbAtlasFile(0);
+         numAreas = firstVolumeFile->getNumberOfRegionNames();
+      }
    }
    if (numAreas == numValidProbAtlasVolumeAreas) {
       for (int i = 0; i < numValidProbAtlasVolumeAreas; i++) {

@@ -31,7 +31,7 @@
 #include <QPushButton>
 #include <QString>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 #include "QtUtilities.h"
 
 #include "GuiMultipleInputDialog.h"
@@ -42,8 +42,9 @@
 GuiMultipleInputDialog::GuiMultipleInputDialog(QWidget* parent, 
                                                const QString& caption,
                                                const std::vector<QString>& labels)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle(caption);
    
    const int numRows = static_cast<int>(labels.size());

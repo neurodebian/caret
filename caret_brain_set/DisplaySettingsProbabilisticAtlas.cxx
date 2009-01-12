@@ -102,6 +102,17 @@ DisplaySettingsProbabilisticAtlas::updateSelectedChannelsForCurrentStructure(con
                         break;
                      case Structure::STRUCTURE_TYPE_CEREBELLUM:
                         break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+                     case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+                     case Structure::STRUCTURE_TYPE_ALL:
                      case Structure::STRUCTURE_TYPE_INVALID:
                         break;
                    }
@@ -224,7 +235,9 @@ DisplaySettingsProbabilisticAtlas::update()
             int numNames = 0;
             BrainModelVolume* bmv = brainSet->getBrainModelVolume();
             if (bmv != NULL) {
-               numNames = bmv->getNumberOfProbAtlasNames();
+               if (brainSet->getNumberOfVolumeProbAtlasFiles() > 0) {
+                  numNames = brainSet->getVolumeProbAtlasFile(0)->getNumberOfRegionNames();
+               }
             }
             areaSelected.resize(numNames);
             std::fill(areaSelected.begin(), areaSelected.end(), true);
@@ -239,6 +252,7 @@ DisplaySettingsProbabilisticAtlas::update()
 void 
 DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   applySelectionToLeftAndRightStructuresFlag = false;
    update();
    std::fill(channelSelected.begin(), channelSelected.end(), false);
    std::fill(areaSelected.begin(), areaSelected.end(), false);
@@ -321,7 +335,9 @@ DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QStr
                   const QString name = si->getModelName();
                   bool nameFound = false;
                   for (int i = 0; i < brainSet->getNumberOfVolumeProbAtlasFiles(); i++) {
-                     if (FileUtilities::basename(brainSet->getVolumeProbAtlasFile(i)->getDescriptiveLabel()) == name) {
+                     const QString volDescriptiveName =
+                        FileUtilities::basename(brainSet->getVolumeProbAtlasFile(i)->getDescriptiveLabel());
+                     if (volDescriptiveName == name) {
                         if (i < static_cast<int>(channelSelected.size())) {
                            channelSelected[i] = si->getValueAsBool();
                            nameFound = true;
@@ -329,7 +345,7 @@ DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QStr
                      }
                   }
                   if (nameFound == false) {
-                     QString msg("Unable to find prob atlas volume named \"");
+                     QString msg("Unable to find prob atlas volume with label: \"");
                      msg.append(name);
                      msg.append("\"\n");
                      errorMessage.append(msg);
@@ -338,21 +354,19 @@ DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QStr
                else if (infoName == "vol-areaSelected") {
                   BrainModelVolume* bmv = brainSet->getBrainModelVolume();
                   if (bmv != NULL) {
-                     const QString name = si->getModelName();
-                     bool nameFound = false;
-                     for (int i = 0; i < bmv->getNumberOfProbAtlasNames(); i++) {
-                        if (name == bmv->getProbAtlasNameFromIndex(i)) {
-                           if (i < static_cast<int>(areaSelected.size())) {
-                              areaSelected[i] = si->getValueAsBool();
-                              nameFound = true;
-                           }
+                     if (brainSet->getNumberOfVolumeProbAtlasFiles() > 0) {
+                        const VolumeFile* vf = brainSet->getVolumeProbAtlasFile(0);
+                        const QString name = si->getModelName();
+                        const int indx = vf->getRegionIndexFromName(name);
+                        if (indx >= 0) {
+                           areaSelected[indx] = si->getValueAsBool();
                         }
-                     }
-                     if (nameFound == false) {
-                        QString msg("Unable to find prob atlas volume area named \"");
-                        msg.append(name);
-                        msg.append("\"\n");
-                        errorMessage.append(msg);
+                        else {
+                           QString msg("Unable to find prob atlas volume area named \"");
+                           msg.append(name);
+                           msg.append("\"\n");
+                           errorMessage.append(msg);
+                        }
                      }
                   }
                }
@@ -366,7 +380,8 @@ DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QStr
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsProbabilisticAtlas::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsProbabilisticAtlas::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                                             QString& errorMessage)
 {
    SceneFile::SceneClass sc("DisplaySettingsProbabilisticAtlas");
    
@@ -382,8 +397,8 @@ DisplaySettingsProbabilisticAtlas::saveScene(SceneFile::Scene& scene, const bool
                   return;
                }
                
-               BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-               if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_PROBABILISTIC_ATLAS) == false) {
+               if (brainSet->isASurfaceOverlayForAnySurface(
+                           BrainModelSurfaceOverlay::OVERLAY_PROBABILISTIC_ATLAS) == false) {
                   return;
                }
             }
@@ -439,24 +454,40 @@ DisplaySettingsProbabilisticAtlas::saveScene(SceneFile::Scene& scene, const bool
             const int numChannels =
                std::min(brainSet->getNumberOfVolumeProbAtlasFiles(),
                         static_cast<int>(channelSelected.size()));
+                        
+            bool duplicateVolumeLabelsFlag = false;
             for (int i = 0; i < numChannels; i++) {
                const VolumeFile* vf = brainSet->getVolumeProbAtlasFile(i);
+               for (int j = 0; j < i; j++) {
+                 const VolumeFile* vfj = brainSet->getVolumeProbAtlasFile(j);
+                 if (vf->getDescriptiveLabel() == vfj->getDescriptiveLabel()) {
+                    duplicateVolumeLabelsFlag = true;
+                 }
+               }
                sc.addSceneInfo(SceneFile::SceneInfo("vol-channelSelected",
                                vf->getDescriptiveLabel(),
                                channelSelected[i]));
+            }
+            if (duplicateVolumeLabelsFlag) {
+               errorMessage += "The probabilistic atlas volumes have one or more "
+                               "identical labels.  Each probabilistic volume must "
+                               "have a unqiue label.";
             }
 
             int numNames = 0;
             BrainModelVolume* bmv = brainSet->getBrainModelVolume();
             if (bmv != NULL) {
-               numNames = bmv->getNumberOfProbAtlasNames();
-            }
-            numNames = std::min(numNames, 
-                                static_cast<int>(areaSelected.size()));
-            for (int i = 0; i < numNames; i++) {
-               sc.addSceneInfo(SceneFile::SceneInfo("vol-areaSelected",
-                                                    bmv->getProbAtlasNameFromIndex(i),
-                                                    areaSelected[i]));
+               if (brainSet->getNumberOfVolumeProbAtlasFiles() > 0) {
+                  const VolumeFile* vf = brainSet->getVolumeProbAtlasFile(0);
+                  numNames = vf->getNumberOfRegionNames();
+                  numNames = std::min(numNames, 
+                                      static_cast<int>(areaSelected.size()));
+                  for (int i = 0; i < numNames; i++) {
+                     sc.addSceneInfo(SceneFile::SceneInfo("vol-areaSelected",
+                                                          vf->getRegionNameFromIndex(i),
+                                                          areaSelected[i]));
+                  }
+               }
             }
          }
          break;

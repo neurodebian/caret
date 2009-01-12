@@ -16,16 +16,16 @@ win32 {
    DEFINES	-= UNICODE
 }
 
-macx {
-   INCLUDEPATH += /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
-} 
+#macx {
+#   INCLUDEPATH += /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
+#} 
 
 # Input
 HEADERS += Basename.h \
       CaretException.h \
       CaretLinkedList.h \
       CaretTips.h \
-      Categories.h \
+      Category.h \
 	   CommandLineUtilities.h \
 	   DebugControl.h \
 	   FileUtilities.h \
@@ -40,7 +40,6 @@ HEADERS += Basename.h \
       StatisticsUtilities.h \
       StringTable.h \
       Species.h \
-	   SpeechGenerator.h \
       StereotaxicSpace.h \
 	   StringUtilities.h \
       Structure.h \
@@ -50,7 +49,7 @@ HEADERS += Basename.h \
 SOURCES += Basename.cxx \
       CaretLinkedList.cxx \
       CaretTips.cxx \
-      Categories.cxx \
+      Category.cxx \
 	   CommandLineUtilities.cxx \
 	   DebugControl.cxx \
 	   FileUtilities.cxx \
@@ -65,7 +64,6 @@ SOURCES += Basename.cxx \
       StatisticsUtilities.cxx \
       StringTable.cxx \
       Species.cxx \
-	   SpeechGenerator.cxx \
       StereotaxicSpace.cxx \
 	   StringUtilities.cxx \
       Structure.cxx \

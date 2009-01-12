@@ -33,6 +33,7 @@
 #include "FreeSurferSurfaceFile.h"
 
 class MetricFile;
+class MniObjSurfaceFile;
 class TransformationMatrix;
 class vtkPolyData;
 
@@ -75,6 +76,9 @@ class CoordinateFile : public GiftiNodeDataFile {
       
       // Get the coordinates out of a vtkPolyData object
       void importFromVtkFile(vtkPolyData* polyData);
+      
+      /// get the coordinates from a MNI OBJ surface file
+      void importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException);
       
       /// returns true if the file is isEmpty (contains no data)
       bool empty() const { return (getNumberOfNodes() == 0); }
@@ -137,6 +141,11 @@ class CoordinateFile : public GiftiNodeDataFile {
                     const float x, const float y, const float z,
                     const int startSearchAtCoordinateIndex = 0) const;
                     
+      // get coordinate closest to a point
+      int getCoordinateIndexClosestToPoint(
+                    const float xyz[3],
+                    const int startSearchAtCoordinateIndex = 0) const;
+                    
       /// get the number of coordinates
       int getNumberOfCoordinates() const { return getNumberOfNodes(); }
       
@@ -174,6 +183,15 @@ class CoordinateFile : public GiftiNodeDataFile {
       virtual void deformFile(const DeformationMapFile& dmf, 
                               GiftiNodeDataFile& deformedFile,
                               const DEFORM_TYPE dt) const throw (FileException);
+      
+      // apply GIFTI transformation matrix
+      void applyGiftiTransformationMatrix();
+      
+      // get spec file tag from configuration id
+      QString getSpecFileTagUsingConfigurationID() const;
+      
+      // convert configuration ID to spec file tag
+      static QString convertConfigurationIDToSpecFileTag(const QString& configID);
       
    protected:
       // copy helper used by assignment operator and copy constructor

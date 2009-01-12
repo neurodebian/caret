@@ -31,8 +31,9 @@ class QCloseEvent;
 class QLabel;
 class GuiToolBar;
 
+#include <QMainWindow>
+
 #include "GuiBrainModelOpenGL.h"
-#include "QtMainWindow.h"
 #include "SceneFile.h"
 #include "SpecFile.h"
 
@@ -47,9 +48,13 @@ class CommunicatorServerCaretSocket;
 class GuiAddCellsDialog;
 class GuiAlignSurfaceToStandardOrientationDialog;
 class GuiAutomaticRotationDialog;
+class GuiBorderDrawUpdateDialog;
+class GuiBorderOperationsDialog;
 class GuiBordersCreateInterpolatedDialog;
+class GuiCaptureWindowImageDialog;
 class GuiCaretCommandDialog;
 class GuiCaretCommandScriptBuilderDialog;
+class GuiCellAndFociAttributeAssignmentDialog;
 class GuiContourAlignmentDialog;
 class GuiContourDrawDialog;
 class GuiContourSectionControlDialog;
@@ -62,6 +67,7 @@ class GuiBrainModelViewingWindow;
 class GuiColorKeyDialog;
 class GuiDataFileMathDialog;
 class GuiFilesModified;
+class GuiFlattenFullHemisphereDialog;
 class GuiImageEditorWindow;
 class GuiImageViewingWindow;
 class GuiInterpolateSurfacesDialog;
@@ -92,18 +98,20 @@ class GuiPaintNameEditorDialog;
 class GuiPaletteEditorDialog;
 class GuiParamsFileEditorDialog;
 class GuiSectionControlDialog;
+class GuiStandardMeshDialog;
 class GuiSurfaceRegionOfInterestDialog;
+class GuiSurfaceRegionOfInterestDialogOLD;
 class GuiPreferencesDialog;
 class GuiRecordingDialog;
 class GuiSetTopologyDialog;
 class GuiSmoothingDialog;
 //class GuiSpeechGenerator;
+class GuiStudyCollectionFileEditorDialog;
 class GuiStudyMetaDataFileEditorDialog;
 class GuiTransformationMatrixDialog;
 class GuiVocabularyFileEditorDialog;
 class GuiVolumeBiasCorrectionDialog;
 class GuiVolumeResizingDialog;
-class GuiVolumeMultiHemSureFitSegmentationDialog;
 class GuiVolumeThresholdSegmentationDialog;
 class GuiVolumeAttributesDialog;
 class GuiVolumePaintEditorDialog;
@@ -116,7 +124,7 @@ class TransformationMatrix;
 /**
  * MainWindow for the graphical user-interface
  */
-class GuiMainWindow : public QtMainWindow {
+class GuiMainWindow : public QMainWindow {
 
    Q_OBJECT
    
@@ -216,6 +224,18 @@ class GuiMainWindow : public QtMainWindow {
       /// create, possibly show, and return the draw border dialog
       GuiDrawBorderDialog* getDrawBorderDialog(const bool showIt);
       
+      /// create, possibly show, and return the border operations dialog
+      GuiBorderOperationsDialog* getBorderOperationsDialog(const bool showIt);
+      
+      /// create, possibly show, and return the flatten full hemisphere dialog
+      GuiFlattenFullHemisphereDialog* getFlattenFullHemisphereDialog(const bool showIt);
+      
+      /// create, possibly show, and return the standard mesh dialog
+      GuiStandardMeshDialog* getStandardMeshDialog(const bool showIt);
+      
+      /// get the draw border updated dialog
+      GuiBorderDrawUpdateDialog* getDrawBorderUpdateDialog() { return borderDrawUpdateDialog; }
+      
       /// show the help viewer dialog
       void showHelpViewerDialog(const QString& helpPage = "");
       
@@ -241,11 +261,11 @@ class GuiMainWindow : public QtMainWindow {
       /// create, (possibly show), and return the surface region of interest dialog
       GuiSurfaceRegionOfInterestDialog* getSurfaceRegionOfInterestDialog(const bool showIt);
       
+      /// create, (possibly show), and return the surface region of interest dialog
+      GuiSurfaceRegionOfInterestDialogOLD* getSurfaceRegionOfInterestDialogOLD(const bool showIt);
+      
       /// create, (possibly show), and return the volume region of interest dialog
       GuiVolumeRegionOfInterestDialog* getVolumeRegionOfInterestDialog(const bool showIt);
-      
-      /// create, (possibly show), and return the SureFit Multi Hem segmentation dialog
-      GuiVolumeMultiHemSureFitSegmentationDialog* getVolumeSureFitMultiHemSegmentationDialog(const bool showIt);
       
       /// create, (possibly show), and return the threshold segmentation dialog
       GuiVolumeThresholdSegmentationDialog* getVolumeThresholdSegmentationDialog(const bool showIt);
@@ -397,6 +417,12 @@ class GuiMainWindow : public QtMainWindow {
       /// display an image viewing window
       void displayImageViewingWindow();
       
+      /// display the capture window as image dialog
+      void displayCaptureWindowImageDialog();
+      
+      /// display the border draw update dialog
+      void displayBorderDrawUpdateDialog();
+      
       /// display the areal estimation color key
       void displayArealEstimationColorKey();
       
@@ -421,6 +447,9 @@ class GuiMainWindow : public QtMainWindow {
       /// display the study meta data file editor dialog
       void displayStudyMetaDataFileEditorDialog();
       
+      /// display the study collection file editor dialog
+      void displayStudyCollectionFileEditorDialog();
+      
       /// display the volume paint color key
       void displayVolumePaintColorKey();
       
@@ -433,11 +462,20 @@ class GuiMainWindow : public QtMainWindow {
       /// create (if necessary) and show the draw border dialog
       void displayDrawBorderDialog();
       
+      /// create (if necessary) and show the border operations dialog
+      void displayBorderOperationsDialog();
+      
       /// create (if necessary) and show the caret command executor dialog
       void displayCaretCommandExecutorDialog();
       
       /// create (if necessary) and show the caret command script builder dialog
       void displayCaretCommandScriptBuilderDialog();
+      
+      /// create (if necessary) and show the standard mesh dialog
+      void displayStandardMeshDialog();
+      
+      /// create (if necessary) and show the flatten full hemisphere dialog
+      void displayFlattenFullHemisphereDialog();
       
       /// create (if necessary) and show the section control dialog
       void displaySectionControlDialog();
@@ -541,6 +579,9 @@ class GuiMainWindow : public QtMainWindow {
       /// Remove a viewing window
       void removeViewingWindow(const BrainModel::BRAIN_MODEL_VIEW_NUMBER item);
       
+      /// resize the viewing windows
+      void resizeViewingWindows();
+      
    private:
       /// the available brain set
       std::vector<BrainSet*> loadedBrainSets;
@@ -614,6 +655,9 @@ class GuiMainWindow : public QtMainWindow {
       /// add contour cells dialog
       GuiAddCellsDialog* addContourCellsDialog;
       
+      /// capture window image dialog
+      GuiCaptureWindowImageDialog* captureWindowImageDialog;
+      
       /// contour alignment dialog
       GuiContourAlignmentDialog* contourAlignmentDialog;
       
@@ -625,6 +669,15 @@ class GuiMainWindow : public QtMainWindow {
       
       /// contour section control dialog
       GuiContourSectionControlDialog* contourSectionControlDialog;
+      
+      /// flatten full hemisphere dialog
+      GuiFlattenFullHemisphereDialog* flattenFullHemisphereDialog;
+      
+      /// standard mesh dialog
+      GuiStandardMeshDialog* standardMeshDialog;
+      
+      /// border operations dialog
+      GuiBorderOperationsDialog* borderOperationsDialog;
       
       /// draw border dialog
       GuiDrawBorderDialog* drawBorderDialog;
@@ -644,6 +697,9 @@ class GuiMainWindow : public QtMainWindow {
       /// borders create interpolated dialog
       GuiBordersCreateInterpolatedDialog* bordersCreateInterpolatedDialog;
       
+      /// border draw update dialog
+      GuiBorderDrawUpdateDialog* borderDrawUpdateDialog;
+      
       /// map talairach focus dialog
       GuiMapStereotaxicFocusDialog* mapStereotaxicFocusDialog;
       
@@ -653,11 +709,11 @@ class GuiMainWindow : public QtMainWindow {
       /// surface region of interest dialog
       GuiSurfaceRegionOfInterestDialog* surfaceRegionOfInterestDialog;
       
+      /// surface region of interest dialog
+      GuiSurfaceRegionOfInterestDialogOLD* surfaceRegionOfInterestDialogOLD;
+      
       /// volume region of interest dialog
       GuiVolumeRegionOfInterestDialog* volumeRegionOfInterestDialog;
-      
-      /// volume SureFit multi-hem segmentation dialog
-      GuiVolumeMultiHemSureFitSegmentationDialog* volumeSureFitMultiHemSegmentationDialog;
       
       /// volume threshold segmentation dialog
       GuiVolumeThresholdSegmentationDialog* volumeThresholdSegmentationDialog;
@@ -688,6 +744,9 @@ class GuiMainWindow : public QtMainWindow {
       
       /// study meta data editor dialog
       GuiStudyMetaDataFileEditorDialog* studyMetaDataFileEditorDialog;
+      
+      /// study collection editor dialog
+      GuiStudyCollectionFileEditorDialog* studyCollectionFileEditorDialog;
       
       /// volume math dialog
       GuiDataFileMathDialog* volumeMathDialog;
@@ -757,6 +816,9 @@ class GuiMainWindow : public QtMainWindow {
       
       /// volume probabilistic atlas color key dialog
       GuiColorKeyDialog* volumeProbAtlasColorKeyDialog;
+      
+      /// foci attribute assignemnt dialog
+      GuiCellAndFociAttributeAssignmentDialog* fociAttributeAssignmentDialog;
       
       /// volume bias correction dialog
       GuiVolumeBiasCorrectionDialog* volumeBiasCorrectionDialog;
@@ -838,6 +900,7 @@ class GuiMainWindow : public QtMainWindow {
       /// create the status bar
       void createStatusBar();
       
+   friend class GuiCaptureWindowImageDialog;
    friend class GuiMainWindowFileMenu;
    friend class GuiMainWindowLayersMenu;
    friend class GuiMainWindowWindowMenu;

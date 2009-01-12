@@ -192,10 +192,11 @@ class CellStudyInfo {
       
    friend class CellFile;
    friend class CellProjectionFile;
-   friend class CellProjectionFileSaxReader;
    friend class VocabularyFile;
 
 };
+
+#endif // __CELL_STUDY_INFO_H__
 
 #ifdef __CELL_STUDY_INFO_MAIN__
       const QString CellStudyInfo::tagCellStudyInfo = "CellStudyInfo";
@@ -210,6 +211,3 @@ class CellStudyInfo {
       const QString CellStudyInfo::tagPartitioningSchemeAbbreviation = "partitioningSchemeAbbreviation";
       const QString CellStudyInfo::tagPartitioningSchemeFullName = "partitioningSchemeFullName";
 #endif // __CELL_STUDY_INFO_MAIN__
-
-#endif // __CELL_STUDY_INFO_H__
-

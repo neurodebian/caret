@@ -28,6 +28,7 @@
 /*LICENSE_END*/
 
 #include "BrainModelAlgorithm.h"
+#include "BrainModelVolumeSureFitSegmentation.h"
 #include "Structure.h"
 
 class VolumeFile;
@@ -37,13 +38,13 @@ class BrainModelVolumeSegmentationStereotaxic : public BrainModelAlgorithm {
    public:
       // constructor
       BrainModelVolumeSegmentationStereotaxic(BrainSet* brainSetIn,
-                                              const VolumeFile* anatomicalVolumeFileIn,
-                                              const int uniformityIterationsIn,
-                                              const bool disconnectEyeFlagIn,
-                                              const bool errorCorrectVolumeFlagIn,
-                                              const bool errorCorrectSurfaceFlagIn,
-                                              const bool maxPolygonsFlagIn,
-                                              const bool flatteningFilesFlagIn);
+             const VolumeFile* anatomicalVolumeFileIn,
+             const int uniformityIterationsIn,
+             const bool disconnectEyeFlagIn,
+             const BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD errorCorrectVolumeMethodIn,
+             const bool errorCorrectSurfaceFlagIn,
+             const bool maxPolygonsFlagIn,
+             const bool flatteningFilesFlagIn);
                                               
       // destructor
       ~BrainModelVolumeSegmentationStereotaxic();
@@ -70,8 +71,8 @@ class BrainModelVolumeSegmentationStereotaxic : public BrainModelAlgorithm {
       /// name of anatomical volume
       const VolumeFile* anatomicalVolumeFile;
       
-      /// error correct volume
-      bool errorCorrectVolumeFlag;
+      /// error correct volume method
+      BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD errorCorrectVolumeMethod;
       
       /// error correct surface
       bool errorCorrectSurfaceFlag;

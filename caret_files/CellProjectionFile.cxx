@@ -41,11 +41,11 @@
 
 #include "CellClass.h"
 #include "CellFile.h"
-#include "CellProjectionFileSaxReader.h"
 #include "ColorFile.h"
 #include "CommaSeparatedValueFile.h"
 #include "CoordinateFile.h"
 #include "MathUtilities.h"
+#include "NameIndexSort.h"
 #include "SpecFile.h"
 #include "StringTable.h"
 #include "StringUtilities.h"
@@ -113,6 +113,10 @@ CellProjection::CellProjection(const QString& nameIn,
    cdistance[0] = 0.0;
    cdistance[1] = 0.0;
    cdistance[2] = 0.0;
+   
+   volumeXYZ[0] = fidXYZ[0];
+   volumeXYZ[1] = fidXYZ[1];
+   volumeXYZ[2] = fidXYZ[2];
 }
                                       
 /**
@@ -126,6 +130,7 @@ CellProjection::initialize(const QString& filenameIn)
    uniqueNameIndex = -1;
    cellProjectionFile = NULL;
    projectionType = PROJECTION_TYPE_UNKNOWN;
+   duplicateFlag = false;
    
    for (int i = 0; i < 3; i++) {
       posFiducial[i] = 0.0;
@@ -150,6 +155,10 @@ CellProjection::initialize(const QString& filenameIn)
    phiR = 0.0;
    fracRI = 0.0;
    fracRJ = 0.0;
+   
+   volumeXYZ[0] = 0.0;
+   volumeXYZ[1] = 0.0;
+   volumeXYZ[2] = 0.0;
 }
 
 /**
@@ -498,6 +507,39 @@ CellProjection::setName(const QString& name)
 }
 
 /**
+ * set the duplicate cell projection flag.
+ */
+void 
+CellProjection::setDuplicateFlag(const bool b)
+{
+   duplicateFlag = b;
+   setModified();
+}
+      
+/**
+ * get the volume position.
+ */
+void 
+CellProjection::getVolumeXYZ(float xyzOut[3]) const
+{
+   xyzOut[0] = volumeXYZ[0];
+   xyzOut[1] = volumeXYZ[1];
+   xyzOut[2] = volumeXYZ[2];
+}
+
+/**
+ * set the volume position.
+ */
+void 
+CellProjection::setVolumeXYZ(const float xyzIn[3])
+{
+   volumeXYZ[0] = xyzIn[0];
+   volumeXYZ[1] = xyzIn[1];
+   volumeXYZ[2] = xyzIn[2];
+   setModified();
+}
+      
+/**
  * Read a version 1 cell projection.
  */
 void
@@ -627,6 +669,9 @@ CellProjection::readFileDataVersion1(QTextStream& stream) throw (FileException)
       posFiducial[0] = tokens[2].toFloat();
       posFiducial[1] = tokens[3].toFloat();
       posFiducial[2] = tokens[4].toFloat(); 
+      volumeXYZ[0] = posFiducial[0];
+      volumeXYZ[1] = posFiducial[1];
+      volumeXYZ[2] = posFiducial[2];
    }
    else if (typeName == tagUnknownTriangle) {
       return;
@@ -773,6 +818,9 @@ CellProjection::readFileDataVersion2(QTextStream& stream) throw (FileException)
       posFiducial[0] = tokens[2].toFloat();
       posFiducial[1] = tokens[3].toFloat();
       posFiducial[2] = tokens[4].toFloat(); 
+      volumeXYZ[0] = posFiducial[0];
+      volumeXYZ[1] = posFiducial[1];
+      volumeXYZ[2] = posFiducial[2];
    }
    else if (typeName == tagUnknownTriangle) {
       return;
@@ -899,7 +947,7 @@ CellProjection::setElementFromText(const QString& elementName,
    else if (elementName == CellProjection::tagClosestTileVertices) {
       if (numItems == 3) {
          for (int i = 0; i < 3; i++) {
-            closestTileVertices[i] = sl.at(i).toFloat();
+            closestTileVertices[i] = sl.at(i).toInt();
          }
       }
    }
@@ -970,6 +1018,19 @@ CellProjection::setElementFromText(const QString& elementName,
    else if (elementName == CellProjection::tagFracRJ) {
       fracRJ = textValue.toFloat();
    }
+   else if (elementName == CellProjection::tagVolumeXYZ) {
+      if (numItems == 3) {
+         for (int i = 0; i < 3; i++) {
+            volumeXYZ[i] = sl.at(i).toFloat();
+         }
+      }
+   }
+   else if (elementName == CellProjection::tagDuplicateFlag) {
+      duplicateFlag = false;
+      if (textValue == "true") {
+         duplicateFlag = true;
+      }
+   }
    else {
       std::cout << "WARNING: Unrecognized child of CellProjection element "
                 << elementName.toAscii().constData()
@@ -981,7 +1042,7 @@ CellProjection::setElementFromText(const QString& elementName,
  * called to read from an XML structure.
  */
 void 
-CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
+CellProjection::readXMLWithDOM(QDomNode& nodeIn) throw (FileException)
 {
    if (nodeIn.isNull()) {
       return;
@@ -991,7 +1052,7 @@ CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
       return;
    }
    if (elem.tagName() != tagCellProjection) {
-      QString msg("Incorrect element type passed to CellProjection::readXML() ");
+      QString msg("Incorrect element type passed to CellProjection::readXMLWithDOM() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
    }
@@ -1052,6 +1113,9 @@ CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == tagFracRJ) {
             fracRJ = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
+         else if (elem.tagName() == tagVolumeXYZ) {
+            AbstractFile::getXmlElementFirstChildAsFloat(elem, volumeXYZ, 3);
+         }
          else if (elem.tagName() == CellBase::tagSignedDistanceAboveSurface) {
             signedDistanceAboveSurface = AbstractFile::getXmlElementFirstChildAsFloat(elem);
          }
@@ -1061,8 +1125,14 @@ CellProjection::readXML(QDomNode& nodeIn) throw (FileException)
                className = "";
             }
          }
+         else if (elem.tagName() == CellProjection::tagDuplicateFlag) {
+            duplicateFlag = false;
+            if (AbstractFile::getXmlElementFirstChildAsString(elem) == "true") {
+               duplicateFlag = true;
+            }
+         }
          else if (elem.tagName() == CellBase::tagCellBase) {
-            CellBase::readXML(node);
+            CellBase::readXMLWithDOM(node);
          }
          else {
             std::cout << "WARNING: unrecognized CellProjection element: "
@@ -1148,12 +1218,24 @@ CellProjection::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
                                    tagFracRJ, fracRJ);
                                    
+   AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
+                                   tagVolumeXYZ, volumeXYZ, 3);
+                                   
    //AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
    //                                CellData::tagClassName, className);
                                    
    //AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
    //                                CellBase::tagSignedDistanceAboveSurface, signedDistanceAboveSurface);
-                                   
+
+   if (duplicateFlag) { 
+      AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
+                                      tagDuplicateFlag, "true");
+   }
+   else {
+      AbstractFile::addXmlTextElement(xmlDoc, cellProjElement,
+                                      tagDuplicateFlag, "false");
+   }
+   
    //
    // Write the base class' data
    //
@@ -1181,7 +1263,7 @@ CellProjectionFile::CellProjectionFile(const QString& descriptiveName,
                   FILE_IO_NONE,
                   FILE_IO_NONE,
                   FILE_IO_NONE,
-                  FILE_IO_READ_AND_WRITE)
+                  FILE_IO_READ_ONLY)
 {
    readVersionNumberOnly = 0;
    clear();
@@ -1199,10 +1281,10 @@ CellProjectionFile::~CellProjectionFile()
 }
 
 /**
- * append a cell file.
+ * append a fiducial cell file.
  */
 void 
-CellProjectionFile::append(const CellFile& cf)
+CellProjectionFile::appendFiducialCellFile(const CellFile& cf)
 {
    const int origNumberOfStudyInfo = getNumberOfStudyInfo();
    const int num = cf.getNumberOfCells();
@@ -1211,6 +1293,7 @@ CellProjectionFile::append(const CellFile& cf)
       CellProjection cp;
       const CellData* cd = cf.getCell(i);
       cp.copyData(*cd);
+      cp.setVolumeXYZ(cd->getXYZ());
       
       //
       // Update study info indexes
@@ -1269,6 +1352,8 @@ CellProjectionFile::getCellFileForRightLeftFiducials(const CoordinateFile* leftC
                                                      const TopologyFile* leftTF,
                                                      const CoordinateFile* rightCF,
                                                      const TopologyFile* rightTF,
+                                                     const CoordinateFile* cerebellumCF,
+                                                     const TopologyFile* cerebellumTF,
                                                      CellFile& cellFileOut) const
 {
    cellFileOut.clear();
@@ -1278,16 +1363,30 @@ CellProjectionFile::getCellFileForRightLeftFiducials(const CoordinateFile* leftC
       const CellProjection* cp = getCellProjection(i);
       float xyz[3] = { 0.0, 0.0, 0.0 };
       switch (cp->getCellStructure()) {
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
          case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-            cp->getProjectedPosition(leftCF, leftTF, true, false, false, xyz);
+            if (leftCF != NULL) {
+               cp->getProjectedPosition(leftCF, leftTF, true, false, false, xyz);
+            }
             break;
          case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-            cp->getProjectedPosition(rightCF, rightTF, true, false, false, xyz);
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            if (rightCF != NULL) {
+               cp->getProjectedPosition(rightCF, rightTF, true, false, false, xyz);
+            }
             break;
+         case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
          case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
             break;
          case Structure::STRUCTURE_TYPE_CEREBELLUM:
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+         case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            if (cerebellumCF != NULL) {
+               cp->getProjectedPosition(cerebellumCF, cerebellumTF, true, false, false, xyz);
+            }
             break;
+         case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+         case Structure::STRUCTURE_TYPE_ALL:
          case Structure::STRUCTURE_TYPE_INVALID:
             break;
       }
@@ -1593,6 +1692,57 @@ CellProjectionFile::clearAllHighlightFlags()
 }
       
 /**
+ * get cell class indices sorted by name case insensitive.
+ */
+void 
+CellProjectionFile::getCellClassIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                          const bool reverseOrderFlag,
+                                          const bool limitToDisplayedCellsFlag) const
+{
+   NameIndexSort nis;
+   
+   if (limitToDisplayedCellsFlag) {
+      std::vector<int> displayedCellIndices;
+      getIndicesOfDisplayedCells(displayedCellIndices);
+      
+      std::set<QString> classNames;
+      const int numDisplayedCells = static_cast<int>(displayedCellIndices.size());
+      for (int i = 0; i < numDisplayedCells; i++) {
+         const int indx = displayedCellIndices[i];
+         classNames.insert(getCellProjection(indx)->getClassName());
+      }
+      
+      for (std::set<QString>::const_iterator iter = classNames.begin();
+           iter != classNames.end();
+           iter++) {
+         const QString s(*iter);
+         const int indx = getCellClassIndexByName(s);
+         if (indx >= 0) {
+            nis.add(indx, s);
+         }
+      }
+   }
+   else {
+      const int num = getNumberOfCellClasses();
+      for (int i = 0; i < num; i++) {
+         nis.add(i, cellClasses[i].name);
+      }
+   }
+   
+   nis.sortByNameCaseInsensitive();
+   const int num = nis.getNumberOfItems();
+   
+   indicesSortedByNameOut.resize(num, 0);
+   for (int i = 0; i < num; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
+}
+      
+/**
  * get cell class selected by index.
  */
 bool 
@@ -1676,6 +1826,144 @@ CellProjectionFile::setAllCellClassStatus(const bool selected)
 }
       
 /**
+ * set the search status of all cells.
+ */
+void 
+CellProjectionFile::setAllSearchStatus(const bool inSearchFlag)
+{
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      cellProjections[i].inSearchFlag = inSearchFlag;
+   }
+}
+      
+/**
+ * update cell class if linked to table subheader.
+ */
+void 
+CellProjectionFile::updateCellClassWithLinkedStudyTableSubheaderShortNames(const StudyMetaDataFile* smdf)
+{
+   const int numStudyMetaData = smdf->getNumberOfStudyMetaData();
+   for (int i = 0; i < numStudyMetaData; i++) {
+      const StudyMetaData* smd = smdf->getStudyMetaData(i);
+      const QString pmid = smd->getPubMedID();
+      if (pmid.isEmpty() == false) {
+         const int numTables = smd->getNumberOfTables();
+         for (int j = 0; j < numTables; j++) {
+            const StudyMetaData::Table* table = smd->getTable(j);
+            const QString tableNumber = table->getNumber();
+            if (tableNumber.isEmpty() == false) {
+               const int numSubHeaders = table->getNumberOfSubHeaders();
+               for (int k = 0; k < numSubHeaders; k++) {
+                  const StudyMetaData::SubHeader* sh = table->getSubHeader(k);
+                  const QString subHeaderNumber = sh->getNumber();
+                  if (subHeaderNumber.isEmpty() == false) {
+                     const QString shortName = sh->getShortName();
+                     if (shortName.isEmpty() == false) {
+                        StudyMetaDataLink smdl;
+                        smdl.setPubMedID(pmid);
+                        smdl.setTableSubHeaderNumber(subHeaderNumber);
+                        smdl.setTableNumber(tableNumber);
+                        transferTableSubHeaderShortNameToCellClass(smdl, shortName);
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+      
+/**
+ * update cell class with linked tabel subheader name, linked figure panel task
+ * description, or page reference subheader short name.
+ */
+void 
+CellProjectionFile::updateCellClassWithLinkedTableFigureOrPageReference(const StudyMetaDataFile* smdf)
+{
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      CellProjection* cp = getCellProjection(i);
+      const StudyMetaDataLinkSet cellSMDLS = cp->getStudyMetaDataLinkSet();
+      const int numSMDL = cellSMDLS.getNumberOfStudyMetaDataLinks();
+      for (int j = 0; j < numSMDL; j++) {
+         const StudyMetaDataLink cellSMDL = cellSMDLS.getStudyMetaDataLink(j);
+         const int studyIndex = smdf->getStudyIndexFromLink(cellSMDL);
+         if (studyIndex >= 0) {
+            const StudyMetaData* smd = smdf->getStudyMetaData(studyIndex);
+            const QString figNum = cellSMDL.getFigureNumber();
+            const QString pageRefNum = cellSMDL.getPageReferencePageNumber();
+            const QString tableNum = cellSMDL.getTableNumber();
+            
+            
+            if (figNum.isEmpty() == false) {
+               const StudyMetaData::Figure* figure = smd->getFigureByFigureNumber(figNum);
+               if (figure != NULL) {
+                  const StudyMetaData::Figure::Panel* panel = 
+                     figure->getPanelByPanelNumberOrLetter(cellSMDL.getFigurePanelNumberOrLetter());
+                  if (panel != NULL) {
+                     const QString txt = panel->getTaskDescription();
+                     if (txt.isEmpty() == false) {
+                        cp->setClassName(txt);
+                     }
+                  }
+               }
+            }
+            if (pageRefNum.isEmpty() == false) {
+               const StudyMetaData::PageReference* pageRef = smd->getPageReferenceByPageNumber(pageRefNum);
+               if (pageRef != NULL) {
+                  const StudyMetaData::SubHeader* subHeader = 
+                     pageRef->getSubHeaderBySubHeaderNumber(cellSMDL.getPageReferenceSubHeaderNumber());
+                  if (subHeader != NULL) {
+                     const QString txt = subHeader->getShortName();
+                     if (txt.isEmpty() == false) {
+                        cp->setClassName(txt);
+                     }
+                  }
+               }
+            }
+            if (tableNum.isEmpty() == false) {
+               const StudyMetaData::Table* table = smd->getTableByTableNumber(tableNum);
+               if (table != NULL) {
+                  const StudyMetaData::SubHeader* subHeader = 
+                     table->getSubHeaderBySubHeaderNumber(cellSMDL.getTableSubHeaderNumber());
+                  if (subHeader != NULL) {
+                     const QString txt = subHeader->getShortName();
+                     if (txt.isEmpty() == false) {
+                        cp->setClassName(txt);
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+      
+/**
+ * transfer table subheader short name to cell classes.
+ */
+void 
+CellProjectionFile::transferTableSubHeaderShortNameToCellClass(const StudyMetaDataLink& smdl,
+                                                               const QString& shortName)
+{
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      CellProjection* cp = getCellProjection(i);
+      const StudyMetaDataLinkSet cellSMDLS = cp->getStudyMetaDataLinkSet();
+      const int numSMDL = cellSMDLS.getNumberOfStudyMetaDataLinks();
+      for (int j = 0; j < numSMDL; j++) {
+         const StudyMetaDataLink cellSMDL = cellSMDLS.getStudyMetaDataLink(j);
+         if ((smdl.getPubMedID() == cellSMDL.getPubMedID()) &&
+             (smdl.getTableNumber() == cellSMDL.getTableNumber()) &&
+             (smdl.getTableSubHeaderNumber() == cellSMDL.getTableSubHeaderNumber())) {
+            cp->setClassName(shortName);
+         }
+      }
+   }
+}
+      
+/**
  * Add a cell unique name.
  */
 int 
@@ -1693,6 +1981,72 @@ CellProjectionFile::addCellUniqueName(const QString& uniqueName)
    
    cellUniqueNames.push_back(CellClass(uniqueName));
    return (getNumberOfCellUniqueNames() - 1);
+}
+      
+/**
+ * get indices of displayed cell projections.
+ */
+void 
+CellProjectionFile::getIndicesOfDisplayedCells(std::vector<int>& indicesOut) const
+{
+   indicesOut.clear();
+   
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      if (getCellProjection(i)->getDisplayFlag()) {
+         indicesOut.push_back(i);
+      }
+   }
+}
+      
+/**
+ * get cell unique name indices sorted by name case insensitive.
+ */
+void 
+CellProjectionFile::getCellUniqueNameIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
+                                                         const bool reverseOrderFlag,
+                                                         const bool limitToDisplayedCellsFlag) const
+{
+   NameIndexSort nis;
+   
+   if (limitToDisplayedCellsFlag) {
+      std::vector<int> displayedCellIndices;
+      getIndicesOfDisplayedCells(displayedCellIndices);
+      
+      std::set<QString> names;
+      const int numDisplayedCells = static_cast<int>(displayedCellIndices.size());
+      for (int i = 0; i < numDisplayedCells; i++) {
+         const int indx = displayedCellIndices[i];
+         names.insert(getCellProjection(indx)->getName());
+      }
+      
+      for (std::set<QString>::const_iterator iter = names.begin();
+           iter != names.end();
+           iter++) {
+         const QString s(*iter);
+         const int indx = getCellUniqueNameIndexByName(s);
+         if (indx >= 0) {
+            nis.add(indx, s);
+         }
+      }
+   }
+   else {
+      const int numUN = getNumberOfCellUniqueNames();
+      for (int i = 0; i < numUN; i++) {
+         nis.add(i, getCellUniqueNameByIndex(i));
+      }
+   }
+   
+   nis.sortByNameCaseInsensitive();
+   const int numUniqueNames = nis.getNumberOfItems();
+   indicesSortedByNameOut.resize(numUniqueNames, 0);
+   for (int i = 0; i < numUniqueNames; i++) {
+      indicesSortedByNameOut[i] = nis.getSortedIndex(i);
+   }
+   
+   if (reverseOrderFlag) {
+      std::reverse(indicesSortedByNameOut.begin(), indicesSortedByNameOut.end());
+   }
 }
       
 /**
@@ -1779,6 +2133,122 @@ CellProjectionFile::setAllCellUniqueNameStatus(const bool selected)
 }
       
 /**
+ * get all cell areas.
+ */
+void 
+CellProjectionFile::getAllCellAreas(std::vector<QString>& allAreasOut) const
+{
+   allAreasOut.clear();
+   
+   std::set<QString> areaSet;
+   
+   const int num = getNumberOfCellProjections();
+   for (int i = 0; i < num; i++) {
+      const CellProjection* cp = getCellProjection(i);
+      const QString s = cp->getArea();
+      if (s.isEmpty() == false) {
+         const QStringList sl = s.split(';', QString::SkipEmptyParts);
+         for (int k = 0; k < sl.size(); k++) {
+            const QString area = sl.at(k).trimmed();
+            if (area.isEmpty() == false) {
+               areaSet.insert(area);
+            }
+         }
+      }
+   }
+   
+   allAreasOut.insert(allAreasOut.end(),
+                      areaSet.begin(), areaSet.end());
+}
+
+/**
+ * get all cell geography.
+ */
+void 
+CellProjectionFile::getAllCellGeography(std::vector<QString>& allGeographyOut) const
+{
+   allGeographyOut.clear();
+   
+   std::set<QString> geographySet;
+   
+   const int num = getNumberOfCellProjections();
+   for (int i = 0; i < num; i++) {
+      const CellProjection* cp = getCellProjection(i);
+      const QString s = cp->getGeography();
+      if (s.isEmpty() == false) {
+         const QStringList sl = s.split(';', QString::SkipEmptyParts);
+         for (int k = 0; k < sl.size(); k++) {
+            const QString geography = sl.at(k).trimmed();
+            if (geography.isEmpty() == false) {
+               geographySet.insert(geography);
+            }
+         }
+      }
+   }
+   
+   allGeographyOut.insert(allGeographyOut.end(),
+                          geographySet.begin(), geographySet.end());
+}
+      
+/**
+ * get all comments.
+ */
+void 
+CellProjectionFile::getAllCellComments(std::vector<QString>& allCommentsOut) const
+{
+   allCommentsOut.clear();
+   
+   std::set<QString> commentSet;
+   
+   const int num = getNumberOfCellProjections();
+   for (int i = 0; i < num; i++) {
+      const CellProjection* cp = getCellProjection(i);
+      const QString s = cp->getComment();
+      if (s.isEmpty() == false) {
+         const QStringList sl = s.split(';', QString::SkipEmptyParts);
+         for (int k = 0; k < sl.size(); k++) {
+            const QString comment = sl.at(k).trimmed();
+            if (comment.isEmpty() == false) {
+               commentSet.insert(comment);
+            }
+         }
+      }
+   }
+   
+   allCommentsOut.insert(allCommentsOut.end(),
+                          commentSet.begin(), commentSet.end());
+}
+
+/**
+ * get all cell regions of interest.
+ */
+void 
+CellProjectionFile::getAllCellRegionsOfInterest(std::vector<QString>& allRegionsOfInterestOut) const
+{
+   allRegionsOfInterestOut.clear();
+   
+   std::set<QString> regionsOfInterestSet;
+   
+   const int num = getNumberOfCellProjections();
+   for (int i = 0; i < num; i++) {
+      const CellProjection* cp = getCellProjection(i);
+      const QString s = cp->getRegionOfInterest();
+      if (s.isEmpty() == false) {
+         const QStringList sl = s.split(';', QString::SkipEmptyParts);
+         for (int k = 0; k < sl.size(); k++) {
+            const QString regionsOfInterest = sl.at(k).trimmed();
+            if (regionsOfInterest.isEmpty() == false) {
+               regionsOfInterestSet.insert(regionsOfInterest);
+            }
+         }
+      }
+   }
+   
+   allRegionsOfInterestOut.insert(allRegionsOfInterestOut.end(),
+                          regionsOfInterestSet.begin(), regionsOfInterestSet.end());
+}
+
+/**
  * set the special flag for all cells in the section range and box
  */
 void 
@@ -1852,6 +2322,21 @@ CellProjectionFile::deleteCellProjectionsWithName(const QString& name)
    for (int i = (num - 1); i >= 0; i--) {
       CellProjection* cp = getCellProjection(i);
       if (cp->getName() == name) {
+         deleteCellProjection(i);
+      }
+   }
+}
+      
+/**
+ * delete all duplicate cell projections.
+ */
+void 
+CellProjectionFile::deleteAllDuplicateCellProjections()
+{
+   const int num = getNumberOfCellProjections();
+   for (int i = (num - 1); i >= 0; i--) {
+      CellProjection* cp = getCellProjection(i);
+      if (cp->getDuplicateFlag()) {
          deleteCellProjection(i);
       }
    }
@@ -2000,16 +2485,83 @@ CellProjectionFile::deleteAllNonDisplayedCellProjections(const Structure& keepTh
       //
       if (cp->getDisplayFlag()) {
          
+         bool isLeftCellFlag = false;
+         bool isRightCellFlag = false;
+         bool isCerebellumCellFlag = false;
+         switch (cp->getCellStructure()) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               isLeftCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               isRightCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               isLeftCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               isRightCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+               break;
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+               break;
+            case Structure::STRUCTURE_TYPE_ALL:
+               break;
+            case Structure::STRUCTURE_TYPE_INVALID:
+               break;
+         }
+         
          //
          // Limit to a specific structure
          //
-         if (keepThisStructureOnly.isLeftCortex() ||
+         switch (keepThisStructureOnly.getType()) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               if (isLeftCellFlag == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               if (isRightCellFlag == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               if (isCerebellumCellFlag == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
+            case Structure::STRUCTURE_TYPE_INVALID:
+               break;
+         }
+
+/*         
+         isdff (keepThisStructureOnly.isLeftCortex() ||
              keepThisStructureOnly.isRightCortex()) {
             if (cp->getCellStructure() != keepThisStructureOnly.getType()) {
                continue;
             }
          }
-         
+*/         
          //
          // Keep this one
          //
@@ -2199,6 +2751,33 @@ CellProjectionFile::setStudyInfo(const int index, const CellStudyInfo& csi)
 }
 
 /**
+ * get indices to all linked studies.
+ */
+void 
+CellProjectionFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs,
+                                                         const bool displayedFociOnlyFlag) const
+{
+   std::set<QString> pmidSet;
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      const CellProjection* cp = getCellProjection(i);
+      bool useIt = true;
+      if (displayedFociOnlyFlag) {
+         useIt = cp->getDisplayFlag();
+      }
+      if (useIt) {
+         const StudyMetaDataLinkSet smdl = cp->getStudyMetaDataLinkSet();
+         std::vector<QString> pmids;
+         smdl.getAllLinkedPubMedIDs(pmids);
+         pmidSet.insert(pmids.begin(), pmids.end());
+      }
+   }
+   studyPMIDs.clear();
+   studyPMIDs.insert(studyPMIDs.end(),
+                     pmidSet.begin(), pmidSet.end());
+}
+
+/**
  * update cell PubMed ID if cell name matches study name.
  */
 void 
@@ -2208,18 +2787,26 @@ CellProjectionFile::updatePubMedIDIfCellNameMatchesStudyName(const StudyMetaData
    const int numStudies = smdf->getNumberOfStudyMetaData();
    for (int i = 0; i < numCells; i++) {
       CellProjection* cp = getCellProjection(i);
-      const QString name = cp->getName();
+      const QString name = cp->getName().trimmed();
       for (int j = 0; j < numStudies; j++) {
          const StudyMetaData* smd = smdf->getStudyMetaData(j);
          //
          // Does study name match cell name?
          //
-         if (name == smd->getName()) {
+         if (name == smd->getName().trimmed()) {
             //
             // Get the links
             //
             StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
             bool linkModified = false;
+            
+            //
+            // If the focus has no links add a link
+            //
+            if (smdls.getNumberOfStudyMetaDataLinks() <= 0) {
+               StudyMetaDataLink smdl;
+               smdls.addStudyMetaDataLink(smdl);
+            }
             
             //
             // Loop through the cell's links
@@ -2274,7 +2861,7 @@ CellProjectionFile::getCommaSeparatedFileSupport(bool& readFromCSV,
                                        bool& writeToCSV) const
 {
    readFromCSV = true;
-   writeToCSV  = true;
+   writeToCSV  = false;
 }
                                         
 /**
@@ -2308,6 +2895,8 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
    const int commentCol = numCols++;
    const int structureCol = numCols++;
    const int classNameCol = numCols++;
+   const int volumeXYZCol = numCols++;
+   const int duplicateFlagCol = numCols++;
    
    const int studyMetaPubMedCol = numCols++;
    const int studyMetaTableCol = numCols++;
@@ -2351,6 +2940,8 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
    ct->setColumnTitle(commentCol, "Comment");
    ct->setColumnTitle(structureCol, "Structure");
    ct->setColumnTitle(classNameCol, "Class Name");
+   ct->setColumnTitle(volumeXYZCol, "Volume XYZ");
+   ct->setColumnTitle(duplicateFlagCol, "Duplicate Flag");
 
    ct->setColumnTitle(studyMetaPubMedCol, "Study PubMed ID");
    ct->setColumnTitle(studyMetaTableCol, "Study Table Number");
@@ -2392,7 +2983,13 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
       ct->setElement(i, commentCol, cd->getComment());
       ct->setElement(i, structureCol, Structure::convertTypeToString(cd->getCellStructure()));
       ct->setElement(i, classNameCol, cd->getClassName());
-      
+      ct->setElement(i, volumeXYZCol, (float*)cd->volumeXYZ, 3);
+      if (cd->getDuplicateFlag()) {
+         ct->setElement(i, duplicateFlagCol, "true");
+      }
+      else {
+         ct->setElement(i, duplicateFlagCol, "false");
+      }
       ct->setElement(i, signedDistCol, cd->getSignedDistanceAboveSurface());
       switch (cd->projectionType) {
          case CellProjection::PROJECTION_TYPE_UNKNOWN:
@@ -2480,6 +3077,8 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
    int commentCol = -1;
    int structureCol = -1;
    int classNameCol = -1;
+   int volumeXYZCol = -1;
+   int duplicateFlagCol = -1;
    
    int studyMetaPubMedCol = -1;
    int studyMetaTableCol = -1;
@@ -2548,6 +3147,12 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
       else if (columnTitle == "class name") {
          classNameCol = i;
       }   
+      else if (columnTitle == "volume xyz") {
+         volumeXYZCol = i;
+      }
+      else if (columnTitle == "duplicate flag") {
+         duplicateFlagCol = i;
+      }
       else if (columnTitle == "signed dist") {   
          signedDistCol = i;
       }   
@@ -2621,10 +3226,10 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
       int studyNumber = -1;
       QString geography;
       QString area;
-      float size;
+      float size = 0.0;
       QString statistic;
       QString comment;
-      Structure::STRUCTURE_TYPE structure;
+      Structure::STRUCTURE_TYPE structure = Structure::STRUCTURE_TYPE_INVALID;
       QString className;
       StudyMetaDataLink smdl;
       
@@ -2668,6 +3273,15 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
          className = ct->getElement(i, classNameCol);
          if (className == "???") {
             className = "";
+         }
+      }
+      if (volumeXYZCol >= 0) {
+         ct->getElement(i, volumeXYZCol, (float*)cd.volumeXYZ, 3);
+      }
+      if (duplicateFlagCol >= 0) {
+         cd.setDuplicateFlag(false);
+         if (ct->getElement(i, duplicateFlagCol) == "true") {
+            cd.setDuplicateFlag(true);
          }
       }
       
@@ -2915,11 +3529,12 @@ CellProjectionFile::readFileVersion3(QFile& /*file*/, QTextStream& stream,
 }
 
 /**
- * read the file with a SAX parser.
+ * read the file with an xml stream reader.
  */
 void 
-CellProjectionFile::readFileWithSaxParser(QFile& file) throw (FileException)
+CellProjectionFile::readFileWithXmlStreamReader(QFile& /*file*/) throw (FileException)
 {
+/*
    //
    // Move to beginning of file
    //
@@ -3009,6 +3624,7 @@ CellProjectionFile::readFileWithSaxParser(QFile& file) throw (FileException)
          throw FileException(filename, saxReader.getErrorMessage());
       }
    }
+*/
 }
                                  
 /**
@@ -3095,7 +3711,7 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
          break;
       case FILE_FORMAT_XML:
          if (DebugControl::getTestFlag2()) {
-            readFileWithSaxParser(file);
+            readFileWithXmlStreamReader(file);
          }
          else {
             QDomNode node = rootElement.firstChild();
@@ -3107,7 +3723,7 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
                   //
                   if (elem.tagName() == CellProjection::tagCellProjection) {
                      CellProjection cp(getFileName());
-                     cp.readXML(node);
+                     cp.readXMLWithDOM(node);
                      addCellProjection(cp);
                   }
                   else if (elem.tagName() == CellStudyInfo::tagCellStudyInfo) {
@@ -3150,7 +3766,14 @@ CellProjectionFile::readFileData(QFile& file, QTextStream& stream, QDataStream&,
    
    const int numProj = getNumberOfCellProjections();
    for (int i = 0; i < numProj; i++) {
-      getCellProjection(i)->updateInvalidCellStructureUsingXCoordinate();
+      CellProjection* cp = getCellProjection(i);
+      cp->updateInvalidCellStructureUsingXCoordinate();
+      const int studyNumber = cp->getStudyNumber();
+      if (studyNumber >= 0) {
+         if (studyNumber >= getNumberOfStudyInfo()) {
+            cp->setStudyNumber(-1);
+         }
+      }
    }
 }
 

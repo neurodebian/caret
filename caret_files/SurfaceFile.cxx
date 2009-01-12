@@ -36,7 +36,7 @@ SurfaceFile::SurfaceFile()
    : GiftiDataArrayFile("Surface File",
                         GiftiCommon::intentCoordinates,
                         GiftiDataArray::DATA_TYPE_FLOAT32,
-                        SpecFile::getGiftiFileExtension(),
+                        SpecFile::getGiftiSurfaceFileExtension(),
                         FILE_FORMAT_XML,
                         FILE_IO_NONE,
                         FILE_IO_NONE,
@@ -93,10 +93,9 @@ SurfaceFile::operator=(const SurfaceFile& sf)
  * the copy helper used by copy constructor and assignement operator.
  */
 void 
-SurfaceFile::copyHelperSurface(const SurfaceFile& sf)
+SurfaceFile::copyHelperSurface(const SurfaceFile& /*sf*/)
 {
    setFileName("");
-   normalsValid = sf.normalsValid;
    setModified();
 }
 
@@ -107,7 +106,6 @@ void
 SurfaceFile::clear()
 {
    GiftiDataArrayFile::clear();
-   normalsValid = false;
 }
 
 /**
@@ -156,23 +154,6 @@ SurfaceFile::setNumberOfCoordinates(const int num)
       addDataArray(coordsArray);
    }
 
-   //
-   // Find the normals category
-   //
-   GiftiDataArray* normalsArray = getDataArrayWithIntent(GiftiCommon::intentNormals);
-   if (normalsArray != NULL) {
-      normalsArray->setDimensions(dim);
-   }
-   else {
-      //
-      // Create coordinates category
-      //
-      normalsArray = new GiftiDataArray(this,
-                                 GiftiCommon::intentNormals,
-                                 GiftiDataArray::DATA_TYPE_FLOAT32,
-                                 dim);
-      addDataArray(normalsArray);
-   }
    setModified();
 }
 
@@ -304,56 +285,6 @@ SurfaceFile::setTriangle(const int indx, const int v1, const int v2, const int v
    const int v[3] = { v1, v2, v3 };
    setTriangle(indx, v);
 }
-
-/**
- * get a normal (pointer to normal's x/y/z).
- */
-const float* 
-SurfaceFile::getNormal(const int indx) const
-{
-   const GiftiDataArray* normalsArray = getDataArrayWithIntent(GiftiCommon::intentNormals);
-   if (normalsArray != NULL) {
-      const int indices[2] = { indx, 0 };
-      return normalsArray->getDataFloat32Pointer(indices);
-   }
-   
-   return NULL;
-}
-
-/**
- * set a normal.
- */
-void 
-SurfaceFile::setNormal(const int indx, const float xyz[3])
-{
-   const GiftiDataArray* normalsArray = getDataArrayWithIntent(GiftiCommon::intentNormals);
-   if (normalsArray != NULL) {
-      for (int i = 0; i < 3; i++) {
-         const int indices[2] = { indx, i };
-         normalsArray->setDataFloat32(indices, xyz[i]);
-      }
-      setModified();
-   }
-}
-
-/**
- * set a normal.
- */
-void 
-SurfaceFile::setNormal(const int indx, const float x, const float y, const float z)
-{
-   const float xyz[3] = { x, y, z };
-   setNormal(indx, xyz);
-}
-
-/**
- * generate normals.
- */
-void 
-SurfaceFile::generateNormals()
-{
-   //normalsValid = true;
-}      
 
 /**
  * get the type of topology.
@@ -496,4 +427,23 @@ SurfaceFile::getTopologyMetaData()
    return NULL;
 }
       
+/**
+ * convert configuration ID to spec file tag.
+ */
+QString 
+SurfaceFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
+{   
+   const QString name(nameIn.toUpper());
+   if (name == "RAW") return SpecFile::getRawSurfaceFileTag();
+   else if (name == "FIDUCIAL") return SpecFile::getFiducialSurfaceFileTag();
+   else if (name == "INFLATED") return SpecFile::getInflatedSurfaceFileTag();
+   else if (name == "VERY_INFLATED") return SpecFile::getVeryInflatedSurfaceFileTag();
+   else if (name == "SPHERICAL") return SpecFile::getSphericalSurfaceFileTag();
+   else if (name == "ELLIPSOIDAL") return SpecFile::getEllipsoidSurfaceFileTag();
+   else if (name == "CMW") return SpecFile::getCompressedSurfaceFileTag();
+   else if (name == "FLAT") return SpecFile::getFlatSurfaceFileTag();
+   else if (name == "FLAT_LOBAR") return SpecFile::getLobarFlatSurfaceFileTag();
+   else if (name == "HULL") return SpecFile::getHullSurfaceFileTag();
+   else return SpecFile::getUnknownSurfaceFileMatchTag();
+}
     

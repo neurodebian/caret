@@ -34,7 +34,12 @@
  * The constructor.
  */
 DisplaySettingsRgbPaint::DisplaySettingsRgbPaint(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      NULL,
+                                      bs->getRgbPaintFile(),
+                                      BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT,
+                                      true,
+                                      false)
 {
    reset();
 }
@@ -52,7 +57,7 @@ DisplaySettingsRgbPaint::~DisplaySettingsRgbPaint()
 void
 DisplaySettingsRgbPaint::reset()
 {
-   selectedColumn.clear();
+   DisplaySettingsNodeAttributeFile::reset();
    displayMode    = RGB_DISPLAY_MODE_POSITIVE;
    redThreshold   = 0.0;
    greenThreshold = 0.0;
@@ -60,7 +65,6 @@ DisplaySettingsRgbPaint::reset()
    redEnabled     = true;
    greenEnabled   = true;
    blueEnabled    = true;
-   applySelectionToLeftAndRightStructuresFlag = false;
 }
 
 /**
@@ -69,7 +73,7 @@ DisplaySettingsRgbPaint::reset()
 void
 DisplaySettingsRgbPaint::update()
 {
-   updateSelectedColumnIndices(brainSet->getRgbPaintFile(), selectedColumn);
+   DisplaySettingsNodeAttributeFile::update();
 }
 
 /**
@@ -97,93 +101,6 @@ DisplaySettingsRgbPaint::setThresholds(const float redThresh,
    blueThreshold  = blueThresh;
 }
 
-/**
- * Get the column selected for display.
- * Returns -1 if there are no paint columns.
- */
-int
-DisplaySettingsRgbPaint::getSelectedColumn(const int modelIn) const
-{
-   if (selectedColumn.empty()) {
-      return -1;
-   }
-   
-   int model = modelIn;
-   if (model < 0) {
-      model = 0;
-   }
-   
-   return selectedColumn[model]; 
-}
-
-/**
- * set column for display.
- */
-void 
-DisplaySettingsRgbPaint::setSelectedColumn(const int model, const int sdc) 
-{ 
-   if (applySelectionToLeftAndRightStructuresFlag) {
-      RgbPaintFile* rgb = brainSet->getRgbPaintFile();
-      if ((sdc >= 0) && (sdc < rgb->getNumberOfColumns())) {
-         int leftCol = -1;
-         int rightCol = -1;
-         QString name = rgb->getColumnName(sdc).toLower().trimmed();
-         if (name.indexOf("left") >= 0) {
-            leftCol = sdc;
-            const QString rightName = name.replace("left", "right");
-            for (int i = 0; i < rgb->getNumberOfColumns(); i++) {
-               if (rgb->getColumnName(i).toLower().trimmed() == rightName) {
-                  rightCol = i;
-                  break;
-               }
-            }
-         }
-         else if (name.indexOf("right") >= 0) {
-            rightCol = sdc;
-            const QString leftName = name.replace("right", "left");
-            for (int i = 0; i < rgb->getNumberOfColumns(); i++) {
-               if (rgb->getColumnName(i).toLower().trimmed() == leftName) {
-                  leftCol = i;
-                  break;
-               }
-            }
-         }
-         
-         for (int i = 0; i < brainSet->getNumberOfBrainModels(); i++) {
-            const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-            if (bms != NULL) {
-               switch (bms->getStructure().getType()) {
-                  case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-                     if (leftCol >= 0) {
-                        selectedColumn[i] = leftCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-                     if (rightCol >= 0) {
-                        selectedColumn[i] = rightCol;
-                     }
-                     break;
-                  case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-                     break;
-                  case Structure::STRUCTURE_TYPE_CEREBELLUM:
-                     break;
-                  case Structure::STRUCTURE_TYPE_INVALID:
-                     break;
-               }
-            }
-         }
-      }
-   }
-   else {
-      if (model < 0) {
-         std::fill(selectedColumn.begin(), selectedColumn.end(), sdc);
-      }
-      else {
-         selectedColumn[model] = sdc; 
-      }
-   }
-}
-
 static const QString rgbPaintSurfaceID("surface-rgb-paint-column");
 
 /**
@@ -192,16 +109,17 @@ static const QString rgbPaintSurfaceID("surface-rgb-paint-column");
 void 
 DisplaySettingsRgbPaint::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsRgbPaint") {
-         showSceneNodeAttribute(*sc,
-                                rgbPaintSurfaceID,
-                                brainSet->getRgbPaintFile(),
-                                "Rgb Paint File",
-                                selectedColumn,
-                                errorMessage);
+         showSceneSelectedColumns(*sc,
+                                  "RGB Paint File",
+                                  rgbPaintSurfaceID,
+                                  "",
+                                  errorMessage);
                                 
          const int num = sc->getNumberOfSceneInfo();
          for (int i = 0; i < num; i++) {
@@ -231,9 +149,6 @@ DisplaySettingsRgbPaint::showScene(const SceneFile::Scene& scene, QString& error
             else if (infoName == "blueEnabled") {
                si->getValue(blueEnabled);
             }
-            else if (infoName == "applySelectionToLeftAndRightStructuresFlag") {
-               applySelectionToLeftAndRightStructuresFlag = si->getValueAsBool();
-            }
          }
       }
    }
@@ -243,8 +158,11 @@ DisplaySettingsRgbPaint::showScene(const SceneFile::Scene& scene, QString& error
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsRgbPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsRgbPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    RgbPaintFile* rpf = brainSet->getRgbPaintFile();
    
    if (onlyIfSelected) {
@@ -252,18 +170,15 @@ DisplaySettingsRgbPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSel
          return;
       }
       
-      BrainModelSurfaceNodeColoring* bsnc = brainSet->getNodeColoring();
-      if (bsnc->isUnderlayOrOverlay(BrainModelSurfaceNodeColoring::OVERLAY_RGB_PAINT) == false) {
+      if (brainSet->isASurfaceOverlayForAnySurface(
+                        BrainModelSurfaceOverlay::OVERLAY_RGB_PAINT) == false) {
          return;
       }
    }
    
    SceneFile::SceneClass sc("DisplaySettingsRgbPaint");
    
-   saveSceneNodeAttribute(sc,
-                          rgbPaintSurfaceID,
-                          rpf,
-                          selectedColumn);
+   saveSceneSelectedColumns(sc);
                           
    sc.addSceneInfo(SceneFile::SceneInfo("rgb-displayMode",
                                         displayMode));
@@ -279,22 +194,6 @@ DisplaySettingsRgbPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSel
                                         greenEnabled));
    sc.addSceneInfo(SceneFile::SceneInfo("blueEnabled",
                                         blueEnabled));
-   sc.addSceneInfo(SceneFile::SceneInfo("applySelectionToLeftAndRightStructuresFlag",
-                                        applySelectionToLeftAndRightStructuresFlag));
    
    scene.addSceneClass(sc);
 }
-
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-/**
- * for node attribute files - all column selections for each surface are the same.
- */
-bool 
-DisplaySettingsRgbPaint::columnSelectionsAreTheSame(const int bm1, const int bm2) const
-{
-   return (selectedColumn[bm1] == selectedColumn[bm2]);
-}      
-
-

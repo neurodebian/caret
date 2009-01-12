@@ -34,6 +34,7 @@
 #include "FileException.h"
 
 class Border;
+class BorderProjection;
 class BrainModelBorderSet;
 class BrainModelSurface;
 class BrainSet;
@@ -62,6 +63,12 @@ class BrainModelSurfaceROINodeSelection {
       // constructor
       BrainModelSurfaceROINodeSelection(BrainSet* brainSetIn);
       
+      // copy constructor
+      BrainModelSurfaceROINodeSelection(const BrainModelSurfaceROINodeSelection& roi);
+      
+      // Assignment operator.
+      BrainModelSurfaceROINodeSelection& operator=(const BrainModelSurfaceROINodeSelection& roi);
+
       // destructor
       ~BrainModelSurfaceROINodeSelection();
       
@@ -77,6 +84,9 @@ class BrainModelSurfaceROINodeSelection {
               
       // get the number of nodes selected
       int getNumberOfNodesSelected() const;
+      
+      // get the number of nodes (count of all nodes regardless of selection status)
+      int getNumberOfNodes() const { return nodeSelectedFlags.size(); }
       
       // get node in ROI flags
       void getNodesInROI(std::vector<bool>& nodesAreInROI) const;
@@ -132,6 +142,30 @@ class BrainModelSurfaceROINodeSelection {
                                        int& absMinZNode,
                                        int& absMaxZNode) const;
       
+      // get node with most lateral X Coordinate
+      int getNodeWithMostLateralXCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with most medial X Coordinate
+      int getNodeWithMostMedialXCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with minimum X Coordinate
+      int getNodeWithMinimumXCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with maximum X Coordinate
+      int getNodeWithMaximumXCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with minimum Y Coordinate
+      int getNodeWithMinimumYCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with maximum Y Coordinate
+      int getNodeWithMaximumYCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with minimum Z Coordinate
+      int getNodeWithMinimumZCoordinate(const BrainModelSurface* surface) const;
+      
+      // get node with maximum Z Coordinate
+      int getNodeWithMaximumZCoordinate(const BrainModelSurface* surface) const;
+      
       // boundary only (keeps nodes in ROI that have at least one neighbor NOT in ROI)
       void boundaryOnly(const BrainModelSurface* bms);
       
@@ -139,13 +173,33 @@ class BrainModelSurfaceROINodeSelection {
       void dilate(const BrainModelSurface* selectionSurface,
                   int numberOfIterations);
       
+      // dilate around the node (adds node's neighbors to ROI)
+      void dilateAroundNode(const BrainModelSurface* selectionSurface,
+                            const int nodeNumber);
+      
       // dilate but only add nodes with selected paint
       void dilatePaintConstrained(const BrainModelSurface* selectionSurface,
                   const PaintFile* paintFile,
                   const int paintColumnNumber,
                   const QString& paintName,
                   const int numberOfIterations);
-                  
+              
+      // discard islands keeps the largest contiguous piece (returns number of islands removed)
+      int discardIslands(const BrainModelSurface* selectionSurface);
+      
+      // discard islands with islands that have fewer than specified number of nodes
+      int discardIslands(const BrainModelSurface* selectionSurface,
+                         const int minimumNumberOfNodesInIslandsKept);
+      
+      // find islands (number of disjoint groups of nodes).
+      int findIslands(const BrainModelSurface* selectionSurface,
+                      std::vector<int>& islandRootNode,
+                      std::vector<int>& islandNumNodes,
+                      std::vector<int>& nodeRootNeighbor);
+      
+      // find islands and place each in an ROI
+      std::vector<BrainModelSurfaceROINodeSelection*> findIslands(const BrainModelSurface* selectionSurface);
+
       // erode the selected nodes
       void erode(const BrainModelSurface* selectionSurface,
                  int numberOfIterations);
@@ -156,18 +210,56 @@ class BrainModelSurfaceROINodeSelection {
                                           const int node1,
                                           const int node2);
                                           
+      // erode the selected nodes but maintain a connection between two nodes
+      void erodeButMaintainNodeConnection(const BrainModelSurface* selectionSurface,
+                                          const std::vector<int>& doNotErodeNodeFlags,
+                                          int numberOfIterations,
+                                          const int node1,
+                                          const int node2);
+                                          
       // expand the ROI so that these nodes are within the ROI and connected
       void expandSoNodesAreWithinAndConnected(const BrainModelSurface* selectionSurface,
                                               const int node1,
                                               const int node2);
             
+      // find node int ROI nearest the XYZ
+      int getNearestNodeInROI(const BrainModelSurface* selectionSurface,
+                              const float x, const float y, const float z) const;
+      
+      // find node int ROI nearest the XYZ
+      int getNearestNodeInROI(const BrainModelSurface* selectionSurface,
+                              const float xyz[3]) const;
+      
+      // get the surface area of the ROI
+      float getSurfaceAreaOfROI(const BrainModelSurface* surface) const;
+      
       // limit the extent of the ROI
       void limitExtent(const BrainModelSurface* selectionSurface,
                        const float extent[6]);
+
+      // exclude nodes in a region
+      void excludeNodesInRegion(const BrainModelSurface* selectionSurface,
+                                const float regionExtent[6]);
+      
+      // logically and this roi with another roi (returns error message)
+      QString logicallyAND(const BrainModelSurfaceROINodeSelection* otherROI);
+      
+      // logically or this roi with another roi (returns error message)
+      QString logicallyOR(const BrainModelSurfaceROINodeSelection* otherROI);
       
       // select all nodes (returns error message)
       QString selectAllNodes(const BrainModelSurface* selectionSurface);
       
+      // select nodes that are edges
+      QString selectNodesThatAreEdges(const SELECTION_LOGIC selectionLogic,
+                                      const BrainModelSurface* selectionSurface);
+      
+      // select nodes within geodesic distance
+      QString selectNodesWithinGeodesicDistance(const SELECTION_LOGIC selectionLogic,
+                                                const BrainModelSurface* selectionSurface,
+                                                const int nodeNumber,
+                                                const float geodesicDistance);
+                                                
       // select nodes with paint (returns error message)
       QString selectNodesWithPaint(const SELECTION_LOGIC selectionLogic,
                                    const BrainModelSurface* selectionSurface,
@@ -181,6 +273,11 @@ class BrainModelSurfaceROINodeSelection {
                                       const BrainModelSurface* flatSurface,
                                       const BrainModelBorderSet* bmbs,
                                       const QString& borderName);
+                                   
+      // select nodes within border (returns error message)
+      QString selectNodesWithinBorderOnSphere(const SELECTION_LOGIC selectionLogic,
+                                      const BrainModelSurface* sphericalSurface,
+                                      const BorderProjection* borderProjection);
                                    
       // select nodes within border (returns error message)
       QString selectNodesWithinBorder(const SELECTION_LOGIC selectionLogic,
@@ -240,6 +337,9 @@ class BrainModelSurfaceROINodeSelection {
       // update (usually called if number of nodes changes)
       void update();
       
+      // get the selection description
+      QString getSelectionDescription() const { return selectionDescription; }
+      
    protected:
       // see if two nodes are connected in the ROI
       bool areNodesConnected(const BrainModelSurface* bms,
@@ -254,16 +354,29 @@ class BrainModelSurfaceROINodeSelection {
       // process the new node selections (returns error message)
       QString processNewNodeSelections(const SELECTION_LOGIC selectionLogic,
                                        const BrainModelSurface* selectionSurface,
-                                       std::vector<int>& newNodeSelections);
+                                       std::vector<int>& newNodeSelections,
+                                       const QString& description);
 
-      // the brain set
+      // add to the selection description
+      void addToSelectionDescription(const QString& selectionLogicText,
+                                     const QString& descriptionIn);
+                                     
+      // copy helper used by copy constructor and assignment operator
+      void copyHelper(const BrainModelSurfaceROINodeSelection& roi);
+      
+      /// the brain set
       BrainSet* brainSet;
       
-      // the node selection flags (ints should be faster than bools since bools packed into bits)
+      /// the node selection flags (ints should be faster than bools since bools packed into bits)
       std::vector<int> nodeSelectedFlags;
       
-      // display selected nodes
+      /// display selected nodes
       bool displaySelectedNodes;
+      
+      /// selection description
+      QString selectionDescription;
+      
+      // IF NEW MEMBERS ARE ADDED BE SURE TO UPDATE "coypHelper()"
 };
 
 #endif // __BRAIN_MODEL_SURFACE_ROI_NODE_SELECTION_H__

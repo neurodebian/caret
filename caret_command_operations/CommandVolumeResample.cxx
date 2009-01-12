@@ -51,12 +51,23 @@ CommandVolumeResample::~CommandVolumeResample()
 void 
 CommandVolumeResample::getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const
 {
+   std::vector<QString> methodValues, methodDescriptions;
+   methodValues.push_back("INTERP_CUBIC");
+      methodDescriptions.push_back("Cubic (best quality)");
+   methodValues.push_back("INTERP_LINEAR");
+      methodDescriptions.push_back("Linear");
+   methodValues.push_back("INTERP_NEAREST_NEIGHBOR");
+      methodDescriptions.push_back("Nearest Neighbors (use for paint and probabilistic volumes");
+
    paramsOut.clear();
    paramsOut.addFile("Input Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addFile("Output Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addFloat("New Spacing X");
    paramsOut.addFloat("New Spacing Y");
    paramsOut.addFloat("New Spacing Z");
+   paramsOut.addListOfItems("Interpolation Mode",
+                            methodValues,
+                            methodDescriptions);
 }
 
 /**
@@ -73,8 +84,19 @@ CommandVolumeResample::getHelpInformation() const
        + indent9 + "<new-spacing-x>\n"
        + indent9 + "<new-spacing-y>\n"
        + indent9 + "<new-spacing-z>\n"
+       + indent9 + "<interpolation-mode>\n"
        + indent9 + "\n"
        + indent9 + "Resample a volume to the specified spacing.\n"
+       + indent9 + "\n"
+       + indent9 + "\"interpolation-mode\" is one of:\n"
+       + indent9 + "   INTERP_CUBIC\n"
+       + indent9 + "   INTERP_LINEAR\n"
+       + indent9 + "   INTERP_NEAREST_NEIGHBOR\n"
+       + indent9 + "\n"
+       + indent9 + "For paint, probabilistic atlas, and segmentation volumes,\n"
+       + indent9 + " you MUST use INTERP_NEAREST_NEIGHBOR for the interpolation.\n"
+       + indent9 + "mode.  INTERP_CUBIC is recommended for all other volume file\n"
+       + indent9 + "types.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -100,9 +122,28 @@ CommandVolumeResample::executeCommand() throw (BrainModelAlgorithmException,
       parameters->getNextParameterAsFloat("New Spacing X"),
       parameters->getNextParameterAsFloat("New Spacing Y"),
       parameters->getNextParameterAsFloat("New Spacing Z")
-   };
+   };   
+   const QString interpolationName =
+      parameters->getNextParameterAsString("Interpolation");
    checkForExcessiveParameters();
 
+   VolumeFile::INTERPOLATION_TYPE interpolationType =
+      VolumeFile::INTERPOLATION_TYPE_CUBIC;
+   if (interpolationName == "INTERP_CUBIC") {
+      interpolationType = VolumeFile::INTERPOLATION_TYPE_CUBIC;
+   }
+   else if (interpolationName == "INTERP_LINEAR") {
+      interpolationType = VolumeFile::INTERPOLATION_TYPE_LINEAR;
+   }
+   else if (interpolationName == "INTERP_NEAREST_NEIGHBOR") {
+      interpolationType = VolumeFile::INTERPOLATION_TYPE_NEAREST_NEIGHBOR;
+   }
+   else {
+      throw CommandException("Invalid interpolation value \""
+                             + interpolationName
+                             + "\"");
+   }
+   
    //
    // Read the input file
    //
@@ -112,7 +153,8 @@ CommandVolumeResample::executeCommand() throw (BrainModelAlgorithmException,
    //
    // set the spacing
    //
-   volume.resampleToSpacing(spacing);
+   volume.resampleToSpacing(spacing,
+                            interpolationType);
    
    //
    // Write the volume

@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include <QGlobalStatic>
 
 #include <QApplication>
@@ -56,7 +58,7 @@
  * Constructor.
  */
 GuiPreferencesDialog::GuiPreferencesDialog(QWidget* parent) 
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Caret Preferences");
    

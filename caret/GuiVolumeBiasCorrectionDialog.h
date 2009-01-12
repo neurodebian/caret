@@ -28,10 +28,10 @@
 
 #include <QSpinBox>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 /// dialog for segmenting an anatomical volume using a threshold
-class GuiVolumeBiasCorrectionDialog : public QtDialog {
+class GuiVolumeBiasCorrectionDialog : public WuQDialog {
    Q_OBJECT
    
    public:

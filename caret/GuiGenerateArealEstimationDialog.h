@@ -26,7 +26,7 @@
 #ifndef __GUI_GENERATE_AREAL_ESTIMATION_DIALOG_H__
 #define __GUI_GENERATE_AREAL_ESTIMATION_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QRadioButton;
 class QLineEdit;
@@ -35,7 +35,7 @@ class QDoubleSpinBox;
 class GuiNodeAttributeColumnSelectionComboBox;
 
 /// dialog for creating areal estimation files
-class GuiGenerateArealEstimationDialog : public QtDialog {
+class GuiGenerateArealEstimationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

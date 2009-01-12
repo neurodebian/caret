@@ -41,8 +41,9 @@
  * Constructor
  */
 GuiDeleteBordersByNameDialog::GuiDeleteBordersByNameDialog(QWidget* parent)
-   : QtDialog(parent, true)
+   : WuQDialog(parent)
 {
+   setModal(true);
    setWindowTitle("Delete borders by name");
    
    //
@@ -104,7 +105,7 @@ GuiDeleteBordersByNameDialog::loadBorderNameListBox()
 {
    borderListWidget->clear();
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
-   bmbs->getAllBorderNames(borderNames);
+   bmbs->getAllBorderNames(borderNames, false);
    
    const int numNames = static_cast<int>(borderNames.size());
    for (int i = 0; i < numNames; i++) {

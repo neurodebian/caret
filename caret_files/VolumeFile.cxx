@@ -73,6 +73,7 @@
 #include "StatisticDataGroup.h"
 #include "StatisticHistogram.h"
 #include "StringUtilities.h"
+#include "TopologyFile.h"
 #include "TransformationMatrixFile.h"
 #include "SystemUtilities.h"
 #include "VectorFile.h"
@@ -86,19 +87,26 @@
 #include "caret_uniformize.h"
 #include "mayo_analyze.h"
 #include "nifti1.h"
+#include "vtkCleanPolyData.h"
 #include "vtkFloatArray.h"
 #include "vtkImageCast.h"
 #include "vtkImageFlip.h"
+#include "vtkImageGaussianSmooth.h"
 #include "vtkImageResample.h"
 #include "vtkImageReslice.h"
 #include "vtkImageSeedConnectivity.h"
+#include "vtkImageShrink3D.h"
+#include "vtkMarchingCubes.h"
 #include "vtkMath.h"
 #include "vtkPointData.h"
+#include "vtkPolyDataNormals.h"
+#include "vtkPolyDataWriter.h"
 #include "vtkStructuredPoints.h"
 #include "vtkStructuredPointsReader.h"
 #include "vtkStructuredPointsWriter.h"
 #include "vtkTransform.h"
 #include "vtkTriangle.h"
+#include "vtkTriangleFilter.h"
 #include "vtkUnsignedCharArray.h"
 
 
@@ -107,7 +115,7 @@
  */
 VolumeFile::VolumeFile()
    : AbstractFile("Volume File", 
-                  SpecFile::getAfniVolumeFileExtension(),
+                  SpecFile::getNiftiGzipVolumeFileExtension(),
                   false, 
                   FILE_FORMAT_OTHER, 
                   FILE_IO_NONE, 
@@ -286,6 +294,8 @@ VolumeFile::copyVolumeData(const VolumeFile& vf,
    niftiIntentParameter3 = vf.niftiIntentParameter3;
    niftiTR = vf.niftiTR;
    
+   regionNameHighlighted = vf.regionNameHighlighted;
+   
    //studyMetaDataLinkSet = vf.studyMetaDataLinkSet;
 
    allocateVoxelColoring();
@@ -318,6 +328,9 @@ VolumeFile::setFileWriteType(const FILE_READ_WRITE_TYPE ft)
          break;
       case FILE_READ_WRITE_TYPE_NIFTI:
          setDefaultFileNameExtension(SpecFile::getNiftiVolumeFileExtension());
+         break;
+      case FILE_READ_WRITE_TYPE_NIFTI_GZIP:
+         setDefaultFileNameExtension(SpecFile::getNiftiGzipVolumeFileExtension());
          break;
       case FILE_READ_WRITE_TYPE_WUNIL:
          setDefaultFileNameExtension(SpecFile::getWustlVolumeFileExtension());
@@ -357,6 +370,9 @@ VolumeFile::getFileName(const QString& description) const
                break;
             case FILE_READ_WRITE_TYPE_NIFTI:
                ext = SpecFile::getNiftiVolumeFileExtension();
+               break;
+            case FILE_READ_WRITE_TYPE_NIFTI_GZIP:
+               ext = SpecFile::getNiftiGzipVolumeFileExtension();
                break;
             case FILE_READ_WRITE_TYPE_WUNIL:
                ext = SpecFile::getWustlVolumeFileExtension();
@@ -455,6 +471,19 @@ VolumeFile::setVoxelDataType(const VOXEL_DATA_TYPE vdt)
          break;
    }
 }
+
+/**
+ * get the sub volume names.
+ */
+void 
+VolumeFile::getSubVolumeNames(std::vector<QString>& names) const 
+{ 
+   names = subVolumeNames;
+   if (names.empty()) {
+      names.resize(std::max(1, numberOfSubVolumes), FileUtilities::basename(getFileName()));
+   }
+}
+
 /**
  * Initialize - creates a volume and allocates memory for the specified dimensions.
  */
@@ -497,13 +526,15 @@ VolumeFile::initialize(const VOXEL_DATA_TYPE vdt, const int dim[3],
       allocateVoxelColoring();
    }
    
+   filename = getFileName("");
+/*
    static int nameCounter = 0;
    std::ostringstream defaultName;
    defaultName << "volume_"
                << nameCounter;
    nameCounter++;
    filename = defaultName.str().c_str();
-   
+*/   
    setModified();
 }
 
@@ -974,107 +1005,6 @@ VolumeFile::allocateVoxelColoring()
 }
 
 /**
- * get name, dimensions, origin, and voxel spacing for standard volumes.
- */
-/*
-void 
-VolumeFile::getStandardSpaceParameters(const STANDARD_VOLUME_SPACE svs,
-                                       QString& nameOut,
-                                       int dimensionOut[3],
-                                       float originOut[3],
-                                       float voxelSpacingOut[3])
-{
-   switch(svs) {
-      case STANDARD_VOLUME_SPACE_AFNI_TALAIRACH:
-         nameOut = "AFNI Talairach"); // (Translate AC to 61, 101, 86)");
-         dimensionOut[0]    = 161;
-         dimensionOut[1]    = 191;
-         dimensionOut[2]    = 151;
-         originOut[0]       =  -80;  //-61.0;
-         originOut[1]       = -110;  //-101.0;
-         originOut[2]       =  -65;  //-86.0;
-         voxelSpacingOut[0] = 1.0;
-         voxelSpacingOut[1] = 1.0;
-         voxelSpacingOut[2] = 1.0;
-         break;
-      case STANDARD_VOLUME_SPACE_WU_7112B_111:
-         nameOut = "WU 711-2B 111"); // (Translate AC to 88, 122, 73)");
-         dimensionOut[0]    = 176;
-         dimensionOut[1]    = 208;
-         dimensionOut[2]    = 176;
-         originOut[0]       =  -89.0;
-         originOut[1]       = -124.0;
-         originOut[2]       =  -75.0;
-         voxelSpacingOut[0] = 1.0;
-         voxelSpacingOut[1] = 1.0;
-         voxelSpacingOut[2] = 1.0;
-         break;
-      case STANDARD_VOLUME_SPACE_WU_7112B_222:
-         nameOut = "WU 711-2B 222"); // (Translate AC to 128, 126, 66)");
-         dimensionOut[0]    = 128;
-         dimensionOut[1]    = 128;
-         dimensionOut[2]    = 75;
-         originOut[0]       = -129.0;
-         originOut[1]       = -129.0;
-         originOut[2]       =  -68.0;
-         voxelSpacingOut[0] = 2.0;
-         voxelSpacingOut[1] = 2.0;
-         voxelSpacingOut[2] = 2.0;
-         break;
-      case STANDARD_VOLUME_SPACE_WU_7112B_333:
-         nameOut = "WU 711-2B 333"); // (Translate AC to 69, 102, 60)");
-         dimensionOut[0]    = 48;
-         dimensionOut[1]    = 64;
-         dimensionOut[2]    = 48;
-         originOut[0]       =  -73.5;
-         originOut[1]       = -108.0;
-         originOut[2]       =  -60.0;
-         voxelSpacingOut[0] = 3.0;
-         voxelSpacingOut[1] = 3.0;
-         voxelSpacingOut[2] = 3.0;
-         break;
-      case STANDARD_VOLUME_SPACE_SPM_DEFAULT:
-         nameOut = "SPM Default"); // (Translate AC to 79, 113, 51)");
-         dimensionOut[0]    = 157;
-         dimensionOut[1]    = 181;
-         dimensionOut[2]    = 136;
-         originOut[0]       =  -78.0;  //-79.0;
-         originOut[1]       = -112.0;  //-113.0;
-         originOut[2]       =  -50.0;  //-51.0;
-         voxelSpacingOut[0] = 1.0;
-         voxelSpacingOut[1] = 1.0;
-         voxelSpacingOut[2] = 1.0;
-         break;
-      case STANDARD_VOLUME_SPACE_SPM_TEMPLATE:
-         nameOut = "SPM Template"); // (Translate AC to 91, 127, 73)");
-         dimensionOut[0]    = 182;
-         dimensionOut[1]    = 217;
-         dimensionOut[2]    = 182;
-         originOut[0]       =  -90.0;  // -91.0;
-         originOut[1]       = -126.0;  // -127.0;
-         originOut[2]       =  -72.0;  // -73.0;
-         voxelSpacingOut[0] = 1.0;
-         voxelSpacingOut[1] = 1.0;
-         voxelSpacingOut[2] = 1.0;
-         break;
-      case STANDARD_VOLUME_SPACE_NON_STANDARD:
-      case STANDARD_SPACE_LAST:
-         nameOut = "NON-STANDARD");
-         dimensionOut[0]    = 0;
-         dimensionOut[1]    = 0;
-         dimensionOut[2]    = 0;
-         originOut[0]       = 0.0;
-         originOut[1]       = 0.0;
-         originOut[2]       = 0.0;
-         voxelSpacingOut[0] = 1.0;
-         voxelSpacingOut[1] = 1.0;
-         voxelSpacingOut[2] = 1.0;
-         break;
-   }
-}
-*/
-
-/**
  * get the label of an orientation
  */
 QString 
@@ -1146,8 +1076,8 @@ VolumeFile::clear()
    dataFileWasZippedFlag = false;
    volumeType = VOLUME_TYPE_ANATOMY;  //VOLUME_TYPE_UNKNOWN;
    dataFileName = "";
-   fileReadType  = FILE_READ_WRITE_TYPE_AFNI;
-   setFileWriteType(FILE_READ_WRITE_TYPE_AFNI);
+   fileReadType  = FILE_READ_WRITE_TYPE_NIFTI_GZIP;
+   setFileWriteType(FILE_READ_WRITE_TYPE_NIFTI_GZIP);
    numberOfSubVolumes = 0;
    orientation[0]   = ORIENTATION_UNKNOWN;
    orientation[1]   = ORIENTATION_UNKNOWN;
@@ -1188,6 +1118,8 @@ VolumeFile::clear()
    niftiTR = 0.0;
    
    setVoxelDataType(VOXEL_DATA_TYPE_FLOAT);
+   
+   clearRegionHighlighting();
    
    //studyMetaDataLinkSet.clear();
 }
@@ -1308,6 +1240,104 @@ VolumeFile::addRegionName(const QString& name)
 
    
    return (regionNames.size() - 1);
+}      
+
+/**
+ * set highlight a region name.
+ */
+void 
+VolumeFile::setHighlightRegionName(const QString& name,
+                                   const bool highlightItFlag)
+{
+   const int indx = getRegionIndexFromName(name);
+   if (indx >= 0) {
+      std::vector<int>::iterator iter = std::find(regionNameHighlighted.begin(),
+                                                  regionNameHighlighted.end(),
+                                                  indx);
+      if (highlightItFlag) {
+         if (iter == regionNameHighlighted.end()) {
+            regionNameHighlighted.push_back(indx);
+         }
+      }
+      else {
+         if (iter != regionNameHighlighted.end()) {
+            regionNameHighlighted.erase(iter);
+         }
+      }
+      
+      setVoxelColoringInvalid();
+   }
+}
+
+/**
+ * get a region is highlighted.
+ */
+bool 
+VolumeFile::getHighlightRegionNameByIndex(const int indx) const
+{
+   const bool exists = (std::find(regionNameHighlighted.begin(),
+                                  regionNameHighlighted.end(),
+                                  indx) != regionNameHighlighted.end());
+   return exists;
+}
+
+/**
+ * clear region highlighting.
+ */
+void 
+VolumeFile::clearRegionHighlighting()
+{
+   regionNameHighlighted.clear();
+   setVoxelColoringInvalid();
+}
+
+/**
+ * synchronize the region names in the volumes (index X is always region Y).
+ */
+void 
+VolumeFile::synchronizeRegionNames(std::vector<VolumeFile*>& volumeFiles)
+{
+   const int numVolumes = static_cast<int>(volumeFiles.size());
+   if (numVolumes <= 1) {
+      return;
+   }
+   
+   VolumeFile* firstVolume = volumeFiles[0];
+   firstVolume->clearRegionHighlighting();
+   
+   //
+   // Use region table from first volume file
+   //
+   for (int i = 1; i < numVolumes; i++) {
+      //
+      // Add region names for volume "i" to the first volume and build
+      // translation from volume "i" to first volume region names
+      //
+      VolumeFile* vf = volumeFiles[i];
+      const int numRegionNames = vf->getNumberOfRegionNames();
+      std::vector<int> regionIndexUpdater(numRegionNames, 0);
+      for (int j = 0; j < numRegionNames; j++) {
+         regionIndexUpdater[j] = firstVolume->addRegionName(vf->getRegionNameFromIndex(j));
+      }
+      
+      //
+      // Update volume "i" voxels with new region indices
+      //
+      const int numVoxels = vf->getTotalNumberOfVoxels();
+      for (int k = 0; k < numVoxels; k++) {
+         vf->voxels[k] = regionIndexUpdater[static_cast<int>(vf->voxels[k])];
+      }
+      
+      vf->clearRegionHighlighting();
+   }
+   
+   //
+   // replace the region names and invalidate coloring
+   //
+   for (int i = 1; i < numVolumes; i++) {
+      volumeFiles[i]->regionNames = firstVolume->regionNames;
+      volumeFiles[i]->setVoxelColoringInvalid();
+   }
 }      
 
 /**
@@ -1705,8 +1735,8 @@ VolumeFile::rotate(const VOLUME_AXIS axis)
    // APPEAR "UPSIDE DOWN".  THIS MAY BE CORRECTED BY FLIPPING THE SIGNS OF THE
    // ORIGIN AND SPACING FOR ONE OF THE AXIS.
    //
-   int newDim[3];
-   float newSpacing[3];
+   int newDim[3] = { dimensions[0], dimensions[1], dimensions[2] };
+   float newSpacing[3] = { oldSpacing[0], oldSpacing[1], oldSpacing[2] };
    float newOrigin[3] = { oldOrigin[0], oldOrigin[1], oldOrigin[2] };
    ORIENTATION newOrientation[3] = { oldOrientation[0], oldOrientation[1], oldOrientation[2] };
    switch (axis) {
@@ -1951,240 +1981,6 @@ VolumeFile::rotate(const VOLUME_AXIS axis)
    minMaxVoxelValuesValid = false;
    minMaxTwoToNinetyEightPercentVoxelValuesValid = false;
 }
-/*
-void
-VolumeFile::rotate(const VOLUME_AXIS axis)
-{
-   if (DebugControl::getDebugOn()) {
-      std::cout << "VolumeFile rotating about axis: " << getAxisLabel(axis).toAscii().constData() << std::endl;
-   }
-   //
-   // Get information on current volume
-   //
-   int oldDim[3];
-   getDimensions(oldDim);
-   float oldSpacing[3];
-   getSpacing(oldSpacing);
-   float oldOrigin[3];
-   getOrigin(oldOrigin);
-   
-   //
-   // Does this volume have a valid orientation.  If not do not adjust spacing and origin.
-   //
-   bool validOrientation = false;
-   switch (volumeSpace) {
-      case VOLUME_SPACE_COORD_LPI:
-         validOrientation = isValidOrientation(orientation);
-         break;
-      case VOLUME_SPACE_VOXEL_NATIVE:
-         break;
-   }
-   
-   //
-   // Setup new dimensions and let spacing follow
-   //
-   int newDim[3];
-   float newSpacing[3];
-   float newOrigin[3] = { oldOrigin[0], oldOrigin[1], oldOrigin[2] };
-   switch (axis) {
-      case VOLUME_AXIS_X:
-         newDim[0] = oldDim[0];
-         newDim[1] = oldDim[2];
-         newDim[2] = oldDim[1];
-         newSpacing[0] = oldSpacing[0];
-         newSpacing[1] = oldSpacing[2];
-         newSpacing[2] = oldSpacing[1];
-         if (validOrientation) {
-            newSpacing[2] = -oldSpacing[1];
-            newOrigin[0]  = oldOrigin[0];
-            newOrigin[1]  = oldOrigin[2];
-            newOrigin[2]  = oldDim[1] * oldSpacing[1] + oldOrigin[1];
-            const ORIENTATION savedOrientation = orientation[VOLUME_AXIS_Y];
-            orientation[VOLUME_AXIS_Y] = orientation[VOLUME_AXIS_Z];
-            orientation[VOLUME_AXIS_Z] = getInverseOrientation(savedOrientation);
-         }
-         break;
-      case VOLUME_AXIS_Y:
-         newDim[0] = oldDim[2];
-         newDim[1] = oldDim[1];
-         newDim[2] = oldDim[0];
-         newSpacing[0] = oldSpacing[2];
-         newSpacing[1] = oldSpacing[1];
-         newSpacing[2] = oldSpacing[0];
-         if (validOrientation) {
-            newSpacing[2] = -oldSpacing[0];
-            newOrigin[0]  = oldOrigin[2];
-            newOrigin[1]  = oldOrigin[1];
-            newOrigin[2]  = oldDim[0] * oldSpacing[0] + oldOrigin[0];
-            const ORIENTATION savedOrientation = orientation[VOLUME_AXIS_X];
-            orientation[VOLUME_AXIS_X] = orientation[VOLUME_AXIS_Z];
-            orientation[VOLUME_AXIS_Z] = getInverseOrientation(savedOrientation);
-         }
-         break;
-      case VOLUME_AXIS_Z:
-         newDim[0] = oldDim[1];
-         newDim[1] = oldDim[0];
-         newDim[2] = oldDim[2];
-         newSpacing[0] = oldSpacing[1];
-         newSpacing[1] = oldSpacing[0];
-         newSpacing[2] = oldSpacing[2];
-         if (validOrientation) {
-            newSpacing[1] = -oldSpacing[0];
-            newOrigin[0]  = oldOrigin[1];
-            newOrigin[1]  = oldDim[0] * oldSpacing[0] + oldOrigin[0];
-            newOrigin[2]  = oldOrigin[2];
-            const ORIENTATION savedOrientation = orientation[VOLUME_AXIS_X];
-            orientation[VOLUME_AXIS_X] = orientation[VOLUME_AXIS_Y];
-            orientation[VOLUME_AXIS_Y] = getInverseOrientation(savedOrientation);
-         }
-         break;
-      case VOLUME_AXIS_ALL:
-         std::cout << "ALL axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-      case VOLUME_AXIS_OBLIQUE:
-         std::cout << "OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-      case VOLUME_AXIS_OBLIQUE_X:
-         std::cout << "X OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-      case VOLUME_AXIS_OBLIQUE_Y:
-         std::cout << "Y OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-      case VOLUME_AXIS_OBLIQUE_Z:
-         std::cout << "Z OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-      case VOLUME_AXIS_OBLIQUE_ALL:
-         std::cout << "ALL OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-      case VOLUME_AXIS_UNKNOWN:
-         std::cout << "UNKNOWN axis not supported for rotate() in VolumeFile." << std::endl;
-         return;
-         break;
-   }
-   
-   //
-   // Get info about existing volume
-   //
-   float* oldVoxels = voxels;
-   const int numComponents = getNumberOfComponentsPerVoxel();
- 
-   //
-   // Create a new structured points and initialize it
-   //
-   setDimensions(newDim);
-   setOrigin(newOrigin);
-   setSpacing(newSpacing);
-
-   if (voxels != NULL) {
-      const int newNumVoxels = getTotalNumberOfVoxelElements();
-      voxels = new float[newNumVoxels];
-
-      //
-      // Rotate the voxels into the new volume
-      //
-      switch (axis) {
-         case VOLUME_AXIS_X:
-            for (int i = 0; i < newDim[0]; i++) {
-               for (int k = 0; k < newDim[2]; k++) {
-                  for (int j = 0; j < newDim[1]; j++) {
-                     int newIndx = i + j * newDim[0] + k * newDim[0] * newDim[1];
-                     const int oi = i;
-                     const int oj = (oldDim[1] - 1) - k;
-                     const int ok = j;
-                     int oldIndx = oi + oj * oldDim[0] + ok * oldDim[0] * oldDim[1];
-                     
-                     for (int m = 0; m < numComponents; m++) {
-                        voxels[newIndx + m] = oldVoxels[oldIndx + m];
-                     }
-                  }
-               }
-            }
-            break;
-         case VOLUME_AXIS_Y:
-            for (int j = 0; j < newDim[1]; j++) {
-               for (int k = 0; k < newDim[2]; k++) {
-                  for (int i = 0; i < newDim[0]; i++) {
-                     int newIndx = i + j * newDim[0] + k * newDim[0] * newDim[1];
-                     const int oi = (oldDim[0] - 1) - k;
-                     const int oj = j;
-                     const int ok = i;
-                     int oldIndx = oi + oj * oldDim[0] + ok * oldDim[0] * oldDim[1];
-
-                     for (int m = 0; m < numComponents; m++) {
-                        voxels[newIndx + m] = oldVoxels[oldIndx + m];
-                     }
-                  }
-               }
-            }
-            break;
-         case VOLUME_AXIS_Z:
-            for (int k = 0; k < newDim[2]; k++) {
-               for (int j = 0; j < newDim[1]; j++) {
-                  for (int i = 0; i < newDim[0]; i++) {
-                     int newIndx = i + j * newDim[0] + k * newDim[0] * newDim[1];
-                     const int oi = (oldDim[0] - 1) - j;
-                     const int oj = i;
-                     const int ok = k;
-                     int oldIndx = oi + oj * oldDim[0] + ok * oldDim[0] * oldDim[1];
-                     
-                     for (int m = 0; m < numComponents; m++) {
-                        voxels[newIndx + m] = oldVoxels[oldIndx + m];
-                     }
-                  }
-               }
-            }
-            break;
-         case VOLUME_AXIS_ALL:
-            std::cout << "ALL axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-         case VOLUME_AXIS_OBLIQUE:
-            std::cout << "OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-         case VOLUME_AXIS_OBLIQUE_X:
-            std::cout << "X OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-         case VOLUME_AXIS_OBLIQUE_Y:
-            std::cout << "Y OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-         case VOLUME_AXIS_OBLIQUE_Z:
-            std::cout << "Z OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-         case VOLUME_AXIS_OBLIQUE_ALL:
-            std::cout << "ALL OBLIQUE axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-         case VOLUME_AXIS_UNKNOWN:
-            std::cout << "UNKNOWN axis not supported for rotate() in VolumeFile." << std::endl;
-            return;
-            break;
-      }
-   }
-   
-   setOrigin(newOrigin);
-   setDimensions(newDim);
-   setSpacing(newSpacing);
-   
-   if (oldVoxels != NULL) {
-      delete[] oldVoxels;
-   }
-   allocateVoxelColoring();
-
-   setModified();
-   minMaxVoxelValuesValid = false;
-   minMaxTwoToNinetyEightPercentVoxelValuesValid = false;
-}
-*/
 
 /**
  * Determine if a voxel index is valid.
@@ -2253,37 +2049,36 @@ VolumeFile::setVoxelWithFlatIndex(const int indx, const int component, const flo
  */
 void 
 VolumeFile::getVoxelCoordinate(const int ijk[3], 
-                               const bool centerOfVoxelFlag,
                                float coord[3]) const
 {
-   getVoxelCoordinate(ijk[0], ijk[1], ijk[2], centerOfVoxelFlag, coord);
+   getVoxelCoordinate(ijk[0], ijk[1], ijk[2], coord);
 }
 
 /**
- * get the coordinate of a voxel.
+ * get the coordinate at the center of the voxel.
  */
 void 
 VolumeFile::getVoxelCoordinate(const int i, const int j, const int k,
-                               const bool centerOfVoxelFlag,
                                float coord[3]) const
 {
    coord[0] = origin[0] + spacing[0] * i;
    coord[1] = origin[1] + spacing[1] * j;
    coord[2] = origin[2] + spacing[2] * k;
+/*
    if (centerOfVoxelFlag) {
       coord[0] += spacing[0] * 0.5;
       coord[1] += spacing[1] * 0.5;
       coord[2] += spacing[2] * 0.5;
    }
+*/
 }
 
-/// get the coordinate of a voxel
+/// get the coordinate at the center of the voxel
 void 
 VolumeFile::getVoxelCoordinate(const VoxelIJK& v, 
-                               const bool centerOfVoxelFlag,
                                float coord[3]) const
 {
-   getVoxelCoordinate(v.ijkv[0], v.ijkv[1], v.ijkv[2], centerOfVoxelFlag, coord);
+   getVoxelCoordinate(v.ijkv[0], v.ijkv[1], v.ijkv[2], coord);
 }
 
 /**
@@ -2336,36 +2131,6 @@ VolumeFile::getVoxelAllComponents(const int ijk[3], float* voxelValue) const
    return false;
 }
 
-/**
- * compute a voxel index.
- */
-int 
-VolumeFile::getVoxelDataIndex(const VoxelIJK& v, const int component) const
-{
-   return getVoxelDataIndex(v.getI(), v.getJ(), v.getK(), component);
-}
-
-/**
- * compute a voxel index.
- */
-int 
-VolumeFile::getVoxelDataIndex(const int ijk[3], const int component) const
-{
-   return getVoxelDataIndex(ijk[0], ijk[1], ijk[2], component);
-}
-
-/**
- * compute a voxel index.
- */
-int 
-VolumeFile::getVoxelDataIndex(const int i, const int j, const int k, 
-                             const int component) const
-{
-   const int indx = i + j * dimensions[0] + k * dimensions[0] * dimensions[1];
-   const int compIndex = indx * numberOfComponentsPerVoxel + component;
-   return compIndex;
-}
-      
 /**
  * get the index of this voxel ignoring the components).
  */
@@ -2521,6 +2286,16 @@ VolumeFile::setVoxel(const int ijk[3], const int component, const float voxelVal
    }
 }
 
+/**
+ * set a voxel at the specified index.
+ */
+void 
+VolumeFile::setVoxel(const VoxelIJK& v, const int component, const float voxelValue)
+{
+   const int ijk[3] = { v.getI(), v.getJ(), v.getK() };
+   setVoxel(ijk, component, voxelValue);
+}
+      
 /**
  * set the value at a voxel.
  * "voxelValue" should be have "getNumberOfComponentsPerVoxel" number of voxels.
@@ -2781,7 +2556,7 @@ VolumeFile::flip(const VOLUME_AXIS axis, const bool updateOrientation)
                }
             }
          }
-         origin[0] = dim[0] * spacing[0] + origin[0];
+         origin[0] = (dim[0] - 1)* spacing[0] + origin[0];
          spacing[0] = -spacing[0];
          break;
       case VOLUME_AXIS_Y:
@@ -2800,7 +2575,7 @@ VolumeFile::flip(const VOLUME_AXIS axis, const bool updateOrientation)
                }
             }
          }
-         origin[1] = dim[1] * spacing[1] + origin[1];
+         origin[1] = (dim[1] - 1) * spacing[1] + origin[1];
          spacing[1] = -spacing[1];
          break;
       case VOLUME_AXIS_Z:
@@ -2819,7 +2594,7 @@ VolumeFile::flip(const VOLUME_AXIS axis, const bool updateOrientation)
                }
             }
          }
-         origin[2] = dim[2] * spacing[2] + origin[2];
+         origin[2] = (dim[2] - 1) * spacing[2] + origin[2];
          spacing[2] = -spacing[2];
          break;
       case VOLUME_AXIS_ALL:
@@ -2887,44 +2662,32 @@ VolumeFile::flip(const VOLUME_AXIS axis, const bool updateOrientation)
  * Get the volume extent of non-zero voxels.  Return voxel index range of non-zero voxels.
  */
 void
-VolumeFile::getNonZeroVoxelExtent(int extent[6]) const
+VolumeFile::getNonZeroVoxelExtent(int extentVoxelIndices[6],
+                                  float extentCoordinates[6]) const
 {
    bool voxelsFound = false;
    
    if (voxels != NULL) {
-      extent[0] = dimensions[0];
-      extent[1] = 0;
-      extent[2] = dimensions[1];
-      extent[3] = 0;
-      extent[4] = dimensions[2];
-      extent[5] = 0;
+      extentVoxelIndices[0] = dimensions[0] + 1;
+      extentVoxelIndices[1] = -1;
+      extentVoxelIndices[2] = dimensions[1] + 1;
+      extentVoxelIndices[3] = -1;
+      extentVoxelIndices[4] = dimensions[2] + 1;
+      extentVoxelIndices[5] = -1;
    
       for (int i = 0; i < dimensions[0]; i++) {
          for (int j = 0; j < dimensions[1]; j++) {
             for (int k = 0; k < dimensions[2]; k++) {
-               int ijk[3] = { i, j, k };
-               bool useIt = false;
-               if (numberOfComponentsPerVoxel == 3) {
-                  float rgb[3];
-                  getVoxelAllComponents(ijk, rgb);
-                  if ((rgb[0] != 0.0) || (rgb[1] != 0.0) || (rgb[2] != 0.0)) {
-                     useIt = true;
+               for (int m = 0; m < numberOfComponentsPerVoxel; m++) {
+                  if (getVoxel(i, j, k, m) != 0.0) {
+                     voxelsFound = true;
+                     extentVoxelIndices[0] = std::min(extentVoxelIndices[0], i);
+                     extentVoxelIndices[1] = std::max(extentVoxelIndices[1], i);
+                     extentVoxelIndices[2] = std::min(extentVoxelIndices[2], j);
+                     extentVoxelIndices[3] = std::max(extentVoxelIndices[3], j);
+                     extentVoxelIndices[4] = std::min(extentVoxelIndices[4], k);
+                     extentVoxelIndices[5] = std::max(extentVoxelIndices[5], k);
                   }
-               }
-               else if (numberOfComponentsPerVoxel == 1) {
-                  if (getVoxel(ijk) != 0.0) {
-                     useIt = true;
-                  }
-               }
-               
-               if (useIt) {
-                  voxelsFound = true;
-                  extent[0] = std::min(extent[0], i);
-                  extent[1] = std::max(extent[1], i);
-                  extent[2] = std::min(extent[2], j);
-                  extent[3] = std::max(extent[3], j);
-                  extent[4] = std::min(extent[4], k);
-                  extent[5] = std::max(extent[5], k);
                }
             }
          }
@@ -2934,13 +2697,30 @@ VolumeFile::getNonZeroVoxelExtent(int extent[6]) const
    //
    // Nothing found
    //
-   if (voxelsFound == false) {
-      extent[0] = -1;
-      extent[1] = -1;
-      extent[2] = -1;
-      extent[3] = -1;
-      extent[4] = -1;
-      extent[5] = -1;
+   if (voxelsFound) {
+      float xyz[3];
+      getVoxelCoordinate(extentVoxelIndices[0],
+                         extentVoxelIndices[2],
+                         extentVoxelIndices[4],
+                         xyz);
+      extentCoordinates[0] = xyz[0]; 
+      extentCoordinates[2] = xyz[1]; 
+      extentCoordinates[4] = xyz[2]; 
+      getVoxelCoordinate(extentVoxelIndices[1],
+                         extentVoxelIndices[3],
+                         extentVoxelIndices[5],
+                         xyz);
+      extentCoordinates[1] = xyz[0]; 
+      extentCoordinates[3] = xyz[1]; 
+      extentCoordinates[5] = xyz[2]; 
+   }
+   else {
+      extentVoxelIndices[0] = -1;
+      extentVoxelIndices[1] = -1;
+      extentVoxelIndices[2] = -1;
+      extentVoxelIndices[3] = -1;
+      extentVoxelIndices[4] = -1;
+      extentVoxelIndices[5] = -1;
    }
 }
 
@@ -3107,7 +2887,7 @@ VolumeFile::setDimensions(const int dim[3])
 }
 
 /**
- * Get the origin
+ * Get the origin (at the center of the first voxel)
  */
 void
 VolumeFile::getOrigin(float originOut[3]) const
@@ -3118,7 +2898,7 @@ VolumeFile::getOrigin(float originOut[3]) const
 }
 
 /**
- * Set the origin
+ * Set the origin (at the center of the first voxel)
  */
 void
 VolumeFile::setOrigin(const float originIn[3])
@@ -3129,6 +2909,30 @@ VolumeFile::setOrigin(const float originIn[3])
    setModified();
 }
 
+/**
+ * get the origin at the corner of the first voxel.
+ */
+void 
+VolumeFile::getOriginAtCornerOfVoxel(float originCornerOfVoxelOut[3]) const
+{
+   originCornerOfVoxelOut[0] = origin[0] - (spacing[0] * 0.5);
+   originCornerOfVoxelOut[1] = origin[1] - (spacing[1] * 0.5);
+   originCornerOfVoxelOut[2] = origin[2] - (spacing[2] * 0.5);
+}
+
+/**
+ * set the origin at the corner of the first voxel.
+ */
+void 
+VolumeFile::setOriginAtCornerOfVoxel(const float originCornerOfVoxelIn[3],
+                                     const float voxelSizesIn[3])
+{
+   origin[0] = originCornerOfVoxelIn[0] + (voxelSizesIn[0] * 0.5);
+   origin[1] = originCornerOfVoxelIn[1] + (voxelSizesIn[1] * 0.5);
+   origin[2] = originCornerOfVoxelIn[2] + (voxelSizesIn[2] * 0.5);
+   setModified();
+}
+      
 /**
  * Get the spacing 
  */
@@ -3283,8 +3087,16 @@ VolumeFile::resize(const int cropping[6],
  * In output volume first and last slices are all zeros.
  */
 void 
-VolumeFile::padSegmentation(const int padding[6])
+VolumeFile::padSegmentation(const int padding[6],
+                            const bool erodePaddingFlag)
 {
+   //
+   // used for padding erosion
+   //
+   const int dilateIterations = 0;
+   const int erodeIterations = 1;
+   const int sliceStep = 5;
+
    //
    // Enlarge "this" volume
    //
@@ -3314,6 +3126,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    VOLUME_AXIS_X,
                    i);
       }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = padding[0] - 1; iSlice > 0; iSlice -= sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               iSlice,
+               0,
+               dimensions[1] - 1,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
+      }
    }   
    
    //
@@ -3328,6 +3154,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    VOLUME_AXIS_X,
                    i);
       }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = iStart + 1; iSlice < dimensions[0]; iSlice += sliceStep) {
+            const int erodeExtent[6] = {
+               iSlice,
+               dimensions[0] - 1,
+               0,
+               dimensions[1] - 1,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
+      }
    }
    
    //
@@ -3340,6 +3180,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    padding[2] + 1,
                    VOLUME_AXIS_Y,
                    j);
+      }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = padding[2] - 1; iSlice > 0; iSlice -= sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               0,
+               iSlice,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
    }   
    
@@ -3355,22 +3209,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    VOLUME_AXIS_Y,
                    j);
       }
-/*
-      unsigned char rgb[4] = { 0, 0, 0, VOXEL_COLOR_STATUS_VALID_DO_NOT_SHOW_VOXEL } ;
-      const int jMax = std::min(padding[3], 6);
-      const int jIndex = dimensions[1] - 2;
-      for (int j = 0; j < 1; j++) {
-         const int ijkMin[3] = { 0, jIndex, 0 };
-         const int ijkMax[3] = { dimensions[0], jIndex, dimensions[2] };
-         performSegmentationOperation(SEGMENTATION_OPERATION_ERODE,
-                                      VOLUME_AXIS_Y,
-                                      false,
-                                      ijkMin,
-                                      ijkMax,
-                                      0,
-                                      rgb);
+  
+      if (erodePaddingFlag) {
+         for (int iSlice = jStart + 1; iSlice < dimensions[1]; iSlice += sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               iSlice,
+               dimensions[1] - 1,
+               0,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
-*/
    }
    
    //
@@ -3383,6 +3235,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    padding[4] + 1,
                    VOLUME_AXIS_Z,
                    k);
+      }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = padding[4] - 1; iSlice > 0; iSlice -= sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               0,
+               dimensions[1] - 1,
+               0,
+               iSlice,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
    }   
    
@@ -3397,6 +3263,20 @@ VolumeFile::padSegmentation(const int padding[6])
                    kStart - 2,
                    VOLUME_AXIS_Z,
                    k);
+      }
+      
+      if (erodePaddingFlag) {
+         for (int iSlice = kStart + 1; iSlice < dimensions[2]; iSlice += sliceStep) {
+            const int erodeExtent[6] = {
+               0,
+               dimensions[0] - 1,
+               0,
+               dimensions[1] - 1,
+               iSlice,
+               dimensions[2] - 1,
+            };
+            doVolMorphOpsWithinMask(erodeExtent, dilateIterations, erodeIterations);         
+         } 
       }
    }   
 }      
@@ -3606,10 +3486,17 @@ VolumeFile::convertCoordinatesToVoxelIJK(const float* xyz,
    bool insideVolume = true;
    
    //
+   // NOTE: Origin is at center of voxel but we need to know the coordinate
+   // at the corner of the voxel
+   //
+   float originCorner[3];
+   getOriginAtCornerOfVoxel(originCorner);
+   
+   //
    //  Compute the ijk location
    //
    for (int i=0; i<3; i++) {
-      const float d = xyz[i] - origin[i];
+      const float d = xyz[i] - originCorner[i];
       const float floatLoc = d / spacing[i];
       // Floor for negtive indexes.
       ijk[i] = (int) (floor(floatLoc));
@@ -3630,7 +3517,7 @@ VolumeFile::convertCoordinatesToVoxelIJK(const float* xyz,
          }
       }
    }
-   
+
    return insideVolume;
 }
                                         
@@ -3640,8 +3527,21 @@ VolumeFile::convertCoordinatesToVoxelIJK(const float* xyz,
  * Returns true if the coordinate is in the volume, else false.
  */
 bool
-VolumeFile::getInterpolatedVoxel(const float xyz[3], float& voxelValue)
+VolumeFile::getInterpolatedVoxel(const float xyzIn[3], float& voxelValue)
 {
+   //
+   // Because of the weighting system used, we need to offset
+   // by half a voxel.  This since voxels interpolated are always
+   // to the larger indices.  Without this, if the xyz was near the
+   // left edge of a voxel, the voxel on the to the left would not
+   // get used.
+   //
+   const float xyz[3] = {
+      xyzIn[0] - (spacing[0] * 0.5),
+      xyzIn[1] - (spacing[1] * 0.5),
+      xyzIn[2] - (spacing[2] * 0.5)
+   };
+   
    voxelValue = 0.0;
 
    //
@@ -3663,13 +3563,7 @@ VolumeFile::getInterpolatedVoxel(const float xyz[3], float& voxelValue)
       voxelValue = getVoxel(ijk);
    }
    else {
-      //
-      // Offset position by half of the voxel size
-      //
-      const float vxyz[3] = { xyz[0] - spacing[0] * 0.5, 
-                              xyz[1] - spacing[1] * 0.5, 
-                              xyz[2] - spacing[2] * 0.5 };
-      convertCoordinatesToVoxelIJK((float*)vxyz, ijk, pcoords);
+      convertCoordinatesToVoxelIJK(xyz, ijk, pcoords);
       const float r = pcoords[0];
       const float s = pcoords[1];
       const float t = pcoords[2];
@@ -3728,9 +3622,8 @@ VolumeFile::getInterpolatedVoxel(const float xyz[3], float& voxelValue)
          //
          // Add into the voxel
          //
-         float temp[3];
-         getVoxelAllComponents(vijk, temp);
-         voxelValue += temp[0] * weight;
+         const float vv = getVoxel(vijk, 0);
+         voxelValue += vv * weight;
       }
    }
    
@@ -3812,9 +3705,8 @@ VolumeFile::convertFromVtkStructuredPoints(vtkStructuredPoints* sp)
       spacing[0] = ds[0];
       spacing[1] = ds[1];
       spacing[2] = ds[2];
-      origin[0] = dorg[0];
-      origin[1] = dorg[1];
-      origin[2] = dorg[2];
+      const float forg[3] = { dorg[0], dorg[1], dorg[2] };
+      setOrigin(forg);
    }
 #else // HAVE_VTK5
    sp->GetSpacing(spacing);
@@ -3860,9 +3752,8 @@ VolumeFile::convertFromVtkImageData(vtkImageData* sp)
       spacing[0] = ds[0];
       spacing[1] = ds[1];
       spacing[2] = ds[2];
-      origin[0] = dorg[0];
-      origin[1] = dorg[1];
-      origin[2] = dorg[2];
+      const float forg[3] = { dorg[0], dorg[1], dorg[2] };
+      setOrigin(forg);
    }
 #else // HAVE_VTK5
    sp->GetSpacing(spacing);
@@ -3896,7 +3787,9 @@ VolumeFile::convertToVtkImageData(const bool makeUnsignedCharType) const
 #ifdef HAVE_VTK5
    {
       double ds[3] = { spacing[0], spacing[1], spacing[2] };
-      double dorg[3] = { origin[0], origin[1], origin[2] };
+      float forg[3];
+      getOriginAtCornerOfVoxel(forg);
+      double dorg[3] = { forg[0], forg[1], forg[2] };
       id->SetSpacing(ds);
       id->SetOrigin(dorg);
    }
@@ -3957,27 +3850,6 @@ VolumeFile::applyTransformationMatrix(const TransformationMatrix& tmIn)
    vtkTransform* transform = vtkTransform::New();
    tm.getMatrix(transform);
    applyTransformationMatrix(transform);
-/*
-   vtkStructuredPoints* spInput = convertToVtkStructuredPoints();
-   
-   vtkImageReslice* reslice = vtkImageReslice::New();   
-   reslice->SetNumberOfThreads(1);
-   reslice->SetInput(spInput);
-   reslice->SetInformationInput(spInput);
-   reslice->SetResliceTransform(transform);
-   reslice->SetInterpolationModeToCubic();
-   reslice->Update();
-
-   convertFromVtkImageData(reslice->GetOutput());
-
-   reslice->Delete();
-   spInput->Delete();
-   
-   allocateVoxelColoring();
-   setModified();
-   minMaxVoxelValuesValid = false;
-   minMaxTwoToNinetyEightPercentVoxelValuesValid = false;
-*/
    transform->Delete();
 }
 
@@ -4043,7 +3915,8 @@ VolumeFile::applyTransformationMatrix(vtkTransform* transform)
  * resample the image to the specified spacing.
  */
 void 
-VolumeFile::resampleToSpacing(const float newSpacing[3])
+VolumeFile::resampleToSpacing(const float newSpacing[3],
+                              const INTERPOLATION_TYPE interpolationType)
 {  
    vtkStructuredPoints* spInput = convertToVtkStructuredPoints();
 
@@ -4055,6 +3928,17 @@ VolumeFile::resampleToSpacing(const float newSpacing[3])
    resample->SetAxisOutputSpacing(2, newSpacing[2]);
    resample->SetDimensionality(3);
    resample->SetInterpolationModeToCubic();
+   switch (interpolationType) {
+      case INTERPOLATION_TYPE_CUBIC:
+         resample->SetInterpolationModeToCubic();
+         break;
+      case INTERPOLATION_TYPE_LINEAR:
+         resample->SetInterpolationModeToLinear();
+         break;
+      case INTERPOLATION_TYPE_NEAREST_NEIGHBOR:
+         resample->SetInterpolationModeToNearestNeighbor();
+         break;
+   }
    resample->Update();
    
    convertFromVtkImageData(resample->GetOutput());
@@ -4150,7 +4034,7 @@ VolumeFile::importMincVolume(const QString& fileName) throw (FileException)
    const int WORLD_NDIMS = 3;
    double dircos[WORLD_NDIMS];
    double voxdim, origin; // called step and start in minc, but start means something else here
-   char *dimensions[] = {MIxspace, MIyspace, MIzspace};
+   const char *dimensions[] = {MIxspace, MIyspace, MIzspace};
    QString dimensionNames[3] = { "zspace", "yspace", "xspace" };
    
    float mincOrigin[3] = { 0.0, 0.0, 0.0 };
@@ -4165,9 +4049,9 @@ VolumeFile::importMincVolume(const QString& fileName) throw (FileException)
       dircos[jdim] = 1.0;
 
       /* Get the attributes */
-      get_minc_attribute(mincid, dimensions[jdim], MIstart, 1, &origin);
-      get_minc_attribute(mincid, dimensions[jdim], MIstep,  1, &voxdim);
-      get_minc_attribute(mincid, dimensions[jdim], MIdirection_cosines, 
+      get_minc_attribute(mincid, (char*)dimensions[jdim], MIstart, 1, &origin);
+      get_minc_attribute(mincid, (char*)dimensions[jdim], MIstep,  1, &voxdim);
+      get_minc_attribute(mincid, (char*)dimensions[jdim], MIdirection_cosines, 
                          WORLD_NDIMS, dircos);
       mincOrigin[jdim] = origin;
       mincVoxDim[jdim] = voxdim;
@@ -4175,7 +4059,23 @@ VolumeFile::importMincVolume(const QString& fileName) throw (FileException)
       char dimName[MAX_NC_NAME];
       ncdiminq(mincid, dims[jdim], dimName, NULL);
       dimensionNames[jdim] = StringUtilities::makeLowerCase(dimName);
-      
+
+/*      
+      if (mivar_exists(mincid, MIalignment)) {
+         const int MAX_LEN_STR = 256;
+         char alignChars[MAX_LEN_STR];
+         int varid = ncvarid(mincid, MIalignment);
+         char* alignmentStr = miattgetstr(mincid,
+                                          varid,
+                                          MIalignment,
+                                          MAX_LEN_STR,
+                                          alignChars);
+         if (alignmentStr != NULL) {
+            std::cout << "MINC alignment: " << alignmentStr << std::endl;
+         }
+      }
+*/
+                                       
       if (DebugControl::getDebugOn()) {
          std::cout << "----dim=" << jdim << "----" << std::endl;
          std::cout << "origin=" << (float)origin << std::endl;
@@ -4297,6 +4197,10 @@ VolumeFile::importMincVolume(const QString& fileName) throw (FileException)
       initVoxDim[ii] = mincVoxDim[indx];
    }
    
+   initOrigin[0] += (initVoxDim[0] * 0.5);
+   initOrigin[1] += (initVoxDim[1] * 0.5);
+   initOrigin[2] += (initVoxDim[2] * 0.5);
+
    initialize(VOXEL_DATA_TYPE_FLOAT,
               dimen,
               initOrient, //orient,
@@ -4409,9 +4313,9 @@ VolumeFile::importVtkStructuredPointsVolume(const QString& fileName) throw (File
       space[0] = ds[0];
       space[1] = ds[1];
       space[2] = ds[2];
-      org[0] = dorg[0];
-      org[1] = dorg[1];
-      org[2] = dorg[2];
+      org[0] = dorg[0] + (space[0] * 0.5);
+      org[1] = dorg[1] + (space[1] * 0.5);
+      org[2] = dorg[2] + (space[2] * 0.5);
    }
 #else // HAVE_VTK5
    data->GetOrigin(org);
@@ -4526,13 +4430,16 @@ VolumeFile::exportMincVolume(const QString& fileName) throw (FileException)
    int max = micreate_std_variable(cdf, MIimagemax, NC_FLOAT, 0, NULL);
    int min = micreate_std_variable(cdf, MIimagemin, NC_FLOAT, 0, NULL);
 
+      float originCorner[3];
+      getOriginAtCornerOfVoxel(originCorner);
+      
       //
       // spacing origin and direction cosines for z-axis
       //
       int varid = micreate_std_variable(cdf, MIzspace, 
                                     NC_INT, 0, NULL);
       (void) miattputdbl(cdf, varid, MIstep, spacing[2]);
-      (void) miattputdbl(cdf, varid, MIstart, origin[2]);
+      (void) miattputdbl(cdf, varid, MIstart, originCorner[2]);
       const double zdircos[3] = { 0.0, 0.0, 1.0 };
       (void) ncattput(cdf, varid, MIdirection_cosines, NC_DOUBLE,
                       3, zdircos);
@@ -4543,7 +4450,7 @@ VolumeFile::exportMincVolume(const QString& fileName) throw (FileException)
       varid = micreate_std_variable(cdf, MIyspace, 
                                     NC_INT, 0, NULL);
       (void) miattputdbl(cdf, varid, MIstep, spacing[1]);
-      (void) miattputdbl(cdf, varid, MIstart, origin[1]);
+      (void) miattputdbl(cdf, varid, MIstart, originCorner[1]);
       const double ydircos[3] = { 0.0, 1.0, 0.0 };
       (void) ncattput(cdf, varid, MIdirection_cosines, NC_DOUBLE,
                       3, ydircos);
@@ -4554,7 +4461,7 @@ VolumeFile::exportMincVolume(const QString& fileName) throw (FileException)
       varid = micreate_std_variable(cdf, MIxspace, 
                                     NC_INT, 0, NULL);
       (void) miattputdbl(cdf, varid, MIstep, spacing[0]);
-      (void) miattputdbl(cdf, varid, MIstart, origin[0]);
+      (void) miattputdbl(cdf, varid, MIstart, originCorner[0]);
       const double xdircos[3] = { 1.0, 0.0, 0.0 };
       (void) ncattput(cdf, varid, MIdirection_cosines, NC_DOUBLE,
                       3, xdircos);
@@ -5349,7 +5256,7 @@ VolumeFile::createSegmentationMask(const QString& outputFileName,
                      // Get coordinate of mask volume voxel
                      //
                      float xyz[3];
-                     maskVolume.getVoxelCoordinate(i, j, k, true, xyz);
+                     maskVolume.getVoxelCoordinate(i, j, k, xyz);
                      
                      //
                      // Is coordinate in an input volume voxel
@@ -5676,7 +5583,7 @@ VolumeFile::readRgbDataVoxelInterleaved(gzFile dataFile) throw (FileException)
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5704,7 +5611,7 @@ VolumeFile::readRgbDataSliceInterleaved(gzFile dataFile) throw (FileException)
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5743,7 +5650,7 @@ VolumeFile::readCharData(gzFile dataFile) throw (FileException)
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5768,7 +5675,7 @@ VolumeFile::readUnsignedCharData(gzFile dataFile) throw (FileException)
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5793,7 +5700,7 @@ VolumeFile::readShortData(gzFile dataFile, const bool byteSwapData) throw (FileE
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5822,7 +5729,7 @@ VolumeFile::readUnsignedShortData(gzFile dataFile, const bool byteSwapData) thro
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5851,7 +5758,7 @@ VolumeFile::readIntData(gzFile dataFile, const bool byteSwapData) throw (FileExc
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5880,7 +5787,7 @@ VolumeFile::readUnsignedIntData(gzFile dataFile, const bool byteSwapData) throw 
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5909,7 +5816,7 @@ VolumeFile::readLongLongData(gzFile dataFile, const bool byteSwapData) throw (Fi
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5938,7 +5845,7 @@ VolumeFile::readUnsignedLongLongData(gzFile dataFile, const bool byteSwapData) t
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5967,7 +5874,7 @@ VolumeFile::readFloatData(gzFile dataFile, const bool byteSwapData) throw (FileE
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
    
@@ -5996,7 +5903,7 @@ VolumeFile::readDoubleData(gzFile dataFile, const bool byteSwapData) throw (File
       std::ostringstream str;
       str << "Premature EOF reading zipped file.  Tried to read\n"
           << length << "bytes.  Actually read " << numRead << ".\n";
-      throw FileException(FileUtilities::basename(dataFileName),
+      throw FileException(getDataFileNameForReadError(),
                             str.str().c_str());
    }
 
@@ -6028,6 +5935,7 @@ VolumeFile::writeFile(const QString& filenameIn) throw (FileException)
    std::vector<VolumeFile*> volumes;
    volumes.push_back(this);
    writeFile(filenameIn,
+             getVolumeType(),
              getVoxelDataType(),
              volumes,
              false);
@@ -6051,10 +5959,12 @@ void
 VolumeFile::writeVolumeFile(VolumeFile* vf,
                             const FILE_READ_WRITE_TYPE fileType,
                             const QString filenameWithoutExtensionIn,
-                            const bool compressVolumeFileFlag,
+                            const bool compressVolumeFileFlagIn,
                             QString& fileNameOut,
                             QString& dataFileNameOut) throw (FileException)
 {
+   bool compressVolumeFileFlag = compressVolumeFileFlagIn;
+   
    if (vf == NULL) {
       throw FileException("VolumeFile::writeVolumeFile was passed a NULL volume pointer.");
    }
@@ -6092,6 +6002,10 @@ VolumeFile::writeVolumeFile(VolumeFile* vf,
             fileNameOut += ".gz";
          }
          break;
+      case FILE_READ_WRITE_TYPE_NIFTI_GZIP:
+         fileNameOut = filenameWithoutExtension + SpecFile::getNiftiGzipVolumeFileExtension();
+         compressVolumeFileFlag = true;
+         break;
       case FILE_READ_WRITE_TYPE_SPM_OR_MEDX:
          fileNameOut = filenameWithoutExtension + SpecFile::getAnalyzeVolumeFileExtension();
          dataFileNameOut = filenameWithoutExtension + ".img";
@@ -6108,6 +6022,7 @@ VolumeFile::writeVolumeFile(VolumeFile* vf,
    std::vector<VolumeFile*> theFiles;
    theFiles.push_back(vf);
    vf->writeFile(fileNameOut,
+                 vf->getVolumeType(),
                  vf->getVoxelDataType(),
                  theFiles,
                  zipAfniFlag);
@@ -6213,6 +6128,17 @@ VolumeFile::inverseThresholdVolume(const float thresholdValue)
 }
 
 /**
+ * clamp a voxel dimensions to within valid values (0 to dim).
+ */
+void 
+VolumeFile::clampVoxelDimension(int voxelIJK[3]) const
+{
+   clampVoxelDimension(VOLUME_AXIS_X, voxelIJK[0]);
+   clampVoxelDimension(VOLUME_AXIS_Y, voxelIJK[1]);
+   clampVoxelDimension(VOLUME_AXIS_Z, voxelIJK[2]);
+}
+
+/**
  * clamp a voxel dimension to within valid values (0 to dim).
  */
 void 
@@ -6245,6 +6171,17 @@ VolumeFile::clampVoxelDimension(const VOLUME_AXIS axis,
 }                          
 
 
+/**
+ * clamp a voxel index to within valid values (0 to dim-1).
+ */
+void 
+VolumeFile::clampVoxelIndex(int voxelIJK[3]) const
+{
+   clampVoxelIndex(VOLUME_AXIS_X, voxelIJK[0]);
+   clampVoxelIndex(VOLUME_AXIS_Y, voxelIJK[1]);
+   clampVoxelIndex(VOLUME_AXIS_Z, voxelIJK[2]);
+}
+      
 /**
  * clamp a voxel index to within valid values (0 to dim-1).
  */
@@ -6679,20 +6616,24 @@ VolumeFile::findUnsearchedVoxel(const float minValue,
 
 /**
  * remove islands (all but the largest connected piece of surface).
+ * returns true if islands were removed
  */
-void 
+bool 
 VolumeFile::removeIslandsFromSegmentation()
 {
    //
    // Find the biggest piece of surface
    //
    VoxelIJK biggestPiece;
-   if (findBiggestObject(255.0, 255.0, biggestPiece) != 0) {
+   if (findBiggestObject(255.0, 255.0, biggestPiece) > 1) {
       //
       // Keep only the biggest piece of surface
       //
       floodFillWithVTK(biggestPiece, 255, 255, 0);
+      return true;
    }
+   
+   return false;
 }
 
 /**
@@ -6706,7 +6647,7 @@ VolumeFile::floodFillSliceWithVTK(const VolumeFile::VOLUME_AXIS axis,
                              const int unconnectedValueOut,
                              VolumeModification* modifiedVoxels)
 {
-   int sliceNum;
+   int sliceNum = 0;
    switch (axis) {
       case VOLUME_AXIS_X:
          sliceNum = seed[0];
@@ -6834,7 +6775,8 @@ VolumeFile::findLimits(const QString& limitFileName, int extent[6])
    //
    // Find non-zero voxels
    //
-   getNonZeroVoxelExtent(extent);
+   float coordExtent[6];
+   getNonZeroVoxelExtent(extent, coordExtent);
    
    if (DebugControl::getDebugOn()) {
       std::cout << "\textent: X "
@@ -6849,7 +6791,7 @@ VolumeFile::findLimits(const QString& limitFileName, int extent[6])
    //
    // Should limits file be written
    //
-   if (limitFileName.isEmpty()) {
+   if (limitFileName.isEmpty() == false) {
       QFile file(limitFileName);
       if (file.open(QIODevice::WriteOnly)) {
          QTextStream stream(&file);
@@ -7168,7 +7110,7 @@ VolumeFile::maskWithVolume(const VolumeFile* maskVolume) throw (FileException)
             // Get coordinate of my voxel
             //
             float xyz[3];
-            getVoxelCoordinate(i, j, k, true, xyz);
+            getVoxelCoordinate(i, j, k, xyz);
             
             //
             // Find voxel in mask containing the "my" voxel's coordinate
@@ -7639,7 +7581,7 @@ void
 VolumeFile::doVolMorphOpsWithinMask(const int extent[6], const int nDilation, const int nErosion) 
 {
    VolumeFile vf(*this);
-   vf.maskVolume(extent);
+   //vf.maskVolume(extent);
    vf.doVolMorphOps(nDilation, nErosion);
    unsigned char rgb[4];
    copySubVolume(&vf, extent, rgb, rgb);
@@ -8673,6 +8615,109 @@ VolumeFile::computeEulerOctant(const int i, const int j, const int k, const int 
 }
 
 /**
+ * get topology information by generating a surface.
+ * Cavities are filled prior to euler count.
+ */
+void 
+VolumeFile::getSegmentationTopologyInformation(int& numberOfObjects,
+                                               int& numberOfCavities,
+                                               int& numberOfHoles,
+                                               int& eulerCount) const throw (FileException)
+{
+   //
+   // Copy this volume
+   //
+   VolumeFile volumeCopy(*this);
+   
+   //
+   // Remove islands and fill cavities
+   //
+   volumeCopy.fillSegmentationCavities();
+   
+   //
+   // Convert to structured points
+   //
+   vtkStructuredPoints* sp = volumeCopy.convertToVtkStructuredPoints();
+
+   //
+   // Shrinker - does this actually do anything ?
+   //
+   vtkImageShrink3D* shrinker = vtkImageShrink3D::New();
+   shrinker->SetInput(sp);
+   shrinker->SetShrinkFactors(1, 1, 1);
+   shrinker->AveragingOn();
+
+   //
+   // Gaussian smooth the volume
+   //  
+   vtkImageGaussianSmooth* gaussian = vtkImageGaussianSmooth::New();
+   gaussian->SetDimensionality(3);
+   gaussian->SetStandardDeviation(0);
+   gaussian->SetInput(shrinker->GetOutput());
+
+   //
+   // Marching cubes converts volume to a surface
+   //
+   vtkMarchingCubes* mc = vtkMarchingCubes::New();
+   mc->SetInput(gaussian->GetOutput());
+   mc->SetValue(0, 127.5);
+   mc->ComputeScalarsOff();
+   mc->ComputeGradientsOff();
+   mc->ComputeNormalsOff();
+
+   //
+   // Clean up surface created by marching cubes
+   //
+   vtkCleanPolyData* clean = vtkCleanPolyData::New();
+   clean->SetInput(mc->GetOutput());
+         
+   //    
+   // Make sure mesh is only triangles
+   //
+   vtkTriangleFilter *triangleFilter = vtkTriangleFilter::New();
+   triangleFilter->SetInput(clean->GetOutput());
+   
+   //
+   // Compute normals on the surface to fix polygon orientations
+   //
+   vtkPolyDataNormals* rawNormals = vtkPolyDataNormals::New();
+   rawNormals->SetInput(triangleFilter->GetOutput());
+   rawNormals->SplittingOff();
+   rawNormals->ConsistencyOn();
+   rawNormals->ComputePointNormalsOn();
+   rawNormals->NonManifoldTraversalOn();
+   rawNormals->Update();
+   
+   //
+   // Get topology
+   //
+   TopologyFile topologyFile;
+   topologyFile.importFromVtkFile(rawNormals->GetOutput());
+   
+   //
+   // Remove any islands
+   //
+   //topologyFile.disconnectIslands();
+   
+   int faces, edges, vertices;
+   topologyFile.getEulerCount(false, 
+                              faces, 
+                              vertices, 
+                              edges, 
+                              eulerCount, 
+                              numberOfHoles, 
+                              numberOfObjects);
+   numberOfCavities = getNumberOfSegmentationCavities();
+   
+   rawNormals->Delete();
+   triangleFilter->Delete();
+   clean->Delete();
+   mc->Delete();
+   gaussian->Delete();
+   shrinker->Delete();
+}
+                                              
+/**
  * make a sphere within the volume.
  */
 void    
@@ -8911,7 +8956,7 @@ VolumeFile::assignVoxelsWithinBorder(const VOLUME_AXIS axis,
          
          if (getVoxelIndexValid(ijk)) {
             float coord[3];
-            getVoxelCoordinate(ijk, true, coord);
+            getVoxelCoordinate(ijk, coord);
             
             coord[0] *= scaleFactor;
             coord[1] *= scaleFactor;
@@ -9080,11 +9125,11 @@ VolumeFile::acPcAlign(const int superiorAcVoxel[3],
    //
    float superiorAcXYZ[3] = { 0.0, 0.0, 0.0 };
    //convertCoordinatesToVoxelIJK(superiorAcXYZ, superiorAcVoxel);
-   getVoxelCoordinate(superiorAcVoxel, false, superiorAcXYZ);
+   getVoxelCoordinate(superiorAcVoxel, superiorAcXYZ);
    float inferiorPcXYZ[3];
-   getVoxelCoordinate(inferiorPcVoxel, false, inferiorPcXYZ);
+   getVoxelCoordinate(inferiorPcVoxel, inferiorPcXYZ);
    float superiorLfXYZ[3];
-   getVoxelCoordinate(superiorLateralFissureVoxel, false, superiorLfXYZ);
+   getVoxelCoordinate(superiorLateralFissureVoxel, superiorLfXYZ);
       
    //
    // Vector from PC to AC
@@ -9215,6 +9260,10 @@ VolumeFile::convertFromITKImage(VolumeITKImage& itkImageIn) throw (FileException
    //std::cout << "Spacing: " << space[0] << ", " << space[1] << ", " << space[2] << std::endl;
    float space2[3] = { space[0], space[1], space[2] };
    
+   org[0] += (space2[0] * 0.5);
+   org[1] += (space2[1] * 0.5);
+   org[2] += (space2[2] * 0.5);
+   
    //
    // Do voxels need to be reallocated ?
    //
@@ -9290,9 +9339,11 @@ VolumeFile::convertToITKImage(VolumeITKImage& itkImageOut) throw (FileException)
    // Set origin
    //
    VolumeITKImage::ImageTypeFloat3::PointType org;
-   org[0] = origin[0];
-   org[1] = origin[1];
-   org[2] = origin[2];
+   float forg[3];
+   getOriginAtCornerOfVoxel(forg);
+   org[0] = forg[0];
+   org[1] = forg[1];
+   org[2] = forg[2];
    itkImageOut.image->SetOrigin(org);
    
    //
@@ -9339,6 +9390,7 @@ VolumeFile::getVolumeFileTypesAndNames(std::vector<FILE_READ_WRITE_TYPE>& fileTy
    fileTypes.push_back(FILE_READ_WRITE_TYPE_AFNI);   fileTypeNames.push_back("AFNI");
    fileTypes.push_back(FILE_READ_WRITE_TYPE_ANALYZE);   fileTypeNames.push_back("Analyze");
    fileTypes.push_back(FILE_READ_WRITE_TYPE_NIFTI);   fileTypeNames.push_back("NIFTI");
+   fileTypes.push_back(FILE_READ_WRITE_TYPE_NIFTI_GZIP);   fileTypeNames.push_back("NIFTI_GZIP");
    fileTypes.push_back(FILE_READ_WRITE_TYPE_SPM_OR_MEDX);   fileTypeNames.push_back("SPM/MEDx");
    fileTypes.push_back(FILE_READ_WRITE_TYPE_WUNIL);   fileTypeNames.push_back("WU-NIL");
    
@@ -9354,6 +9406,8 @@ VolumeFile::getVolumeFileTypesAndNames(std::vector<FILE_READ_WRITE_TYPE>& fileTy
       case FILE_READ_WRITE_TYPE_ANALYZE:
          break;
       case FILE_READ_WRITE_TYPE_NIFTI:
+         break;
+      case FILE_READ_WRITE_TYPE_NIFTI_GZIP:
          break;
       case FILE_READ_WRITE_TYPE_SPM_OR_MEDX:
          break;
@@ -9541,12 +9595,37 @@ VolumeFile::readFile(const QString& fileNameIn,
  */
 void 
 VolumeFile::writeFile(const QString& fileNameIn,
+                      const VOLUME_TYPE volumeType,
                       const VOXEL_DATA_TYPE writeVoxelDataType,
                       std::vector<VolumeFile*>& volumesToWrite,
                       const bool zipAfniBrikFile) throw (FileException)
 {
    if (volumesToWrite.size() == 0) {
       throw FileException(fileNameIn, "No volume data to write.");
+   }
+   
+   switch (volumeType) {
+      case VOLUME_TYPE_ANATOMY:
+         break;
+      case VOLUME_TYPE_FUNCTIONAL:
+         break;
+      case VOLUME_TYPE_PAINT:
+         if (volumesToWrite.size() > 1) {
+            synchronizeRegionNames(volumesToWrite);
+         }
+         break;
+      case VOLUME_TYPE_PROB_ATLAS:
+         break;
+      case VOLUME_TYPE_RGB:
+         break;
+      case VOLUME_TYPE_SEGMENTATION:
+         break;
+      case VOLUME_TYPE_VECTOR:
+         break;
+      case VOLUME_TYPE_ROI:
+         break;
+      case VOLUME_TYPE_UNKNOWN:
+         break;
    }
    
    //
@@ -9797,27 +9876,27 @@ VolumeFile::readFileAfni(const QString& fileNameIn,
                   break;
                case ORIENTATION_RIGHT_TO_LEFT:
                   spacing[i] = -fabs(spacing[i]);
-                  origin[i] = fabs(values[i]) + (fabs(spacing[i]) * 0.5);
+                  origin[i] = fabs(values[i]); // + (fabs(spacing[i]) * 0.5);
                   break;
                case ORIENTATION_LEFT_TO_RIGHT:
                   spacing[i] = fabs(spacing[i]);
-                  origin[i]  = -fabs(values[i]) - (fabs(spacing[i]) * 0.5);
+                  origin[i]  = -fabs(values[i]); // - (fabs(spacing[i]) * 0.5);
                   break;
                case ORIENTATION_POSTERIOR_TO_ANTERIOR:
                   spacing[i] = fabs(spacing[i]);
-                  origin[i]  = -fabs(values[i]) - (fabs(spacing[i]) * 0.5);
+                  origin[i]  = -fabs(values[i]); // - (fabs(spacing[i]) * 0.5);
                   break;
                case ORIENTATION_ANTERIOR_TO_POSTERIOR:
                   spacing[i] = -fabs(spacing[i]);
-                  origin[i] = fabs(values[i]) + (fabs(spacing[i]) * 0.5);
+                  origin[i] = fabs(values[i]); // + (fabs(spacing[i]) * 0.5);
                   break;
                case ORIENTATION_INFERIOR_TO_SUPERIOR:
                   spacing[i] = fabs(spacing[i]);
-                  origin[i]  = -fabs(values[i]) - (fabs(spacing[i]) * 0.5);
+                  origin[i]  = -fabs(values[i]); // - (fabs(spacing[i]) * 0.5);
                   break;
                case ORIENTATION_SUPERIOR_TO_INFERIOR:
                   spacing[i] = -fabs(spacing[i]);
-                  origin[i] =  fabs(values[i]) + (fabs(spacing[i]) * 0.5);
+                  origin[i] =  fabs(values[i]); // + (fabs(spacing[i]) * 0.5);
                   break;
             }
          }
@@ -10721,12 +10800,35 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    volumeRead.setHeaderTag(headerTagComment, comm);
 
    //
-   // Voxel size
+   // Convert units to MilliMeters
+   //
+   float spacingScale = 1.0;
+   switch (hdr.xyzt_units) {
+      case NIFTI_UNITS_METER:
+         spacingScale = 1000.0;
+         break;
+      case NIFTI_UNITS_MM:
+         spacingScale = 1.0;
+         break;
+      case NIFTI_UNITS_MICRON:
+         spacingScale = 0.001;
+         break;
+   }
+   hdr.qoffset_x *= spacingScale;
+   hdr.qoffset_y *= spacingScale;
+   hdr.qoffset_z *= spacingScale;
+   hdr.pixdim[1] *= spacingScale;
+   hdr.pixdim[2] *= spacingScale;
+   hdr.pixdim[3] *= spacingScale;
+   
+   //
+   // Spacing
    //
    volumeRead.spacing[0] = hdr.pixdim[1];
    volumeRead.spacing[1] = hdr.pixdim[2];
    volumeRead.spacing[2] = hdr.pixdim[3];
 
+   
    //
    // default origin
    //
@@ -10755,9 +10857,73 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    };
    
    //
-   // Check qform_code
+   // sform_code take priority over qform_code
    //
-   if (hdr.qform_code > 0) {
+   if (hdr.sform_code > 0) {
+      qformTMValid = false;
+      
+      float x[2], y[2], z[2];
+      for (int i = 0; i < 2; i++) {
+         const int j = i;
+         const int k = i;
+         x[i] = hdr.srow_x[0] * i + hdr.srow_x[1] * j + hdr.srow_x[2] * k + hdr.srow_x[3];
+         y[i] = hdr.srow_y[0] * i + hdr.srow_y[1] * j + hdr.srow_y[2] * k + hdr.srow_y[3];
+         z[i] = hdr.srow_z[0] * i + hdr.srow_z[1] * j + hdr.srow_z[2] * k + hdr.srow_z[3];
+      }
+      //
+      // Convert units to MilliMeters
+      //
+      float spacingScale = 1.0;
+      switch (hdr.xyzt_units) {
+         case NIFTI_UNITS_METER:
+            spacingScale = 1000.0;
+            break;
+         case NIFTI_UNITS_MM:
+            spacingScale = 1.0;
+            break;
+         case NIFTI_UNITS_MICRON:
+            spacingScale = 0.001;
+            break;
+      }
+      volumeRead.origin[0] = x[0] * spacingScale;
+      volumeRead.origin[1] = y[0] * spacingScale;
+      volumeRead.origin[2] = z[0] * spacingScale;
+      volumeRead.spacing[0] = (x[1] - x[0]) * spacingScale;
+      volumeRead.spacing[1] = (y[1] - y[0]) * spacingScale;
+      volumeRead.spacing[2] = (z[1] - z[0]) * spacingScale;
+      
+ 
+      //
+      // NIFTI origin is in the center of the voxel
+      // so move the origin to the corner of voxel
+      //
+      //volumeRead.origin[0] -= volumeRead.spacing[0] * 0.5;
+      //volumeRead.origin[1] -= volumeRead.spacing[1] * 0.5;
+      //volumeRead.origin[2] -= volumeRead.spacing[2] * 0.5;
+      
+      NiftiHelper::mat44 m;
+      m.m[0][0] = hdr.srow_x[0];
+      m.m[0][1] = hdr.srow_x[1];
+      m.m[0][2] = hdr.srow_x[2];
+      m.m[0][3] = hdr.srow_x[3];
+      m.m[1][0] = hdr.srow_y[0];
+      m.m[1][1] = hdr.srow_y[1];
+      m.m[1][2] = hdr.srow_y[2];
+      m.m[1][3] = hdr.srow_y[3];
+      m.m[2][0] = hdr.srow_z[0];
+      m.m[2][1] = hdr.srow_z[1];
+      m.m[2][2] = hdr.srow_z[2];
+      m.m[2][3] = hdr.srow_z[3];
+      m.m[3][0] = 0.0;
+      m.m[3][1] = 0.0;
+      m.m[3][2] = 0.0;
+      m.m[3][3] = 1.0;
+      NiftiHelper::mat44ToCaretOrientation(m,
+                                           volumeRead.orientation[0],
+                                           volumeRead.orientation[1],
+                                           volumeRead.orientation[2]);
+   }
+   else if (hdr.qform_code > 0) {
       volumeRead.origin[0] = hdr.qoffset_x;
       volumeRead.origin[1] = hdr.qoffset_y;
       volumeRead.origin[2] = hdr.qoffset_z;
@@ -10765,10 +10931,15 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       float qfac = (hdr.pixdim[0] < 0.0) ? -1.0 : 1.0 ;  /* left-handedness? */
       NiftiHelper::mat44 m = 
          NiftiHelper::nifti_quatern_to_mat44(hdr.quatern_b, hdr.quatern_c, hdr.quatern_c,
+                                             0.0, 0.0, 0.0,
+                                             1.0, 1.0, 1.0,
+                                             qfac);
+/*  09/19/2008
+         NiftiHelper::nifti_quatern_to_mat44(hdr.quatern_b, hdr.quatern_c, hdr.quatern_c,
                                              hdr.qoffset_x, hdr.qoffset_y, hdr.qoffset_z,
                                              hdr.pixdim[1], hdr.pixdim[2], hdr.pixdim[3],
                                              qfac);
-                                             
+*/                                             
 /*
       float x[2], y[2], z[2];
       for (int i = 0; i < 2; i++) {
@@ -10825,57 +10996,6 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
                                            qformOrientation[2]);
    }
    
-   //
-   // Check sform_code and let it override qform_code
-   //
-   if (hdr.sform_code > 0) {
-      qformTMValid = false;
-      
-      float x[2], y[2], z[2];
-      for (int i = 0; i < 2; i++) {
-         const int j = i;
-         const int k = i;
-         x[i] = hdr.srow_x[0] * i + hdr.srow_x[1] * j + hdr.srow_x[2] * k + hdr.srow_x[3];
-         y[i] = hdr.srow_y[0] * i + hdr.srow_y[1] * j + hdr.srow_y[2] * k + hdr.srow_y[3];
-         z[i] = hdr.srow_z[0] * i + hdr.srow_z[1] * j + hdr.srow_z[2] * k + hdr.srow_z[3];
-      }
-      volumeRead.origin[0] = x[0];
-      volumeRead.origin[1] = y[0];
-      volumeRead.origin[2] = z[0];
-      volumeRead.spacing[0] = x[1] - x[0];
-      volumeRead.spacing[1] = y[1] - y[0];
-      volumeRead.spacing[2] = z[1] - z[0];
-      
-      //
-      // NIFTI origin is in the center of the voxel
-      // so move the origin to the corner of voxel
-      //
-      volumeRead.origin[0] -= volumeRead.spacing[0] * 0.5;
-      volumeRead.origin[1] -= volumeRead.spacing[1] * 0.5;
-      volumeRead.origin[2] -= volumeRead.spacing[2] * 0.5;
-      
-      NiftiHelper::mat44 m;
-      m.m[0][0] = hdr.srow_x[0];
-      m.m[0][1] = hdr.srow_x[1];
-      m.m[0][2] = hdr.srow_x[2];
-      m.m[0][3] = hdr.srow_x[3];
-      m.m[1][0] = hdr.srow_y[0];
-      m.m[1][1] = hdr.srow_y[1];
-      m.m[1][2] = hdr.srow_y[2];
-      m.m[1][3] = hdr.srow_y[3];
-      m.m[2][0] = hdr.srow_z[0];
-      m.m[2][1] = hdr.srow_z[1];
-      m.m[2][2] = hdr.srow_z[2];
-      m.m[2][3] = hdr.srow_z[3];
-      m.m[3][0] = 0.0;
-      m.m[3][1] = 0.0;
-      m.m[3][2] = 0.0;
-      m.m[3][3] = 1.0;
-      NiftiHelper::mat44ToCaretOrientation(m,
-                                           volumeRead.orientation[0],
-                                           volumeRead.orientation[1],
-                                           volumeRead.orientation[2]);
-   }
    
    //
    // The origin and spacing are always ordered L/R, P/A, I/S in NIFTI even if
@@ -11493,7 +11613,6 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
                                                      mmppix,
                                                      firstVoxelIndex,
                                                      org);
-   volumeRead.setOrigin(org);
    
    //
    // default to transverse orientation
@@ -11505,12 +11624,13 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
    //
    // Set spacing based upon volume's orientation code
    //
-   float space[3];
+   float space[3] = { 0.0, 0.0, 0.0 };
    switch (ifhOrientation) {
       case 2: // transverse
          space[0] = -mmppix[0];
          space[1] =  mmppix[1];
          space[2] = -mmppix[2];
+         volumeRead.setOriginAtCornerOfVoxel(org, space);
          volumeRead.orientation[0] = ORIENTATION_RIGHT_TO_LEFT;
          volumeRead.orientation[1] = ORIENTATION_ANTERIOR_TO_POSTERIOR;
          volumeRead.orientation[2] = ORIENTATION_INFERIOR_TO_SUPERIOR;
@@ -11522,14 +11642,10 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
          volumeRead.orientation[0] = ORIENTATION_RIGHT_TO_LEFT;
          volumeRead.orientation[1] = ORIENTATION_SUPERIOR_TO_INFERIOR;
          volumeRead.orientation[2] = ORIENTATION_ANTERIOR_TO_POSTERIOR;
-         {
-            float org[3];
-            volumeRead.getOrigin(org);
-            org[0] = fabs(org[0]);
-            org[1] = fabs(org[1]);
-            org[2] = fabs(org[2]);
-            volumeRead.setOrigin(org);
-         }
+         org[0] = fabs(org[0]);
+         org[1] = fabs(org[1]);
+         org[2] = fabs(org[2]);
+         volumeRead.setOriginAtCornerOfVoxel(org, space);
          break;
       case 4: // sagittal
          space[0] = -mmppix[0];
@@ -11538,14 +11654,10 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
          volumeRead.orientation[0] = ORIENTATION_ANTERIOR_TO_POSTERIOR;
          volumeRead.orientation[1] = ORIENTATION_SUPERIOR_TO_INFERIOR;
          volumeRead.orientation[2] = ORIENTATION_LEFT_TO_RIGHT;
-         {
-            float org[3];
-            volumeRead.getOrigin(org);
-            org[0] = fabs(org[0]);
-            org[1] = fabs(org[1]);
-            org[2] = -fabs(org[2]);
-            volumeRead.setOrigin(org);
-         }
+         org[0] = fabs(org[0]);
+         org[1] = fabs(org[1]);
+         org[2] = -fabs(org[2]);
+         volumeRead.setOriginAtCornerOfVoxel(org, space);
          break;
       case 100:
          space[0] = fabs(mmppix[0]);
@@ -11554,14 +11666,12 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
          volumeRead.orientation[0] = ORIENTATION_UNKNOWN;
          volumeRead.orientation[1] = ORIENTATION_UNKNOWN;
          volumeRead.orientation[2] = ORIENTATION_UNKNOWN;
-         {
-            float org[3] = { 0, 0, 0 };
-            volumeRead.setOrigin(org);
-         }
+         float org[3] = { 0, 0, 0 };
+         volumeRead.setOriginAtCornerOfVoxel(org, space);
          break;
    }
    volumeRead.setSpacing(space);
-         
+     
    //
    // Get the study metadata link
    //
@@ -11590,12 +11700,22 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
    }
    
    //
+   // WU NIL files are big endian by default
+   //
+   bool bigEndianDataFlag = true;
+   WuNilAttribute* endianAttr = volumeRead.wunilHeader.getAttribute(WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER);
+   if (endianAttr != NULL) {
+      if (endianAttr->getValue().trimmed() == "littleendian") {
+         bigEndianDataFlag = false;
+      }
+   }
+   
+   //
    // WU NIL files normally created on sun workstations which are big endian
    //
-   //int wordSize;
-   bool bigEndian = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
-   //qSysInfo(&wordSize, &bigEndian);
-   const bool byteSwapFlag = (bigEndian == false);
+   bool bigEndianComputerFlag = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
+   //const bool byteSwapFlag = (bigEndianComputerFlag == false);
+   const bool byteSwapFlag = (bigEndianComputerFlag != bigEndianDataFlag);
 
    //
    // Create the volume data file name
@@ -11825,6 +11945,13 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    file.close();
    
    //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->filename, getFileWritePermissions());
+   }
+
+   //
    // Create the name of the data file
    //
    firstVolume->dataFileName = FileUtilities::filenameWithoutExtension(firstVolume->filename);
@@ -11856,6 +11983,7 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          volumesToWrite[i]->writeVolumeFileData(firstVolume->voxelDataType,
@@ -11865,7 +11993,7 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->dataFileName, e.whatQString());
+         writeErrorMessage = e.whatQString();
       }
    }
    
@@ -11878,6 +12006,17 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    else {
       cppFile->close();
       delete cppFile;
+   }
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->dataFileName, writeErrorMessage);
+   }
+   
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->dataFileName, getFileWritePermissions());
    }
 }                          
                       
@@ -12070,7 +12209,8 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
       }
       hdr.descrip[len] = '\0';
    }
-   
+  
+/*
    //
    // origin in NIFTI file is in center of voxel, caret origin is at corner of voxel
    //
@@ -12079,7 +12219,7 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
       firstVolume->spacing[1] * 0.5,
       firstVolume->spacing[2] * 0.5
    };
-   
+*/   
    //
    // Set origin info
    //
@@ -12096,21 +12236,21 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    hdr.quatern_b = 0.0;
    hdr.quatern_c = 0.0;
    hdr.quatern_d = 1.0;
-   hdr.qoffset_x = firstVolume->origin[0] + halfVoxelOffset[0];
-   hdr.qoffset_y = firstVolume->origin[1] + halfVoxelOffset[1];
-   hdr.qoffset_z = firstVolume->origin[2] + halfVoxelOffset[2];
+   hdr.qoffset_x = firstVolume->origin[0]; // + halfVoxelOffset[0];
+   hdr.qoffset_y = firstVolume->origin[1]; // + halfVoxelOffset[1];
+   hdr.qoffset_z = firstVolume->origin[2]; // + halfVoxelOffset[2];
    hdr.srow_x[0] = firstVolume->spacing[0];
    hdr.srow_x[1] = 0.0;
    hdr.srow_x[2] = 0.0;
-   hdr.srow_x[3] = firstVolume->origin[0] + halfVoxelOffset[0];
+   hdr.srow_x[3] = firstVolume->origin[0]; // + halfVoxelOffset[0];
    hdr.srow_y[0] = 0.0;
    hdr.srow_y[1] = firstVolume->spacing[1];
    hdr.srow_y[2] = 0.0;
-   hdr.srow_y[3] = firstVolume->origin[1] + halfVoxelOffset[1];
+   hdr.srow_y[3] = firstVolume->origin[1]; // + halfVoxelOffset[1];
    hdr.srow_z[0] = 0.0;
    hdr.srow_z[1] = 0.0;
    hdr.srow_z[2] = firstVolume->spacing[2];
-   hdr.srow_z[3] = firstVolume->origin[2] + halfVoxelOffset[2];
+   hdr.srow_z[3] = firstVolume->origin[2]; // + halfVoxelOffset[2];
    
    //
    // set the magic number info
@@ -12251,6 +12391,7 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          volumesToWrite[i]->writeVolumeFileData(firstVolume->voxelDataType,
@@ -12260,7 +12401,8 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->filename, e.whatQString());
+         writeErrorMessage = e.whatQString();
+         break;
       }
    }
    
@@ -12273,6 +12415,10 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    else {
       cppFile->close();
       delete cppFile;
+   }
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->filename, writeErrorMessage);
    }
 }                          
                       
@@ -12496,6 +12642,13 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    headerFile.close();
    
    //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->filename, getFileWritePermissions());
+   }
+
+   //
    // Create the name of the data file
    //
    firstVolume->dataFileName = FileUtilities::filenameWithoutExtension(firstVolume->filename);
@@ -12513,6 +12666,7 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          volumesToWrite[i]->writeVolumeFileData(firstVolume->voxelDataType,
@@ -12522,7 +12676,8 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->dataFileName, e.whatQString());
+         writeErrorMessage = e.whatQString();
+         break;
       }
    }
    
@@ -12531,6 +12686,17 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    //
    cppFile->close();
    delete cppFile;
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->dataFileName, writeErrorMessage);
+   }
+   
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->dataFileName, getFileWritePermissions());
+   }
 }                          
                       
 /**
@@ -12618,11 +12784,23 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    WuNilAttribute m4(WuNilAttribute::NAME_MATRIX_SIZE_4, 1);
    wunilHeader.addAttribute(m4);
    
+   const bool bigEndianFlag = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
+   if (bigEndianFlag) {
+      WuNilAttribute byteOrder(WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER, "bigendian");
+      wunilHeader.addAttribute(byteOrder);
+   }
+   else {
+      WuNilAttribute byteOrder(WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER, "littleendian");
+      wunilHeader.addAttribute(byteOrder);
+   }
+   
+   float originCorner[3];
+   firstVolume->getOriginAtCornerOfVoxel(originCorner);
    float org[3];
-   org[0] = fabs(firstVolume->origin[0]);
+   org[0] = fabs(originCorner[0]);
    org[1] = -firstVolume->dimensions[1]*firstVolume->spacing[1] 
-           - firstVolume->origin[1] - firstVolume->spacing[1];
-   org[2] = -fabs(firstVolume->dimensions[2]*firstVolume->spacing[2] + firstVolume->origin[2]);
+           - originCorner[1] - firstVolume->spacing[1];
+   org[2] = -fabs(firstVolume->dimensions[2]*firstVolume->spacing[2] + originCorner[2]);
    WuNilAttribute nc(WuNilAttribute::NAME_CENTER, org, 3);
    wunilHeader.addAttribute(nc);
    
@@ -12660,6 +12838,13 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    file.close();
    
    //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->filename, getFileWritePermissions());
+   }
+
+   //
    // Create the name of the data file
    //
    firstVolume->dataFileName = FileUtilities::filenameWithoutExtension(firstVolume->filename);
@@ -12677,14 +12862,17 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    //
    // WU NIL files normally created on sun workstations which are big endian
    //
-   //int wordSize;
-   bool bigEndian = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
-   //qSysInfo(&wordSize, &bigEndian);
-   const bool byteSwapFlag = (bigEndian == false);
-
+   //bool bigEndian = (QSysInfo::ByteOrder == QSysInfo::BigEndian);
+   //const bool byteSwapFlag = (bigEndian == false);
+   //
+   // WU NIL volumes now support both big and little endian
+   //
+   const bool byteSwapFlag = false;
+   
    //
    // Write the volume data
    //
+   QString writeErrorMessage;
    for (int i = 0; i < numSubVolumes; i++) {
       try {
          //
@@ -12700,7 +12888,8 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
                                                 cppFile);
       }
       catch (FileException& e) {
-         throw FileException(firstVolume->dataFileName, e.whatQString());
+         writeErrorMessage = e.whatQString();
+         break;
       }
    }
    
@@ -12709,6 +12898,17 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
    //
    cppFile->close();
    delete cppFile;
+
+   if (writeErrorMessage.isEmpty() == false) {
+      throw FileException(firstVolume->dataFileName, writeErrorMessage);
+   }
+
+   //
+   // Update file permissions ?
+   //
+   if (getFileWritePermissions() != 0) {
+      QFile::setPermissions(firstVolume->dataFileName, getFileWritePermissions());
+   }
 }                          
                       
 /**
@@ -13201,10 +13401,10 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
                data[i*3+2] = static_cast<unsigned char>(voxels[i*3+2]);
             }
             if (compressDataWithZlib) {
-               gzwrite(zipStream, (void*)data, numVoxels * sizeof(unsigned char));
+               gzwrite(zipStream, (void*)data, numVoxels * 3 * sizeof(unsigned char));
             }
             else {
-               cppStream->write((const char*)data, numVoxels * sizeof(unsigned char));
+               cppStream->write((const char*)data, numVoxels * 3 * sizeof(unsigned char));
             }
             delete[] data;
          }
@@ -13226,10 +13426,10 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
                }
             }
             if (compressDataWithZlib) {
-               gzwrite(zipStream, (void*)data, numVoxels * sizeof(unsigned char));
+               gzwrite(zipStream, (void*)data, numVoxels * 3 * sizeof(unsigned char));
             }
             else {
-               cppStream->write((const char*)data, numVoxels * sizeof(unsigned char));
+               cppStream->write((const char*)data, numVoxels * 3 * sizeof(unsigned char));
             }
             delete[] data;
          }
@@ -13302,6 +13502,7 @@ VolumeFile::afniUniformityCorrection(const int grayMin,
    std::vector<VolumeFile*> volumes;
    volumes.push_back(&volumeCopy);
    VolumeFile::writeFile(inputName,
+                         getVolumeType(),
                          VolumeFile::VOXEL_DATA_TYPE_SHORT,
                          volumes);
    
@@ -13673,3 +13874,19 @@ VolumeFile::biasCorrectionWithAFNI(const int grayMinimumIn,
    setVoxelColoringInvalid();
 }
                                   
+/**
+ * get data file name for read error (if data file name empty, return file name).
+ */
+QString 
+VolumeFile::getDataFileNameForReadError() const
+{
+   QString name = dataFileName;
+   if (name.isEmpty()) {
+      name = getFileName();
+   }
+
+   name = FileUtilities::basename(name);
+
+   return name;
+}
+      

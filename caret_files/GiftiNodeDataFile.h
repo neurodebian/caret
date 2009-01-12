@@ -125,6 +125,9 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
       // prepend to the comment for a column
       void prependToColumnComment(const int col, const QString& comm);
       
+      /// get PubMedID's of all linked studies
+      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const;
+      
       // get the study metadata link for a column
       StudyMetaDataLinkSet getColumnStudyMetaDataLinkSet(const int col) const;
       
@@ -215,6 +218,8 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
       static const QString tagNumberOfColumns;
 };
 
+#endif // __GIFTI_NODE_DATA_FILE_H__
+
 #ifdef __GIFTI_NODE_DATA_FILE_MAIN_H__
    const QString GiftiNodeDataFile::tagColumnName    = "tag-column-name";
    const QString GiftiNodeDataFile::tagColumnComment = "tag-column-comment";
@@ -222,6 +227,4 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
    const QString GiftiNodeDataFile::tagNumberOfNodes = "tag-number-of-nodes";
    const QString GiftiNodeDataFile::tagNumberOfColumns = "tag-number-of-columns";
 #endif // __GIFTI_NODE_DATA_FILE_MAIN_H__
-
-#endif // __GIFTI_NODE_DATA_FILE_H__
 

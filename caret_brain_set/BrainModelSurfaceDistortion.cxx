@@ -19,6 +19,8 @@ BrainModelSurfaceDistortion::BrainModelSurfaceDistortion(BrainSet* brainSetIn,
                                                 BrainModelSurface* referenceSurfaceIn,
                                                 TopologyFile* topologyFileIn,
                                                 SurfaceShapeFile* surfaceShapeFileIn,
+                                                const int arealDistortionColumnIn,
+                                                const int linearDistortionColumnIn,
                                                 const QString& arealDistortionNameIn,
                                                 const QString& linearDistortionNameIn)
    : BrainModelAlgorithm(brainSetIn)
@@ -26,7 +28,9 @@ BrainModelSurfaceDistortion::BrainModelSurfaceDistortion(BrainSet* brainSetIn,
    surface              = surfaceIn;
    referenceSurface     = referenceSurfaceIn;
    topologyFile         = topologyFileIn;
-   surfaceShapeFile     = surfaceShapeFileIn,
+   surfaceShapeFile     = surfaceShapeFileIn;
+   arealDistortionColumn = arealDistortionColumnIn;
+   linearDistortionColumn = linearDistortionColumnIn;
    arealDistortionName  = arealDistortionNameIn;
    linearDistortionName = linearDistortionNameIn;
 }
@@ -69,9 +73,45 @@ BrainModelSurfaceDistortion::execute() throw (BrainModelAlgorithmException)
    commentInfo.append(FileUtilities::basename(surface->getFileName()));
    
    //
+   // Create surface shape file columns if needed
+   //
+   if (arealDistortionColumn == DISTORTION_COLUMN_CREATE_NEW) {
+      if (surfaceShapeFile->getNumberOfColumns() == 0) {
+         surfaceShapeFile->setNumberOfNodesAndColumns(surface->getNumberOfNodes(), 1);
+      }
+      else {
+         surfaceShapeFile->addColumns(1);
+      }
+      arealDistortionColumn = surfaceShapeFile->getNumberOfColumns() - 1;
+   }
+   if (linearDistortionColumn == DISTORTION_COLUMN_CREATE_NEW) {
+      if (surfaceShapeFile->getNumberOfColumns() == 0) {
+         surfaceShapeFile->setNumberOfNodesAndColumns(surface->getNumberOfNodes(), 1);
+      }
+      else {
+         surfaceShapeFile->addColumns(1);
+      }
+      linearDistortionColumn = surfaceShapeFile->getNumberOfColumns() - 1;
+   }
+   
+   //
+   // Set column names
+   //
+   if (arealDistortionColumn >= 0) {
+      surfaceShapeFile->setColumnName(arealDistortionColumn, arealDistortionName);
+      surfaceShapeFile->setColumnColorMappingMinMax(arealDistortionColumn, -1.0, 1.0);
+      surfaceShapeFile->setColumnComment(arealDistortionColumn, commentInfo);
+   }
+   if (linearDistortionColumn >= 0) {
+      surfaceShapeFile->setColumnName(linearDistortionColumn, linearDistortionName);
+      surfaceShapeFile->setColumnColorMappingMinMax(linearDistortionColumn, 0.0, 2.0);
+      surfaceShapeFile->setColumnComment(linearDistortionColumn, commentInfo);
+   }
+   
+   //
    // If areal distortion should be created
    //
-   if (arealDistortionName.isEmpty() == false) {
+   if (arealDistortionColumn >= 0) {
       //
       // Allocate areal distortion for statistics
       //
@@ -124,25 +164,6 @@ BrainModelSurfaceDistortion::execute() throw (BrainModelAlgorithmException)
       }
    
       //
-      // Get/Set areal distortion column
-      //
-      int arealDistortionColumn = 0;
-      if (surfaceShapeFile->getNumberOfNodes() <= 0) {
-         surfaceShapeFile->setNumberOfNodesAndColumns(numNodes, 1);
-         arealDistortionColumn = 0;
-      }
-      else {
-         arealDistortionColumn = surfaceShapeFile->getColumnWithName(arealDistortionName);
-         if (arealDistortionColumn < 0) {
-            surfaceShapeFile->addColumns(1);
-            arealDistortionColumn = surfaceShapeFile->getNumberOfColumns() - 1;
-         }
-      }
-      surfaceShapeFile->setColumnName(arealDistortionColumn, arealDistortionName);
-      surfaceShapeFile->setColumnColorMappingMinMax(arealDistortionColumn, -1.0, 1.0);
-      surfaceShapeFile->setColumnComment(arealDistortionColumn, commentInfo);
-      
-      //
       // Compute areal distortion for all nodes
       //
       for (int i = 0; i < numNodes; i++) {
@@ -167,30 +188,11 @@ BrainModelSurfaceDistortion::execute() throw (BrainModelAlgorithmException)
    //
    // If linear distortion should be created
    //
-   if (linearDistortionName.isEmpty() == false) {
+   if (linearDistortionColumn >= 0) {
       //
       // Allocate linear distortion for statistics
       //
       linearDistortionForStatistics.resize(numNodes, 0);
-      
-      //
-      // Get/Set linear distortion column
-      //
-      int linearDistortionColumn = 0;
-      if (surfaceShapeFile->getNumberOfNodes() <= 0) {
-         surfaceShapeFile->setNumberOfNodesAndColumns(numNodes, 1);
-         linearDistortionColumn = 0;
-      }
-      else {
-         linearDistortionColumn = surfaceShapeFile->getColumnWithName(linearDistortionName);
-         if (linearDistortionColumn < 0) {
-            surfaceShapeFile->addColumns(1);
-            linearDistortionColumn = surfaceShapeFile->getNumberOfColumns() - 1;
-         }
-      }
-      surfaceShapeFile->setColumnName(linearDistortionColumn, linearDistortionName);
-      surfaceShapeFile->setColumnColorMappingMinMax(linearDistortionColumn, 0.0, 2.0);
-      surfaceShapeFile->setColumnComment(linearDistortionColumn, commentInfo);
       
       //
       // Compute linear distortion for all nodes

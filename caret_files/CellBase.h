@@ -71,6 +71,18 @@ class CellBase {
       // set xyz
       void setXYZ(const float x, const float y, const float z);
       
+      /// get search xyz
+      const float* getSearchXYZ() const { return &searchXYZ[0]; }
+      
+      /// get search xyz
+      void getSearchXYZ(float xyzOut[3]) const;
+      
+      // set search xyz
+      void setSearchXYZ(const float xyzIn[3]);
+      
+      // set search xyz
+      void setSearchXYZ(const float x, const float y, const float z);
+      
       /// get name
       QString getName() const { return name; }
       
@@ -95,6 +107,12 @@ class CellBase {
       /// set the study metadata link set
       void setStudyMetaDataLinkSet(const StudyMetaDataLinkSet smdls);
             
+      /// get region of interest
+      QString getRegionOfInterest() const { return regionOfInterest; }
+      
+      /// set region of interest
+      void setRegionOfInterest(const QString& roi);
+      
       /// get geography
       QString getGeography() const { return geography; }
       
@@ -152,6 +170,12 @@ class CellBase {
       /// Set the flag used for some operations
       void setSpecialFlag(const bool value) { specialFlag = value; }
       
+      /// get flag to indicate if cell is within search parameters
+      bool getInSearchFlag() const { return inSearchFlag; }
+      
+      /// set flag to indicate if cell is within search parameters
+      void setInSearchFlag(const bool b) { inSearchFlag = b; }
+      
       /// get the signed distance above the surface (positive = above surface)
       float getSignedDistanceAboveSurface() const { return signedDistanceAboveSurface; }
       
@@ -176,13 +200,45 @@ class CellBase {
       /// set the highlight flag
       void setHighlightFlag(const bool value) { highlightFlag = value; }
       
-      /// set base element from text (used by SAX XML parser)
-      void setBaseElementFromText(const QString& elementName,
-                              const QString& textValue);
-                              
+      /// get the SuMS repeat number
+      QString getSumsRepeatNumber() const { return sumsRepeatNumber; }
+      
+      /// set the SuMS repeat number
+      void setSumsRepeatNumber(const QString& s);
+      
+      /// get the SuMS ID number
+      QString getSumsIDNumber() const { return sumsIDNumber; }
+      
+      /// set the SuMS ID number
+      void setSumsIDNumber(const QString& s);
+      
+      /// get the SuMS parent cell base ID
+      QString getSumsParentCellBaseID() const { return sumsParentCellBaseID; }
+      
+      /// set the SuMS parent cell base ID
+      void setSumsParentCellBaseID(const QString& s);
+      
+      /// get the SuMS version number
+      QString getSumsVersionNumber() const { return sumsVersionNumber; }
+      
+      /// set the SuMS version number
+      void setSumsVersionNumber(const QString& s);
+      
+      /// get the SuMS mslid
+      QString getSumsMSLID() const { return sumsMSLID; }
+      
+      /// set the SuMS mslid
+      void setSumsMSLID(const QString& s);
+      
+      /// get the attribute ID
+      QString getAttributeID() const { return attributeID; }
+      
+      /// set the attribute ID
+      void setAttributeID(const QString& s);
+      
    protected:
-      /// called to read from an XML structure
-      virtual void readXML(QDomNode& node) throw (FileException);
+      /// called to read from an XML DOM structure
+      virtual void readXMLWithDOM(QDomNode& node) throw (FileException);
       
       /// called to write to an XML structure
       virtual void writeXML(QDomDocument& xmlDoc,
@@ -193,6 +249,9 @@ class CellBase {
       
       /// position of cell
       float xyz[3];
+      
+      /// position of cell for searching
+      float searchXYZ[3];
       
       /// section number
       int sectionNumber;
@@ -211,6 +270,9 @@ class CellBase {
       
       /// area
       QString area;
+      
+      /// region of interest
+      QString regionOfInterest;
       
       /// size
       float size;
@@ -236,6 +298,9 @@ class CellBase {
       /// flag used for some operations
       bool specialFlag;
      
+      /// flag to indicate if cell is within search parameters
+      bool inSearchFlag;
+      
       /// signed distance above the surface (positive if above surface, negative if below)
       float signedDistanceAboveSurface;
       
@@ -245,11 +310,32 @@ class CellBase {
       /// highlight flag
       bool highlightFlag;
       
+      /// SuMS ID number
+      QString sumsIDNumber;
+      
+      /// SuMS repeat number
+      QString sumsRepeatNumber;
+      
+      /// SuMS parent cell base ID
+      QString sumsParentCellBaseID;
+      
+      /// SuMS version number
+      QString sumsVersionNumber;
+      
+      /// SuMS mslid
+      QString sumsMSLID;
+      
+      /// the attribute id
+      QString attributeID;
+      
       /// tag for reading and writing cells
       static const QString tagCellBase;
       
       /// tag for reading and writing cells
       static const QString tagXYZ;
+      
+      /// tag for reading and writing cells
+      static const QString tagSearchXYZ;
       
       /// tag for reading and writing cells
       static const QString tagSectionNumber;
@@ -267,6 +353,9 @@ class CellBase {
       static const QString tagArea;
       
       /// tag for reading and writing cells
+      static const QString tagRegionOfInterest;
+      
+      /// tag for reading and writing cells
       static const QString tagSize;
       
       /// tag for reading and writing cells
@@ -282,26 +371,49 @@ class CellBase {
       static const QString tagSignedDistanceAboveSurface;
       
       /// tag for reading and writing cells
-      static const QString tagStructure;      
+      static const QString tagStructure; 
       
-   friend class CellProjectionFileSaxReader;
+      /// tag for reading and writing cells
+      static const QString tagSumsIDNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagSumsRepeatNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagSumsParentCellBaseID;                 
+
+      /// tag for reading and writing cells
+      static const QString tagSumsVersionNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagSumsMSLID;
+      
+      /// tag for reading and writing cells
+      static const QString tagAttributeID;
 };
+
+#endif // __CELL_BASE__
 
 #ifdef __CELL_BASE_MAIN__
       const QString CellBase::tagCellBase = "CellBase";
       const QString CellBase::tagXYZ = "xyz";
+      const QString CellBase::tagSearchXYZ = "SearchXYZ";
       const QString CellBase::tagSectionNumber = "sectionNumber";
       const QString CellBase::tagName = "name";
       const QString CellBase::tagStudyNumber = "studyNumber";
       const QString CellBase::tagGeography = "geography";
       const QString CellBase::tagArea = "area";
+      const QString CellBase::tagRegionOfInterest = "regionOfInterest";
       const QString CellBase::tagSize = "size";
       const QString CellBase::tagStatistic = "statistic";
       const QString CellBase::tagComment = "comment";
       const QString CellBase::tagClassName = "className";
       const QString CellBase::tagSignedDistanceAboveSurface = "signedDistanceAboveSurface";
-      const QString CellBase::tagStructure = "structure";      
+      const QString CellBase::tagStructure = "structure"; 
+      const QString CellBase::tagSumsIDNumber = "tagSumsIDNumber";
+      const QString CellBase::tagSumsRepeatNumber = "tagSumsRepeatNumber";
+      const QString CellBase::tagSumsParentCellBaseID = "tagSumsParentCellBaseID";
+      const QString CellBase::tagSumsVersionNumber = "tagSumsVersionNumber";
+      const QString CellBase::tagSumsMSLID = "tagSumsMSLID";
+      const QString CellBase::tagAttributeID = "tagAttributeID";
 #endif // __CELL_BASE_MAIN__
-
-#endif // __CELL_BASE__
-

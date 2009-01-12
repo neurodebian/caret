@@ -195,18 +195,18 @@ CommandVolumeMapToSurface::executeCommand() throw (BrainModelAlgorithmException,
                   parameters->getNextParameterAsFloat("Average Voxel Neighbors (mm)"));
             }
             else if (paramValue == "-bf") {
-               mappingParameters.setAlgorithmMetricMcwBrainFishParameters(
-                  parameters->getNextParameterAsFloat("Brain Fish Max Distance"),
-                  parameters->getNextParameterAsInt("Brain Fish Splat Factor"));
+               const float md = parameters->getNextParameterAsFloat("Brain Fish Max Distance");
+               const int sf = parameters->getNextParameterAsInt("Brain Fish Splat Factor");
+               mappingParameters.setAlgorithmMetricMcwBrainFishParameters(md, sf);
             }
             else if (paramValue == "-g") {
-               mappingParameters.setAlgorithmMetricGaussianParameters(
-                  parameters->getNextParameterAsFloat("Guassian Neighbor Cube Size (mm)"),
-                  parameters->getNextParameterAsFloat("Gaussian Sigma Norm"),
-                  parameters->getNextParameterAsFloat("Gaussian Sigma Tangent"),
-                  parameters->getNextParameterAsFloat("Gaussina Norm Below Cutoff"),
-                  parameters->getNextParameterAsFloat("Gaussian Norm Above Cutoff"),
-                  parameters->getNextParameterAsFloat("Gaussian Tangent Cutoff"));
+               const float gn = parameters->getNextParameterAsFloat("Gaussian Neighbor Cube Size (mm)");
+               const float sn = parameters->getNextParameterAsFloat("Gaussian Sigma Norm");
+               const float st = parameters->getNextParameterAsFloat("Gaussian Sigma Tangent");
+               const float nb = parameters->getNextParameterAsFloat("Gaussina Norm Below Cutoff");
+               const float na = parameters->getNextParameterAsFloat("Gaussian Norm Above Cutoff");
+               const float tc = parameters->getNextParameterAsFloat("Gaussian Tangent Cutoff");
+               mappingParameters.setAlgorithmMetricGaussianParameters(gn, sn, st, nb, na, tc);
             }
             else if (paramValue == "-mv") {
                mappingParameters.setAlgorithmMetricMaximumVoxelParameters(

@@ -64,18 +64,21 @@
  */
 GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
                        GuiBrainModelOpenGL* brainModelOpenGLIn,
-                       const bool mainWindowFlag)
+                       const BrainModel::BRAIN_MODEL_VIEW_NUMBER viewWindowNumberIn)
    : QToolBar(parent)
 {
    setMovable(false);
    
    mainWindow = mainWindowIn;
    brainModelOpenGL = brainModelOpenGLIn;
-
+   viewWindowNumber = viewWindowNumberIn;
+   const bool mainWindowFlag =
+      (viewWindowNumber == BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
+      
    //
    // actions for toolbar
    //
-   GuiToolBarActions* toolBarActions = new GuiToolBarActions(brainModelOpenGL, this);
+   toolBarActions = new GuiToolBarActions(brainModelOpenGL, this);
    
    //
    // Combo box for model files
@@ -271,6 +274,7 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
    QToolButton* dcButton = NULL;
    QToolButton* specButton = NULL;
    yokeButton = NULL;
+   QToolButton* swapButton = NULL;
    volumeUnderlayOnlyButton = NULL;
    if (mainWindowFlag) {
       //
@@ -297,6 +301,12 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
       //
       yokeButton = new QToolButton;
       yokeButton->setDefaultAction(toolBarActions->getYokeAction());
+      
+      //
+      // Swap toolbar button
+      //
+      swapButton = new QToolButton;
+      swapButton->setDefaultAction(toolBarActions->getSwapAction());
    }
 
    QHBoxLayout* l1 = new QHBoxLayout;
@@ -330,6 +340,9 @@ GuiToolBar::GuiToolBar(QMainWindow* parent, GuiMainWindow* mainWindowIn,
    }
    if (yokeButton != NULL) {
       l1->addWidget(yokeButton, 0);
+   }
+   if (swapButton != NULL) {
+      l1->addWidget(swapButton, 0);
    }
    l1->addStretch();  //1000);
    
@@ -599,8 +612,8 @@ GuiToolBar::updateViewControls()
                      
                      if (bmv->getViewStereotaxicCoordinatesFlag(viewNumber)) {
                         float minXYZ[3], maxXYZ[3];
-                        vf->getVoxelCoordinate(0, 0, 0, true, minXYZ);
-                        vf->getVoxelCoordinate(dim, true, maxXYZ);
+                        vf->getVoxelCoordinate(0, 0, 0, minXYZ);
+                        vf->getVoxelCoordinate(dim, maxXYZ);
                         
                         volumeSpinBoxSliceX->setMinimum(minXYZ[0]);
                         volumeSpinBoxSliceX->setMaximum(maxXYZ[1]);
@@ -616,7 +629,7 @@ GuiToolBar::updateViewControls()
                         volumeSpinBoxSliceZ->setDecimals(1);
                      
                         float sliceXYZ[3];
-                        vf->getVoxelCoordinate(slices, true, sliceXYZ);
+                        vf->getVoxelCoordinate(slices, sliceXYZ);
                         volumeSpinBoxSliceX->setValue(sliceXYZ[0]);
                         volumeSpinBoxSliceY->setValue(sliceXYZ[1]);
                         volumeSpinBoxSliceZ->setValue(sliceXYZ[2]);
@@ -736,7 +749,24 @@ GuiToolBar::updateViewControls()
    adjustSize();
 }
 
- 
+/**
+ * clear all yoking.
+ */
+void 
+GuiToolBar::clearAllYoking()
+{
+   GuiBrainModelOpenGL::setPaintingEnabled(false);
+   for (unsigned int i = 0; i < allToolBars.size(); i++) {
+      if (allToolBars[i] != NULL) {
+         if (allToolBars[i]->yokeButton != NULL) {
+            allToolBars[i]->brainModelOpenGL->setYokeView(false);
+            allToolBars[i]->yokeButton->setChecked(false);
+         }
+      }
+   }   
+   GuiBrainModelOpenGL::setPaintingEnabled(true);
+}
+      
 /**
  * Update all toolbars with brain models.
  */
@@ -754,14 +784,32 @@ GuiToolBar::updateAllToolBars(const bool additionalFilesLoaded)
          if (allToolBars[i]->yokeButton != NULL) {
             if (additionalFilesLoaded) {
                //allToolBars[i]->yokeButton->setDown(false);
-               allToolBars[i]->brainModelOpenGL->setYokeView(false);
+               //allToolBars[i]->brainModelOpenGL->setYokeView(false);
             }
-            allToolBars[i]->yokeButton->setChecked(allToolBars[i]->brainModelOpenGL->getYokeView());
+            //allToolBars[i]->yokeButton->setChecked(allToolBars[i]->brainModelOpenGL->getYokeView());
          }
       }
    }   
    GuiBrainModelOpenGL::setPaintingEnabled(true);
 }
+
+/**
+ * set yoke status.
+ */
+void 
+GuiToolBar::setYokeStatus(const bool b)
+{
+   if (toolBarActions != NULL) {
+      toolBarActions->getYokeAction()->setChecked(!b);
+      toolBarActions->getYokeAction()->trigger();
+   }
+/*
+   if (yokeButton != NULL) {
+      yokeButton->setChecked(b);
+   }
+*/
+}
+      
 
 /**
  * Load the model names into the model combo box.
@@ -1266,6 +1314,8 @@ GuiToolBar::updateMouseModeComboBox()
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_VIEW));
             mouseModeComboBox->addItem("Border Draw", 
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW));
+            mouseModeComboBox->addItem("Border Draw NEW", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW_NEW));
             mouseModeComboBox->addItem("Border Delete", 
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE));
             mouseModeComboBox->addItem("Border Rename", 
@@ -1276,6 +1326,10 @@ GuiToolBar::updateMouseModeComboBox()
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE_POINT));
             mouseModeComboBox->addItem("Border Point Move", 
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT));
+            mouseModeComboBox->addItem("Border Update", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE));
+            mouseModeComboBox->addItem("Border Update NEW", 
+               static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE_NEW));
             mouseModeComboBox->addItem("Cell Add", 
                static_cast<int>(GuiBrainModelOpenGL::MOUSE_MODE_CELL_ADD));
             mouseModeComboBox->addItem("Cell Delete", 
@@ -1398,17 +1452,25 @@ GuiToolBar::slotMouseModeComboBoxActivated(int indx)
                   action->trigger();
                }
                break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW_NEW:
+               break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE_POINT:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_INTERPOLATE:
                break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_INTERPOLATE_NEW:
+               break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_REVERSE:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_RENAME:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE_NEW:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_CUT_DRAW:
                {
@@ -1438,6 +1500,8 @@ GuiToolBar::slotMouseModeComboBoxActivated(int indx)
             case GuiBrainModelOpenGL::MOUSE_MODE_SURFACE_ROI_GEODESIC_NODE_SELECT:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_ALIGN_STANDARD_ORIENTATION:
+               break;
+            case GuiBrainModelOpenGL::MOUSE_MODE_ALIGN_STANDARD_ORIENTATION_FULL_HEM_FLATTEN:
                break;
             case GuiBrainModelOpenGL::MOUSE_MODE_CONTOUR_SET_SCALE:
                break;

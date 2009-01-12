@@ -45,6 +45,7 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 
+#include "BrainModelRunExternalProgram.h"
 #include "CommandBase.h"
 #include "DebugControl.h"
 #include "GuiCaretCommandWidget.h"
@@ -57,9 +58,9 @@
  * constructor.
  */
 GuiCaretCommandDialog::GuiCaretCommandDialog(QWidget* parent,
-                                            const QString& caretHomeDirectory,
+                                            const QString& /*caretHomeDirectory*/,
                                             const DIALOG_MODE dialogModeIn)
-   : QtDialog(parent)
+   : WuQDialog(parent)
 {
    dialogMode = dialogModeIn;
    
@@ -79,12 +80,14 @@ GuiCaretCommandDialog::GuiCaretCommandDialog(QWidget* parent,
    // Set path/name of Caret program
    // 
    caretCommandProgramName = "";
+/*
    if (caretHomeDirectory.isEmpty() == false) {
       caretCommandProgramName = caretHomeDirectory;
       caretCommandProgramName.append("/");
       caretCommandProgramName.append("bin");
       caretCommandProgramName.append("/");
    }  
+*/
    caretCommandProgramName.append("caret_command");
    
    //
@@ -285,6 +288,8 @@ GuiCaretCommandDialog::GuiCaretCommandDialog(QWidget* parent,
    // OK for signals
    //
    commandsListWidget->blockSignals(false);
+   
+   resize(800, 800);
 }
 
 /**
@@ -354,13 +359,17 @@ GuiCaretCommandDialog::slotProcessCommandButton()
                                 + commandParameters.join(" ");
         
          const QString comment(guiCommandWidget->getComment());
-         std::cout << "Comment: " 
-                  << comment.toAscii().constData()
-                  << std::endl;
-                  
-         std::cout << "Command: "
-                  << cmdText.toAscii().constData()
-                  << std::endl;
+         
+         if (DebugControl::getDebugOn()) {
+            std::cout << "Comment: " 
+                     << comment.toAscii().constData()
+                     << std::endl;
+                     
+            std::cout << "Command: \"\""
+                     << cmdText.toAscii().constData()
+                     << "\"\""
+                     << std::endl;
+         }
                   
          //
          // Determine operations based upon mode
@@ -370,7 +379,6 @@ GuiCaretCommandDialog::slotProcessCommandButton()
          //
          // Execute command ?
          //
-         bool executeErrorFlag = false;
          if (executeCommandFlag) {
             //
             // Too much text output may cause problems
@@ -395,6 +403,49 @@ GuiCaretCommandDialog::slotProcessCommandButton()
            
             QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
             
+            QString txt;
+            if (DebugControl::getDebugOn()) {
+               txt.append("Command \"");
+               txt.append(caretCommandProgramName);
+               if (commandParameters.isEmpty() == false) {
+                  txt.append(" ");
+                  txt.append(commandParameters.join(" "));
+               }
+               txt.append("\"\n\n");
+            }
+            
+            //
+            // Remove double quotes from any parameters
+            //
+            for (int m = 0; m < commandParameters.count(); m++) {
+               //
+               // Remove anything enclosed in double quotes
+               //
+               QString param = commandParameters[m];
+               if (param.startsWith("\"") &&
+                   param.endsWith("\"")) {
+                  const int len = param.length();
+                  if (len >= 2) {
+                     param = param.mid(1, len - 2);
+                     commandParameters[m] = param;
+                  }
+               }
+            }
+            
+            //
+            // Run the program
+            //
+            BrainModelRunExternalProgram runProgram(caretCommandProgramName,
+                                                    commandParameters,
+                                                    true);
+            try {
+               runProgram.execute();
+            }
+            catch (BrainModelAlgorithmException& /*e*/) {
+            }
+            txt.append(runProgram.getOutputText());
+
+/*
             //
             // Create a new QProcess and add its arguments
             //
@@ -422,22 +473,8 @@ GuiCaretCommandDialog::slotProcessCommandButton()
                QMessageBox::critical(this, "ERROR", msg);
                return;
             }
-            
-            //
-            // Display the results of the command
-            //
-            QtTextEditDialog* te = new QtTextEditDialog(this, true);
-            QString txt;
-            if (DebugControl::getDebugOn()) {
-               txt.append("Command \"");
-               txt.append(caretCommandProgramName);
-               if (commandParameters.isEmpty() == false) {
-                  txt.append(" ");
-                  txt.append(commandParameters.join(" "));
-               }
-               txt.append("\"\n\n");
-            }
-            if (process.exitStatus() == QProcess::NormalExit) {
+
+           if (process.exitStatus() == QProcess::NormalExit) {
                if (process.exitCode() == 0) {
                   txt.append("COMMAND SUCCESSFUL\n\n");
                }
@@ -451,7 +488,13 @@ GuiCaretCommandDialog::slotProcessCommandButton()
                txt.append("COMMAND FAILED\n\n");
             }
             txt.append(process.readAll());
+*/
             
+            //
+            // Display the results of the command
+            //
+            QtTextEditDialog* te = new QtTextEditDialog(this, true);
+             
             te->setText(txt);
             te->show();
             

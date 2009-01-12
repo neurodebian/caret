@@ -35,6 +35,7 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn,
                                    const float originIn[3],
                                    const float voxelSizeIn[3])
 {
+   reset();
    name = nameIn;
    for (int i = 0; i < 3; i++) {
       dimensions[i] = dimensionsIn[i];
@@ -48,6 +49,7 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn,
  */
 StereotaxicSpace::StereotaxicSpace(const QString& nameIn)
 {
+   reset();
    setDataFromSpace(getSpaceFromName(nameIn));
 }
       
@@ -56,7 +58,17 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn)
  */
 StereotaxicSpace::StereotaxicSpace(const SPACE spaceIn)
 {
+   reset();
    setDataFromSpace(spaceIn);
+}
+
+/**
+ * set data from space name.
+ */
+void 
+StereotaxicSpace::setDataFromSpaceName(const QString& spaceNameIn)
+{
+   setDataFromSpace(getSpaceFromName(spaceNameIn));
 }
 
 /**
@@ -95,6 +107,12 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("FLIRT",
                                182, 217, 182,
                                1.0, 1.0, 1.0,
+                               -90.0, -126.0, -72.0);
+         break;
+      case SPACE_FLIRT_222:
+         setData("FLIRT-222",
+                               91, 109, 91,
+                               2.0, 2.0, 2.0,
                                -90.0, -126.0, -72.0);
          break;
       case SPACE_MACAQUE_F99:
@@ -161,13 +179,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2B",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112B_111:
          setData("711-2B-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112B_222:
          setData("711-2B-222",
@@ -185,13 +203,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2C",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112C_111:
          setData("711-2C-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -89.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-89.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112C_222:
          setData("711-2C-222",
@@ -209,13 +227,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2O",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -89.0, -124.0, -75.0);
+                               -89.0, -124.0, -75.0);  //-89.0, -124.0, -75.0);
          break;
       case SPACE_WU_7112O_111:
          setData("711-2O-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -89.0, -124.0, -75.0);
+                               -89.0, -124.0, -75.0);  //-89.0, -124.0, -75.0);
          break;
       case SPACE_WU_7112O_222:
          setData("711-2O-222",
@@ -233,13 +251,13 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
          setData("711-2Y",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112Y_111:
          setData("711-2Y-111",
                                176, 208, 176,
                                1.0, 1.0, 1.0,
-                               -88.0, -122.0, -73.0);
+                               -89.0, -124.0, -75.0);  //-88.0, -122.0, -73.0);
          break;
       case SPACE_WU_7112Y_222:
          setData("711-2Y-222",
@@ -275,9 +293,9 @@ StereotaxicSpace::setData(const QString& nameIn,
    dimensions[0] = dimX;
    dimensions[1] = dimY;
    dimensions[2] = dimZ;
-   origin[0]     = originX;
-   origin[1]     = originY;
-   origin[2]     = originZ;
+   origin[0]     = originX + (voxSizeX * 0.5);
+   origin[1]     = originY + (voxSizeY * 0.5);
+   origin[2]     = originZ + (voxSizeZ * 0.5);
    voxelSize[0]  = voxSizeX;
    voxelSize[1]  = voxSizeY;
    voxelSize[2]  = voxSizeZ;
@@ -288,6 +306,23 @@ StereotaxicSpace::setData(const QString& nameIn,
  */
 StereotaxicSpace::StereotaxicSpace()
 {
+   reset();
+}
+                       
+/**
+ * destructor.
+ */
+StereotaxicSpace::~StereotaxicSpace()
+{
+}
+
+/**
+ * reset.
+ */
+void 
+StereotaxicSpace::reset()
+{
+   space = SPACE_UNKNOWN;
    name = "";
    dimensions[0] = 0;
    dimensions[1] = 0;
@@ -298,13 +333,6 @@ StereotaxicSpace::StereotaxicSpace()
    voxelSize[0]  = 0.0;
    voxelSize[1]  = 0.0;
    voxelSize[2]  = 0.0;
-}
-                       
-/**
- * destructor.
- */
-StereotaxicSpace::~StereotaxicSpace()
-{
 }
 
 /**

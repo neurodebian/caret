@@ -127,6 +127,7 @@ SceneFile::replaceScene(const int sceneIndex,
 {
    if ((sceneIndex >= 0) && (sceneIndex < getNumberOfScenes())) {
       scenes[sceneIndex] = s;
+      setModified();
    }
 }            
 
@@ -165,6 +166,20 @@ SceneFile::getScene(const int indx) const
    }
    return NULL;
 }
+
+/**
+ * get a scene index from the scene name (-1 if not found).
+ */
+int 
+SceneFile::getSceneIndexFromName(const QString& sceneName) const
+{
+  for (int i = 0; i < getNumberOfScenes(); i++) {
+     if (scenes[i].getName() == sceneName) {
+        return i;
+     }
+  }
+  return -1;
+}      
 
 /**
  * get a scene from the scene name (NULL if not found).
@@ -269,7 +284,6 @@ SceneFile::readFileData(QFile& /*file*/, QTextStream& /*stream*/,
                            if (sceneClassName.isEmpty() == false) {
                               SceneClass sceneClass(sceneClassName);
                               
-                              //HERE
                               //
                               // Look at the scene's children
                               //
@@ -285,6 +299,7 @@ SceneFile::readFileData(QFile& /*file*/, QTextStream& /*stream*/,
                                  // Get the associated model and the value
                                  //
                                  QString modelName;
+                                 int overlayNumber = -1;
                                  QString valueName;
                                  QDomNodeList nodeList = sceneClassNode.childNodes();
                                  for (int j = 0; j < static_cast<int>(nodeList.count()); j++) {
@@ -297,6 +312,13 @@ SceneFile::readFileData(QFile& /*file*/, QTextStream& /*stream*/,
                                     }
                                     if (childElem.tagName() == modelAttributeName) {
                                        modelName = val;
+                                    }
+                                    else if (childElem.tagName() == overlayAttributeName) {
+                                       bool ok = false;
+                                       overlayNumber = val.toInt(&ok);
+                                       if (ok == false) {
+                                          overlayNumber = -1;
+                                       }
                                     }
                                     else if (childElem.tagName() == valueAttributeName) {
                                        valueName = val;
@@ -311,7 +333,7 @@ SceneFile::readFileData(QFile& /*file*/, QTextStream& /*stream*/,
                                     //
                                     // Create the scene info
                                     //
-                                    SceneInfo si(sceneDataType, modelName, valueName);
+                                    SceneInfo si(sceneDataType, modelName, overlayNumber, valueName);
                                     sceneClass.addSceneInfo(si);
                                  }
                                  
@@ -451,10 +473,15 @@ SceneFile::writeFileData(QTextStream& /*stream*/, QDataStream& /*binStream*/,
                            modelElem.appendChild(modelValue);
                            infoElement.appendChild(modelElem);
                            
-                           QDomElement val = xmlDoc.createElement(valueAttributeName);
+                           QDomElement overlayElem = xmlDoc.createElement(overlayAttributeName);
+                           QDomCDATASection overlayValue = xmlDoc.createCDATASection(QString::number(si->getOverlayNumber()));
+                           overlayElem.appendChild(overlayValue);
+                           infoElement.appendChild(overlayElem);
+                           
+                           QDomElement valueElem = xmlDoc.createElement(valueAttributeName);
                            QDomCDATASection valValue = xmlDoc.createCDATASection(si->getValueAsString());
-                           val.appendChild(valValue);
-                           infoElement.appendChild(val);
+                           valueElem.appendChild(valValue);
+                           infoElement.appendChild(valueElem);
                            
                            sceneClassElement.appendChild(infoElement);
                         }
@@ -522,6 +549,57 @@ SceneFile::removePathsFromAllSpecFileDataFileNames()
       }
    }
 }
+
+/**
+ * transfer a scene class from one scene to other scene(s).
+ */
+void 
+SceneFile::transferSceneClass(const int fromSceneNumber,
+                              const std::vector<int>& toSceneNumbers,
+                              const QString& nameOfClassToTransfer) throw (FileException)
+{
+   //
+   // Get the from scene
+   //
+   const int numScenes = getNumberOfScenes();
+   if ((fromSceneNumber < 0) ||
+       (fromSceneNumber >= numScenes)) {
+      throw FileException("\"From\" scene number is invalid.");
+   }
+   const Scene* fromScene = getScene(fromSceneNumber);
+   if (fromScene == NULL) {
+      throw FileException("\"From\" scene not found.");
+   }
+   
+   //
+   // Find the class to transer
+   //
+   const SceneClass* fromBMI = fromScene->getSceneClassWithName(nameOfClassToTransfer);
+   if (fromBMI == NULL) {
+      throw FileException("Scene class "
+                          + nameOfClassToTransfer
+                          + " not found in \"from\" scene.");
+   }
+   
+   //
+   // Transfer the class
+   //
+   const int numScenesToChange = static_cast<int>(toSceneNumbers.size());
+   for (int i = 0; i < numScenesToChange; i++) {
+      const int sceneNumber = toSceneNumbers[i];
+      if ((sceneNumber >= 0) &&
+          (sceneNumber < numScenes)) {
+         Scene* toScene = getScene(sceneNumber);
+         if (toScene != NULL) {
+            SceneClass* toBMI = toScene->getSceneClassWithName(nameOfClassToTransfer);
+            if (toBMI != NULL) {
+               *toBMI = *fromBMI;
+               setModified();
+            }
+         }
+      }
+   }
+}                                                              
 
 /**
  * add paths to all of the scene spec file's data file names.
@@ -755,15 +833,24 @@ SceneFile::SceneClass::getSceneInfo(const int indx)
 /*--------------------------------------------------------------------------------------*/
 
 /**
+ * Constructor for Node Attributes with Multiple Overlays.
+ */
+SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
+                                const QString& modelNameIn,
+                                const int overlayNumberIn,
+                                const QString& valueIn)
+{
+   initialize(nameIn, modelNameIn, overlayNumberIn, valueIn);
+}
+
+/**
  * Constructor.
  */
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const QString& modelNameIn,
                                 const QString& valueIn)
 {
-   name = nameIn;
-   modelName = modelNameIn;
-   value = valueIn;
+   initialize(nameIn, modelNameIn, -1, valueIn);
 }
     
 /**
@@ -773,9 +860,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const QString& modelNameIn,
                                 const float valueIn)
 {
-   name = nameIn;
-   modelName = modelNameIn;
-   value = StringUtilities::fromNumber(valueIn);
+   initialize(nameIn, modelNameIn, -1, QString::number(valueIn, 'f', 6));
 }
     
 /**
@@ -785,9 +870,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const QString& modelNameIn,
                                 const int valueIn)
 {
-   name = nameIn;
-   modelName = modelNameIn;
-   value = StringUtilities::fromNumber(valueIn);
+   initialize(nameIn, modelNameIn, -1, QString::number(valueIn));
 }
     
 /**
@@ -797,9 +880,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const QString& modelNameIn,
                                 const bool valueIn)
 {
-   name = nameIn;
-   modelName = modelNameIn;
-   value = StringUtilities::fromBool(valueIn);
+   initialize(nameIn, modelNameIn, -1, StringUtilities::fromBool(valueIn));
 }
     
 /**
@@ -808,8 +889,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const QString& valueIn)
 {
-   name = nameIn;
-   value = valueIn;
+   initialize(nameIn, "", -1, valueIn);
 }
     
 /**
@@ -818,8 +898,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const QStringList& valueIn)
 {
-   name = nameIn;
-   value = valueIn.join(" ");
+   initialize(nameIn, "", -1, valueIn.join(" "));
 }
     
 /**
@@ -828,8 +907,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const char* valueIn)
 {
-   name = nameIn;
-   value = valueIn;
+   initialize(nameIn, "", -1, valueIn);
 }
     
 /**
@@ -838,8 +916,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const float valueIn)
 {
-   name = nameIn;
-   value = StringUtilities::fromNumber(valueIn);
+   initialize(nameIn, "", -1, QString::number(valueIn, 'f', 6));
 }
     
 /**
@@ -848,8 +925,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const int valueIn)
 {
-   name = nameIn;
-   value = StringUtilities::fromNumber(valueIn);
+   initialize(nameIn, "", -1, QString::number(valueIn));
 }
     
 /**
@@ -858,8 +934,7 @@ SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
 SceneFile::SceneInfo::SceneInfo(const QString& nameIn,
                                 const bool valueIn)
 {
-   name = nameIn;
-   value = StringUtilities::fromBool(valueIn);
+   initialize(nameIn, "", -1, StringUtilities::fromBool(valueIn));
 }
     
 /**
@@ -869,6 +944,21 @@ SceneFile::SceneInfo::~SceneInfo()
 {
 }
             
+/**
+ * initialize the scene info.
+ */
+void 
+SceneFile::SceneInfo::initialize(const QString& nameIn,
+                                 const QString& modelNameIn,
+                                 const int overlayNumberIn,
+                                 const QString& valueIn)
+{
+   name = nameIn;
+   modelName = modelNameIn;
+   overlayNumber = overlayNumberIn;
+   value = valueIn;
+}
+
 /**
  * get the value as a string.
  */

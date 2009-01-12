@@ -29,14 +29,14 @@
 #include <QString>
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class QContextMenuEvent;
 class StringTable;
 class QTableWidget;
 
 /// dialog for displaying data in a Qt Table
-class QtTableDialog : public QtDialog {
+class QtTableDialog : public WuQDialog {
    Q_OBJECT
    
    public:

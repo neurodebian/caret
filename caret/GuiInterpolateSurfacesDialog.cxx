@@ -52,7 +52,7 @@
  * Constructor.
  */
 GuiInterpolateSurfacesDialog::GuiInterpolateSurfacesDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    setWindowTitle("Interpolate Surfaces");
    

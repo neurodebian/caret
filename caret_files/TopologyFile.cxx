@@ -35,6 +35,7 @@
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "GiftiCommon.h"
+#include "MniObjSurfaceFile.h"
 #include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
 #include "SpecFile.h"
@@ -230,24 +231,24 @@ TopologyFile::getPerimeterIDFromTopologyType(TOPOLOGY_TYPES tt)
 QString
 TopologyFile::getSpecFileTagFromTopologyType(const TOPOLOGY_TYPES tt)
 {
-   QString tag(SpecFile::unknownTopoFileMatchTag);
+   QString tag(SpecFile::getUnknownTopoFileMatchTag());
    
    switch(tt) {
       case TOPOLOGY_TYPE_CLOSED:
-         tag = SpecFile::closedTopoFileTag;
+         tag = SpecFile::getClosedTopoFileTag();
          break;
       case TOPOLOGY_TYPE_OPEN:
-         tag = SpecFile::openTopoFileTag;
+         tag = SpecFile::getOpenTopoFileTag();
          break;
       case TOPOLOGY_TYPE_CUT:
-         tag = SpecFile::cutTopoFileTag;
+         tag = SpecFile::getCutTopoFileTag();
          break;
       case TOPOLOGY_TYPE_LOBAR_CUT:
-         tag = SpecFile::lobarCutTopoFileTag;
+         tag = SpecFile::getLobarCutTopoFileTag();
          break;
       case TOPOLOGY_TYPE_UNKNOWN:
       case TOPOLOGY_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownTopoFileMatchTag;
+         tag = SpecFile::getUnknownTopoFileMatchTag();
          break;
    }
    
@@ -533,7 +534,7 @@ TopologyFile::getEulerCount(const bool twoDimFlag, int& numFaces,
       numHoles = 1 - eulerCount;
    }
    else {
-      numHoles = (eulerCount - 2) / (-2);
+      numHoles = 1 - (eulerCount / 2);   //(eulerCount - 2) / (-2);
    }
 }
 
@@ -1425,6 +1426,28 @@ TopologyFile::importFromVtkFile(vtkPolyData* polyDataIn)
    }
 }
 
+/**
+ * get the topology from a MNI OBJ surface file.
+ */
+void 
+TopologyFile::importFromMniObjSurfaceFile(const MniObjSurfaceFile& mni) throw (FileException)
+{
+   clear();
+   
+   const int numberOfTriangles = mni.getNumberOfTriangles();
+   if (numberOfTriangles > 0) {
+      setNumberOfTiles(numberOfTriangles);
+      for (int i = 0; i < numberOfTriangles; i++) {
+         const int* triangle = mni.getTriangle(i);
+         setTile(i, triangle[0], triangle[1], triangle[2]);
+      }
+   }
+   appendToFileComment(" Imported from ");
+   appendToFileComment(FileUtilities::basename(mni.getFileName()));
+   setModified();
+   topologyHelperNeedsRebuild = true;
+}
+      
 /**
  * get the topology from a brain voyager file
  */

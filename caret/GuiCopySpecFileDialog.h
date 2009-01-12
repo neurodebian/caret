@@ -29,14 +29,14 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class PreferencesFile;
 class QRadioButton;
 class QLineEdit;
 
 /// Dialog for copying a spec file
-class GuiCopySpecFileDialog : public QtDialog {
+class GuiCopySpecFileDialog : public WuQDialog {
    Q_OBJECT
    
    public:

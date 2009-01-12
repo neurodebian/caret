@@ -59,6 +59,9 @@ class StudyMetaDataLinkSet {
       // get a pointer to a StudyMetaDataLink
       StudyMetaDataLink* getStudyMetaDataLinkPointer(const int indx);
       
+      // get all linked PubMed IDs
+      void getAllLinkedPubMedIDs(std::vector<QString>& pmidsOut) const;
+      
       // remove a study meta data link
       void removeStudyMetaDataLink(const int indx);
    
@@ -92,12 +95,12 @@ class StudyMetaDataLinkSet {
       static const QString encodedTextLinkSeparator;  
       
       friend class CellBase;
-      friend class CellProjectionFileSaxReader;
 };
+
+#endif // __STUDY_META_DATA_LINK_SET_H__
 
 #ifdef __STUDY_META_DATA_LINK_SET_MAIN__
       const QString StudyMetaDataLinkSet::tagStudyMetaDataLinkSet = "StudyMetaDataLinkSet";
       const QString StudyMetaDataLinkSet::encodedTextLinkSeparator = ":::::"; 
 #endif // __STUDY_META_DATA_LINK_SET_MAIN__
 
-#endif // __STUDY_META_DATA_LINK_SET_H__

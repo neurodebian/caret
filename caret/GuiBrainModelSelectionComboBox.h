@@ -32,6 +32,7 @@
 #include <QComboBox>
 
 #include "BrainModelSurface.h"
+#include "Structure.h"
 
 class BrainModel;
 class BrainModelContours;
@@ -43,6 +44,29 @@ class GuiBrainModelSelectionComboBox : public QComboBox {
       /// index for "addNewName" if it is not blank
       enum { ADD_NEW_INDEX = 1000000 };
       
+      /// options for creating selection combo box
+      enum OPTIONS {
+         /// show contours
+         OPTION_SHOW_CONTOURS = 1,
+         /// show all surfaces
+         OPTION_SHOW_SURFACES_ALL = 2,
+         /// show flat surfaces only
+         OPTION_SHOW_SURFACES_FLAT = 4,
+         /// show fiducial surfaces only
+         OPTION_SHOW_SURFACES_FIDUCIAL = 8,
+         /// show hull surfaces only
+         OPTION_SHOW_SURFACES_HULL = 16,
+         /// show volumes
+         OPTION_SHOW_VOLUMES = 32,
+         /// show "Add New" 
+         OPTION_SHOW_ADD_NEW = 64
+      };
+      
+      /// Constructor
+      GuiBrainModelSelectionComboBox(const int options,
+                                     const QString& addNewNameIn = "",
+                                     QWidget* parent = 0);
+                                     
       /// Constructor
       GuiBrainModelSelectionComboBox(const bool showContoursIn, 
                                      const bool showSurfacesIn,
@@ -85,9 +109,15 @@ class GuiBrainModelSelectionComboBox : public QComboBox {
       void setSelectedBrainModel(const BrainModel* bm);
       
       /// set the selected brain model to the last surface of the specified type
-      void setSelectedBrainModelToSurfaceOfType(const BrainModelSurface::SURFACE_TYPES st);
+      void setSelectedBrainModelToLastSurfaceOfType(const BrainModelSurface::SURFACE_TYPES st);
       
-      /// update the items in the comb box
+      /// set the selected brain model to the first surface of type and structure
+      /// if structure type is invalid it is ignored
+      void setSelectedBrainModelToFirstSurfaceOfType(const BrainModelSurface::SURFACE_TYPES surfaceType,
+                                                     const Structure::STRUCTURE_TYPE structureType
+                                                                = Structure::STRUCTURE_TYPE_INVALID);
+      
+      /// update the items in the combo box
       void updateComboBox();
       
    private:

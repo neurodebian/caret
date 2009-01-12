@@ -35,8 +35,16 @@
  * The constructor.
  */
 DisplaySettingsSection::DisplaySettingsSection(BrainSet* bs)
-   : DisplaySettings(bs)
+   : DisplaySettingsNodeAttributeFile(bs,
+                                      NULL,
+                                      bs->getSectionFile(),
+                                      BrainModelSurfaceOverlay::OVERLAY_SECTIONS,
+                                      false,
+                                      false)
 {
+   sectionToHighlight = 10;
+   sectionHighlightEveryX = true;
+   
    reset();
 }
 
@@ -53,9 +61,32 @@ DisplaySettingsSection::~DisplaySettingsSection()
 void
 DisplaySettingsSection::reset()
 {
-   selectedColumn = 0;
+   DisplaySettingsNodeAttributeFile::reset();
+   
    selectionType = SELECTION_TYPE_ALL;
    updateSectionSelections();
+}
+
+/**
+ * get section highlighting.
+ */
+void 
+DisplaySettingsSection::getSectionHighlighting(int& sectionToHighlightOut, 
+                                               bool& highlightEveryXOut) const
+{
+   sectionToHighlightOut = sectionToHighlight;
+   highlightEveryXOut    = sectionHighlightEveryX;
+}
+
+/**
+ * set section highlighting.
+ */
+void 
+DisplaySettingsSection::setSectionHighlighting(const int sectionToHighlightIn,
+                                               const bool highlightEveryXIn) 
+{
+   sectionToHighlight     = sectionToHighlightIn;
+   sectionHighlightEveryX = highlightEveryXIn;
 }
 
 /**
@@ -64,30 +95,7 @@ DisplaySettingsSection::reset()
 void
 DisplaySettingsSection::update()
 {
-   updateSelectedColumnIndex(brainSet->getSectionFile(), selectedColumn);  
-   updateSectionSelections();
-}
-
-/**
- * Get the selected column.
- */
-int 
-DisplaySettingsSection::getSelectedColumn() const 
-{ 
-   if (selectedColumn >= brainSet->getSectionFile()->getNumberOfColumns()) {
-      selectedColumn = 0;
-   }
-   updateSectionSelections();
-   return selectedColumn; 
-}
-
-/**
- * Set the selected file index.
- */
-void 
-DisplaySettingsSection::setSelectedColumn(const int col) 
-{ 
-   selectedColumn = col; 
+   DisplaySettingsNodeAttributeFile::update();
    updateSectionSelections();
 }
 
@@ -97,12 +105,19 @@ static const QString sectionID("section-column");
  * apply a scene (set display settings).
  */
 void 
-DisplaySettingsSection::showScene(const SceneFile::Scene& scene, QString& /*errorMessage*/) 
+DisplaySettingsSection::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
       if (sc->getName() == "DisplaySettingsSection") {
+         showSceneSelectedColumns(*sc,
+                                  "Section File",
+                                  sectionID,
+                                  "",
+                                  errorMessage);
          const int num = sc->getNumberOfSceneInfo();
          for (int i = 0; i < num; i++) {
             const SceneFile::SceneInfo* si = sc->getSceneInfo(i);
@@ -110,14 +125,17 @@ DisplaySettingsSection::showScene(const SceneFile::Scene& scene, QString& /*erro
             if (infoName == "selectionType") {
                selectionType = static_cast<SELECTION_TYPE>(si->getValueAsInt());
             }
-            else if (infoName == "selectedColumn") {
-               si->getValue(selectedColumn);
-            }
             else if (infoName == "minimumSelectedSection") {
                si->getValue(minimumSelectedSection);
             }
             else if (infoName == "maximumSelectedSection") {
                si->getValue(maximumSelectedSection);
+            }
+            else if (infoName == "sectionToHighlight") {
+               si->getValue(sectionToHighlight);
+            }
+            else if (infoName == "sectionHighlightEveryX") {
+               si->getValue(sectionHighlightEveryX);
             }
          }
       }
@@ -128,8 +146,11 @@ DisplaySettingsSection::showScene(const SceneFile::Scene& scene, QString& /*erro
  * create a scene (read display settings).
  */
 void 
-DisplaySettingsSection::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected)
+DisplaySettingsSection::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    SectionFile* sf = brainSet->getSectionFile();
    if (onlyIfSelected) {
       if (sf->getNumberOfColumns() <= 0) {
@@ -139,8 +160,7 @@ DisplaySettingsSection::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
    
    SceneFile::SceneClass sc("DisplaySettingsSection");
    
-   sc.addSceneInfo(SceneFile::SceneInfo("selectedColumn",
-                                        selectedColumn));
+   saveSceneSelectedColumns(sc);;
 
    sc.addSceneInfo(SceneFile::SceneInfo("selectionType",
                                         static_cast<int>(selectionType)));
@@ -150,6 +170,11 @@ DisplaySettingsSection::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
 
    sc.addSceneInfo(SceneFile::SceneInfo("maximumSelectedSection",
                                         maximumSelectedSection));
+
+   sc.addSceneInfo(SceneFile::SceneInfo("sectionToHighlight",
+                                        sectionToHighlight));
+   sc.addSceneInfo(SceneFile::SceneInfo("sectionHighlightEveryX",
+                                        sectionHighlightEveryX));
 
    scene.addSceneClass(sc);
 }
@@ -181,6 +206,7 @@ void
 DisplaySettingsSection::updateSectionSelections() const
 {
    SectionFile* sf = brainSet->getSectionFile();
+   int selectedColumn = getSelectedDisplayColumn(-1, -1);
    if ((selectedColumn < 0) ||
        (selectedColumn >= sf->getNumberOfColumns())) {
       selectedColumn = 0;

@@ -35,11 +35,12 @@
 #include <QProgressDialog>
 
 #include "CaretScriptFile.h"
+#include "CommandScriptComment.h"
 #include "CommandScriptVariableRead.h"
 #include "CommandScriptVariableSet.h"
 #include "DebugControl.h"
 #include "ProgramParameters.h"
-#include "QtInputDialog.h"
+#include "QtScriptInputDialog.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
 
@@ -159,6 +160,7 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
    //
    // Command used for reading and setting variables
    //
+   CommandScriptComment commandScriptComment;
    CommandScriptVariableRead commandScriptVariableRead;
    CommandScriptVariableSet commandScriptVariableSet;
    
@@ -170,7 +172,7 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
       progressDialog = new QProgressDialog(parentWidget);
       progressDialog->setMinimum(0);
       progressDialog->setMaximum(num);
-      progressDialog->setMinimumDuration(0.0);
+      progressDialog->setMinimumDuration(0);
    }
    
    //
@@ -185,10 +187,11 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
       QStringList commandParameters = op->getParametersForCommandExecution();
 
       //
-      // If this is neither a read not set variable command
+      // If this is neither a read nor set variable command
       //
       if ((commandSwitch != commandScriptVariableRead.getOperationSwitch()) &&
-          (commandSwitch != commandScriptVariableSet.getOperationSwitch())) {
+          (commandSwitch != commandScriptVariableSet.getOperationSwitch()) &&
+          (commandSwitch != commandScriptComment.getOperationSwitch())) {
          //
          // Replace any variables in the parameters with the corresponding value
          //
@@ -209,6 +212,7 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
                                       + paramName
                                       + "\"");
             }
+            
             commandParameters[j] = paramName;
          }
       }
@@ -234,7 +238,25 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
                   << cmdText.toAscii().constData()
                   << std::endl;
       }
-               
+      
+      //
+      // Remove double quotes from any parameters
+      //
+      for (int m = 0; m < commandSwitchAndParameters.count(); m++) {
+         //
+         // Remove anything enclosed in double quotes
+         //
+         QString param = commandSwitchAndParameters[m];
+         if (param.startsWith("\"") &&
+             param.endsWith("\"")) {
+            const int len = param.length();
+            if (len >= 2) {
+               param = param.mid(1, len - 2);
+               commandSwitchAndParameters[m] = param;
+            }
+         }
+      }
+      
       //
       // Update progress dialog
       //
@@ -297,10 +319,10 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
                // Use GUI to get variable's value
                //
                QApplication::restoreOverrideCursor();
-               QtInputDialog inputDialog(progressDialog,
+               QtScriptInputDialog inputDialog(progressDialog,
                                          promptMessage,
                                          true);
-               if (inputDialog.exec() == QtInputDialog::Accepted) {
+               if (inputDialog.exec() == QtScriptInputDialog::Accepted) {
                   variableValue = inputDialog.getInputText();
                }
                else {
@@ -384,10 +406,13 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
             QString msg("Error waiting for command to finish: ");
             msg.append(caretCommandProgramName);
             msg.append(cmdText);
+            msg.append("\nError Message" + process.errorString());
             errorMessage.append(msg);
          }
          
-         const QString processOutput(process.readAll());
+         //const QString processOutput(process.readAll());
+         QString processOutput(process.readAllStandardOutput());
+         processOutput.append(process.readAllStandardError());
          commandsOutputText.append(processOutput);
          
          if (process.exitStatus() == QProcess::NormalExit) {
@@ -402,13 +427,14 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
                errorMessage.append("COMMAND FAILED1: ");
                errorMessage.append(cmdText);
                errorMessage.append("\nExit Code " + QString::number(process.exitCode()));
+               errorMessage.append("\nError Message" + process.errorString());
                errorMessage.append("\nCommand output: "
                                    + processOutput);
             }
          }
          else {
             errorMessage.append("COMMAND FAILED2: ");
-            errorMessage.append(cmdText);
+            errorMessage.append(cmdText + processOutput);
          }
       }
       

@@ -46,7 +46,7 @@ class BrainModelSurfaceGeodesic : public BrainModelAlgorithm {
    public:
       /// Constructor
       BrainModelSurfaceGeodesic(BrainSet* bs,
-                                BrainModelSurface* surfaceIn,
+                                const BrainModelSurface* surfaceIn,
                                 MetricFile* metricFileIn,
                                 const int metricFileColumnIn,
                                 const QString& metricColumnNameIn,
@@ -54,7 +54,7 @@ class BrainModelSurfaceGeodesic : public BrainModelAlgorithm {
                                 const int geodesicDistanceFileColumnIn,
                                 const QString& geodesicDistanceColumnName,
                                 const int rootNodeNumberIn,
-                                BrainModelSurfaceROINodeSelection* surfaceROIIn = NULL);
+                                const BrainModelSurfaceROINodeSelection* surfaceROIIn = NULL);
       
       /// Destructor
       ~BrainModelSurfaceGeodesic();
@@ -139,7 +139,7 @@ class BrainModelSurfaceGeodesic : public BrainModelAlgorithm {
       void removeFromActiveVertices(const int vertexNumber) throw (BrainModelAlgorithmException);
       
       /// surface for geodesic 
-      BrainModelSurface* surface;
+      const BrainModelSurface* surface;
       
       /// metric file for storing geodesic info
       MetricFile* metricFile;

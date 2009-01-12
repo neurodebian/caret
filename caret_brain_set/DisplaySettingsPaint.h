@@ -28,11 +28,11 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 /// DisplaySettingsPaint is a class that maintains parameters for controlling
 /// the display of paint data files.
-class DisplaySettingsPaint : public DisplaySettings {
+class DisplaySettingsPaint : public DisplaySettingsNodeAttributeFile {
    public:
       
       /// Constructor
@@ -47,12 +47,6 @@ class DisplaySettingsPaint : public DisplaySettings {
       /// Update any selections due to changes in loaded paint file
       void update();
       
-      /// get column selected for display
-      int getSelectedColumn(const int model) const;
-      
-      /// set column for display
-      void setSelectedColumn(const int model, const int sdc);
-     
       /// get the selected medial wall override column
       int getMedialWallOverrideColumn() const { return medialWallOverrideColumn; }
       
@@ -65,35 +59,28 @@ class DisplaySettingsPaint : public DisplaySettings {
       /// set the medial wall override column enabled
       void setMedialWallOverrideColumnEnabled(const bool b) { medialWallOverrideEnabled = b; }
       
-      /// get apply to left and right structures flag
-      bool getApplySelectionToLeftAndRightStructuresFlag() const 
-             { return applySelectionToLeftAndRightStructuresFlag; }
-      
-      /// set apply to left and right structures flag
-      void setApplySelectionToLeftAndRightStructuresFlag(const bool b) 
-             { applySelectionToLeftAndRightStructuresFlag = b; }
-      
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
                        
-      /// for node attribute files - all column selections for each surface are the same
-      virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;
+      /// get the geography blending
+      float getGeographyBlending() const { return geographyBlending; }
+      
+      /// set the geography blending
+      void setGeographyBlending(const float gb) { geographyBlending = gb; }
       
    private:
-      /// selected column for display
-      std::vector<int> selectedColumn;
+      /// geography blending
+      float geographyBlending;
       
       /// selected medial wall override column
       int medialWallOverrideColumn;
       
       /// medial wall override column enabled
       bool medialWallOverrideEnabled;
-      
-      /// apply coloring with corresponding structures
-      bool applySelectionToLeftAndRightStructuresFlag;
 };
 
 #endif // __DISPLAY_SETTINGS_PAINT_H__

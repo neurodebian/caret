@@ -23,11 +23,15 @@
  */
 /*LICENSE_END*/
 
+#include <set>
+
 #include <QAction>
 #include <QApplication>
+#include <QDoubleSpinBox>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRadioButton>
 
 #include "BorderColorFile.h"
 #include "BrainModelBorderSet.h"
@@ -35,7 +39,9 @@
 #include "BrainModelSurfacePointProjector.h"
 #include "BrainModelSurfacePaintToBorderConverter.h"
 #include "BrainSet.h"
-#include "CellDensityToMetricConverter.h"
+#include "BrainModelSurfaceCellDensityToMetric.h"
+#include "BrainModelVolumeFociDensity.h"
+#include "BrainModelVolumeFociUnprojector.h"
 #include "CellColorFile.h"
 #include "CellFile.h"
 #include "CellFileProjector.h"
@@ -45,6 +51,7 @@
 #include "DisplaySettingsBorders.h"
 #include "DisplaySettingsFoci.h"
 #include "DisplaySettingsPaint.h"
+#include "DisplaySettingsStudyMetaData.h"
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
@@ -52,6 +59,7 @@
 #include "GuiBorderAttributesDialog.h"
 #include "GuiBorderComparisonDialog.h"
 #include "GuiBorderProjectionDialog.h"
+#include "GuiBrainModelSelectionComboBox.h"
 #include "GuiCellAndFociAttributeAssignmentDialog.h"
 #include "GuiCellAndFociReportDialog.h"
 #include "GuiCellAttributesDialog.h"
@@ -71,10 +79,13 @@
 #include "GuiMainWindowLayersActions.h"
 #include "GuiMultipleInputDialog.h"
 #include "GuiCellsOrFociProjectionDialog.h"
+#include "GuiVolumeFileSelectionComboBox.h"
 #include "PaintFile.h"
-#include "QtDataEntryDialog.h"
 #include "QtTableDialog.h"
+#include "StringTable.h"
 #include "StudyMetaDataFile.h"
+#include "WuQDataEntryDialog.h"
+#include "WuQMessageBox.h"
 #include "global_variables.h"
 
 /**
@@ -85,6 +96,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
 {
    setObjectName("GuiMainWindowLayersActions");
    
+   borderOperationsDialogAction = new QAction(parent);
+   borderOperationsDialogAction->setText("Border Operations (In Development)...");
+   borderOperationsDialogAction->setObjectName("borderOperationsDialogAction");
+   QObject::connect(borderOperationsDialogAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayBorderOperationsDialog()));
+                    
    bordersDrawAction = new QAction(parent);
    bordersDrawAction->setText("Draw Borders...");
    bordersDrawAction->setObjectName("bordersDrawAction");
@@ -205,6 +222,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    QObject::connect(bordersDeleteByNameAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotDeleteBordersByName()));
                     
+   bordersCopyByNameAction = new QAction(parent);
+   bordersCopyByNameAction->setText("Duplicate Border By Name...");
+   bordersCopyByNameAction->setObjectName("bordersCopyByNameAction");
+   QObject::connect(bordersCopyByNameAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotCopyBordersByName()));
+                    
    bordersDeleteAllAction = new QAction(parent);
    bordersDeleteAllAction->setText("Delete All Borders...");
    bordersDeleteAllAction->setObjectName("bordersDeleteAllAction");
@@ -240,6 +263,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    bordersCreateInterpolatedAction->setObjectName("bordersCreateInterpolatedAction");
    QObject::connect(bordersCreateInterpolatedAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotBordersCreateInterpolated()));
+     
+   borderDrawUpdateAction = new QAction(parent);
+   borderDrawUpdateAction->setText("Draw Border Update...");
+   borderDrawUpdateAction->setObjectName("borderDrawUpdateAction");
+   QObject::connect(borderDrawUpdateAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayBorderDrawUpdateDialog()));
                     
    fociMapStereotaxicFocusAction = new QAction(parent);
    fociMapStereotaxicFocusAction->setText("Map Stereotaxic Focus...");
@@ -265,6 +294,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    QObject::connect(fociProjectAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociProject()));
                     
+   fociProjectToVolumeAction = new QAction(parent);
+   fociProjectToVolumeAction->setText("Unproject Foci to Volume...");
+   fociProjectToVolumeAction->setObjectName("fociProjectToVolumeAction");
+   QObject::connect(fociProjectToVolumeAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociProjectToVolume()));
+                    
    fociPalsProjectAction = new QAction(parent);
    fociPalsProjectAction->setText("Project Foci To PALS Atlas...");
    fociPalsProjectAction->setObjectName("fociPalsProjectAction");
@@ -284,7 +319,7 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
                     this, SLOT(slotFociAssignClassToDisplayedFoci()));
                     
    fociDeleteNonDisplayedAction = new QAction(parent);
-   fociDeleteNonDisplayedAction->setText("Delete Foci Not Displayed on Main Window Surface...");
+   fociDeleteNonDisplayedAction->setText("Delete Foci Not Displayed due to Display Control Selections...");
    fociDeleteNonDisplayedAction->setObjectName("fociDeleteNonDisplayedAction");
    QObject::connect(fociDeleteNonDisplayedAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociDeleteNonDisplayed()));
@@ -313,6 +348,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    QObject::connect(fociReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociReport()));
        
+   fociAttributeReportAction = new QAction(parent);
+   fociAttributeReportAction->setText("Foci Attribute Report...");
+   fociAttributeReportAction->setObjectName("fociAttributeReportAction");
+   QObject::connect(fociAttributeReportAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociAttributeReport()));
+       
    fociAttributeAssignmentAction = new QAction(parent);
    fociAttributeAssignmentAction->setText("Attribute Assignment...");
    fociAttributeAssignmentAction->setObjectName("fociAttributeAssigmentAction");
@@ -330,7 +371,13 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction->setObjectName("fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction");
    QObject::connect(fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociUpdatePubMedIDIfFocusNameMatchesStudyName()));
-                    
+    
+   fociUpdateClassesWithTableSubheaderShortNamesAction = new QAction(parent);
+   fociUpdateClassesWithTableSubheaderShortNamesAction->setText("Update Focus' Class Name With Table/Fig/Page Short Names");
+   fociUpdateClassesWithTableSubheaderShortNamesAction->setObjectName("fociUpdateClassesWithTableSubheaderShortNames");
+   QObject::connect(fociUpdateClassesWithTableSubheaderShortNamesAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociUpdateClassWithTableSubheaderShortName()));
+                                 
    fociClearHighlightingAction = new QAction(parent);
    fociClearHighlightingAction->setText("Clear Foci Highlighting");
    fociClearHighlightingAction->setObjectName("fociClearHighlightingAction");
@@ -354,6 +401,18 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    cellsEditColorsAction->setObjectName("cellsEditColorsAction");
    QObject::connect(cellsEditColorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotCellsEditColors()));
+                    
+   fociDensityToMetricAction = new QAction(parent);
+   fociDensityToMetricAction->setText("Convert Foci Density to Metric...");
+   fociDensityToMetricAction->setObjectName("fociDensityToMetricAction");
+   QObject::connect(fociDensityToMetricAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociDensityToMetric()));
+                    
+   fociDensityToVolumeAction = new QAction(parent);
+   fociDensityToVolumeAction->setText("Convert Foci Density to Functional Volume...");
+   fociDensityToVolumeAction->setObjectName("fociDensityToVolumeAction");
+   QObject::connect(fociDensityToVolumeAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociDensityToFunctionalVolume()));
                     
    cellsProjectAction = new QAction(parent);
    cellsProjectAction->setText("Project Fiducial Cells...");
@@ -580,6 +639,14 @@ GuiMainWindowLayersActions::slotCellsAdd()
 void
 GuiMainWindowLayersActions::slotCellsDensityToMetric()
 {
+   BrainSet* bs = theMainWindow->getBrainSet();
+   BrainModelSurface* flatSurface = theMainWindow->getBrainModelSurface();
+   if (flatSurface->getIsFlatSurface() == false) {
+      QMessageBox::critical(theMainWindow, 
+                            "ERROR", 
+                            "The surface in the main window must be flat.");
+   }
+   
    static float gridSpacing = 5.0;
    bool valid = false;
    gridSpacing = QInputDialog::getDouble(theMainWindow, "Cell Density",
@@ -591,12 +658,18 @@ GuiMainWindowLayersActions::slotCellsDensityToMetric()
                                          &valid);
    if (valid) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      
-      CellDensityToMetricConverter cdc;
-      QString errorMessage;
-      if (cdc.convert(theMainWindow->getBrainSet(), gridSpacing, errorMessage)) {
+      BrainModelSurfaceCellDensityToMetric cdm(bs,
+                                               flatSurface,
+                                               bs->getCellProjectionFile(),
+                                               bs->getMetricFile(),
+                                               gridSpacing,
+                                               true);
+      try {
+         cdm.execute();
+      }
+      catch (BrainModelAlgorithmException& e) {
          QApplication::restoreOverrideCursor();
-         QMessageBox::critical(theMainWindow, "Surface Type", errorMessage);
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
       }
       
       //
@@ -695,6 +768,31 @@ GuiMainWindowLayersActions::slotCellsDeleteUsingMouse()
 }
 
 /**
+ * slot for updating foci classes with linked table subheader short names.
+ */
+void 
+GuiMainWindowLayersActions::slotFociUpdateClassWithTableSubheaderShortName()
+{
+   if (QMessageBox::question(theMainWindow,
+                               "Confirm",
+                               "Update foci classes with linked figure/page ref/table?",
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      BrainSet* bs = theMainWindow->getBrainSet();
+      FociProjectionFile* fpf = bs->getFociProjectionFile();
+      StudyMetaDataFile* smdf = bs->getStudyMetaDataFile();
+      fpf->updateCellClassWithLinkedTableFigureOrPageReference(smdf);
+
+      GuiFilesModified fm;
+      fm.setFociModified();
+      theMainWindow->fileModificationUpdate(fm);
+      QApplication::restoreOverrideCursor();
+   }
+}
+      
+/**
  * slot for updating foci PubMed ID if focus name same as study name.
  */
 void 
@@ -748,7 +846,112 @@ GuiMainWindowLayersActions::slotFociClearHighlighting()
    fpf->clearAllHighlightFlags();
    GuiBrainModelOpenGL::updateAllGL();
 }
+
+/**
+ * slot for converting foci density to functional volume.
+ */
+void 
+GuiMainWindowLayersActions::slotFociDensityToFunctionalVolume()
+{
+   QStringList unitLabels;
+   QList<QVariant> unitValues;
+   unitLabels.append("Foci per Cubic Centimeter");
+   unitValues.append(static_cast<int>(BrainModelVolumeFociDensity::DENSITY_UNITS_FOCI_PER_CUBIC_CENTIMETER));
+   unitLabels.append("Foci per Cubic Millimeter");
+   unitValues.append(static_cast<int>(BrainModelVolumeFociDensity::DENSITY_UNITS_FOCI_PER_CUBIC_MILLIMETER));
+   
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Foci Density to Volume");
+   GuiVolumeFileSelectionComboBox* volumeSelectionComboBox =
+      new GuiVolumeFileSelectionComboBox(VolumeFile::VOLUME_TYPE_FUNCTIONAL);
+   ded.addWidget("Functional Volume", volumeSelectionComboBox);
+   QDoubleSpinBox* roiSizeDoubleSpinBox =
+      ded.addDoubleSpinBox("ROI Size for Density (MM)", 3.0);
+   roiSizeDoubleSpinBox->setSingleStep(2.0);
+   QComboBox* unitsComboBox = ded.addComboBox("Units",
+                                              unitLabels,
+                                              &unitValues);
+                                              
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+
+      try {
+         const BrainModelVolumeFociDensity::DENSITY_UNITS units = 
+            static_cast<BrainModelVolumeFociDensity::DENSITY_UNITS>(
+               unitsComboBox->itemData(unitsComboBox->currentIndex()).toInt());
+         BrainSet* brainSet = theMainWindow->getBrainSet();
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         BrainModelVolumeFociDensity bmvfd(brainSet,
+                                           brainSet->getFociProjectionFile(),
+                                           roiSizeDoubleSpinBox->value(),
+                                           units,
+                                           volumeSelectionComboBox->getSelectedVolumeFile());
+         bmvfd.execute();
+         QApplication::restoreOverrideCursor();
+      }
+      catch (BrainModelAlgorithmException& e) {
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
+      }
       
+      GuiFilesModified fm;
+      fm.setVolumeModified();
+      theMainWindow->fileModificationUpdate(fm);
+      GuiBrainModelOpenGL::updateAllGL();
+   }
+}      
+      
+/**
+ * Slot for converting foci density to metric.
+ */
+void
+GuiMainWindowLayersActions::slotFociDensityToMetric()
+{
+   BrainSet* bs = theMainWindow->getBrainSet();
+   BrainModelSurface* flatSurface = theMainWindow->getBrainModelSurface();
+   if (flatSurface->getIsFlatSurface() == false) {
+      QMessageBox::critical(theMainWindow, 
+                            "ERROR", 
+                            "The surface in the main window must be flat.");
+      return;
+   }
+   
+   static float gridSpacing = 5.0;
+   bool valid = false;
+   gridSpacing = QInputDialog::getDouble(theMainWindow, "Foci Density",
+                                         "Grid Spacing",
+                                         gridSpacing,
+                                         0.001,
+                                         10000000.0,
+                                         3,
+                                         &valid);
+   if (valid) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      BrainModelSurfaceCellDensityToMetric cdm(bs,
+                                               flatSurface,
+                                               bs->getFociProjectionFile(),
+                                               bs->getMetricFile(),
+                                               gridSpacing,
+                                               true);
+      try {
+         cdm.execute();
+      }
+      catch (BrainModelAlgorithmException& e) {
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
+      }
+      
+      //
+      // Notify that metrics have changed and update display
+      //
+      GuiFilesModified fm;
+      fm.setMetricModified();
+      theMainWindow->fileModificationUpdate(fm);
+      GuiBrainModelOpenGL::updateAllGL();
+      
+      QApplication::restoreOverrideCursor();
+   }
+}
+
 /**
  * slot for foci report.
  */
@@ -762,6 +965,235 @@ GuiMainWindowLayersActions::slotFociReport()
    if (tableDialog != NULL) {
       tableDialog->show();
       tableDialog->activateWindow();
+   }
+}
+      
+/**
+ * slot for foci attribute report.
+ */
+void 
+GuiMainWindowLayersActions::slotFociAttributeReport()
+{
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Foci Attribute Report");
+   QRadioButton* fociClassRadioButton   = ded.addRadioButton("Class");
+   QRadioButton* fociColorRadioButton   = ded.addRadioButton("Color");
+   QRadioButton* fociKeywordRadioButton = ded.addRadioButton("Keyword");
+   QRadioButton* fociNameRadioButton    = ded.addRadioButton("Name");
+   QRadioButton* fociTableRadioButton   = ded.addRadioButton("Table");
+   fociClassRadioButton->setChecked(true);
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+      bool displayedFociOnlyFlag = true;
+      
+      std::vector<QString> names;
+      
+      QString noneMessage("There are no ");
+      QString title;
+
+      std::vector<int> numberOfFociAssociatedWithItem;
+      
+      FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile(); 
+      if (fociClassRadioButton->isChecked()) {
+         std::vector<int> sortedFociClassIndices;
+         fpf->getCellClassIndicesSortedByName(sortedFociClassIndices, 
+                                             false,
+                                             displayedFociOnlyFlag);
+         const int numValidFociClasses = static_cast<int>(sortedFociClassIndices.size());
+         if (numValidFociClasses > 0) {
+            for (int i = 0; i < numValidFociClasses; i++) {
+               const int classIndex = sortedFociClassIndices[i];
+               names.push_back(fpf->getCellClassNameByIndex(classIndex));
+            }
+
+            //
+            // Count the foci using each class
+            //
+            numberOfFociAssociatedWithItem.resize(numValidFociClasses, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int i = 0; i < numFoci; i++) {
+               bool useIt = true;
+               const CellProjection* focus = fpf->getCellProjection(i);
+               if (displayedFociOnlyFlag) {
+                  useIt = focus->getDisplayFlag();
+               }
+               if (useIt) {
+                  const int classIndex = focus->getClassIndex();
+                  for (int j = 0; j < numValidFociClasses; j++) {
+                     if (sortedFociClassIndices[j] == classIndex) {
+                        numberOfFociAssociatedWithItem[j]++;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+         
+         noneMessage += "foci classes.";
+         title = "Foci Classes";
+      }
+      else if (fociColorRadioButton->isChecked()) {
+         FociColorFile* fcf = theMainWindow->getBrainSet()->getFociColorFile();
+         std::vector<int> sortedFociColorIndices;
+         fcf->getColorIndicesSortedByName(theMainWindow->getBrainSet()->getFociProjectionFile(),
+                                                 sortedFociColorIndices, 
+                                                 false,
+                                                 displayedFociOnlyFlag);
+         const int numValidFociColors = static_cast<int>(sortedFociColorIndices.size());
+         if (numValidFociColors > 0) {
+            for (int i = 0; i < numValidFociColors; i++) {
+               const int colorIndex = sortedFociColorIndices[i];
+               names.push_back(fcf->getColorNameByIndex(colorIndex));
+            }
+
+            //
+            // Count the foci using each color
+            //
+            numberOfFociAssociatedWithItem.resize(numValidFociColors, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int i = 0; i < numFoci; i++) {
+               bool useIt = true;
+               const CellProjection* focus = fpf->getCellProjection(i);
+               if (displayedFociOnlyFlag) {
+                  useIt = focus->getDisplayFlag();
+               }
+               if (useIt) {
+                  const int colorIndex = focus->getColorIndex();
+                  for (int j = 0; j < numValidFociColors; j++) {
+                     if (sortedFociColorIndices[j] == colorIndex) {
+                        numberOfFociAssociatedWithItem[j]++;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+         
+         noneMessage += "foci colors.";
+         title = "Foci Colors";
+      }
+      else if (fociKeywordRadioButton->isChecked()) {
+         DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
+         std::vector<QString> keywords;
+         std::vector<int> numberOfFociUsingKeyword;
+         dssmd->getKeywordsAndUsageByFoci(keywords, 
+                                          numberOfFociUsingKeyword);
+         names = keywords;
+         numberOfFociAssociatedWithItem = numberOfFociUsingKeyword;
+         
+/*         const int numValidKeywords = static_cast<int>(keywords.size());
+         if (numValidKeywords > 0) {
+            for (int i = 0; i < numValidKeywords; i++) {
+               const int keywordIndex = sortedFociKeywordIndices[i];
+               names.push_back(dssmd->getKeywordNameByIndex(keywordIndex));
+            }
+            
+            // SLOW!!!
+            //
+            // Count the foci using each keyword
+            //
+            numberOfFociAssociatedWithItem.resize(numValidKeywords, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int m = 0; m < numValidKeywords; m++) {
+               const QString keyword = names[m];
+               for (int i = 0; i < numFoci; i++) {
+                  bool useIt = true;
+                  const CellProjection* focus = fpf->getCellProjection(i);
+                  if (displayedFociOnlyFlag) {
+                     useIt = focus->getDisplayFlag();
+                  }
+                  if (useIt) {
+                     StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
+                     for (int j = 0; j < smdls.getNumberOfStudyMetaDataLinks(); j++) {
+                        StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+                        const int studyIndex = smdf->getStudyIndexFromLink(smdl);
+                        StudyMetaData* smd = smdf->getStudyMetaData(studyIndex);
+                        if (smd->containsKeyword(keyword)) {
+                           numberOfFociAssociatedWithItem[m]++;
+                           break;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+*/
+         noneMessage += "study keywords.";
+         title = "Study Keywords";
+      }
+      else if (fociNameRadioButton->isChecked()) {
+         std::vector<int> sortedFociUniqueNameIndices;
+         fpf->getCellUniqueNameIndicesSortedByName(sortedFociUniqueNameIndices, 
+                                                   false,
+                                                   displayedFociOnlyFlag);
+         const int numValidNames = static_cast<int>(sortedFociUniqueNameIndices.size());
+         if (numValidNames > 0) {
+            for (int i = 0; i < numValidNames; i++) {
+                  const int nameIndex = sortedFociUniqueNameIndices[i];
+                  names.push_back(fpf->getCellUniqueNameByIndex(nameIndex));      
+            }
+            
+            //
+            // Count the foci using each name
+            //
+            numberOfFociAssociatedWithItem.resize(numValidNames, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int i = 0; i < numFoci; i++) {
+               bool useIt = true;
+               const CellProjection* focus = fpf->getCellProjection(i);
+               if (displayedFociOnlyFlag) {
+                  useIt = focus->getDisplayFlag();
+               }
+               if (useIt) {
+                  const QString name = focus->getName();
+                  for (int j = 0; j < numValidNames; j++) {
+                     if (name == names[j]) {
+                        numberOfFociAssociatedWithItem[j]++;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+
+         noneMessage += "foci.";
+         title = "Foci Names";
+      }
+      else if (fociTableRadioButton->isChecked()) {
+         DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
+         std::vector<QString> subheaders;
+         std::vector<int> numberOfFociUsingKeyword;
+         dssmd->getSubheadersAndUsageByFoci(subheaders, 
+                                          numberOfFociUsingKeyword);
+         names = subheaders;
+         numberOfFociAssociatedWithItem = numberOfFociUsingKeyword;
+
+         noneMessage += "tables with subheaders.";
+         title = "Table Subheaders";
+      }
+      
+      const int numNames = names.size();
+      if (numNames > 0) {
+         StringTable st(numNames, 2, (title + " Report"));
+         st.setColumnTitle(0, "Focus\nCount");
+         st.setColumnTitle(1, title);
+         const int num = static_cast<int>(names.size());
+         const bool doCountsFlag = (num == static_cast<int>(numberOfFociAssociatedWithItem.size()));
+         for (int i = 0; i < num; i++) { 
+            if (doCountsFlag) {
+               st.setElement(i, 0, numberOfFociAssociatedWithItem[i]);
+            }
+            st.setElement(i, 1, names[i]);
+         }
+         QtTableDialog* td = new QtTableDialog(theMainWindow,
+                                               "Foci Attribute Report.",
+                                               st,
+                                               true);
+         td->show();
+      }
+      else {
+         WuQMessageBox::critical(theMainWindow, "ERROR", noneMessage);
+         return;
+      }
    }
 }
       
@@ -853,6 +1285,91 @@ GuiMainWindowLayersActions::slotFociPalsProject()
 }
 
 /**
+ * slot for foci project to volume.
+ */
+void 
+GuiMainWindowLayersActions::slotFociProjectToVolume()
+{
+   //
+   // Right, left, and cerebellum surface selection combo boxes
+   //
+   GuiBrainModelSelectionComboBox* leftSurfaceComboBox =
+      new GuiBrainModelSelectionComboBox(
+         GuiBrainModelSelectionComboBox::OPTION_SHOW_SURFACES_ALL |
+            GuiBrainModelSelectionComboBox::OPTION_SHOW_ADD_NEW,
+         "NONE");
+   leftSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(
+      BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+      Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+   GuiBrainModelSelectionComboBox* rightSurfaceComboBox =
+      new GuiBrainModelSelectionComboBox(
+         GuiBrainModelSelectionComboBox::OPTION_SHOW_SURFACES_ALL |
+            GuiBrainModelSelectionComboBox::OPTION_SHOW_ADD_NEW,
+         "NONE");
+   rightSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(
+      BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+      Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+   GuiBrainModelSelectionComboBox* cerebellumSurfaceComboBox =
+      new GuiBrainModelSelectionComboBox(
+         GuiBrainModelSelectionComboBox::OPTION_SHOW_SURFACES_ALL |
+            GuiBrainModelSelectionComboBox::OPTION_SHOW_ADD_NEW,
+         "NONE");
+   cerebellumSurfaceComboBox->setSelectedBrainModelToFirstSurfaceOfType(
+      BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+      Structure::STRUCTURE_TYPE_CEREBELLUM);
+   
+   //
+   // Create dialog for projecting the foci to the volume
+   //
+   WuQDataEntryDialog ftv(theMainWindow);
+   ftv.setTextAtTop("The selected surfaces will be used to unproject "
+                    "the foci and determine the coordinates for "
+                    "display of foci in the volume.  For this to "
+                    "function correctly, the foci must have been "
+                    "projected to the surfaces.",
+                    true);
+   ftv.setWindowTitle("Unproject Foci to Volume");
+   ftv.addWidget("Left ", leftSurfaceComboBox);
+   ftv.addWidget("Right ", rightSurfaceComboBox);
+   ftv.addWidget("Cerebellum ", cerebellumSurfaceComboBox);
+   if (ftv.exec() == WuQDataEntryDialog::Accepted) {
+      //
+      // Get the selected surfaces
+      //
+      BrainModelSurface* leftBMS  = 
+         leftSurfaceComboBox->getSelectedBrainModelSurface();
+      BrainModelSurface* rightBMS = 
+         rightSurfaceComboBox->getSelectedBrainModelSurface();
+      BrainModelSurface* cerebellumBMS = 
+         cerebellumSurfaceComboBox->getSelectedBrainModelSurface();
+         
+      //
+      // Project foci to volume
+      //
+      BrainModelVolumeFociUnprojector bmvfu(theMainWindow->getBrainSet(),
+                                            leftBMS,
+                                            rightBMS,
+                                            cerebellumBMS,
+                                            theMainWindow->getBrainSet()->getFociProjectionFile());
+      try {
+         bmvfu.execute();
+      }
+      catch (BrainModelAlgorithmException& e) {
+         QMessageBox::critical(theMainWindow, "ERROR", e.whatQString());
+      }
+      
+      //
+      // Update GUI
+      //
+      GuiFilesModified fm;
+      fm.setFociModified();
+      fm.setFociProjectionModified();
+      theMainWindow->fileModificationUpdate(fm);
+      GuiBrainModelOpenGL::updateAllGL();   
+   }
+}
+      
+/**
  * Slot for Delete All Foci
  */
 void
@@ -864,7 +1381,7 @@ GuiMainWindowLayersActions::slotFociDeleteAll()
                               (QMessageBox::Yes | QMessageBox::No),
                               QMessageBox::No) 
                                  == QMessageBox::Yes) {
-      theMainWindow->getBrainSet()->deleteAllFoci(true, true);
+      theMainWindow->getBrainSet()->deleteAllFociProjections();
       GuiFilesModified fm;
       fm.setFociModified();
       fm.setFociProjectionModified();
@@ -960,20 +1477,32 @@ GuiMainWindowLayersActions::slotFociAssignClassToDisplayedFoci()
 void
 GuiMainWindowLayersActions::slotFociDeleteNonDisplayed()
 {
-   if (QMessageBox::warning(theMainWindow, 
-                            "Delete Non-Displayed Foci", 
-                            "Are you sure you want to delete\n"
-                               "all foci that are NOT displayed?",
-                            (QMessageBox::Yes | QMessageBox::No),
-                            QMessageBox::Yes) 
-                               == QMessageBox::Yes) {
-      Structure structure;
-      DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
-      if (dsf->getDisplayCellsOnCorrectHemisphereOnly()) {
-         BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
-         if (bms != NULL) {
-            structure = bms->getStructure();
-         }
+   Structure structure;
+   BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
+   if (bms != NULL) {
+      structure = bms->getStructure();
+   }
+   
+   QMessageBox msgBox(theMainWindow);
+   QString msg("Delete foci not displayed due to Display Control Settings.");
+   QPushButton* yesPushButton = msgBox.addButton("Yes", QMessageBox::YesRole);
+   QPushButton* yesStructurePushButton = NULL;
+   if ((structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) ||
+       (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) ||
+       (structure.getType() == Structure::STRUCTURE_TYPE_CEREBELLUM)) {
+      yesStructurePushButton = msgBox.addButton("Yes, Not on Main Window Surface",
+                                                QMessageBox::YesRole);
+      msg += ("\n"
+              "You may also remove those not associated with main window surface.");
+   }
+   QPushButton* noPushButton  = msgBox.addButton("No", QMessageBox::YesRole);
+   msgBox.setText(msg);
+   msgBox.setWindowTitle("Confirm Foci Deletion");
+   msgBox.exec();
+   
+   if (msgBox.clickedButton() != noPushButton) {
+      if (msgBox.clickedButton() == yesPushButton) {
+         structure = Structure::STRUCTURE_TYPE_INVALID;
       }
       FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
       fpf->deleteAllNonDisplayedCellProjections(structure);
@@ -1032,7 +1561,7 @@ GuiMainWindowLayersActions::slotBordersFromPaintAction()
                                             false,
                                             false);
    DisplaySettingsPaint* dsp = bs->getDisplaySettingsPaint();
-   const int columnNumber = dsp->getSelectedColumn(0);
+   const int columnNumber = dsp->getFirstSelectedColumnForBrainModel(0);
    cnacd.setSelectedColumnNumber(columnNumber);
    if (cnacd.exec() == GuiChooseNodeAttributeColumnDialog::Accepted) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
@@ -1151,6 +1680,85 @@ GuiMainWindowLayersActions::slotDeleteBordersByName()
 }
 
 /**
+ * slot for copy borders by name.
+ */
+void 
+GuiMainWindowLayersActions::slotCopyBordersByName()
+{
+   //
+   // Get names of all borders
+   //
+   BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+   std::vector<QString> allNames;
+   bmbs->getAllBorderNames(allNames, false);
+   if (allNames.empty()) {
+      QMessageBox::critical(theMainWindow, "ERROR", "There are no borders loaded.");
+      return;
+   }
+   QStringList namesSL;
+   for (unsigned int i = 0; i < allNames.size(); i++) {
+      namesSL += allNames[i];
+   }
+   
+   //
+   // Create dialog for copying a border
+   //
+   WuQDataEntryDialog ded(theMainWindow);
+   QComboBox* nameComboBox = ded.addComboBox("Name to Copy",
+                                             namesSL);
+   QLineEdit* newNameLineEdit = ded.addLineEditWidget("New Name");
+   QObject::connect(nameComboBox, SIGNAL(activated(const QString&)),
+                    newNameLineEdit, SLOT(setText(const QString&)));
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+      const QString oldName = nameComboBox->currentText();
+      const QString newName = newNameLineEdit->text().trimmed();
+      if (newName.isEmpty()) {
+         QMessageBox::critical(theMainWindow, "ERROR", "New Name is empty.");
+         return;
+      }
+      if (oldName == newName) {
+         QMessageBox::critical(theMainWindow, "ERROR",
+                               "The old and new names are the same.");
+         return;
+      }
+      std::vector<int> borderIndices;
+      bmbs->getAllBordersWithName(oldName, borderIndices);
+      const int numOldNames = static_cast<int>(borderIndices.size());
+      if (numOldNames == 0) {
+         QMessageBox::critical(theMainWindow, "ERROR", "No border name selected for copying.");
+         return;
+      }
+      
+      if (numOldNames > 1) {
+         if (QMessageBox::question(theMainWindow, "Confirm",
+               "There is more than one border named \""
+               + oldName
+               + ".  Do you want to copy all of them?"
+               "  If no, you will need to delete the duplcates that already exist "
+               "and then select this menu item.",
+               (QMessageBox::Yes | QMessageBox::No),
+               QMessageBox::Yes) == QMessageBox::No) {
+            return;
+         }
+      }
+      
+      for (int i = 0; i < numOldNames; i++) {
+         bmbs->copyBorder(borderIndices[i], newName);
+      }
+      
+      theMainWindow->getBrainSet()->assignBorderColors();
+               
+      GuiFilesModified fm;
+      fm.setBorderModified();
+      theMainWindow->fileModificationUpdate(fm);
+      
+      GuiBrainModelOpenGL::updateAllGL();
+      
+      QApplication::restoreOverrideCursor();
+   }
+}      
+
+/**
  * slot for projecting borders
  */
 void
@@ -1195,6 +1803,8 @@ GuiMainWindowLayersActions::slotBordersCreateGrid()
          mid.getLineEdit(1, pointsPerSquare);
          bms->createFlatGridBorders(borderFile, gridSpace, pointsPerSquare);
 
+         theMainWindow->getBrainSet()->deleteAllBorders();
+         
          BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
          bmbs->copyBordersFromBorderFile(bms, &borderFile);
          theMainWindow->getBrainSet()->assignBorderColors();
@@ -1224,9 +1834,13 @@ GuiMainWindowLayersActions::slotBordersCreateAnalysisGrid()
       BrainModelSurface::SURFACE_TYPES st = bms->getSurfaceType();
       if ((st != BrainModelSurface::SURFACE_TYPE_FLAT) &&
           (st != BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         QMessageBox::critical(theMainWindow, "Surface Type", 
-                          "The surface in the main window must be flat for this operation !!!");
-         return;
+         if (QMessageBox::critical(theMainWindow, "Surface Type", 
+                          "The surface in the main window must be flat for this operation.\n"
+                          "Do you want to continue?",
+                          QMessageBox::Yes | QMessageBox::No)
+               == QMessageBox::No) {
+            return;
+         }
       }
  
       //
@@ -1238,37 +1852,42 @@ GuiMainWindowLayersActions::slotBordersCreateAnalysisGrid()
       //
       // Create a dialog for the parameters
       //
-      QtDataEntryDialog ded("Create Analysis Grid Borders",
-                            false,
-                            theMainWindow);
-      const int xMinIndex = ded.addParameterFloat("X-Min",
+      WuQDataEntryDialog ded(theMainWindow);
+      ded.setWindowTitle("Create Analysis Grid Borders");
+      QDoubleSpinBox* xMinSpinBox = ded.addDoubleSpinBox("X-Min",
                                                    bounds[0]);
-      const int xMaxIndex = ded.addParameterFloat("X-Max",
+      QDoubleSpinBox* xMaxSpinBox = ded.addDoubleSpinBox("X-Max",
                                                    bounds[1]);
-      const int yMinIndex = ded.addParameterFloat("Y-Min",
+      QDoubleSpinBox* yMinSpinBox = ded.addDoubleSpinBox("Y-Min",
                                                    bounds[2]);
-      const int yMaxIndex = ded.addParameterFloat("Y-Max",
+      QDoubleSpinBox* yMaxSpinBox = ded.addDoubleSpinBox("Y-Max",
                                                    bounds[3]);
-      const int spacingIndex = ded.addParameterFloat("Spacing",
+      QDoubleSpinBox* spacingSpinBox = ded.addDoubleSpinBox("Spacing",
                                                       10.0,
-                                                      1.0,
-                                                      0.01);
+                                                      0.01,
+                                                      1000000.0,
+                                                      1.0);
       BorderFile borderFile;
       if (ded.exec() == QDialog::Accepted) {
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          
-         bounds[0] = ded.getParameterFloat(xMinIndex);
-         bounds[1] = ded.getParameterFloat(xMaxIndex);
-         bounds[2] = ded.getParameterFloat(yMinIndex);
-         bounds[3] = ded.getParameterFloat(yMaxIndex);
-         const float spacing = ded.getParameterFloat(spacingIndex);
+         bounds[0] = xMinSpinBox->value();
+         bounds[1] = xMaxSpinBox->value();
+         bounds[2] = yMinSpinBox->value();
+         bounds[3] = yMaxSpinBox->value();
+         const float spacing = spacingSpinBox->value();
          
          bms->createFlatGridBordersForAnalysis(borderFile, bounds, spacing);
 
+         theMainWindow->getBrainSet()->deleteAllBorders();
          BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
          bmbs->copyBordersFromBorderFile(bms, &borderFile);
          theMainWindow->getBrainSet()->assignBorderColors();
                   
+         DisplaySettingsBorders* dsb = 
+            theMainWindow->getBrainSet()->getDisplaySettingsBorders();
+         dsb->setDisplayBorders(true);
+
          GuiFilesModified fm;
          fm.setBorderModified();
          theMainWindow->fileModificationUpdate(fm);
@@ -1813,14 +2432,17 @@ GuiMainWindowLayersActions::slotContourSpacing()
    }
    ContourFile* cf = bmc->getContourFile();
    
-   QtDataEntryDialog ded("Contour Section Spacing",
-                         false,
-                         theMainWindow);
-   const int spaceIndex = ded.addParameterFloat("Spacing (mm)",
-                                                cf->getSectionSpacing(),
-                                                0.1);
-   if (ded.exec() == QtDataEntryDialog::Accepted) {
-      cf->setSectionSpacing(ded.getParameterFloat(spaceIndex));
+   bool ok = false;
+   const float spacing = QInputDialog::getDouble(theMainWindow,
+                                                 "Contour Section Spacing",
+                                                 "Spacing (mm)",
+                                                 0.1,
+                                                 -214748367,
+                                                 2147483647,
+                                                 2,
+                                                 &ok);
+   if (ok) {
+      cf->setSectionSpacing(spacing);
    }
 
    GuiBrainModelOpenGL::updateAllGL();

@@ -70,13 +70,13 @@
 #include "GuiTransformationMatrixDialog.h"
 #include "GuiTransformationMatrixSelectionControl.h"
 #include "MathUtilities.h"
-#include "QtCheckBoxSelectionDialog.h"
 #include <QDoubleSpinBox>
 #include "QtMultipleInputDialog.h"
 #include "QtRadioButtonSelectionDialog.h"
 #include "TransformationMatrixFile.h"
 #include "VolumeFile.h"
 #include "VtkModelFile.h"
+#include "WuQDataEntryDialog.h"
 #include "global_variables.h"
 #include "vtkTransform.h"
 
@@ -84,7 +84,7 @@
  * Constructor.
  */
 GuiTransformationMatrixDialog::GuiTransformationMatrixDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {
    currentMatrix = NULL;
    setWindowTitle("Transformation Matrix Editor");
@@ -161,7 +161,7 @@ GuiTransformationMatrixDialog::createTransformDataFilePage()
    
    transformDataFileGridLayout->addWidget(new QLabel("Data File Name  "), 0, 0);
    transformDataFileGridLayout->addWidget(new QLabel("Display Transform Matrix"), 0, 1);
-   
+   transformDataFileGridLayout->setRowStretch(1000, 1000);
    //
    // Scroll box for models
    //
@@ -1103,12 +1103,12 @@ GuiTransformationMatrixDialog::updateDialog()
       AbstractFile* tdf = theMainWindow->getBrainSet()->getTransformationDataFile(i);
       transformFileLabels[i]->setText(FileUtilities::basename(tdf->getFileName()));
       transformFileLabels[i]->show();
+      transformFileMatrixControls[i]->show();
       transformFileMatrixControls[i]->blockSignals(true);
+      transformFileMatrixControls[i]->updateControl();
       transformFileMatrixControls[i]->setSelectedMatrixIndex(
          tmf->getMatrixIndex(tdf->getAssociatedTransformationMatrix()));
       transformFileMatrixControls[i]->blockSignals(false);
-      transformFileMatrixControls[i]->show();
-      transformFileMatrixControls[i]->updateControl();
    }
    
    //
@@ -1128,14 +1128,16 @@ GuiTransformationMatrixDialog::slotTransformMatrixSelection()
 {
    const int numTransformDataFiles = theMainWindow->getBrainSet()->getNumberOfTransformationDataFiles();
    const int numExistingTransformDataFiles = static_cast<int>(transformFileLabels.size());
-   if (numTransformDataFiles != numExistingTransformDataFiles) {
-      std::cout << "PROGRAM ERROR: Number of transform data files does not match those in dialog." << std::endl;
+   if (numTransformDataFiles > numExistingTransformDataFiles) {
+      std::cout << "PROGRAM ERROR: Number of transform data files exceeds those in dialog." << std::endl;
       return;
    }
    
    for (int i = 0; i < numTransformDataFiles; i++) {
-      AbstractFile* af = theMainWindow->getBrainSet()->getTransformationDataFile(i);
-      af->setAssociatedTransformationMatrix(transformFileMatrixControls[i]->getSelectedMatrix());         
+      if (i < numExistingTransformDataFiles) {
+         AbstractFile* af = theMainWindow->getBrainSet()->getTransformationDataFile(i);
+         af->setAssociatedTransformationMatrix(transformFileMatrixControls[i]->getSelectedMatrix());    
+      }
    }
    GuiBrainModelOpenGL::updateAllGL();
 }
@@ -1559,20 +1561,22 @@ GuiTransformationMatrixDialog::slotMatrixNew()
             }
             else if ((rbd.getSelectedItemIndex() == viewMatrixIndex) ||
                      (rbd.getSelectedItemIndex() == viewMatrixTranslateIndex)) {
-               VolumeFile* vf = bmv->getMasterVolumeFile();
-               int obliqueSlices[3];
-               bmv->getSelectedObliqueSlices(obliqueSlices);
                float obliqueSlicesPos[3];
-               vf->getVoxelCoordinate(obliqueSlices, true, obliqueSlicesPos);
-               
-               int obliqueSliceOffsets[3];
-               bmv->getSelectedObliqueSliceOffsets(0, obliqueSliceOffsets);
+               if (bmv != NULL) {
+                  VolumeFile* vf = bmv->getMasterVolumeFile();
+                  int obliqueSlices[3];
+                  bmv->getSelectedObliqueSlices(obliqueSlices);
+                  vf->getVoxelCoordinate(obliqueSlices, obliqueSlicesPos);
+                  
+                  int obliqueSliceOffsets[3];
+                  bmv->getSelectedObliqueSliceOffsets(0, obliqueSliceOffsets);
+               }
                currentMatrix->identity();
                float trans[3];
                bm->getTranslation(0, trans);
                currentMatrix->translate(trans);
                TransformationMatrix rot;
-               if (dynamic_cast<BrainModelVolume*>(bm) != NULL) {
+               if (bmv != NULL) {
                   switch (bmv->getSelectedAxis(0)) {
                      case VolumeFile::VOLUME_AXIS_X:
                         rot.rotateX(-bmv->getDisplayRotation(0));
@@ -1636,12 +1640,17 @@ GuiTransformationMatrixDialog::slotMatrixNew()
                      rot.identity();
                   }
                   rot.scale(scale);
+                  currentMatrix->multiply(rot);
                }
                else {
                   rot.setMatrix(bm->getRotationTransformMatrix(0));
                   rot.transpose();
+                  currentMatrix->identity();
+                  if (rbd.getSelectedItemIndex() != viewMatrixTranslateIndex) {
+                     currentMatrix->multiply(rot);
+                  }
+                  currentMatrix->translate(trans);
                }
-               currentMatrix->multiply(rot);
             }
          }
       }
@@ -1744,18 +1753,19 @@ GuiTransformationMatrixDialog::slotMatrixApplyTransformDataFile()
 
    const int num = theMainWindow->getBrainSet()->getNumberOfTransformationDataFiles();
    
-   std::vector<QString> labels;
+   //
+   // Dialog for choosing transformation data files
+   //
+   WuQDataEntryDialog ded(this);
+   ded.setWindowTitle("Apply Transformation");
+   std::vector<QCheckBox*> checkBoxes;
    for (int i = 0; i < num; i++) {
       const AbstractFile* af = theMainWindow->getBrainSet()->getTransformationDataFile(i);
-      labels.push_back(FileUtilities::basename(af->getFileName()));
+      QCheckBox* cb = ded.addCheckBox(FileUtilities::basename(af->getFileName()), false);
+      checkBoxes.push_back(cb);
    }
-   std::vector<bool> initChecks(labels.size(), false);
-   QtCheckBoxSelectionDialog cbsd(this,
-                                  "Apply Transformation",
-                                  "",
-                                  labels,
-                                  initChecks);
-   if (cbsd.exec() == QDialog::Accepted) {
+
+   if (ded.exec() == QDialog::Accepted) {
     
       bool ok = false;
       QString commentString = QInputDialog::getText(this, "Enter Comment Information",
@@ -1783,7 +1793,7 @@ GuiTransformationMatrixDialog::slotMatrixApplyTransformDataFile()
       bool addedFoci = false;
       bool addedVtkModelFile = false;
       for (int i = 0; i < num; i++) {
-         if (cbsd.getCheckBoxStatus(i)) {
+         if (checkBoxes[i]->isChecked()) {
             AbstractFile* af = theMainWindow->getBrainSet()->getTransformationDataFile(i);
             
             CellFile* cf = dynamic_cast<CellFile*>(af);
@@ -1796,17 +1806,22 @@ GuiTransformationMatrixDialog::slotMatrixApplyTransformDataFile()
          
                   CellFile newCellFile;
                   for (int j = 0; j < numCells; j++) {
-                     CellData* cd = cf->getCell(j);
+                     CellData cd = *(cf->getCell(j));
                      float xyz[3];
-                     cd->getXYZ(xyz);
+                     cd.getXYZ(xyz);
                      currentMatrix->multiplyPoint(xyz);
-                     CellData newCell(cd->getName(), xyz[0], xyz[1], xyz[2]);
-                     newCellFile.addCell(newCell);
+                     cd.setXYZ(xyz);
+                     if (xyz[0] < 0.0) {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+                     }
+                     else {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+                     }
+                     newCellFile.addCell(cd);
                   }
-                  
                   newCellFile.setFileComment(operationComment);
                   
-                  theMainWindow->getBrainSet()->getCellProjectionFile()->append(newCellFile);
+                  theMainWindow->getBrainSet()->getCellProjectionFile()->appendFiducialCellFile(newCellFile);
                }
             }
 
@@ -1818,17 +1833,22 @@ GuiTransformationMatrixDialog::slotMatrixApplyTransformDataFile()
          
                   FociFile newFociFile;
                   for (int j = 0; j < numCells; j++) {
-                     CellData* cd = ff->getCell(j);
+                     CellData cd = *(ff->getCell(j));
                      float xyz[3];
-                     cd->getXYZ(xyz);
+                     cd.getXYZ(xyz);
                      currentMatrix->multiplyPoint(xyz);
-                     CellData newCell(cd->getName(), xyz[0], xyz[1], xyz[2]);
-                     newFociFile.addCell(newCell);
+                     cd.setXYZ(xyz);
+                     if (xyz[0] < 0.0) {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+                     }
+                     else {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+                     }
+                     newFociFile.addCell(cd);
                   }
-                  
                   newFociFile.setFileComment(operationComment);
                   
-                  theMainWindow->getBrainSet()->getFociProjectionFile()->append(newFociFile);
+                  theMainWindow->getBrainSet()->getFociProjectionFile()->appendFiducialCellFile(newFociFile);
                }
             }
             
@@ -1955,38 +1975,37 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
 {
    transferDialogValuesIntoMatrix();
    
-   int contourIndex = -1;
-   int contourCellIndex = -1;
-   int surfaceIndex = -1;
-   int volumeIndex  = -1;
-   int surfaceVolumeIndex = -1;
+   //
+   // Dialog for choosing items getting transformed
+   //
+   WuQDataEntryDialog ded(this);
+   ded.setWindowTitle("Apply Transformation");
    
-   std::vector<QString> labels;
+   QCheckBox* contourCheckBox = NULL;
+   QCheckBox* contourCellCheckBox = NULL;
+   QCheckBox* surfaceCheckBox = NULL;
+   QCheckBox* volumeCheckBox = NULL;
+   QCheckBox* surfaceVolumeCheckBox = NULL;
    
    BrainModelContours* bmc = theMainWindow->getBrainModelContours();
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    BrainModelVolume*  bmv = theMainWindow->getBrainModelVolume();
    BrainModelSurfaceAndVolume* bmsv = theMainWindow->getBrainModelSurfaceAndVolume();
    if (bmsv != NULL) {
-      labels.push_back("Main Window Surface And Volume");
-      surfaceVolumeIndex = labels.size() - 1;
+      surfaceVolumeCheckBox = ded.addCheckBox("Main Window Surface And Volume", false);
    }
    else if (bms != NULL) {
-      labels.push_back("Main Window Surface");
-      surfaceIndex = labels.size() - 1;
+      surfaceCheckBox = ded.addCheckBox("Main Window Surface", false);
    }
    else if (bmv != NULL) {
-      labels.push_back("Main Window Volume");
-      volumeIndex = labels.size() - 1;
+      volumeCheckBox = ded.addCheckBox("Main Window Volume", false);
    }
    else if (bmc != NULL) {
-      labels.push_back("Main Window Contours");
-      contourIndex = labels.size() - 1;
-      labels.push_back("Main Window Contour Cells");
-      contourCellIndex = labels.size() - 1;
+      contourCheckBox = ded.addCheckBox("Main Window Contours", false);
+      contourCellCheckBox = ded.addCheckBox("Main Window Contour Cells", false);
    }
 
-   int surfaceBordersIndex = -1;                              
+   QCheckBox* surfaceBordersCheckBox = NULL;                      
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
    if (bms != NULL) {
       const int brainModelIndex = theMainWindow->getBrainSet()->getBrainModelIndex(bms);
@@ -2000,19 +2019,19 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
          const BrainModelBorder* b = bmbs->getBorder(i);
          if (b->getValidForBrainModel(brainModelIndex) &&
              b->getDisplayFlag()) {
-            labels.push_back("Main Window Surface Borders");
-            surfaceBordersIndex = labels.size() - 1;
+            surfaceBordersCheckBox = ded.addCheckBox("Main Window Surface Borders",
+                                                     false);
             break;
          }
       }
    }  
    
-   int volumeBordersIndex = -1;
+   QCheckBox* volumeBordersCheckBox = NULL;
    if (bmv != NULL) {
       BorderFile* bf = theMainWindow->getBrainSet()->getVolumeBorderFile();
       if (bf->getNumberOfBorders() > 0) {
-         labels.push_back("Main Window Volume Borders");
-         volumeBordersIndex = labels.size() - 1;
+         volumeBordersCheckBox = ded.addCheckBox("Main Window Volume Borders",
+                                                 false);
       }
    }
    
@@ -2021,31 +2040,23 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
       fiducialFlag = ((bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_RAW) ||
                       (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL));
    }
-   int cellsIndex = -1;
+   QCheckBox* cellsCheckBox = NULL;
    if (fiducialFlag) {
       CellProjectionFile* cf = theMainWindow->getBrainSet()->getCellProjectionFile();
       if (cf->getNumberOfCellProjections() > 0) {
-         labels.push_back("Main Window Cells");
-         cellsIndex = labels.size() - 1;
+         cellsCheckBox = ded.addCheckBox("Main Window Cells", false);
       }
    }
 
-   int fociIndex = -1;
+   QCheckBox* fociCheckBox = NULL;
    if (fiducialFlag) {
       FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
       if (ff->getNumberOfCellProjections() > 0) {
-         labels.push_back("Main Window Foci");
-         fociIndex = labels.size() - 1;
+         fociCheckBox = ded.addCheckBox("Main Window Foci", false);
       }
    }
    
-   std::vector<bool> initChecks(labels.size(), false);
-   QtCheckBoxSelectionDialog cbsd(this,
-                                  "Apply Transformation",
-                                  "",
-                                  labels,
-                                  initChecks);
-   if (cbsd.exec() == QDialog::Accepted) {
+   if (ded.exec() == QDialog::Accepted) {
     
       bool ok = false;
       QString commentString = QInputDialog::getText(this, "Enter Comment Information",
@@ -2066,16 +2077,16 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
       
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
       
-      if (surfaceIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(surfaceIndex)) {
+      if (surfaceCheckBox != NULL) {
+         if (surfaceCheckBox->isChecked()) {
             bms->applyTransformationMatrix(*currentMatrix);
             bms->setToStandardView(0, BrainModelSurface::VIEW_RESET);
             bms->appendToCoordinateFileComment(operationComment);
          }
       }
       
-      if (volumeIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(volumeIndex)) {
+      if (volumeCheckBox != NULL) {
+         if (volumeCheckBox->isChecked()) {
          /*
             TransformationMatrix tm(*currentMatrix);
             float trans[3];
@@ -2109,8 +2120,8 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
          }
       }
       
-      if (contourIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(contourIndex)) {
+      if (contourCheckBox != NULL) {
+         if (contourCheckBox->isChecked()) {
             ContourFile* cf = bmc->getContourFile();
             cf->applyTransformationMatrix(std::numeric_limits<int>::min(),
                                           std::numeric_limits<int>::max(),
@@ -2118,23 +2129,23 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
                                           false);
          }
       }
-      if (contourCellIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(contourCellIndex)) {
+      if (contourCellCheckBox != NULL) {
+         if (contourCellCheckBox->isChecked()) {
             ContourCellFile* ccf = theMainWindow->getBrainSet()->getContourCellFile();
             ccf->applyTransformationMatrix(*currentMatrix);
          }
       }
       
-      if (surfaceVolumeIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(surfaceVolumeIndex)) {
+      if (surfaceVolumeCheckBox != NULL) {
+         if (surfaceVolumeCheckBox->isChecked()) {
             bmsv->applyTransformationMatrix(*currentMatrix);
             bmsv->setToStandardView(0, BrainModelSurface::VIEW_RESET);
             bmsv->appendToCoordinateFileComment(operationComment);
          }
       }
       
-      if (surfaceBordersIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(surfaceBordersIndex)) {
+      if (surfaceBordersCheckBox != NULL) {
+         if (surfaceBordersCheckBox->isChecked()) {
             BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
             bmbs->applyTransformationMatrix(bms, *currentMatrix);
             BrainModelBorderFileInfo* bmbfi = bmbs->getBorderFileInfo(bms->getSurfaceType());
@@ -2148,16 +2159,16 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
          }
       }
       
-      if (volumeBordersIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(volumeBordersIndex)) {
+      if (volumeBordersCheckBox != NULL) {
+         if (volumeBordersCheckBox->isChecked()) {
             BorderFile* bf = theMainWindow->getBrainSet()->getVolumeBorderFile();
             bf->applyTransformationMatrix(*currentMatrix);
             bf->appendToFileComment(operationComment);
          }
       }
       
-      if (cellsIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(cellsIndex)) {
+      if (cellsCheckBox != NULL) {
+         if (cellsCheckBox->isChecked()) {
             CellProjectionFile* cf = theMainWindow->getBrainSet()->getCellProjectionFile();
             cf->applyTransformationMatrix(bms->getCoordinateFile(),
                                           bms->getTopologyFile(),
@@ -2171,8 +2182,8 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
          }
       }
       
-      if (fociIndex >= 0) {
-         if (cbsd.getCheckBoxStatus(fociIndex)) {
+      if (fociCheckBox != NULL) {
+         if (fociCheckBox->isChecked()) {
             FociProjectionFile* ff = theMainWindow->getBrainSet()->getFociProjectionFile();
             ff->applyTransformationMatrix(bms->getCoordinateFile(),
                                           bms->getTopologyFile(),

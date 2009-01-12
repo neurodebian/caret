@@ -70,6 +70,7 @@ CellData::CellData(const QString& nameIn,
    initialize();
    setName(nameIn);
    setXYZ(xIn, yIn, zIn);
+   setSearchXYZ(0.0, 0.0, 0.0);
    setSectionNumber(sectionIn);
    className = classNameIn;
    //if (className.isEmpty()) {
@@ -153,7 +154,7 @@ CellData::readXML(QDomNode& nodeIn) throw (FileException)
             }
          }
          else if (elem.tagName() == tagCellBase) {
-            CellBase::readXML(node);
+            CellBase::readXMLWithDOM(node);
          }
          else {
             std::cout << "WARNING: unrecognized CellData element: "
@@ -750,6 +751,12 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
    const int commentCol = numCols++;
    const int structureCol = numCols++;
    const int classNameCol = numCols++;
+   const int sumsIDNumberCol = numCols++;
+   const int sumsRepeatNumberCol = numCols++;
+   const int sumsParentCellBaseIDCol = numCols++;
+   const int sumsVersionNumberCol = numCols++;
+   const int sumsMSLIDCol = numCols++;
+   const int attributeIDCol = numCols++;
    
    const int studyMetaPubMedCol = numCols++;
    const int studyMetaTableCol = numCols++;
@@ -757,6 +764,8 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
    const int studyMetaFigureCol = numCols++;
    const int studyMetaFigurePanelCol = numCols++;
    const int studyMetaPageNumberCol = numCols++;
+   const int studyMetaPageReferenceNumberCol = numCols++;
+   const int studyMetaPageReferenceSubheaderCol = numCols++;
    
    //
    // Create and add to string table
@@ -776,13 +785,20 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
    ct->setColumnTitle(commentCol, "Comment");
    ct->setColumnTitle(structureCol, "Structure");
    ct->setColumnTitle(classNameCol, "Class Name");
-
+   ct->setColumnTitle(sumsIDNumberCol, "SuMS ID Number");
+   ct->setColumnTitle(sumsRepeatNumberCol, "SuMS Repeat Number");
+   ct->setColumnTitle(sumsParentCellBaseIDCol, "SuMS Parent Cell Base ID");
+   ct->setColumnTitle(sumsVersionNumberCol, "SuMS Version Number");
+   ct->setColumnTitle(sumsMSLIDCol, "SuMS MSLID");
+   ct->setColumnTitle(attributeIDCol, "Attribute ID");
    ct->setColumnTitle(studyMetaPubMedCol, "Study PubMed ID");
    ct->setColumnTitle(studyMetaTableCol, "Study Table Number");
    ct->setColumnTitle(studyMetaTableSubHeaderCol, "Study Table Subheader");
    ct->setColumnTitle(studyMetaFigureCol, "Study Figure Number");
    ct->setColumnTitle(studyMetaFigurePanelCol, "Study Figure Panel");
    ct->setColumnTitle(studyMetaPageNumberCol, "Study Page Number");
+   ct->setColumnTitle(studyMetaPageReferenceNumberCol, "Study Page Reference Number");
+   ct->setColumnTitle(studyMetaPageReferenceSubheaderCol, "Study Page Reference Subheader");
    
    for (int i = 0; i < numCells; i++) {
       const CellData* cd = getCell(i);
@@ -801,6 +817,12 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
       ct->setElement(i, commentCol, cd->getComment());
       ct->setElement(i, structureCol, Structure::convertTypeToString(cd->getCellStructure()));
       ct->setElement(i, classNameCol, cd->getClassName());
+      ct->setElement(i, sumsIDNumberCol, cd->getSumsIDNumber());
+      ct->setElement(i, sumsRepeatNumberCol, cd->getSumsRepeatNumber());
+      ct->setElement(i, sumsParentCellBaseIDCol, cd->getSumsParentCellBaseID());
+      ct->setElement(i, sumsVersionNumberCol, cd->getSumsVersionNumber());
+      ct->setElement(i, sumsMSLIDCol, cd->getSumsMSLID());
+      ct->setElement(i, attributeIDCol, cd->getAttributeID());
       
       const StudyMetaDataLinkSet smdls = cd->getStudyMetaDataLinkSet();
       StudyMetaDataLink smdl;
@@ -822,6 +844,8 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
       ct->setElement(i, studyMetaFigureCol, smdl.getFigureNumber());
       ct->setElement(i, studyMetaFigurePanelCol, smdl.getFigurePanelNumberOrLetter());
       ct->setElement(i, studyMetaPageNumberCol, smdl.getPageNumber());
+      ct->setElement(i, studyMetaPageReferenceNumberCol, smdl.getPageReferencePageNumber());
+      ct->setElement(i, studyMetaPageReferenceSubheaderCol, smdl.getPageReferenceSubHeaderNumber());
    }
 
    //
@@ -849,7 +873,9 @@ sdfstudyInfo[i].writeXML(xmlDoc, rootElement, i);
 void 
 CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& csv) throw (FileException)
 {
+   const QString filenameSaved(filename);
    clear();
+   filename = filenameSaved;
    
    const StringTable* ct = csv.getDataSectionByName("Cells");   
    if (ct == NULL) {
@@ -872,6 +898,12 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
    int commentCol = -1;
    int structureCol = -1;
    int classNameCol = -1;
+   int sumsIDNumberCol = -1;
+   int sumsRepeatNumberCol = -1;
+   int sumsParentCellBaseIDCol = -1;
+   int sumsVersionNumberCol = -1;
+   int sumsMSLIDCol = -1;
+   int attributeIDCol = -1;
    
    int studyMetaPubMedCol = -1;
    int studyMetaTableCol = -1;
@@ -879,6 +911,8 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
    int studyMetaFigureCol = -1;
    int studyMetaFigurePanelCol = -1;
    int studyMetaPageNumberCol = -1;
+   int studyMetaPageReferenceNumberCol = -1;
+   int studyMetaPageReferenceSubheaderCol = -1;
    
    for (int i = 0; i < numCols; i++) {
       const QString columnTitle = ct->getColumnTitle(i).toLower();
@@ -942,6 +976,30 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
       else if (columnTitle == "study page number") {
          studyMetaPageNumberCol = i;
       }
+      else if (columnTitle == "study page reference number") {
+         studyMetaPageReferenceNumberCol = i;
+      }
+      else if (columnTitle == "study page reference subheader") {
+         studyMetaPageReferenceSubheaderCol = i;
+      }
+      else if (columnTitle == "sums id number") {
+         sumsIDNumberCol = i;
+      }
+      else if (columnTitle == "sums repeat number") {
+         sumsRepeatNumberCol = i;
+      }
+      else if (columnTitle == "sums parent cell base id") {
+         sumsParentCellBaseIDCol = i;
+      }
+      else if (columnTitle == "sums version number") {
+         sumsVersionNumberCol = i;
+      }
+      else if (columnTitle == "sums mslid") {
+         sumsMSLIDCol = i;
+      }
+      else if (columnTitle == "attribute id") {
+         attributeIDCol = i;
+      }
    }
    
    for (int i = 0; i < ct->getNumberOfRows(); i++) {
@@ -951,12 +1009,18 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
       int studyNumber = -1;
       QString geography;
       QString area;
-      float size;
+      float size = 1.0;
       QString statistic;
       QString comment;
-      Structure::STRUCTURE_TYPE structure;
+      Structure::STRUCTURE_TYPE structure = Structure::STRUCTURE_TYPE_INVALID;
       QString className;
       StudyMetaDataLink smdl;
+      QString sumsIDNumber = "-1";
+      QString sumsRepeatNumber = "-1";
+      QString sumsParentCellBaseID = "-1";
+      QString sumsVersionNumber = "-1";
+      QString sumsMSLID = "-1";
+      QString attributeID = "-1";
       
       if (xCol >= 0) {
          xyz[0] = ct->getElementAsFloat(i, xCol);
@@ -1008,6 +1072,25 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
             className = "";
          }
       }
+      if (sumsIDNumberCol >= 0) {
+         sumsIDNumber = ct->getElement(i, sumsIDNumberCol);
+      }
+      if (sumsRepeatNumberCol >= 0) {
+         sumsRepeatNumber = ct->getElement(i, sumsRepeatNumberCol);
+      }
+      if (sumsParentCellBaseIDCol >= 0) {
+         sumsParentCellBaseID = ct->getElement(i, sumsParentCellBaseIDCol);
+      }
+      if (sumsVersionNumberCol >= 0) {
+         sumsVersionNumber = ct->getElement(i, sumsVersionNumberCol);
+      }
+      if (sumsMSLIDCol >= 0) {
+         sumsMSLID = ct->getElement(i, sumsMSLIDCol);
+      }
+      if (attributeIDCol >= 0) {
+         attributeID = ct->getElement(i, attributeIDCol);
+      }
+      
       if (studyMetaPubMedCol >= 0) {
          smdl.setPubMedID(ct->getElement(i, studyMetaPubMedCol));
       } 
@@ -1026,6 +1109,12 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
       if (studyMetaPageNumberCol >= 0) {
          smdl.setPageNumber(ct->getElement(i, studyMetaPageNumberCol));
       } 
+      if (studyMetaPageReferenceNumberCol >= 0) {
+         smdl.setPageReferencePageNumber(ct->getElement(i, studyMetaPageReferenceNumberCol));
+      }
+      if (studyMetaPageReferenceSubheaderCol >= 0) {
+         smdl.setPageReferenceSubHeaderNumber(ct->getElement(i, studyMetaPageReferenceSubheaderCol));
+      }
       
       CellData cd;
       cd.setXYZ(xyz);
@@ -1039,10 +1128,16 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
       cd.setComment(comment);
       cd.setCellStructure(structure);
       cd.setClassName(className);
+      cd.setSumsIDNumber(sumsIDNumber);
+      cd.setSumsRepeatNumber(sumsRepeatNumber);
+      cd.setSumsParentCellBaseID(sumsParentCellBaseID);
+      cd.setSumsVersionNumber(sumsVersionNumber);
+      cd.setSumsMSLID(sumsMSLID);
+      cd.setAttributeID(attributeID);
       StudyMetaDataLinkSet smdls;
-      if (smdl.getPubMedID().isEmpty() == false) {
+      //if (smdl.getPubMedID().isEmpty() == false) {
          smdls.addStudyMetaDataLink(smdl);
-      }
+      //}
       cd.setStudyMetaDataLinkSet(smdls);
 
       addCell(cd);

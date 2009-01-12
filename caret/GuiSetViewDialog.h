@@ -26,13 +26,13 @@
 #ifndef __GUI_SET_VIEW_DIALOG_H__
 #define __GUI_SET_VIEW_DIALOG_H__
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 class BrainModel;
 class QDoubleSpinBox;
 
 /// class for setting the view of a surface
-class GuiSetViewDialog : public QtDialog {
+class GuiSetViewDialog : public WuQDialog {
    Q_OBJECT
    
    public:

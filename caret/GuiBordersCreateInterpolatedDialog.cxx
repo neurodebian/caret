@@ -24,6 +24,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QLabel>
@@ -47,7 +48,7 @@
  * constructor.
  */
 GuiBordersCreateInterpolatedDialog::GuiBordersCreateInterpolatedDialog(QWidget* parent)
-   : QtDialogNonModal(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Create Interpolated Borders.");
    
@@ -130,17 +131,21 @@ GuiBordersCreateInterpolatedDialog::GuiBordersCreateInterpolatedDialog(QWidget* 
    //
    // Get the dialogs layout
    //
-   QVBoxLayout* dialogLayout = getDialogLayout();
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addLayout(gridLayout);
    dialogLayout->addWidget(enableMousePushButton);
    dialogLayout->addStretch();
    
    //
-   // Connect the apply and close buttons
+   // Dialog buttons
    //
-   QObject::connect(this, SIGNAL(signalApplyButtonPressed()),
+   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Apply 
+                                                      | QDialogButtonBox::Close);
+   dialogLayout->addWidget(buttonBox);
+   QPushButton* applyButton = buttonBox->button(QDialogButtonBox::Apply);
+   QObject::connect(applyButton, SIGNAL(clicked()),
                     this, SLOT(slotApplyPushButton()));
-   QObject::connect(this, SIGNAL(signalCloseButtonPressed()),
+   QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(close()));
 }
 

@@ -30,25 +30,28 @@
 
 #include <vector>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 #include "VolumeFile.h"
 
 class GuiGraphWidget;
+class GuiStereotaxicSpaceComboBox;
 class GuiStructureComboBox;
 class GuiVolumeSelectionControl;
 class QCheckBox;
 class QComboBox;
+class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QRadioButton;
 class QSlider;
+class GuiSpeciesComboBox;
 class QSpinBox;
 class QStackedWidget;
 class QTextEdit;
 class StatisticHistogram;
 
 /// Dialog for segmenting an anatomy volume
-class GuiVolumeSureFitSegmentationDialog : public QtDialog {
+class GuiVolumeSureFitSegmentationDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -80,9 +83,6 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       /// Perform the segmentation (returns true if an error occurred)
       bool performSegmentation();
          
-      /// Called when species push button pressed
-      void slotSpeciesPushButton();
-      
       /// called to enable/disable selection check boxes
       void slotEnableDisableSelectionCheckBoxes();
       
@@ -110,6 +110,16 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
          HIND_BRAIN_THRESHOLD_LOW
       };
       
+      /// mode for processing volumes
+      enum MODE {
+         /// no mode
+         MODE_NONE,
+         /// segment anatomical volume
+         MODE_ANATOMICAL_VOLUME_SEGMENTATION,
+         /// segmentation post processing
+         MODE_SEMENTATION_VOLUME_POST_PROCESSING
+      };
+      
       /// add a page to the dialog
       void addPage(QWidget* w, const QString& legend);
       
@@ -117,7 +127,7 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       void showPage(QWidget* page, const bool backPushButtonPressed = false);
 
       /// see if the current directory is set to the caret installation directory
-      bool currentDirectoryIsCaretInstalltionDirectory();
+      bool currentDirectoryIsCaretInstallationDirectory();
       
       /// load histogram into graph
       void loadHistogramIntoGraph();
@@ -154,6 +164,18 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       
       /// update the current directory page
       void updateCurrentDirectoryPage();
+      
+      /// mode for processing volumes
+      MODE mode;
+      
+      /// mode anatomical volume segmentation radio button
+      QRadioButton* modeAnatomicalVolumeProcessingRadioButton;
+      
+      /// mode segmentation volume post processing radio button
+      QRadioButton* modeSegmentationVolumeProcessingRadioButton;
+      
+      /// volume selection group box
+      QGroupBox* volumeSelectionGroupBox;
       
       /// the change directory page widget
       QWidget* changeDirectoryPage;
@@ -212,14 +234,23 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       /// estimate peak label
       QLabel* whitePeakLabel;
       
-      /// the species line edit
-      QLineEdit* speciesLineEdit;
+      /// the species combo box
+      GuiSpeciesComboBox* speciesComboBox;
+      
+      /// the stereotaxic space combo box
+      GuiStereotaxicSpaceComboBox* stereotaxicSpaceComboBox;
       
       /// the subject line edit
       QLineEdit* subjectLineEdit;
       
       /// the structure combo box
       GuiStructureComboBox* structureComboBox;
+      
+      /// anaotmical volume options group box  
+      QGroupBox* anatomicalVolumeOptionsGroupBox;
+      
+      /// segmentation volume options group box
+      QGroupBox* segmentationVolumeOptionsGroupBox;
       
       /// disconnect eye check box
       QCheckBox* disconnectEyeCheckBox;
@@ -257,14 +288,26 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       /// generate ellipsoid check box
       QCheckBox* generateEllipsoidSurfaceCheckBox;
       
+      /// generate spherical check box
+      QCheckBox* generateSphericalSurfaceCheckBox;
+      
+      /// generate comp med wall check box
+      QCheckBox* generateCompMedWallSurfaceCheckBox;
+      
       /// generate hull check box
       QCheckBox* generateHullCheckBox;
       
-      /// automatic error correction check box
-      QCheckBox* automaticErrorCorrectionCheckBox;
+      /// volume error correction check box
+      QCheckBox* volumeErrorCorrectionCheckBox;
       
-      /// identify sulci check box
-      QCheckBox* identifySulciCheckBox;
+      /// volume error correction method combo box
+      QComboBox* volumeErrorCorrectionMethodComboBox;
+      
+      /// generate depth, curvature, geography check box
+      QCheckBox* generateDepthCurvatureGeographyCheckBox;
+      
+      /// generate landmark borders check box
+      QCheckBox* generateLandmarkBordersCheckBox;
       
       /// auto save files check box
       QCheckBox* autoSaveFilesCheckBox;
@@ -272,8 +315,11 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       /// label for the volume attributes label
       QLabel* volumeAttributesLabel;
       
-      /// volume selection control
-      GuiVolumeSelectionControl* volumeSelectionControl;
+      /// anatomy volume selection control
+      GuiVolumeSelectionControl* volumeAnatomySelectionControl;
+      
+      /// segmentation volume selection control
+      GuiVolumeSelectionControl* volumeSegmentationSelectionControl;
       
       /// line edit for spec file name
       QLineEdit* specFileNameLineEdit;
@@ -319,6 +365,9 @@ class GuiVolumeSureFitSegmentationDialog : public QtDialog {
       
       /// NIFTI file type radio button
       QRadioButton* fileTypeNiftiRadioButton;
+      
+      /// NIFTI GZIP file type radio button
+      QRadioButton* fileTypeNiftiGzipRadioButton;
       
       /// type of volume files to write
       VolumeFile::FILE_READ_WRITE_TYPE typeOfVolumesToWrite;

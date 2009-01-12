@@ -29,7 +29,7 @@
 
 #include <sstream>
 
-#include "QtDialog.h"
+#include "WuQDialog.h"
 
 #include "DeformationMapFile.h"
 
@@ -129,7 +129,7 @@ class DeformationDataFiles {
 };
 
 /// Dialog for deforming one surface to another
-class GuiSurfaceDeformationDialog : public QtDialog {
+class GuiSurfaceDeformationDialog : public WuQDialog {
    Q_OBJECT
    
    public:

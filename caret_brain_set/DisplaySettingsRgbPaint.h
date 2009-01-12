@@ -30,11 +30,11 @@
 
 #include <vector>
 
-#include "DisplaySettings.h"
+#include "DisplaySettingsNodeAttributeFile.h"
 
 /// DisplaySettingsRgbPaint is a class that maintains parameters for controlling
 /// the display of RGB Paint files.
-class DisplaySettingsRgbPaint : public DisplaySettings {
+class DisplaySettingsRgbPaint : public DisplaySettingsNodeAttributeFile {
    public:
       /// Display Mode
       enum RGB_DISPLAY_MODE {
@@ -53,12 +53,6 @@ class DisplaySettingsRgbPaint : public DisplaySettings {
       
       /// Update any selections due to changes in loaded rgb paint file
       void update();
-      
-      /// Get the selected column
-      int getSelectedColumn(const int model) const;
-      
-      /// Set the selected file index
-      void setSelectedColumn(const int model, const int col);
       
       /// Get the thresholds
       void getThresholds(float& redThresh, float& greenThresh, float& blueThresh) const;
@@ -90,27 +84,14 @@ class DisplaySettingsRgbPaint : public DisplaySettings {
       /// set blue enabled for display
       void setBlueEnabled(const int be) { blueEnabled = be; };
 
-      /// get apply to left and right structures flag
-      bool getApplySelectionToLeftAndRightStructuresFlag() const 
-             { return applySelectionToLeftAndRightStructuresFlag; }
-      
-      /// set apply to left and right structures flag
-      void setApplySelectionToLeftAndRightStructuresFlag(const bool b) 
-             { applySelectionToLeftAndRightStructuresFlag = b; }
-      
       /// apply a scene (set display settings)
       virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage) ;
       
       /// create a scene (read display settings)
-      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected);
-                       
-      /// for node attribute files - all column selections for each surface are the same
-      virtual bool columnSelectionsAreTheSame(const int bm1, const int bm2) const;
-      
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
+       
    private:
-      /// selected column
-      std::vector<int> selectedColumn;
-      
       /// red threshold
       float redThreshold;
       
@@ -131,9 +112,6 @@ class DisplaySettingsRgbPaint : public DisplaySettings {
       
       /// blue enabled for display
       bool blueEnabled;
-      
-      /// apply coloring with corresponding structures
-      bool applySelectionToLeftAndRightStructuresFlag;
 };
 
 #endif

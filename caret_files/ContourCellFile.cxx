@@ -72,5 +72,3 @@ ContourCellFile::importNeurolucidaFile(const NeurolucidaFile& nf) throw (FileExc
       addCell(*(nf.getMarker(i)));
    }
 }
-
-      

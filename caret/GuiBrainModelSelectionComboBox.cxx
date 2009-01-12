@@ -32,6 +32,35 @@
 
 /**
  * Constructor.
+ */
+GuiBrainModelSelectionComboBox::GuiBrainModelSelectionComboBox(const int options,
+                                                               const QString& addNewNameIn,
+                                                               QWidget* parent)
+   : QComboBox(parent)
+{
+   showContours = (options & OPTION_SHOW_CONTOURS);
+   showSurfaces = (options & OPTION_SHOW_SURFACES_ALL);
+   showVolumes  = (options & OPTION_SHOW_VOLUMES);
+   if (options & OPTION_SHOW_ADD_NEW) {
+      addNewName = addNewNameIn;
+   }
+   addNewIndex  = -1;
+   flatSurfacesOnly = (options & OPTION_SHOW_SURFACES_FLAT);
+   fiducialSurfacesOnly = (options & OPTION_SHOW_SURFACES_FIDUCIAL);
+   hullSurfacesOnly = (options & OPTION_SHOW_SURFACES_HULL);
+   if (flatSurfacesOnly     ||
+       fiducialSurfacesOnly ||
+       hullSurfacesOnly) {
+      showSurfaces = true;
+   }
+   
+   limitToStructure = Structure::STRUCTURE_TYPE_INVALID;
+   
+   updateComboBox();
+}
+
+/**
+ * Constructor.
  * If "addNewName" has 1 or more characters, it is added at the end of the combo box.
  */
 GuiBrainModelSelectionComboBox::GuiBrainModelSelectionComboBox(const bool showContoursIn, 
@@ -87,7 +116,7 @@ GuiBrainModelSelectionComboBox::updateComboBox()
    BrainModel* currentBrainModel = NULL;
    int defaultItemIndex = -1;
    if (getAddNewSelected()) {
-      defaultItemIndex = ADD_NEW_INDEX;
+      //defaultItemIndex = ADD_NEW_INDEX;
    }
    else {
       if (count() > 0) {
@@ -110,6 +139,7 @@ GuiBrainModelSelectionComboBox::updateComboBox()
    //
    // load models into the combo box
    //
+   int firstValidModelIndex = -1;
    const int numModels = brainSet->getNumberOfBrainModels();
    for (int i = 0; i < numModels; i++) {
       BrainModel* bm = brainSet->getBrainModel(i);
@@ -155,7 +185,21 @@ GuiBrainModelSelectionComboBox::updateComboBox()
                      case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
                         break;
                      case Structure::STRUCTURE_TYPE_CEREBELLUM:
+                        if (bms->getStructure().getType() != Structure::STRUCTURE_TYPE_CEREBELLUM) {
+                           useIt = false;
+                        }
                         break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+                        break;
+                     case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+                     case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+                     case Structure::STRUCTURE_TYPE_ALL:
                      case Structure::STRUCTURE_TYPE_INVALID:
                         break;
                   }
@@ -173,9 +217,22 @@ GuiBrainModelSelectionComboBox::updateComboBox()
          if (bm == currentBrainModel) {
             defaultItemIndex = i;
          }
+         if (firstValidModelIndex < 0) {
+            firstValidModelIndex = i;
+         }
          addItem(bm->getDescriptiveName());
          brainModelIndices.push_back(i);
          brainModelPointers.push_back(bm);
+      }
+   }
+   
+   //
+   // See if there is a default item
+   //
+   if (defaultItemIndex < 0) {
+      if ((firstValidModelIndex >= 0) &&
+          (firstValidModelIndex < count())) {
+         defaultItemIndex = firstValidModelIndex;
       }
    }
    
@@ -188,6 +245,9 @@ GuiBrainModelSelectionComboBox::updateComboBox()
       addItem(addNewName);
       brainModelIndices.push_back(ADD_NEW_INDEX);
       brainModelPointers.push_back(NULL);
+      if (defaultItemIndex < 0) {
+         defaultItemIndex = addNewIndex;
+      }
    }
    
    //
@@ -324,7 +384,7 @@ GuiBrainModelSelectionComboBox::setSelectedBrainModel(const BrainModel* bm)
  * set the selected brain model to the first surface of the specified type.
  */
 void 
-GuiBrainModelSelectionComboBox::setSelectedBrainModelToSurfaceOfType(
+GuiBrainModelSelectionComboBox::setSelectedBrainModelToLastSurfaceOfType(
                                         const BrainModelSurface::SURFACE_TYPES st)
 {
    if (st == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
@@ -345,5 +405,35 @@ GuiBrainModelSelectionComboBox::setSelectedBrainModelToSurfaceOfType(
    }
 }
 
+/**
+ * set the selected brain model to the first surface of type and structure.
+ */
+void 
+GuiBrainModelSelectionComboBox::setSelectedBrainModelToFirstSurfaceOfType(
+                                 const BrainModelSurface::SURFACE_TYPES surfaceType,
+                                 const Structure::STRUCTURE_TYPE structureType)
+{
+   for (int i = 0; i < static_cast<int>(brainModelIndices.size()); i++) {
+      const int modelNumber = brainModelIndices[i];
+      BrainModel* bm = brainModelPointers[i];
+      if (bm != NULL) {
+         if (bm->getModelType() == BrainModel::BRAIN_MODEL_SURFACE) {
+            BrainModelSurface* bms = dynamic_cast<BrainModelSurface*>(bm);
+            if (bms->getSurfaceType() == surfaceType) {
+               if (structureType != Structure::STRUCTURE_TYPE_INVALID) {
+                  if (bms->getStructure().getType() == structureType) {
+                     setSelectedBrainModelIndex(modelNumber);
+                     break;
+                  }
+               }
+               else {
+                  setSelectedBrainModelIndex(modelNumber);
+                  break;
+               }
+            }
+         }
+      }
+   }
+}      
 
       

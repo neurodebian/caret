@@ -50,7 +50,7 @@
  * Constructor.
  */
 GuiVolumeResizingDialog::GuiVolumeResizingDialog(QWidget* parent)
-   : QtDialog(parent, false)
+   : WuQDialog(parent)
 {   
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    int slices[6];
@@ -188,13 +188,13 @@ GuiVolumeResizingDialog::GuiVolumeResizingDialog(QWidget* parent)
    dialogLayout->addLayout(buttonsLayout);
    
    //
-   // OK button
+   // Apply button
    //
-   QPushButton* okButton = new QPushButton("OK");
-   okButton->setAutoDefault(false);
-   buttonsLayout->addWidget(okButton);
-   QObject::connect(okButton, SIGNAL(clicked()),
-                    this, SLOT(slotOKButton()));
+   QPushButton* applyButton = new QPushButton("Apply");
+   applyButton->setAutoDefault(false);
+   buttonsLayout->addWidget(applyButton);
+   QObject::connect(applyButton, SIGNAL(clicked()),
+                    this, SLOT(slotApplyButton()));
     
    //
    // Reset button
@@ -206,15 +206,15 @@ GuiVolumeResizingDialog::GuiVolumeResizingDialog(QWidget* parent)
                     this, SLOT(slotResetPushButton()));
                     
    //
-   // Cancel button 
+   // Close button 
    //
-   QPushButton* cancelButton = new QPushButton("Cancel");
-   cancelButton->setAutoDefault(false);
-   buttonsLayout->addWidget(cancelButton);
-   QObject::connect(cancelButton, SIGNAL(clicked()),
+   QPushButton* closeButton = new QPushButton("Close");
+   closeButton->setAutoDefault(false);
+   buttonsLayout->addWidget(closeButton);
+   QObject::connect(closeButton, SIGNAL(clicked()),
                     this, SLOT(close()));
                     
-   QtUtilities::makeButtonsSameSize(okButton, resetButton, cancelButton);
+   QtUtilities::makeButtonsSameSize(applyButton, resetButton, closeButton);
 }
 
 /**
@@ -231,7 +231,7 @@ void
 GuiVolumeResizingDialog::show()
 {
    updateDialog(false);
-   QtDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -352,10 +352,10 @@ GuiVolumeResizingDialog::updateDialog(const bool fileChangeUpdateFlag)
 }
 
 /**
- * Called when OK button pressed.
+ * Called when Apply button pressed.
  */
 void 
-GuiVolumeResizingDialog::slotOKButton()
+GuiVolumeResizingDialog::slotApplyButton()
 {
    DisplaySettingsVolume* dsv = theMainWindow->getBrainSet()->getDisplaySettingsVolume();
    
@@ -368,7 +368,7 @@ GuiVolumeResizingDialog::slotOKButton()
          VolumeFile* vf = bmv->getUnderlayVolumeFile();
          if (vf != NULL) {
             QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-            const int slices[6] = {
+            int slices[6] = {
                xMinSpinBox->value(),
                xMaxSpinBox->value(),
                yMinSpinBox->value(),
@@ -378,6 +378,10 @@ GuiVolumeResizingDialog::slotOKButton()
             };
             dsv->setCroppingSlices(slices);
             ParamsFile* pf = theMainWindow->getBrainSet()->getParamsFile();
+            
+            int oldDim[3];
+            vf->getDimensions(oldDim);
+            
             vf->resize(slices, pf);
             
             if (useXyzMinForParametersCheckBox->isChecked()) {
@@ -399,13 +403,34 @@ GuiVolumeResizingDialog::slotOKButton()
                theMainWindow->fileModificationUpdate(fm);
             }
             
+            int dim[3];
+            vf->getDimensions(dim);
+            if (dim[0] != oldDim[0]) {
+               slices[0] = 0;
+               slices[1] = dim[0] - 1;
+            }
+            if (dim[1] != oldDim[1]) {
+               slices[2] = 0;
+               slices[3] = dim[1] - 1;
+            }
+            if (dim[2] != oldDim[2]) {
+               slices[4] = 0;
+               slices[5] = dim[2] - 1;
+            }
+            dsv->setCroppingSlices(slices);
+            xMinSpinBox->setValue(slices[0]);
+            xMaxSpinBox->setValue(slices[1]);
+            yMinSpinBox->setValue(slices[2]);
+            yMaxSpinBox->setValue(slices[3]);
+            zMinSpinBox->setValue(slices[4]);
+            zMaxSpinBox->setValue(slices[5]);
+            
             bmv->resetViewingTransform(0);
             GuiToolBar::updateAllToolBars(false);
             GuiBrainModelOpenGL::updateAllGL();
             QApplication::restoreOverrideCursor();
          }
       }
-      close();
    }
 }
 

@@ -42,6 +42,8 @@
 #include <QDir>
 
 #include "BorderFile.h"
+#include "BorderProjectionFile.h"
+#include "BrainModelBorderSet.h"
 #include "BrainModelSurfaceDistortion.h"
 #include "BrainModelSurfaceFlatHexagonalSubsample.h"
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
@@ -63,17 +65,20 @@ BrainModelSurfaceMultiresolutionMorphing::BrainModelSurfaceMultiresolutionMorphi
                                              BrainSet* brainSetIn,
                                              BrainModelSurface* referenceSurfaceIn,
                                              BrainModelSurface* morphingSurfaceIn,
-               const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn)
-   : BrainModelAlgorithm(brainSetIn)
+               const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingSurfaceTypeIn,
+               const BorderProjection* centralSulcusBorderProjectionIn)
+   : BrainModelAlgorithm(brainSetIn),
+     referenceSurface(referenceSurfaceIn),
+     morphingSurface(morphingSurfaceIn),
+     morphingSurfaceType(morphingSurfaceTypeIn),
+     centralSulcusBorderProjection(centralSulcusBorderProjectionIn)
 {   
+   autoSaveFilesFlag = true;
+   
    currentCycle = std::numeric_limits<int>::max();
    
    brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_UNKNOWN;
    
-   referenceSurface = referenceSurfaceIn;
-   morphingSurface  = morphingSurfaceIn;
-   
-   morphingSurfaceType = morphingSurfaceTypeIn;
    
    for (int i = 0; i < MAXIMUM_NUMBER_OF_CYCLES; i++) {
       switch (morphingSurfaceType) {
@@ -647,20 +652,20 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
             tempt.writeFile("debug_morph_input_topology.topo");
             
             SpecFile sp;
-            sp.addToSpecFile(SpecFile::fiducialCoordFileTag, 
+            sp.addToSpecFile(SpecFile::getFiducialCoordFileTag(), 
                              tempr.getCoordinateFile()->getFileName(), "", false);
             
             switch (morphingSurfaceType) {
                case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
-                  sp.addToSpecFile(SpecFile::flatCoordFileTag,
+                  sp.addToSpecFile(SpecFile::getFlatCoordFileTag(),
                                    tempm.getCoordinateFile()->getFileName(), "", false);
-                  sp.addToSpecFile(SpecFile::cutTopoFileTag,
+                  sp.addToSpecFile(SpecFile::getCutTopoFileTag(),
                                    tempt.getFileName(), "", false);
                   break;
                case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
-                  sp.addToSpecFile(SpecFile::sphericalCoordFileTag, 
+                  sp.addToSpecFile(SpecFile::getSphericalCoordFileTag(), 
                                    tempm.getCoordinateFile()->getFileName(), "", false);
-                  sp.addToSpecFile(SpecFile::closedTopoFileTag,
+                  sp.addToSpecFile(SpecFile::getClosedTopoFileTag(),
                                    tempt.getFileName(), "", false);
                   break;
             }
@@ -894,12 +899,18 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
             //<< "."
             << outputFileNameSuffix.toAscii().constData()
             << std::ends;
-         try {
-            CoordinateFile* cf = morphingSurface->getCoordinateFile();
-            brainSet->writeCoordinateFile(str.str().c_str(), morphingSurface->getSurfaceType(), cf, false);    
+         if (autoSaveFilesFlag) {
+            try {
+               CoordinateFile* cf = morphingSurface->getCoordinateFile();
+               brainSet->writeCoordinateFile(str.str().c_str(), morphingSurface->getSurfaceType(), cf, true);    
+            }
+            catch (FileException& e) {
+               throw BrainModelAlgorithmException(e.whatQString());
+            }
          }
-         catch (FileException& e) {
-            throw BrainModelAlgorithmException(e.whatQString());
+         else {
+            CoordinateFile* cf = morphingSurface->getCoordinateFile();
+            cf->setFileName(str.str().c_str());
          }
          
          // if flat surface 
@@ -910,7 +921,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
             //
             morphingSurface->popCoordinates();
          }
-         
+                  
          //
          // If doing flat registration and smoothing of flat surface overlap 
          // enabled and doing the last cycle
@@ -957,17 +968,22 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                   //<< "."
                   << outputFileNameSuffix.toAscii().constData()
                   << std::ends;
-               try {
-                  brainSet->writeCoordinateFile(str.str().c_str(), morphingSurface->getSurfaceType(), cf, false);    
+               if (autoSaveFilesFlag) {
+                  try {
+                     brainSet->writeCoordinateFile(str.str().c_str(), morphingSurface->getSurfaceType(), cf, false);    
+                  }
+                  catch (FileException& e) {
+                     throw BrainModelAlgorithmException(e.whatQString());
+                  }
                }
-               catch (FileException& e) {
-                  throw BrainModelAlgorithmException(e.whatQString());
+               else {
+                  cf->setFileName(str.str().c_str());
                }
                
                //
                // Measure the overlap smoothed surface
                //
-               measureSurface(5000, (timer.elapsed() * 0.001));
+               measureSurface(1000, (timer.elapsed() * 0.001));
                
                //
                // if flat surface 
@@ -976,7 +992,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                   //
                   // Restore the coordinates
                   //
-                  morphingSurface->popCoordinates();
+                  smoothingSurface->popCoordinates();
                }
             }
             else {
@@ -991,9 +1007,65 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
             //
             // Add the coordinate file to the spec file
             //
-            brainSet->addToSpecFile(
-               BrainModelSurface::getCoordSpecFileTagFromSurfaceType(morphingSurface->getSurfaceType()),
-               morphingSurface->getFileName());
+            if (autoSaveFilesFlag) {
+               brainSet->addToSpecFile(
+                  BrainModelSurface::getCoordSpecFileTagFromSurfaceType(morphingSurface->getSurfaceType()),
+                  morphingSurface->getFileName());
+            }
+               
+            //
+            // If surface should be aligned
+            //
+            if (centralSulcusBorderProjection != NULL) {
+               if (centralSulcusBorderProjection->getNumberOfLinks() > 1) {
+                  const bool flatFlag =
+                     (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT);
+                  BrainModelSurface* alignmentSurface = new BrainModelSurface(*morphingSurface);
+                  alignmentSurface->alignToStandardOrientation(referenceSurface,
+                                                               centralSulcusBorderProjection,
+                                                               false,
+                                                               false);
+                  brainSet->addBrainModel(alignmentSurface);
+                  
+                  if (flatFlag) {
+                     alignmentSurface->scaleSurfaceToArea(referenceSurfaceArea, true);
+                  }
+
+                  const QString alignmentComment =
+                     "\nAligned to Standard Orientation using "
+                     + centralSulcusBorderProjection->getName()
+                     + " from "
+                     + brainSet->getBorderSet()->getBorderProjectionFileInfo()->getFileName()
+                     + ".\n";
+                  CoordinateFile* cf = alignmentSurface->getCoordinateFile();
+                  cf->appendToFileComment(alignmentComment);
+                  
+                  const QString name(
+                       outputFileNamePrefix
+                     + (flatFlag
+                        ? "FLAT_ALIGNED"
+                        : "SPHERE_ALIGNED")
+                     + outputFileNameSuffix);
+                  if (autoSaveFilesFlag) {
+                     try {
+                        brainSet->writeCoordinateFile(name, alignmentSurface->getSurfaceType(), cf, true);    
+                     }
+                     catch (FileException& e) {
+                        throw BrainModelAlgorithmException(e.whatQString());
+                     }
+                  }
+                  else {
+                     cf->setFileName(name);
+                  }
+                  
+                  morphingSurface = alignmentSurface;
+                  
+                  //
+                  // Measure the overlap smoothed surface
+                  //
+                  measureSurface(2000, (timer.elapsed() * 0.001));
+               }
+            }
          }
          
          //
@@ -1041,15 +1113,22 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                if (std::find(surfacesToScale.begin(), surfacesToScale.end(), bms) 
                   != surfacesToScale.end()) {
                   bms->scaleSurfaceToArea(referenceSurfaceArea, true);
+                  
+                  if (autoSaveFilesFlag) {
+                     CoordinateFile* cf = bms->getCoordinateFile();
+                     brainSet->writeCoordinateFile(cf->getFileName(),
+                                                   bms->getSurfaceType(),
+                                                   cf);
+                  }
                }
             }  
             CoordinateFile* cf = bms->getCoordinateFile();
             if (i < static_cast<int>(brainModelModified.size())) {
                   cf->setModifiedCounter(brainModelModified[i]);
             }
-            else {
-                  cf->clearModified();
-            }
+            //else {
+            //      cf->clearModified();
+            //}
          }
       }
    }
@@ -1081,7 +1160,10 @@ BrainModelSurfaceMultiresolutionMorphing::measureSurface(const int cycleNumber,
    }
    else {
       std::ostringstream str;
-      if (cycleNumber > 1000) {
+      if (cycleNumber == 2000) {
+         str << "Aligned";
+      }
+      else if (cycleNumber == 1000) {
          str << "Overlap Smoothed";
       }
       else {
@@ -1099,6 +1181,8 @@ BrainModelSurfaceMultiresolutionMorphing::measureSurface(const int cycleNumber,
    BrainModelSurfaceDistortion bmsd(brainSet, morphingSurface, referenceSurface,
                                     morphingSurface->getTopologyFile(), 
                                     &shapeMeasurementsFile,
+                                    BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW,
+                                    BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW,
                                     arealDistortName,
                                     linearDistortName);
    bmsd.execute();
@@ -1391,13 +1475,13 @@ BrainModelSurfaceMultiresolutionMorphing::writeMultiresolutionSurfaces(std::vect
             switch(morphingSurfaceType) {
                case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
                   bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                                  SpecFile::flatBorderFileTagName);
-                  bs->addToSpecFile(SpecFile::flatBorderFileTag, borderFileName);
+                                  SpecFile::getFlatBorderFileTagName());
+                  bs->addToSpecFile(SpecFile::getFlatBorderFileTag(), borderFileName);
                   break;
                case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
                   bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                                  SpecFile::sphericalBorderFileTagName);
-                  bs->addToSpecFile(SpecFile::sphericalBorderFileTag, borderFileName);
+                                  SpecFile::getSphericalBorderFileTagName());
+                  bs->addToSpecFile(SpecFile::getSphericalBorderFileTag(), borderFileName);
                   break;
             }
             bf.writeFile(borderFileName);
@@ -1647,11 +1731,11 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
          BorderFile bf(flatSurface->getTopologyFile(), flatSurface->getCoordinateFile());
          if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT) {
             bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                            SpecFile::flatBorderFileTagName);
+                            SpecFile::getFlatBorderFileTagName());
          }
          else {
             bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                            SpecFile::sphericalBorderFileTagName);
+                            SpecFile::getSphericalBorderFileTagName());
          }
          bf.writeFile(borderFileName);
          intermediateFiles.push_back(borderFileName);
@@ -1732,11 +1816,11 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
                   BorderFile bf(flatSurface->getTopologyFile(), flatSurface->getCoordinateFile());
                   if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT) {
                      bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                                    SpecFile::flatBorderFileTagName);
+                                    SpecFile::getFlatBorderFileTagName());
                   }
                   else {
                      bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                                    SpecFile::sphericalBorderFileTagName);
+                                    SpecFile::getSphericalBorderFileTagName());
                   }
                   bf.writeFile(borderFileName);
                   intermediateFiles.push_back(borderFileName);
@@ -1945,7 +2029,7 @@ BrainModelSurfaceMultiresolutionMorphing::flatUpsample(BrainSet* fromBrain, Brai
        //
        std::ostringstream ostr;
        ostr << brainSet->getCaretHomeDirectory().toAscii().constData()
-            << "/CONSTRUCT.SPHERE/"
+            << "/data_files/CONSTRUCT.SPHERE/"
             << "sphere.v5."
             << lvl
             << ".spec";

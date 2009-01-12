@@ -91,6 +91,13 @@ BrainModelVolumeToSurfaceMapperPALS::execute() throw (BrainModelAlgorithmExcepti
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
       case Structure::STRUCTURE_TYPE_INVALID:
          throw BrainModelAlgorithmException("Structure must be left or right.");
          break;

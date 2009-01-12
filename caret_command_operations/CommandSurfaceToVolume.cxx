@@ -91,7 +91,8 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "The output volume file must exist and it must be in the \n"
        + indent9 + "same stereotaxic space as the surface.  A volume file may\n"
-       + indent9 + "be created by using the \"-volume-create\" command.\n"
+       + indent9 + "be created by using the \"-volume-create\" or \n"
+       + indent9 + "\"-volume-create-in-stereotaxic-space\" commands.\n"
        + indent9 + "\n"
        + indent9 + "The default inner boundary, outer boundar, and step size\n"
        + indent9 + "are -1.5, 1.5, and 0.5 respectively.\n"
@@ -100,6 +101,7 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "number of the column, which starts at one, or the name of\n"
        + indent9 + "the column.  If a name contains spaces, it must be \n"
        + indent9 + "enclosed in double quotes.  Name has priority over number.\n"
+       + indent9 + "\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -158,15 +160,15 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
    //
    SpecFile specFile;
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, topologyFileName, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), topologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, coordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), coordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    int inputDataFileColumnNumber = -1;
    BrainModelSurfaceToVolumeConverter::CONVERSION_MODE conversionMode;
    if (nodeAttributeFileName.endsWith(SpecFile::getMetricFileExtension())) {
-      specFile.addToSpecFile(SpecFile::metricFileTag, nodeAttributeFileName, 
+      specFile.addToSpecFile(SpecFile::getMetricFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE;
       
@@ -175,7 +177,7 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       inputDataFileColumnNumber = file.getColumnFromNameOrNumber(nodeAttributeColumnIdentifier, false);
    }
    else if (nodeAttributeFileName.endsWith(SpecFile::getPaintFileExtension())) {
-      specFile.addToSpecFile(SpecFile::paintFileTag, nodeAttributeFileName, 
+      specFile.addToSpecFile(SpecFile::getPaintFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT;
       
@@ -184,7 +186,7 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       inputDataFileColumnNumber = file.getColumnFromNameOrNumber(nodeAttributeColumnIdentifier, false);
    }
    else if (nodeAttributeFileName.endsWith(SpecFile::getSurfaceShapeFileExtension())) {
-      specFile.addToSpecFile(SpecFile::surfaceShapeFileTag, nodeAttributeFileName, 
+      specFile.addToSpecFile(SpecFile::getSurfaceShapeFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE;
       

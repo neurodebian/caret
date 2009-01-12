@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include "BorderProjectionFile.h"
 #include "BrainModelSurfaceMultiresolutionMorphing.h"
 #include "BrainSet.h"
 #include "CommandSurfaceSphericalMultiResMorphing.h"
@@ -59,6 +60,7 @@ CommandSurfaceSphericalMultiResMorphing::getScriptBuilderParameters(ScriptBuilde
    paramsOut.addFile("Fiducial Coordinate File Name", FileFilters::getCoordinateFiducialFileFilter());
    paramsOut.addFile("Spherical Coordinate File Name", FileFilters::getCoordinateSphericalFileFilter());
    paramsOut.addFile("ClosedTopology File Name", FileFilters::getTopologyClosedFileFilter());
+   paramsOut.addVariableListOfParameters("Options");
 }
 
 /**
@@ -74,8 +76,15 @@ CommandSurfaceSphericalMultiResMorphing::getHelpInformation() const
        + indent9 + "<fiducial-coordinate-file-name>\n"
        + indent9 + "<spherical-coordinate-file-name>\n"
        + indent9 + "<closed-topology-file-name>\n"
+       + indent9 + "[-ces-borderprojection-file  \n"
+       + indent9 + "   <border-projection-file-name>  \n"
+       + indent9 + "   <central-sulcus-border-name> ]\n"
        + indent9 + "\n"
        + indent9 + "Peform spherical multi-resolution morphing (distortion correction)\n"
+       + indent9 + "\n"
+       + indent9 + "If a border projection file and the name of the central\n"
+       + indent9 + "sulcus border are provided, the surface will be aligned\n"
+       + indent9 + "to standard orientation.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -99,7 +108,21 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
       parameters->getNextParameterAsString("Spherical Coordinate File Name");
    const QString closedTopologyFileName =
       parameters->getNextParameterAsString("Closed Topology File Name");
-   checkForExcessiveParameters();
+      
+   QString borderProjectionFileName;
+   QString centralSulcusBorderName;
+   while (parameters->getParametersAvailable()) {
+      const QString paramName(parameters->getNextParameterAsString("opt-param"));
+      if (paramName == "-ces-borderprojection-file") {
+         borderProjectionFileName = 
+            parameters->getNextParameterAsString("Border Projection File Name");
+         centralSulcusBorderName = 
+            parameters->getNextParameterAsString("Central Sulcus Border Name");
+      }
+      else {
+         throw CommandException("Unrecognized optional parameter: " + paramName);
+      }
+   }
    
    //
    // Read spec file
@@ -111,11 +134,11 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
    // Set the selected files
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, closedTopologyFileName, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), closedTopologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, fiducialCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), fiducialCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::sphericalCoordFileTag, sphericalCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getSphericalCoordFileTag(), sphericalCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    //
@@ -144,12 +167,34 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
    }
    
    //
+   // Read the border projection file
+   //
+   BorderProjection centralSulcusBorderProjection;
+   if (borderProjectionFileName.isEmpty() == false) {
+      BorderProjectionFile borderProjectionFile;
+      borderProjectionFile.readFile(borderProjectionFileName);
+      const BorderProjection* cesBP =
+         borderProjectionFile.getFirstBorderProjectionByName(centralSulcusBorderName);
+      if (cesBP != NULL) {
+         centralSulcusBorderProjection = *cesBP;
+      }
+      else {
+         throw CommandException("Unable to find border projection named \""
+                                + centralSulcusBorderName
+                                + "\" in border projection file \""
+                                + borderProjectionFileName
+                                + "\".");
+      }
+   }
+      
+   //
    // Do flat multiresolution morphing
    //
    BrainModelSurfaceMultiresolutionMorphing bmsmm(&brainSet,
                                                   fiducialSurface,
                                                   sphericalSurface,
-                                                  BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL);
+                                                  BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL,
+                                                  &centralSulcusBorderProjection);
    bmsmm.execute();   
    
    std::cout << "cycle                "
