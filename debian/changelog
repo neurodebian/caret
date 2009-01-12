@@ -1,4 +1,10 @@
-caret (5.6~dfsg.1-1) unstable; urgency=low
+caret (5.6.1~dfsg.1-1) unstable; urgency=low
+
+  * New Upstream Version.
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Mon, 12 Jan 2009 12:53:27 +0100
+
+caret (5.6~dfsg.1-1) UNRELEASED; urgency=low
 
   * New upstream version.
   * Do not install link for caret_edit manpage, since the binary is not
