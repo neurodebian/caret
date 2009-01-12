@@ -1,8 +1,12 @@
 caret (5.6.1~dfsg.1-1) unstable; urgency=low
 
   * New Upstream Version.
+  * Added 'DM-Upload-Allowed: yes' to debian/control.
+  * Minimized GCC compatibility-related Debian diff. Upstream applied slightly
+    modified patch.
+  * Fixed LD_LIBRARY_PATH setting in dh_shlibdeps call in debian/rules.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Mon, 12 Jan 2009 12:53:27 +0100
+ -- Michael Hanke <michael.hanke@gmail.com>  Mon, 12 Jan 2009 14:26:01 +0100
 
 caret (5.6~dfsg.1-1) UNRELEASED; urgency=low
 
