@@ -35,6 +35,7 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn,
                                    const float originIn[3],
                                    const float voxelSizeIn[3])
 {
+   reset();
    name = nameIn;
    for (int i = 0; i < 3; i++) {
       dimensions[i] = dimensionsIn[i];
@@ -48,6 +49,7 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn,
  */
 StereotaxicSpace::StereotaxicSpace(const QString& nameIn)
 {
+   reset();
    setDataFromSpace(getSpaceFromName(nameIn));
 }
       
@@ -56,7 +58,17 @@ StereotaxicSpace::StereotaxicSpace(const QString& nameIn)
  */
 StereotaxicSpace::StereotaxicSpace(const SPACE spaceIn)
 {
+   reset();
    setDataFromSpace(spaceIn);
+}
+
+/**
+ * set data from space name.
+ */
+void 
+StereotaxicSpace::setDataFromSpaceName(const QString& spaceNameIn)
+{
+   setDataFromSpace(getSpaceFromName(spaceNameIn));
 }
 
 /**
@@ -281,9 +293,9 @@ StereotaxicSpace::setData(const QString& nameIn,
    dimensions[0] = dimX;
    dimensions[1] = dimY;
    dimensions[2] = dimZ;
-   origin[0]     = originX;
-   origin[1]     = originY;
-   origin[2]     = originZ;
+   origin[0]     = originX + (voxSizeX * 0.5);
+   origin[1]     = originY + (voxSizeY * 0.5);
+   origin[2]     = originZ + (voxSizeZ * 0.5);
    voxelSize[0]  = voxSizeX;
    voxelSize[1]  = voxSizeY;
    voxelSize[2]  = voxSizeZ;
@@ -294,6 +306,23 @@ StereotaxicSpace::setData(const QString& nameIn,
  */
 StereotaxicSpace::StereotaxicSpace()
 {
+   reset();
+}
+                       
+/**
+ * destructor.
+ */
+StereotaxicSpace::~StereotaxicSpace()
+{
+}
+
+/**
+ * reset.
+ */
+void 
+StereotaxicSpace::reset()
+{
+   space = SPACE_UNKNOWN;
    name = "";
    dimensions[0] = 0;
    dimensions[1] = 0;
@@ -304,13 +333,6 @@ StereotaxicSpace::StereotaxicSpace()
    voxelSize[0]  = 0.0;
    voxelSize[1]  = 0.0;
    voxelSize[2]  = 0.0;
-}
-                       
-/**
- * destructor.
- */
-StereotaxicSpace::~StereotaxicSpace()
-{
 }
 
 /**

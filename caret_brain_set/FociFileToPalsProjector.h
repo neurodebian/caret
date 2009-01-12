@@ -38,6 +38,7 @@ class FociProjectionFile;
 class BrainModelSurfacePointProjector;
 class BrainSet;
 class MapFmriAtlasSpecFileInfo;
+class StudyMetaDataFile;
 
 /// This class is used to project a FocusFile to a BrainModelSurface and store the 
 /// results in a cell projection file.
@@ -46,6 +47,7 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       /// Constructor
       FociFileToPalsProjector(BrainSet* brainSetIn,
                               FociProjectionFile* fociProjectionFileIn,
+                              const StudyMetaDataFile* studyMetaDataFileIn,
                               const int firstFocusIndexIn,
                               const int lastFocusIndexIn,
                               const float projectOntoSurfaceAboveDistanceIn,
@@ -59,7 +61,13 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       
       /// project the foci
       void execute() throw (BrainModelAlgorithmException);
-              
+        
+      /// default cutoff for distance to cerebral cortex
+      static float getDefaultCerebralCutoffDistance() { return 2.0; }
+      
+      /// default cutoff for distance to cerebellum
+      static float getDefaultCerebellumCutoffDistance() { return 4.0; }
+      
       /// set the index of the first focus to project
       void setFirstFocusIndex(const int firstFocusIndexIn,
                               const int lastFocusIndexIn);
@@ -139,6 +147,9 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       // the file that is to be projected
       FociProjectionFile* fociProjectionFile;
       
+      // the study metadata file
+      const StudyMetaDataFile* studyMetaDataFile;
+      
       // the first focus that is to be projected
       int firstFocusIndex;
       
@@ -146,14 +157,11 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       int lastFocusIndex;
       
       // project onto surface distance
-      float projectOntoSurfaceAboveDistance;
+      const float projectOntoSurfaceAboveDistance;
       
       // project onto surface flag
-      bool projectOntoSurfaceFlag;
+      const bool projectOntoSurfaceFlag;
       
-      /// atlases available for mapping foci
-      std::vector<MapFmriAtlasSpecFileInfo> availableAtlases;
-
       /// project to cerebellum flag
       bool projectToCerebellumFlag;
                                     
@@ -163,6 +171,9 @@ class FociFileToPalsProjector : public BrainModelAlgorithm {
       /// cerebellum cutoff
       float cerebellumCutoff;
       
+      /// atlases available for mapping foci
+      std::vector<MapFmriAtlasSpecFileInfo> availableAtlases;
+
       /// atlases need to be loaded flag
       bool atlasesDirectoryLoadedFlag;
 

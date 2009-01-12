@@ -313,6 +313,8 @@ static const QString metricOverlayScaleUser("overlay-scale-user");
 void 
 DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
@@ -441,8 +443,10 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
  */
 void 
 DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    MetricFile* mf = brainSet->getMetricFile();
    
    if (onlyIfSelected) {
@@ -519,4 +523,3 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
    
    scene.addSceneClass(sc);
 }
- 

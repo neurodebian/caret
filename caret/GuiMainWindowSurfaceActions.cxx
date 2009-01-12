@@ -35,6 +35,7 @@
 #include <QDoubleSpinBox>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QRadioButton>
 
 #include "BorderFile.h"
 #include "BrainModelBorderSet.h"
@@ -63,6 +64,7 @@
 #include "GuiBrainModelOpenGL.h"
 #include "GuiDistortionDialog.h"
 #include "GuiFilesModified.h"
+#include "GuiFlattenFullHemisphereDialog.h"
 #include "GuiFlattenHemisphereDialog.h"
 #include "GuiGenerateSulcalDepthDialog.h"
 #include "GuiGenerateSurfaceCurvatureDialog.h"
@@ -202,11 +204,23 @@ GuiMainWindowSurfaceActions::GuiMainWindowSurfaceActions(GuiMainWindow* parent) 
    QObject::connect(deformationApplyDialogAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotDeformationApplyDialog()));
    
+   standardMeshDialogAction = new QAction(parent);
+   standardMeshDialogAction->setObjectName("standardMeshDialogAction");
+   standardMeshDialogAction->setText("Convert to Standard Mesh (In Developement!)...");
+   QObject::connect(standardMeshDialogAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayStandardMeshDialog()));
+   
    flattenHemisphereAction = new QAction(parent);
    flattenHemisphereAction->setObjectName("flattenHemisphereAction");
    flattenHemisphereAction->setText("Flatten Full or Partial Hemisphere...");
    QObject::connect(flattenHemisphereAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFlattenHemisphere()));
+   
+   flattenFullHemisphereAction = new QAction(parent);
+   flattenFullHemisphereAction->setObjectName("flattenFullHemisphereAction");
+   flattenFullHemisphereAction->setText("Flatten Full Hemisphere (In Development)...");
+   QObject::connect(flattenFullHemisphereAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayFlattenFullHemisphereDialog()));
    
    measurementsCrossoverCheckAction = new QAction(parent);
    measurementsCrossoverCheckAction->setObjectName("measurementsCrossoverCheckAction");
@@ -521,23 +535,11 @@ GuiMainWindowSurfaceActions::GuiMainWindowSurfaceActions(GuiMainWindow* parent) 
    QObject::connect(geometryInflatedAndEllipsoidFromFiducialAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotGeometryInflatedAndEllipsoidFromFiducial()));
    
-   projectToPlanePositiveZAction = new QAction(parent);
-   projectToPlanePositiveZAction->setObjectName("projectToPlanePositiveZAction");
-   projectToPlanePositiveZAction->setText("Positive Z");
-   QObject::connect(projectToPlanePositiveZAction, SIGNAL(triggered(bool)),
-                    this, SLOT(slotProjectToPlanePositiveZ()));
-   
-   projectToPlaneNegativeZAction = new QAction(parent);
-   projectToPlaneNegativeZAction->setObjectName("projectToPlaneNegativeZAction");
-   projectToPlaneNegativeZAction->setText("Negative Z");
-   QObject::connect(projectToPlaneNegativeZAction, SIGNAL(triggered(bool)),
-                    this, SLOT(slotProjectToPlaneNegativeZ()));
-   
-   projectToPlaneRestoreAction = new QAction(parent);
-   projectToPlaneRestoreAction->setObjectName("projectToPlaneRestoreAction");
-   projectToPlaneRestoreAction->setText("Restore");
-   QObject::connect(projectToPlaneRestoreAction, SIGNAL(triggered(bool)),
-                    this, SLOT(slotProjectToPlaneRestore()));
+   projectToPlaneAction = new QAction(parent);
+   projectToPlaneAction->setObjectName("projectToPlaneAction");
+   projectToPlaneAction->setText("Project to Plane...");
+   QObject::connect(projectToPlaneAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotProjectToPlane()));
    
    editAddNodeAction = new QAction(parent);
    editAddNodeAction->setObjectName("editAddNodeAction");
@@ -638,8 +640,7 @@ GuiMainWindowSurfaceActions::slotSurfaceToSegmentationVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                                             BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES,
-                                             svd.getIntersectionMode());
+                                             BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
 
@@ -1071,8 +1072,34 @@ GuiMainWindowSurfaceActions::slotCutsApply()
             QApplication::restoreOverrideCursor();
             QMessageBox::critical(theMainWindow, "Apply Cuts Error", e.whatQString());
          }
+
+         TopologyFile* tf = bms->getTopologyFile();
+         if (tf != NULL) {
+            const int numIslands = tf->disconnectIslands();
+            if (numIslands > 0) {
+               //
+               // Move any disconnected nodes in surfaces that use the topology file
+               //
+               for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfBrainModels(); i++) {
+                  BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(i);
+                  if (bms != NULL) {
+                     if (bms->getTopologyFile() == tf) {
+                        bms->moveDisconnectedNodesToOrigin();
+                     }
+                  }
+               }
+            }
+            
+            GuiFilesModified fm;
+            fm.setTopologyModified();
+            fm.setCoordinateModified();
+            theMainWindow->fileModificationUpdate(fm);
+
+         }
+
          GuiFilesModified fm;
          fm.setTopologyModified();
+         fm.setCoordinateModified();
          theMainWindow->fileModificationUpdate(fm);
          GuiBrainModelOpenGL::updateAllGL(NULL);
          QApplication::restoreOverrideCursor();
@@ -1707,10 +1734,16 @@ GuiMainWindowSurfaceActions::slotTopologyDisconnectIslands()
             }
             GuiBrainModelOpenGL::updateAllGL(NULL);
          }
+         
          QString msg(StringUtilities::fromNumber(numIslands));
          msg.append(" islands were removed.");
          QApplication::restoreOverrideCursor();
          QMessageBox::information(theMainWindow, "Islands", msg);
+         GuiFilesModified fm;
+         fm.setTopologyModified();
+         fm.setCoordinateModified();
+         theMainWindow->fileModificationUpdate(fm);
+
       }
    }
    QApplication::restoreOverrideCursor();
@@ -1839,62 +1872,110 @@ GuiMainWindowSurfaceActions::slotGeometryExpand()
 void 
 GuiMainWindowSurfaceActions::slotGeometryInflatedAndEllipsoidFromFiducial()
 {
-   const BrainModelSurface* fiducial = theMainWindow->getBrainSet()->getActiveFiducialSurface();
-   if (fiducial != NULL) {
-      WuQDataEntryDialog ded(theMainWindow);
-      ded.setWindowTitle("Choose Surfaces To Create");
-      QCheckBox* createInflatedSurfaceCheckBox = ded.addCheckBox("Create Inflated Surface",
-                                                                 true);
-      QCheckBox* createVeryInflatedSurfaceCheckBox = ded.addCheckBox("Create Very Inflated Surface",
-                                                                     true);
-      QCheckBox* createEllipsoidSurfaceCheckBox = ded.addCheckBox("Create Ellipsoid Surface",
-                                                                  true);
-      QCheckBox* createSphericalSurfaceCheckBox = ded.addCheckBox("Create Spherical Surface",
-                                                                  true);
-      QCheckBox* enableFingerSmoothingCheckBox = ded.addCheckBox("Enable Finger Smoothing (Use if Topological Defects)",
-                                                                 false);
-      QCheckBox* scaleSurfaceCheckBox = ded.addCheckBox("Scale Surface to Match Area of Fiducial Surface",
-                                                        true);
-      QDoubleSpinBox* iterationScaleDoubleSpinBox = ded.addDoubleSpinBox("Iterations Scale",
-                                                                         1.0);
-      iterationScaleDoubleSpinBox->setToolTip(
-               "Use the \"Iterations Scale\" to scale the iterations\n"
-               "during the inflation processes.  In most cases, it is\n"
-               "not necessary to use this option such as when the \n"
-               "surface has been generated using Caret.  However, \n"
-               "surfaces produced by FreeSurfer often contain a large\n"
-               "number of nodes, 150,000 or more.  In this case, try\n"
-               "an \"Iterations Scale\" of 2.5.");
-      QCheckBox* generateMetricMeasurementsCheckBox = ded.addCheckBox("Generate Metric Measurements",
-                                                                      false);
-      if (ded.exec() == QDialog::Accepted) {
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         MetricFile* mf = NULL;
+   const BrainModelSurface* fiducial = theMainWindow->getBrainModelSurface();
+   if (fiducial == NULL) {
+      QMessageBox::critical(theMainWindow, "ERROR", "There is not a FIDUCIAL surface in the Main Window.");
+      return;
+   }
+   generateInflatedAndOtherSurfaces(fiducial);
+}
+
+/**
+ * generate inflated and other surfaces from fiducial.
+ */
+void 
+GuiMainWindowSurfaceActions::generateInflatedAndOtherSurfaces(
+                                    const BrainModelSurface* fiducialSurface,
+                                    const bool enableEllipsoidFlag,
+                                    const bool enableFingerSmoothingFlag,
+                                    const bool checkInflatedFlag,
+                                    const bool checkVeryInflatedFlag,
+                                    const bool checkSphericalFlag,
+                                    const bool checkCompMedWallFlag)
+{      
+   if (fiducialSurface->getIsFiducialSurface() == false) {
+      QMessageBox::critical(theMainWindow, "ERROR", "Surface is not a fiducial surface.");
+      return;
+   }
+
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Choose Surfaces To Create");
+   QCheckBox* createInflatedSurfaceCheckBox = ded.addCheckBox("Create Inflated Surface",
+                                                              checkInflatedFlag);
+   QCheckBox* createVeryInflatedSurfaceCheckBox = ded.addCheckBox("Create Very Inflated Surface",
+                                                                  checkVeryInflatedFlag);
+   QCheckBox* createEllipsoidSurfaceCheckBox = NULL;
+   if (enableEllipsoidFlag) {
+      createEllipsoidSurfaceCheckBox =
+         ded.addCheckBox("Create Ellipsoid Surface", true);
+   }
+   QCheckBox* createSphericalSurfaceCheckBox = ded.addCheckBox("Create Spherical Surface",
+                                                               checkSphericalFlag);
+   QCheckBox* createCompMedWallSurfaceCheckBox = ded.addCheckBox("Create Compressed Medial Wall Surface",
+                                                               checkCompMedWallFlag);
+   QCheckBox* enableFingerSmoothingCheckBox = NULL;
+   if (enableFingerSmoothingFlag) {
+      enableFingerSmoothingCheckBox =
+         ded.addCheckBox("Enable Finger Smoothing (Use if Topological Defects)",
+                                                              false);
+   }
+   
+   QCheckBox* scaleSurfaceCheckBox = ded.addCheckBox("Scale Surface to Match Area of Fiducial Surface",
+                                                     true);
+   QDoubleSpinBox* iterationScaleDoubleSpinBox = ded.addDoubleSpinBox("Iterations Scale",
+                                                                      1.0);
+   iterationScaleDoubleSpinBox->setToolTip(
+            "Use the \"Iterations Scale\" to scale the iterations\n"
+            "during the inflation processes.  In most cases, it is\n"
+            "not necessary to use this option such as when the \n"
+            "surface has been generated using Caret.  However, \n"
+            "surfaces produced by FreeSurfer often contain a large\n"
+            "number of nodes, 150,000 or more.  In this case, try\n"
+            "an \"Iterations Scale\" of 2.5.");
+   QCheckBox* generateMetricMeasurementsCheckBox = NULL;
+   if (enableFingerSmoothingFlag) {
+      generateMetricMeasurementsCheckBox = 
+         ded.addCheckBox("Generate Metric Measurements", false);
+   }
+   
+   if (ded.exec() == QDialog::Accepted) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      QApplication::processEvents();
+      MetricFile* mf = NULL;
+      if (generateMetricMeasurementsCheckBox != NULL) {
          if (generateMetricMeasurementsCheckBox->isChecked()) {
             mf = theMainWindow->getBrainSet()->getMetricFile();
          }
-         fiducial->createInflatedAndEllipsoidFromFiducial(createInflatedSurfaceCheckBox->isChecked(),
-                                                          createVeryInflatedSurfaceCheckBox->isChecked(),
-                                                          createEllipsoidSurfaceCheckBox->isChecked(),
-                                                          createSphericalSurfaceCheckBox->isChecked(),
-                                                          enableFingerSmoothingCheckBox->isChecked(),
-                                                          scaleSurfaceCheckBox->isChecked(),
-                                                          iterationScaleDoubleSpinBox->value(),
-                                                          mf);
-         GuiFilesModified fm;
-         fm.setCoordinateModified();
-         theMainWindow->fileModificationUpdate(fm);
-         theMainWindow->displayNewestSurfaceInMainWindow();
-
-         GuiBrainModelOpenGL::updateAllGL(NULL);
-         QApplication::restoreOverrideCursor();
-         
-         theMainWindow->speakText("Inflated and or ellipsoid surfaces have been created.", false);
       }
-   }
-   else {
+      
+      bool doEllipsoidFlag = false;
+      if (createEllipsoidSurfaceCheckBox != NULL) {
+         doEllipsoidFlag = createEllipsoidSurfaceCheckBox->isChecked();
+      }
+      bool doFingerSmoothingFlag = false;
+      if (enableFingerSmoothingCheckBox != NULL) {
+         doFingerSmoothingFlag = enableFingerSmoothingCheckBox->isChecked();
+      }
+      fiducialSurface->createInflatedAndEllipsoidFromFiducial(createInflatedSurfaceCheckBox->isChecked(),
+                                                       createVeryInflatedSurfaceCheckBox->isChecked(),
+                                                       doEllipsoidFlag,
+                                                       createSphericalSurfaceCheckBox->isChecked(),
+                                                       createCompMedWallSurfaceCheckBox->isChecked(),
+                                                       doFingerSmoothingFlag,
+                                                       scaleSurfaceCheckBox->isChecked(),
+                                                       iterationScaleDoubleSpinBox->value(),
+                                                       mf);
+      GuiFilesModified fm;
+      fm.setCoordinateModified();
+      theMainWindow->fileModificationUpdate(fm);
+      if (enableEllipsoidFlag) {
+         theMainWindow->displayNewestSurfaceInMainWindow();
+      }
+      
+      GuiBrainModelOpenGL::updateAllGL(NULL);
       QApplication::restoreOverrideCursor();
-      QMessageBox::critical(theMainWindow, "ERROR", "There is no fiducial surface.");
+      
+      theMainWindow->speakText("Inflated and or ellipsoid surfaces have been created.", false);
    }
 }    
 
@@ -2236,50 +2317,71 @@ GuiMainWindowSurfaceActions::slotSectionClearAllOrPart()
 }
 
 /**
- * called to project to plane positive Z.
+ * Project surface to plane.
  */
-void 
-GuiMainWindowSurfaceActions::slotProjectToPlanePositiveZ()
+void
+GuiMainWindowSurfaceActions::slotProjectToPlane()
 {
-   BrainModelSurface* bms = theMainWindow->getBrainModelOpenGL()->getDisplayedBrainModelSurface();
-   if (bms != NULL) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      bms->projectCoordinatesToPlane(BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO);
-      GuiBrainModelOpenGL::updateAllGL();
-      QApplication::restoreOverrideCursor();   
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Project to Plane");
+   ded.setTextAtTop("If coordinates are projected more than once without "
+                    "restoring, the original coordinates will be lost.",
+                    true);
+   QRadioButton* positiveXRadioButton = ded.addRadioButton("Positive X");
+   positiveXRadioButton->setToolTip("All Positive X-coordinates become zero.");
+   QRadioButton* negativeXRadioButton = ded.addRadioButton("Negative X");
+   negativeXRadioButton->setToolTip("All Negative X-coordinates become zero.");
+   QRadioButton* positiveYRadioButton = ded.addRadioButton("Positive Y");
+   positiveYRadioButton->setToolTip("All Positive Y-coordinates become zero.");
+   QRadioButton* negativeYRadioButton = ded.addRadioButton("Negative Y");
+   negativeYRadioButton->setToolTip("All Negative Y-coordinates become zero.");
+   QRadioButton* positiveZRadioButton = ded.addRadioButton("Positive Z");
+   positiveZRadioButton->setToolTip("All Positive Z-coordinates become zero.");
+   QRadioButton* negativeZRadioButton = ded.addRadioButton("Negative Z");
+   negativeZRadioButton->setToolTip("All Negative Z-coordinates become zero.");
+   QRadioButton* restoreRadioButton = ded.addRadioButton("Restore");
+   restoreRadioButton->setToolTip("Restore projected coordinates.");
+   
+   positiveZRadioButton->setChecked(true);
+   
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+      BrainModelSurface::COORDINATE_PLANE coordinatePlane =
+                                      BrainModelSurface::COORDINATE_PLANE_NONE;
+      if (positiveXRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_X_TO_ZERO;
+      }
+      else if (negativeXRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_MOVE_NEGATIVE_X_TO_ZERO;
+      }
+      else if (positiveYRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Y_TO_ZERO;
+      }
+      else if (negativeYRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_MOVE_NEGATIVE_Y_TO_ZERO;
+      }
+      else if (positiveZRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO;
+      }
+      else if (negativeZRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_MOVE_NEGATIVE_Z_TO_ZERO;
+      }
+      else if (restoreRadioButton->isChecked()) {
+         coordinatePlane = BrainModelSurface::COORDINATE_PLANE_RESTORE;
+      }
+      else {
+         QMessageBox::critical(theMainWindow, "ERROR", "No projection option was selected.");
+         return;
+      }
+      BrainModelSurface* bms = theMainWindow->getBrainModelOpenGL()->getDisplayedBrainModelSurface();
+      if (bms != NULL) {
+         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+         bms->projectCoordinatesToPlane(coordinatePlane);
+         GuiBrainModelOpenGL::updateAllGL();
+         QApplication::restoreOverrideCursor();   
+      }
    }
 }
 
-/**
- * called to project to plane negative Z.
- */
-void 
-GuiMainWindowSurfaceActions::slotProjectToPlaneNegativeZ()
-{
-   BrainModelSurface* bms = theMainWindow->getBrainModelOpenGL()->getDisplayedBrainModelSurface();
-   if (bms != NULL) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      bms->projectCoordinatesToPlane(BrainModelSurface::COORDINATE_PLANE_MOVE_NEGATIVE_Z_TO_ZERO);
-      GuiBrainModelOpenGL::updateAllGL();
-      QApplication::restoreOverrideCursor();   
-   }
-}
-
-/**
- * called to project to plane restore.
- */
-void 
-GuiMainWindowSurfaceActions::slotProjectToPlaneRestore()
-{
-   BrainModelSurface* bms = theMainWindow->getBrainModelOpenGL()->getDisplayedBrainModelSurface();
-   if (bms != NULL) {
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      bms->projectCoordinatesToPlane(BrainModelSurface::COORDINATE_PLANE_RESTORE);
-      GuiBrainModelOpenGL::updateAllGL();
-      QApplication::restoreOverrideCursor();   
-   }
-}
-      
 /**
  * called to add node.
  */

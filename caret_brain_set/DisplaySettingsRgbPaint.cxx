@@ -109,6 +109,8 @@ static const QString rgbPaintSurfaceID("surface-rgb-paint-column");
 void 
 DisplaySettingsRgbPaint::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
@@ -157,8 +159,10 @@ DisplaySettingsRgbPaint::showScene(const SceneFile::Scene& scene, QString& error
  */
 void 
 DisplaySettingsRgbPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    RgbPaintFile* rpf = brainSet->getRgbPaintFile();
    
    if (onlyIfSelected) {

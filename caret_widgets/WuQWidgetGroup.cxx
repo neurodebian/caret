@@ -24,6 +24,7 @@
  */
 /*LICENSE_END*/
 
+#include <QCheckBox>
 #include <QWidget>
 
 #include "WuQWidgetGroup.h"
@@ -107,6 +108,20 @@ WuQWidgetGroup::blockSignals(bool blockTheSignals)
 {
    for (int i = 0; i < widgets.size(); i++) {
       widgets.at(i)->blockSignals(blockTheSignals);
+   }
+}
+      
+/**
+ * set status of all checkboxes.
+ */
+void 
+WuQWidgetGroup::setAllCheckBoxesChecked(const bool b)
+{
+   for (int i = 0; i < widgets.size(); i++) {
+      QCheckBox* cb = dynamic_cast<QCheckBox*>(widgets.at(i));
+      if (cb != NULL) {
+         cb->setChecked(b);
+      }
    }
 }
       

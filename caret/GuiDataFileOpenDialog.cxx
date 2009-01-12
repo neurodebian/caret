@@ -123,6 +123,7 @@ GuiDataFileOpenDialog::GuiDataFileOpenDialog(QWidget* parent,
       filterNames << FileFilters::getGiftiLabelFileFilter();
       filterNames << FileFilters::getGiftiShapeFileFilter();
       filterNames << FileFilters::getGiftiSurfaceFileFilter();
+      filterNames << FileFilters::getGiftiTimeSeriesFileFilter();
       filterNames << FileFilters::getGiftiTopologyFileFilter();
    }
    filterNames << FileFilters::getImageOpenFileFilter();
@@ -135,6 +136,7 @@ GuiDataFileOpenDialog::GuiDataFileOpenDialog(QWidget* parent,
    filterNames << FileFilters::getRgbPaintFileFilter();
    filterNames << FileFilters::getSceneFileFilter();
    filterNames << FileFilters::getSectionFileFilter();
+   filterNames << FileFilters::getStudyCollectionFileFilter();
    filterNames << FileFilters::getStudyMetaDataFileFilter();
    filterNames << FileFilters::getSurfaceShapeOrMetricAsShapeFileFilter();
    filterNames << FileFilters::getSurfaceVectorFileFilter();
@@ -321,9 +323,27 @@ GuiDataFileOpenDialog::done(int r)
 {
    if (r == QDialog::Accepted) {
       //
+      // Create priority of files - read first: colors, study, topo
+      //                            read later: all other files
+      //
+      const QStringList unsortedFiles(selectedFiles());
+      QStringList priorityLow, priorityHigh;
+      for (int i = 0; i < unsortedFiles.count(); i++) {
+         const QString fn(unsortedFiles.at(i));
+         if (fn.endsWith("color") ||
+             fn.endsWith(SpecFile::getStudyMetaDataFileExtension()) ||
+             fn.endsWith(SpecFile::getTopoFileExtension())) {
+                priorityHigh << fn;
+         }
+         else {
+            priorityLow << fn;
+         }
+      }
+      const QStringList filesChosen(priorityHigh + priorityLow);
+      
+      //
       // Get the selected files
       //
-      QStringList filesChosen(selectedFiles());
       const int numFiles = filesChosen.count();
       if (numFiles > 0) {
          //
@@ -537,151 +557,152 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
    bool warning = false;
    
    if (filterName == FileFilters::getAreaColorFileFilter()) {
-      error = openDataFile(this, SpecFile::areaColorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getAreaColorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getArealEstimationFileFilter()) {
-      error = openDataFile(this, SpecFile::arealEstimationFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getArealEstimationFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderRawFileFilter()) {
-      error = openDataFile(this, SpecFile::rawBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getRawBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderFiducialFileFilter()) {
-      error = openDataFile(this, SpecFile::fiducialBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFiducialBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderInflatedFileFilter()) {
-      error = openDataFile(this, SpecFile::inflatedBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getInflatedBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderVeryInflatedFileFilter()) {
-      error = openDataFile(this, SpecFile::veryInflatedBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVeryInflatedBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderSphericalFileFilter()) {
-      error = openDataFile(this, SpecFile::sphericalBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSphericalBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderEllipsoidalFileFilter()) {
-      error = openDataFile(this, SpecFile::ellipsoidBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getEllipsoidBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderCompressedFileFilter()) {
-      error = openDataFile(this, SpecFile::compressedBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCompressedBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderFlatFileFilter()) {
-      error = openDataFile(this, SpecFile::flatBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFlatBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderFlatLobarFileFilter()) {
-      error = openDataFile(this, SpecFile::lobarFlatBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getLobarFlatBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderHullFileFilter()) {
-      error = openDataFile(this, SpecFile::hullBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getHullBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderUnknownFileFilter()) {
-      error = openDataFile(this, SpecFile::unknownBorderFileMatchTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getUnknownBorderFileMatchTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderVolumeFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeBorderFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeBorderFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderGenericFileFilter()) {
       error = openDataFile(this, GENERIC_BORDER, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderColorFileFilter()) {
-      error = openDataFile(this, SpecFile::borderColorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getBorderColorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getBorderProjectionFileFilter()) {
-      error = openDataFile(this, SpecFile::borderProjectionFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getBorderProjectionFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCellFileFilter()) {
-      error = openDataFile(this, SpecFile::cellFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCellFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCellColorFileFilter()) {
-      error = openDataFile(this, SpecFile::cellColorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCellColorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCellProjectionFileFilter()) {
-      error = openDataFile(this, SpecFile::cellProjectionFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCellProjectionFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCellVolumeFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeCellFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeCellFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCocomacFileFilter()) {
-      error = openDataFile(this, SpecFile::cocomacConnectivityFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCocomacConnectivityFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getContourFileFilter()) {
-      error = openDataFile(this, SpecFile::contourFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getContourFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getContourCellFileFilter()) {
-      error = openDataFile(this, SpecFile::contourCellFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getContourCellFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getContourCellColorFileFilter()) {
-      error = openDataFile(this, SpecFile::contourCellColorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getContourCellColorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateRawFileFilter()) {
-      error = openDataFile(this, SpecFile::rawCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getRawCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateFiducialFileFilter()) {
-      error = openDataFile(this, SpecFile::fiducialCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFiducialCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateInflatedFileFilter()) {
-      error = openDataFile(this, SpecFile::inflatedCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getInflatedCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateVeryInflatedFileFilter()) {
-      error = openDataFile(this, SpecFile::veryInflatedCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVeryInflatedCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateSphericalFileFilter()) {
-      error = openDataFile(this, SpecFile::sphericalCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSphericalCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateEllipsoidalFileFilter()) {
-      error = openDataFile(this, SpecFile::ellipsoidCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getEllipsoidCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateCompressedFileFilter()) {
-      error = openDataFile(this, SpecFile::compressedCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCompressedCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateFlatFileFilter()) {
-      error = openDataFile(this, SpecFile::flatCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFlatCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateFlatLobarFileFilter()) {
-      error = openDataFile(this, SpecFile::lobarFlatCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getLobarFlatCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateHullFileFilter()) {
-      error = openDataFile(this, SpecFile::hullCoordFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getHullCoordFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateUnknownFileFilter()) {
-      error = openDataFile(this, SpecFile::unknownCoordFileMatchTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getUnknownCoordFileMatchTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCoordinateGenericFileFilter()) {
       error = openDataFile(this, GENERIC_COORDINATE, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getCutsFileFilter()) {
-      error = openDataFile(this, SpecFile::cutsFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCutsFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getDeformationFieldFileFilter()) {
-      error = openDataFile(this, SpecFile::deformationFieldFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getDeformationFieldFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getDeformationMapFileFilter()) {
-      error = openDataFile(this, SpecFile::deformationMapFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getDeformationMapFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getFociFileFilter()) {
-      error = openDataFile(this, SpecFile::fociFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFociFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getFociColorFileFilter()) {
-      error = openDataFile(this, SpecFile::fociColorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFociColorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getFociProjectionFileFilter()) {
-      error = openDataFile(this, SpecFile::fociProjectionFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFociProjectionFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getFociSearchFileFilter()) {
-      error = openDataFile(this, SpecFile::fociSearchFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getFociSearchFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getGeodesicDistanceFileFilter()) {
-      error = openDataFile(this, SpecFile::geodesicDistanceFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getGeodesicDistanceFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getGiftiCoordinateFileFilter()) {
       error = openDataFile(this, GENERIC_COORDINATE, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
-   else if (filterName == FileFilters::getGiftiFunctionalFileFilter()) {
-      error = openDataFile(this, SpecFile::metricFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+   else if ((filterName == FileFilters::getGiftiFunctionalFileFilter()) ||
+            (filterName == FileFilters::getGiftiTimeSeriesFileFilter())) {
+      error = openDataFile(this, SpecFile::getMetricFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getGiftiLabelFileFilter()) {
-      error = openDataFile(this, SpecFile::paintFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getPaintFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getGiftiShapeFileFilter()) {
-      error = openDataFile(this, SpecFile::surfaceShapeFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSurfaceShapeFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getGiftiSurfaceFileFilter()) {
       error = openDataFile(this, GENERIC_SURFACE, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
@@ -690,66 +711,66 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       error = openDataFile(this, GENERIC_TOPOLOGY, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getImageOpenFileFilter()) {
-      error = openDataFile(this, SpecFile::imageFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getImageFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getLatitudeLongitudeFileFilter()) {
-      error = openDataFile(this, SpecFile::latLonFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getLatLonFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if ((filterName == FileFilters::getMetricFileFilter()) ||
             (filterName == FileFilters::getMetricOrShapeAsMetricFileFilter())) {
-      error = openDataFile(this, SpecFile::metricFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getMetricFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getPaintFileFilter()) {
-      error = openDataFile(this, SpecFile::paintFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getPaintFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getPaletteFileFilter()) {
-      error = openDataFile(this, SpecFile::paletteFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getPaletteFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getParamsFileFilter()) {
-      error = openDataFile(this, SpecFile::paramsFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getParamsFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getProbAtlasFileFilter()) {
-      error = openDataFile(this, SpecFile::atlasFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getAtlasFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getRgbPaintFileFilter()) {
-      error = openDataFile(this, SpecFile::rgbPaintFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getRgbPaintFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getSceneFileFilter()) {
-      error = openDataFile(this, SpecFile::sceneFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSceneFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getSectionFileFilter()) {
-      error = openDataFile(this, SpecFile::sectionFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSectionFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if ((filterName == FileFilters::getSurfaceShapeFileFilter()) ||
             (filterName == FileFilters::getSurfaceShapeOrMetricAsShapeFileFilter())) {
-      error = openDataFile(this, SpecFile::surfaceShapeFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSurfaceShapeFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getSurfaceVectorFileFilter()) {
-      error = openDataFile(this, SpecFile::surfaceVectorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getSurfaceVectorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopographyFileFilter()) {
-      error = openDataFile(this, SpecFile::topographyFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getTopographyFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopologyClosedFileFilter()) {
-      error = openDataFile(this, SpecFile::closedTopoFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getClosedTopoFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopologyOpenFileFilter()) {
-      error = openDataFile(this, SpecFile::openTopoFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getOpenTopoFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopologyCutFileFilter()) {
-      error = openDataFile(this, SpecFile::cutTopoFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getCutTopoFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopologyCutLobarFileFilter()) {
-      error = openDataFile(this, SpecFile::lobarCutTopoFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getLobarCutTopoFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopologyUnknownFileFilter()) {
-      error = openDataFile(this, SpecFile::unknownTopoFileMatchTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getUnknownTopoFileMatchTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopologyGenericFileFilter()) {
       error = openDataFile(this, GENERIC_TOPOLOGY, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getVolumeAnatomyFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeAnatomyFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeAnatomyFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles();
          if (volumeIndex > 0) {
@@ -760,7 +781,7 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       }
    }
    else if (filterName == FileFilters::getVolumeFunctionalFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeFunctionalFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeFunctionalFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumeFunctionalFiles();
          if (volumeIndex > 0) {
@@ -771,7 +792,7 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       }
    }
    else if (filterName == FileFilters::getVolumePaintFileFilter()) {
-      error = openDataFile(this, SpecFile::volumePaintFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumePaintFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumePaintFiles();
          if (volumeIndex > 0) {
@@ -782,7 +803,7 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       }
    }
    else if (filterName == FileFilters::getVolumeProbAtlasFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeProbAtlasFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeProbAtlasFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumeProbAtlasFiles();
          if (volumeIndex > 0) {
@@ -793,7 +814,7 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       }
    }
    else if (filterName == FileFilters::getVolumeRgbFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeRgbFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeRgbFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumeRgbFiles();
          if (volumeIndex > 0) {
@@ -804,7 +825,7 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       }
    }
    else if (filterName == FileFilters::getVolumeSegmentationFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeSegmentationFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeSegmentationFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles();
          if (volumeIndex > 0) {
@@ -815,7 +836,7 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
       }
    }
    else if (filterName == FileFilters::getVolumeVectorFileFilter()) {
-      error = openDataFile(this, SpecFile::volumeVectorFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVolumeVectorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
       if (spmLeftOnRightFlag) {
          const int volumeIndex = theMainWindow->getBrainSet()->getNumberOfVolumeVectorFiles();
          if (volumeIndex > 0) {
@@ -825,23 +846,26 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
          }
       }
    }
+   else if (filterName == FileFilters::getStudyCollectionFileFilter()) {
+      error = openDataFile(this, SpecFile::getStudyCollectionFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+   }
    else if (filterName == FileFilters::getStudyMetaDataFileFilter()) {
-      error = openDataFile(this, SpecFile::studyMetaDataFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getStudyMetaDataFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTransformationMatrixFileFilter()) {
-      error = openDataFile(this, SpecFile::transformationMatrixFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getTransformationMatrixFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTransformationDataFileFilter()) {
-      error = openDataFile(this, SpecFile::transformationDataFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getTransformationDataFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getVtkModelFileFilter()) {
-      error = openDataFile(this, SpecFile::vtkModelFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVtkModelFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getVocabularyFileFilter()) {
-      error = openDataFile(this, SpecFile::vocabularyFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getVocabularyFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getWustlRegionFileFilter()) {
-      error = openDataFile(this, SpecFile::wustlRegionFileTag, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+      error = openDataFile(this, SpecFile::getWustlRegionFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (importFile(fileName, filterName)) {
       // do nothing here
@@ -1337,7 +1361,6 @@ GuiDataFileOpenDialog::importFile(const QString& fileName,
       QApplication::restoreOverrideCursor(); 
       QMessageBox::critical(this, "ERROR",
                             e.whatQString());
-      return false;
    }
    
    //
@@ -1413,11 +1436,11 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
    GuiFilesModified fm;;
    
    try {
-      if (specFileTag == SpecFile::areaColorFileTag) {
+      if (specFileTag == SpecFile::getAreaColorFileTag()) {
          theMainWindow->getBrainSet()->readAreaColorFile(name, append, update);
          fm.setAreaColorModified();
       }
-      else if (specFileTag == SpecFile::arealEstimationFileTag) {
+      else if (specFileTag == SpecFile::getArealEstimationFileTag()) {
          ArealEstimationFile* aef = theMainWindow->getBrainSet()->getArealEstimationFile();
          ArealEstimationFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -1440,67 +1463,67 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             areaColorWarning = needAreaColors;
          }
       }
-      else if (specFileTag == SpecFile::rawBorderFileTag) {
+      else if (specFileTag == SpecFile::getRawBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_RAW, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::fiducialBorderFileTag) {
+      else if (specFileTag == SpecFile::getFiducialBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_FIDUCIAL, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::inflatedBorderFileTag) {
+      else if (specFileTag == SpecFile::getInflatedBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_INFLATED, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::veryInflatedBorderFileTag) {
+      else if (specFileTag == SpecFile::getVeryInflatedBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_VERY_INFLATED, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::sphericalBorderFileTag) {
+      else if (specFileTag == SpecFile::getSphericalBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_SPHERICAL, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::ellipsoidBorderFileTag) {
+      else if (specFileTag == SpecFile::getEllipsoidBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::compressedBorderFileTag) {
+      else if (specFileTag == SpecFile::getCompressedBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::flatBorderFileTag) {
+      else if (specFileTag == SpecFile::getFlatBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_FLAT, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::lobarFlatBorderFileTag) {
+      else if (specFileTag == SpecFile::getLobarFlatBorderFileTag()) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag.indexOf(SpecFile::unknownBorderFileMatchTag) >= 0) {
+      else if (specFileTag.indexOf(SpecFile::getUnknownBorderFileMatchTag()) >= 0) {
          theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_UNKNOWN, append, update);
          fm.setBorderModified();
          bordersLoaded = true;
          borderColorWarning = needBorderColors;
       }
-      else if (specFileTag == SpecFile::volumeBorderFileTag) {
+      else if (specFileTag == SpecFile::getVolumeBorderFileTag()) {
          theMainWindow->getBrainSet()->readVolumeBorderFile(name, append, update);
          fm.setBorderModified();
          bordersLoaded = true;
@@ -1560,93 +1583,93 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::borderColorFileTag) {
+      else if (specFileTag == SpecFile::getBorderColorFileTag()) {
          theMainWindow->getBrainSet()->readBorderColorFile(name, append, update);
          fm.setBorderColorModified();
       }
-      else if (specFileTag == SpecFile::borderProjectionFileTag) {
+      else if (specFileTag == SpecFile::getBorderProjectionFileTag()) {
          theMainWindow->getBrainSet()->readBorderProjectionFile(name, append, update);
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag == SpecFile::cellFileTag) {
+      else if (specFileTag == SpecFile::getCellFileTag()) {
          theMainWindow->getBrainSet()->readCellFile(name, append, update);
          fm.setCellModified();
          cellColorWarning = needCellColors;
       }
-      else if (specFileTag == SpecFile::cellColorFileTag) {
+      else if (specFileTag == SpecFile::getCellColorFileTag()) {
          theMainWindow->getBrainSet()->readCellColorFile(name, append, update);
          fm.setCellColorModified();
       }
-      else if (specFileTag == SpecFile::cellProjectionFileTag) {
+      else if (specFileTag == SpecFile::getCellProjectionFileTag()) {
          theMainWindow->getBrainSet()->readCellProjectionFile(name, append, update);
          fm.setCellProjectionModified();
          cellColorWarning = needCellColors;
       }
-      else if (specFileTag == SpecFile::volumeCellFileTag) {
+      else if (specFileTag == SpecFile::getVolumeCellFileTag()) {
          theMainWindow->getBrainSet()->readVolumeCellFile(name, append, update);
          fm.setCellModified();
          cellColorWarning = needCellColors;
       }
-      else if (specFileTag == SpecFile::cocomacConnectivityFileTag) {
+      else if (specFileTag == SpecFile::getCocomacConnectivityFileTag()) {
          theMainWindow->getBrainSet()->readCocomacConnectivityFile(name, append, update);
          fm.setCocomacModified();
       }
-      else if (specFileTag == SpecFile::contourFileTag) {
+      else if (specFileTag == SpecFile::getContourFileTag()) {
          theMainWindow->getBrainSet()->readContourFile(name, append, update);
          fm.setContourModified();
       }
-      else if (specFileTag == SpecFile::contourCellFileTag) {
+      else if (specFileTag == SpecFile::getContourCellFileTag()) {
          theMainWindow->getBrainSet()->readContourCellFile(name, append, update);
          fm.setContourCellModified();
          contourCellColorWarning = needContourCellColors;
       }
-      else if (specFileTag == SpecFile::contourCellColorFileTag) {
+      else if (specFileTag == SpecFile::getContourCellColorFileTag()) {
          theMainWindow->getBrainSet()->readContourCellColorFile(name, append, update);
          fm.setContourCellModified();
       }
-      else if (specFileTag == SpecFile::rawCoordFileTag) {
+      else if (specFileTag == SpecFile::getRawCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_RAW, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::fiducialCoordFileTag) {
+      else if (specFileTag == SpecFile::getFiducialCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_FIDUCIAL, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::inflatedCoordFileTag) {
+      else if (specFileTag == SpecFile::getInflatedCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_INFLATED, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::veryInflatedCoordFileTag) {
+      else if (specFileTag == SpecFile::getVeryInflatedCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_VERY_INFLATED, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::sphericalCoordFileTag) {
+      else if (specFileTag == SpecFile::getSphericalCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_SPHERICAL, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::ellipsoidCoordFileTag) {
+      else if (specFileTag == SpecFile::getEllipsoidCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::compressedCoordFileTag) {
+      else if (specFileTag == SpecFile::getCompressedCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::flatCoordFileTag) {
+      else if (specFileTag == SpecFile::getFlatCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_FLAT, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::lobarFlatCoordFileTag) {
+      else if (specFileTag == SpecFile::getLobarFlatCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag == SpecFile::hullCoordFileTag) {
+      else if (specFileTag == SpecFile::getHullCoordFileTag()) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_HULL, false, append, update);
          fm.setCoordinateModified();
       }
-      else if (specFileTag.indexOf(SpecFile::unknownCoordFileMatchTag) >= 0) {
+      else if (specFileTag.indexOf(SpecFile::getUnknownCoordFileMatchTag()) >= 0) {
          theMainWindow->getBrainSet()->readCoordinateFile(name, BrainModelSurface::SURFACE_TYPE_UNKNOWN, false, append, update);
          fm.setCoordinateModified();
       }
@@ -1704,37 +1727,37 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          fm.setCoordinateModified();
          QApplication::restoreOverrideCursor();
       }
-      else if (specFileTag == SpecFile::cutsFileTag) {
+      else if (specFileTag == SpecFile::getCutsFileTag()) {
          theMainWindow->getBrainSet()->readCutsFile(name, append, update);
          fm.setCutModified();
       }
-      else if (specFileTag == SpecFile::deformationFieldFileTag) {
+      else if (specFileTag == SpecFile::getDeformationFieldFileTag()) {
          theMainWindow->getBrainSet()->readDeformationFieldFile(name, append, update);
          fm.setDeformationFieldModified();
       }
-      else if (specFileTag == SpecFile::deformationMapFileTag) {
+      else if (specFileTag == SpecFile::getDeformationMapFileTag()) {
          theMainWindow->getBrainSet()->setDeformationMapFileName(name, update);
          fm.setDeformationMapModified();
       }
-      else if (specFileTag == SpecFile::fociFileTag) {
+      else if (specFileTag == SpecFile::getFociFileTag()) {
          theMainWindow->getBrainSet()->readFociFile(name, append, update);
          fm.setFociModified();
          fociColorWarning = needFociColors;
       }
-      else if (specFileTag == SpecFile::fociColorFileTag) {
+      else if (specFileTag == SpecFile::getFociColorFileTag()) {
          theMainWindow->getBrainSet()->readFociColorFile(name, append, update);
          fm.setFociColorModified();
       }
-      else if (specFileTag == SpecFile::fociProjectionFileTag) {
+      else if (specFileTag == SpecFile::getFociProjectionFileTag()) {
          theMainWindow->getBrainSet()->readFociProjectionFile(name, append, update);
          fm.setFociProjectionModified();
          fociColorWarning = needFociColors;
       }
-      else if (specFileTag == SpecFile::fociSearchFileTag) {
+      else if (specFileTag == SpecFile::getFociSearchFileTag()) {
          theMainWindow->getBrainSet()->readFociSearchFile(name, append, update);
          fm.setFociSearchModified();
       }
-      else if (specFileTag == SpecFile::geodesicDistanceFileTag) {
+      else if (specFileTag == SpecFile::getGeodesicDistanceFileTag()) {
          GeodesicDistanceFile* gdf = theMainWindow->getBrainSet()->getGeodesicDistanceFile();
          GeodesicDistanceFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -1756,13 +1779,13 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             fm.setGeodesicModified();
          }
       }
-      else if (specFileTag == SpecFile::imageFileTag) {
+      else if (specFileTag == SpecFile::getImageFileTag()) {
          theMainWindow->getBrainSet()->readImageFile(name, 
                               append, 
                               update);
          fm.setImagesModified();
       }
-      else if (specFileTag == SpecFile::latLonFileTag) {
+      else if (specFileTag == SpecFile::getLatLonFileTag()) {
          LatLonFile* llf = theMainWindow->getBrainSet()->getLatLonFile();
          LatLonFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -1784,7 +1807,7 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             fm.setLatLonModified();
          }
       }
-      else if (specFileTag == SpecFile::metricFileTag) {
+      else if (specFileTag == SpecFile::getMetricFileTag()) {
          MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
          MetricFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -1806,7 +1829,7 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             fm.setMetricModified();
          }
       }
-      else if (specFileTag == SpecFile::paintFileTag) {
+      else if (specFileTag == SpecFile::getPaintFileTag()) {
          PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
          PaintFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -1829,82 +1852,82 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          }
          areaColorWarning = needAreaColors;
       }
-      else if (specFileTag == SpecFile::paletteFileTag) {
+      else if (specFileTag == SpecFile::getPaletteFileTag()) {
          theMainWindow->getBrainSet()->readPaletteFile(name, append, update);
          fm.setPaletteModified();
       }
-      else if (specFileTag == SpecFile::paramsFileTag) {
+      else if (specFileTag == SpecFile::getParamsFileTag()) {
          theMainWindow->getBrainSet()->readParamsFile(name, append, update);
          fm.setParameterModified();
       }
-      else if (specFileTag == SpecFile::atlasFileTag) {
+      else if (specFileTag == SpecFile::getAtlasFileTag()) {
          theMainWindow->getBrainSet()->readProbabilisticAtlasFile(name, append, update);
          fm.setProbabilisticAtlasModified();
          areaColorWarning = needAreaColors;
       }
-      else if (specFileTag == SpecFile::rgbPaintFileTag) {
+      else if (specFileTag == SpecFile::getRgbPaintFileTag()) {
          theMainWindow->getBrainSet()->readRgbPaintFile(name, append, update);
          fm.setRgbPaintModified();
       }
-      else if (specFileTag == SpecFile::sceneFileTag) {
+      else if (specFileTag == SpecFile::getSceneFileTag()) {
          theMainWindow->getBrainSet()->readSceneFile(name, append, update);
          fm.setSceneModified();
       }
-      else if (specFileTag == SpecFile::sectionFileTag) {
+      else if (specFileTag == SpecFile::getSectionFileTag()) {
          theMainWindow->getBrainSet()->readSectionFile(name, append, update);
          fm.setSectionModified();
       }
-      else if (specFileTag == SpecFile::rawSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getRawSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_RAW, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::fiducialSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getFiducialSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_FIDUCIAL, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::inflatedSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getInflatedSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_INFLATED, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::veryInflatedSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getVeryInflatedSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_VERY_INFLATED, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::sphericalSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getSphericalSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_SPHERICAL, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::ellipsoidSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getEllipsoidSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::compressedSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getCompressedSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::flatSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getFlatSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_FLAT, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::lobarFlatSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getLobarFlatSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::hullSurfaceFileTag) {
+      else if (specFileTag == SpecFile::getHullSurfaceFileTag()) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_HULL, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
       }
-      else if (specFileTag.indexOf(SpecFile::unknownSurfaceFileMatchTag) >= 0) {
+      else if (specFileTag.indexOf(SpecFile::getUnknownSurfaceFileMatchTag()) >= 0) {
          theMainWindow->getBrainSet()->readSurfaceFile(name, BrainModelSurface::SURFACE_TYPE_UNKNOWN, false, append, update);
          fm.setCoordinateModified();
          fm.setTopologyModified();
@@ -1958,11 +1981,15 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          fm.setTopologyModified();
          QApplication::restoreOverrideCursor();
       }
-      else if (specFileTag == SpecFile::studyMetaDataFileTag) {
+      else if (specFileTag == SpecFile::getStudyCollectionFileTag()) {
+         theMainWindow->getBrainSet()->readStudyCollectionFile(name, append, update);
+         fm.setStudyCollectionModified();
+      }
+      else if (specFileTag == SpecFile::getStudyMetaDataFileTag()) {
          theMainWindow->getBrainSet()->readStudyMetaDataFile(name, append, update);
          fm.setStudyMetaDataModified();
       }
-      else if (specFileTag == SpecFile::surfaceShapeFileTag) {
+      else if (specFileTag == SpecFile::getSurfaceShapeFileTag()) {
          SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
          SurfaceShapeFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -1984,7 +2011,7 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             fm.setSurfaceShapeModified();
          }
       }
-      else if (specFileTag == SpecFile::surfaceVectorFileTag) {
+      else if (specFileTag == SpecFile::getSurfaceVectorFileTag()) {
          SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
          SurfaceVectorFile newFile;
          newFile.readFileMetaDataOnly(name);
@@ -2006,27 +2033,27 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             fm.setSurfaceVectorModified();
          }
       }
-      else if (specFileTag == SpecFile::topographyFileTag) {
+      else if (specFileTag == SpecFile::getTopographyFileTag()) {
          theMainWindow->getBrainSet()->readTopographyFile(name, append, update);
          fm.setTopographyModified();
       }
-      else if (specFileTag == SpecFile::closedTopoFileTag) {
+      else if (specFileTag == SpecFile::getClosedTopoFileTag()) {
          theMainWindow->getBrainSet()->readTopologyFile(name, TopologyFile::TOPOLOGY_TYPE_CLOSED, append, update);
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::openTopoFileTag) {
+      else if (specFileTag == SpecFile::getOpenTopoFileTag()) {
          theMainWindow->getBrainSet()->readTopologyFile(name, TopologyFile::TOPOLOGY_TYPE_OPEN, append, update);
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::cutTopoFileTag) {
+      else if (specFileTag == SpecFile::getCutTopoFileTag()) {
          theMainWindow->getBrainSet()->readTopologyFile(name, TopologyFile::TOPOLOGY_TYPE_CUT, append, update);
          fm.setTopologyModified();
       }
-      else if (specFileTag == SpecFile::lobarCutTopoFileTag) {
+      else if (specFileTag == SpecFile::getLobarCutTopoFileTag()) {
          theMainWindow->getBrainSet()->readTopologyFile(name, TopologyFile::TOPOLOGY_TYPE_LOBAR_CUT, append, update);
          fm.setTopologyModified();
       }
-      else if (specFileTag.indexOf(SpecFile::unknownTopoFileMatchTag) >= 0) {
+      else if (specFileTag.indexOf(SpecFile::getUnknownTopoFileMatchTag()) >= 0) {
          theMainWindow->getBrainSet()->readTopologyFile(name, TopologyFile::TOPOLOGY_TYPE_UNKNOWN, append, update);
          fm.setTopologyModified();
       }
@@ -2076,54 +2103,54 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          fm.setTopologyModified();
          QApplication::restoreOverrideCursor();
       }
-      else if (specFileTag == SpecFile::transformationMatrixFileTag) {
+      else if (specFileTag == SpecFile::getTransformationMatrixFileTag()) {
          theMainWindow->getBrainSet()->readTransformationMatrixFile(name, append, update);
          fm.setTransformationMatrixModified();
       }
-      else if (specFileTag == SpecFile::transformationDataFileTag) {
+      else if (specFileTag == SpecFile::getTransformationDataFileTag()) {
          theMainWindow->getBrainSet()->readTransformationDataFile(name, append, update);
          theMainWindow->getBrainSet()->assignTransformationDataFileColors();
          fm.setTransformationDataModified();
       }
-      else if (specFileTag == SpecFile::volumeAnatomyFileTag) {
+      else if (specFileTag == SpecFile::getVolumeAnatomyFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_ANATOMY, append, update);
          fm.setVolumeModified();
       }
-      else if (specFileTag == SpecFile::volumeFunctionalFileTag) {
+      else if (specFileTag == SpecFile::getVolumeFunctionalFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_FUNCTIONAL, append, update);
          fm.setVolumeModified();
       }
-      else if (specFileTag == SpecFile::volumePaintFileTag) {
+      else if (specFileTag == SpecFile::getVolumePaintFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_PAINT, append, update);
          fm.setVolumeModified();
          areaColorWarning = needAreaColors;
       }
-      else if (specFileTag == SpecFile::volumeProbAtlasFileTag) {
+      else if (specFileTag == SpecFile::getVolumeProbAtlasFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_PROB_ATLAS, append, update);
          fm.setVolumeModified();
          areaColorWarning = needAreaColors;
       }
-      else if (specFileTag == SpecFile::volumeRgbFileTag) {
+      else if (specFileTag == SpecFile::getVolumeRgbFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_RGB, append, update);
          fm.setVolumeModified();
       }
-      else if (specFileTag == SpecFile::volumeSegmentationFileTag) {
+      else if (specFileTag == SpecFile::getVolumeSegmentationFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_SEGMENTATION, append, update);
          fm.setVolumeModified();
       }
-      else if (specFileTag == SpecFile::volumeVectorFileTag) {
+      else if (specFileTag == SpecFile::getVolumeVectorFileTag()) {
          theMainWindow->getBrainSet()->readVolumeFile(name, VolumeFile::VOLUME_TYPE_VECTOR, append, update);
          fm.setVolumeModified();
       }
-      else if (specFileTag == SpecFile::vtkModelFileTag) {
+      else if (specFileTag == SpecFile::getVtkModelFileTag()) {
          theMainWindow->getBrainSet()->readVtkModelFile(name, append, update);
          fm.setVtkModelModified();
       }
-      else if (specFileTag == SpecFile::vocabularyFileTag) {
+      else if (specFileTag == SpecFile::getVocabularyFileTag()) {
          theMainWindow->getBrainSet()->readVocabularyFile(name, append, update);
          fm.setVocabularyModified();
       }
-      else if (specFileTag == SpecFile::wustlRegionFileTag) {
+      else if (specFileTag == SpecFile::getWustlRegionFileTag()) {
          theMainWindow->getBrainSet()->readWustlRegionFile(name, append, update);
          fm.setWustlRegionModified();
       }

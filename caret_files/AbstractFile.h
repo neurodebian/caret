@@ -735,8 +735,9 @@ class AbstractFile {
       static const QString headerTagSubject;
 };
 
-#ifdef _ABSTRACT_MAIN_
+#endif //  __VE_ABSTRACT_FILE_H__
 
+#ifdef _ABSTRACT_MAIN_
    const QString AbstractFile::xmlHeaderTagName = "FileHeader";
    const QString AbstractFile::xmlHeaderElementTagName = "Element";
    const QString AbstractFile::xmlHeaderElementName = "Name";
@@ -775,6 +776,4 @@ class AbstractFile {
    QFile::Permissions AbstractFile::fileWritePermissions(0);
 #endif //  _ABSTRACT_MAIN_
 
-
-#endif //  __VE_ABSTRACT_FILE_H__
 

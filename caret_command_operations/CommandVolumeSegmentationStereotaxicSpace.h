@@ -29,6 +29,8 @@
 
 #include "CommandBase.h"
 
+class SegmentationMaskListFile;
+
 /// class for segmentation automatically
 class CommandVolumeSegmentationStereotaxicSpace : public CommandBase {
    public:
@@ -52,8 +54,9 @@ class CommandVolumeSegmentationStereotaxicSpace : public CommandBase {
                                    ProgramParametersException,
                                    StatisticException);
 
-      /// name of mask list file
-      QString maskVolumeListFileName;
+      /// get the segmentation mask file
+      void getMaskVolumeListFile(SegmentationMaskListFile& smlf,
+                                 const bool throwExceptionIfReadErrorFlag) const throw (CommandException);
 };
 
 #endif // __COMMAND_VOLUME_SEGMENTATION_STEREOTAXIC_SPACE_H__

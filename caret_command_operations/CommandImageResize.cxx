@@ -101,6 +101,13 @@ CommandImageResize::getHelpInformation() const
        + indent9 + "is dots per meter if \"new-image-width-and-height-units-type\"\n"
        + indent9 + "is \"CM\" and this value is dots per inch if \n"
        + indent9 + "\"new-image-width-and-height-units-type\" is \"INCH\".\n"
+       + indent9 + "\n"
+       + indent9 + "On Linux and Mac OSX, multiple images can be resized by\n"
+       + indent9 + "using the \"apply\" command.  For example, to resize all\n"
+       + indent9 + "JPEG images (file extension \".jpg\") in the current \n"
+       + indent9 + "directory so that they are 320 pixels wide and 240 pixels\n"
+       + indent9 + "in height:\n"
+       + indent9 + "  apply \"caret_command -image-resize %1 %1 PIXEL 320 240\" *.jpg\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -190,9 +197,9 @@ CommandImageResize::executeCommand() throw (BrainModelAlgorithmException,
       if (outputDotsPerUnit > 0) {
          dotsPerCM = outputDotsPerUnit / 100.0;
       }
-      width = outputImageWidth * dotsPerCM;
-      height = outputImageHeight * dotsPerCM;
-      dotsPerMeter = dotsPerCM * 100;
+      width = static_cast<int>(outputImageWidth * dotsPerCM);
+      height = static_cast<int>(outputImageHeight * dotsPerCM);
+      dotsPerMeter = static_cast<int>(dotsPerCM * 100);
    }
    else if (imageUnitsTypeName == "INCH") {
       const float INCHES_PER_METER = 39.37;
@@ -200,13 +207,13 @@ CommandImageResize::executeCommand() throw (BrainModelAlgorithmException,
       if (outputDotsPerUnit > 0) {
          dotsPerInch = outputDotsPerUnit;
       }
-      width = outputImageWidth * dotsPerInch;
-      height = outputImageHeight * dotsPerInch;
-      dotsPerMeter = dotsPerInch * INCHES_PER_METER;
+      width = static_cast<int>(outputImageWidth * dotsPerInch);
+      height = static_cast<int>(outputImageHeight * dotsPerInch);
+      dotsPerMeter = static_cast<int>(dotsPerInch * INCHES_PER_METER);
    }
    else if (imageUnitsTypeName == "PIXEL") {
-      width = outputImageWidth;
-      height = outputImageHeight;
+      width = static_cast<int>(outputImageWidth);
+      height = static_cast<int>(outputImageHeight);
       if (outputDotsPerUnit > 0) {
          dotsPerMeter = outputDotsPerUnit;
       }

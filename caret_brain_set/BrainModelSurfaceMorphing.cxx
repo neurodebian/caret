@@ -567,6 +567,8 @@ BrainModelSurfaceMorphing::updateStatsFile(QFile& statsFile,
                                     referenceSurface,
                                     morphingSurface->getTopologyFile(),
                                     &measurementsShapeFile,
+                                    BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW,
+                                    BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW,
                                     "areal-dist",
                                     "linear-dist");
    try {

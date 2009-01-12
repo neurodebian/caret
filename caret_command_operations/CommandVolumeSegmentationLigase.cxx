@@ -56,17 +56,19 @@ void
 CommandVolumeSegmentationLigase::getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const
 {
    paramsOut.clear();
-   paramsOut.addFile("Input Anatomy Volume File Name", FileFilters::getVolumeAnatomyFileFilter());
-   paramsOut.addFile("Output Segmentation Volume File Name", FileFilters::getVolumeSegmentationFileFilter());
-   paramsOut.addString("Output Volume Label");
+   paramsOut.addFile("Input anatomy volume file name", FileFilters::getVolumeAnatomyFileFilter());
+   paramsOut.addFile("Output segmentation volume file name", FileFilters::getVolumeSegmentationFileFilter());
+   paramsOut.addString("Output volume label");
    paramsOut.addInt("X index of seed", 128, 0);
    paramsOut.addInt("Y index of seed", 128, 0);
    paramsOut.addInt("Z index of seed", 128, 0);
-   paramsOut.addFloat("White Minimum", 140.0f);
-   paramsOut.addFloat("White Peak", 170.0f);
-   paramsOut.addFloat("White Maximum", 200.0f);
+   paramsOut.addFloat("White minimum", 140.0f);
+   paramsOut.addFloat("White peak", 170.0f);
+   paramsOut.addFloat("White maximum", 200.0f);
    paramsOut.addFloat("Difference cutoff base value", BrainModelVolumeLigaseSegmentation::defaultDiff());
    paramsOut.addFloat("Gradient cutoff base value", BrainModelVolumeLigaseSegmentation::defaultGrad());
+   paramsOut.addFloat("Above peak probability minimum", BrainModelVolumeLigaseSegmentation::defaultHighBias());
+   paramsOut.addFloat("Below peak probability minimum", BrainModelVolumeLigaseSegmentation::defaultLowBias());
 }
 
 /**
@@ -89,27 +91,46 @@ CommandVolumeSegmentationLigase::getHelpInformation() const
        + indent9 + "<white-max>\n"
        + indent9 + "[diff-base = " + StringUtilities::fromNumber(BrainModelVolumeLigaseSegmentation::defaultDiff()) + "]\n"
        + indent9 + "[grad-base = " + StringUtilities::fromNumber(BrainModelVolumeLigaseSegmentation::defaultGrad()) + "]\n"
+       + indent9 + "[high-bias = " + StringUtilities::fromNumber(BrainModelVolumeLigaseSegmentation::defaultHighBias()) + "]\n"
+       + indent9 + "[low-bias = " + StringUtilities::fromNumber(BrainModelVolumeLigaseSegmentation::defaultLowBias()) + "]\n"
        + indent9 + "\n"
        + indent9 + "Use LIGASE to segment the white matter.\n"
        + indent9 + "\n"
-       + indent9 + "      x-seed, y-seed, z-seed  specify the voxel for LIGASE to grow from,\n"
-       + indent9 + "                               make sure it is in the white matter. \n"
+       + indent9 + "      x-seed, y-seed, z-seed  specify the voxel for LIGASE to grow\n"
+       + indent9 + "                               from, make sure it is in the white\n"
+       + indent9 + "                               matter.\n"
        + indent9 + "\n"
-       + indent9 + "      white-min  specifies the minimum intensity of the white matter in the \n"
-       + indent9 + "                  anatomy volume. \n"
+       + indent9 + "      white-min  specifies the minimum intensity of the white matter in\n"
+       + indent9 + "                  the anatomy volume. \n"
        + indent9 + " \n"
-       + indent9 + "      white-peak  specifies the intensity of the white matter peak in the \n"
-       + indent9 + "                  anatomy volume. \n"
+       + indent9 + "      white-peak  specifies the intensity of the white matter peak in\n"
+       + indent9 + "                  the anatomy volume. \n"
        + indent9 + " \n"
-       + indent9 + "      white-max  specifies the maximum intensity of the white matter in the \n"
-       + indent9 + "                  anatomy volume. \n"
+       + indent9 + "      white-max  specifies the maximum intensity of the white matter in\n"
+       + indent9 + "                  the anatomy volume. \n"
        + indent9 + "\n"
        + indent9 + "   Optional parameters: (default value specified above)\n"
-       + indent9 + "      diff-base  specifies how much to rely on the difference from one voxel\n"
-       + indent9 + "                  to the next when growing, higher numbers allow more growth. \n"
+       + indent9 + "      diff-base  specifies how much to rely on the difference from one\n"
+       + indent9 + "                  voxel to the next when growing, higher numbers allow\n"
+       + indent9 + "                  more growth. \n"
        + indent9 + "\n"
-       + indent9 + "      grad-base  specifies how much to rely on the magnitude of the local 3D\n"
-       + indent9 + "                  gradient when growing, higher numbers allow more growth.\n"
+       + indent9 + "      grad-base  specifies how much to rely on the magnitude of the\n"
+       + indent9 + "                  local 3D gradient when growing, higher numbers allow\n"
+       + indent9 + "                  more growth.\n"
+       + indent9 + "\n"
+       + indent9 + "      high-bias  specifies how low a probability based on intensity\n"
+       + indent9 + "                  is considered as no chance of being white matter\n"
+       + indent9 + "                  when intensity is above peak, smaller numbers allow\n"
+       + indent9 + "                  more growth.\n"
+       + indent9 + "\n"
+       + indent9 + "      low-bias  specifies how low a probability based on intensity\n"
+       + indent9 + "                  is considered as no chance of being white matter\n"
+       + indent9 + "                  when intensity is below peak, smaller numbers allow\n"
+       + indent9 + "                  more growth.\n"
+       + indent9 + "\n"
+       + indent9 + "Note: This algorithm is generally conservative in estimating the\n"
+       + indent9 + "       gray/white boundary, try dilating the output if changing\n"
+       + indent9 + "       parameters doesn't give the desired results.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -144,16 +165,28 @@ CommandVolumeSegmentationLigase::executeCommand() throw (BrainModelAlgorithmExce
    const float whiteMax =
       parameters->getNextParameterAsFloat("White Maximum");
    float diffBase = BrainModelVolumeLigaseSegmentation::defaultDiff(),
-         gradBase = BrainModelVolumeLigaseSegmentation::defaultGrad();
+         gradBase = BrainModelVolumeLigaseSegmentation::defaultGrad(),
+         highBias = BrainModelVolumeLigaseSegmentation::defaultHighBias(),
+         lowBias = BrainModelVolumeLigaseSegmentation::defaultLowBias();
    if (parameters->getParametersAvailable())
    {
       diffBase =
          parameters->getNextParameterAsFloat("Difference Cutoff Base (optional)");
-      if (parameters->getParametersAvailable())
-      {
-         diffBase =
-            parameters->getNextParameterAsFloat("Gradient Cutoff Base (optional)");
-      }
+   }
+   if (parameters->getParametersAvailable())
+   {
+      gradBase =
+         parameters->getNextParameterAsFloat("Gradient Cutoff Base (optional)");
+   }
+   if (parameters->getParametersAvailable())
+   {
+      highBias =
+         parameters->getNextParameterAsFloat("High Probability Bias (optional)");
+   }
+   if (parameters->getParametersAvailable())
+   {
+      lowBias =
+         parameters->getNextParameterAsFloat("Low Probability Bias (optional)");
    }
    checkForExcessiveParameters();
    
@@ -189,7 +222,9 @@ CommandVolumeSegmentationLigase::executeCommand() throw (BrainModelAlgorithmExce
                                                    whitePeak,
                                                    whiteMax,
                                                    diffBase,
-                                                   gradBase);
+                                                   gradBase,
+                                                   highBias,
+                                                   lowBias);
    
    //
    // Execute Ligase

@@ -191,16 +191,12 @@ class NodeAttributeFile : public AbstractFile {
       static const QString tagColumnStudyMetaData;      
 };
 
-#ifdef _NODE_ATTRIBUTE_MAIN_
+#endif // __VE_NODE_ATTRIBUTE_FILE_H__
 
+#ifdef _NODE_ATTRIBUTE_MAIN_
    const QString NodeAttributeFile::tagColumnName    = "tag-column-name";
    const QString NodeAttributeFile::tagColumnComment = "tag-column-comment";
    const QString NodeAttributeFile::tagNumberOfNodes = "tag-number-of-nodes";
    const QString NodeAttributeFile::tagNumberOfColumns = "tag-number-of-columns";
    const QString NodeAttributeFile::tagColumnStudyMetaData = "tag-column-study-meta-data";
-
 #endif // _NODE_ATTRIBUTE_MAIN_
-
-
-#endif // __VE_NODE_ATTRIBUTE_FILE_H__
-

@@ -31,9 +31,14 @@
 #include <QDir>
 
 #include "AreaColorFile.h"
+#include "BorderColorFile.h"
+#include "BorderProjectionFile.h"
 #include "BrainSet.h"
+#include "BrainModelOpenGL.h"
 #include "BrainModelSurface.h"
+#include "BrainModelSurfaceBorderLandmarkIdentification.h"
 #include "BrainModelSurfaceCurvature.h"
+#include "BrainModelSurfaceOverlay.h"
 #include "BrainModelSurfaceSulcalDepthWithNormals.h"
 #include "BrainModelSurfaceTopologyCorrector.h"
 #include "BrainModelVolumeGradient.h"
@@ -41,12 +46,17 @@
 #include "BrainModelVolumeSureFitErrorCorrection.h"
 #include "BrainModelVolumeSureFitSegmentation.h"
 #include "BrainModelVolumeToSurfaceConverter.h"
+#include "BrainModelVolumeTopologyGraphCorrector.h"
 #include "DebugControl.h"
+#include "DisplaySettingsBorders.h"
+#include "DisplaySettingsSurfaceShape.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
+#include "SceneFile.h"
 #include "StatisticHistogram.h"
 #include "SurfaceShapeFile.h"
 #include "TopologyFile.h"
+#include "VocabularyFile.h"
 
 /**
  * Constructor.  Call execute() after this constructor.
@@ -67,15 +77,18 @@ BrainModelVolumeSureFitSegmentation::BrainModelVolumeSureFitSegmentation(BrainSe
                                    const bool cutCorpusCallosumFlagIn,
                                    const bool segmentAnatomyFlagIn,
                                    const bool fillVentriclesFlagIn,
-                                   const bool automaticErrorCorrectionFlagIn,
+                                   const ERROR_CORRECTION_METHOD errorCorrectionMethodIn,
                                    const bool generateRawAndFidualSurfacesFlagIn,
                                    const bool maximumPolygonsFlagIn,
                                    const bool generateTopologicallyCorrectFiducialSurfaceFlagIn,
                                    const bool generateInflatedSurfaceFlagIn,
                                    const bool generateVeryInflatedSurfaceFlagIn,
                                    const bool generateEllipsoidSurfaceFlagIn,
+                                   const bool generateSphericalSurfaceFlagIn,
+                                   const bool generateCompressedMedialWallSurfaceFlagIn,
                                    const bool generateHullSurfaceFlagIn,
-                                   const bool identifySulciFlagIn,
+                                   const bool generateDepthCurvatureGeographyFlagIn,
+                                   const bool identifyRegisterFlattenLandmarksFlagIn,
                                    const bool autoSaveFilesFlagIn)
    : BrainModelAlgorithm(bs)
 {
@@ -95,14 +108,17 @@ BrainModelVolumeSureFitSegmentation::BrainModelVolumeSureFitSegmentation(BrainSe
       generateSegmentationFlag  = false;
    }
    fillVentriclesFlag = fillVentriclesFlagIn;
-   automaticErrorCorrectionFlag = automaticErrorCorrectionFlagIn;
+   errorCorrectionMethod = errorCorrectionMethodIn;
    generateRawAndFidualSurfacesFlag = generateRawAndFidualSurfacesFlagIn;
    generateTopologicallyCorrectFiducialSurfaceFlag = generateTopologicallyCorrectFiducialSurfaceFlagIn;
    generateInflatedSurfaceFlag = generateInflatedSurfaceFlagIn;
    generateVeryInflatedSurfaceFlag = generateVeryInflatedSurfaceFlagIn;
    generateEllipsoidSurfaceFlag = generateEllipsoidSurfaceFlagIn;
+   generateSphericalSurfaceFlag = generateSphericalSurfaceFlagIn;
+   generateCompressedMedialWallSurfaceFlag = generateCompressedMedialWallSurfaceFlagIn;
    generateHullSurfaceFlag = generateHullSurfaceFlagIn;
-   identifySulciFlag = identifySulciFlagIn;
+   generateDepthCurvatureGeographyFlag = generateDepthCurvatureGeographyFlagIn;
+   identifyRegisterFlattenLandmarksFlag = identifyRegisterFlattenLandmarksFlagIn;
    autoSaveFilesFlag = autoSaveFilesFlagIn;
    maximumPolygonsFlag = maximumPolygonsFlagIn;
    
@@ -249,6 +265,22 @@ BrainModelVolumeSureFitSegmentation::~BrainModelVolumeSureFitSegmentation()
 }
 
 /**
+ * get error correction methods and names.
+ */
+void 
+BrainModelVolumeSureFitSegmentation::getErrorCorrectionMethodsAndNames(
+                            std::vector<QString>& namesOut,
+                            std::vector<ERROR_CORRECTION_METHOD>& methodsOut)
+{
+   namesOut.clear();   methodsOut.clear();
+   namesOut.push_back("NONE");  methodsOut.push_back(ERROR_CORRECTION_METHOD_NONE); 
+   namesOut.push_back("GRAPH");  methodsOut.push_back(ERROR_CORRECTION_METHOD_GRAPH); 
+   namesOut.push_back("SUREFIT");  methodsOut.push_back(ERROR_CORRECTION_METHOD_SUREFIT); 
+   namesOut.push_back("SUREFIT_THEN_GRAPH");  methodsOut.push_back(ERROR_CORRECTION_METHOD_SUREFIT_AND_GRAPH); 
+   namesOut.push_back("GRAPH_THEN_SUREFIT");  methodsOut.push_back(ERROR_CORRECTION_METHOD_GRAPH_AND_SUREFIT); 
+}                                  
+
+/**
  * set the volume mask applied prior to inner and outer boundary determination.
  */
 void 
@@ -347,6 +379,9 @@ BrainModelVolumeSureFitSegmentation::executeIdentifySulci() throw (BrainModelAlg
       case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
       case Structure::STRUCTURE_TYPE_INVALID:
          QString msg("Struture must be either \"");
          msg += Structure::convertTypeToString(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
@@ -379,9 +414,9 @@ BrainModelVolumeSureFitSegmentation::executeIdentifySulci() throw (BrainModelAlg
    getParameters();
    
    //
-   // Identify the sulci
+   // Generate depth, curvature, and geography
    //
-   identifySulci(segmentationVolume);
+   generateDepthCurvatureGeography(segmentationVolume);
    
    freeAllFilesInMemory();
 }
@@ -434,6 +469,7 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
       int PROGRESS_GENERATE_SURFACE = -1;
       int PROGRESS_GENERATE_INFLATED_ELLIPSOID_SURFACE = -1;
       int PROGRESS_GENERATE_SULCAL_ID = -1;
+      int PROCESS_GENERATE_REGISTER_FLATTEN_LANDMARKS = -1;
       
       int numSteps = 1;
       //
@@ -480,17 +516,28 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
          PROGRESS_FILL_VENTRICLES = numSteps;
          numSteps++;
       }
-      if (automaticErrorCorrectionFlag) {
-         PROGRESS_AUTOMATIC_ERROR_CORRECTION = numSteps;
-         numSteps++;
+      
+      switch (errorCorrectionMethod) {
+         case ERROR_CORRECTION_METHOD_NONE:
+            break;
+         case ERROR_CORRECTION_METHOD_GRAPH:
+         case ERROR_CORRECTION_METHOD_SUREFIT:
+         case ERROR_CORRECTION_METHOD_SUREFIT_AND_GRAPH:
+         case ERROR_CORRECTION_METHOD_GRAPH_AND_SUREFIT:
+            PROGRESS_AUTOMATIC_ERROR_CORRECTION = numSteps;
+            numSteps++;
+            break;
       }
+      
       if (generateRawAndFidualSurfacesFlag) {
          PROGRESS_GENERATE_SURFACE = numSteps;
          numSteps++;
       }
       if (generateInflatedSurfaceFlag ||
           generateVeryInflatedSurfaceFlag ||
-          generateEllipsoidSurfaceFlag) {
+          generateEllipsoidSurfaceFlag ||
+          generateSphericalSurfaceFlag ||
+          generateCompressedMedialWallSurfaceFlag) {
          if (generateRawAndFidualSurfacesFlag == false) {
             throw BrainModelAlgorithmException("You must create raw and fiducial if you want "
                                                "inflated and/or ellipsoid surfaces.");
@@ -498,12 +545,36 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
          PROGRESS_GENERATE_INFLATED_ELLIPSOID_SURFACE = numSteps;
          numSteps++;
       }
-      if (identifySulciFlag) {
+      if (generateDepthCurvatureGeographyFlag) {
          if (generateRawAndFidualSurfacesFlag == false) {
             throw BrainModelAlgorithmException("You must create raw and fiducial if you want "
-                                               "to identify sulci.");
+                                               "to generate depth, curvature, and geography.");
          }
          PROGRESS_GENERATE_SULCAL_ID = numSteps;
+         numSteps++;
+      }
+      if (identifyRegisterFlattenLandmarksFlag) {
+         if (generateInflatedSurfaceFlag == false) {
+            throw BrainModelAlgorithmException("You must generate an inflated surface"
+                                               " if you want to generate registration and flattening landmark borders.");
+         }
+         if (generateVeryInflatedSurfaceFlag == false) {
+            throw BrainModelAlgorithmException("You must generate a very inflated surface"
+                                               " if you want to generate registration and flattening landmark borders.");
+         }
+         if (generateEllipsoidSurfaceFlag == false) {
+            throw BrainModelAlgorithmException("You must generate an ellipsoid surface"
+                                               " if you want to generate registration and flattening landmark borders.");
+         }
+         //if (generateSphericalSurfaceFlag == false) {
+         //   throw BrainModelAlgorithmException("You must generate a spherical surface"
+         //                                      " if you want to generate registration and flattening landmarks borders.");
+         //}
+         if (generateDepthCurvatureGeographyFlag == false) {
+            throw BrainModelAlgorithmException("You must  generate depth, curvature, and geography"
+                                               " if you want to generate registration and flattening landmark borders.");
+         }
+         PROCESS_GENERATE_REGISTER_FLATTEN_LANDMARKS = numSteps;
          numSteps++;
       }
       createProgressDialog("Segmentation Processing",
@@ -738,7 +809,7 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
          //
          // Should errors be automatically corrected
          //
-         if (automaticErrorCorrectionFlag) {
+         if (errorCorrectionMethod != ERROR_CORRECTION_METHOD_NONE) {
             //
             // If a segmentation was generated from the anatomy volume
             //
@@ -762,12 +833,48 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
             //
             // Do error correction
             //
-            VolumeFile* correctedVolume = automaticErrorCorrection(segmentVolumeForProcessing);
+            VolumeFile* correctedVolume = NULL;
+            
+            QString defaultCorrectedName("Segment_ErrorCorrected");
+            switch (errorCorrectionMethod) {
+               case ERROR_CORRECTION_METHOD_NONE:
+                  break;
+               case ERROR_CORRECTION_METHOD_GRAPH:
+                  defaultCorrectedName = "Segment_GraphErrorCorrected";
+                  correctedVolume = graphBasedErrorCorrection(segmentVolumeForProcessing);
+                  break;
+               case ERROR_CORRECTION_METHOD_SUREFIT:
+                  defaultCorrectedName = "Segment_SureFitErrorCorrected";
+                  correctedVolume = sureFitAutomaticErrorCorrection(segmentVolumeForProcessing);
+                  break;
+               case ERROR_CORRECTION_METHOD_SUREFIT_AND_GRAPH:
+                  {
+                     correctedVolume = sureFitAutomaticErrorCorrection(segmentVolumeForProcessing);
+                     VolumeFile* volumeToDelete = correctedVolume;
+                     correctedVolume = graphBasedErrorCorrection(correctedVolume);
+                     defaultCorrectedName = "Segment_SureFit_GraphErrorCorrected";
+                     if (volumeToDelete != NULL) {
+                        delete volumeToDelete;
+                     }
+                  }
+                  break;
+               case ERROR_CORRECTION_METHOD_GRAPH_AND_SUREFIT:
+                  {
+                     correctedVolume = graphBasedErrorCorrection(segmentVolumeForProcessing);
+                     VolumeFile* volumeToDelete = correctedVolume;
+                     correctedVolume = sureFitAutomaticErrorCorrection(correctedVolume);
+                     defaultCorrectedName = "Segment_Graph_SureFitErrorCorrected";
+                     if (volumeToDelete != NULL) {
+                        delete volumeToDelete;
+                     }
+                  }
+                  break;
+            }
             
             if (correctedVolume != NULL) {
                correctedVolume->setFileWriteType(typeOfVolumeFilesToWrite);
-               correctedVolume->makeDefaultFileName("Segment_ErrorCorrected");
-               correctedVolume->setDescriptiveLabel("Segment_ErrorCorrected");
+               correctedVolume->makeDefaultFileName(defaultCorrectedName);
+               correctedVolume->setDescriptiveLabel(defaultCorrectedName);
                
                //
                // Add the corrected volume to the brain set
@@ -850,8 +957,10 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
             //
             if (generateInflatedSurfaceFlag ||
                 generateVeryInflatedSurfaceFlag ||
-                generateEllipsoidSurfaceFlag) {
-               updateProgressDialog("Generating the inflated and/or ellipsoid surfaces.",
+                generateEllipsoidSurfaceFlag ||
+                generateSphericalSurfaceFlag||
+                generateCompressedMedialWallSurfaceFlag) {
+               updateProgressDialog("Generating the inflated, ellipsoid, and/or spherical surfaces.",
                                         PROGRESS_GENERATE_INFLATED_ELLIPSOID_SURFACE);
                
                //
@@ -896,15 +1005,31 @@ BrainModelVolumeSureFitSegmentation::execute() throw (BrainModelAlgorithmExcepti
             //
             // If sulci ID should be generated
             //
-            if (identifySulciFlag) {
-               updateProgressDialog("Generating the sulcal depth map and sulcal identification.",
+            if (generateDepthCurvatureGeographyFlag) {
+               updateProgressDialog("Generating depth, curvature, and geography.",
                                         PROGRESS_GENERATE_SULCAL_ID);
 
                //
-               // Identify the sulci
+               // generate depth, curvature, and geography
                //
-               identifySulci(segmentVolumeForProcessing);
+               generateDepthCurvatureGeography(segmentVolumeForProcessing);
             }
+            
+            //
+            // If registration and flattening landmarks should be generated
+            //
+            if (identifyRegisterFlattenLandmarksFlag) {
+               updateProgressDialog("Generating registration and flattening landmarks.",
+                                    PROCESS_GENERATE_REGISTER_FLATTEN_LANDMARKS);
+                                    
+               generateRegistrationFlatteningLandmarkBorders();
+            }
+            
+            //
+            // Generate default scenes
+            //
+            generateDefaultScenes();
+            
          }         
          if (segmentVolumeForProcessing != NULL) {
             delete segmentVolumeForProcessing;
@@ -969,10 +1094,33 @@ BrainModelVolumeSureFitSegmentation::applyVolumeMaskAndWhiteMatterMaximum() thro
 }
       
 /**
+ * do graph-based automatic error correction.
+ */
+VolumeFile* 
+BrainModelVolumeSureFitSegmentation::graphBasedErrorCorrection(VolumeFile* vf)
+{
+   BrainModelVolumeTopologyGraphCorrector corrector(brainSet,
+                BrainModelVolumeTopologyGraphCorrector::CORRECTION_MODE_NORMAL,
+                vf);
+   try {
+      corrector.execute();
+   }
+   catch (BrainModelAlgorithmException& e) {
+      throw e;
+   }
+   
+   VolumeFile* volumeOut = NULL;
+   if (corrector.getCorrectedSegmentationVolumeFile() != NULL) {
+      volumeOut = new VolumeFile(*corrector.getCorrectedSegmentationVolumeFile());
+   }
+   return volumeOut;
+}
+      
+/**
  * do automatic error correction.
  */
 VolumeFile* 
-BrainModelVolumeSureFitSegmentation::automaticErrorCorrection(VolumeFile* vf)
+BrainModelVolumeSureFitSegmentation::sureFitAutomaticErrorCorrection(VolumeFile* vf)
 {
    VolumeFile *vol = new VolumeFile(*vf);
    
@@ -992,6 +1140,7 @@ BrainModelVolumeSureFitSegmentation::automaticErrorCorrection(VolumeFile* vf)
             radialPosVolume.readFile("RadialPositionMap+orig.hdr");
             break;
          case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI:
+         case VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP:
             if (QFile::exists("RadialPositionMap+orig.nii.gz")) {
                radialPosVolume.readFile("RadialPositionMap+orig.nii.gz");
             }
@@ -1035,17 +1184,38 @@ BrainModelVolumeSureFitSegmentation::automaticErrorCorrection(VolumeFile* vf)
    //
    // Get the error corrected volume
    //
-   vol = sfec.getOutputVolume();
+   if (vol != NULL) {
+      delete vol;
+   }
+   vol = NULL;
+   if (sfec.getOutputVolume() != NULL) {
+      vol = new VolumeFile(*sfec.getOutputVolume());
+   }
    
    return vol;
 }
 
 /**
- * do indentification of sulci.
+ * Generate depth, curvature, and geography.
  */
 void 
-BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
+BrainModelVolumeSureFitSegmentation::generateDepthCurvatureGeography(const VolumeFile* segmentVolIn)
 {
+   //
+   // Expand around edges with empty slices
+   //
+   VolumeFile segmentVolumeExpanded(*segmentVolIn);
+   int expDim[3];
+   segmentVolumeExpanded.getDimensions(expDim);
+   const int expSlices = 7;
+   const int resizeCrop[6] = { 
+      -expSlices, expDim[0] + expSlices,
+      -expSlices, expDim[1] + expSlices,
+      -expSlices, expDim[2] + expSlices
+   };
+   segmentVolumeExpanded.resize(resizeCrop);
+   writeDebugVolume(segmentVolumeExpanded, "SegmentExpandedForDepthCurveGeom");
+   
    //
    // Add area colors if needed
    //
@@ -1095,7 +1265,7 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    // Generate the hull volume and the cerebral hull VTK file
    // This creates the cerebral hull volume too.
    //
-   brainSet->generateCerebralHullVtkFile(segmentVol, false);
+   brainSet->generateCerebralHullVtkFile(&segmentVolumeExpanded, false);
        
    VolumeFile* cerebralHullVolume = NULL;
    const int num = brainSet->getNumberOfVolumeSegmentationFiles() - 1;
@@ -1231,7 +1401,7 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    //bc3fname = "%s/%s.BuriedCortex.3deep.mnc" % 
    //        (SulDirectory, ReadParams.GetFilePrefix ())
    //WriteNetCDFFile (bc3fname, data, xdim, ydim, zdim)
-   VolumeFile segData(*segmentVol);
+   VolumeFile segData(segmentVolumeExpanded);
    data = cerebralHullErode3;
    VolumeFile::performMathematicalOperation(VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
                                             &data,
@@ -1303,7 +1473,7 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
    // Set CUT.FACE paint ID for padded volumes
    //
    assignPaddedCutFaceNodePainting(rawCoordFile,
-                                   segmentVol,
+                                   &segmentVolumeExpanded,
                                    pf,
                                    geographyColumnNumber);
 
@@ -1529,6 +1699,232 @@ BrainModelVolumeSureFitSegmentation::identifySulci(VolumeFile* segmentVol)
 }
 
 /**
+ * generate default scenes.
+ */
+void 
+BrainModelVolumeSureFitSegmentation::generateDefaultScenes() throw (BrainModelAlgorithmException)
+{
+   //
+   // Update display settings and other things in brain set
+   //
+   brainSet->postSpecFileReadInitializations();
+   
+   //
+   // Set underlay to surface shape
+   //
+   BrainModelSurfaceOverlay* underlay = brainSet->getSurfaceUnderlay();
+   underlay->setOverlay(-1, BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE);
+   DisplaySettingsSurfaceShape* dsss = brainSet->getDisplaySettingsSurfaceShape();
+   const SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
+   const int underlayOverlayNumber = underlay->getOverlayNumber();
+   if (ssf->getSulcalDepthColumnNumber() >= 0) {
+      dsss->setSelectedDisplayColumn(-1, underlayOverlayNumber, ssf->getSulcalDepthColumnNumber());
+   }
+   else if (ssf->getMeanCurvatureColumnNumber() >= 0) {
+      dsss->setSelectedDisplayColumn(-1, underlayOverlayNumber, ssf->getMeanCurvatureColumnNumber());
+   }
+   
+   //
+   // Turn on display of borders
+   //
+   brainSet->getDisplaySettingsBorders()->setDisplayBorders(true);
+   
+   //
+   // For each window, main and viewing
+   //
+   std::vector<SceneFile::SceneClass> windowSceneClasses;
+            
+   //
+   // Lateral view of very inflated in Main Window
+   //
+   BrainModelSurface* veryInflatedSurface = 
+      brainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_VERY_INFLATED);
+   if (veryInflatedSurface == NULL) {
+      return;
+   }
+
+   //
+   // Set the view
+   //
+
+   const int mainWindowGeometry[4] = { 50, 50, 600, 600 };
+   const int viewWindowGeometry[4] = { 600, 50, 400, 400 };
+   const int graphicsSizeX = 512;
+   const int graphicsSizeY = 512;
+   const int mainWindowGraphicsSize[2] = { -1, -1 }; 
+   const int viewWindowGraphicsSize[2] = { graphicsSizeX, graphicsSizeY };
+   if (brainSet->getProgressDialogParent() == NULL) {
+      double orthoRight, orthoTop;
+      BrainModelOpenGL::getDefaultOrthoRightAndTop(graphicsSizeX,
+                                                   graphicsSizeY,
+                                                   orthoRight,
+                                                   orthoTop);
+      brainSet->setDefaultScaling(orthoRight, orthoTop);
+   }
+
+   //
+   // create the lateral view in the main window
+   //
+   SceneFile::SceneClass mainWindowSceneClass("");
+   veryInflatedSurface->setToStandardView(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW, 
+                                      BrainModel::VIEW_LATERAL);
+   brainSet->saveSceneForBrainModelWindow(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW,
+                                         mainWindowGeometry,
+                                         mainWindowGraphicsSize,
+                                         veryInflatedSurface,
+                                         false,
+                                         mainWindowSceneClass);
+   windowSceneClasses.push_back(mainWindowSceneClass);
+
+   //
+   // create the medial view in the view window
+   //
+   SceneFile::SceneClass viewWindowSceneClass("");
+   veryInflatedSurface->setToStandardView(BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2, 
+                                      BrainModel::VIEW_MEDIAL);
+   brainSet->saveSceneForBrainModelWindow(BrainModel::BRAIN_MODEL_VIEW_AUX_WINDOW_2,
+                                         viewWindowGeometry,
+                                         viewWindowGraphicsSize,
+                                         veryInflatedSurface,
+                                         false,
+                                         viewWindowSceneClass);
+   windowSceneClasses.push_back(viewWindowSceneClass);
+
+   QString errorMessage;
+   brainSet->saveScene(brainSet->getSceneFile(),
+                       windowSceneClasses,
+                       "Lateral/Medial Views of Landmarks",
+                       false,
+                       errorMessage);
+   if (errorMessage.isEmpty() == false) {
+      throw BrainModelAlgorithmException(errorMessage);
+   }
+   
+   //
+   // Save scene file
+   //
+   if (autoSaveFilesFlag) {
+      SceneFile* sf = brainSet->getSceneFile();
+      try {
+         if (QFile::exists(sf->getFileName())) {
+            brainSet->writeSceneFile(sf->getFileName());
+         }
+         else {
+            brainSet->writeSceneFile(sf->makeDefaultFileName("Initial"));
+         }
+      }
+      catch (FileException& e) {
+         addToWarningMessages(e.whatQString());
+      }
+   }
+}
+
+/**
+ * generate landmarks borders for flattening and registration.
+ */
+void 
+BrainModelVolumeSureFitSegmentation::generateRegistrationFlatteningLandmarkBorders() throw (BrainModelAlgorithmException)
+{
+   BorderProjectionFile borderProjectionFile;
+   BrainModelSurfaceBorderLandmarkIdentification 
+      bmsbli(brainSet,
+             brainSet->getStereotaxicSpace(),
+             anatomyVolume,
+             brainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_FIDUCIAL),
+             brainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_INFLATED),
+             brainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_VERY_INFLATED),
+             brainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL),
+             brainSet->getSurfaceShapeFile(),
+             brainSet->getSurfaceShapeFile()->getSulcalDepthColumnNumber(),
+             brainSet->getPaintFile(),
+             brainSet->getPaintFile()->getGeographyColumnNumber(),
+             brainSet->getAreaColorFile(),
+             &borderProjectionFile,
+             brainSet->getBorderColorFile(),
+             brainSet->getVocabularyFile(),
+             BrainModelSurfaceBorderLandmarkIdentification::OPERATION_ID_ALL);
+   bmsbli.execute();
+   
+   brainSet->getBorderSet()->copyBordersFromBorderProjectionFile(&borderProjectionFile);
+
+   brainSet->getDisplaySettingsBorders()->setDisplayBorders(true);
+   
+   //
+   // Save data files
+   //
+   if (autoSaveFilesFlag) {
+      AreaColorFile* acf = brainSet->getAreaColorFile();
+      if (acf->getModified()) {
+         try {
+            if (QFile::exists(acf->getFileName())) {
+               brainSet->writeAreaColorFile(acf->getFileName());
+            }
+            else {
+               brainSet->writeAreaColorFile(acf->makeDefaultFileName("Initial"));
+            }
+         }
+         catch (FileException& e) {
+            addToWarningMessages(e.whatQString()); 
+         }
+      }
+
+      PaintFile* pf = brainSet->getPaintFile();
+      try {
+         if (QFile::exists(pf->getFileName())) {
+            brainSet->writePaintFile(pf->getFileName());
+         }
+         else {
+            brainSet->writePaintFile(pf->makeDefaultFileName("Initial"));
+         }
+      }
+      catch (FileException& e) {
+         addToWarningMessages(e.whatQString());
+      }
+      
+      VocabularyFile* vocabularyFile = brainSet->getVocabularyFile();
+      if (vocabularyFile->getModified()) {
+         try {
+            if (QFile::exists(vocabularyFile->getFileName())) {
+               brainSet->writeVocabularyFile(vocabularyFile->getFileName());
+            }
+            else {
+               brainSet->writeVocabularyFile(vocabularyFile->makeDefaultFileName("Initial"));
+            }
+         }
+         catch (FileException& e) {
+            addToWarningMessages(e.whatQString()); 
+         }
+      }
+      
+      BorderColorFile* borderColorFile = brainSet->getBorderColorFile();
+      if (borderColorFile->getModified()) {
+         try {
+            if (QFile::exists(borderColorFile->getFileName())) {
+               brainSet->writeBorderColorFile(borderColorFile->getFileName());
+            }
+            else {
+               brainSet->writeBorderColorFile(borderColorFile->makeDefaultFileName("Initial"));
+            }
+         }
+         catch (FileException& e) {
+            addToWarningMessages(e.whatQString()); 
+         }
+      }
+      
+      if (brainSet->getBorderSet()->getNumberOfBorders() > 0) {
+         BorderProjectionFile bpf;
+         const QString name = bpf.makeDefaultFileName("LANDMARKS");
+         try {
+            brainSet->writeBorderProjectionFile(name, "", "");
+         }
+         catch (FileException& e) {
+            addToWarningMessages(e.whatQString()); 
+         }
+      }
+   }
+}
+
+/**
  * assign paint for padded CUT.FACE nodes.
  */
 void 
@@ -1701,7 +2097,8 @@ BrainModelVolumeSureFitSegmentation::generateInflatedAndEllipsoidSurfaces() thro
    fiducialSurface->createInflatedAndEllipsoidFromFiducial(generateInflatedSurfaceFlag,
                                                            generateVeryInflatedSurfaceFlag,
                                                            generateEllipsoidSurfaceFlag,
-                                                           false,
+                                                           generateSphericalSurfaceFlag,
+                                                           generateCompressedMedialWallSurfaceFlag,
                                                            true,
                                                            true,
                                                            1.0,
@@ -1757,7 +2154,7 @@ BrainModelVolumeSureFitSegmentation::disconnectEye() throw (BrainModelAlgorithmE
          //
          // Find the biggest object within the specified region
          //
-         VolumeFile::VoxelIJK vijk(seed);
+         VoxelIJK vijk(seed);
          volume->findBiggestObjectWithinMask(xAC_15_40_low, 
                                              xAC_15_40_high, 
                                              acIJK[1] + 20, 
@@ -1864,7 +2261,7 @@ BrainModelVolumeSureFitSegmentation::disconnectEye() throw (BrainModelAlgorithmE
          //
          // Find the biggest object within the specified region
          //
-         VolumeFile::VoxelIJK voxelIJK(seed);
+         VoxelIJK voxelIJK(seed);
          volume->findBiggestObjectWithinMask(xAC_15_40_low, 
                                              xAC_15_40_high, 
                                              acIJK[1] + 20, 
@@ -2019,7 +2416,7 @@ BrainModelVolumeSureFitSegmentation::disconnectEye() throw (BrainModelAlgorithmE
 	//%vtkFloodFill (seed, inputdata, 255, 255, 0, xdim, ydim, zdim);
 	//&write_minc ("WM.thresh_noEye.flood.mnc", inputdata, xdim, ydim, zdim); 
    VolumeFile floodVolume(*inputVolume);
-   VolumeFile::VoxelIJK seedIJK(seed);
+   VoxelIJK seedIJK(seed);
    floodVolume.findBiggestObjectWithinMask(0, xDim, 0, yDim, 0, zDim,
                                             255.0, 255.0, seedIJK);
    if (seedIJK.getI() < 0) {
@@ -2220,7 +2617,7 @@ BrainModelVolumeSureFitSegmentation::disconnectHindBrain() throw (BrainModelAlgo
 			//%vtkFloodFill (seed, hbdata, 255, 255, 0, xdim, ydim, zdim);
 			//%write_minc ("Hindbrain.TestFlood.mnc", hbdata, xdim, ydim, zdim);
          hbdata = voxdataflat;
-         VolumeFile::VoxelIJK seedVoxel(0, 0, 0);
+         VoxelIJK seedVoxel(0, 0, 0);
          hbdata.findBiggestObjectWithinMask(xMedLimit_20_low,
                                              xMedLimit_20_high, 
                                              ACy - 70, 
@@ -2267,7 +2664,7 @@ BrainModelVolumeSureFitSegmentation::disconnectHindBrain() throw (BrainModelAlgo
             
 				//Sculpt.py  0 3 xMedLimit_20_low xMedLimit_20_high 0 ACy 0 ACz Hindbrain.Flood.mnc WM.thresh_noEye.mnc Hindbrain_sculpt
 				//%seed[0]=seed[1]=seed[2]=0;
-            VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+            VoxelIJK voxelSeed(0, 0, 0);
 				extent[0] = xMedLimit_20_low;
 				extent[1] = xMedLimit_20_high;
 				extent[2] = 0;
@@ -2386,7 +2783,7 @@ BrainModelVolumeSureFitSegmentation::disconnectHindBrain() throw (BrainModelAlgo
 	//%FindBiggestObjectWithinMask (voxdataflat, xdim, ydim, zdim, lp.xMedLimit_20_low, lp.xMedLimit_20_high, lowy-20, ACy+40, ACz, ACz+30, seed);
 	//%vtkFloodFill (seed, voxdataflat, 255, 255, 0, xdim, ydim, zdim);
 	//%write_minc ("WMHiThresh_noEye_noHB.final.mnc", voxdataflat, xdim, ydim, zdim);
-   VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+   VoxelIJK voxelSeed(0, 0, 0);
    int lowy = ACy;
    if (15 < ACy) {
       lowy = 15;
@@ -2555,7 +2952,7 @@ BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(const VolumeFil
 	//%vtkFloodFill (seed, ccdata, 255, 255, 0, xdim, ydim, zdim);
 	//%write_minc ("CorpusCallosumSlice.mnc", ccdata, xdim, ydim, zdim);
 
-   VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+   VoxelIJK voxelSeed(0, 0, 0);
    corpusCallosumVolumeFileOut.findBiggestObjectWithinMask(extent, 255, 255, voxelSeed);
    if (voxelSeed.getI() < 0) {
       throw BrainModelAlgorithmException(
@@ -2629,7 +3026,7 @@ BrainModelVolumeSureFitSegmentation::cutCorpusCallossum() throw (BrainModelAlgor
 	//%vtkFloodFill (seed, ccdata, 255, 255, 0, xdim, ydim, zdim);
 	//%write_minc ("CorpusCallosumSlice.mnc", ccdata, xdim, ydim, zdim);
 
-   VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+   VoxelIJK voxelSeed(0, 0, 0);
    ccdata.findBiggestObjectWithinMask(extent, 255, 255, voxelSeed);
    if (voxelSeed.getI() < 0) {
       throw BrainModelAlgorithmException(
@@ -2792,7 +3189,16 @@ BrainModelVolumeSureFitSegmentation::cutCorpusCallossum() throw (BrainModelAlgor
 	//%MakeShell (cwmnbsfdata, xdim, ydim, zdim, 3, 3);
 	//%write_minc ("InnerMask.1.mnc", cwmnbsfdata, xdim, ydim, zdim);
    cwmnbsfdata = cwmdata;
-   cwmnbsfdata.makeShellVolume(3, 3);
+
+   //
+   // 7/24/2008 DLD added next three lines to reduce chimp occipital smearing
+   //
+   int dilerodes = 2;
+   if (brainSet->getSpecies().isHuman()) { 
+      dilerodes = 3; 
+   }
+   cwmnbsfdata.makeShellVolume(dilerodes, dilerodes);
+   //cwmnbsfdata.makeShellVolume(3, 3);
    cwmnbsfdata.stretchVoxelValues();
    writeDebugVolume(cwmnbsfdata, "InnerMask.1");
    innerMask1Volume = new VolumeFile(cwmnbsfdata);
@@ -2802,7 +3208,15 @@ BrainModelVolumeSureFitSegmentation::cutCorpusCallossum() throw (BrainModelAlgor
 	//%MakeShell (cwmnbsfdata, xdim, ydim, zdim, 6, 1);
 	//%write_minc ("OuterMask.1.mnc", cwmnbsfdata, xdim, ydim, zdim);
    cwmnbsfdata = cwmdata;
-   cwmnbsfdata.makeShellVolume(6, 1);
+   
+   //
+   // 7/24/2008 DLD added next three lines to reduce chimp occipital smearing
+   //
+   int dilations = 4;
+   if (brainSet->getSpecies().isHuman()) {
+      dilations = 6;
+   }
+   cwmnbsfdata.makeShellVolume(dilations, 1);
    cwmnbsfdata.stretchVoxelValues();
    writeDebugVolume(cwmnbsfdata, "OuterMask.1");
    outerMaskVolume = new VolumeFile(cwmnbsfdata);
@@ -3267,6 +3681,13 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
 	//17
 	//%BlurFil (voxdataflat, xdim, ydim, zdim);
 	//%write_minc ("In.Total.blur1.mnc", voxdataflat, xdim, ydim, zdim);
+   
+   //
+   // 7/24/2008 DLD added next line to reduce chimp occipital smearing
+   //
+   if (brainSet->getSpecies().isHuman() == false) { 
+      voxdataflat = *inTotalVolume; 
+   }
    voxdataflat.blur();
    voxdataflat.stretchVoxelValues();
    writeDebugVolume(voxdataflat, "In.Total.blur1");
@@ -3562,14 +3983,19 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//%vec.ReadRaw();
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, voxdataflat);
 	//%vec.WriteRaw ("Out.Near2In.vec");
-   maskdata = *thinWMOrNearVentricleHCMask;
-   VolumeFile::performMathematicalOperation(
-                     VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
-                     &voxdataflat,
-                     &maskdata,
-                     &maskdata,
-                     &voxdataflat);
-   voxdataflat.stretchVoxelValues();
+   //
+   // 7/24/2008 DLD added species condition to reduce chimp occipital smearing
+   //
+   if (brainSet->getSpecies().isHuman()) {
+      maskdata = *thinWMOrNearVentricleHCMask;
+      VolumeFile::performMathematicalOperation(
+                        VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
+                        &voxdataflat,
+                        &maskdata,
+                        &maskdata,
+                        &voxdataflat);
+      voxdataflat.stretchVoxelValues();
+   }
    writeDebugVolume(voxdataflat, "Out.Near2In.sqrt_notThinWM.HCmask");
    vec = *gradIntensityVecFile;
    vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
@@ -3615,14 +4041,20 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//%CombineVols ("subrect", voxdataflat, maskdata, maskdata, xdim, ydim, zdim);
 	//%write_minc ("Out.Total_notVentricle.mnc", voxdataflat, xdim, ydim, zdim);
 	//%write_minc ("OuterBoundary.mnc", voxdataflat, xdim, ydim, zdim);
-   maskdata = *ventGradLevelBlurVolume;
-   VolumeFile::performMathematicalOperation(
-                     VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
-                     &voxdataflat,
-                     &maskdata,
-                     &maskdata,
-                     &voxdataflat);
-   voxdataflat.stretchVoxelValues();
+   
+   //
+   // 7/24/2008 DLD added species condition to reduce chimp occipital smearing
+   //
+   if (brainSet->getSpecies().isHuman()) {
+      maskdata = *ventGradLevelBlurVolume;
+      VolumeFile::performMathematicalOperation(
+                        VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
+                        &voxdataflat,
+                        &maskdata,
+                        &maskdata,
+                        &voxdataflat);
+      voxdataflat.stretchVoxelValues();
+   }
    writeDebugVolume(voxdataflat, "Out.Total_notVentricle");
    writeDebugVolume(voxdataflat, "OuterBoundary");
    
@@ -3708,7 +4140,7 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
       maskdata = *anatomyVolume;
       maskdata.thresholdVolume(static_cast<int>(wmThresh));
       writeDebugVolume(maskdata, "WhiteMatter.Thresholded");
-      VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+      VoxelIJK voxelSeed(0, 0, 0);
       voxdataflat.findBiggestObjectWithinMask(0, xDim, 
                                               0, yDim,
                                               0, zDim,
@@ -3773,7 +4205,7 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
 	//%}
 	//%vtkFloodFill (seed, voxdataflat, 255, 255, 0, xdim, ydim, zdim);
 	//%write_minc ("InOutDiff.flood.mnc", voxdataflat, xdim, ydim, zdim);
-   VolumeFile::VoxelIJK voxelSeed(0, 0, 0);
+   VoxelIJK voxelSeed(0, 0, 0);
    voxdataflat.findBiggestObjectWithinMask(0, xDim,
                                            0, yDim,
                                            0, zDim,
@@ -3948,14 +4380,20 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
                     &voxdataflat);
    voxdataflat.stretchVoxelValues();
    writeDebugVolume(voxdataflat, "PialTrough_noCerebralWM");
-   maskdata = *ventGradLevelBlurVolume;
-   VolumeFile::performMathematicalOperation(
-                    VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
-                    &voxdataflat,
-                    &maskdata,
-                    &maskdata,
-                    &voxdataflat);
-   voxdataflat.stretchVoxelValues();
+   
+   //
+   // 7/24/2008 DLD added species condition to reduce chimp occipital smearing 
+   //
+   if (brainSet->getSpecies().isHuman()) {
+      maskdata = *ventGradLevelBlurVolume;
+      VolumeFile::performMathematicalOperation(
+                       VolumeFile::VOLUME_MATH_OPERATION_SUBTRACT_POSITIVE,
+                       &voxdataflat,
+                       &maskdata,
+                       &maskdata,
+                       &voxdataflat);
+      voxdataflat.stretchVoxelValues();
+   }
    writeDebugVolume(voxdataflat, "PialTrough_Trimmed");
    
    freeVolumeInMemory(ventGradLevelBlurVolume);
@@ -4199,7 +4637,7 @@ BrainModelVolumeSureFitSegmentation::fillVentricles() throw (BrainModelAlgorithm
       extent[3] = acIJK[1] + 20;
       extent[4] = acIJK[2] + 20;
       extent[5] = acIJK[2] + 40;
-      VolumeFile::VoxelIJK seedIJK(seed);
+      VoxelIJK seedIJK(seed);
       voxdataflat.findBiggestObjectWithinMask(extent, 255, 255, seedIJK);
       seed[0] = seedIJK.getI();
       seed[1] = seedIJK.getJ();

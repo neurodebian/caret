@@ -28,6 +28,7 @@
 
 #include <QColor>
 #include <QDateTime>
+#include <QImageWriter>
 
 #include "DebugControl.h"
 #include "FileUtilities.h"
@@ -662,11 +663,32 @@ ImageFile::writeFile(const QString& fileNameIn) throw (FileException)
    }
    filename = fileNameIn;
    
+   QString errorMessage;
+   if (image.width() <= 0) {
+      errorMessage = "Image width is zero.";
+   }
+   if (image.height() <= 0) {
+      if (errorMessage.isEmpty() == false) errorMessage += "\n";
+      errorMessage = "Image height is zero.";
+   }
+   if (errorMessage.isEmpty() == false) {
+      throw FileException(FileUtilities::basename(filename)
+                          + "  " + errorMessage);
+   }
+   
    QString format(StringUtilities::makeUpperCase(FileUtilities::filenameExtension(filename)));
    if (format == "JPG") {
       format = "JPEG";
    }
-   image.save(filename, format.toAscii().constData());
+   
+   QImageWriter writer(filename);
+   writer.setFormat(format.toAscii().constData());
+   writer.setFileName(filename);
+   if (writer.write(image) == false) {
+      throw FileException(writer.errorString());
+   }
+   
+   //image.save(filename, format.toAscii().constData());
    
    //
    // Update file permissions ?

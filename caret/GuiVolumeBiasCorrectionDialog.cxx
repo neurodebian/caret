@@ -262,7 +262,7 @@ GuiVolumeBiasCorrectionDialog::slotHistogramPushButton()
                                              FileUtilities::basename(vf->getFileName()),
                                              values,
                                              true,
-                                             false);
+                                             static_cast<Qt::WindowFlags>(Qt::WA_DeleteOnClose));
       ghd->show();
 
       QApplication::restoreOverrideCursor();

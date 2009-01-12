@@ -28,7 +28,7 @@
 #ifndef __BRAIN_MODEL_SURFACE_CELL_DENSITY_TO_METRIC_H__
 #define __BRAIN_MODEL_SURFACE_CELL_DENSITY_TO_METRIC_H__
 
-#include "BrainModelAlgorithm.h";
+#include "BrainModelAlgorithm.h"
 
 class BrainModelSurface;
 class CellProjectionFile;

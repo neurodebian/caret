@@ -34,9 +34,7 @@
 #include <QMessageBox>
 #include <QRadioButton>
 
-#define __GUI_FOCI_PALS_PROJECTION_DIALOG_MAIN__
 #include "GuiFociPalsProjectionDialog.h"
-#undef __GUI_FOCI_PALS_PROJECTION_DIALOG_MAIN__
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
@@ -101,14 +99,16 @@ GuiFociPalsProjectionDialog::GuiFociPalsProjectionDialog(QWidget* parent)
    cerebellarCutoffDistanceDoubleSpinBox->setMaximum(1000000000.0);
    cerebellarCutoffDistanceDoubleSpinBox->setSingleStep(1.0);
    cerebellarCutoffDistanceDoubleSpinBox->setDecimals(2);
-   cerebellarCutoffDistanceDoubleSpinBox->setValue(getCerebellarCutoffDistance());
+   cerebellarCutoffDistanceDoubleSpinBox->setValue(
+      FociFileToPalsProjector::getDefaultCerebellumCutoffDistance());
    QLabel* cerebralCutoffLabel = new QLabel("Cerebral Cutoff (R1)");
    cerebralCutoffDistanceDoubleSpinBox = new QDoubleSpinBox;
    cerebralCutoffDistanceDoubleSpinBox->setMinimum(0.0);
    cerebralCutoffDistanceDoubleSpinBox->setMaximum(1000000000.0);
    cerebralCutoffDistanceDoubleSpinBox->setSingleStep(1.0);
    cerebralCutoffDistanceDoubleSpinBox->setDecimals(2);
-   cerebralCutoffDistanceDoubleSpinBox->setValue(getCerebralCutoffDistance());
+   cerebralCutoffDistanceDoubleSpinBox->setValue(
+      FociFileToPalsProjector::getDefaultCerebralCutoffDistance());
    
    //
    // Cerebellar Options group box
@@ -221,14 +221,15 @@ GuiFociPalsProjectionDialog::done(int r)
       //
       // Get cutoff distances
       //
-      cerebralCutoffDistance = cerebralCutoffDistanceDoubleSpinBox->value();
-      cerebellarCutoffDistance = cerebellarCutoffDistanceDoubleSpinBox->value();
+      const float cerebralCutoffDistance = cerebralCutoffDistanceDoubleSpinBox->value();
+      const float cerebellarCutoffDistance = cerebellarCutoffDistanceDoubleSpinBox->value();
       
       //
       // Project the foci
       //
       FociFileToPalsProjector fociProjector(theMainWindow->getBrainSet(),
                                             fpf,
+                                            theMainWindow->getBrainSet()->getStudyMetaDataFile(),
                                             0,
                                             -1,
                                             surfaceOffsetDoubleSpinBox->value(),

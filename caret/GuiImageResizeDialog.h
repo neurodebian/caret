@@ -27,7 +27,7 @@
  */
 /*LICENSE_END*/
 
-#include <QDialog>
+#include "WuQDialog.h"
 
 class QCheckBox;
 class QComboBox;
@@ -36,7 +36,7 @@ class QImage;
 class QSpinBox;
 
 /// dialog for resizing a QImage
-class GuiImageResizeDialog : public QDialog {
+class GuiImageResizeDialog : public WuQDialog {
    Q_OBJECT
    
    public:

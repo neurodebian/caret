@@ -90,8 +90,7 @@ BrainModelSurfaceToVolumeSegmentationConverter::execute() throw (BrainModelAlgor
                                            -1.5,
                                            0.0,
                                            0.5,
-            BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES,
-            BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS);
+            BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES);
    bmsv.execute();
 
    //

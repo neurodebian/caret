@@ -57,6 +57,10 @@ class DisplaySettingsStudyMetaData : public DisplaySettings {
       // Update any selections due to changes in loaded cells
       virtual void update();
    
+      // get keywords and number of foci using the keywords
+      void getKeywordsAndUsageByFoci(std::vector<QString>& keywordsOut,
+                                     std::vector<int>& fociCountForKeywordOut) const;
+                                     
       // get keyword indices sorted by name case insensitive
       void getKeywordIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
                                          const bool reverseOrderFlag,
@@ -84,6 +88,10 @@ class DisplaySettingsStudyMetaData : public DisplaySettings {
       void setKeywordSelected(const int indx,
                               const bool selFlag);
       
+      // get subheaders and number of foci using the subheaders
+      void getSubheadersAndUsageByFoci(std::vector<QString>& subheadersOut,
+                                       std::vector<int>& fociCountForSubheadersOut) const;
+                                     
       // get subheader indices sorted by name case insensitive
       void getSubHeaderIndicesSortedByName(std::vector<int>& indicesSortedByNameOut,
                                            const bool reverseOrderFlag,

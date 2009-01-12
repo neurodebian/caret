@@ -165,7 +165,7 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
    // Deselect all files in spec file and add scene file
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::sceneFileTag,
+   specFile.addToSpecFile(SpecFile::getSceneFileTag(),
                           sceneFileName,
                           "",
                           false);
@@ -240,6 +240,7 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
    brainSet.showScene(scene,
                       false,
                       sceneErrorMessage);
+      
        
    //
    // Contains images captured of all windows
@@ -256,16 +257,21 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
       QString modelError;
       int geometry[4];
       int glWidthWidthHeight[2];
+      bool yokeFlag;
       BrainModel* brainModel = brainSet.showSceneGetBrainModel(scene,
                                                                windowNumber,
                                                                geometry,
                                                                glWidthWidthHeight,
+                                                               yokeFlag,
                                                                modelError);
       //
       // Was there a brain window in "window number" window
       //
       if (brainModel == NULL) {
          continue;
+      }
+      if (modelError.isEmpty() == false) {
+         sceneErrorMessage += modelError;
       }
       
       //
@@ -319,10 +325,6 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
                          brainModel,
                          image);
                       
-      if (sceneErrorMessage.isEmpty() == false) {
-         std::cout << "Scene Message: " << sceneErrorMessage.toAscii().constData() << std::endl;
-      }
-      
       //
       // Track the image
       //
@@ -335,7 +337,7 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
    const PreferencesFile* pf = brainSet.getPreferencesFile();
    unsigned char r, g, b;
    pf->getSurfaceBackgroundColor(r, g, b);
-   const int backgroundColor[3] = { r, b, b };
+   const int backgroundColor[3] = { r, g, b };
    
    //
    // Combine the images
@@ -352,13 +354,23 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
    // Write the image file
    //
    if (saveImageToFile) {
-      if (outputImageFile.getImage()->save(imageFileName, "jpg") == false) {
-         throw CommandException("Unable to write image file: " + imageFileName);
+      try {
+         outputImageFile.writeFile(imageFileName);
       }
+      catch (FileException& e) {
+         sceneErrorMessage += e.whatQString();
+      }
+      //if (outputImageFile.getImage()->save(imageFileName, "jpg") == false) {
+      //   throw CommandException("Unable to write image file: " + imageFileName);
+      //}
    }
    else {
       CommandImageView::displayQImage(*outputImageFile.getImage());
    }
+   
+   if (sceneErrorMessage.isEmpty() == false) {
+      throw CommandException(sceneErrorMessage);
+   }   
 }
 
       

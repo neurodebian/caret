@@ -12,6 +12,7 @@ include(../caret_qmake_include.pro)
 win32 {
    debug {
       LIBS +=  ..\caret_widgets\debug\libCaretWidgets.a \
+               ..\caret_brain_set\debug\libCaretBrainSet.a \
                ..\caret_files\debug\libCaretFiles.a \
                ..\caret_uniformize\debug\libCaretUniformize.a \
                ..\caret_common\debug\libCaretCommon.a \
@@ -20,6 +21,7 @@ win32 {
 
    release {
       LIBS +=  ..\caret_widgets\release\libCaretWidgets.a \
+               ..\caret_brain_set\release\libCaretBrainSet.a \
                ..\caret_files\release\libCaretFiles.a \
                ..\caret_uniformize\release\libCaretUniformize.a \
                ..\caret_common\release\libCaretCommon.a \
@@ -33,6 +35,7 @@ win32::debug {
 
 macx {
    LIBS += -L../caret_widgets -lCaretWidgets \
+           -L../caret_brain_set -lCaretBrainSet \
            -L../caret_files  -lCaretFiles \
            -L../caret_uniformize -lCaretUniformize \
            -L../caret_common  -lCaretCommon \
@@ -41,6 +44,7 @@ macx {
 
 unix:!macx {
    LIBS += -L../caret_widgets -lCaretWidgets \
+           -L../caret_brain_set -lCaretBrainSet \
            -L../caret_files  -lCaretFiles \
            -L../caret_uniformize -lCaretUniformize \
            -L../caret_common  -lCaretCommon \

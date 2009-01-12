@@ -26,22 +26,121 @@
 #include "Species.h"
 
 /**
- * get a list of valid species.
+ * get a list of valid species types and names.
  */
 void 
-Species::getAllSpecies(std::vector<QString>& speciesNames)
+Species::getAllSpeciesTypesAndNames(std::vector<TYPE>& speciesTypesOut,
+                                    std::vector<QString>& speciesNamesOut)
 {
-   speciesNames.clear();
-   speciesNames.push_back("Baboon");
-   speciesNames.push_back("Chimpanzee");
-   speciesNames.push_back("Ferret");
-   speciesNames.push_back("Galago");
-   speciesNames.push_back("Gibbon");
-   speciesNames.push_back("Gorilla");
-   speciesNames.push_back("Human");
-   speciesNames.push_back("Macaque");
-   speciesNames.push_back("Mouse");
-   speciesNames.push_back("Orangutan");
-   speciesNames.push_back("Rat");
-   speciesNames.push_back("Other");
+   speciesTypesOut.clear(); speciesNamesOut.clear();
+
+   speciesTypesOut.push_back(TYPE_UNKNOWN);    speciesNamesOut.push_back("Unknown");
+   speciesTypesOut.push_back(TYPE_BABOON);     speciesNamesOut.push_back("Baboon");
+   speciesTypesOut.push_back(TYPE_CHIMPANZEE); speciesNamesOut.push_back("Chimpanzee");
+   speciesTypesOut.push_back(TYPE_FERRET);     speciesNamesOut.push_back("Ferret");
+   speciesTypesOut.push_back(TYPE_GALAGO);     speciesNamesOut.push_back("Galago");
+   speciesTypesOut.push_back(TYPE_GIBBON);     speciesNamesOut.push_back("Gibbon");
+   speciesTypesOut.push_back(TYPE_GORILLA);    speciesNamesOut.push_back("Gorilla");
+   speciesTypesOut.push_back(TYPE_HUMAN);      speciesNamesOut.push_back("Human");
+   speciesTypesOut.push_back(TYPE_MACAQUE);    speciesNamesOut.push_back("Macaque");
+   speciesTypesOut.push_back(TYPE_MOUSE);      speciesNamesOut.push_back("Mouse");
+   speciesTypesOut.push_back(TYPE_ORANGUTAN);  speciesNamesOut.push_back("Orangutan");
+   speciesTypesOut.push_back(TYPE_RAT);        speciesNamesOut.push_back("Rat");
+   speciesTypesOut.push_back(TYPE_OTHER);      speciesNamesOut.push_back("Other");
 }
+
+/**
+ * constructor.
+ */
+Species::Species()
+{
+   reset();
+}
+
+/**
+ * constructor.
+ */
+Species::Species(const TYPE t)
+{
+   reset();
+   setUsingType(t);
+}
+
+/**
+ * constructor.
+ */
+Species::Species(const QString& name)
+{
+   reset();
+   setUsingName(name);
+}
+
+/**
+ * destructor.
+ */
+Species::~Species()
+{
+}
+
+/**
+ * reset.
+ */
+void 
+Species::reset()
+{
+   type = TYPE_UNKNOWN;
+}
+      
+/**
+ * get species name.
+ */
+QString 
+Species::getName() const
+{
+   std::vector<TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   getAllSpeciesTypesAndNames(speciesTypes, speciesNames);
+   
+   QString name("Unknown");
+   const int num = static_cast<int>(speciesTypes.size());
+   for (int i = 0; i < num; i++) {
+      if (type == speciesTypes[i]) {
+         name = speciesNames[i];
+         break;
+      }
+   }
+   
+   return name;
+}
+
+/**
+ * set the species using type.
+ */
+void 
+Species::setUsingType(const TYPE typeIn)
+{
+   type = typeIn;
+}
+
+/**
+ * set the species using name.
+ */
+void 
+Species::setUsingName(const QString& nameIn)
+{
+   const QString name(nameIn.toLower());
+   
+   std::vector<TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   getAllSpeciesTypesAndNames(speciesTypes, speciesNames);
+   
+   type = TYPE_UNKNOWN;
+   const int num = static_cast<int>(speciesTypes.size());
+   for (int i = 0; i < num; i++) {
+      if (name == speciesNames[i].toLower()) {
+         type = speciesTypes[i];
+         break;
+      }
+   }
+}
+      

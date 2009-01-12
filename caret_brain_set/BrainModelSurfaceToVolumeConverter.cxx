@@ -66,8 +66,7 @@ BrainModelSurfaceToVolumeConverter::BrainModelSurfaceToVolumeConverter(
                                  const float innerBoundaryIn,
                                  const float outerBoundaryIn,
                                  const float thicknessStepIn,
-                                 const CONVERSION_MODE convertModeIn,
-                                 const INTERSECTION_MODE intersectionModeIn)
+                                 const CONVERSION_MODE convertModeIn)
    : BrainModelAlgorithm(bs)
 {
    progressDialogTotalSteps = 0;
@@ -94,7 +93,6 @@ BrainModelSurfaceToVolumeConverter::BrainModelSurfaceToVolumeConverter(
    outerBoundary = outerBoundaryIn;
    thicknessStep = thicknessStepIn;
    conversionMode = convertModeIn;
-   intersectionMode = intersectionModeIn;
    roiVoxelValue = 255.0;
 
    //
@@ -218,23 +216,6 @@ BrainModelSurfaceToVolumeConverter::BrainModelSurfaceToVolumeConverter(
  */
 BrainModelSurfaceToVolumeConverter::~BrainModelSurfaceToVolumeConverter()
 {
-}
-
-/**
- * get names and values for intersection modes.
- */
-void 
-BrainModelSurfaceToVolumeConverter::getIntersectionModeNamesAndValues(
-                        std::vector<INTERSECTION_MODE>& intersectionModesOut,
-                        std::vector<QString> intersectionModeNamesOut)
-{
-   intersectionModesOut.clear();
-   intersectionModeNamesOut.clear();
-   
-   intersectionModesOut.push_back(INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS);
-      intersectionModeNamesOut.push_back("Tiles and Voxels");
-   intersectionModesOut.push_back(INTERSECTION_MODE_PROJECT_VOXELS_TO_SURFACE);
-      intersectionModeNamesOut.push_back("Voxel Projection to Surface (fast)");
 }
 
 /**
@@ -370,15 +351,33 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
       const float thickness = outerBoundary - innerBoundary;
 
       //
+      // Copy the user's surface since we don't want to modify it
+      //
+      BrainModelSurface thickSurface(*surface);
+      surface = &thickSurface;
+      cf = surface->getCoordinateFile();
+         
+      //
+      // Translate by half voxel 
+      // JWH Jun 14
+      //
+      //TransformationMatrix tm;
+      //tm.setTranslation(voxelSize[0] * 0.5,
+      //                  voxelSize[1] * 0.5,
+      //                  voxelSize[2] * 0.5);
+      //thickSurface.applyTransformationMatrix(tm);
+                  
+      //
       // Creating a segmentation volume ?
       if (createSegmentationFlag) {
+/* MOVE UP to 375
          //
          // Copy the user's surface since we don't want to modify it
          //
          BrainModelSurface thickSurface(*surface);
          surface = &thickSurface;
          cf = surface->getCoordinateFile();
-         
+*/
          //
          // See if surface in native space
          //
@@ -414,6 +413,9 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
             case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
                offset = 1.0;
                break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                offset = 1.0;
                break;
@@ -457,6 +459,9 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
             case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
             case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
             case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                break;
          }
@@ -550,40 +555,35 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
          }
       }
       else {
-         switch (intersectionMode) {
-            case INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS:
-               if (thickness > 0.0) {
+         if (thickness > 0.0) {
+/* MOVE UP to 375
                   //
                   // Copy the user's surface since we don't want to modify it
                   //
                   BrainModelSurface thickSurface(*surface);
                   surface = &thickSurface;
                   cf = surface->getCoordinateFile();
-                  
-                  //
-                  // Shrink nodes "inward" by half of thickness then
-                  // intersect and expand surface
-                  //
-                  float nodeDelta = innerBoundary;  //-(thickness * 0.5);
-                  surface->expandSurface(nodeDelta);
-                  const int steps = static_cast<int>(thickness / thicknessStep);
-                  progressDialogTotalSteps = (steps + 1) * numTiles;
-                  for (int i = 0; i <= steps; i++) {
-                     conversionIntersectTilesAndVoxels();
-                     if (i < steps) {
-                        surface->expandSurface(thicknessStep);
-                     }
-                  }
+*/                  
+                                 
+            //
+            // Shrink nodes "inward" by half of thickness then
+            // intersect and expand surface
+            //
+            float nodeDelta = innerBoundary;  //-(thickness * 0.5);
+            surface->expandSurface(nodeDelta);
+            const int steps = static_cast<int>(thickness / thicknessStep);
+            progressDialogTotalSteps = (steps + 1) * numTiles;
+            for (int i = 0; i <= steps; i++) {
+               conversionIntersectTilesAndVoxels();
+               if (i < steps) {
+                  surface->expandSurface(thicknessStep);
                }
-               else {
-                  progressDialogTotalSteps = numTiles;
-                  cf = surface->getCoordinateFile();
-                  conversionIntersectTilesAndVoxels();
-               }
-               break;
-            case INTERSECTION_MODE_PROJECT_VOXELS_TO_SURFACE:
-               conversionProjectVoxelsToSurface();
-               break;
+            }
+         }
+         else {
+            progressDialogTotalSteps = numTiles;
+            cf = surface->getCoordinateFile();
+            conversionIntersectTilesAndVoxels();
          }
       }
    }
@@ -1047,272 +1047,6 @@ BrainModelSurfaceToVolumeConverter::resampleVolumeToStandardSpace()
 }
 
 /**
- * perform conversion by projecting voxels to surface.
- */
-void 
-BrainModelSurfaceToVolumeConverter::conversionProjectVoxelsToSurface()
-{
-   //
-   // Get data files and surface ROI
-   //
-   PaintFile* paintFile = brainSet->getPaintFile();
-   MetricFile* metricFile = brainSet->getMetricFile();
-   SurfaceShapeFile* surfaceShapeFile = brainSet->getSurfaceShapeFile();
-   const BrainModelSurfaceROINodeSelection* surfaceROI =
-           brainSet->getBrainModelSurfaceRegionOfInterestNodeSelection();
-
-   //
-   // Create a point projector
-   //
-   BrainModelSurfacePointProjector pointProjector(surface,
-                                                  BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_OTHER,
-                                                  false);
-   
-   //
-   // Get bounding box of surface and add surface thickness to it
-   //
-   float bounds[6];
-   surface->getBounds(bounds);
-   const float extraStuff = outerBoundary * 2.0;
-   bounds[0] -= extraStuff;
-   bounds[1] += extraStuff;
-   bounds[2] -= extraStuff;
-   bounds[3] += extraStuff;
-   bounds[4] -= extraStuff;
-   bounds[5] += extraStuff;
-   
-   //
-   // Get corners of volume
-   //
-   const float minXYZ[3] = {
-      bounds[0],
-      bounds[2],
-      bounds[4]
-   };
-   const float maxXYZ[3] = {
-      bounds[1],
-      bounds[3],
-      bounds[5]
-   };
-   
-   //
-   // Convert bounds to voxel indices
-   //
-   int minIJK[3], maxIJK[3];
-   volume->convertCoordinatesToVoxelIJK(minXYZ, minIJK);
-   volume->convertCoordinatesToVoxelIJK(maxXYZ, maxIJK);
-   volume->clampVoxelIndex(minIJK);
-   volume->clampVoxelIndex(maxIJK);
-   
-   //
-   // Set progress dialog steps
-   //
-   progressDialogTotalSteps = ((maxIJK[0] - minIJK[0] + 1) *
-                               (maxIJK[1] - minIJK[1] + 1) *
-                               (maxIJK[2] - minIJK[2] + 1));
-   
-   //
-   // Loop through voxels
-   //
-   int progressCurrentStep = 0;
-   for (int i = minIJK[0]; i <= maxIJK[0]; i++) {
-      for (int j = minIJK[1]; j <= maxIJK[1]; j++) {
-         for (int k = minIJK[2]; k <= maxIJK[2]; k++) {  
-            //
-            // Update progress dialog
-            //
-            int percentDone = static_cast<int>( 100.0 * 
-                       (static_cast<float>(progressCurrentStep) / 
-                        static_cast<float>(progressDialogTotalSteps)));
-            if (percentDone > 99) {
-               percentDone = 99;
-            }
-            QString text = QString("%1% Complete.").arg(percentDone);
-            updateProgressDialog(text,
-                                 progressCurrentStep,
-                                 progressDialogTotalSteps);
-
-            //
-            // Convert voxel index into a coordinate
-            //    
-            int ijk[3] = { i, j, k };
-            float voxelXYZ[3];
-            volume->getVoxelCoordinate(ijk,
-                                       true,
-                                       voxelXYZ);
-                                       
-            //
-            // Project voxel to the surface
-            //
-            int tileNumber = -1;
-            int tileNodes[3];
-            float barycentricCoords[3];
-            float signedDistance;
-            float distanceToTile;
-            float distanceComponents[3];
-            if (pointProjector.projectBarycentricNearestTile(voxelXYZ,
-                                                         tileNumber,
-                                                         tileNodes,
-                                                         barycentricCoords,
-                                                         signedDistance,
-                                                         distanceToTile,
-                                                         distanceComponents) != 0) {
-            
-               //
-               // Did voxel project to tile
-               //
-               
-               //
-               // Is voxel above surface
-               //
-               if ((signedDistance >= innerBoundary) &&
-                   (signedDistance <= outerBoundary)) {
-                  const int n1 = tileNodes[0];
-                  const int n2 = tileNodes[1];
-                  const int n3 = tileNodes[2];
-                  bool assignVoxel = false;
-                  float rgbFloat[3] = { 0.0, 0.0, 0.0 };
-                  int paintIndex = 0;
-                  float metricValue = 0.0;
-                  float surfaceShapeValue = 0.0;
-                  switch(conversionMode) {
-                     case CONVERT_TO_RGB_VOLUME_USING_NODE_COLORING:
-                        //
-                        // If converting to RGB, get color for tile
-                        //
-                        getTilesRgbColor(n1, n2, n3, rgbFloat);
-                        assignVoxel = true;
-                        break;
-                     case CONVERT_TO_ROI_VOLUME_USING_ROI_NODES:
-                        //
-                        // See if any of the tile's nodes are part of the query
-                        //
-                        {
-                           if (surfaceROI->getNodeSelected(n1) ||
-                               surfaceROI->getNodeSelected(n2) ||
-                               surfaceROI->getNodeSelected(n3)) {
-                              assignVoxel = true;
-                           }
-                        }
-                        break;
-                     case CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES:
-                        //
-                        // Use all tiles
-                        //
-                        assignVoxel = true;
-                        break;
-                     case CONVERT_TO_ROI_VOLUME_USING_PAINT:
-                        {
-                           //
-                           // Get paint indices for the nodes of the tile
-                           //
-                           const int p1 = paintFile->getPaint(n1, nodeAttributeColumn);
-                           const int p2 = paintFile->getPaint(n2, nodeAttributeColumn);
-                           const int p3 = paintFile->getPaint(n3, nodeAttributeColumn);
-                           
-                           //
-                           // Do any of the nodes have valid paint indices
-                           //
-                           if ((p1 > 0) || (p2 > 0) || (p3 > 0)) {
-                              //
-                              // Use the tile and find a paint index to use for the tile
-                              //
-                              assignVoxel = true;
-                              if (p1 == p2) {
-                                 paintIndex = p1;
-                              }
-                              else if (p1 == p3) {
-                                 paintIndex = p1;
-                              }
-                              else if (p2 == p3) {
-                                 paintIndex = p2;
-                              }
-                              else if (p1 > 0) {
-                                 paintIndex = p1;
-                              }
-                              else if (p2 > 0) {
-                                 paintIndex = p2;
-                              }
-                              else if (p3 > 0) {
-                                 paintIndex = p3;
-                              }
-                              else {
-                                 assignVoxel = false;
-                              }
-                           }
-                        }
-                        break;
-                     case CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE:
-                        metricValue = (metricFile->getValue(n1, nodeAttributeColumn) +
-                                       metricFile->getValue(n2, nodeAttributeColumn) +
-                                       metricFile->getValue(n3, nodeAttributeColumn)) / 3.0;
-                        assignVoxel = true;
-                        break;
-                     case CONVERT_TO_ROI_VOLUME_USING_METRIC_NO_INTERPOLATE:
-                        metricValue = std::max(metricFile->getValue(n1, nodeAttributeColumn),
-                                               std::max(metricFile->getValue(n2, nodeAttributeColumn),
-                                                        metricFile->getValue(n3, nodeAttributeColumn)));
-                        assignVoxel = true;
-                        break;
-                     case CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE:
-                        surfaceShapeValue = (surfaceShapeFile->getValue(n1, nodeAttributeColumn) +
-                                       surfaceShapeFile->getValue(n2, nodeAttributeColumn) +
-                                       surfaceShapeFile->getValue(n3, nodeAttributeColumn)) / 3.0;
-                        assignVoxel = true;
-                        break;
-                  }
-                  
-                  //
-                  // Should voxel be assigned
-                  //
-                  if (assignVoxel) {
-                     //
-                     // Keep track of node voxel assignments
-                     //
-                     if (nodeToVoxelMappingEnabled) {
-                        nodeToVoxelMapping.insert(NodeToVoxelMapping(n1, ijk));
-                        nodeToVoxelMapping.insert(NodeToVoxelMapping(n2, ijk));
-                        nodeToVoxelMapping.insert(NodeToVoxelMapping(n3, ijk));
-                     }
-                     
-                     const int voxNum = volume->getVoxelNumber(ijk);
-                     if (voxelSet[voxNum] == false) {
-                        voxelSet[voxNum] = true;
-                        switch(conversionMode) {
-                           case CONVERT_TO_RGB_VOLUME_USING_NODE_COLORING:
-                              volume->setVoxel(ijk, 0, rgbFloat[0]);
-                              volume->setVoxel(ijk, 1, rgbFloat[1]);
-                              volume->setVoxel(ijk, 2, rgbFloat[2]);
-                              break;
-                           case CONVERT_TO_ROI_VOLUME_USING_ROI_NODES:
-                              volume->setVoxel(ijk, 0, roiVoxelValue);
-                              break;
-                           case CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES:
-                              volume->setVoxel(ijk, 0, roiVoxelValue);
-                              break;
-                           case CONVERT_TO_ROI_VOLUME_USING_PAINT:
-                              volume->setVoxel(ijk, 0, paintIndex);
-                              break;
-                           case CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE:
-                              volume->setVoxel(ijk, 0, metricValue);
-                              break;
-                           case CONVERT_TO_ROI_VOLUME_USING_METRIC_NO_INTERPOLATE:
-                              volume->setVoxel(ijk, 0, metricValue);
-                              break;
-                           case CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE:
-                              volume->setVoxel(ijk, 0, surfaceShapeValue);
-                              break;
-                        }
-                     }
-                  }
-               }
-            }
-         }
-      }
-   }
-}
-      
-/**
  * Perform conversion by intersecting voxels and tiles.
  */
 void
@@ -1712,9 +1446,15 @@ BrainModelSurfaceToVolumeConverter::intersectTriangleWithVoxel(vtkTriangle* tria
    
    //
    // Convert the volume index into a coordinate
+   // coordinate returned is center of voxel so adjust to get corner
    //
-   float xyz[3];
-   volume->getVoxelCoordinate(ijk, false, xyz);
+   float xyzCenter[3];
+   volume->getVoxelCoordinate(ijk, xyzCenter);
+   const float xyz[3] = { 
+                           xyzCenter[0] - (dx * 0.5),
+                           xyzCenter[1] - (dy * 0.5),
+                           xyzCenter[2] - (dz * 0.5)
+                        };
    
    //
    // Vertices of the voxel, Lower and Upper

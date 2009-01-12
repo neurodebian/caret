@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <algorithm>
+#include <iostream>
 #include <set>
 
 #include <QDomDocument>
@@ -31,7 +32,7 @@
 #include <QDomNode>
 
 #include "StringTable.h"
-#include "StudyMetaAnalysisFile.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "StudyNamePubMedID.h"
 
@@ -41,6 +42,19 @@
 StudyNamePubMedID::StudyNamePubMedID()
 {
    clear();
+}
+
+/**
+ * constructor.
+ */
+StudyNamePubMedID::StudyNamePubMedID(const QString& nameIn,
+                                     const QString& pubMedIDIn,
+                                     const QString& mslIDIn)
+{
+   clear();
+   setName(nameIn);
+   setPubMedID(pubMedIDIn);
+   setMslID(mslIDIn);
 }
 
 /**
@@ -57,7 +71,7 @@ StudyNamePubMedID::~StudyNamePubMedID()
 StudyNamePubMedID::StudyNamePubMedID(const StudyNamePubMedID& as)
 {
    parentStudyMetaData = NULL;
-   parentStudyMetaAnalysisFile = NULL;
+   parentStudyCollection = NULL;
    copyHelper(as);
 }
 
@@ -80,148 +94,49 @@ void
 StudyNamePubMedID::clear()
 {
    parentStudyMetaData = NULL;
-   parentStudyMetaAnalysisFile = NULL;
-   studyData.clear();
+   parentStudyCollection = NULL;
+   name = "";
+   pubMedID = "";
+   mslID = "";
+   setModified();
 }
-            
+             
 /**
- * set the study names and PubMed IDs as a string.
+ * set the name.
  */
 void 
-StudyNamePubMedID::setAll(const QString& s)
+StudyNamePubMedID::setName(const QString& s)
 {
-   if (s != getAll()) {
-      //
-      // Clear existing data
-      //
-      studyData.clear();
-      
-      const char cellSeparator = ',';
-      const char rowSeparator = ';';
-      
-      //
-      // Each row contains name and optional pubMedID
-      //
-      QStringList sl1 = s.split(rowSeparator, QString::SkipEmptyParts);
-      for (int i = 0; i < sl1.size(); i++) {
-         QString s = sl1.at(i);
-         QStringList sl2 = s.split(cellSeparator, QString::SkipEmptyParts);
-         if (sl2.size() > 0) {
-            const QString name = sl2.at(0).trimmed();
-            QString id;
-            if (sl2.size() > 1) {
-               id = sl2.at(1).trimmed();
-            }
-            if (name.isEmpty() == false) {
-               addStudyNameAndPubMedID(name, id);
-            }
-         }
-      }
+   if (name != s) {
+      name = s;
       setModified();
    }
 }
 
 /**
- * get the study names and PubMed IDs as a string.
- */
-QString 
-StudyNamePubMedID::getAll() const
-{
-   //
-   // Each study is on a line with name and PubMedID separated by a command and 
-   // a semicolon after the PubMedID
-   //
-   QString s;
-   for (int i = 0; i < getNumberOfStudies(); i++) {
-      QString name, id;
-      getStudyNameAndPubMedID(i, name, id);
-      if (name.isEmpty() == false) {
-         if (s.isEmpty() == false) {
-            s += "\n";
-         }
-         s += name;
-         s += ", ";
-         s += id;
-         s += ";";
-      }
-   }
-   return s;
-}
-
-/**
- * get a study name and PubMed ID.
+ * set the PubMed ID.
  */
 void 
-StudyNamePubMedID::getStudyNameAndPubMedID(const int indx,
-                                           QString& nameOut,
-                                           QString& pubMedIDOut) const
+StudyNamePubMedID::setPubMedID(const QString& s)
 {
-   nameOut = "";
-   pubMedIDOut = "";
-   
-   if ((indx >= 0) && (indx < getNumberOfStudies())) {
-      nameOut = studyData[indx].name;
-      pubMedIDOut = studyData[indx].pmid;
+   if (pubMedID != s) {
+      pubMedID = s;
+      setModified();
    }
 }
 
 /**
- * set a study name and PubMed ID.
+ * set the MSL ID.
  */
 void 
-StudyNamePubMedID::setStudyNameAndPubMedID(const int indx,
-                                           const QString& nameIn,
-                                           const QString& pubMedIDIn)
+StudyNamePubMedID::setMslID(const QString& s)
 {
-   if ((indx >= 0) && (indx < getNumberOfStudies())) {
-      if ((nameIn != studyData[indx].name) ||
-          (pubMedIDIn != studyData[indx].pmid)) {
-         studyData[indx].name = nameIn;
-         studyData[indx].pmid = pubMedIDIn;
-         setModified();
-      }
+   if (mslID != s) {
+      mslID = s;
+      setModified();
    }
-}
-                             
-/**
- * add a study name and PubMed ID.
- */
-void 
-StudyNamePubMedID::addStudyNameAndPubMedID(const QString& nameIn,
-                                           const QString& pubMedIDIn)
-{
-   studyData.push_back(StudyNamePMID(nameIn, pubMedIDIn));
-   setModified();
-}
-                             
-/**
- * remove a study.
- */
-void 
-StudyNamePubMedID::removeStudy(const int indx)
-{
-   studyData.erase(studyData.begin() + indx);
-   setModified();
 }
 
-/**
- * remove studies.
- */
-void 
-StudyNamePubMedID::removeStudiesByIndex(const std::vector<int>& studyIndicesIn)
-{
-   //
-   // Sort into reverse order
-   //
-   std::set<int> studyIndicesSet(studyIndicesIn.begin(), studyIndicesIn.end());
-   std::vector<int> studyIndices(studyIndicesSet.begin(), studyIndicesSet.end());
-   std::reverse(studyIndices.begin(), studyIndices.end());
-   
-   for (unsigned int i = 0; i < studyIndices.size(); i++) {
-      removeStudy(studyIndices[i]);
-   }
-}
-      
 /**
  * set parent.
  */
@@ -232,19 +147,30 @@ StudyNamePubMedID::setParent(StudyMetaData* parentIn)
 }
 
 /**
+ * set parent for study collection.
+ */
+void 
+StudyNamePubMedID::setParent(StudyCollection* parentIn)
+{
+   parentStudyCollection = parentIn;
+}
+      
+/**
  * copy helper used by copy constructor and assignment operator.
  */
 void 
-StudyNamePubMedID::copyHelper(const StudyNamePubMedID& as)
+StudyNamePubMedID::copyHelper(const StudyNamePubMedID& s)
 {
    StudyMetaData* savedParentStudyMetaData = parentStudyMetaData;
-   StudyMetaAnalysisFile* savedParentStudyMetaAnalysisFile = parentStudyMetaAnalysisFile;
+   StudyCollection* savedParentStudyCollection = parentStudyCollection;
    
    clear();
-   studyData = as.studyData;
+   name = s.name;
+   pubMedID = s.pubMedID;
+   mslID = s.mslID;
    
    parentStudyMetaData = savedParentStudyMetaData;
-   parentStudyMetaAnalysisFile = savedParentStudyMetaAnalysisFile;
+   parentStudyCollection = savedParentStudyCollection;
    
    setModified();
 }
@@ -258,14 +184,48 @@ StudyNamePubMedID::setModified()
    if (parentStudyMetaData != NULL) {
       parentStudyMetaData->setModified();
    }
-   if (parentStudyMetaAnalysisFile != NULL) {
-      parentStudyMetaAnalysisFile->setModified();
+   if (parentStudyCollection != NULL) {
+      parentStudyCollection->setModified();
    }
 }
 
 /**
+ * write the data to a string table.
+ *
+void 
+StudyNamePubMedID::writeDataToStringTable(StringTable& table,
+                            const QString& stringTableName) throw (FileException)
+{
+   table.clear();
+   
+   const int num = getNumberOfStudies();
+   if (num <= 0) {
+      return;
+   }
+
+   int numCols = 0;
+   const int nameColumn = numCols++;
+   const int pmidColumn = numCols++;
+   const int mslidColumn = numCols++;
+   
+   table.setNumberOfRowsAndColumns(num, numCols, stringTableName);
+   
+   table.setColumnTitle(nameColumn, "Name");
+   table.setColumnTitle(pmidColumn, "Study PubMed ID");
+   table.setColumnTitle(mslidColumn, "msl_id");
+   
+   for (int i = 0; i < num; i++) {
+      QString name, pubMedID, mslID;
+      getStudyNameAndPubMedID(i, name, pubMedID, mslID);
+      table.setElement(i, nameColumn, name);
+      table.setElement(i, pmidColumn, pubMedID);
+      table.setElement(i, mslidColumn, mslID);
+   }
+}                                  
+*/
+/**
  * read the data from a StringTable.
- */
+ *
 void 
 StudyNamePubMedID::readDataFromStringTable(const StringTable& st) throw (FileException)
 {
@@ -273,12 +233,13 @@ StudyNamePubMedID::readDataFromStringTable(const StringTable& st) throw (FileExc
       throw FileException("String table for StudyMetaData does not have name Study Metadata");
    }
    StudyMetaData* savedParentStudyMetaData = parentStudyMetaData;
-   StudyMetaAnalysisFile* savedParentStudyMetaAnalysisFile = parentStudyMetaAnalysisFile;
+   StudyCollectionFile* savedParentStudyCollectionFile = parentStudyCollectionFile;
    
    clear();
    
    int nameColumn = -1;
    int pmidColumn = -1;
+   int mslidColumn = -1;
    
    const int numCols = st.getNumberOfColumns();
    for (int i = 0; i < numCols; i++) {
@@ -289,11 +250,14 @@ StudyNamePubMedID::readDataFromStringTable(const StringTable& st) throw (FileExc
       else if (name == "study pubmed id") {
          pmidColumn = i;
       }
+      else if (name == "msl_id") {
+         mslidColumn = i;
+      }
    }
 
    const int numItems = st.getNumberOfRows();
    for (int i = 0; i < numItems; i++) {
-      QString name, pmid;
+      QString name, pmid, msl;
       
       if (nameColumn >= 0) {
         name = st.getElement(i, nameColumn);
@@ -301,18 +265,22 @@ StudyNamePubMedID::readDataFromStringTable(const StringTable& st) throw (FileExc
       if (pmidColumn >= 0) {
          pmid = st.getElement(i, pmidColumn);
       }
+      if (mslidColumn >= 0) {
+         msl = st.getElement(i, mslidColumn);
+      }
 
       if (name.isEmpty() == false) {
-         addStudyNameAndPubMedID(name, pmid);
+         addStudyNameAndPubMedID(name, pmid, msl);
       }
    }
    
    parentStudyMetaData = savedParentStudyMetaData;
-   parentStudyMetaAnalysisFile = savedParentStudyMetaAnalysisFile;
+   parentStudyCollectionFile = savedParentStudyCollectionFile;
    
    setModified();
 }
-                  
+*/
+
 /**
  * called to read from an XML structure.
  */
@@ -326,15 +294,33 @@ StudyNamePubMedID::readXML(QDomNode& nodeIn) throw (FileException)
    if (elem.isNull()) {
       return;
    }
-   if ((elem.tagName() != "AssociatedStudies") &&
-       (elem.tagName() != "StudyNamePubMedID")) {
+   if (elem.tagName() != "StudyNamePubMedID") {
       QString msg("Incorrect element type passed to StudyNamePubMedID::readXML() ");
       msg.append(elem.tagName());
       throw FileException("", msg);
    }
    
-   const QString s = AbstractFile::getXmlElementFirstChildAsString(elem);
-   setAll(s);
+   QDomNode node = nodeIn.firstChild();
+   while (node.isNull() == false) {
+      QDomElement elem = node.toElement();
+      if (elem.isNull() == false) {
+         if (elem.tagName() == "name") {
+            name = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "pubMedID") {
+            pubMedID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "mslID") {
+            mslID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else {
+            std::cout << "WARNING: unrecognized StudyNamePubMedID element: "
+                      << elem.tagName().toAscii().constData()
+                      << std::endl;
+         }
+      }
+      node = node.nextSibling();
+   }
 }
 
 /**
@@ -344,7 +330,30 @@ void
 StudyNamePubMedID::writeXML(QDomDocument& xmlDoc,
                             QDomElement& parentElement) const throw (FileException)
 {
-   const QString s = getAll();
-   AbstractFile::addXmlCdataElement(xmlDoc, parentElement, "StudyNamePubMedID", s);
+   //
+   // Create element for this instance's data
+   //
+   QDomElement element = xmlDoc.createElement("StudyNamePubMedID");
+   
+   //
+   // Set data elements
+   //
+   AbstractFile::addXmlCdataElement(xmlDoc, 
+                                    element, 
+                                    "name", 
+                                    name);
+   AbstractFile::addXmlCdataElement(xmlDoc, 
+                                    element, 
+                                    "pubMedID", 
+                                    pubMedID);
+   AbstractFile::addXmlCdataElement(xmlDoc, 
+                                    element, 
+                                    "mslID", 
+                                    mslID);
+
+   //
+   // Add class instance's data to the parent
+   //
+   parentElement.appendChild(element);
 }
 

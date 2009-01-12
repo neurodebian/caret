@@ -50,14 +50,16 @@ BrainModelSurfaceFlattenHemisphere::BrainModelSurfaceFlattenHemisphere(
                              const BorderProjectionFile* flattenBorderProjectionFileIn,
                              PaintFile* paintFileInOut,
                              AreaColorFile* areaColorFileInOut,
-                             const bool createFiducialWithSmoothedMedialWallFlagIn)
+                             const bool createFiducialWithSmoothedMedialWallFlagIn,
+                             const bool autoSaveFilesFlagIn)
    : BrainModelAlgorithm(bsIn),
      inputFiducialSurface(fiducialSurfaceIn),
      inputSphericalSurface(ellipsoidOrSphericalSurfaceIn),
      inputFlattenBorderProjectionFile(flattenBorderProjectionFileIn),
-     createFiducialWithSmoothedMedialWallFlag(createFiducialWithSmoothedMedialWallFlagIn),
      paintFile(paintFileInOut),
-     areaColorFile(areaColorFileInOut)
+     areaColorFile(areaColorFileInOut),
+     createFiducialWithSmoothedMedialWallFlag(createFiducialWithSmoothedMedialWallFlagIn),
+     autoSaveFilesFlag(autoSaveFilesFlagIn)
 {
    outputSphericalSurface = NULL;
    outputInitialFlatSurface = NULL;
@@ -116,6 +118,9 @@ BrainModelSurfaceFlattenHemisphere::execute() throw (BrainModelAlgorithmExceptio
       case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
       case Structure::STRUCTURE_TYPE_INVALID:
          throw BrainModelAlgorithmException(
             "The ellipsoid/spherical surface's structure is neither "
@@ -151,11 +156,26 @@ BrainModelSurfaceFlattenHemisphere::execute() throw (BrainModelAlgorithmExceptio
 void 
 BrainModelSurfaceFlattenHemisphere::createSphericalSurface() throw (BrainModelAlgorithmException)
 {
-   outputSphericalSurface = new BrainModelSurface(*inputSphericalSurface);
-   outputSphericalSurface->convertToSphereWithSurfaceArea(inputFiducialSurface->getSurfaceArea());
-   outputSphericalSurface->getCoordinateFile()->setFileName(
-      outputSphericalSurface->getCoordinateFile()->makeDefaultFileName("SPHERICAL"));
-   brainSet->addBrainModel(outputSphericalSurface);
+   if (inputSphericalSurface->getSurfaceType() != BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
+      outputSphericalSurface = new BrainModelSurface(*inputSphericalSurface);
+      outputSphericalSurface->convertToSphereWithSurfaceArea(inputFiducialSurface->getSurfaceArea());
+      outputSphericalSurface->getCoordinateFile()->setFileName(
+         outputSphericalSurface->getCoordinateFile()->makeDefaultFileName("Spherical"));
+      brainSet->addBrainModel(outputSphericalSurface);
+      
+      if (autoSaveFilesFlag) {
+         try {
+            CoordinateFile* cf = outputSphericalSurface->getCoordinateFile();
+            brainSet->writeCoordinateFile(cf->getFileName(),
+                                          BrainModelSurface::SURFACE_TYPE_SPHERICAL,
+                                          cf,
+                                          true);
+         }
+         catch (FileException& e) {
+            throw BrainModelAlgorithmException(e);
+         }
+      }
+   }
 }
 
 /**
@@ -176,7 +196,10 @@ BrainModelSurfaceFlattenHemisphere::createInitialFlatSurface() throw (BrainModel
    //
    // Copy the spherical surface
    //
-   BrainModelSurface flattenSurface(*outputSphericalSurface);
+   BrainModelSurface flattenSurface(*inputSphericalSurface);
+   if (outputSphericalSurface != NULL) {
+      flattenSurface = BrainModelSurface(*outputSphericalSurface);
+   }
 
    //
    // Translate the surface to its center of mass
@@ -284,6 +307,14 @@ BrainModelSurfaceFlattenHemisphere::createInitialFlatSurface() throw (BrainModel
    areaColorFile->getColorIndexByName(medialWallName, matchFlag);
    if (matchFlag == false) {
       areaColorFile->addColor(medialWallName, 0, 255, 0);
+      if (autoSaveFilesFlag) {
+         try {
+            brainSet->writeAreaColorFile(areaColorFile->getFileName());
+         }
+         catch (FileException& e) {
+            throw BrainModelAlgorithmException(e);
+         }
+      }
    }
    
    //
@@ -317,7 +348,18 @@ BrainModelSurfaceFlattenHemisphere::createInitialFlatSurface() throw (BrainModel
    outputOpenTopologyFile->makeDefaultFileName("OPEN");
    brainSet->addTopologyFile(outputOpenTopologyFile);
    brainSet->disconnectNodes(outputOpenTopologyFile, nodesInsideMedialWallBorder);
+   outputOpenTopologyFile->setTopologyType(TopologyFile::TOPOLOGY_TYPE_OPEN);
    outputOpenTopologyFile->removeCornerTiles(2);
+   if (autoSaveFilesFlag) {
+      try {
+         brainSet->writeTopologyFile(outputOpenTopologyFile->getFileName(),
+                                     outputOpenTopologyFile->getTopologyType(),
+                                     outputOpenTopologyFile);
+      }
+      catch (FileException& e) {
+         throw BrainModelAlgorithmException(e);
+      }
+   }
    
    if (DebugControl::getDebugOn()) {
       CoordinateFile cf2(*flattenSurface.getCoordinateFile());
@@ -325,7 +367,7 @@ BrainModelSurfaceFlattenHemisphere::createInitialFlatSurface() throw (BrainModel
          const QString topoFileName = FileUtilities::basename(
             flattenSurface.getTopologyFile()->getFileName());
          if (topoFileName.isEmpty() == false) {
-            cf2.setHeaderTag(SpecFile::unknownTopoFileMatchTag, topoFileName);
+            cf2.setHeaderTag(SpecFile::getUnknownTopoFileMatchTag(), topoFileName);
          }
          cf2.writeFile("sphere_oriented_compressed_for_cuts"
                        + SpecFile::getCoordinateFileExtension());
@@ -411,8 +453,47 @@ BrainModelSurfaceFlattenHemisphere::createInitialFlatSurface() throw (BrainModel
                           iterations,
                           smoothEdgesIterations,
                           &nodesInsideMedialWallBorder);
+      bms->getCoordinateFile()->makeDefaultFileName("FiducialSmoothedMedialWall");
       brainSet->addBrainModel(bms);
       outputFiducialSurfaceWithSmoothedMedialWall = bms;
+
+      if (autoSaveFilesFlag) {
+         try {
+            CoordinateFile* cf = bms->getCoordinateFile();
+            brainSet->writeCoordinateFile(cf->getFileName(),
+                                          bms->getSurfaceType(),
+                                          cf,
+                                          true);
+         }
+         catch (FileException& e) {
+            throw BrainModelAlgorithmException(e);
+         }
+      }
+   }
+   
+   //
+   // Add the initial flat surface to the brain set
+   //
+   brainSet->addBrainModel(outputInitialFlatSurface);
+   if (autoSaveFilesFlag) {
+      try {
+         CoordinateFile* cf = outputInitialFlatSurface->getCoordinateFile();
+         brainSet->writeCoordinateFile(cf->getFileName(),
+                                       outputInitialFlatSurface->getSurfaceType(),
+                                       cf,
+                                       true);
+         TopologyFile* tf = outputInitialFlatSurface->getTopologyFile();
+         brainSet->writeTopologyFile(tf->getFileName(),
+                                     tf->getTopologyType(),
+                                     tf);
+      }
+      catch (FileException& e) {
+         throw BrainModelAlgorithmException(e);
+      }
+      
+      if (paintFile->getModified()) {
+         brainSet->writePaintFile(paintFile->getFileName());
+      }
    }
 }
 

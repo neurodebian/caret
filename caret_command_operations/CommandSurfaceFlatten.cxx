@@ -144,11 +144,11 @@ CommandSurfaceFlatten::executeCommand() throw (BrainModelAlgorithmException,
    // Set the selected files
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, closedTopologyFileName, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), closedTopologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, fiducialCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), fiducialCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::ellipsoidCoordFileTag, ellipsoidSphericalCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getEllipsoidCoordFileTag(), ellipsoidSphericalCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    //
@@ -207,7 +207,8 @@ CommandSurfaceFlatten::executeCommand() throw (BrainModelAlgorithmException,
                                             &borderProjectionFile,
                                             &paintFile,
                                             &areaColorFile,
-         (outputFiducialSmoothedMedialWallCoordinateFileName.isEmpty() == false));
+         (outputFiducialSmoothedMedialWallCoordinateFileName.isEmpty() == false),
+                                            false);
    bmsfh.execute();
    
    //

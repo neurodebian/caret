@@ -114,9 +114,6 @@ class GuiSurfaceToVolumeDialog : public WuQDialog {
       
       /// get the metric conversion mode
       BrainModelSurfaceToVolumeConverter::CONVERSION_MODE getMetricConversionMode() const;
-
-      /// get intersection mode
-      BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE getIntersectionMode() const;
       
    private slots:
       /// called when a volume space is selected

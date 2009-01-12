@@ -54,7 +54,7 @@
  * Constructor.
  */
 GuiFociUncertaintyLimitsDialog::GuiFociUncertaintyLimitsDialog(QWidget* parent)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    setModal(true);
    setWindowTitle("Uncertainty Limits to RGB Paint");
@@ -301,7 +301,7 @@ GuiFociUncertaintyLimitsDialog::done(int r)
    QTime timer;
    timer.start();
    
-   if (r == QDialog::Accepted) {
+   if (r == GuiFociUncertaintyLimitsDialog::Accepted) {
       QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
 
       BrainSet* brainSet = theMainWindow->getBrainSet();
@@ -352,7 +352,7 @@ GuiFociUncertaintyLimitsDialog::done(int r)
       }
    }
    
-   QDialog::done(r);
+   WuQDialog::done(r);
    
    //const float elapsedTime = (static_cast<float>(timer.elapsed()) * 0.001);
    //std::cout << "Elapsed time: " << elapsedTime << std::endl;

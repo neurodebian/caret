@@ -80,7 +80,7 @@
 #include "WuQFileDialogIcons.h"
 #undef _WU_Q_FILE_DIALOG_MAIN_H_
 
-static const qint32 WUQFileDialogMagic = 'WUFD';
+static const qint32 WUQFileDialogMagic = 0x57554644;  //'WUFD';
 static const qint32 WUQFileDialogVersion = 1;
 
 /**
@@ -1065,6 +1065,12 @@ WuQFileDialog::loadCommonDirectorySection()
                              + QDir::separator()
                              + "Downloads");
    addToCommonDirectory(downloadsPath, tr("Downloads"));
+
+   //
+   // Add Volumes
+   //
+   const QString volumesPath("/Volumes");
+   addToCommonDirectory(volumesPath, tr("Volumes"));
 #endif // Q_OS_MACX
 
 #ifdef Q_OS_WIN32
@@ -1583,12 +1589,23 @@ WuQFileDialog::setDirectory(const QString& dirPathIn,
    // Update navigation history combo box
    //
    if (selectionFromHistoryFlag == false) {
-      //
-      // Add to history
-      //
-      navigationHistoryComboBox->insertItem(0, dirPath);
       navigationHistoryComboBox->blockSignals(true);
-      navigationHistoryComboBox->setCurrentIndex(0);
+
+      //
+      // If directory is first item in combo box, do not add it
+      //
+      const int dirIndex = navigationHistoryComboBox->findText(dirPath);
+      if (dirIndex != 0) {
+         //
+         // Add to history
+         //
+         navigationHistoryComboBox->insertItem(0, dirPath);
+         navigationHistoryComboBox->setCurrentIndex(0);
+      }
+      else if (dirIndex == 0) {
+         navigationHistoryComboBox->setCurrentIndex(0);
+      }
+      
       navigationHistoryComboBox->blockSignals(false);
    }
    

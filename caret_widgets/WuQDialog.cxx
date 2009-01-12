@@ -142,3 +142,14 @@ WuQDialog::showNormalCursor()
 {
    QApplication::restoreOverrideCursor();
 }
+
+/**
+ * called to close.
+ */
+bool 
+WuQDialog::close()
+{
+   return QDialog::close();
+}
+      
+

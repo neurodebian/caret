@@ -46,6 +46,7 @@
 #include "PreferencesFile.h"
 #include "SceneFile.h"
 #include "SpecFile.h"
+#include "Species.h"
 #include "TopologyFile.h"
 #include "TransformationMatrixFile.h"
 #include "VolumeFile.h"
@@ -118,6 +119,7 @@ class ProbabilisticAtlasFile;
 class QTimer;
 class RgbPaintFile;
 class SectionFile;
+class StudyCollectionFile;
 class StudyMetaDataFile;
 class SurfaceShapeFile;
 class SurfaceVectorFile;
@@ -162,7 +164,7 @@ class BrainSet : public QObject {
       /// Destructor
       virtual ~BrainSet();
       
-      /// initialize static stuff such as caretHomeDirectory and Preferences File
+      /// initialize static stuff such as  Preferences File
       /// this is normally called from the BrainSet constructor
       static void initializeStaticStuff();
       
@@ -392,11 +394,11 @@ class BrainSet : public QObject {
       BrainModelVolumeRegionOfInterest* getVolumeRegionOfInterestController()
                                       { return brainModelVolumeRegionOfInterest; }
                                       
-      /// get the stereotaxic space
-      QString getStereotaxicSpace() const { return stereotaxicSpace; }
+      /// get the stereotaxic space 
+      StereotaxicSpace getStereotaxicSpace() const { return stereotaxicSpace; }
       
-      /// set the stereotaxic space
-      void setStereotaxicSpace(const QString& s) { stereotaxicSpace = s; }
+      /// set the stereotaxic space (const method)
+      void setStereotaxicSpace(const StereotaxicSpace& ss);
       
       /// get the subject
       QString getSubject() const { return subject; }
@@ -405,15 +407,13 @@ class BrainSet : public QObject {
       void setSubject(const QString& s);
       
       /// get the species
-      QString getSpecies() const { return species; }
+      Species getSpecies() const { return species; }
       
       /// set the species
-      void setSpecies(const QString& s);
+      void setSpecies(const Species& s);
       
       /// get the structure
-      Structure getStructure() const {
-         return structure; 
-      }
+      Structure getStructure() const { return structure; }
 
       /// set the structure
       void setStructure(const Structure::STRUCTURE_TYPE s);
@@ -473,6 +473,9 @@ class BrainSet : public QObject {
       
       /// get the RGB Paint file
       RgbPaintFile* getRgbPaintFile() { return rgbPaintFile; }
+      
+      /// get the study collection file
+      StudyCollectionFile* getStudyCollectionFile() { return studyCollectionFile; }
       
       /// get the study metadata file
       StudyMetaDataFile* getStudyMetaDataFile() { return studyMetaDataFile; }
@@ -946,6 +949,12 @@ class BrainSet : public QObject {
       const AbstractFile* getTransformationDataFile(const int indx) const
                              { return transformationDataFiles[indx]; }
       
+      /// delete a transformation data file
+      void deleteTransformationDataFile(const int fileIndex);
+      
+      /// delete a transformation data file
+      void deleteTransformationDataFile(AbstractFile* af);
+      
       /// get have transformation data cell files
       bool getHaveTransformationDataCellFiles() const;
       
@@ -962,7 +971,7 @@ class BrainSet : public QObject {
       bool getHaveTransformationDataVtkFiles() const;
       
       /// get caret's home directory
-      static QString getCaretHomeDirectory() { return caretHomeDirectory; }
+      static QString getCaretHomeDirectory();
       
       /// get the common node attributes for a node
       BrainSetNodeAttribute* getNodeAttributes(const int nodeNum);
@@ -1243,6 +1252,14 @@ class BrainSet : public QObject {
       
       /// write the Paint data file
       void writePaintFile(const QString& name) throw (FileException);
+      
+      /// read the study collection file
+      void readStudyCollectionFile(const QString& name,
+                                   const bool append,
+                                   const bool updateSpec) throw (FileException);
+                  
+      /// write the study collection file
+      void writeStudyCollectionFile(const QString& name) throw (FileException);
       
       /// read the study metadata file
       void readStudyMetaDataFile(const QString& name,
@@ -1634,6 +1651,7 @@ class BrainSet : public QObject {
                                          const int viewingWindowNumberIn,
                                          int geometryOut[4],
                                          int glWidthHeightOut[2],
+                                         bool& yokeOut,
                                          QString& errorMessageOut);
 
       /// Get the model for a window from a scene.
@@ -1641,6 +1659,7 @@ class BrainSet : public QObject {
                                          const int viewingWindowNumberIn,
                                          int geometryOut[4],
                                          int glWidthHeightOut[2],
+                                         bool& yokeOut,
                                          QString& errorMessageOut);
       
       /// create a scene (read display settings)
@@ -1668,6 +1687,7 @@ class BrainSet : public QObject {
                                         const int geometry[4],
                                         const int glWidthHeight[2],
                                         const BrainModel* bm,
+                                        const bool yokeIn,
                                         SceneFile::SceneClass& sceneClass);
        
       /// convert displayed borders into a VTK model.
@@ -1767,6 +1787,9 @@ class BrainSet : public QObject {
       /// clear the file
       void clearSectionFile();
 
+      /// clear the study collection file
+      void clearStudyCollectionFile();
+      
       /// clear the study metadata file
       void clearStudyMetaDataFile();
       
@@ -1941,6 +1964,9 @@ class BrainSet : public QObject {
       /// Palette File
       PaletteFile* paletteFile;
       
+      /// study collection file
+      StudyCollectionFile* studyCollectionFile;
+      
       /// study metadata file
       StudyMetaDataFile* studyMetaDataFile;
       
@@ -2011,13 +2037,13 @@ class BrainSet : public QObject {
       TransformationMatrixFile* transformationMatrixFile;
       
       /// the species
-      QString species;
+      Species species;
       
       /// the subject
       QString subject;
       
       /// the stereotaxic space
-      QString stereotaxicSpace;
+      StereotaxicSpace stereotaxicSpace;
       
       /// hemisphere
       Structure structure;
@@ -2030,9 +2056,6 @@ class BrainSet : public QObject {
       
       /// initialize static stuff flag
       static bool staticStuffInitialized;
-      
-      /// path of Caret's home directory
-      static QString caretHomeDirectory;
       
       /// Areal Estimation display settings
       DisplaySettingsArealEstimation* displaySettingsArealEstimation;
@@ -2253,6 +2276,9 @@ class BrainSet : public QObject {
       /// mutex for reading paint file
       QMutex mutexPaintFile;
       
+      /// mutex for reading study collection file
+      QMutex mutexStudyCollectionFile;
+      
       /// mutex for reading study meta data file
       QMutex mutexStudyMetaDataFile;
       
@@ -2379,7 +2405,6 @@ class BrainSet : public QObject {
 PreferencesFile BrainSet::preferencesFile;
 bool BrainSet::staticStuffInitialized = false;
 QString BrainSet::preferencesFileName = "";
-QString BrainSet::caretHomeDirectory  = "";
 #endif // __BRAIN_SET_MAIN__
 
 #endif // __BRAIN_SET_H__

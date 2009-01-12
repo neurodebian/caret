@@ -110,6 +110,9 @@ DisplaySettingsProbabilisticAtlas::updateSelectedChannelsForCurrentStructure(con
                         break;
                      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
                         break;
+                     case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+                     case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+                     case Structure::STRUCTURE_TYPE_ALL:
                      case Structure::STRUCTURE_TYPE_INVALID:
                         break;
                    }
@@ -249,6 +252,7 @@ DisplaySettingsProbabilisticAtlas::update()
 void 
 DisplaySettingsProbabilisticAtlas::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   applySelectionToLeftAndRightStructuresFlag = false;
    update();
    std::fill(channelSelected.begin(), channelSelected.end(), false);
    std::fill(areaSelected.begin(), areaSelected.end(), false);

@@ -84,7 +84,6 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "[-inner  inner-boundary]\n"
        + indent9 + "[-outer  outer-boundary]\n"
        + indent9 + "[-step   intersection-step]\n"
-       + indent9 + "[-intersection   intersection-mode]\n"
        + indent9 + "\n"
        + indent9 + "Intersect a surface with a volume and assign the specified\n"
        + indent9 + "column's data of the metric, paint, or shape file to the\n"
@@ -103,9 +102,6 @@ CommandSurfaceToVolume::getHelpInformation() const
        + indent9 + "the column.  If a name contains spaces, it must be \n"
        + indent9 + "enclosed in double quotes.  Name has priority over number.\n"
        + indent9 + "\n"
-       + indent9 + "\"intersection-mode\" is one of:\n"
-       + indent9 + "   TILE_INTERSECTION \n"
-       + indent9 + "   VOXEL_PROJECTION\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -138,12 +134,6 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
    splitOutputVolumeNameIntoNameAndLabel(outputVolumeFileName, outputVolumeFileLabel);
    
    //
-   // Intersection mode
-   //
-   BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE intersectionMode = 
-      BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS;
-   
-   //
    // Optional parameters
    //
    float innerBoundary = -1.5;
@@ -160,20 +150,6 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       else if (paramName == "-step") {
          intersectionStep = parameters->getNextParameterAsFloat("Intersection Step Size");
       }
-      else if (paramName == "-intersection") {
-         const QString intersectionName = parameters->getNextParameterAsString("Intersection Mode Name");
-         if (intersectionName == "TILE_INTERSECTION") {
-            intersectionMode = 
-                  BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS;         
-         }
-         else if (intersectionName == "VOXEL_PROJECTION") {
-            intersectionMode = 
-                  BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_PROJECT_VOXELS_TO_SURFACE;
-         }
-         else {
-            throw CommandException("Invalid intersection mode: " + intersectionName);
-         }
-      }
       else {
          throw CommandException("Unrecognized option: " + paramName);
       }  
@@ -184,15 +160,15 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
    //
    SpecFile specFile;
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, topologyFileName, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), topologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, coordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), coordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    int inputDataFileColumnNumber = -1;
    BrainModelSurfaceToVolumeConverter::CONVERSION_MODE conversionMode;
    if (nodeAttributeFileName.endsWith(SpecFile::getMetricFileExtension())) {
-      specFile.addToSpecFile(SpecFile::metricFileTag, nodeAttributeFileName, 
+      specFile.addToSpecFile(SpecFile::getMetricFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE;
       
@@ -201,7 +177,7 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       inputDataFileColumnNumber = file.getColumnFromNameOrNumber(nodeAttributeColumnIdentifier, false);
    }
    else if (nodeAttributeFileName.endsWith(SpecFile::getPaintFileExtension())) {
-      specFile.addToSpecFile(SpecFile::paintFileTag, nodeAttributeFileName, 
+      specFile.addToSpecFile(SpecFile::getPaintFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT;
       
@@ -210,7 +186,7 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       inputDataFileColumnNumber = file.getColumnFromNameOrNumber(nodeAttributeColumnIdentifier, false);
    }
    else if (nodeAttributeFileName.endsWith(SpecFile::getSurfaceShapeFileExtension())) {
-      specFile.addToSpecFile(SpecFile::surfaceShapeFileTag, nodeAttributeFileName, 
+      specFile.addToSpecFile(SpecFile::getSurfaceShapeFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE;
       
@@ -266,8 +242,7 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
                                            innerBoundary,
                                            outerBoundary,
                                            intersectionStep,
-                                           conversionMode,
-                                           intersectionMode);
+                                           conversionMode);
    bmsv.setNodeAttributeColumn(inputDataFileColumnNumber);
    bmsv.execute();
       

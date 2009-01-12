@@ -47,7 +47,6 @@ class WuQWidgetGroup;
 class QVBoxLayout;
 class StudyFigurePanelWidget;
 class StudyFigureWidget;
-class StudyMetaAnalysisWidget;
 class StudyPageReferenceWidget;
 class StudyProvenanceWidget;
 class StudyTableWidget;
@@ -68,10 +67,6 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       // update the dialog
       void updateDialog();
       
-   public slots:
-      // called to update show meta-analysis check box
-      void updateShowMetaAnalysisCheckBox();
-      
    protected slots:
       // called when first study button pressed
       void slotFirstStudyPushButton();
@@ -87,6 +82,9 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       
       // called when study author button pressed
       void slotStudyChooseAuthorPushButton();
+      
+      // called when study name button pressed
+      void slotStudyChooseNamePushButton();
       
       // called when new study button pressed
       void slotNewStudyPushButton();
@@ -106,9 +104,6 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       // called to add table button pressed
       void slotTableAddPushButton();
       
-      // called when show meta-analysis check box value is changed
-      void slotShowMetaAnalysisCheckBox(bool b);
-      
       // called to add page reference button pressed
       void slotPageReferenceAddPushButton();
       
@@ -121,17 +116,11 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       // called when Fetch All PMID's button pressed
       void slotFetchAllStudiesPushButton();
       
-      // called when import meta-analysis button pressed
-      void slotImportMetaAnalysisFilePushButton();
-      
       // called when delete studies by name button pressed
       void slotDeleteStudiesByNamePushButton();
       
       // called when delete unlinked studies button pressed
       void slotDeleteUnlinkedStudiesPushButton();
-      
-      // called to create new studies out of a study's meta-analysis studies
-      void slotCreateStudiesFromMetaAnalysisStudies();
       
       // called when pubmed ID button pressed
       void slotStudyFetchPubMedIDPushButton();
@@ -170,11 +159,11 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       /// study choose by author button
       QPushButton* studyChooseAuthorPushButton;
       
+      /// study choose by name button
+      QPushButton* studyChooseNamePushButton;
+      
       /// study new push button
       QPushButton* studyNewPushButton;
-      
-      /// study import meta-analysis file
-      QPushButton* importMetaAnalysisFilePushButton;
       
       /// study delete push button
       QPushButton* studyDeletePushButton;
@@ -199,9 +188,6 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       
       /// delete studies by name push button
       QPushButton* deleteStudiesByNamePushButton;
-      
-      /// show meta-analysis check box
-      QCheckBox* showMetaAnalysisCheckBox;
       
       /// index of currently displayed study metadata
       int currentStudyMetaDataFileIndex;
@@ -253,9 +239,6 @@ class StudyWidget : public QGroupBox {
       // get study metadata from study metadata file that is in this widget
       StudyMetaData* getCurrentStudyMetaData() { return studyMetaData; }
       
-      // show or hide meta-analysis widget
-      void showHideMetaAnalysisWidget();
-      
    public slots:
       // save the data into the study meta data table subheader
       void slotSaveData();
@@ -290,6 +273,9 @@ class StudyWidget : public QGroupBox {
       // called when DOI changed
       void slotStudyDocumentObjectIdentifierLineEditChanged();
       
+      // called when species changed
+      void slotStudySpeciesLineEditChanged();
+      
       // called when space changed
       void slotStudyStereotaxicSpaceLineEditChanged();
       
@@ -316,6 +302,24 @@ class StudyWidget : public QGroupBox {
       
       // called when comment changed
       void slotStudyCommentTextEditChanged();
+      
+      // called when msl id changed
+      void slotStudyMslIDLineEditChanged();
+      
+      // called when parent id changed
+      void slotStudyParentIDLineEditChanged();
+      
+      // called when core data completed changed
+      void slotStudyCoreDataCompletedLineEditChanged();
+      
+      // called when completed changed
+      void slotStudyCompletedLineEditChanged();
+      
+      // called when public access changed
+      void slotStudyPublicAccessLineEditChanged();
+      
+      // called when species button pressed
+      void slotStudySpeciesPushButton();
       
       // called when stereotaxic space button pressed
       void slotStudyStereotaxicSpacePushButton();
@@ -372,6 +376,9 @@ class StudyWidget : public QGroupBox {
       /// keywords line edit
       QLineEdit* studyKeywordsLineEdit;
       
+      /// species line edit
+      QLineEdit* studySpeciesLineEdit;
+      
       /// stereotaxic space line edit
       QLineEdit* studyStereotaxicSpaceLineEdit;
       
@@ -405,6 +412,21 @@ class StudyWidget : public QGroupBox {
       /// last time study saved line edit
       QLineEdit* studyLastSaveLineEdit;
       
+      /// study msl ID line edit
+      QLineEdit* studyMslIDLineEdit;
+      
+      /// parent id line edit
+      QLineEdit* studyParentIDLineEdit;
+      
+      /// core data completed line edit
+      QLineEdit* studyCoreDataCompletedLineEdit;
+      
+      /// study completed line edit
+      QLineEdit* studyCompletedLineEdit;
+      
+      /// public access line edit
+      QLineEdit* studyPublicAccessLineEdit;
+      
       /// layout for figures
       QVBoxLayout* figuresLayout;
       
@@ -416,9 +438,6 @@ class StudyWidget : public QGroupBox {
       
       /// layout for tables
       QVBoxLayout* tablesLayout;
-      
-      /// the meta-analysis widget
-      StudyMetaAnalysisWidget* metaAnalysisWidget;
       
       /// keeps track of changes to keywords
       bool keywordsModifiedFlag;
@@ -918,52 +937,6 @@ class StudyProvenanceWidget : public QGroupBox {
 
       /// parent study widget
       StudyWidget* parentStudyWidget;      
-};
-
-//=========================================================================
-//
-/// meta-analysis widget
-class StudyMetaAnalysisWidget : public QGroupBox {
-   Q_OBJECT
-   
-   public:
-      // constructor
-      StudyMetaAnalysisWidget(StudyNamePubMedID* metaAnalysisStudiesIn,
-                              StudyWidget* parentStudyWidgetIn,
-                              QWidget* parentIn = 0);
-      
-      // destructor
-      ~StudyMetaAnalysisWidget();
-
-      // load data into the widget
-      void loadData();
-      
-      // get the associated studies in this associated studies widget
-      StudyNamePubMedID* getMetaAnalysisInThisWidget() { return metaAnalysisStudies; }
-      
-   signals:
-      // emitted when create studies button is pressed
-      void signalCreateStudiesPushButton();
-      
-   public slots:
-      // save the data into the study meta data page reference
-      void slotSaveData();
-      
-      // called when meta-analysis studies changed
-      void slotMetaAnalysisStudiesTextEditChanged();
-      
-   public:
-      // page reference that is in this widget
-      StudyNamePubMedID* metaAnalysisStudies;
-      
-      /// meta-analysis studies text edit
-      QTextEdit* metaAnalysisStudiesTextEdit;
-      
-      /// parent study widget
-      StudyWidget* parentStudyWidget;
-      
-      /// all widgets in the group
-      WuQWidgetGroup* allWidgetsGroup;
 };
 
 /// new study dialog

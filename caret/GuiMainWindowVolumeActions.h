@@ -42,9 +42,6 @@ class GuiMainWindowVolumeActions : public QObject {
       /// surefit segmentation action
       QAction* getSurefitSegmentationAction() { return surefitSegmentationAction; }
       
-      /// surefit multi-hem segmentation action
-      QAction* getSurefitMultiHemSegmentationAction() { return surefitMultiHemSegmentationAction; }
-      
       /// pad segmentation action
       QAction* getPadSegmentationAction() { return padSegmentationAction; }
       
@@ -81,6 +78,9 @@ class GuiMainWindowVolumeActions : public QObject {
       /// edit paint volume action
       QAction* getEditPaintVolumeAction() { return editPaintVolumeAction; }
       
+      /// generate colors for paint action
+      QAction* getPaintVolumeGenerateColorsAction() { return paintVolumeGenerateColorsAction; }
+      
       /// create math operations action
       QAction* getMathOperationsVolumeAction() { return mathOperationsVolumeAction; }
 
@@ -115,9 +115,6 @@ class GuiMainWindowVolumeActions : public QObject {
       // Segment the selected anatomical volume.
       void slotSureFitSegmentation();
       
-      // Segment the selected anatomical volume multi-hem.
-      void slotSureFitMultiHemSegmentation();
-      
       // Called to pad the segmentation volume
       void slotSegmentPad();
       
@@ -151,6 +148,9 @@ class GuiMainWindowVolumeActions : public QObject {
       // called to edit paint volume voxels
       void slotPaintEditVoxels();
       
+      // called to generate colors for paint names
+      void slotGenerateColorsForPaints();
+      
    protected:
       /// create math operations action
       QAction* mathOperationsVolumeAction;
@@ -178,9 +178,6 @@ class GuiMainWindowVolumeActions : public QObject {
       
       /// surefit segmentation action
       QAction* surefitSegmentationAction;
-      
-      /// surefit multi-hem segmentation action
-      QAction* surefitMultiHemSegmentationAction;
       
       /// pad segmentation action
       QAction* padSegmentationAction;
@@ -217,6 +214,9 @@ class GuiMainWindowVolumeActions : public QObject {
       
       /// edit paint volume action
       QAction* editPaintVolumeAction;
+      
+      /// generaet colors for paint volume actiono
+      QAction* paintVolumeGenerateColorsAction;
       
 };
 

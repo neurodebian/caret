@@ -152,6 +152,9 @@ Structure::convertStringToType(const QString& sin)
             (s == "b")) {
       st = STRUCTURE_TYPE_CORTEX_BOTH;
    }
+   else if (s == getCerebrumAndCerebellumAsString()) {
+      st = STRUCTURE_TYPE_CEREBRUM_CEREBELLUM;
+   }
    else if (s == getCerebellumOrLeftCerebralAsString()) {
       st = STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT;
    }
@@ -163,6 +166,12 @@ Structure::convertStringToType(const QString& sin)
    }
    else if (s == getRightCerebralOrCerebellumAsString()) {
       st = STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM;
+   }
+   else if (s == getSubCorticalAsString()) {
+      st = STRUCTURE_TYPE_SUBCORTICAL;
+   }
+   else if (s == getAllAsString()) {
+      st = STRUCTURE_TYPE_ALL;
    }
    
    return st;
@@ -192,6 +201,9 @@ Structure::convertTypeToString(const STRUCTURE_TYPE st)
       case STRUCTURE_TYPE_CEREBELLUM:
          s = getCerebellumAsString();
          break;
+      case STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+         s = getCerebrumAndCerebellumAsString();
+         break;
       case STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
          s = getCerebellumOrLeftCerebralAsString();
          break;
@@ -203,6 +215,12 @@ Structure::convertTypeToString(const STRUCTURE_TYPE st)
          break;
       case STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
          s = getRightCerebralOrCerebellumAsString();
+         break;
+      case STRUCTURE_TYPE_SUBCORTICAL:
+         s = getSubCorticalAsString();
+         break;
+      case STRUCTURE_TYPE_ALL:
+         s = getAllAsString();
          break;
    }
    
@@ -233,6 +251,9 @@ Structure::convertTypeToAbbreviatedString(const STRUCTURE_TYPE st)
       case STRUCTURE_TYPE_CEREBELLUM:
          s = "C";
          break;
+      case STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+         s = "CC";
+         break;
       case STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
          s = "CL";
          break;
@@ -244,6 +265,12 @@ Structure::convertTypeToAbbreviatedString(const STRUCTURE_TYPE st)
          break;
       case STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
          s = "RC";
+         break;
+      case STRUCTURE_TYPE_SUBCORTICAL:
+         s = "S";
+         break;
+      case STRUCTURE_TYPE_ALL:
+         s = "A";
          break;
    }
    
@@ -282,6 +309,9 @@ Structure::getAllTypesAndNames(std::vector<STRUCTURE_TYPE>& types,
    types.push_back(STRUCTURE_TYPE_CORTEX_RIGHT);
    names.push_back(getCortexRightAsString());
    
+   types.push_back(STRUCTURE_TYPE_CEREBRUM_CEREBELLUM);
+   names.push_back(getCerebrumAndCerebellumAsString());
+   
    if (includeAmbiguousCerebralOrCerebellum) {
       types.push_back(STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM);
       names.push_back(getLeftCerebralOrCerebellumAsString());
@@ -290,6 +320,12 @@ Structure::getAllTypesAndNames(std::vector<STRUCTURE_TYPE>& types,
       names.push_back(getRightCerebralOrCerebellumAsString());
    }
    
+   types.push_back(STRUCTURE_TYPE_SUBCORTICAL);
+   names.push_back(getSubCorticalAsString());
+
+   types.push_back(STRUCTURE_TYPE_ALL);
+   names.push_back(getAllAsString());
+
    if (includeInvalid) {
       types.push_back(STRUCTURE_TYPE_INVALID);
       names.push_back(getInvalidAsString());

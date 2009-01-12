@@ -42,6 +42,8 @@ DisplaySettingsSurface::DisplaySettingsSurface(BrainSet* bs)
    linkSize       = 2;
    forceVectorDisplayLength = 10.0;
    
+   opacity = 1.0;
+   
    identifyNodeColor = IDENTIFY_NODE_COLOR_GREEN;
    
    showNormals               = false;
@@ -223,6 +225,9 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
             else if (infoName == "nodeBrightness") {
                si->getValue(nodeBrightness);
             }
+            else if (infoName == "opacity") {
+               si->getValue(opacity);
+            }
             else if (infoName == "nodeContrast") {
                si->getValue(nodeContrast);
             }
@@ -365,6 +370,8 @@ DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
                                         nodeBrightness));
    sc.addSceneInfo(SceneFile::SceneInfo("nodeContrast",
                                         nodeContrast));
+   sc.addSceneInfo(SceneFile::SceneInfo("opacity",
+                                        opacity));
    sc.addSceneInfo(SceneFile::SceneInfo("nodeSize",
                                         nodeSize));
    sc.addSceneInfo(SceneFile::SceneInfo("linkSize",

@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <cstdlib>
 #include <iostream>
 #include <cstdlib>
 

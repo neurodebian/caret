@@ -80,6 +80,7 @@ static const QString arealEstimationID("areal-estimation-column");
 void 
 DisplaySettingsArealEstimation::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
@@ -98,8 +99,9 @@ DisplaySettingsArealEstimation::showScene(const SceneFile::Scene& scene, QString
  */
 void 
 DisplaySettingsArealEstimation::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
    ArealEstimationFile* aef = brainSet->getArealEstimationFile();
    if (onlyIfSelected) {
       if (aef->getNumberOfColumns() <= 0) {

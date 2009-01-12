@@ -29,7 +29,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
-#include "WuQFileDialog.h">
+#include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -361,7 +361,7 @@ GuiSurfaceToVolumeDialog::GuiSurfaceToVolumeDialog(QWidget* parent,
    //
    // Volume origin
    //
-   volumeGridLayout->addWidget(new QLabel("Volume Origin"), rowNumber, 0, Qt::AlignLeft);
+   volumeGridLayout->addWidget(new QLabel("Volume Origin at Center\nof First Voxel"), rowNumber, 0, Qt::AlignLeft);
    volumeOriginXDoubleSpinBox = new QDoubleSpinBox;
    volumeOriginXDoubleSpinBox->setFixedWidth(spinWidth);
    volumeOriginXDoubleSpinBox->setSingleStep(0.5);
@@ -1001,15 +1001,6 @@ GuiSurfaceToVolumeDialog::done(int r)
    QDialog::done(r);
 }
 
-/**
- * get intersection mode.
- */
-BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE 
-GuiSurfaceToVolumeDialog::getIntersectionMode() const
-{
-   return BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS;
-}
-      
 /**
  * get the metric conversion mode.
  */

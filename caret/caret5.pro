@@ -7,7 +7,7 @@ TEMPLATE = app
 #
 # For JPEG support with static linking
 #
-QTPLUGIN += qgif qjpeg
+QTPLUGIN += qgif qjpeg qtiff
 LIBS     += -L$(QTDIR)/plugins/imageformats
 
 INCLUDEPATH += .
@@ -17,6 +17,8 @@ INCLUDEPATH += .
 #               /usr/local/qt-software/qt-4.1.3/src/qt3support/network 
                
 include(../caret_qmake_include.pro)
+
+CONFIG += assistant
 
 win32 {
    CONFIG(debug) {
@@ -165,8 +167,8 @@ HEADERS += global_variables.h \
 	   GuiBorderAttributesDialog.h \
       GuiBorderComparisonDialog.h \
       GuiBorderDrawUpdateDialog.h \
-      GuiBrainSetAndModelSelectionControl.h \
 	   GuiBorderNamesListBoxSelectionDialog.h \
+      GuiBorderOperationsDialog.h \
 	   GuiBorderProjectionDialog.h \
       GuiBordersCreateInterpolatedDialog.h \
       GuiBrainModelOpenGL.h \
@@ -174,12 +176,15 @@ HEADERS += global_variables.h \
 	   GuiBrainModelOpenGLMouseEvent.h \
 	   GuiBrainModelOpenGLPopupMenu.h \
       GuiBrainModelSelectionComboBox.h \
+      GuiBrainModelSurfaceSelectionComboBox.h \
       GuiBrainModelViewingWindow.h \
+      GuiBrainSetAndModelSelectionControl.h \
       GuiCaptureWindowImageDialog.h \
       GuiCaretCommandDialog.h \
       GuiCaretCommandScriptBuilderDialog.h \
       GuiCaretCommandWidget.h \
       GuiCaretTipsDialog.h \
+      GuiCategoryComboBox.h \
       GuiCellAndFociAttributeAssignmentDialog.h \
       GuiCellAndFociReportDialog.h \
 	   GuiCellAttributesDialog.h \
@@ -187,6 +192,7 @@ HEADERS += global_variables.h \
 	   GuiChooseNodeAttributeColumnDialog.h \
       GuiChooseSpecFileDialog.h \
 	   GuiColorFileEditorDialog.h \
+      GuiColorFileEditorWidget.h \
       GuiColorKeyDialog.h \
 	   GuiColorSelectionDialog.h \
       GuiCommaSeparatedValueFileEditor.h \
@@ -218,6 +224,7 @@ HEADERS += global_variables.h \
       GuiFociPalsProjectionDialog.h \
       GuiFociSearchWidget.h \
 	   GuiFociUncertaintyLimitsDialog.h \
+      GuiFlattenFullHemisphereDialog.h \
 	   GuiFlattenHemisphereDialog.h \
 	   GuiFlattenHemisphereInstructionsDialog.h \
 	   GuiGenerateArealEstimationDialog.h \
@@ -225,6 +232,7 @@ HEADERS += global_variables.h \
 	   GuiGenerateSurfaceCurvatureDialog.h \
       GuiGraphWidget.h \
       GuiGraphWidgetDialog.h \
+      GuiHelpAssistantWindow.h \
       GuiHelpViewerWindow.h \
       GuiHistogramDisplayDialog.h \
       GuiHtmlColorChooserDialog.h \
@@ -297,7 +305,11 @@ HEADERS += global_variables.h \
       GuiSpecAndSceneFileCreationDialog.h \
       GuiSpecFileCreationDialog.h \
       GuiSpecFileDialog.h \
+      GuiSpeciesComboBox.h \
+      GuiStandardMeshDialog.h \
+      GuiStereotaxicSpaceComboBox.h \
       GuiStructureComboBox.h \
+      GuiStudyCollectionFileEditorDialog.h \
       GuiStudyInfoEditorWidget.h \
       GuiStudyMetaDataFileEditorDialog.h \
       GuiStudyMetaDataLinkCreationDialog.h \
@@ -326,7 +338,6 @@ HEADERS += global_variables.h \
 	   GuiVolumeFileSelectionComboBox.h \
       GuiVolumeFileTypeComboBox.h \
 	   GuiVolumeHandleFinderDialog.h \
-      GuiVolumeMultiHemSureFitSegmentationDialog.h \
       GuiVolumePaintEditorDialog.h \
 	   GuiVolumeReconstructionDialog.h \
 	   GuiVolumeRegionOfInterestDialog.h \
@@ -356,6 +367,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiBorderComparisonDialog.cxx \
       GuiBorderDrawUpdateDialog.cxx \
 	   GuiBorderNamesListBoxSelectionDialog.cxx \
+      GuiBorderOperationsDialog.cxx \
 	   GuiBorderProjectionDialog.cxx \
       GuiBordersCreateInterpolatedDialog.cxx \
 	   GuiBrainModelOpenGL.cxx \
@@ -363,6 +375,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiBrainModelOpenGLMouseEvent.cxx \
 	   GuiBrainModelOpenGLPopupMenu.cxx \
       GuiBrainModelSelectionComboBox.cxx \
+      GuiBrainModelSurfaceSelectionComboBox.cxx \
       GuiBrainModelViewingWindow.cxx \
       GuiBrainSetAndModelSelectionControl.cxx \
       GuiCaptureWindowImageDialog.cxx \
@@ -370,6 +383,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiCaretCommandScriptBuilderDialog.cxx \
       GuiCaretCommandWidget.cxx \
       GuiCaretTipsDialog.cxx \
+      GuiCategoryComboBox.cxx \
       GuiCellAndFociAttributeAssignmentDialog.cxx \
       GuiCellAndFociReportDialog.cxx \
 	   GuiCellAttributesDialog.cxx \
@@ -377,6 +391,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiChooseNodeAttributeColumnDialog.cxx \
       GuiChooseSpecFileDialog.cxx \
 	   GuiColorFileEditorDialog.cxx \
+      GuiColorFileEditorWidget.cxx \
       GuiColorKeyDialog.cxx \
 	   GuiColorSelectionDialog.cxx \
       GuiCommaSeparatedValueFileEditor.cxx \
@@ -408,6 +423,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiFociPalsProjectionDialog.cxx \
       GuiFociSearchWidget.cxx \
 	   GuiFociUncertaintyLimitsDialog.cxx \
+      GuiFlattenFullHemisphereDialog.cxx \
 	   GuiFlattenHemisphereDialog.cxx \
 	   GuiFlattenHemisphereInstructionsDialog.cxx \
 	   GuiGenerateArealEstimationDialog.cxx \
@@ -415,6 +431,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiGenerateSurfaceCurvatureDialog.cxx \
       GuiGraphWidget.cxx \
       GuiGraphWidgetDialog.cxx \
+      GuiHelpAssistantWindow.cxx \
       GuiHelpViewerWindow.cxx \
       GuiHistogramDisplayDialog.cxx \
       GuiHtmlColorChooserDialog.cxx \
@@ -487,7 +504,11 @@ SOURCES += CommunicatorClientAFNI.cxx \
       GuiSpecAndSceneFileCreationDialog.cxx \
       GuiSpecFileCreationDialog.cxx \
       GuiSpecFileDialog.cxx \
+      GuiSpeciesComboBox.cxx \
+      GuiStandardMeshDialog.cxx \
+      GuiStereotaxicSpaceComboBox.cxx \
       GuiStructureComboBox.cxx \
+      GuiStudyCollectionFileEditorDialog.cxx \
       GuiStudyInfoEditorWidget.cxx \
       GuiStudyMetaDataFileEditorDialog.cxx \
       GuiStudyMetaDataLinkCreationDialog.cxx \
@@ -516,7 +537,6 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiVolumeFileSelectionComboBox.cxx \
       GuiVolumeFileTypeComboBox.cxx \
 	   GuiVolumeHandleFinderDialog.cxx \
-      GuiVolumeMultiHemSureFitSegmentationDialog.cxx \
       GuiVolumePaintEditorDialog.cxx \
 	   GuiVolumeReconstructionDialog.cxx \
 	   GuiVolumeRegionOfInterestDialog.cxx \

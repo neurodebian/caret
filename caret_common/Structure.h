@@ -43,6 +43,8 @@ class Structure {
          STRUCTURE_TYPE_CORTEX_BOTH,
          /// cerebrellum
          STRUCTURE_TYPE_CEREBELLUM,
+         /// cerebral cortex or cerebellum
+         STRUCTURE_TYPE_CEREBRUM_CEREBELLUM,
          /// cerebellum or left cerebral cortex (used with foci that could be associated with either)
          STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT,
          /// cerebellum or right cerebral cortex (used with foci that could be associated with either)
@@ -51,6 +53,10 @@ class Structure {
          STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM,
          /// right cerebral cortex or cerebellum (used with foci that could be associated with either)
          STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM,
+         /// subcortical 
+         STRUCTURE_TYPE_SUBCORTICAL,
+         /// all structures
+         STRUCTURE_TYPE_ALL,
          /// invalid
          STRUCTURE_TYPE_INVALID
       };
@@ -146,6 +152,15 @@ class Structure {
       
       /// get the string value for both (right&left) cortex structure
       static QString getCortexBothAsString() { return "both"; }
+      
+      /// get the string for cerebrum and cerebellum
+      static QString getCerebrumAndCerebellumAsString() { return "cerebrum_cerebellum"; }
+      
+      /// get the string for subcortical
+      static QString getSubCorticalAsString() { return "subcortical"; }
+      
+      /// get the string for all structures
+      static QString getAllAsString() { return "all"; }
       
       /// get the string value for invalid structure
       static QString getInvalidAsString() { return "invalid"; }

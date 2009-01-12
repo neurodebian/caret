@@ -35,12 +35,19 @@
 #include <QDomText>
 #include <QFileInfo>
 
+#include "BorderFile.h"
+#include "CoordinateFile.h"
 #include "FileUtilities.h"
 #define __SPEC_FILE_DEFINE__
 #include "SpecFile.h"
 #undef __SPEC_FILE_DEFINE__
 #include "SpecFileUtilities.h"
+#include "SurfaceFile.h"
 #include "StringUtilities.h"
+#include "TopologyFile.h"
+#include "VolumeFile.h"
+
+//SpecFile::SORT SpecFile::Entry::Files::sortMethod; //  = SpecFile::SORT_DATE;
 
 /**
  * The Constructor.
@@ -58,137 +65,135 @@ SpecFile::SpecFile()
    sorting = SORT_DATE;
    clear();
    
-   volumeFunctionalFile.initialize("Volume - Functional", volumeFunctionalFileTag, Entry::FILE_TYPE_VOLUME);
+   volumeFunctionalFile.initialize("Volume - Functional", getVolumeFunctionalFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   volumePaintFile.initialize("Volume - Paint", volumePaintFileTag, Entry::FILE_TYPE_VOLUME);
+   volumePaintFile.initialize("Volume - Paint", getVolumePaintFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   volumeProbAtlasFile.initialize("Volume - Probabilistic Atlas", volumeProbAtlasFileTag, Entry::FILE_TYPE_VOLUME);
+   volumeProbAtlasFile.initialize("Volume - Probabilistic Atlas", getVolumeProbAtlasFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   volumeRgbFile.initialize("Volume - RGB", volumeRgbFileTag, Entry::FILE_TYPE_VOLUME);
+   volumeRgbFile.initialize("Volume - RGB", getVolumeRgbFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   volumeSegmentationFile.initialize("Volume - Segmentation", volumeSegmentationFileTag, Entry::FILE_TYPE_VOLUME);
+   volumeSegmentationFile.initialize("Volume - Segmentation", getVolumeSegmentationFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   volumeAnatomyFile.initialize("Volume - Anatomy", volumeAnatomyFileTag, Entry::FILE_TYPE_VOLUME);
+   volumeAnatomyFile.initialize("Volume - Anatomy", getVolumeAnatomyFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   volumeVectorFile.initialize("Volume - Vector", volumeVectorFileTag, Entry::FILE_TYPE_VOLUME);
+   volumeVectorFile.initialize("Volume - Vector", getVolumeVectorFileTag(), Entry::FILE_TYPE_VOLUME);
    
-   closedTopoFile.initialize("Topology - Closed", closedTopoFileTag, Entry::FILE_TYPE_SURFACE);
-   openTopoFile.initialize("Topology - Open", openTopoFileTag, Entry::FILE_TYPE_SURFACE);
-   cutTopoFile.initialize("Topology - Cut", cutTopoFileTag, Entry::FILE_TYPE_SURFACE);
-   lobarCutTopoFile.initialize("Topology - Lobar Cut", lobarCutTopoFileTag, Entry::FILE_TYPE_SURFACE);
-   unknownTopoFile.initialize("Topology - Unknown", unknownTopoFileMatchTag, Entry::FILE_TYPE_SURFACE, true);
+   closedTopoFile.initialize("Topology - Closed", getClosedTopoFileTag(), Entry::FILE_TYPE_SURFACE);
+   openTopoFile.initialize("Topology - Open", getOpenTopoFileTag(), Entry::FILE_TYPE_SURFACE);
+   cutTopoFile.initialize("Topology - Cut", getCutTopoFileTag(), Entry::FILE_TYPE_SURFACE);
+   lobarCutTopoFile.initialize("Topology - Lobar Cut", getLobarCutTopoFileTag(), Entry::FILE_TYPE_SURFACE);
+   unknownTopoFile.initialize("Topology - Unknown", getUnknownTopoFileMatchTag(), Entry::FILE_TYPE_SURFACE, true);
    
-   rawCoordFile.initialize("Coordinate - Raw", rawCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   fiducialCoordFile.initialize("Coordinate - Fiducial", fiducialCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   inflatedCoordFile.initialize("Coordinate - Inflated", inflatedCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   veryInflatedCoordFile.initialize("Coordinate - Very Inflated", veryInflatedCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   sphericalCoordFile.initialize("Coordinate - Spherical", sphericalCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   ellipsoidCoordFile.initialize("Coordinate - Ellipsoid", ellipsoidCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   compressedCoordFile.initialize("Coordinate - Compressed Medial Wall", compressedCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   flatCoordFile.initialize("Coordinate - Flat", flatCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   lobarFlatCoordFile.initialize("Coordinate - Lobar Flat", lobarFlatCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   hullCoordFile.initialize("Coordinate - Hull", hullCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   averageFiducialCoordFile.initialize("Coordinate - Average Fiducial", averageFiducialCoordFileTag, Entry::FILE_TYPE_SURFACE);
-   unknownCoordFile.initialize("Coordinate - Unknown", unknownCoordFileMatchTag, Entry::FILE_TYPE_SURFACE, true);
+   rawCoordFile.initialize("Coordinate - Raw", getRawCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   fiducialCoordFile.initialize("Coordinate - Fiducial", getFiducialCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   inflatedCoordFile.initialize("Coordinate - Inflated", getInflatedCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   veryInflatedCoordFile.initialize("Coordinate - Very Inflated", getVeryInflatedCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   sphericalCoordFile.initialize("Coordinate - Spherical", getSphericalCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   ellipsoidCoordFile.initialize("Coordinate - Ellipsoid", getEllipsoidCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   compressedCoordFile.initialize("Coordinate - Compressed Medial Wall", getCompressedCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   flatCoordFile.initialize("Coordinate - Flat", getFlatCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   lobarFlatCoordFile.initialize("Coordinate - Lobar Flat", getLobarFlatCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   hullCoordFile.initialize("Coordinate - Hull", getHullCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   averageFiducialCoordFile.initialize("Coordinate - Average Fiducial", getAverageFiducialCoordFileTag(), Entry::FILE_TYPE_SURFACE);
+   unknownCoordFile.initialize("Coordinate - Unknown", getUnknownCoordFileMatchTag(), Entry::FILE_TYPE_SURFACE, true);
    
-   rawSurfaceFile.initialize("Surface - Raw", rawSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   fiducialSurfaceFile.initialize("Surface - Fiducial", fiducialSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   inflatedSurfaceFile.initialize("Surface - Inflated", inflatedSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   veryInflatedSurfaceFile.initialize("Surface - Very Inflated", veryInflatedSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   sphericalSurfaceFile.initialize("Surface - Spherical", sphericalSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   ellipsoidSurfaceFile.initialize("Surface - Ellipsoid", ellipsoidSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   compressedSurfaceFile.initialize("Surface - Compressed Medial Wall", compressedSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   flatSurfaceFile.initialize("Surface - Flat", flatSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   lobarFlatSurfaceFile.initialize("Surface - Lobar Flat", lobarFlatSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   hullSurfaceFile.initialize("Surface - Hull", hullSurfaceFileTag, Entry::FILE_TYPE_SURFACE);
-   unknownSurfaceFile.initialize("Surface - Unknown", unknownSurfaceFileMatchTag, Entry::FILE_TYPE_SURFACE, true);
+   rawSurfaceFile.initialize("Surface - Raw", getRawSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   fiducialSurfaceFile.initialize("Surface - Fiducial", getFiducialSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   inflatedSurfaceFile.initialize("Surface - Inflated", getInflatedSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   veryInflatedSurfaceFile.initialize("Surface - Very Inflated", getVeryInflatedSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   sphericalSurfaceFile.initialize("Surface - Spherical", getSphericalSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   ellipsoidSurfaceFile.initialize("Surface - Ellipsoid", getEllipsoidSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   compressedSurfaceFile.initialize("Surface - Compressed Medial Wall", getCompressedSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   flatSurfaceFile.initialize("Surface - Flat", getFlatSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   lobarFlatSurfaceFile.initialize("Surface - Lobar Flat", getLobarFlatSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   hullSurfaceFile.initialize("Surface - Hull", getHullSurfaceFileTag(), Entry::FILE_TYPE_SURFACE);
+   unknownSurfaceFile.initialize("Surface - Unknown", getUnknownSurfaceFileMatchTag(), Entry::FILE_TYPE_SURFACE, true);
    
-   latLonFile.initialize("Latitude/Longitude File", latLonFileTag, Entry::FILE_TYPE_SURFACE);
+   latLonFile.initialize("Latitude/Longitude File", getLatLonFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   sectionFile.initialize("Section File", sectionFileTag, Entry::FILE_TYPE_SURFACE);
+   sectionFile.initialize("Section File", getSectionFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   sceneFile.initialize("Scene File", sceneFileTag, Entry::FILE_TYPE_OTHER);
+   sceneFile.initialize("Scene File", getSceneFileTag(), Entry::FILE_TYPE_OTHER);
    
-   imageFile.initialize("Image File", imageFileTag, Entry::FILE_TYPE_OTHER);
-   scriptFile.initialize("Script File", scriptFileTag, Entry::FILE_TYPE_OTHER);
+   imageFile.initialize("Image File", getImageFileTag(), Entry::FILE_TYPE_OTHER);
+   scriptFile.initialize("Script File", getScriptFileTag(), Entry::FILE_TYPE_OTHER);
    
-   transformationMatrixFile.initialize("Transformation Matrix File", transformationMatrixFileTag, Entry::FILE_TYPE_SURFACE);
+   transformationMatrixFile.initialize("Transformation Matrix File", getTransformationMatrixFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   paintFile.initialize("Paint File", paintFileTag, Entry::FILE_TYPE_SURFACE);
-   areaColorFile.initialize("Area Color File", areaColorFileTag, Entry::FILE_TYPE_SURFACE);
-   rgbPaintFile.initialize("RGB Paint File", rgbPaintFileTag, Entry::FILE_TYPE_SURFACE);
+   paintFile.initialize("Paint File", getPaintFileTag(), Entry::FILE_TYPE_SURFACE);
+   areaColorFile.initialize("Area Color File", getAreaColorFileTag(), Entry::FILE_TYPE_SURFACE);
+   rgbPaintFile.initialize("RGB Paint File", getRgbPaintFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   surfaceVectorFile.initialize("Surface Vector File", surfaceVectorFileTag, Entry::FILE_TYPE_SURFACE);
+   surfaceVectorFile.initialize("Surface Vector File", getSurfaceVectorFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   rawBorderFile.initialize("Border File - Raw", rawBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   fiducialBorderFile.initialize("Border File - Fiducial", fiducialBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   inflatedBorderFile.initialize("Border File - Inflated", inflatedBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   veryInflatedBorderFile.initialize("Border File - Very Inflated", veryInflatedBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   sphericalBorderFile.initialize("Border File - Spherical", sphericalBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   ellipsoidBorderFile.initialize("Border File - Ellipsoid", ellipsoidBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   compressedBorderFile.initialize("Border File - Comp Med Wall", compressedBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   flatBorderFile.initialize("Border File - Flat", flatBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   lobarFlatBorderFile.initialize("Border File - Lobar Flat", lobarFlatBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   hullBorderFile.initialize("Border File - Hull", hullBorderFileTag, Entry::FILE_TYPE_SURFACE);
-   unknownBorderFile.initialize("Border File - Unknown", unknownBorderFileMatchTag, Entry::FILE_TYPE_SURFACE, true);
-   volumeBorderFile.initialize("Border File - Volume", volumeBorderFileTag, Entry::FILE_TYPE_SURFACE);
+   rawBorderFile.initialize("Border File - Raw", getRawBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   fiducialBorderFile.initialize("Border File - Fiducial", getFiducialBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   inflatedBorderFile.initialize("Border File - Inflated", getInflatedBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   veryInflatedBorderFile.initialize("Border File - Very Inflated", getVeryInflatedBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   sphericalBorderFile.initialize("Border File - Spherical", getSphericalBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   ellipsoidBorderFile.initialize("Border File - Ellipsoid", getEllipsoidBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   compressedBorderFile.initialize("Border File - Comp Med Wall", getCompressedBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   flatBorderFile.initialize("Border File - Flat", getFlatBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   lobarFlatBorderFile.initialize("Border File - Lobar Flat", getLobarFlatBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   hullBorderFile.initialize("Border File - Hull", getHullBorderFileTag(), Entry::FILE_TYPE_SURFACE);
+   unknownBorderFile.initialize("Border File - Unknown", getUnknownBorderFileMatchTag(), Entry::FILE_TYPE_SURFACE, true);
+   volumeBorderFile.initialize("Border File - Volume", getVolumeBorderFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   borderColorFile.initialize("Border Color File", borderColorFileTag, Entry::FILE_TYPE_SURFACE);
-   borderProjectionFile.initialize("Border Projection File", borderProjectionFileTag, Entry::FILE_TYPE_SURFACE);
-   momcTemplateFile.initialize("Momc Template", momcTemplateFileTag, Entry::FILE_TYPE_SURFACE);
-   momcTemplateMatchFile.initialize("Momc Template Match", momcTemplateMatchFileTag, Entry::FILE_TYPE_SURFACE);
+   borderColorFile.initialize("Border Color File", getBorderColorFileTag(), Entry::FILE_TYPE_SURFACE);
+   borderProjectionFile.initialize("Border Projection File", getBorderProjectionFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   paletteFile.initialize("Palette File", paletteFileTag, Entry::FILE_TYPE_SURFACE);
+   paletteFile.initialize("Palette File", getPaletteFileTag(), Entry::FILE_TYPE_SURFACE);
   
-   topographyFile.initialize("Topography File", topographyFileTag, Entry::FILE_TYPE_SURFACE);
+   topographyFile.initialize("Topography File", getTopographyFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   cellFile.initialize("Cell File", cellFileTag, Entry::FILE_TYPE_OTHER);
-   cellColorFile.initialize("Cell Color File", cellColorFileTag, Entry::FILE_TYPE_OTHER);
-   cellProjectionFile.initialize("Cell Projection File", cellProjectionFileTag, Entry::FILE_TYPE_OTHER);
-   volumeCellFile.initialize("Volume Cell File", volumeCellFileTag, Entry::FILE_TYPE_OTHER);
+   cellFile.initialize("Cell File", getCellFileTag(), Entry::FILE_TYPE_OTHER);
+   cellColorFile.initialize("Cell Color File", getCellColorFileTag(), Entry::FILE_TYPE_OTHER);
+   cellProjectionFile.initialize("Cell Projection File", getCellProjectionFileTag(), Entry::FILE_TYPE_OTHER);
+   volumeCellFile.initialize("Volume Cell File", getVolumeCellFileTag(), Entry::FILE_TYPE_OTHER);
    
-   contourFile.initialize("Contour File", contourFileTag, Entry::FILE_TYPE_OTHER);
+   contourFile.initialize("Contour File", getContourFileTag(), Entry::FILE_TYPE_OTHER);
    
-   contourCellFile.initialize("Contour Cell File", contourCellFileTag, Entry::FILE_TYPE_OTHER);
+   contourCellFile.initialize("Contour Cell File", getContourCellFileTag(), Entry::FILE_TYPE_OTHER);
    
-   contourCellColorFile.initialize("Contour Cell Color File", contourCellColorFileTag, Entry::FILE_TYPE_OTHER);
+   contourCellColorFile.initialize("Contour Cell Color File", getContourCellColorFileTag(), Entry::FILE_TYPE_OTHER);
    
-   atlasFile.initialize("Prog Atlas File", atlasFileTag, Entry::FILE_TYPE_SURFACE);
+   atlasFile.initialize("Prog Atlas File", getAtlasFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   metricFile.initialize("Metric File", metricFileTag, Entry::FILE_TYPE_SURFACE);
+   metricFile.initialize("Metric File", getMetricFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   surfaceShapeFile.initialize("Surface Shape File", surfaceShapeFileTag, Entry::FILE_TYPE_SURFACE);
+   surfaceShapeFile.initialize("Surface Shape File", getSurfaceShapeFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   cocomacConnectivityFile.initialize("CoCoMac File", cocomacConnectivityFileTag, Entry::FILE_TYPE_SURFACE);
+   cocomacConnectivityFile.initialize("CoCoMac File", getCocomacConnectivityFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   arealEstimationFile.initialize("Areal Estimation File", arealEstimationFileTag, Entry::FILE_TYPE_SURFACE);
+   arealEstimationFile.initialize("Areal Estimation File", getArealEstimationFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   cutsFile.initialize("Cuts File", cutsFileTag, Entry::FILE_TYPE_SURFACE);
+   cutsFile.initialize("Cuts File", getCutsFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   fociFile.initialize("Foci File", fociFileTag, Entry::FILE_TYPE_OTHER);
-   fociColorFile.initialize("Foci Color File", fociColorFileTag, Entry::FILE_TYPE_OTHER);
-   fociProjectionFile.initialize("Foci Projection File", fociProjectionFileTag, Entry::FILE_TYPE_OTHER);
-   fociSearchFile.initialize("Foci Search File", fociSearchFileTag, Entry::FILE_TYPE_OTHER);
+   fociFile.initialize("Foci File", getFociFileTag(), Entry::FILE_TYPE_OTHER);
+   fociColorFile.initialize("Foci Color File", getFociColorFileTag(), Entry::FILE_TYPE_OTHER);
+   fociProjectionFile.initialize("Foci Projection File", getFociProjectionFileTag(), Entry::FILE_TYPE_OTHER);
+   fociSearchFile.initialize("Foci Search File", getFociSearchFileTag(), Entry::FILE_TYPE_OTHER);
    
-   paramsFile.initialize("Params File", paramsFileTag, Entry::FILE_TYPE_OTHER);
-   deformationMapFile.initialize("Deformation Map File", deformationMapFileTag, Entry::FILE_TYPE_SURFACE);
-   deformationFieldFile.initialize("Deformation Field File", deformationFieldFileTag, Entry::FILE_TYPE_SURFACE);
-   cerebralHullFile.initialize("Cerebral Hull File", cerebralHullFileTag, Entry::FILE_TYPE_OTHER);
+   paramsFile.initialize("Params File", getParamsFileTag(), Entry::FILE_TYPE_OTHER);
+   deformationMapFile.initialize("Deformation Map File", getDeformationMapFileTag(), Entry::FILE_TYPE_SURFACE);
+   deformationFieldFile.initialize("Deformation Field File", getDeformationFieldFileTag(), Entry::FILE_TYPE_SURFACE);
+   cerebralHullFile.initialize("Cerebral Hull File", getCerebralHullFileTag(), Entry::FILE_TYPE_OTHER);
    
-   vtkModelFile.initialize("VTK Model File", vtkModelFileTag, Entry::FILE_TYPE_SURFACE);
+   vtkModelFile.initialize("VTK Model File", getVtkModelFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   geodesicDistanceFile.initialize("Geodesic Distance File", geodesicDistanceFileTag, Entry::FILE_TYPE_SURFACE);
+   geodesicDistanceFile.initialize("Geodesic Distance File", getGeodesicDistanceFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   wustlRegionFile.initialize("WUSTL Region File", wustlRegionFileTag, Entry::FILE_TYPE_OTHER);
+   wustlRegionFile.initialize("WUSTL Region File", getWustlRegionFileTag(), Entry::FILE_TYPE_OTHER);
    
-   metaAnalysisFile.initialize("Study Meta-Analysis File", metaAnalysisFileTag, Entry::FILE_TYPE_OTHER);
-   studyMetaDataFile.initialize("Study Metadata File", studyMetaDataFileTag, Entry::FILE_TYPE_OTHER);
+   studyCollectionFile.initialize("Study Collection File", getStudyCollectionFileTag(), Entry::FILE_TYPE_OTHER);
+   studyMetaDataFile.initialize("Study Metadata File", getStudyMetaDataFileTag(), Entry::FILE_TYPE_OTHER);
    
-   transformationDataFile.initialize("Transformation Data File", transformationDataFileTag, Entry::FILE_TYPE_SURFACE);
+   transformationDataFile.initialize("Transformation Data File", getTransformationDataFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   vocabularyFile.initialize("Vocabulary File", vocabularyFileTag, Entry::FILE_TYPE_OTHER);
+   vocabularyFile.initialize("Vocabulary File", getVocabularyFileTag(), Entry::FILE_TYPE_OTHER);
    
-   documentFile.initialize("Document File", documentFileTag, Entry::FILE_TYPE_OTHER);
+   documentFile.initialize("Document File", getDocumentFileTag(), Entry::FILE_TYPE_OTHER);
    
    updateAllEntries();
 }
@@ -350,7 +355,7 @@ SpecFile::updateAllEntries()
    
    allEntries.push_back(&transformationDataFile);
    
-   allEntries.push_back(&metaAnalysisFile);
+   allEntries.push_back(&studyCollectionFile);
    allEntries.push_back(&studyMetaDataFile);
    allEntries.push_back(&vocabularyFile);
 
@@ -508,7 +513,7 @@ SpecFile::copyHelperSpecFile(const SpecFile& sf)
    
    geodesicDistanceFile = sf.geodesicDistanceFile;
    
-   metaAnalysisFile = sf.metaAnalysisFile;
+   studyCollectionFile = sf.studyCollectionFile;
    studyMetaDataFile = sf.studyMetaDataFile;
    vocabularyFile = sf.vocabularyFile;
    wustlRegionFile = sf.wustlRegionFile;
@@ -561,10 +566,10 @@ SpecFile::clear()
    
    writeOnlySelectedFiles = false;
    
-   setStructure("");
-   setSpecies("");
-   setCategory("");
-   setSpace("");  
+   setStructure(Structure());
+   setSpecies(Species(Species::TYPE_HUMAN));
+   setCategory(Category(Category::TYPE_INDIVIDUAL));
+   setSpace(StereotaxicSpace(StereotaxicSpace::SPACE_UNKNOWN));  
      
    clearFiles(true, true, true, false);
    
@@ -640,19 +645,19 @@ SpecFile::clearFiles(const bool clearVolumeFiles,
 /**
  * get the species.
  */
-QString 
+Species 
 SpecFile::getSpecies() const
 {
-   return getHeaderTag(AbstractFile::headerTagSpecies);
+   return Species(getHeaderTag(AbstractFile::headerTagSpecies));
 }
 
 /**
  * set the species.
  */
 void 
-SpecFile::setSpecies(const QString& speciesIn)
+SpecFile::setSpecies(const Species& speciesIn)
 {
-   setHeaderTag(AbstractFile::headerTagSpecies, speciesIn);
+   setHeaderTag(AbstractFile::headerTagSpecies, speciesIn.getName());
 }
 
 /**
@@ -676,59 +681,59 @@ SpecFile::setSubject(const QString& subjectIn)
 /**
  * get the space.
  */
-QString 
+StereotaxicSpace 
 SpecFile::getSpace() const
 {
-   return getHeaderTag(AbstractFile::headerTagSpace);
+   return StereotaxicSpace(getHeaderTag(AbstractFile::headerTagSpace));
 }
 
 /**
  * set the space.
  */
 void 
-SpecFile::setSpace(const QString& spaceIn)
+SpecFile::setSpace(const StereotaxicSpace& spaceIn)
 {
-   setHeaderTag(AbstractFile::headerTagSpace, spaceIn);
+   setHeaderTag(AbstractFile::headerTagSpace, spaceIn.getName());
 }
 
 /**
  * get the structure.
  */
-QString
+Structure
 SpecFile::getStructure() const
 {
    QString s = getHeaderTag(AbstractFile::headerTagStructure);
    if (s.isEmpty()) {
       s = getHeaderTag("hem_flag");
    }
-   return s;
+   return Structure(s);
 }
 
 /**
  * set the structure.
  */
 void
-SpecFile::setStructure(const QString& hem)
+SpecFile::setStructure(const Structure& st)
 {
-   setHeaderTag(AbstractFile::headerTagStructure, hem);
+   setHeaderTag(AbstractFile::headerTagStructure, st.getTypeAsString());
 }
 
 /**
  * get the category.
  */
-QString 
+Category 
 SpecFile::getCategory() const
 {
-   return getHeaderTag(AbstractFile::headerTagCategory);
+   return Category(getHeaderTag(AbstractFile::headerTagCategory));
 }
 
 /**
  * set the category.
  */
 void 
-SpecFile::setCategory(const QString& cat)
+SpecFile::setCategory(const Category& cat)
 {
-   setHeaderTag(AbstractFile::headerTagCategory, cat);
+   setHeaderTag(AbstractFile::headerTagCategory, cat.getName());
 }
 
 /**
@@ -1176,6 +1181,320 @@ SpecFile::append(const SpecFile& sf)
 }
             
 /**
+ * add a file to the spec file basing spec file tag off of file extension
+ * returns true if added.
+ */
+bool 
+SpecFile::addUnknownTypeOfFileToSpecFile(const QString& fileName)
+{
+   const QString noTagForFile("");
+   QString tag;
+   
+   if (fileName.endsWith(getTopoFileExtension())) { 
+      try {
+         TopologyFile tf;
+         tf.readFile(fileName);
+         tag = TopologyFile::getSpecFileTagFromTopologyType(tf.getTopologyType());
+      }
+      catch (FileException&) {
+      }
+   }
+   else if (fileName.endsWith(getCoordinateFileExtension())) {  
+      try {
+         CoordinateFile cf;
+         cf.readFile(fileName);
+         tag = cf.getSpecFileTagUsingConfigurationID();
+      }
+      catch (FileException&) {
+      }
+   }
+   else if (fileName.endsWith(getTransformationMatrixFileExtension())) {  
+      tag = SpecFile::getTransformationMatrixFileTag(); 
+   }
+   else if (fileName.endsWith(getLatLonFileExtension())) {  
+      tag = getLatLonFileTag(); 
+   }
+   else if (fileName.endsWith(getSectionFileExtension())) {  
+      tag = getSectionFileTag(); 
+   }
+   else if (fileName.endsWith(getPaintFileExtension())) {  
+      tag = getPaintFileTag(); 
+   }
+   else if (fileName.endsWith(getRegionOfInterestFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getProbabilisticAtlasFileExtension())) {  
+      tag = getAtlasFileTag(); 
+   }
+   else if (fileName.endsWith(getAreaColorFileExtension())) {  
+      tag = getAreaColorFileTag(); 
+   }
+   else if (fileName.endsWith(getRgbPaintFileExtension())) {  
+      tag = getRgbPaintFileTag(); 
+   }
+   else if (fileName.endsWith(getBorderFileExtension())) {  
+      BorderFile bf;
+      bf.readFileMetaDataOnly(fileName);
+      const QString typeTag = bf.getHeaderTag(AbstractFile::headerTagConfigurationID);
+      tag = CoordinateFile::convertConfigurationIDToSpecFileTag(typeTag);
+   }
+   else if (fileName.endsWith(getBorderColorFileExtension())) {  
+      tag = getBorderColorFileTag(); 
+   }
+   else if (fileName.endsWith(getBorderProjectionFileExtension())) {  
+      tag = getBorderProjectionFileTag(); 
+   }
+   else if (fileName.endsWith(getPaletteFileExtension())) {  
+      tag = getPaletteFileTag(); 
+   }
+   else if (fileName.endsWith(getTopographyFileExtension())) {  
+      tag = getTopographyFileTag(); 
+   }
+   else if (fileName.endsWith(getCellFileExtension())) {  
+      tag = getCellFileTag(); 
+   }
+   else if (fileName.endsWith(getCellColorFileExtension())) { 
+       tag = getCellColorFileTag(); 
+   }
+   else if (fileName.endsWith(getCellProjectionFileExtension())) {  
+      tag = getCellProjectionFileTag(); 
+   }
+   else if (fileName.endsWith(getContourFileExtension())) {  
+      tag = getContourFileTag(); 
+   }
+   else if (fileName.endsWith(getContourCellColorFileExtension())) {  
+      tag = getContourCellColorFileTag(); 
+   }
+   else if (fileName.endsWith(getContourCellFileExtension())) {  
+      tag = getContourCellFileTag(); 
+   }
+   else if (fileName.endsWith(getMetricFileExtension())) {  
+      tag = getMetricFileTag(); 
+   }
+   else if (fileName.endsWith(getSurfaceShapeFileExtension())) {  
+      tag = getSurfaceShapeFileTag(); 
+   }
+   else if (fileName.endsWith(getCocomacConnectivityFileExtension())) {  
+      tag = getCocomacConnectivityFileTag(); 
+   }
+   else if (fileName.endsWith(getArealEstimationFileExtension())) {  
+      tag = getArealEstimationFileTag(); 
+   }
+   else if (fileName.endsWith(getCutsFileExtension())) {  
+      tag = getCutsFileTag(); 
+   }
+   else if (fileName.endsWith(getFociFileExtension())) {  
+      tag = getFociFileTag(); 
+   }
+   else if (fileName.endsWith(getFociColorFileExtension())) {  
+      tag = getFociColorFileTag(); 
+   }
+   else if (fileName.endsWith(getFociProjectionFileExtension())) {  
+      tag = getFociProjectionFileTag(); 
+   }
+   else if (fileName.endsWith(getFociSearchFileExtension())) {  
+      tag = getFociSearchFileTag(); 
+   }
+   else if (fileName.endsWith(getParamsFileExtension())) {  
+      tag = getParamsFileTag(); 
+   }
+   else if (fileName.endsWith(getDeformationMapFileExtension())) {  
+      tag = getDeformationMapFileTag(); 
+   }
+   else if (fileName.endsWith(getDeformationFieldFileExtension())) {  
+      tag = getDeformationFieldFileTag(); 
+   }
+   else if (fileName.endsWith(getVtkModelFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getGeodesicDistanceFileExtension())) {  
+      tag = getGeodesicDistanceFileTag(); 
+   }
+   else if (fileName.endsWith(getAtlasSurfaceDirectoryFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getBrainVoyagerFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getAtlasSpaceFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getFreeSurferAsciiCurvatureFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getFreeSurferBinaryCurvatureFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getFreeSurferAsciiFunctionalFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getFreeSurferBinaryFunctionalFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getFreeSurferLabelFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getFreeSurferAsciiSurfaceFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   //else if (fileName.endsWith(getFreeSurferBinarySurfaceFileExtension())) {  
+   //   tag = noTagForFile; // FS Binary Surface has no extension
+   //} 
+   else if (fileName.endsWith(getSumaRgbFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getPreferencesFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getSpecFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if ((fileName.endsWith(getAnalyzeVolumeFileExtension())) || 
+            (fileName.endsWith(getAfniVolumeFileExtension())) ||
+            (fileName.endsWith(getWustlVolumeFileExtension())) ||  
+            (fileName.endsWith(getMincVolumeFileExtension())) ||
+            (fileName.endsWith(getNiftiVolumeFileExtension())) ||  
+            (fileName.endsWith(getNiftiGzipVolumeFileExtension()))) {  
+      try {
+         VolumeFile vf;
+         vf.readFile(fileName);
+         switch (vf.getVolumeType()) {
+            case VolumeFile::VOLUME_TYPE_ANATOMY:
+               tag = getVolumeAnatomyFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
+               tag = getVolumeFunctionalFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_PAINT:
+               tag = getVolumePaintFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
+               tag = getVolumeProbAtlasFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_RGB:
+               tag = getVolumeRgbFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_SEGMENTATION:
+               tag = getVolumeSegmentationFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_VECTOR:
+               tag = getVolumeVectorFileTag();
+               break;
+            case VolumeFile::VOLUME_TYPE_ROI:
+               break;
+            case VolumeFile::VOLUME_TYPE_UNKNOWN:
+               tag = getVolumeAnatomyFileTag();
+               break;
+         }
+      }
+      catch (FileException&) {
+      }
+   }
+   else if (fileName.endsWith(getSceneFileExtension())) {  
+      tag = getSceneFileTag(); 
+   }
+   else if (fileName.endsWith(getVectorFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getSurfaceVectorFileExtension())) {  
+      tag = getSurfaceVectorFileTag(); 
+   }
+   else if (fileName.endsWith(getWustlRegionFileExtension())) {  
+      tag = getWustlRegionFileTag(); 
+   }
+   else if (fileName.endsWith(getLimitsFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getMDPlotFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   //else if (fileName.endsWith(getGiftiGenericFileExtension())) {  
+   //   tag = noTagForFile;   DO NOT TEST FOR GENERIC EXTENSION OTHERWISE
+   //                         THE REMAINING GIFTI EXTENSIONS WILL FAIL
+   //}
+   else if (fileName.endsWith(getGiftiCoordinateFileExtension())) {  
+      try {
+         CoordinateFile cf;
+         cf.readFile(fileName);
+         tag = cf.getSpecFileTagUsingConfigurationID();
+      }
+      catch (FileException&) {
+      }
+   }
+   else if (fileName.endsWith(getGiftiFunctionalFileExtension())) {  
+      tag = getMetricFileTag(); 
+   }
+   else if (fileName.endsWith(getGiftiLabelFileExtension())) {  
+      tag = getPaintFileTag(); 
+   }
+   else if (fileName.endsWith(getGiftiRgbaFileExtension())) {  
+      tag = getRgbPaintFileTag(); 
+   }
+   else if (fileName.endsWith(getGiftiShapeFileExtension())) {  
+      tag = getSurfaceShapeFileTag(); 
+   }
+   else if (fileName.endsWith(getGiftiSurfaceFileExtension())) {  
+      try {
+         SurfaceFile sf;
+         sf.readFile(fileName);
+         const QString configID = sf.getCoordinateType();
+         tag = SurfaceFile::convertConfigurationIDToSpecFileTag(configID);
+      }
+      catch (FileException&) {
+      }
+   }
+   else if (fileName.endsWith(getGiftiTensorFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getGiftiTimeSeriesFileExtension())) {  
+      tag = getMetricFileTag(); 
+   }
+   else if (fileName.endsWith(getGiftiTopologyFileExtension())) {  
+      try {
+         TopologyFile tf;
+         tf.readFile(fileName);
+         tag = TopologyFile::getSpecFileTagFromTopologyType(tf.getTopologyType());
+      }
+      catch (FileException&) {
+      }
+   }
+   else if (fileName.endsWith(getCommaSeparatedValueFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getVocabularyFileExtension())) {  
+      tag = getVocabularyFileTag(); 
+   }
+   else if (fileName.endsWith(getStudyCollectionFileExtension())) {  
+      tag = getStudyCollectionFileTag(); 
+   }
+   else if (fileName.endsWith(getStudyMetaDataFileExtension())) {  
+      tag = getStudyMetaDataFileTag(); 
+   }
+   else if (fileName.endsWith(getXmlFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getTextFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getNeurolucidaFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   else if (fileName.endsWith(getCaretScriptFileExtension())) {  
+      tag = getScriptFileTag(); 
+   }
+   else if (fileName.endsWith(getMniObjeSurfaceFileExtension())) {  
+      tag = noTagForFile; 
+   }
+   
+   if (tag.isEmpty() == false) {
+      addToSpecFile(tag, fileName, "", false);
+      return true;
+   }
+   
+   return false;
+}
+      
+/**
  * Add a tag/file to the spec file.  Make the file's path relative
  * to the spec file and then write the spec file if the spec file has
  * a name.  Returns true if the file was written.
@@ -1330,10 +1649,10 @@ SpecFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream&,
                   while (childNode.isNull() == false) {
                      QDomElement elemChild = childNode.toElement();
                      if (elemChild.isNull() == false) {
-                        if (elemChild.tagName() == xmlFileTagName1) {
+                        if (elemChild.tagName() == getXmlFileTagName1()) {
                            val1 = getXmlElementFirstChildAsString(elemChild);
                         }
-                        else if (elemChild.tagName() == xmlFileTagName2) {
+                        else if (elemChild.tagName() == getXmlFileTagName2()) {
                            val2 = getXmlElementFirstChildAsString(elemChild);
                         }
                      }
@@ -1606,7 +1925,7 @@ SpecFile::writeFiles(QTextStream& stream,
                case FILE_FORMAT_XML:
                   {
                      QDomElement tagElem = xmlDoc.createElement(tagName);
-                     QDomElement tag1 = xmlDoc.createElement(xmlFileTagName1);
+                     QDomElement tag1 = xmlDoc.createElement(getXmlFileTagName1());
                      QDomCDATASection tagValue1 = xmlDoc.createCDATASection(names[i]);
                      tag1.appendChild(tagValue1);
                      tagElem.appendChild(tag1);
@@ -1668,13 +1987,13 @@ SpecFile::writeFiles(QTextStream& stream,
                case FILE_FORMAT_XML:
                   {
                      QDomElement tagElem = xmlDoc.createElement(tagName);
-                     QDomElement tag1 = xmlDoc.createElement(xmlFileTagName1);
+                     QDomElement tag1 = xmlDoc.createElement(getXmlFileTagName1());
                      QDomCDATASection tagValue1 = xmlDoc.createCDATASection(names[i]);
                      tag1.appendChild(tagValue1);
                      tagElem.appendChild(tag1);
                      if ((names2[i].isEmpty() == false) &&
                          (names2[i] != names[i])) {
-                        QDomElement tag2 = xmlDoc.createElement(xmlFileTagName2);
+                        QDomElement tag2 = xmlDoc.createElement(getXmlFileTagName2());
                         QDomCDATASection tagValue2 = xmlDoc.createCDATASection(names2[i]);
                         tag2.appendChild(tagValue2);
                         tagElem.appendChild(tag2);
@@ -1731,7 +2050,7 @@ SpecFile::writeFiles(QTextStream& stream,
                case FILE_FORMAT_XML:
                   {
                      QDomElement tagElem = xmlDoc.createElement(tagName[i]);
-                     QDomElement tag1 = xmlDoc.createElement(xmlFileTagName1);
+                     QDomElement tag1 = xmlDoc.createElement(getXmlFileTagName1());
                      QDomCDATASection tagValue1 = xmlDoc.createCDATASection(names[i]);
                      tag1.appendChild(tagValue1);
                      tagElem.appendChild(tag1);
@@ -1785,7 +2104,7 @@ SpecFile::writeFiles(QTextStream& stream,
             case FILE_FORMAT_XML:
                {
                   QDomElement tagElem = xmlDoc.createElement(tagName);
-                  QDomElement tag1 = xmlDoc.createElement(xmlFileTagName1);
+                  QDomElement tag1 = xmlDoc.createElement(getXmlFileTagName1());
                   QDomCDATASection tagValue1 = xmlDoc.createCDATASection(name);
                   tag1.appendChild(tagValue1);
                   tagElem.appendChild(tag1);
@@ -1907,7 +2226,7 @@ SpecFile::showScene(const SceneFile::Scene& scene, QString& /*errorMessage*/)
                //
                // Do all but Scene Files
                //
-               if (infoName != sceneFileTag) {
+               if (infoName != getSceneFileTag()) {
                   processTag(tokens);
                }
             }
@@ -2432,19 +2751,19 @@ SpecFile::Entry::writeFiles(QTextStream& stream,
                   QDomElement tagElem = xmlDoc.createElement(specFileTag);
                   
                   if (fileVersionNumber > 0) {
-                     QDomElement structElement = xmlDoc.createElement(xmlFileTagStructure);
+                     QDomElement structElement = xmlDoc.createElement(getXmlFileTagStructure());
                      QDomCDATASection structValue = xmlDoc.createCDATASection(files[i].structure.getTypeAsAbbreviatedString());
                      structElement.appendChild(structValue);
                      tagElem.appendChild(structElement);
                   }
                   
-                  QDomElement tag1 = xmlDoc.createElement(xmlFileTagName1);
+                  QDomElement tag1 = xmlDoc.createElement(getXmlFileTagName1());
                   QDomCDATASection tagValue1 = xmlDoc.createCDATASection(files[i].filename);
                   tag1.appendChild(tagValue1);
                   tagElem.appendChild(tag1);
                   if (files[i].dataFileName.isEmpty() == false) {
                      if (files[i].filename != files[i].dataFileName) {
-                        QDomElement tag2 = xmlDoc.createElement(xmlFileTagName2);
+                        QDomElement tag2 = xmlDoc.createElement(getXmlFileTagName2());
                         QDomCDATASection tagValue2 = xmlDoc.createCDATASection(files[i].dataFileName);
                         tag2.appendChild(tagValue2);
                         tagElem.appendChild(tag2);
@@ -2503,10 +2822,10 @@ bool
 SpecFile::Entry::Files::operator<(const Files& fi) const
 {
    switch (sortMethod) {
-      case SORT_NONE:
+      case SpecFile::SORT_NONE:
          return false;
          break;
-      case SORT_DATE:
+      case SpecFile::SORT_DATE:
          {
             QFileInfo fi1(filename);
             const unsigned long time1 = static_cast<long>(fi1.lastModified().toTime_t());
@@ -2515,7 +2834,7 @@ SpecFile::Entry::Files::operator<(const Files& fi) const
             return (time1 > time2);
          }
          break;
-      case SORT_NAME:
+      case SpecFile::SORT_NAME:
          return (filename < fi.filename);
          break;
    }
@@ -2527,7 +2846,7 @@ SpecFile::Entry::Files::operator<(const Files& fi) const
  * sort the files.
  */
 void 
-SpecFile::Entry::Files::setSortMethod(const SORT sortMethodIn)
+SpecFile::Entry::Files::setSortMethod(const SpecFile::SORT sortMethodIn)
 {
    sortMethod = sortMethodIn;
 }

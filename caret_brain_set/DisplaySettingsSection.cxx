@@ -107,6 +107,8 @@ static const QString sectionID("section-column");
 void 
 DisplaySettingsSection::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
@@ -145,8 +147,10 @@ DisplaySettingsSection::showScene(const SceneFile::Scene& scene, QString& errorM
  */
 void 
 DisplaySettingsSection::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    SectionFile* sf = brainSet->getSectionFile();
    if (onlyIfSelected) {
       if (sf->getNumberOfColumns() <= 0) {
