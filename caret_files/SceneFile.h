@@ -351,6 +351,9 @@ class SceneFile : public AbstractFile {
       static const QString valueAttributeName;
 };
 
+
+#endif // SCENE_FILE
+
 #ifdef __SCENE_FILE_MAIN__
 const QString SceneFile::sceneTagName = "Scene";
 const QString SceneFile::sceneNameTagName = "SceneName";
@@ -360,6 +363,4 @@ const QString SceneFile::modelAttributeName = "model";
 const QString SceneFile::overlayAttributeName = "overlay";
 const QString SceneFile::valueAttributeName   = "value";
 #endif // __SCENE_FILE_MAIN__
-
-#endif // SCENE_FILE
 

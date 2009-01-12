@@ -346,12 +346,10 @@ class ContourFile : public AbstractFile {
    friend class CaretContour;
 };
 
-#ifdef _CONTOUR_FILE_MAIN_
+#endif // __VE_CONTOUR_FILE_H__
 
+#ifdef _CONTOUR_FILE_MAIN_
 const QString ContourFile::tagNumberOfContours = "tag-number-of-contours";
 const QString ContourFile::tagSectionSpacing = "tag-section-spacing";
-   
 #endif // _CONTOUR_FILE_MAIN_
 
-
-#endif // __VE_CONTOUR_FILE_H__

@@ -46,6 +46,7 @@
 #include "CommandDeformationMapApply.h"
 #include "CommandDeformationMapCreate.h"
 #include "CommandDeformationMapPathUpdate.h"
+#include "CommandExtend.h"
 #include "CommandFileConvert.h"
 #include "CommandFileReadTime.h"
 #include "CommandFileSubstitution.h"
@@ -58,8 +59,10 @@
 #include "CommandHelpSearch.h"
 #include "CommandImageCombine.h"
 #include "CommandImageCompare.h"
+#include "CommandImageFormatConvert.h"
 #include "CommandImageInsertText.h"
 #include "CommandImageResize.h"
+#include "CommandImageToWebPage.h"
 #include "CommandImageView.h"
 #include "CommandMetricClustering.h"
 #include "CommandMetricComposite.h"
@@ -96,6 +99,7 @@
 #include "CommandPaintAssignNodesRelativeToLine.h"
 #include "CommandPaintComposite.h"
 #include "CommandPaintFileCreate.h"
+#include "CommandPreferencesFileSettings.h"
 #include "CommandSceneCreate.h"
 #include "CommandScriptComment.h"
 #include "CommandScriptConvert.h"
@@ -113,10 +117,13 @@
 #include "CommandSpecFileZip.h"
 #include "CommandStatisticSetRandomSeed.h"
 #include "CommandStatisticalUnitTesting.h"
+#include "CommandStereotaxicSpaces.h"
 #include "CommandStudyMetaDataFileDuplicates.h"
+#include "CommandSurfaceAffineRegression.h"
 #include "CommandSurfaceAlignToStandardOrientation.h"
 #include "CommandSurfaceApplyTransformationMatrix.h"
 #include "CommandSurfaceAverage.h"
+#include "CommandSurfaceBorderCreateAverage.h"
 #include "CommandSurfaceBorderCreateParallelBorder.h"
 #include "CommandSurfaceBorderCutter.h"
 #include "CommandSurfaceBorderDelete.h"
@@ -138,11 +145,14 @@
 #include "CommandSurfaceCellUnprojection.h"
 #include "CommandSurfaceCrossoverCheck.h"
 #include "CommandSurfaceCurvature.h"
+#include "CommandSurfaceDistortion.h"
 #include "CommandSurfaceFlatMultiResMorphing.h"
 #include "CommandSurfaceFlatten.h"
+#include "CommandSurfaceFociAttributeAssignment.h"
 #include "CommandSurfaceFociCreate.h"
 #include "CommandSurfaceFociDelete.h"
 #include "CommandSurfaceFociProjection.h"
+#include "CommandSurfaceFociProjectionPals.h"
 #include "CommandSurfaceFociUnprojection.h"
 #include "CommandSurfaceGenerateInflated.h"
 #include "CommandSurfaceInflate.h"
@@ -155,6 +165,7 @@
 #include "CommandSurfaceRegistrationSphericalSpecOnly.h"
 #include "CommandSurfaceRoiCoordReport.h"
 #include "CommandSurfaceRoiFoldingMeasures.h"
+#include "CommandSurfaceRoiShapeMeasures.h"
 #include "CommandSurfaceRoiStatisticalReport.h"
 #include "CommandSurfaceSmoothing.h"
 #include "CommandSurfaceSphericalMultiResMorphing.h"
@@ -230,9 +241,13 @@
 #include "CommandVolumeSetSpacing.h"
 #include "CommandVolumeShiftAxis.h"
 #include "CommandVolumeSmearAxis.h"
+#include "CommandVolumeTFCE.h"
 #include "CommandVolumeThreshold.h"
 #include "CommandVolumeThresholdDual.h"
 #include "CommandVolumeThresholdInverse.h"
+#include "CommandVolumeTopologyCorrector.h"
+#include "CommandVolumeTopologyGraph.h"
+#include "CommandVolumeTopologyReport.h"
 #include "CommandVolumeVectorCombine.h"
 
 /**
@@ -271,6 +286,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandDeformationMapApply);
    commandsOut.push_back(new CommandDeformationMapCreate);
    commandsOut.push_back(new CommandDeformationMapPathUpdate);
+   commandsOut.push_back(new CommandExtend);
    commandsOut.push_back(new CommandFileConvert);
    commandsOut.push_back(new CommandFileReadTime);
    commandsOut.push_back(new CommandFileSubstitution);
@@ -283,8 +299,10 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandHelpSearch);
    commandsOut.push_back(new CommandImageCombine);
    commandsOut.push_back(new CommandImageCompare);
+   commandsOut.push_back(new CommandImageFormatConvert);
    commandsOut.push_back(new CommandImageInsertText);
    commandsOut.push_back(new CommandImageResize);
+   commandsOut.push_back(new CommandImageToWebPage);
    commandsOut.push_back(new CommandImageView);
    commandsOut.push_back(new CommandMetricClustering);
    commandsOut.push_back(new CommandMetricComposite);
@@ -321,6 +339,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandPaintAssignNodesRelativeToLine);
    commandsOut.push_back(new CommandPaintComposite);
    commandsOut.push_back(new CommandPaintFileCreate);
+   commandsOut.push_back(new CommandPreferencesFileSettings);
    commandsOut.push_back(new CommandSceneCreate);
    commandsOut.push_back(new CommandScriptComment);
    commandsOut.push_back(new CommandScriptConvert);
@@ -338,10 +357,13 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSpecFileZip);
    commandsOut.push_back(new CommandStatisticSetRandomSeed);
    commandsOut.push_back(new CommandStatisticalUnitTesting);
+   commandsOut.push_back(new CommandStereotaxicSpaces);
    commandsOut.push_back(new CommandStudyMetaDataFileDuplicates);
+   commandsOut.push_back(new CommandSurfaceAffineRegression);
    commandsOut.push_back(new CommandSurfaceAlignToStandardOrientation);
    commandsOut.push_back(new CommandSurfaceApplyTransformationMatrix);
    commandsOut.push_back(new CommandSurfaceAverage);
+   commandsOut.push_back(new CommandSurfaceBorderCreateAverage);
    commandsOut.push_back(new CommandSurfaceBorderCreateParallelBorder);
    commandsOut.push_back(new CommandSurfaceBorderCutter);
    commandsOut.push_back(new CommandSurfaceBorderDelete);
@@ -363,13 +385,16 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceCellProjection);
    commandsOut.push_back(new CommandSurfaceCellUnprojection);
    commandsOut.push_back(new CommandSurfaceCurvature);
-   commandsOut.push_back(new CommandSurfaceGenerateInflated);
+   commandsOut.push_back(new CommandSurfaceDistortion);
    commandsOut.push_back(new CommandSurfaceFlatMultiResMorphing);
    commandsOut.push_back(new CommandSurfaceFlatten);
+   commandsOut.push_back(new CommandSurfaceFociAttributeAssignment);
    commandsOut.push_back(new CommandSurfaceFociCreate);
    commandsOut.push_back(new CommandSurfaceFociDelete);
    commandsOut.push_back(new CommandSurfaceFociProjection);
+   commandsOut.push_back(new CommandSurfaceFociProjectionPals);
    commandsOut.push_back(new CommandSurfaceFociUnprojection);
+   commandsOut.push_back(new CommandSurfaceGenerateInflated);
    commandsOut.push_back(new CommandSurfaceIdentifySulci);
    commandsOut.push_back(new CommandSurfaceInflate);
    commandsOut.push_back(new CommandSurfaceInformation);
@@ -381,6 +406,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceRegistrationSphericalSpecOnly);
    commandsOut.push_back(new CommandSurfaceRoiCoordReport);
    commandsOut.push_back(new CommandSurfaceRoiFoldingMeasures);
+   commandsOut.push_back(new CommandSurfaceRoiShapeMeasures);
    commandsOut.push_back(new CommandSurfaceRoiStatisticalReport);
    commandsOut.push_back(new CommandSurfaceSulcalDepth);
    commandsOut.push_back(new CommandSurfaceSulcalIdentificationProbabilistic);
@@ -455,9 +481,13 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandVolumeSetSpacing);
    commandsOut.push_back(new CommandVolumeShiftAxis);
    commandsOut.push_back(new CommandVolumeSmearAxis);
+   commandsOut.push_back(new CommandVolumeTFCE);
    commandsOut.push_back(new CommandVolumeThreshold);
    commandsOut.push_back(new CommandVolumeThresholdDual);
    commandsOut.push_back(new CommandVolumeThresholdInverse);
+   commandsOut.push_back(new CommandVolumeTopologyCorrector);
+   commandsOut.push_back(new CommandVolumeTopologyGraph);
+   commandsOut.push_back(new CommandVolumeTopologyReport);
    commandsOut.push_back(new CommandVolumeVectorCombine);
 }
                             
@@ -721,9 +751,13 @@ CommandBase::checkForExcessiveParameters() throw (CommandException)
 ProgramParameters* 
 CommandBase::getEmptyParameters()
 {
-   static char* progName = "caret_command";
+/*
+   static const char* progName = "caret_command";
    static char* argvDummy[1] = { progName };
    static ProgramParameters emptyParameters(1, argvDummy);
+   return &emptyParameters;
+*/   
+   static ProgramParameters emptyParameters("caret_command", QStringList());
    return &emptyParameters;
 }
       

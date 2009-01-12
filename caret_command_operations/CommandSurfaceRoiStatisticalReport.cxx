@@ -147,27 +147,27 @@ CommandSurfaceRoiStatisticalReport::executeCommand() throw (BrainModelAlgorithmE
    // Read the spec file into a brain set
    //
    SpecFile specFile;
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag,
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(),
                           coordinateFileName,
                           "",
                           false);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag,
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(),
                           topoFileName,
                           "",
                           false);
-   specFile.addToSpecFile(SpecFile::latLonFileTag,
+   specFile.addToSpecFile(SpecFile::getLatLonFileTag(),
                           latLonFileName,
                           "",
                           false);
-   specFile.addToSpecFile(SpecFile::metricFileTag,
+   specFile.addToSpecFile(SpecFile::getMetricFileTag(),
                           metricFileName,
                           "",
                           false);
-   specFile.addToSpecFile(SpecFile::paintFileTag,
+   specFile.addToSpecFile(SpecFile::getPaintFileTag(),
                           paintFileName,
                           "",
                           false);
-   specFile.addToSpecFile(SpecFile::surfaceShapeFileTag,
+   specFile.addToSpecFile(SpecFile::getSurfaceShapeFileTag(),
                           surfaceShapeFileName,
                           "",
                           false);

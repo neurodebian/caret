@@ -50,13 +50,13 @@ DisplaySettingsNodeAttributeFile::DisplaySettingsNodeAttributeFile(
                      const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS overlayTypeIn,
                      const bool allowSurfaceUniqueColumnSelectionFlagIn,
                      const bool thresholdColumnValidFlagIn)
-   : DisplaySettings(bs)
+   : DisplaySettings(bs),
+     gaf(gafIn),
+     naf(nafIn),
+     overlayType(overlayTypeIn),
+     thresholdColumnValidFlag(thresholdColumnValidFlagIn),
+     allowSurfaceUniqueColumnSelectionFlag(allowSurfaceUniqueColumnSelectionFlagIn)
 {
-   gaf = gafIn;
-   naf = nafIn;
-   overlayType = overlayTypeIn;
-   allowSurfaceUniqueColumnSelectionFlag = allowSurfaceUniqueColumnSelectionFlagIn;
-   thresholdColumnValidFlag = thresholdColumnValidFlagIn;
    applySelectionToLeftAndRightStructuresFlag = false;
 }
 
@@ -293,6 +293,9 @@ DisplaySettingsNodeAttributeFile::setSelectedDisplayColumn(const int modelNumber
                         break;
                      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
                         break;
+                     case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+                     case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+                     case Structure::STRUCTURE_TYPE_ALL:
                      case Structure::STRUCTURE_TYPE_INVALID:
                         break;
                   }
@@ -442,6 +445,9 @@ DisplaySettingsNodeAttributeFile::setSelectedThresholdColumn(const int modelNumb
                         break;
                      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
                         break;
+                     case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+                     case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+                     case Structure::STRUCTURE_TYPE_ALL:
                      case Structure::STRUCTURE_TYPE_INVALID:
                         break;
                   }
@@ -566,10 +572,14 @@ DisplaySettingsNodeAttributeFile::saveSceneSelectedColumns(SceneFile::SceneClass
                // 
                for (int j = 0; j < numOverlays; j++) {
                   const int overlayNumber = j;
-                  const QString displayColumnName(
-                     columnNames[displayColumn[getColumnSelectionIndex(n, j)]]);
-                  const QString thresholdColumnName(
-                     columnNames[thresholdColumn[getColumnSelectionIndex(n, j)]]);
+                  const int colIndex = getColumnSelectionIndex(n, j);
+                  const int dispCol = displayColumn[colIndex];
+                  const QString displayColumnName(columnNames[dispCol]);
+                  const int threshCol = thresholdColumn[colIndex];
+                  QString thresholdColumnName;
+                  if (thresholdColumnValidFlag) {
+                     thresholdColumnName = columnNames[threshCol];
+                  }
                   
                   if (displayColumnName.isEmpty() == false) {
                      //
@@ -610,8 +620,10 @@ DisplaySettingsNodeAttributeFile::saveSceneSelectedColumns(SceneFile::SceneClass
                if (bms != NULL) {
                   const QString displayColumnName(
                      columnNames[displayColumn[getColumnSelectionIndex(n, j)]]);
-                  const QString thresholdColumnName(
-                     columnNames[thresholdColumn[getColumnSelectionIndex(n, j)]]);
+                  QString thresholdColumnName;
+                  if (thresholdColumnValidFlag) {
+                     thresholdColumnName = columnNames[thresholdColumn[getColumnSelectionIndex(n, j)]];
+                  }
                   
                   if (displayColumnName.isEmpty() == false) {
                      //
@@ -957,4 +969,24 @@ DisplaySettingsNodeAttributeFile::getFirstSelectedColumnForBrainModel(const int 
    
    return -1;
 }
+
+/**
+ * apply a scene (set display settings).
+ */
+void 
+DisplaySettingsNodeAttributeFile::showScene(const SceneFile::Scene& /*scene*/, 
+                                            QString& /*errorMessage*/)
+{
+   applySelectionToLeftAndRightStructuresFlag = false;
+}
+
+/**
+ * create a scene (read display settings).
+ */
+void 
+DisplaySettingsNodeAttributeFile::saveScene(SceneFile::Scene& /*scene*/, 
+                                            const bool /*onlyIfSelected*/,
+                                            QString& /*errorMessage*/)
+{
+}                       
 

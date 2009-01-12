@@ -49,7 +49,6 @@ class GuiHistogramDisplayDialog : public WuQDialog {
                          const QString& titleCaption,
                          const std::vector<float>& values,
                          const bool showGrayWhitePeaks,
-                         const bool modal, 
                          Qt::WindowFlags f = 0);
       
       /// Destructor
@@ -99,7 +98,7 @@ class GuiHistogramDisplayDialog : public WuQDialog {
       QComboBox* displayModeComboBox;
       
       /// group box for stats
-      QGroupBox* statsGroup;
+      QGroupBox* statsGroupBox;
       
       /// show/hide stats push button
       QPushButton* showHideStatsPushButton;
@@ -153,7 +152,7 @@ class GuiHistogramDisplayDialog : public WuQDialog {
       QLabel* whiteMaxLabel;
       
       /// widget containing the histogram
-      QWidget* histogramLayoutWidget;
+      //QWidget* histogramLayoutWidget;
       
       /// the normal histogram
       StatisticHistogram* histogram;

@@ -45,7 +45,7 @@
  */
 GuiImageResizeDialog::GuiImageResizeDialog(QWidget* parent,
                                            QImage& imageIn)
-   : QDialog(parent),
+   : WuQDialog(parent),
      image(imageIn)
 {
    setWindowTitle("Image Size");
@@ -93,7 +93,7 @@ GuiImageResizeDialog::~GuiImageResizeDialog()
 void 
 GuiImageResizeDialog::done(int r)
 {
-   if (r == QDialog::Accepted) {
+   if (r == GuiImageResizeDialog::Accepted) {
       const int width = pixelWidthSpinBox->value();
       const int height = pixelHeightSpinBox->value();
       if ((width <= 0) ||
@@ -108,12 +108,12 @@ GuiImageResizeDialog::done(int r)
                            height,
                            Qt::IgnoreAspectRatio,
                            Qt::SmoothTransformation);
-      const int pixelsPerMeter = getResolutionInPixelsPerCentimeter() * 100.0;
+      const int pixelsPerMeter = static_cast<int>(getResolutionInPixelsPerCentimeter() * 100.0);
       image.setDotsPerMeterX(pixelsPerMeter);
       image.setDotsPerMeterY(pixelsPerMeter);
    }
    
-   QDialog::done(r);
+   WuQDialog::done(r);
 }
 
 /**
@@ -550,10 +550,10 @@ GuiImageResizeDialog::updatePixelDimensionsDueToImageSizeChange()
    }
    
    pixelWidthSpinBox->blockSignals(true);
-   pixelWidthSpinBox->setValue(widthInCM);
+   pixelWidthSpinBox->setValue(static_cast<int>(widthInCM));
    pixelWidthSpinBox->blockSignals(false);
    pixelHeightSpinBox->blockSignals(true);
-   pixelHeightSpinBox->setValue(heightInCM);
+   pixelHeightSpinBox->setValue(static_cast<int>(heightInCM));
    pixelHeightSpinBox->blockSignals(false);
 }
 

@@ -57,6 +57,9 @@ class CommandHelpGlobalOptions : public CommandBase {
       // process the change permissions command
       static void processSetPermissionsCommand(ProgramParameters& params) throw (CommandException);
       
+      // process the set random seed
+      static void processSetRandomSeedCommand(ProgramParameters& params) throw (CommandException);
+      
       // execute the command
       void executeCommand() throw (BrainModelAlgorithmException,
                                    CommandException,

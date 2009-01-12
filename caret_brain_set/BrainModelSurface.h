@@ -74,6 +74,11 @@ class BrainModelSurface : public BrainModel {
       
       /// Plane for modifying coordinates
       enum COORDINATE_PLANE {
+         COORDINATE_PLANE_NONE,
+         COORDINATE_PLANE_MOVE_POSITIVE_X_TO_ZERO,
+         COORDINATE_PLANE_MOVE_NEGATIVE_X_TO_ZERO,
+         COORDINATE_PLANE_MOVE_POSITIVE_Y_TO_ZERO,
+         COORDINATE_PLANE_MOVE_NEGATIVE_Y_TO_ZERO,
          COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO,
          COORDINATE_PLANE_MOVE_NEGATIVE_Z_TO_ZERO,
          COORDINATE_PLANE_RESTORE
@@ -218,6 +223,7 @@ class BrainModelSurface : public BrainModel {
                                                   const bool createVeryInflated,
                                                   const bool createEllipsoid,
                                                   const bool createSphere,
+                                                  const bool createCompressedMedialWall,
                                                   const bool enableFingerSmoothing,
                                                   const bool scaleToMatchFiducialArea,
                                                   const float iterationsScale,
@@ -358,6 +364,9 @@ class BrainModelSurface : public BrainModel {
       
       /// get the area of the surface
       float getSurfaceArea(const TopologyFile* tfin = NULL) const;
+      
+      // get the volume displacment of the surface
+      float getSurfaceVolumeDisplacement() const;
       
       /// Get the area of a tile in the surface
       float getTileArea(const int tileNum) const;

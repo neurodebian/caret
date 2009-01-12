@@ -585,10 +585,18 @@ class CellProjectionFile : public AbstractFile {
       void clearAllHighlightFlags();
       
       /// get PubMedID's of all linked studies
-      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const;
+      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs,
+                                                const bool displayedFociOnlyFlag = false) const;
       
       /// update cell PubMed ID if cell name matches study name
       void updatePubMedIDIfCellNameMatchesStudyName(const StudyMetaDataFile* smdf);
+      
+      /// update cell class if linked to table subheader
+      void updateCellClassWithLinkedStudyTableSubheaderShortNames(const StudyMetaDataFile* smdf);
+      
+      /// update cell class with linked tabel subheader name, linked figure panel task
+      /// description, or page reference subheader short name
+      void updateCellClassWithLinkedTableFigureOrPageReference(const StudyMetaDataFile* smdf);
       
       /// find out if comma separated file conversion supported
       virtual void getCommaSeparatedFileSupport(bool& readFromCSV,
@@ -602,8 +610,9 @@ class CellProjectionFile : public AbstractFile {
       
 };
 
-#ifdef __CELL_PROJECTION_FILE_MAIN__
+#endif // __CELL_PROJECTION_FILE_H__
 
+#ifdef __CELL_PROJECTION_FILE_MAIN__
    const QString CellProjectionFile::tagFileVersion = "tag-version";
    const QString CellProjectionFile::tagNumberOfCellProjections = 
                                          "tag-number-of-cell-projections";
@@ -613,8 +622,5 @@ class CellProjectionFile : public AbstractFile {
    const QString CellProjectionFile::tagCommentTitle = "tag-title";
    const QString CellProjectionFile::tagCommentAuthors = "tag-authors";
    const QString CellProjectionFile::tagCommentCitation = "tag-citation";
-   const QString CellProjectionFile::tagCommentStereotaxicSpace = "tag-space";
-   
+   const QString CellProjectionFile::tagCommentStereotaxicSpace = "tag-space";   
 #endif // __CELL_PROJECTION_FILE_MAIN__
-
-#endif // __CELL_PROJECTION_FILE_H__

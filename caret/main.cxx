@@ -34,10 +34,12 @@
 //#include <crtdbg.h>
 #endif
 
-#include <vector.h>
+#include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <limits>
 #include <sstream>
+#include <vector>
 
 #include <QApplication>
 #include <QDateTime>
@@ -412,7 +414,7 @@ initializeFileDialog()
    typeMap[SpecFile::getCommaSeparatedValueFileExtension()] = "Comma Separated Value";
    typeMap[SpecFile::getVocabularyFileExtension()] = "Vocabulary";
    typeMap[SpecFile::getStudyMetaDataFileExtension()] = "Study Metadata";
-   typeMap[SpecFile::getStudyMetaAnalysisFileExtension()] = "Study Meta-analysis";
+   typeMap[SpecFile::getStudyCollectionFileExtension()] = "Study Collection";
    typeMap[SpecFile::getXmlFileExtension()] = "XML";
    typeMap[SpecFile::getTextFileExtension()] = "Text";
    typeMap[SpecFile::getNeurolucidaFileExtension()] = "Neurolucida";
@@ -516,8 +518,9 @@ main(int argc, char* argv[])
    //
    // needed for static linking to have JPEG support
    //
-   Q_IMPORT_PLUGIN(QJpegPlugin)
-   Q_IMPORT_PLUGIN(QGifPlugin)
+   Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
+   Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
+   Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
 
 #ifdef Q_OS_MACX
    GuiMacOSXApplication app(argc, argv);
@@ -529,7 +532,7 @@ main(int argc, char* argv[])
    
    processCommandLineOptions(argc, argv);
       
-   std::cout << "INFO: Set the environment variable CARET_DEBUG for debugging information." << std::endl;
+   //std::cout << "INFO: Set the environment variable CARET_DEBUG for debugging information." << std::endl;
    DebugControl::setDebugOnWithEnvironmentVariable("CARET_DEBUG");
    if (debugFlag) {
       DebugControl::setDebugOn(true);

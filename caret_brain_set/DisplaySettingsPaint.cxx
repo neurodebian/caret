@@ -82,6 +82,8 @@ static const QString paintMedWallColumnID("paint-med-wall-column");
 void 
 DisplaySettingsPaint::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    PaintFile* pf = brainSet->getPaintFile();
    
    const int numClasses = scene.getNumberOfSceneClasses();
@@ -124,8 +126,10 @@ DisplaySettingsPaint::showScene(const SceneFile::Scene& scene, QString& errorMes
  */
 void 
 DisplaySettingsPaint::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    PaintFile* pf = brainSet->getPaintFile();
    
    if (onlyIfSelected) {

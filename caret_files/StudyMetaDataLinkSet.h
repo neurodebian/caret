@@ -97,9 +97,10 @@ class StudyMetaDataLinkSet {
       friend class CellBase;
 };
 
+#endif // __STUDY_META_DATA_LINK_SET_H__
+
 #ifdef __STUDY_META_DATA_LINK_SET_MAIN__
       const QString StudyMetaDataLinkSet::tagStudyMetaDataLinkSet = "StudyMetaDataLinkSet";
       const QString StudyMetaDataLinkSet::encodedTextLinkSeparator = ":::::"; 
 #endif // __STUDY_META_DATA_LINK_SET_MAIN__
 
-#endif // __STUDY_META_DATA_LINK_SET_H__

@@ -43,6 +43,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// Destructor
       ~GuiMainWindowLayersActions();
       
+      /// action for border operations dialog
+      QAction* getBorderOperationsDialogAction() { return borderOperationsDialogAction; }
+      
       /// action for drawing borders
       QAction* getBordersDrawAction() { return bordersDrawAction; }
       
@@ -166,6 +169,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// action for foci report
       QAction* getFociReportAction() { return fociReportAction; }
       
+      /// action for foci attribute report
+      QAction* getFociAttributeReportAction() { return fociAttributeReportAction; }
+
       /// action for converting foci density to metric
       QAction* getFociDensityToMetricAction() { return fociDensityToMetricAction; }
       
@@ -183,6 +189,9 @@ class GuiMainWindowLayersActions : public QObject {
 
       /// action for updating foci PubMed ID if focus name same as study name
       QAction* getFociUpdatePubMedIDIfFocusNameMatchesStudyNameAction() { return fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction; }
+      
+      /// action for updating foci classes with table subheader short names
+      QAction* getFociUpdateClassesWithTableSubheaderShortNamesAction() {return fociUpdateClassesWithTableSubheaderShortNamesAction; }
       
       /// action for converting cells to vtk model
       QAction* getCellsConvertToVtkModelAction() { return cellsConvertToVtkModelAction; }
@@ -398,6 +407,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for foci report
       void slotFociReport();
       
+      /// slot for foci attribute report
+      void slotFociAttributeReport();
+      
       /// slot for foci clear highlighting action
       void slotFociClearHighlighting();
       
@@ -406,6 +418,9 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// slot for updating foci PubMed ID if focus name same as study name
       void slotFociUpdatePubMedIDIfFocusNameMatchesStudyName();
+      
+      /// slot for updating foci classes with linked table subheader short names
+      void slotFociUpdateClassWithTableSubheaderShortName();
       
       /// slot for converting foci density to metric
       void slotFociDensityToMetric();
@@ -520,6 +535,9 @@ class GuiMainWindowLayersActions : public QObject {
       void slotCellsColorsChanged();
       
    protected:
+      /// action for border operations dialog
+      QAction* borderOperationsDialogAction;
+      
       /// action for drawing borders
       QAction* bordersDrawAction;
       
@@ -643,6 +661,9 @@ class GuiMainWindowLayersActions : public QObject {
       /// slot for foci report
       QAction* fociReportAction;
       
+      /// slot for foci attribute report
+      QAction* fociAttributeReportAction;
+      
       /// slot for converting foci density to metric
       QAction* fociDensityToMetricAction;
       
@@ -660,6 +681,9 @@ class GuiMainWindowLayersActions : public QObject {
       
       /// action for updating foci PubMed ID if focus name same as study name
       QAction* fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction;
+      
+      /// action for updating foci classes with table subheader short names
+      QAction* fociUpdateClassesWithTableSubheaderShortNamesAction;
       
       /// slot for converting cells to vtk model
       QAction* cellsConvertToVtkModelAction;

@@ -110,6 +110,9 @@ BrainModelVolumeFociUnprojector::execute() throw (BrainModelAlgorithmException)
             rightFlag = true;
             break;
          case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+         case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+         case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+         case Structure::STRUCTURE_TYPE_ALL:
          case Structure::STRUCTURE_TYPE_INVALID:
             if (xyz[0] > 0.0) {
                rightFlag = true;

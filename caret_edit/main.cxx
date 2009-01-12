@@ -26,9 +26,11 @@
  
 #include <QApplication>
 
+#include "BrainSet.h"
 #include "CaretVersion.h"
 #include "FileUtilities.h"
 #include "QtTextFileEditorDialog.h"
+#include "PreferencesFile.h"
 
 /*----------------------------------------------------------------------------------------
  * Print help information.
@@ -94,10 +96,17 @@ main(int argc, char* argv[])
    app.connect(&app, SIGNAL(lastWindowClosed()), &app, SLOT(quit()));
 
    //
+   // Get the preferences file
+   //
+   BrainSet bs;
+   PreferencesFile* pf = bs.getPreferencesFile();
+   
+   //
    // Create the editor
    //
    QtTextFileEditorDialog* editor = new QtTextFileEditorDialog(0);
    //app.setMainWidget(editor);
+   editor->setPreferencesFile(pf);
    editor->show();
    if (defaultFileName.isEmpty() == false) {
       editor->loadFile(defaultFileName);

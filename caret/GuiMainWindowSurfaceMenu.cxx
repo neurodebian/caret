@@ -46,6 +46,10 @@ GuiMainWindowSurfaceMenu::GuiMainWindowSurfaceMenu(GuiMainWindow* parent) :
    
    addAction(surfaceActions->getSurfaceToSegmentationVolumeAction());
    
+   if (DebugControl::getTestFlag1()) {
+      addAction(surfaceActions->getStandardMeshDialogAction());
+   }
+   
    addAction(surfaceActions->getCopyMainWindowSurfaceAction());
    
    addAction(surfaceActions->getAverageCoordinateFileAction());
@@ -55,6 +59,8 @@ GuiMainWindowSurfaceMenu::GuiMainWindowSurfaceMenu(GuiMainWindow* parent) :
    createDeformationSubMenu(surfaceActions);
    
    addAction(surfaceActions->getFlattenHemisphereAction());
+   
+   addAction(surfaceActions->getFlattenFullHemisphereAction());
    
    createEditSubMenu(surfaceActions);
    
@@ -72,9 +78,9 @@ GuiMainWindowSurfaceMenu::GuiMainWindowSurfaceMenu(GuiMainWindow* parent) :
    
    createNormalsSubMenu(surfaceActions);
    
-   createProjectToPlaneSubMenu(surfaceActions);
+   addAction(surfaceActions->getProjectToPlaneAction());
    
-   addAction(surfaceActions->getRegionOfInterestActionOLD());
+   //addAction(surfaceActions->getRegionOfInterestActionOLD());
 
    addAction(surfaceActions->getRegionOfInterestAction());
               
@@ -296,8 +302,8 @@ GuiMainWindowSurfaceMenu::createGeometrySubMenu(GuiMainWindowSurfaceActions* sur
                                 
    geometrySubMenu->addAction(surfaceActions->getGeometryInflateAndSmoothFingersAction());
                                 
-   geometrySubMenu->addSeparator();
-   geometrySubMenu->addAction(surfaceActions->getGeometrySphereBorderDistanceAction());
+   //geometrySubMenu->addSeparator();
+   //geometrySubMenu->addAction(surfaceActions->getGeometrySphereBorderDistanceAction());
 
    geometrySubMenu->addSeparator();
    
@@ -420,21 +426,6 @@ GuiMainWindowSurfaceMenu::loadUserViewSwitchViewSubMenu()
       action->setData(i);
    }
 }
-
-/**
- * create the project to plane sub menu.
- */
-void 
-GuiMainWindowSurfaceMenu::createProjectToPlaneSubMenu(GuiMainWindowSurfaceActions* surfaceActions)
-{
-   projectToPlaneSubMenu = addMenu("Project To Plane");
-   
-   projectToPlaneSubMenu->addAction(surfaceActions->getProjectToPlanePositiveZAction());
-   
-   projectToPlaneSubMenu->addAction(surfaceActions->getProjectToPlaneNegativeZAction());
-   
-   projectToPlaneSubMenu->addAction(surfaceActions->getProjectToPlaneRestoreAction());
-}    
 
 /**
  * Create the edit sub menu

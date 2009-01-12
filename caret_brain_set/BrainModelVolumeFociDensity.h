@@ -35,10 +35,19 @@ class VolumeFile;
 /// class for generating volume foci density
 class BrainModelVolumeFociDensity : public BrainModelAlgorithm {
    public:
+      // type of density units
+      enum DENSITY_UNITS {
+         /// foci per cubic centimeter
+         DENSITY_UNITS_FOCI_PER_CUBIC_CENTIMETER,
+         /// foci per cubic millimeter
+         DENSITY_UNITS_FOCI_PER_CUBIC_MILLIMETER
+      };
+      
       // constructor
       BrainModelVolumeFociDensity(BrainSet* bsIn,
                                   const FociProjectionFile* fociProjectionFileIn,
                                   const float regionCubeSizeIn,
+                                  const DENSITY_UNITS densityUnitsIn,
                                   VolumeFile* outputVolumeFileIn);
       
       // destructor
@@ -50,9 +59,12 @@ class BrainModelVolumeFociDensity : public BrainModelAlgorithm {
    protected:
       /// the foci projection file
       const FociProjectionFile* fociProjectionFile;
-      
+            
       /// the region cube size
       const float regionCubeSize;
+
+      /// the density units
+      const DENSITY_UNITS densityUnits;
 
       /// the output volume file
       VolumeFile* outputVolumeFile;

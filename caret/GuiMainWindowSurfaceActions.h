@@ -29,6 +29,7 @@
 
 #include <QObject>
 
+class BrainModelSurface;
 class BrainModelSurfaceMultiresolutionMorphing;
 class GuiMainWindow;
 class GuiMorphingDialog;
@@ -103,6 +104,12 @@ class GuiMainWindowSurfaceActions : public QObject {
       
       /// called when apply deformation dialog is selected
       QAction* getDeformationApplyDialogAction() { return deformationApplyDialogAction; }
+      
+      /// called when standard mesh dialog is selected
+      QAction* getStandardMeshDialogAction() { return standardMeshDialogAction; }
+      
+      /// called when flatten full hemisphere is selected
+      QAction* getFlattenFullHemisphereAction() { return flattenFullHemisphereAction; }
       
       /// called when flatten hemisphere is selected
       QAction* getFlattenHemisphereAction() { return flattenHemisphereAction; }
@@ -260,14 +267,8 @@ class GuiMainWindowSurfaceActions : public QObject {
       /// called when generate inflated and ellipsoid from fiducial is selected
       QAction* getGeometryInflatedAndEllipsoidFromFiducialAction() { return geometryInflatedAndEllipsoidFromFiducialAction; }
       
-      /// called to project to plane positive Z
-      QAction* getProjectToPlanePositiveZAction() { return projectToPlanePositiveZAction; }
-      
-      /// called to project to plane negative Z
-      QAction* getProjectToPlaneNegativeZAction() { return projectToPlaneNegativeZAction; }
-      
-      /// called to project to plane restore
-      QAction* getProjectToPlaneRestoreAction() { return projectToPlaneRestoreAction; }
+      /// action to project to plane
+      QAction* getProjectToPlaneAction() { return projectToPlaneAction; }
       
       /// called to add node
       QAction* getEditAddNodeAction() { return editAddNodeAction; }
@@ -295,6 +296,15 @@ class GuiMainWindowSurfaceActions : public QObject {
       
       /// view save user action
       QAction* getViewUserSaveViewAction() { return viewUserSaveViewAction; }
+      
+      /// generate inflated and other surfaces from fiducial
+      void generateInflatedAndOtherSurfaces(const BrainModelSurface* fiducialSurface,
+                                            const bool enableEllipsoidFlag = true,
+                                            const bool enableFingerSmoothingFlag = true,
+                                            const bool checkInflatedFlag = true,
+                                            const bool checkVeryInflatedFlag = true,
+                                            const bool checkSphericalFlag = true,
+                                            const bool checkCompMedWallFlag = true);
       
    public slots:
       /// update the actions (typically called when menu is about to show)
@@ -486,14 +496,8 @@ class GuiMainWindowSurfaceActions : public QObject {
       /// called when generate inflated and ellipsoid from fiducial is selected
       void slotGeometryInflatedAndEllipsoidFromFiducial();
       
-      /// called to project to plane positive Z
-      void slotProjectToPlanePositiveZ();
-      
-      /// called to project to plane negative Z
-      void slotProjectToPlaneNegativeZ();
-      
-      /// called to project to plane restore
-      void slotProjectToPlaneRestore();
+      /// called when project to plane selected
+      void slotProjectToPlane();
       
       /// called to add node
       void slotEditAddNode();
@@ -600,8 +604,14 @@ class GuiMainWindowSurfaceActions : public QObject {
       /// action when apply deformation dialog is selected
       QAction* deformationApplyDialogAction;
       
+      /// action when standard mesh dialog is selected
+      QAction* standardMeshDialogAction;
+      
       /// action when flatten hemisphere is selected
       QAction* flattenHemisphereAction;
+      
+      /// action when flatten full hemisphere is selected
+      QAction* flattenFullHemisphereAction;
       
       /// action when crossover check is selected
       QAction* measurementsCrossoverCheckAction;
@@ -759,14 +769,8 @@ class GuiMainWindowSurfaceActions : public QObject {
       /// action when generate inflated and ellipsoid from fiducial is selected
       QAction* geometryInflatedAndEllipsoidFromFiducialAction;
       
-      /// action to project to plane positive Z
-      QAction* projectToPlanePositiveZAction;
-      
-      /// action to project to plane negative Z
-      QAction* projectToPlaneNegativeZAction;
-      
-      /// action to project to plane restore
-      QAction* projectToPlaneRestoreAction;
+      /// action to project to plane
+      QAction* projectToPlaneAction;
       
       /// action to add node
       QAction* editAddNodeAction;

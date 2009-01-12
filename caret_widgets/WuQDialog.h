@@ -42,6 +42,19 @@ class WuQDialog : public QDialog {
                     
       // destructor
       virtual ~WuQDialog();
+            
+      // ring the bell
+      static void beep();
+      
+      // show the wait cursor
+      static void showWaitCursor();
+      
+      // normal cursor
+      static void showNormalCursor();
+      
+   public slots:
+      // called to close
+      bool close();
       
    protected slots:
       // called to capture image of window and place it on the clipboard
@@ -56,15 +69,6 @@ class WuQDialog : public QDialog {
       
       // called by parent when context menu event occurs
       virtual void contextMenuEvent(QContextMenuEvent*);
-      
-      // ring the bell
-      void beep();
-      
-      // show the wait cursor
-      void showWaitCursor();
-      
-      // normal cursor
-      void showNormalCursor();
 };
 
 #endif // __WU_QDIALOG_H__

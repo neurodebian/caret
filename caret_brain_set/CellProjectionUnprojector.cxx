@@ -382,6 +382,9 @@ CellProjectionUnprojector::unprojectCellProjections(CellProjectionFile& cpf, Bra
                   break;
                case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
                   break;
+               case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+               case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+               case Structure::STRUCTURE_TYPE_ALL:
                case Structure::STRUCTURE_TYPE_INVALID:
                   break;
                case Structure::STRUCTURE_TYPE_CEREBELLUM:

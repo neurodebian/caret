@@ -157,6 +157,9 @@ class PreferencesFile : public AbstractFile {
       /// get the recent data file directories
       void getRecentDataFileDirectories(std::vector<QString>& dirs) const;
       
+      /// get the recent data file directories
+      QStringList getRecentDataFileDirectories() const;
+      
       // get the test flag 1
       bool getTestFlag1() const;
       
@@ -472,6 +475,8 @@ class PreferencesFile : public AbstractFile {
    static const QString tagFmriBfSplat;
 };
 
+#endif // __VE_PREFERENCES_FILE_H__
+
 #ifdef __PREFERENCES_FILE_MAIN__
 
    const QString PreferencesFile::tagSurfaceBackgroundColor = "tag-surface-background-color";
@@ -521,5 +526,3 @@ class PreferencesFile : public AbstractFile {
    const QString PreferencesFile::tagFmriBfSplat           = "tag-fmri-bf-algorithm-splat";
 
 #endif // __PREFERENCES_FILE_MAIN__
-
-#endif // __VE_PREFERENCES_FILE_H__

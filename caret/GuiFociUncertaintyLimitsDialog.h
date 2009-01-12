@@ -27,7 +27,7 @@
 #ifndef __VE_GUI_FOCI_UNCERTAINTY_LIMITS_DIALOG_H__
 #define __VE_GUI_FOCI_UNCERTAINTY_LIMITS_DIALOG_H__
 
-#include <QDialog>
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -36,7 +36,7 @@ class QGroupBox;
 class QLineEdit;
 
 /// This dialog creates an RGB Paint file from foci proximities to surface.
-class GuiFociUncertaintyLimitsDialog : public QDialog {
+class GuiFociUncertaintyLimitsDialog : public WuQDialog {
    Q_OBJECT
    
    public:

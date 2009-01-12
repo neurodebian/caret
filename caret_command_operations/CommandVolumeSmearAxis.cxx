@@ -60,9 +60,9 @@ CommandVolumeSmearAxis::getScriptBuilderParameters(ScriptBuilderParameters& para
    paramsOut.addFile("Input Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addFile("Output Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addListOfItems("Axis", axisValues, axisNames);
-   paramsOut.addInt("Mag", 0, -10000.0, 10000.0);
-   paramsOut.addInt("Sign", 0, -10000.0, 10000.0);
-   paramsOut.addInt("Core", 0, -10000.0, 10000.0);
+   paramsOut.addInt("Mag", 0, -10000, 10000);
+   paramsOut.addInt("Sign", 0, -10000, 10000);
+   paramsOut.addInt("Core", 0, -10000, 10000);
 }
       
 /**

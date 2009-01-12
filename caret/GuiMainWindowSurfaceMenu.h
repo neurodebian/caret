@@ -81,9 +81,6 @@ class GuiMainWindowSurfaceMenu : public QMenu {
       /// create the morphing sub menu
       void createMorphingSubMenu(GuiMainWindowSurfaceActions* surfaceActions);
       
-      /// create the project to plane sub menu
-      void createProjectToPlaneSubMenu(GuiMainWindowSurfaceActions* surfaceActions);
-      
       /// create the sections sub menu
       void createSectionsSubMenu(GuiMainWindowSurfaceActions* surfaceActions);
       
@@ -123,9 +120,6 @@ class GuiMainWindowSurfaceMenu : public QMenu {
       
       /// measurements sub menu
       QMenu* measurementsSubMenu;
-      
-      /// project to plane sub menu
-      QMenu* projectToPlaneSubMenu;
       
       /// transform sub menu
       QMenu* transformSubMenu;

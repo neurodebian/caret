@@ -304,9 +304,6 @@ class BrainModelOpenGL {
       /// set OpenGL text enabled
       static void setOpenGLTextEnabled(const bool b) { openGLTextEnabledFlag = b; }
       
-      /// voxel coordinate is center of voxel (else left, bottom corner)
-      static bool getVoxelCoordinateIsCenterOfVoxel() { return voxelCoordinateIsCenterOfVoxel; }
-      
       /// get the default ortho right and top for command line scene generation
       static void getDefaultOrthoRightAndTop(const int windowWidthIn,
                                              const int windowHeightIn,
@@ -888,9 +885,6 @@ class BrainModelOpenGL {
       /// OpenGL text enabled
       static bool openGLTextEnabledFlag;
       
-      /// voxel coordinate is center of voxel (else left, bottom corner)
-      static bool voxelCoordinateIsCenterOfVoxel;
-      
       /// get minimum/maximum point size
       static void getMinMaxPointSize(float& minSizeOut, float& maxSizeOut);
       
@@ -919,7 +913,6 @@ float BrainModelOpenGL::defaultOrthoWindowSize = 125.0;
 unsigned char BrainModelOpenGL::surfaceEditDrawColor[3] = { 0, 0, 255 };
 GLubyte BrainModelOpenGL::polygonStipple[128];
 bool BrainModelOpenGL::openGLTextEnabledFlag = true;
-bool BrainModelOpenGL::voxelCoordinateIsCenterOfVoxel = true;
 
 #endif // __BRAIN_MODEL_OPENGL_MAIN__
 

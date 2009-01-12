@@ -217,8 +217,11 @@ ProgramParameters::getNextParameterAsBoolean(const QString& parameterNameForErro
    if (s == "true") return true;
    if (s == "false") return false;
    
-   throw ProgramParametersException(parameterNameForErrorMessage 
-                                    + " should have a value of \"true\" or \"false\".");
+   throw ProgramParametersException("Error converting parameter named \""
+                                       + parameterNameForErrorMessage
+                                       + "\" with value \""
+                                       + s
+                                       + "\" to a boolean (\"true\" or \"false\").");
 }
       
 /**

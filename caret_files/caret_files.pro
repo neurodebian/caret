@@ -79,7 +79,7 @@ HEADERS += AbstractFile.h \
       SegmentationMaskListFile.h \
       SpecFile.h \
       SpecFileUtilities.h \
-      StudyMetaAnalysisFile.h \
+      StudyCollectionFile.h \
       StudyMetaDataFile.h \
       StudyMetaDataLink.h \
       StudyMetaDataLinkSet.h \
@@ -174,7 +174,7 @@ SOURCES += AbstractFile.cxx \
       SegmentationMaskListFile.cxx \
       SpecFile.cxx \
       SpecFileUtilities.cxx \
-      StudyMetaAnalysisFile.cxx \
+      StudyCollectionFile.cxx \
       StudyMetaDataFile.cxx \
       StudyMetaDataLink.cxx \
       StudyMetaDataLinkSet.cxx \

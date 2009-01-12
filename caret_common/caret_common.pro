@@ -25,7 +25,7 @@ HEADERS += Basename.h \
       CaretException.h \
       CaretLinkedList.h \
       CaretTips.h \
-      Categories.h \
+      Category.h \
 	   CommandLineUtilities.h \
 	   DebugControl.h \
 	   FileUtilities.h \
@@ -49,7 +49,7 @@ HEADERS += Basename.h \
 SOURCES += Basename.cxx \
       CaretLinkedList.cxx \
       CaretTips.cxx \
-      Categories.cxx \
+      Category.cxx \
 	   CommandLineUtilities.cxx \
 	   DebugControl.cxx \
 	   FileUtilities.cxx \

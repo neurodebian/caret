@@ -35,7 +35,7 @@
 BrainModelVolumeLigaseSegmentation::BrainModelVolumeLigaseSegmentation(
                                                BrainSet* bs,
                                                VolumeFile* anatVolumeIn,
-                                               VolumeFile* segVolumeIn,
+                                               VolumeFile* segVolumeOutIn,
                                                const QString& segVolumeNameIn,
                                                const QString& segVolumeLabelIn,
                                                const int xIn,
@@ -45,11 +45,13 @@ BrainModelVolumeLigaseSegmentation::BrainModelVolumeLigaseSegmentation(
                                                const float whiteMeanIn,
                                                const float whiteMaxIn,
                                                const float diffBaseIn,
-                                               const float gradBaseIn)
+                                               const float gradBaseIn,
+                                               const float highBiasIn,
+                                               const float lowBiasIn)
    : BrainModelAlgorithm(bs)
 {
    anatVolume     = anatVolumeIn;
-   segVolume      = segVolumeIn;
+   segVolume      = segVolumeOutIn;
    segVolumeName  = segVolumeNameIn;
    segVolumeLabel = segVolumeLabelIn;
    whiteMin = whiteMinIn;
@@ -60,6 +62,8 @@ BrainModelVolumeLigaseSegmentation::BrainModelVolumeLigaseSegmentation(
    z_init = zIn;
    diffBase = diffBaseIn * (whiteMax - whiteMin);
    gradBase = gradBaseIn;
+   highBias = highBiasIn;
+   lowBias = lowBiasIn;
 }
                                       
 /**
@@ -111,7 +115,7 @@ BrainModelVolumeLigaseSegmentation::execute() throw (BrainModelAlgorithmExceptio
    // Calculate 3D gradient magnitude
    //
    int i, j, k, xstep = 1, ystep = aDim[0], zstep = aDim[0] * aDim[1];
-   float idist, jdist, kdist, xd, yd, zd, max = 0.0f, temp, cutoff, sig1 = whiteMean - whiteMin, sig2 = whiteMax - whiteMean;
+   float idist, jdist, kdist, xd, yd, zd, max = 0.0f, temp, tempa, tempb, cutoff, sig1 = whiteMean - whiteMin, sig2 = whiteMax - whiteMean;
    float* voxels = anatVolume->getVoxelData(), *end = voxels + aDim[0] * aDim[1] * aDim[2] - zstep;
    float* iter, *i_iter, *j_iter, *k_iter;
    float* grad_mag = new float[aDim[0] * aDim[1] * aDim[2]];
@@ -122,9 +126,9 @@ BrainModelVolumeLigaseSegmentation::execute() throw (BrainModelAlgorithmExceptio
    //
    for (iter = voxels + zstep; iter < end; ++iter)
    {
-      xd = (*(iter + xstep) - *(iter - xstep)) * spacing[0];
-      yd = (*(iter + ystep) - *(iter - ystep)) * spacing[1];
-      zd = (*(iter + zstep) - *(iter - zstep)) * spacing[2];
+      xd = (*(iter + xstep) - *(iter - xstep)) / spacing[0];
+      yd = (*(iter + ystep) - *(iter - ystep)) / spacing[1];
+      zd = (*(iter + zstep) - *(iter - zstep)) / spacing[2];
       temp = sqrtf(xd * xd + yd * yd + zd * zd);
       *(grad_mag + (iter - voxels)) = temp;
       if (temp > max)
@@ -147,55 +151,94 @@ BrainModelVolumeLigaseSegmentation::execute() throw (BrainModelAlgorithmExceptio
    {
       *iter /= max;
    }
-
    float* seg = segVolume->getVoxelData();
    end = seg + aDim[0] * aDim[1] * aDim[2];
+   //
+   // zero segmentation volume
+   //
+   // change to make all nonzeros less than 254 so it adds to existing segmentation?
+   //
    for (iter = seg; iter < end; ++iter)
    {
       *iter = 0.0f;
    }
-   cout << seg[153 + 133 * ystep + 148 * zstep];
+   end = voxels + aDim[0] * aDim[1] * aDim[2];
+   //
+   // set first point
+   //
    iterNode* head = new iterNode(), *tempIter;
    head->next = NULL;
    head->iter = voxels + anatVolume->getVoxelDataIndex(x_init, y_init, z_init);
    *(seg + (head->iter - voxels)) = 255.0f;
+   //
+   // loop until seed list clears (no more expansion)
+   //
+   // pointer math is used mostly to avoid calls to getVoxelDataIndex and to avoid reshaping the voxel data
+   //
    while (head)
    {
       iter = head->iter;
       tempIter = head;
       head = head->next;
       delete tempIter;
+      //
+      // loop through neighbors via pointer math
+      //
       for (i = -1; i < 2; ++i)
       {
          i_iter = iter + i * xstep;
-         if ((i_iter - voxels) / ystep == (iter - voxels) / ystep)
+         //
+         // check if its the same slice
+         //
+         if (~i || (i_iter - voxels) / ystep == (iter - voxels) / ystep)
          {
             idist = i * spacing[0];
             idist = idist * idist;
             for (j = -1; j < 2; ++j)
             {
                j_iter = i_iter + j * ystep;
-               if ((j_iter - voxels) / zstep == (iter - voxels) / zstep)
+               if (~j || (j_iter - voxels) / zstep == (iter - voxels) / zstep)
                {
                   jdist = j * spacing[1];
                   jdist = idist + jdist * jdist;
                   for (k = -1; k < 2; ++k)
                   {
                      k_iter = j_iter + k * zstep;
-                     if (k_iter >= 0 && k_iter < end && *(seg + (k_iter - voxels)) < 254.0f)
+                     //
+                     // check that its not already visited
+                     //
+                     if ((~k || (k_iter >= voxels && k_iter < end)) && *(seg + (k_iter - voxels)) < 254.0f)
                      {
                         kdist = k * spacing[2];
+                        //
+                        // incremental distance from parent voxel
+                        //
                         kdist = sqrtf(jdist + kdist * kdist);
+                        //
+                        // probabilistic intensity classification used as cutoff modifier
+                        //
                         if (*k_iter < whiteMean)
                         {
-                           temp = (whiteMean - *k_iter) / sig1;// / max;
+                           temp = (whiteMean - *k_iter) / sig1;
                         } else {
-                           temp = (whiteMean - *k_iter) / sig2;// / max;
+                           temp = (whiteMean - *k_iter) / sig2;
                         }
-                        cutoff = 1.5f * expf(-temp * temp / 2);
-                        temp = (*iter - *k_iter);// / max;
-                        if (temp < 0.0f) temp = -temp;
-                        if (((temp / kdist) < (diffBase * cutoff)) && (*(grad_mag + (k_iter - voxels)) < (gradBase * cutoff)))
+                        cutoff = expf(-temp * temp / 2);
+                        //
+                        // difference from parent and 3d gradient magnitude used as criteria
+                        //
+                        temp = (*iter - *k_iter);
+                        //if (temp < 0.0f) temp = -temp; // unneeded for elliptical cutoffs
+                        tempa = temp / kdist / diffBase / cutoff;
+                        tempb = *(grad_mag + (k_iter - voxels)) / gradBase / cutoff;
+                        //
+                        // if the ordered pair formed by criteria divided by their respective cutoffs has euclidean distance
+                        // of less than 1, it grows there
+                        //
+                        // think of an ellipse on the diff-gradient plane, size determined by intensity and shape by respective
+                        // cutoffs, if the values at the point lie inside, the point is used
+                        //
+                        if (tempa * tempa + tempb * tempb < 1.0f)
                         {
                            *(seg + (k_iter - voxels)) = 255.0f;
                            tempIter = new iterNode();

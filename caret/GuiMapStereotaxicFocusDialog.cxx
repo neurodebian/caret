@@ -759,6 +759,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
       const QString noButtonText("No, define color " + fociName);
       QMessageBox msgBox(this);
       msgBox.setWindowTitle("Use Partially Matching Color");
+      msgBox.setText(msg);
       msgBox.addButton("Yes", QMessageBox::YesRole);
       QPushButton* noPushButton = msgBox.addButton(noButtonText, QMessageBox::NoRole);
       msgBox.exec();
@@ -883,6 +884,7 @@ GuiMapStereotaxicFocusDialog::processFocusEntry()
       if (palsProjector == NULL) {
          palsProjector = new FociFileToPalsProjector(theMainWindow->getBrainSet(),
                                                      ff,
+                                                     theMainWindow->getBrainSet()->getStudyMetaDataFile(),
                                                      focusNumber,
                                                      focusNumber,
                                                      0.0,

@@ -50,7 +50,7 @@
  */
 BrainModelVolumeToSurfaceConverter::BrainModelVolumeToSurfaceConverter(
                                     BrainSet* bs,
-                                    VolumeFile* segmentationVolumeFileIn,
+                                    const VolumeFile* segmentationVolumeFileIn,
                                     const RECONSTRUCTION_MODE reconstructionModeIn,
                                     const bool rightHemisphereFlagIn,
                                     const bool leftHemisphereFlagIn,
@@ -87,8 +87,50 @@ BrainModelVolumeToSurfaceConverter::execute() throw (BrainModelAlgorithmExceptio
    // slice around all edges to prevent holes.
    //
    const int padAroundEdges[6] = { 1, 1, 1, 1, 1, 1 };
-   segmentationVolumeFile->padSegmentation(padAroundEdges, false);
+   float origin[3];
+   segmentationVolumeFile->getOrigin(origin);
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Origin before padding: "
+                << origin[0] << " "
+                << origin[1] << " "
+                << origin[2] << std::endl;
+   }
    
+   //
+   // Enlarge "this" volume
+   //
+   int dim[3];
+   segmentationVolumeFile->getDimensions(dim);
+   const int dimMod[6] = {
+      -padAroundEdges[0],
+      dim[0] + padAroundEdges[1],
+      -padAroundEdges[2],
+      dim[1] + padAroundEdges[3],
+      -padAroundEdges[4],
+      dim[2] + padAroundEdges[5],
+   };
+   segmentationVolumeFile->resize(dimMod);
+   //segmentationVolumeFile->padSegmentation(padAroundEdges, false);
+
+   segmentationVolumeFile->getOrigin(origin);
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Origin after padding: "
+                << origin[0] << " "
+                << origin[1] << " "
+                << origin[2] << std::endl;
+   }
+      
+   int indices[6];
+   float bounds[6];
+   segmentationVolumeFile->getNonZeroVoxelExtent(indices, bounds);
+   
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Extent after padding: "
+                << "(" << bounds[0] << ", " << bounds[1] << ") "
+                << "(" << bounds[2] << ", " << bounds[3] << ") "
+                << "(" << bounds[4] << ", " << bounds[5] << ") " << std::endl;
+   }
+      
    switch (reconstructionMode) {
       case RECONSTRUCTION_MODE_SUREFIT_SURFACE:
          generateSureFitSurface(false);
@@ -152,7 +194,7 @@ BrainModelVolumeToSurfaceConverter::generateSolidStructure() throw (BrainModelAl
          for (int k = 0; k < dim[2]; k++) {
             if (segmentation.getVoxel(i, j, k, 0) != 0.0) {
                float xyz[3];
-               segmentation.getVoxelCoordinate(i, j, k, true, xyz);
+               segmentation.getVoxelCoordinate(i, j, k, xyz);
                vtkModel->addCoordinate(xyz);
             }
          }
@@ -170,6 +212,15 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
    // Convert to structured points
    //
    vtkStructuredPoints* sp = segmentationVolumeFile->convertToVtkStructuredPoints();
+
+   double bounds[6];
+   sp->GetBounds(bounds);
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Segmentation input volume bounds: "
+         << bounds[0] << " " << bounds[1] << " "
+         << bounds[2] << " " << bounds[3] << " "
+         << bounds[4] << " " << bounds[5] << std::endl;
+   }
    
    //
    // Shrinker - does this actually do anything ?
@@ -186,6 +237,17 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
    gaussian->SetDimensionality(3);
    gaussian->SetStandardDeviation(0);
    gaussian->SetInput(shrinker->GetOutput());
+   
+   gaussian->Update();
+   vtkImageData* gaussOut = gaussian->GetOutput();
+   gaussOut->GetBounds(bounds);
+   
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Segmentation shrink/gauss volume bounds: "
+         << bounds[0] << " " << bounds[1] << " "
+         << bounds[2] << " " << bounds[3] << " "
+         << bounds[4] << " " << bounds[5] << std::endl;
+   }
    
    //
    // Marching cubes converts volume to a surface
@@ -216,6 +278,16 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
       writer->SetFileName("surface_undecimated.vtk");
       writer->Write();
       writer->Delete();
+   }
+   
+   triangleFilter->Update();
+   vtkPolyData* boundsPolyData = triangleFilter->GetOutput();
+   boundsPolyData->GetBounds(bounds);
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Surface bounds: "
+         << bounds[0] << " " << bounds[1] << " "
+         << bounds[2] << " " << bounds[3] << " "
+         << bounds[4] << " " << bounds[5] << std::endl;
    }
    
    //
@@ -390,7 +462,7 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
       //
       // Set the stereotaxic space in the coord frame id
       //
-      cf->setHeaderTag(AbstractFile::headerTagCoordFrameID, brainSet->getStereotaxicSpace());      
+      cf->setHeaderTag(AbstractFile::headerTagCoordFrameID, brainSet->getStereotaxicSpace().getName());      
    }
   
    //
@@ -489,12 +561,22 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
       //
       // Set the stereotaxic space in the coord frame id
       //
-      cf->setHeaderTag(AbstractFile::headerTagCoordFrameID, brainSet->getStereotaxicSpace());
+      cf->setHeaderTag(AbstractFile::headerTagCoordFrameID, brainSet->getStereotaxicSpace().getName());
       
       //
       // Does user want a hypersmoothed surface created
       //
       if (createHypersmoothSurfaceFlag) {
+         bms->createInflatedAndEllipsoidFromFiducial(true,
+                                                     false,
+                                                     false,
+                                                     false,
+                                                     false,
+                                                     false,
+                                                     true,
+                                                     1.0,
+                                                     NULL);
+/*
          //
          // Create the hypersmoothed surface
          //
@@ -502,6 +584,7 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
          hypersmoothSurface->arealSmoothing(1.0, 50, 0);
          hypersmoothSurface->setSurfaceType(BrainModelSurface::SURFACE_TYPE_INFLATED);
          brainSet->addBrainModel(hypersmoothSurface);
+*/
       }
    }
   

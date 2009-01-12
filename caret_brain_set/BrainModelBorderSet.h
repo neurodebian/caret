@@ -510,6 +510,9 @@ class BrainModelBorderSet {
       /// delete borders using any of the names.
       void deleteBordersWithNames(const std::vector<QString>& names);
       
+      /// delete border not displayed on a brain model
+      void deleteBordersNotDisplayedOnBrainModel(const BrainModel* bm);
+      
       /// delete all projection borders
       void deleteBorderProjections();
       
@@ -601,8 +604,8 @@ class BrainModelBorderSet {
       /// Set projections modified.
       void setProjectionsModified(const bool mod);
    
-      ///  Set the modification status of all borders and the projections
-      void setAllModifiedStatus(const bool mod);
+      ///  Set the modification status of all borders
+      void setAllBordersModifiedStatus(const bool mod);
       
       /// Set display flag for borders with specified name
       void setNameDisplayFlagForBordersWithName(const QString& name,

@@ -61,17 +61,18 @@ class GuiNameSelectionDialog : public WuQDialog {
          LIST_CONTOUR_CELL_COLORS_ALPHA =    8192,  // 2^13
          LIST_CONTOUR_CELL_COLORS_FILE  =   16384,  // 2^14
          LIST_VOCABULARY_ALPHA          =   32768,  // 2^15
-         LIST_STEREOTAXIC_SPACES        =   65536,  // 2^16
-         LIST_STATISTICS                =  131072,  // 2^17
-         LIST_STRUCTURE                 =  262144,  // 2^18
-         LIST_STUDY_CITATION            =  524288,  // 2^19
-         LIST_STUDY_DATA_FORMAT         = 1048576,  // 2^20
-         LIST_STUDY_DATA_TYPE           = 2097152,  // 2^21
-         LIST_STUDY_KEYWORDS_ALPHA      = 4194304,  // 2^22
-         LIST_STUDY_MESH_ALPHA          = 8388608,  // 2^23
-         LIST_STUDY_TABLE_HEADERS       = 16777216,  // 2^24
-         LIST_STUDY_TABLE_SUBHEADERS    = 33554432,  // 2^25
-         LIST_VOLUME_PAINT_NAMES_ALPHA  = 67108864,  // 2^26
+         LIST_SPECIES                   =   65536,  // 2^16
+         LIST_STEREOTAXIC_SPACES        =  131072,  // 2^17
+         LIST_STATISTICS                =  262144,  // 2^18
+         LIST_STRUCTURE                 =  524288,  // 2^19
+         LIST_STUDY_CITATION            =  1048576,  // 2^20
+         LIST_STUDY_DATA_FORMAT         =  2097152,  // 2^21
+         LIST_STUDY_DATA_TYPE           =  4194304,  // 2^22
+         LIST_STUDY_KEYWORDS_ALPHA      =  8388608,  // 2^23
+         LIST_STUDY_MESH_ALPHA          = 16777216,  // 2^24
+         LIST_STUDY_TABLE_HEADERS       = 33554432,  // 2^25
+         LIST_STUDY_TABLE_SUBHEADERS    = 67108864,  // 2^26
+         LIST_VOLUME_PAINT_NAMES_ALPHA  = 134217728,  // 2^27
          LIST_ALL                       = 0xffffffff
       };
       
@@ -154,6 +155,9 @@ class GuiNameSelectionDialog : public WuQDialog {
       
       /// load volume paint name in alpha order
       void loadVolumePaintNamesAlpha();
+      
+      /// load the species names
+      void loadSpecies();
       
       /// load the stereotaxic space names
       void loadStereotaxicSpaces();
@@ -247,6 +251,9 @@ class GuiNameSelectionDialog : public WuQDialog {
       
       /// item number for volume paint names alpha order
       int volumePaintNamesAlphaOrderItemNumber;
+      
+      /// item number for species
+      int speciesItemNumber;
       
       /// item number for stereotaxic spaces
       int stereotaxicSpaceItemNumber;

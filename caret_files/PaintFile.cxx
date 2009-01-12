@@ -320,7 +320,7 @@ PaintFile::assignNodesFromROIFile(const int columnNumber,
 int 
 PaintFile::getGeographyColumnNumber() const
 {
-   char *geography = "geography";
+   const QString geography("geography");
    
    const int numberOfColumns = getNumberOfColumns();
    for (int i = 0; i < numberOfColumns; i++) {

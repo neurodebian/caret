@@ -126,34 +126,6 @@ class AfniAttribute {
       static const QString NAME_VOLUME_FILENAMES;
 };
 
-#ifdef __AFNI_HEADER_DEFINE__
-   const QString AfniAttribute::NAME_BRICK_FLOAT_FACS   = "BRICK_FLOAT_FACS";
-   const QString AfniAttribute::NAME_BRICK_LABS         = "BRICK_LABS";
-   const QString AfniAttribute::NAME_BRICK_STATS        = "BRICK_STATS";
-   const QString AfniAttribute::NAME_BRICK_TYPES        = "BRICK_TYPES";
-   const QString AfniAttribute::NAME_BRICK_COMMENTS     = "BRICK_COMMENTS";
-   const QString AfniAttribute::NAME_BYTEORDER_STRING   = "BYTEORDER_STRING";
-   const QString AfniAttribute::NAME_CARET_METADATA_LINK = "CARET_METADATA_LINK";
-   const QString AfniAttribute::NAME_CARET_TYPE         = "CARET_TYPE";
-   const QString AfniAttribute::NAME_CARET_PUBMED_ID    = "CARET_PUBMED_ID";
-   const QString AfniAttribute::NAME_DATASET_NAME       = "DATASET_NAME";
-   const QString AfniAttribute::NAME_DATASET_DIMENSIONS = "DATASET_DIMENSIONS";
-   const QString AfniAttribute::NAME_DATASET_RANK       = "DATASET_RANK";
-   const QString AfniAttribute::NAME_DELTA              = "DELTA";
-   const QString AfniAttribute::NAME_HISTORY_NOTE       = "HISTORY_NOTE";
-   const QString AfniAttribute::NAME_IDCODE_DATE        = "IDCODE_DATE";
-   const QString AfniAttribute::NAME_IDCODE_STRING      = "IDCODE_STRING";
-   const QString AfniAttribute::NAME_LABEL_1            = "LABEL_1";
-   const QString AfniAttribute::NAME_LABEL_2            = "LABEL_2";
-   const QString AfniAttribute::NAME_LUT_NAMES          = "LUT_NAMES";
-   const QString AfniAttribute::NAME_ORIENT_SPECIFIC    = "ORIENT_SPECIFIC";
-   const QString AfniAttribute::NAME_ORIGIN             = "ORIGIN";
-   const QString AfniAttribute::NAME_SCENE_DATA         = "SCENE_DATA";
-   const QString AfniAttribute::NAME_TYPESTRING         = "TYPESTRING";
-   const QString AfniAttribute::NAME_VOLUME_FILENAMES   = "VOLUME_FILENAMES";
-
-#endif // __AFNI_HEADER_DEFINE__
-
 /// class for storing the AFNI attributes in an AFNI header
 class AfniHeader {
    public:
@@ -204,4 +176,32 @@ class AfniHeader {
 };
 
 #endif // __VE_AFNI_ATTRIBUTES_H__
+
+#ifdef __AFNI_HEADER_DEFINE__
+   const QString AfniAttribute::NAME_BRICK_FLOAT_FACS   = "BRICK_FLOAT_FACS";
+   const QString AfniAttribute::NAME_BRICK_LABS         = "BRICK_LABS";
+   const QString AfniAttribute::NAME_BRICK_STATS        = "BRICK_STATS";
+   const QString AfniAttribute::NAME_BRICK_TYPES        = "BRICK_TYPES";
+   const QString AfniAttribute::NAME_BRICK_COMMENTS     = "BRICK_COMMENTS";
+   const QString AfniAttribute::NAME_BYTEORDER_STRING   = "BYTEORDER_STRING";
+   const QString AfniAttribute::NAME_CARET_METADATA_LINK = "CARET_METADATA_LINK";
+   const QString AfniAttribute::NAME_CARET_TYPE         = "CARET_TYPE";
+   const QString AfniAttribute::NAME_CARET_PUBMED_ID    = "CARET_PUBMED_ID";
+   const QString AfniAttribute::NAME_DATASET_NAME       = "DATASET_NAME";
+   const QString AfniAttribute::NAME_DATASET_DIMENSIONS = "DATASET_DIMENSIONS";
+   const QString AfniAttribute::NAME_DATASET_RANK       = "DATASET_RANK";
+   const QString AfniAttribute::NAME_DELTA              = "DELTA";
+   const QString AfniAttribute::NAME_HISTORY_NOTE       = "HISTORY_NOTE";
+   const QString AfniAttribute::NAME_IDCODE_DATE        = "IDCODE_DATE";
+   const QString AfniAttribute::NAME_IDCODE_STRING      = "IDCODE_STRING";
+   const QString AfniAttribute::NAME_LABEL_1            = "LABEL_1";
+   const QString AfniAttribute::NAME_LABEL_2            = "LABEL_2";
+   const QString AfniAttribute::NAME_LUT_NAMES          = "LUT_NAMES";
+   const QString AfniAttribute::NAME_ORIENT_SPECIFIC    = "ORIENT_SPECIFIC";
+   const QString AfniAttribute::NAME_ORIGIN             = "ORIGIN";
+   const QString AfniAttribute::NAME_SCENE_DATA         = "SCENE_DATA";
+   const QString AfniAttribute::NAME_TYPESTRING         = "TYPESTRING";
+   const QString AfniAttribute::NAME_VOLUME_FILENAMES   = "VOLUME_FILENAMES";
+#endif // __AFNI_HEADER_DEFINE__
+
 

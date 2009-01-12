@@ -54,9 +54,13 @@ GuiMainWindowHelpMenu::GuiMainWindowHelpMenu(GuiMainWindow* parent) :
    
    addAction(helpActions->getCaretHelpAction());
 
+   ///addAction(helpActions->getCaretHelpAssistantAction());
+
    addAction(helpActions->getOnlineCaretHelpAction());
    
    addAction(helpActions->getCaretTipsAction());
+   
+   addAction(helpActions->getCaretUsersListArchiveAction());
    
    addAction(helpActions->getCaretWebSiteAction());
 
@@ -66,9 +70,9 @@ GuiMainWindowHelpMenu::GuiMainWindowHelpMenu(GuiMainWindow* parent) :
    
    addAction(helpActions->getSumbsWebSiteAction());
 
-   addAction(helpActions->getSumsAtlasAction());
+   //addAction(helpActions->getSumsAtlasAction());
 
-   addAction(helpActions->getSumsTutorialsAction());
+   //addAction(helpActions->getSumsTutorialsAction());
 }
 
 /**

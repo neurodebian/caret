@@ -170,15 +170,13 @@ class AtlasSurfaceDirectoryFile : public AbstractFile {
       void setFileLocationPathName(const QString& path);
 };
 
-#ifdef VE_ATLAS_SURFACE_DIRECTORY_FILE_DEFINE
+#endif // __VE_ATLAS_SURFACE_DIRECTORY_FILE_H__
 
+#ifdef VE_ATLAS_SURFACE_DIRECTORY_FILE_DEFINE
 const QString AtlasSurface::anatomyCerebralLeft  = "Cerebral-Left";
 const QString AtlasSurface::anatomyCerebralRight = "Cerebral-Right";
 const QString AtlasSurface::anatomyCerebellum    = "Cerebellum";
 const QString AtlasSurface::fileTypeVTK          = "VTK";
-   
+
 const QString AtlasSurfaceDirectoryFile::tagFileVersion =  "tag-file-version";
-
 #endif // VE_ATLAS_SURFACE_DIRECTORY_FILE_DEFINE
-
-#endif // __VE_ATLAS_SURFACE_DIRECTORY_FILE_H__

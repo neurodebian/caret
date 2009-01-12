@@ -47,6 +47,7 @@
 #include "FociProjectionFile.h"
 #include "PaintFile.h"
 #include "QtUtilities.h"
+#include "Species.h"
 #include "StatisticTestNames.h"
 #include "StereotaxicSpace.h"
 #include "StringUtilities.h"
@@ -103,6 +104,7 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
    contourCellColorsAlphaItemNumber = -1;
    contourCellColorsFileItemNumber  = -1;
    vocabularyAlphaItemNumber        = -1;
+   speciesItemNumber                = -1;
    stereotaxicSpaceItemNumber       = -1;
    statisticsItemNumber             = -1;
    structuresItemNumber             = -1;
@@ -222,6 +224,13 @@ GuiNameSelectionDialog::GuiNameSelectionDialog(QWidget* parent,
          defaultSelection = itemNumber;
       }
       paintNamesAlphaItemNumber = itemNumber++;
+   }
+   if (itemsToDisplay & LIST_SPECIES) {
+      fileTypeComboBox->addItem("Species");
+      if (defaultItem == LIST_SPECIES) {
+         defaultSelection = itemNumber;
+      }
+      speciesItemNumber = itemNumber++;
    }  
    if (itemsToDisplay & LIST_STATISTICS) {
       fileTypeComboBox->addItem("Statistics");
@@ -435,6 +444,9 @@ GuiNameSelectionDialog::getSelectedItemType() const
    else if (item == contourCellColorsFileItemNumber) {
       return LIST_CONTOUR_CELL_COLORS_FILE;
    }
+   else if (item == speciesItemNumber) {
+      return LIST_SPECIES;
+   }
    else if (item == stereotaxicSpaceItemNumber) {
       return LIST_STEREOTAXIC_SPACES;
    }
@@ -526,6 +538,9 @@ GuiNameSelectionDialog::fileTypeSelectionSlot(int buttNum)
    }
    else if (buttNum == paintNamesAlphaItemNumber) {
       loadPaintNamesAlphaOrder();
+   }
+   else if (buttNum == speciesItemNumber) {
+      loadSpecies();
    }
    else if (buttNum == statisticsItemNumber) {
       loadStatistics();
@@ -894,6 +909,18 @@ GuiNameSelectionDialog::~GuiNameSelectionDialog()
 {
 }
 
+/**
+ * load the species names.
+ */
+void 
+GuiNameSelectionDialog::loadSpecies()
+{
+   std::vector<Species::TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   Species::getAllSpeciesTypesAndNames(speciesTypes, speciesNames);
+   addNamesToListBox(speciesNames, true);
+}
+      
 /**
  * load the stereotaxic space names.
  */

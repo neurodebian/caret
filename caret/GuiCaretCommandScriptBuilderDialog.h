@@ -66,6 +66,9 @@ class GuiCaretCommandScriptBuilderDialog : public WuQDialog {
       // called when close button pressed
       void slotClosePushButton();
       
+      // called when help button pressed
+      void slotHelpPushButton();
+      
       // called to add a new command 
       void slotAddCommand(GuiCaretCommandContainerWidget* addAfterWidget);
       

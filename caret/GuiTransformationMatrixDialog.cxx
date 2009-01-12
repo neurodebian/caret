@@ -161,7 +161,7 @@ GuiTransformationMatrixDialog::createTransformDataFilePage()
    
    transformDataFileGridLayout->addWidget(new QLabel("Data File Name  "), 0, 0);
    transformDataFileGridLayout->addWidget(new QLabel("Display Transform Matrix"), 0, 1);
-   
+   transformDataFileGridLayout->setRowStretch(1000, 1000);
    //
    // Scroll box for models
    //
@@ -1103,12 +1103,12 @@ GuiTransformationMatrixDialog::updateDialog()
       AbstractFile* tdf = theMainWindow->getBrainSet()->getTransformationDataFile(i);
       transformFileLabels[i]->setText(FileUtilities::basename(tdf->getFileName()));
       transformFileLabels[i]->show();
+      transformFileMatrixControls[i]->show();
       transformFileMatrixControls[i]->blockSignals(true);
+      transformFileMatrixControls[i]->updateControl();
       transformFileMatrixControls[i]->setSelectedMatrixIndex(
          tmf->getMatrixIndex(tdf->getAssociatedTransformationMatrix()));
       transformFileMatrixControls[i]->blockSignals(false);
-      transformFileMatrixControls[i]->show();
-      transformFileMatrixControls[i]->updateControl();
    }
    
    //
@@ -1128,14 +1128,16 @@ GuiTransformationMatrixDialog::slotTransformMatrixSelection()
 {
    const int numTransformDataFiles = theMainWindow->getBrainSet()->getNumberOfTransformationDataFiles();
    const int numExistingTransformDataFiles = static_cast<int>(transformFileLabels.size());
-   if (numTransformDataFiles != numExistingTransformDataFiles) {
-      std::cout << "PROGRAM ERROR: Number of transform data files does not match those in dialog." << std::endl;
+   if (numTransformDataFiles > numExistingTransformDataFiles) {
+      std::cout << "PROGRAM ERROR: Number of transform data files exceeds those in dialog." << std::endl;
       return;
    }
    
    for (int i = 0; i < numTransformDataFiles; i++) {
-      AbstractFile* af = theMainWindow->getBrainSet()->getTransformationDataFile(i);
-      af->setAssociatedTransformationMatrix(transformFileMatrixControls[i]->getSelectedMatrix());         
+      if (i < numExistingTransformDataFiles) {
+         AbstractFile* af = theMainWindow->getBrainSet()->getTransformationDataFile(i);
+         af->setAssociatedTransformationMatrix(transformFileMatrixControls[i]->getSelectedMatrix());    
+      }
    }
    GuiBrainModelOpenGL::updateAllGL();
 }
@@ -1559,20 +1561,22 @@ GuiTransformationMatrixDialog::slotMatrixNew()
             }
             else if ((rbd.getSelectedItemIndex() == viewMatrixIndex) ||
                      (rbd.getSelectedItemIndex() == viewMatrixTranslateIndex)) {
-               VolumeFile* vf = bmv->getMasterVolumeFile();
-               int obliqueSlices[3];
-               bmv->getSelectedObliqueSlices(obliqueSlices);
                float obliqueSlicesPos[3];
-               vf->getVoxelCoordinate(obliqueSlices, true, obliqueSlicesPos);
-               
-               int obliqueSliceOffsets[3];
-               bmv->getSelectedObliqueSliceOffsets(0, obliqueSliceOffsets);
+               if (bmv != NULL) {
+                  VolumeFile* vf = bmv->getMasterVolumeFile();
+                  int obliqueSlices[3];
+                  bmv->getSelectedObliqueSlices(obliqueSlices);
+                  vf->getVoxelCoordinate(obliqueSlices, obliqueSlicesPos);
+                  
+                  int obliqueSliceOffsets[3];
+                  bmv->getSelectedObliqueSliceOffsets(0, obliqueSliceOffsets);
+               }
                currentMatrix->identity();
                float trans[3];
                bm->getTranslation(0, trans);
                currentMatrix->translate(trans);
                TransformationMatrix rot;
-               if (dynamic_cast<BrainModelVolume*>(bm) != NULL) {
+               if (bmv != NULL) {
                   switch (bmv->getSelectedAxis(0)) {
                      case VolumeFile::VOLUME_AXIS_X:
                         rot.rotateX(-bmv->getDisplayRotation(0));
@@ -1636,12 +1640,17 @@ GuiTransformationMatrixDialog::slotMatrixNew()
                      rot.identity();
                   }
                   rot.scale(scale);
+                  currentMatrix->multiply(rot);
                }
                else {
                   rot.setMatrix(bm->getRotationTransformMatrix(0));
                   rot.transpose();
+                  currentMatrix->identity();
+                  if (rbd.getSelectedItemIndex() != viewMatrixTranslateIndex) {
+                     currentMatrix->multiply(rot);
+                  }
+                  currentMatrix->translate(trans);
                }
-               currentMatrix->multiply(rot);
             }
          }
       }
@@ -1797,14 +1806,19 @@ GuiTransformationMatrixDialog::slotMatrixApplyTransformDataFile()
          
                   CellFile newCellFile;
                   for (int j = 0; j < numCells; j++) {
-                     CellData* cd = cf->getCell(j);
+                     CellData cd = *(cf->getCell(j));
                      float xyz[3];
-                     cd->getXYZ(xyz);
+                     cd.getXYZ(xyz);
                      currentMatrix->multiplyPoint(xyz);
-                     CellData newCell(cd->getName(), xyz[0], xyz[1], xyz[2]);
-                     newCellFile.addCell(newCell);
+                     cd.setXYZ(xyz);
+                     if (xyz[0] < 0.0) {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+                     }
+                     else {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+                     }
+                     newCellFile.addCell(cd);
                   }
-                  
                   newCellFile.setFileComment(operationComment);
                   
                   theMainWindow->getBrainSet()->getCellProjectionFile()->appendFiducialCellFile(newCellFile);
@@ -1819,14 +1833,19 @@ GuiTransformationMatrixDialog::slotMatrixApplyTransformDataFile()
          
                   FociFile newFociFile;
                   for (int j = 0; j < numCells; j++) {
-                     CellData* cd = ff->getCell(j);
+                     CellData cd = *(ff->getCell(j));
                      float xyz[3];
-                     cd->getXYZ(xyz);
+                     cd.getXYZ(xyz);
                      currentMatrix->multiplyPoint(xyz);
-                     CellData newCell(cd->getName(), xyz[0], xyz[1], xyz[2]);
-                     newFociFile.addCell(newCell);
+                     cd.setXYZ(xyz);
+                     if (xyz[0] < 0.0) {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+                     }
+                     else {
+                        cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+                     }
+                     newFociFile.addCell(cd);
                   }
-                  
                   newFociFile.setFileComment(operationComment);
                   
                   theMainWindow->getBrainSet()->getFociProjectionFile()->appendFiducialCellFile(newFociFile);

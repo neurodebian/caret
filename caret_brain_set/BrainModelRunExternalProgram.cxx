@@ -24,13 +24,13 @@
 /*LICENSE_END*/
 
 
+#include <cstdlib>
 #include <iostream>
+#include <limits>
+
 #include <QGlobalStatic>
 #include <QProcess>
 
-#ifdef Q_OS_MACX
-#include <stdlib.h>
-#endif
 
 #include "BrainModelRunExternalProgram.h"
 #include "BrainSet.h"
