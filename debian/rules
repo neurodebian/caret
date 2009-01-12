@@ -110,7 +110,7 @@ binary-arch: build install
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	LD_LIBRARY_PATH=caret_brain_set:caret_command_operations:caret_uniformize:caret_widgets:caret_common:caret_files:caret_statistics dh_shlibdeps
+	LD_LIBRARY_PATH=caret_brain_set:caret_command_operations:caret_uniformize:caret_widgets:caret_common:caret_files:caret_statistics$${LD_LIBRARY_PATH:+:$${LD_LIBRARY_PATH}} dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
