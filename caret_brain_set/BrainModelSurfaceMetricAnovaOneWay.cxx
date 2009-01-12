@@ -25,7 +25,6 @@
 
 #include <limits>
 #include <sstream>
-#include <limits>
 
 #include <QDateTime>
 

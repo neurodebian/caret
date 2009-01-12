@@ -27,7 +27,6 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
-#include <limits>
 
 #include <QApplication>
 #include <QCheckBox>

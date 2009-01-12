@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <algorithm>
 
 #include <QStringList>
 
