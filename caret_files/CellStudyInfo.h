@@ -196,6 +196,8 @@ class CellStudyInfo {
 
 };
 
+#endif // __CELL_STUDY_INFO_H__
+
 #ifdef __CELL_STUDY_INFO_MAIN__
       const QString CellStudyInfo::tagCellStudyInfo = "CellStudyInfo";
       const QString CellStudyInfo::tagUrl = "url";
@@ -209,6 +211,3 @@ class CellStudyInfo {
       const QString CellStudyInfo::tagPartitioningSchemeAbbreviation = "partitioningSchemeAbbreviation";
       const QString CellStudyInfo::tagPartitioningSchemeFullName = "partitioningSchemeFullName";
 #endif // __CELL_STUDY_INFO_MAIN__
-
-#endif // __CELL_STUDY_INFO_H__
-

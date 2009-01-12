@@ -587,6 +587,8 @@ BrainModelOpenGL::checkForOpenGLError(const BrainModel* bm,
    if (errorCode != GL_NO_ERROR) {
       std::cout << std::endl;
       std::cout << "OpenGL Error: " << (char*)gluErrorString(errorCode) << std::endl;
+      std::cout << "OpenGL Version: " << (char*)(glGetString(GL_VERSION)) << std::endl;
+      std::cout << "OpenGL Vendor:  " << (char*)(glGetString(GL_VENDOR)) << std::endl;
       if (msg.isEmpty() == false) {
          std::cout << msg.toAscii().constData() << std::endl;
       }
@@ -1442,6 +1444,27 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
    const int modelNumber = bms->getBrainModelIndex();
    const int numCoords = cf->getNumberOfCoordinates();
    
+   switch (bms->getSurfaceType()) {
+      case BrainModelSurface::SURFACE_TYPE_RAW:
+      case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
+         //
+         // Draw the VTK models
+         //
+         drawAllVtkModels();
+         break;
+      case BrainModelSurface::SURFACE_TYPE_INFLATED:
+      case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
+      case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
+      case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
+      case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
+      case BrainModelSurface::SURFACE_TYPE_FLAT:
+      case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
+      case BrainModelSurface::SURFACE_TYPE_HULL:
+      case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
+      case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
+         break;
+   }
+
    //
    // Get display list number for this surface
    //  
@@ -1613,6 +1636,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
    
    drawTransformationMatrixAxes(bms);
       
+/*
    switch (bms->getSurfaceType()) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
@@ -1633,7 +1657,8 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
          break;
    }
-   
+*/
+
    if ((bmsv == NULL) && (surfaceInVolumeAllViewFlag == false)) {
       drawMetricPalette(viewingWindowNumber, true);
       drawShapePalette(viewingWindowNumber);
@@ -2090,12 +2115,13 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
    //
    float spacing[3];
    anatomyVolume->getSpacing(spacing);
-   
+                                
    //
    // Get the origin
    //
-   float origin[3];
-   anatomyVolume->getOrigin(origin);
+   float originCenter[3], originCorner[3];
+   anatomyVolume->getOrigin(originCenter);
+   anatomyVolume->getOriginAtCornerOfVoxel(originCorner);
 
    //
    // Might be drawing secondary overlay on the slices
@@ -2123,16 +2149,18 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
    // Draw the horizontal slice
    //
    if (bmsv->getDisplayHorizontalSlice()) {
-      const float sliceZ = slices[2] * spacing[2] + origin[2];
+      const float sliceZ = slices[2] * spacing[2] + originCenter[2];
       for (int i = 0; i < dim[0]; i++) {
          for (int j = 0; j < dim[1]; j++) {
             int ijk[3] = { i, j, slices[2] };
             unsigned char rgb[4];
             voxelColoring->getVoxelColoring(anatomyVolume, ijk[0], ijk[1], ijk[2], rgb);
             glColor3ubv(rgb);
-            const float x = i * spacing[0] + origin[0];
-            const float y = j * spacing[1] + origin[1];
-            
+            const float xCenter = i * spacing[0] + originCenter[0];
+            const float yCenter = j * spacing[1] + originCenter[1];
+            const float xCorner = i * spacing[0] + originCorner[0];
+            const float yCorner = j * spacing[1] + originCorner[1];
+
             bool drawIt = false;
             if (rgb[3] == VolumeFile::VOXEL_COLOR_STATUS_VALID) {
                //
@@ -2152,7 +2180,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
             }
             
             if (drawSecondaryDataOnSlices) {
-               float xyz[3] = { x, y, sliceZ };
+               float xyz[3] = { xCenter, yCenter, sliceZ };
                float p[3];
                if (secondaryVolumeFile->convertCoordinatesToVoxelIJK(xyz, ijk, p)!=0) {
                   voxelColoring->getVoxelColoring(secondaryVolumeFile, ijk[0], ijk[1], ijk[2], rgb);
@@ -2167,7 +2195,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
             }
                
             if (drawPrimaryDataOnSlices) {
-               float xyz[3] = { x, y, sliceZ };
+               float xyz[3] = { xCenter, yCenter, sliceZ };
                float p[3];
                if (primaryVolumeFile->convertCoordinatesToVoxelIJK(xyz, ijk, p)!=0) {
                   voxelColoring->getVoxelColoring(primaryVolumeFile, ijk[0], ijk[1], ijk[2], rgb);
@@ -2191,10 +2219,10 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                }
                
                glBegin(GL_QUADS);
-                  glVertex3f(x, y, sliceZ);
-                  glVertex3f(x + spacing[0], y, sliceZ);
-                  glVertex3f(x + spacing[0], y + spacing[1], sliceZ);
-                  glVertex3f(x, y + spacing[1], sliceZ);
+                  glVertex3f(xCorner, yCorner, sliceZ);
+                  glVertex3f(xCorner + spacing[0], yCorner, sliceZ);
+                  glVertex3f(xCorner + spacing[0], yCorner + spacing[1], sliceZ);
+                  glVertex3f(xCorner, yCorner + spacing[1], sliceZ);
                glEnd();
                
                if (maskForThisSlice != SELECTION_MASK_OFF) {
@@ -2213,15 +2241,17 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
    // Draw the coronal slice
    //
    if (bmsv->getDisplayCoronalSlice()) {
-      const float sliceY = slices[1] * spacing[1] + origin[1];
+      const float sliceY = slices[1] * spacing[1] + originCenter[1];
       for (int i = 0; i < dim[0]; i++) {
          for (int k = 0; k < dim[2]; k++) {
             int ijk[3] = { i, slices[1], k };
             unsigned char rgb[4];
             voxelColoring->getVoxelColoring(anatomyVolume, ijk[0], ijk[1], ijk[2], rgb);
             glColor3ubv(rgb);
-            const float x = i * spacing[0] + origin[0];
-            const float z = k * spacing[2] + origin[2];
+            const float xCenter = i * spacing[0] + originCenter[0];
+            const float zCenter = k * spacing[2] + originCenter[2];
+            const float xCorner = i * spacing[0] + originCorner[0];
+            const float zCorner = k * spacing[2] + originCorner[2];
             
             bool drawIt = false;
             if (rgb[3] == VolumeFile::VOXEL_COLOR_STATUS_VALID) {
@@ -2242,7 +2272,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
             }
             
             if (drawSecondaryDataOnSlices) {
-               float xyz[3] = { x, sliceY, z };
+               float xyz[3] = { xCenter, sliceY, zCenter };
                float p[3];
                if (secondaryVolumeFile->convertCoordinatesToVoxelIJK(xyz, ijk, p)!=0) {
                   voxelColoring->getVoxelColoring(secondaryVolumeFile, ijk[0], ijk[1], ijk[2], rgb);
@@ -2257,7 +2287,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
             }
             
             if (drawPrimaryDataOnSlices) {
-               float xyz[3] = { x, sliceY, z };
+               float xyz[3] = { xCenter, sliceY, zCenter };
                float p[3];
                if (primaryVolumeFile->convertCoordinatesToVoxelIJK(xyz, ijk, p)!=0) {
                   voxelColoring->getVoxelColoring(primaryVolumeFile, ijk[0], ijk[1], ijk[2], rgb);
@@ -2280,10 +2310,10 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                   glPushName(VolumeFile::VOLUME_AXIS_Y);
                }                  
                glBegin(GL_QUADS);
-                  glVertex3f(x, sliceY, z);
-                  glVertex3f(x + spacing[0], sliceY, z);
-                  glVertex3f(x + spacing[0], sliceY, z + spacing[2]);
-                  glVertex3f(x, sliceY, z + spacing[2]);
+                  glVertex3f(xCorner, sliceY, zCorner);
+                  glVertex3f(xCorner + spacing[0], sliceY, zCorner);
+                  glVertex3f(xCorner + spacing[0], sliceY, zCorner + spacing[2]);
+                  glVertex3f(xCorner, sliceY, zCorner + spacing[2]);
                glEnd();
                
                if (maskForThisSlice != SELECTION_MASK_OFF) {
@@ -2302,15 +2332,17 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
    // Draw the parasaggital slice
    //
    if (bmsv->getDisplayParasagittalSlice()) {
-      const float sliceX = slices[0] * spacing[0] + origin[0];
+      const float sliceX = slices[0] * spacing[0] + originCenter[0];
       for (int j = 0; j < dim[1]; j++) {
          for (int k = 0; k < dim[2]; k++) {
             int ijk[3] = { slices[0], j, k };
             unsigned char rgb[4];
             voxelColoring->getVoxelColoring(anatomyVolume, ijk[0], ijk[1], ijk[2], rgb);
             glColor3ubv(rgb);
-            const float y = j * spacing[1] + origin[1];
-            const float z = k * spacing[2] + origin[2];
+            const float yCenter = j * spacing[1] + originCenter[1];
+            const float zCenter = k * spacing[2] + originCenter[2];
+            const float yCorner = j * spacing[1] + originCorner[1];
+            const float zCorner = k * spacing[2] + originCorner[2];
             
             bool drawIt = false;
             if (rgb[3] == VolumeFile::VOXEL_COLOR_STATUS_VALID) {
@@ -2330,7 +2362,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
             }
             
             if (drawSecondaryDataOnSlices) {
-               float xyz[3] = { sliceX, y, z };
+               float xyz[3] = { sliceX, yCenter, zCenter };
                float p[3];
                if (secondaryVolumeFile->convertCoordinatesToVoxelIJK(xyz, ijk, p)!=0) {
                   voxelColoring->getVoxelColoring(secondaryVolumeFile, ijk[0], ijk[1], ijk[2], rgb);
@@ -2345,7 +2377,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
             }
                
             if (drawPrimaryDataOnSlices) {
-               float xyz[3] = { sliceX, y, z };
+               float xyz[3] = { sliceX, yCenter, zCenter };
                float p[3];
                if (primaryVolumeFile->convertCoordinatesToVoxelIJK(xyz, ijk, p)!=0) {
                   voxelColoring->getVoxelColoring(primaryVolumeFile, ijk[0], ijk[1], ijk[2], rgb);
@@ -2369,10 +2401,10 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                }
                
                glBegin(GL_QUADS);
-                  glVertex3f(sliceX, y, z);
-                  glVertex3f(sliceX, y + spacing[1], z);
-                  glVertex3f(sliceX, y + spacing[1], z + spacing[2]);
-                  glVertex3f(sliceX, y, z + spacing[2]);
+                  glVertex3f(sliceX, yCorner, zCorner);
+                  glVertex3f(sliceX, yCorner + spacing[1], zCorner);
+                  glVertex3f(sliceX, yCorner + spacing[1], zCorner + spacing[2]);
+                  glVertex3f(sliceX, yCorner, zCorner + spacing[2]);
                glEnd();
                
                if (maskForThisSlice != SELECTION_MASK_OFF) {
@@ -2483,8 +2515,10 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                //
                // Get the origin
                //
-               float origin[3];
-               vf->getOrigin(origin);
+               float originCorner[3];
+               vf->getOriginAtCornerOfVoxel(originCorner);
+               float originCenter[3];
+               vf->getOrigin(originCenter);
 
                //
                // Check for valid dimensions
@@ -2538,9 +2572,6 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                const float sx = spacing[0];
                const float sy = spacing[1];
                const float sz = spacing[2];
-               const float ox = origin[0];
-               const float oy = origin[1];
-               const float oz = origin[2];
 
                const bool drawVectorsFlag = (vf->getVolumeType() == VolumeFile::VOLUME_TYPE_VECTOR);
                int increment = 1;
@@ -2567,9 +2598,6 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                         voxelColoring->getVoxelColoring(vf, i, j, k, rgb);
                         if (rgb[3] == VolumeFile::VOXEL_COLOR_STATUS_VALID) {
                            glColor4ub(rgb[0], rgb[1], rgb[2], alpha);
-                           const float x = i * sx + ox;
-                           const float y = j * sy + oy;
-                           const float z = k * sz + oz;
                            
                            if (selectionMask & cloudSelectionMask) {
                               glPushName(cloudSelectionMask);
@@ -2582,9 +2610,12 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                            // Is this a vector volume
                            //
                            if (drawVectorsFlag) {
-                              const float xp = x + sx * 0.5;
-                              const float yp = y + sy * 0.5;
-                              const float zp = z + sz * 0.5;
+                              const float x = i * sx + originCenter[0];
+                              const float y = j * sy + originCenter[1];
+                              const float z = k * sz + originCenter[2];
+                              const float xp = x + sx;
+                              const float yp = y + sy;
+                              const float zp = z + sz;
                               const float mag = vf->getVoxel(i, j, k, 3);
                               glBegin(GL_LINES);
                                  glColor4ub(255, 0, 0, 255);
@@ -2596,6 +2627,9 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
                               glEnd();
                            }
                            else {
+                              const float x = i * sx + originCorner[0];
+                              const float y = j * sy + originCorner[1];
+                              const float z = k * sz + originCorner[2];
                               glBegin(GL_QUADS);
                                  //
                                  // Near face
@@ -2790,9 +2824,10 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
          //
          // Get origin and spacing
          //
-         float origin[3], spacing[3];
+         float originCenter[3], originCorner[3], spacing[3];
          int dim[3];
-         vf->getOrigin(origin);
+         vf->getOrigin(originCenter);
+         vf->getOriginAtCornerOfVoxel(originCorner);
          vf->getSpacing(spacing);
          vf->getDimensions(dim);
          
@@ -2802,15 +2837,15 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
             firstVolume = vf;
             switch(volumeSliceAxis) {
                case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
-                  volumeSliceCoordinate = currentSlice * spacing[0] + origin[0];
+                  volumeSliceCoordinate = currentSlice * spacing[0] + originCenter[0];
                   firstVolumeVoxelSize = spacing[0];
                   break;
                case VolumeFile::VOLUME_AXIS_Y:  // CORONAL
-                  volumeSliceCoordinate = currentSlice * spacing[1] + origin[1];
+                  volumeSliceCoordinate = currentSlice * spacing[1] + originCenter[1];
                   firstVolumeVoxelSize = spacing[1];
                   break;
                case VolumeFile::VOLUME_AXIS_Z:  // HORIZONTAL
-                  volumeSliceCoordinate = currentSlice * spacing[2] + origin[2];
+                  volumeSliceCoordinate = currentSlice * spacing[2] + originCenter[2];
                   firstVolumeVoxelSize = spacing[2];
                   break;
                default:
@@ -2826,7 +2861,7 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
             switch(volumeSliceAxis) {
                case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
                   for (int i = 0; i < dim[0]; i++) {
-                     const float val = i * spacing[0] + origin[0];
+                     const float val = i * spacing[0] + originCenter[0];
                      const float dist = fabs(volumeSliceCoordinate - val);
                      if (dist < sliceDistance) {
                         sliceToDraw = i;
@@ -2836,7 +2871,7 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
                   break;
                case VolumeFile::VOLUME_AXIS_Y:  // CORONAL
                   for (int i = 0; i < dim[1]; i++) {
-                     const float val = i * spacing[1] + origin[1];
+                     const float val = i * spacing[1] + originCenter[1];
                      const float dist = fabs(volumeSliceCoordinate - val);
                      if (dist < sliceDistance) {
                         sliceToDraw = i;
@@ -2846,7 +2881,7 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
                   break;
                case VolumeFile::VOLUME_AXIS_Z:  // HORIZONTAL
                   for (int i = 0; i < dim[2]; i++) {
-                     const float val = i * spacing[2] + origin[2];
+                     const float val = i * spacing[2] + originCenter[2];
                      const float dist = fabs(volumeSliceCoordinate - val);
                      if (dist < sliceDistance) {
                         sliceToDraw = i;
@@ -3026,18 +3061,19 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAllAxis(BrainModelVolume* bmv)
                   if (vf != NULL) {
                      int dim[3];
                      vf->getDimensions(dim);
-                     float origin[3], spacing[3];
-                     vf->getOrigin(origin);
+                     float originCenter[3], originCorner[3], spacing[3];
+                     vf->getOrigin(originCenter);
+                     vf->getOriginAtCornerOfVoxel(originCorner);
                      vf->getSpacing(spacing);
-                     const float minX = origin[0];
-                     const float maxX = origin[0] + spacing[0] * dim[0];
-                     const float minY = origin[1];
-                     const float maxY = origin[1] + spacing[1] * dim[1];
-                     const float minZ = origin[2];
-                     const float maxZ = origin[2] + spacing[2] * dim[2];
-                     float sliceX = origin[0] + spacing[0] * slices[0];
-                     float sliceY = origin[1] + spacing[1] * slices[1];
-                     float sliceZ = origin[2] + spacing[2] * slices[2];
+                     const float minX = originCorner[0];
+                     const float maxX = originCorner[0] + spacing[0] * dim[0];
+                     const float minY = originCorner[1];
+                     const float maxY = originCorner[1] + spacing[1] * dim[1];
+                     const float minZ = originCorner[2];
+                     const float maxZ = originCorner[2] + spacing[2] * dim[2];
+                     float sliceX = originCenter[0] + spacing[0] * slices[0];
+                     float sliceY = originCenter[1] + spacing[1] * slices[1];
+                     float sliceZ = originCenter[2] + spacing[2] * slices[2];
                      int sliceOffsets[3];
                      bmv->getSelectedObliqueSliceOffsets(viewingWindowNumber, sliceOffsets);
                      sliceX += sliceOffsets[0];
@@ -3348,7 +3384,6 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
             //
             float xyz[3];
             masterVolume->getVoxelCoordinate(slices, 
-                                             BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(),
                                              xyz);
    
             //
@@ -3431,7 +3466,6 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                //
                float xyz[3];
                masterVolume->getVoxelCoordinate(slices, 
-                                                BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(), 
                                                 xyz);
 
                //
@@ -4015,18 +4049,19 @@ BrainModelOpenGL::drawBrainModelVolumeAllAxis(BrainModelVolume* bmv)
                   if (vf != NULL) {
                      int dim[3];
                      vf->getDimensions(dim);
-                     float origin[3], spacing[3];
-                     vf->getOrigin(origin);
+                     float originCenter[3], originCorner[3], spacing[3];
+                     vf->getOrigin(originCenter);
+                     vf->getOriginAtCornerOfVoxel(originCorner);
                      vf->getSpacing(spacing);
-                     const float minX = origin[0];
-                     const float maxX = origin[0] + spacing[0] * dim[0];
-                     const float minY = origin[1];
-                     const float maxY = origin[1] + spacing[1] * dim[1];
-                     const float minZ = origin[2];
-                     const float maxZ = origin[2] + spacing[2] * dim[2];
-                     const float sliceX = origin[0] + spacing[0] * slices[0];
-                     const float sliceY = origin[1] + spacing[1] * slices[1];
-                     const float sliceZ = origin[2] + spacing[2] * slices[2];
+                     const float minX = originCorner[0];
+                     const float maxX = originCorner[0] + spacing[0] * dim[0];
+                     const float minY = originCorner[1];
+                     const float maxY = originCorner[1] + spacing[1] * dim[1];
+                     const float minZ = originCorner[2];
+                     const float maxZ = originCorner[2] + spacing[2] * dim[2];
+                     const float sliceX = originCenter[0] + spacing[0] * slices[0];
+                     const float sliceY = originCenter[1] + spacing[1] * slices[1];
+                     const float sliceZ = originCenter[2] + spacing[2] * slices[2];
 
                      glEnable(GL_BLEND);
                      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -4145,7 +4180,6 @@ BrainModelOpenGL::drawVolumeCrosshairs(BrainModelVolume* bmv,
          //
          float xyz[3];
          vf->getVoxelCoordinate(slices,
-                                BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(),
                                 xyz);
          unsigned char* xColor = red;
          unsigned char* yColor = red;
@@ -4310,7 +4344,6 @@ BrainModelOpenGL::drawVolumeCrosshairCoordinates(BrainModelVolume* bmv,
       //
       float xyz[3];
       vf->getVoxelCoordinate(slices, 
-                             BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(), 
                              xyz);
       
       //
@@ -4883,7 +4916,7 @@ BrainModelOpenGL::convertVolumeItemXYZToScreenXY(const VolumeFile::VOLUME_AXIS a
                                   float xyz[3])
 {
    const float zPos = 1.0;
-   float xyzOut[3];
+   float xyzOut[3] = { 0.0, 0.0, 0.0 };
    switch (axis) {
       case VolumeFile::VOLUME_AXIS_X:
          xyzOut[0] = xyz[1];
@@ -6295,7 +6328,7 @@ BrainModelOpenGL::drawVolumeFileSlice(VolumeFile* vf, const VolumeFile::VOLUME_A
    //
    // Setup these dimensions for displaying the surface
    //
-   int dim[3];
+   int dim[3] = { 0, 0, 0 };
    switch(axis) {
       case VolumeFile::VOLUME_AXIS_X:  // PARASAGITTAL
          dim[0] = voldim[1];
@@ -6556,6 +6589,13 @@ BrainModelOpenGL::drawVolumeFileSlice(VolumeFile* vf, const VolumeFile::VOLUME_A
             //
             float voxelX = i * voxelSizeX + voxelOriginX;
             float voxelY = j * voxelSizeY + voxelOriginY;
+            
+            //
+            // Is voxel coordinate at center of voxel?
+            // JWH 07/11/2008
+            //
+            voxelX -= (voxelSizeX * 0.5);
+            voxelY -= (voxelSizeY * 0.5);
             
             if (drawVectorsFlag) {
                voxelX += voxelSizeX * 0.5;
@@ -7465,7 +7505,7 @@ BrainModelOpenGL::drawSurfaceNodes(const BrainModelSurfaceNodeColoring* bs,
       glEnableClientState(GL_VERTEX_ARRAY);
       glEnableClientState(GL_COLOR_ARRAY);
       glVertexPointer(3, GL_FLOAT, 0, cf->getCoordinate(0));
-      glColorPointer(3, GL_UNSIGNED_BYTE, 0, bs->getNodeColor(modelNumber, 0));
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, bs->getNodeColor(modelNumber, 0));
       if (brainSet->getDisplayAllNodes()) {
          glDrawArrays(GL_POINTS, 0, numCoords);
       }
@@ -7482,7 +7522,7 @@ BrainModelOpenGL::drawSurfaceNodes(const BrainModelSurfaceNodeColoring* bs,
       glBegin(GL_POINTS);
          for (int i = 0; i < numCoords; i++) {
             if (attributes[i]->getDisplayFlag()) {
-               glColor3ubv(bs->getNodeColor(i));
+               glColor4ubv(bs->getNodeColor(i));
                glVertex3fv(cf->getCoordinate(i));
             }
          }
@@ -7577,14 +7617,14 @@ BrainModelOpenGL::drawSurfaceLinks(const BrainModelSurfaceNodeColoring* bs,
                glColor3ubv(surfaceEditDrawColor);
             }
             else {
-               glColor3ubv(bs->getNodeColor(modelNumber, v1));
+               glColor4ubv(bs->getNodeColor(modelNumber, v1));
             }
             glVertex3fv(cf->getCoordinate(v1));
             if (drawInSurfaceEditColor) {
                glColor3ubv(surfaceEditDrawColor);
             }
             else {
-               glColor3ubv(bs->getNodeColor(modelNumber, v2));
+               glColor4ubv(bs->getNodeColor(modelNumber, v2));
             }
             glVertex3fv(cf->getCoordinate(v2));
             if (idLinkMode) {
@@ -7605,14 +7645,14 @@ BrainModelOpenGL::drawSurfaceLinks(const BrainModelSurfaceNodeColoring* bs,
                glColor3ubv(surfaceEditDrawColor);
             }
             else {
-               glColor3ubv(bs->getNodeColor(modelNumber, v2));
+               glColor4ubv(bs->getNodeColor(modelNumber, v2));
             }
             glVertex3fv(cf->getCoordinate(v2));
             if (drawInSurfaceEditColor) {
                glColor3ubv(surfaceEditDrawColor);
             }
             else {
-               glColor3ubv(bs->getNodeColor(modelNumber, v3));
+               glColor4ubv(bs->getNodeColor(modelNumber, v3));
             }
             glVertex3fv(cf->getCoordinate(v3));
             if (idLinkMode) {
@@ -7633,14 +7673,14 @@ BrainModelOpenGL::drawSurfaceLinks(const BrainModelSurfaceNodeColoring* bs,
                glColor3ubv(surfaceEditDrawColor);
             }
             else {
-               glColor3ubv(bs->getNodeColor(modelNumber, v1));
+               glColor4ubv(bs->getNodeColor(modelNumber, v1));
             }
             glVertex3fv(cf->getCoordinate(v1));
             if (drawInSurfaceEditColor) {
                glColor3ubv(surfaceEditDrawColor);
             }
             else {
-               glColor3ubv(bs->getNodeColor(modelNumber, v3));
+               glColor4ubv(bs->getNodeColor(modelNumber, v3));
             }
             glVertex3fv(cf->getCoordinate(v3));
             if (idLinkMode) {
@@ -7685,11 +7725,11 @@ BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring
           attributes[v2].getDisplayFlag() || 
           attributes[v3].getDisplayFlag()) {
          glBegin(GL_POLYGON);
-            glColor3ubv(bs->getNodeColor(modelNumber, v1));
+            glColor4ubv(bs->getNodeColor(modelNumber, v1));
             glVertex3fv(cf->getCoordinate(v1));
-            glColor3ubv(bs->getNodeColor(modelNumber, v2));
+            glColor4ubv(bs->getNodeColor(modelNumber, v2));
             glVertex3fv(cf->getCoordinate(v2));
-            glColor3ubv(bs->getNodeColor(modelNumber, v3));
+            glColor4ubv(bs->getNodeColor(modelNumber, v3));
             glVertex3fv(cf->getCoordinate(v3));
          glEnd();
       }
@@ -7735,6 +7775,15 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
                                    TopologyFile* tf, const int numTiles,
                                    const int numCoords)
 {  
+   //
+   // Enable opacity
+   //
+   const DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
+   if (dsn->getOpacity() < 1.0) {
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+   }
+
    const BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
    
    const int modelNumber = s->getBrainModelIndex();
@@ -7782,7 +7831,7 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
       glEnableClientState(GL_COLOR_ARRAY);
       glEnableClientState(GL_NORMAL_ARRAY);
       glVertexPointer(3, GL_FLOAT, 0, cf->getCoordinate(0));
-      glColorPointer(3, GL_UNSIGNED_BYTE, 0, bs->getNodeColor(modelNumber, 0));
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, bs->getNodeColor(modelNumber, 0));
       glNormalPointer(GL_FLOAT, 0, s->getNormal(0));
 #endif  // GL_VERSION_1_1
 
@@ -7838,13 +7887,13 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
                               static_cast<const GLvoid*>(triangle));
 #else  // GL_VERSION_1_1
                   glBegin(GL_TRIANGLES);
-                     glColor3ubv(bs->getNodeColor(modelNumber, v1));
+                     glColor4ubv(bs->getNodeColor(modelNumber, v1));
                      glNormal3fv(s->getNormal(v1));
                      glVertex3fv(cf->getCoordinate(v1));
-                     glColor3ubv(bs->getNodeColor(modelNumber, v2));
+                     glColor4ubv(bs->getNodeColor(modelNumber, v2));
                      glNormal3fv(s->getNormal(v2));
                      glVertex3fv(cf->getCoordinate(v2));
-                     glColor3ubv(bs->getNodeColor(modelNumber, v3));
+                     glColor4ubv(bs->getNodeColor(modelNumber, v3));
                      glNormal3fv(s->getNormal(v3));
                      glVertex3fv(cf->getCoordinate(v3));
                   glEnd();
@@ -7882,19 +7931,20 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
             if (attributes[v1].getDisplayFlag() || 
                 attributes[v2].getDisplayFlag() || 
                 attributes[v3].getDisplayFlag()) {
-               glColor3ubv(bs->getNodeColor(modelNumber, v1));
+               glColor4ubv(bs->getNodeColor(modelNumber, v1));
                glNormal3fv(s->getNormal(v1));
                glVertex3fv(cf->getCoordinate(v1));
-               glColor3ubv(bs->getNodeColor(modelNumber, v2));
+               glColor4ubv(bs->getNodeColor(modelNumber, v2));
                glNormal3fv(s->getNormal(v2));
                glVertex3fv(cf->getCoordinate(v2));
-               glColor3ubv(bs->getNodeColor(modelNumber, v3));
+               glColor4ubv(bs->getNodeColor(modelNumber, v3));
                glNormal3fv(s->getNormal(v3));
                glVertex3fv(cf->getCoordinate(v3));
             }
          }
       glEnd();
 #endif  // GL_VERSION_1_1
+      
    }
    glDisable(GL_LIGHTING);
    glDisable(GL_COLOR_MATERIAL);
@@ -7909,6 +7959,11 @@ BrainModelOpenGL::drawSurfaceTiles(const BrainModelSurfaceNodeColoring* bs,
       glPopName();
    }
    
+   //
+   // Disable opacity
+   //
+   glDisable(GL_BLEND);
+
    glDisable(GL_POLYGON_STIPPLE);
 }
 
@@ -8479,6 +8534,9 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
                   displayOnCerebellumSurface = true;
                }
                break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                break;
          }
@@ -8519,6 +8577,9 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
                continue;
                break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                continue;
                break;
@@ -10908,6 +10969,26 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
    glMatrixMode(GL_MODELVIEW);
    
    //
+   // If both a tile and node found
+   //
+   if ((selectionMask & SELECTION_MASK_NODE) &&
+       (selectionMask & SELECTION_MASK_TILE)) {
+      if ((selectedNode.getItemIndex1() >= 0) &&
+          (selectedSurfaceTile.getItemIndex1() >= 0)) {
+         //
+         // If tile is closer
+         //
+         if (selectedSurfaceTile.getDepth() < 
+             selectedNode.getDepth()) {
+            //
+            // Use tile
+            //
+            selectedNode.setItemIndex1(-1);
+         }
+      }
+   }
+   
+   //
    // If no nodes found but a tile was found (user may be zoomed in on surface)
    //
    if ((selectionMask & SELECTION_MASK_NODE) &&
@@ -11016,6 +11097,9 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
             case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
                bms = NULL;
                break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
                bms = NULL;
                break;
@@ -11142,7 +11226,6 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
                   };
                   float xyz[3];
                   vf1->getVoxelCoordinate(ijk, 
-                                          BrainModelOpenGL::getVoxelCoordinateIsCenterOfVoxel(), 
                                           xyz);
                   
                   //
@@ -11150,7 +11233,7 @@ BrainModelOpenGL::selectBrainModelItem(BrainSet* bs,
                   //
                   float fiducialDistance = std::numeric_limits<float>::max();
                   int fiducialNodeNumber = -1;
-                  BrainModelSurface* fiducialBMS;
+                  BrainModelSurface* fiducialBMS = NULL;
                   BrainModelSurface* leftBMS = bs->getLeftFiducialVolumeInteractionSurface();
                   if (leftBMS != NULL) {
                      //

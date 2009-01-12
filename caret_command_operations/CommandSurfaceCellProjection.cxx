@@ -133,7 +133,7 @@ CommandSurfaceCellProjection::executeCommand() throw (BrainModelAlgorithmExcepti
    // Process optional parameters
    //
    bool projectToSurfaceFlag = false;
-   float surfaceAboveDistance;
+   float surfaceAboveDistance = 0.0;
    while (parameters->getParametersAvailable()) {
       const QString paramName =
          parameters->getNextParameterAsString(s + " Projection Parameter");

@@ -46,8 +46,10 @@ class BrainModelVolumeLigaseSegmentation : public BrainModelAlgorithm {
                                             const float whiteMinIn,
                                             const float whiteMeanIn,
                                             const float whiteMaxIn,
-                                            const float diffBaseIn = 0.12f,
-                                            const float gradBaseIn = 0.05f);
+                                            const float diffBaseIn = 0.18f,
+                                            const float gradBaseIn = 0.075f,
+                                            const float highBiasIn = 0.20f,
+                                            const float lowBiasIn = 0.20f);
                                             
       /// Destructor
       ~BrainModelVolumeLigaseSegmentation();
@@ -56,8 +58,10 @@ class BrainModelVolumeLigaseSegmentation : public BrainModelAlgorithm {
       void execute() throw (BrainModelAlgorithmException);
       
       ///default parameters
-      static inline const float defaultDiff() { return 0.12f; };
-      static inline const float defaultGrad() { return 0.05f; };
+      static inline const float defaultDiff() { return 0.18f; };
+      static inline const float defaultGrad() { return 0.075f; };
+      static inline const float defaultHighBias() { return 0.20f; };
+      static inline const float defaultLowBias() { return 0.20f; };
    protected:
       /// segmentation volume, anatomy input volume
       VolumeFile* segVolume;
@@ -69,7 +73,8 @@ class BrainModelVolumeLigaseSegmentation : public BrainModelAlgorithm {
       /// segmentation volume label
       QString segVolumeLabel;
       
-      float whiteMin, whiteMean, whiteMax, diffBase, gradBase;
+      /// parameter storage, linked list node definition
+      float whiteMin, whiteMean, whiteMax, diffBase, gradBase, highBias, lowBias;
       int x_init, y_init, z_init;
       struct iterNode
       {

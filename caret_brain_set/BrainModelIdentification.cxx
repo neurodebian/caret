@@ -560,8 +560,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                   const StudyMetaDataLinkSet smdls = aef->getColumnStudyMetaDataLinkSet(i);
                   StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
                   idString += getIdentificationTextForStudies(smdf,
-                                                              smdls,
-                                                              true);
+                                                              smdls);
                }
             }
          }
@@ -665,8 +664,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                   const StudyMetaDataLinkSet smdls = mf->getColumnStudyMetaDataLinkSet(i);
                   StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
                   idString += getIdentificationTextForStudies(smdf,
-                                                              smdls,
-                                                              true);
+                                                              smdls);
                }
             }
          }
@@ -721,8 +719,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                      const StudyMetaDataLinkSet smdls = pf->getColumnStudyMetaDataLinkSet(i);
                      StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
                      idString += getIdentificationTextForStudies(smdf,
-                                                                 smdls,
-                                                                 true);
+                                                                 smdls);
                   }
                }
             }
@@ -752,8 +749,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
             const StudyMetaDataLinkSet smdls = pf->getStudyMetaDataLinkSet();
             StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
             idString += getIdentificationTextForStudies(smdf,
-                                                        smdls,
-                                                        true);
+                                                        smdls);
          }
       }
 
@@ -843,8 +839,7 @@ BrainModelIdentification::getIdentificationTextForNode(const int nodeNumber,
                   const StudyMetaDataLinkSet smdls = ssf->getColumnStudyMetaDataLinkSet(i);
                   StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
                   idString += getIdentificationTextForStudies(smdf,
-                                                              smdls,
-                                                              true);
+                                                              smdls);
                }
             }
          }
@@ -1371,20 +1366,8 @@ BrainModelIdentification::getIdentificationTextForSingleFocus(
       const StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
       StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
       idString += getIdentificationTextForStudies(smdf,
-                                                  smdls,
-                                                  true);
-/*
-      const int smdIndex = smdf->getStudyIndexFromLink(smdl);
-      if ((smdIndex >= 0) &&
-          (smdIndex < smdf->getNumberOfStudyMetaData())) {
-         const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
-         if (smd != NULL) {
-            idString += getIdentificationTextForStudy(smd, smdIndex, &smdl);
-            idString += getIdentificationTextForMetaAnalysisStudies(smd);
-         }
-      }
-*/
-      
+                                                  smdls);
+
       //
       // Old Study Info
       //
@@ -1589,7 +1572,7 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
    // Coordinate of voxel
    //
    float xyz[3];
-   selectionVolume->getVoxelCoordinate(vi, vj, vk, true, xyz);
+   selectionVolume->getVoxelCoordinate(vi, vj, vk, xyz);
    //if (tm != NULL) {
    //   tm->multiplyPoint(xyz);
    //}
@@ -1744,8 +1727,11 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
                         if (bmv->getSelectedVolumeRgbFile() == files[n]) {
                            idString += tagBoldStart;
                         }
-                        float rgb[3];
-                        files[n]->getVoxel(vi, vj, vk);
+                        const float rgb[3] = {
+                           files[n]->getVoxel(vi, vj, vk, 0),
+                           files[n]->getVoxel(vi, vj, vk, 1),
+                           files[n]->getVoxel(vi, vj, vk, 2)
+                        };
                         idString += ("("
                                      + QString::number(rgb[0], 'f', significantDigits)
                                      + ", "
@@ -1789,8 +1775,7 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
             const StudyMetaDataLinkSet smdls = files[n]->getStudyMetaDataLinkSet();
             const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
             idString += getIdentificationTextForStudies(smdf,
-                                                        smdls,
-                                                        true);
+                                                        smdls);
                                                         
             //
             // Only show 1st prob atlas
@@ -1805,22 +1790,6 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
 
    idString += tagNewLine;
    
-   //
-   // Add linked study meta data
-   //
-   //const StudyMetaDataLinkSet smdls = selectionVolume->getStudyMetaDataLinkSet();
-   //const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
-   //idString += getIdentificationTextForStudies(smdf,
-   //                                            smdls,
-   //                                            true);
-/*
-   const int studyNumber = smdf->getStudyIndexFromLink(smdl);
-   if ((studyNumber >= 0) && (studyNumber < smdf->getNumberOfStudyMetaData())) {
-      const StudyMetaData* smd = smdf->getStudyMetaData(studyNumber);
-      idString += getIdentificationTextForStudy(smd, studyNumber, &smdl);
-      idString += getIdentificationTextForMetaAnalysisStudies(smd);
-   }
-*/
    return idString;
 }
       
@@ -2530,8 +2499,7 @@ BrainModelIdentification::getIdentificationTextForStudies(const bool enableHtml,
    setupHtmlOrTextTags(enableHtml);
    
    return getIdentificationTextForStudies(smdf,
-                                          smdls,
-                                          false);
+                                          smdls);
 }
       
 /**
@@ -2551,132 +2519,11 @@ BrainModelIdentification::getIdentificationTextForStudy(const bool enableHtml,
 }
 
 /**
- * get the identification text for a meta-analysis study.
- */
-QString 
-BrainModelIdentification::getIdentificationTextForMetaAnalysisStudy(const QString& pubMedID)
-{
-   const StudyMetaDataFile* smdf = brainSetParent->getStudyMetaDataFile();
-   const int indx = smdf->getStudyIndexFromPubMedID(pubMedID);
-   QString idString;
-
-   if (indx >= 0) {   
-      const StudyMetaData* smd = smdf->getStudyMetaData(indx);
-      
-      idString += tagIndentation;
-      idString += tagBoldStart;
-      idString += "Meta-Analysis,  Study Number ";
-      idString += QString::number(indx);
-      idString += tagBoldEnd;
-      idString += ": ";
-      idString += tagNewLine;
-      
-      if (smd->getName().isEmpty() == false) {
-         if (getDisplayStudyMetaAnalysisNameInformation()) {
-            idString += tagIndentation;
-            idString += tagBoldStart;
-            idString += "Meta-Analysis Name";
-            idString += tagBoldEnd;
-            idString += ": ";
-            idString += htmlTranslate(smd->getName());
-            idString += tagNewLine;
-         }
-      } 
-      
-      if (smd->getTitle().isEmpty() == false) {
-         if (getDisplayStudyMetaAnalysisTitleInformation()) {
-            idString += tagIndentation;
-            idString += tagBoldStart;
-            idString += "Meta-Analysis Title";
-            idString += tagBoldEnd;
-            idString += ": ";
-            idString += htmlTranslate(smd->getTitle());
-            idString += tagNewLine;
-         }
-      }
-
-      if (smd->getAuthors().isEmpty() == false) {
-         if (getDisplayStudyMetaAnalysisAuthorsInformation()) {
-            idString += tagIndentation;
-            idString += tagBoldStart;
-            idString += "Meta-Analysis Authors";
-            idString += tagBoldEnd;
-            idString += ": ";
-            idString += htmlTranslate(smd->getAuthors());
-            idString += tagNewLine;
-         }
-      } 
-      
-      if (smd->getCitation().isEmpty() == false) {
-         if (getDisplayStudyMetaAnalysisCitationInformation()) {
-            idString += tagIndentation;
-            idString += tagBoldStart;
-            idString += "Meta-Analysis Citation";
-            idString += tagBoldEnd;
-            idString += ": ";
-            idString += htmlTranslate(smd->getCitation());
-            idString += tagNewLine;
-         }
-      } 
-      
-      if (smd->getDocumentObjectIdentifier().isEmpty() == false) {
-         if (getDisplayStudyMetaAnalysisDoiUrlInformation()) {
-            idString += tagIndentation;
-            QString theURL;
-            if (smd->getDocumentObjectIdentifier().startsWith("http:")) {
-               theURL = smd->getDocumentObjectIdentifier();
-            }
-            else {
-               theURL = "http://dx.doi.org/" + smd->getDocumentObjectIdentifier();
-            }
-            idString += tagBoldStart;
-            idString += "Meta-Analysis DOI/URL";
-            idString += tagBoldEnd;
-            idString += ": ";
-            idString += StringUtilities::convertURLsToHyperlinks(theURL);
-            idString += tagNewLine;
-         }
-      } 
-   }
-   return idString;
-}
-      
-/**
- * get the identification text for a meta-analysis studies attached to the input study.
- */
-QString 
-BrainModelIdentification::getIdentificationTextForMetaAnalysisStudies(const StudyMetaData* smd)
-{
-   if (getDisplayStudyMetaAnalysisInformation() == false) {
-      return "";
-   }
-   if (idFilter.anyStudyMetaAnalysisDataOn() == false) {
-      return "";
-   }
-
-   QString idString;
-   
-   std::vector<QString> otherStudies;
-   const StudyMetaDataFile* smdf = smd->getParent();
-   if (smdf != NULL) {
-      smdf->getMetaAnalysisStudiesForStudy(smd, otherStudies);
-      if (otherStudies.empty() == false) {
-         for (unsigned int mm = 0; mm < otherStudies.size(); mm++) {
-            idString += getIdentificationTextForMetaAnalysisStudy(otherStudies[mm]);
-         }
-      }
-   }
-   
-   return idString;
-}   
-
-/**
  * get the identification text for studies.
  */
 QString 
 BrainModelIdentification::getIdentificationTextForStudies(const StudyMetaDataFile* smdf,
-                                                          const StudyMetaDataLinkSet& smdls,
-                                                          const bool showMetaAnalysisFlag)
+                                                          const StudyMetaDataLinkSet& smdls)
 {
    QString idString;
    
@@ -2689,9 +2536,6 @@ BrainModelIdentification::getIdentificationTextForStudies(const StudyMetaDataFil
          const StudyMetaData* smd = smdf->getStudyMetaData(smdIndex);
          if (smd != NULL) {
             idString += getIdentificationTextForStudy(smd, smdIndex, &smdl);
-            if (showMetaAnalysisFlag) {
-               idString += getIdentificationTextForMetaAnalysisStudies(smd);
-            }
          }
       }
    }

@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -31,6 +33,7 @@
 #include <QDir>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QImageWriter>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
@@ -73,7 +76,7 @@
  * constructor.
  */
 GuiCaptureWindowImageDialog::GuiCaptureWindowImageDialog(QWidget* parent)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("Capture Image of Window");
    
@@ -881,7 +884,7 @@ GuiCaptureWindowImageDialog::captureNormalImage()
    
       QPrinter printer;
       QPrintDialog dialog(&printer, this);
-      if (dialog.exec() == QDialog::Accepted) {
+      if (dialog.exec() == GuiCaptureWindowImageDialog::Accepted) {
          QPainter painter(&printer);
          painter.drawImage(0, 0, image);
       }
@@ -903,20 +906,25 @@ GuiCaptureWindowImageDialog::captureNormalImage()
       //
       // Save the image
       //
-      QTime timer;
-      timer.start();
-      if (image.save(name, format.toAscii().constData(), imageQuality) == false) {
+      QImageWriter writer(name, format.toAscii());
+      if (writer.supportsOption(QImageIOHandler::Quality)) {
+         if (format.compare("png", Qt::CaseInsensitive) == 0) {
+            int qual = 1;
+            writer.setQuality(qual);
+         }
+         else {
+            writer.setQuality(imageQuality);
+         }
+      }
+      if (writer.supportsOption(QImageIOHandler::CompressionRatio)) {
+         writer.setCompression(1);
+      }
+      if (writer.write(image) == false) {
+      //if (image.save(name, format.toAscii().constData(), imageQuality) == false) {
          QString msg("Unable to save: ");
          msg.append(name);
          QMessageBox::critical(this, "ERROR", msg);
          return;
-      }
-      const float timeToWriteFileInSeconds = static_cast<float>(timer.elapsed()) / 1000.0;
-      if (DebugControl::getDebugOn()) {
-         std::cout << "Time to write " << FileUtilities::basename(name).toAscii().constData()
-                   << " was "
-                   << timeToWriteFileInSeconds
-                   << " seconds." << std::endl;
       }
 
       //
@@ -930,7 +938,7 @@ GuiCaptureWindowImageDialog::captureNormalImage()
       // Update spec file
       //
       if (addToSpecFileCheckBox->isChecked()) {
-         theMainWindow->getBrainSet(openGL->getModelViewNumber())->addToSpecFile(SpecFile::imageFileTag, name);
+         theMainWindow->getBrainSet(openGL->getModelViewNumber())->addToSpecFile(SpecFile::getImageFileTag(), name);
       }
    }
    
@@ -1273,7 +1281,7 @@ GuiCaptureWindowImageDialog::closeDialog()
       openGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_VIEW);
    }
 
-   QDialog::close();
+   WuQDialog::close();
 }
 
 /**
@@ -1284,7 +1292,7 @@ GuiCaptureWindowImageDialog::show()
 {
    slotWindowSelectionComboBox(windowSelectionComboBox->currentIndex());
 
-   QDialog::show();
+   WuQDialog::show();
 }
 
 /**

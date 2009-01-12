@@ -172,11 +172,25 @@ CommandSurfaceToCerebralHull::executeCommand() throw (BrainModelAlgorithmExcepti
    volumeFile.writeFile(outputSegmentationVolumeFileName);
    
    //
+   // Expand around edges with empty slices
+   //
+   VolumeFile segmentVolumeExpanded(volumeFile);
+   int expDim[3];
+   segmentVolumeExpanded.getDimensions(expDim);
+   const int expSlices = 7;
+   const int resizeCrop[6] = { 
+      -expSlices, expDim[0] + expSlices,
+      -expSlices, expDim[1] + expSlices,
+      -expSlices, expDim[2] + expSlices
+   };
+   segmentVolumeExpanded.resize(resizeCrop);
+
+   //
    // Generate the hull VTK file and volume
    //
    VolumeFile* hullVolume = NULL;
    vtkPolyData* hullPolyData = NULL;
-   brainSet.generateCerebralHullVtkFile(&volumeFile, 
+   brainSet.generateCerebralHullVtkFile(&segmentVolumeExpanded, 
                                         hullVolume,
                                         hullPolyData);
                                         

@@ -37,6 +37,7 @@ GuiMorphingMeasurementsDialog::GuiMorphingMeasurementsDialog(
                         const std::vector<MorphingMeasurements>& mm, 
                         const float totalTime,
                         const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingType,
+                        const bool deleteDialogWhenClosedFlag,
                         QWidget* parent)
    : WuQDialog(parent)
 {
@@ -45,6 +46,10 @@ GuiMorphingMeasurementsDialog::GuiMorphingMeasurementsDialog(
    }
    else {
       setWindowTitle("Flat Morphing Measurements");
+   }
+   
+   if (deleteDialogWhenClosedFlag) {
+      setAttribute(Qt::WA_DeleteOnClose);
    }
    
    //
@@ -244,7 +249,7 @@ GuiMorphingMeasurementsDialog::GuiMorphingMeasurementsDialog(
    closeButton->setFixedSize(closeButton->sizeHint());
    closeButton->setAutoDefault(false);
    QObject::connect(closeButton, SIGNAL(clicked()),
-                    this, SLOT(accept()));
+                    this, SLOT(close()));
                     
 }
 

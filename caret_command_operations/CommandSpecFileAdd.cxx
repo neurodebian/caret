@@ -69,8 +69,12 @@ CommandSpecFileAdd::getScriptBuilderParameters(ScriptBuilderParameters& paramsOu
    paramsOut.addFile("Spec File Name", 
                      FileFilters::getSpecFileFilter());
    paramsOut.addListOfItems("Tag", tags, names);
+   
+   QStringList allFileFilters;
+   FileFilters::getAllFileFilters(allFileFilters);
+      
    paramsOut.addFile("Data File Name", 
-                     FileFilters::getAnyFileFilter());
+                     allFileFilters);
    paramsOut.addVariableListOfParameters("Add Spec File Options");
 }
 /**

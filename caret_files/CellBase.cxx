@@ -86,6 +86,9 @@ CellBase::initialize()
    sumsIDNumber = "-1";
    sumsRepeatNumber = "-1";
    sumsParentCellBaseID = "-1";
+   sumsVersionNumber = "-1";
+   sumsMSLID = "-1";
+   attributeID = "-1";
 }
 
 /**
@@ -122,6 +125,9 @@ CellBase::copyData(const CellBase& cb)
    sumsIDNumber = cb.sumsIDNumber;
    sumsRepeatNumber = cb.sumsRepeatNumber;
    sumsParentCellBaseID = cb.sumsParentCellBaseID;
+   sumsVersionNumber = cb.sumsVersionNumber;
+   sumsMSLID = cb.sumsMSLID;
+   attributeID = cb.attributeID;
 }
 
 /**
@@ -223,6 +229,36 @@ CellBase::setSumsParentCellBaseID(const QString& s)
    sumsParentCellBaseID = s;
    setModified();
 }
+      
+/**
+ * set SuMS version number.
+ */
+void 
+CellBase::setSumsVersionNumber(const QString& s)
+{
+   sumsVersionNumber = s;
+   setModified();
+}
+
+/**
+ * set mslid.
+ */
+void 
+CellBase::setSumsMSLID(const QString& s)
+{
+   sumsMSLID = s;
+   setModified();
+}
+
+/**
+ * set the attribute ID.
+ */
+void 
+CellBase::setAttributeID(const QString& s)
+{
+   attributeID = s;
+   setModified();
+}      
       
 /**
  * update the cell's invalid structure using the X coordinate if it is not zero.
@@ -390,6 +426,9 @@ CellBase::copyCellBaseData(const CellBase& cb, const bool copyXYZ)
    sumsIDNumber  = cb.sumsIDNumber;
    sumsRepeatNumber = cb.sumsRepeatNumber;
    sumsParentCellBaseID = cb.sumsParentCellBaseID;
+   sumsVersionNumber = cb.sumsVersionNumber;
+   sumsMSLID = cb.sumsMSLID;
+   attributeID = cb.attributeID;
 }      
 
 /**
@@ -500,6 +539,15 @@ CellBase::readXMLWithDOM(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == tagSumsParentCellBaseID) {
             sumsParentCellBaseID = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
+         else if (elem.tagName() == tagSumsVersionNumber) {
+            sumsVersionNumber = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == tagSumsMSLID) {
+            sumsMSLID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == tagAttributeID) {
+            attributeID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
          else {
             std::cout << "WARNING: unrecognized CellBase element: "
                       << elem.tagName().toAscii().constData()
@@ -609,7 +657,7 @@ CellBase::writeXML(QDomDocument& xmlDoc,
                                     tagSignedDistanceAboveSurface, QString::number(signedDistanceAboveSurface, 'f', 6));
    
    //
-   // SuMS ID, repeat number and parent cell base ID
+   // SuMS ID, repeat number and parent cell base ID, version numer, mslid
    //
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
                                    tagSumsIDNumber, sumsIDNumber);
@@ -617,7 +665,13 @@ CellBase::writeXML(QDomDocument& xmlDoc,
                                    tagSumsRepeatNumber, sumsRepeatNumber);
    AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
                                    tagSumsParentCellBaseID, sumsParentCellBaseID);
-
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
+                                   tagSumsVersionNumber, sumsVersionNumber);
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
+                                   tagSumsMSLID, sumsMSLID);
+   AbstractFile::addXmlTextElement(xmlDoc, cellBaseElement,
+                                   tagAttributeID, attributeID);
+   
    //
    // structure
    //

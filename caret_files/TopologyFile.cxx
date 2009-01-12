@@ -231,24 +231,24 @@ TopologyFile::getPerimeterIDFromTopologyType(TOPOLOGY_TYPES tt)
 QString
 TopologyFile::getSpecFileTagFromTopologyType(const TOPOLOGY_TYPES tt)
 {
-   QString tag(SpecFile::unknownTopoFileMatchTag);
+   QString tag(SpecFile::getUnknownTopoFileMatchTag());
    
    switch(tt) {
       case TOPOLOGY_TYPE_CLOSED:
-         tag = SpecFile::closedTopoFileTag;
+         tag = SpecFile::getClosedTopoFileTag();
          break;
       case TOPOLOGY_TYPE_OPEN:
-         tag = SpecFile::openTopoFileTag;
+         tag = SpecFile::getOpenTopoFileTag();
          break;
       case TOPOLOGY_TYPE_CUT:
-         tag = SpecFile::cutTopoFileTag;
+         tag = SpecFile::getCutTopoFileTag();
          break;
       case TOPOLOGY_TYPE_LOBAR_CUT:
-         tag = SpecFile::lobarCutTopoFileTag;
+         tag = SpecFile::getLobarCutTopoFileTag();
          break;
       case TOPOLOGY_TYPE_UNKNOWN:
       case TOPOLOGY_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownTopoFileMatchTag;
+         tag = SpecFile::getUnknownTopoFileMatchTag();
          break;
    }
    
@@ -534,7 +534,7 @@ TopologyFile::getEulerCount(const bool twoDimFlag, int& numFaces,
       numHoles = 1 - eulerCount;
    }
    else {
-      numHoles = (eulerCount - 2) / (-2);
+      numHoles = 1 - (eulerCount / 2);   //(eulerCount - 2) / (-2);
    }
 }
 

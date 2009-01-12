@@ -93,6 +93,7 @@
 #include "GuiAutomaticRotationDialog.h"
 #include "GuiBordersCreateInterpolatedDialog.h"
 #include "GuiBorderDrawUpdateDialog.h"
+#include "GuiBorderOperationsDialog.h"
 #include "GuiCaptureWindowImageDialog.h"
 #include "GuiColorKeyDialog.h"
 #include "GuiContourAlignmentDialog.h"
@@ -102,6 +103,7 @@
 #include "GuiDataFileMathDialog.h"
 #include "GuiDrawBorderDialog.h"
 #include "GuiFilesModified.h"
+#include "GuiFlattenFullHemisphereDialog.h"
 #include "GuiImageEditorWindow.h"
 #include "GuiImageViewingWindow.h"
 #include "GuiIdentifyDialog.h"
@@ -142,6 +144,8 @@
 #include "GuiSmoothingDialog.h"
 #include "GuiSpecFileDialog.h"
 //#include "GuiSpeechGenerator.h"
+#include "GuiStandardMeshDialog.h"
+#include "GuiStudyCollectionFileEditorDialog.h"
 #include "GuiStudyMetaDataFileEditorDialog.h"
 #include "GuiSurfaceRegionOfInterestDialog.h"
 #include "GuiSurfaceRegionOfInterestDialogOLD.h"
@@ -149,7 +153,6 @@
 #include "GuiVocabularyFileEditorDialog.h"
 #include "GuiVolumeBiasCorrectionDialog.h"
 #include "GuiVolumeResizingDialog.h"
-#include "GuiVolumeMultiHemSureFitSegmentationDialog.h"
 #include "GuiVolumeThresholdSegmentationDialog.h"
 #include "GuiVolumeAttributesDialog.h"
 #include "GuiVolumeRegionOfInterestDialog.h"
@@ -169,6 +172,7 @@
 #include "SceneFile.h"
 #include "SectionFile.h"
 #include "StringUtilities.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
@@ -356,8 +360,10 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    contourDrawDialog       = NULL;
    contourSectionControlDialog = NULL;
    contourSetScaleDialog   = NULL;
+   borderOperationsDialog  = NULL;
    drawBorderDialog        = NULL;
    flatMorphingDialog      = NULL;
+   flattenFullHemisphereDialog = NULL;
    fociAttributeAssignmentDialog = NULL;
    helpViewerDialog        = NULL;
    imageEditorWindow       = NULL;
@@ -379,11 +385,12 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    shapeModificationDialog = NULL;
    shapeMathDialog         = NULL;
    sphereMorphingDialog    = NULL;
+   standardMeshDialog      = NULL;
+   studyCollectionFileEditorDialog = NULL;
    studyMetaDataFileEditorDialog = NULL;
    surfaceRegionOfInterestDialog = NULL;
    surfaceRegionOfInterestDialogOLD = NULL;
    transformMatrixEditorDialog = NULL;
-   volumeSureFitMultiHemSegmentationDialog = NULL;
    volumeThresholdSegmentationDialog = NULL;
    volumeResizingDialog    = NULL;
    volumeAttributesDialog  = NULL;
@@ -859,6 +866,33 @@ GuiMainWindow::displayModelsEditorDialog()
 }
       
 /**
+ * create (if necessary) and show the border operations dialog.
+ */
+void 
+GuiMainWindow::displayBorderOperationsDialog()
+{
+   getBorderOperationsDialog(true);
+}
+
+/**
+ * create (if necessary) and show the flatten full hemisphere dialog.
+ */
+void 
+GuiMainWindow::displayFlattenFullHemisphereDialog()
+{
+   getFlattenFullHemisphereDialog(true);
+}
+      
+/**
+ * create (if necessary) and show the standard mesh dialog.
+ */
+void 
+GuiMainWindow::displayStandardMeshDialog()
+{
+   getStandardMeshDialog(true);
+}
+      
+/**
  * Create (if necessary) and show the draw border dialog.
  */
 void
@@ -901,6 +935,71 @@ GuiMainWindow::getDrawBorderDialog(const bool showIt)
    return drawBorderDialog;
 }
 
+/**
+ * create, possibly show, and return the border operations dialog.
+ */
+GuiBorderOperationsDialog* 
+GuiMainWindow::getBorderOperationsDialog(const bool showIt)
+{
+   bool firstTime = false;
+   if (borderOperationsDialog == NULL) {
+      firstTime = true;
+      borderOperationsDialog = new GuiBorderOperationsDialog(this);
+   }
+   if (showIt) {
+      borderOperationsDialog->show();
+      borderOperationsDialog->activateWindow();
+   }
+   if (firstTime) {
+      QtUtilities::positionWindowOffOtherWindow(this, borderOperationsDialog);
+   }
+   return borderOperationsDialog;
+}
+
+/**
+ * create, possibly show, and return the flatten full hemisphere dialog.
+ */
+GuiFlattenFullHemisphereDialog* 
+GuiMainWindow::getFlattenFullHemisphereDialog(const bool showIt)
+{
+   bool firstTime = false;
+   if (flattenFullHemisphereDialog == NULL) {
+      firstTime = true;
+      flattenFullHemisphereDialog = new GuiFlattenFullHemisphereDialog(this);
+   }
+   if (showIt) {
+      flattenFullHemisphereDialog->showFirstPage();
+      flattenFullHemisphereDialog->show();
+      flattenFullHemisphereDialog->activateWindow();
+   }
+   if (firstTime) {
+      QtUtilities::positionWindowOffOtherWindow(this, flattenFullHemisphereDialog);
+   }
+   return flattenFullHemisphereDialog;
+}      
+      
+/**
+ * create, possibly show, and return the standard mesh dialog.
+ */
+GuiStandardMeshDialog* 
+GuiMainWindow::getStandardMeshDialog(const bool showIt)
+{
+   bool firstTime = false;
+   if (standardMeshDialog == NULL) {
+      firstTime = true;
+      standardMeshDialog = new GuiStandardMeshDialog(this);
+   }
+   if (showIt) {
+      standardMeshDialog->showFirstPage();
+      standardMeshDialog->show();
+      standardMeshDialog->activateWindow();
+   }
+   if (firstTime) {
+      QtUtilities::positionWindowOffOtherWindow(this, standardMeshDialog);
+   }
+   return standardMeshDialog;
+}
+      
 /**
  *
  */
@@ -1152,22 +1251,6 @@ GuiMainWindow::getVolumeRegionOfInterestDialog(const bool showIt)
 }
 
 /**
- * Create, possibly show and return the volume SureFit multi-hem segmentation dialog.
- */
-GuiVolumeMultiHemSureFitSegmentationDialog*
-GuiMainWindow::getVolumeSureFitMultiHemSegmentationDialog(const bool showIt)
-{
-   if (volumeSureFitMultiHemSegmentationDialog == NULL) {
-      volumeSureFitMultiHemSegmentationDialog = new GuiVolumeMultiHemSureFitSegmentationDialog(this);
-   }
-   if (showIt) {
-      volumeSureFitMultiHemSegmentationDialog->show();
-      volumeSureFitMultiHemSegmentationDialog->activateWindow();
-   }
-   return volumeSureFitMultiHemSegmentationDialog;
-}
-
-/**
  * Create, possibly show and return the volume threshold segmentation dialog.
  */
 GuiVolumeThresholdSegmentationDialog*
@@ -1404,6 +1487,19 @@ GuiMainWindow::displayStudyMetaDataFileEditorDialog()
    }
    studyMetaDataFileEditorDialog->show();
    studyMetaDataFileEditorDialog->activateWindow();
+}
+      
+/**
+ * display the study collection file editor dialog.
+ */
+void 
+GuiMainWindow::displayStudyCollectionFileEditorDialog()
+{
+   if (studyCollectionFileEditorDialog == NULL) {
+      studyCollectionFileEditorDialog = new GuiStudyCollectionFileEditorDialog(this);
+   }
+   studyCollectionFileEditorDialog->show();
+   studyCollectionFileEditorDialog->activateWindow();
 }
       
 /**
@@ -1737,6 +1833,7 @@ GuiMainWindow::checkForModifiedFiles(BrainSet* bs,
       checkFileModified("Scene File", bs->getSceneFile(), msg);
    }
    checkFileModified("Section File", bs->getSectionFile(), msg);
+   checkFileModified("Study Collection File", bs->getStudyCollectionFile(), msg);
    checkFileModified("Study Metadata File", bs->getStudyMetaDataFile(), msg);
    checkFileModified("Surface Shape File", bs->getSurfaceShapeFile(), msg);
    checkFileModified("Surface Vector File", bs->getSurfaceVectorFile(), msg);
@@ -1923,6 +2020,13 @@ GuiMainWindow::slotCloseProgram()
                    "Changes to these files will be lost:\n\n");
       msg2.append(msg);
       
+      WuQDataEntryDialog warningDialog(this);
+      warningDialog.setWindowTitle("Caret 5");
+      warningDialog.addTextEdit("", msg2, true);
+      if (warningDialog.exec() == WuQDataEntryDialog::Accepted) {
+         qApp->quit();
+      }
+/*
       if (QMessageBox::warning(this, 
                               "Caret 5",
                               msg2, 
@@ -1932,6 +2036,7 @@ GuiMainWindow::slotCloseProgram()
          //speakText("Goodbye carrot user.");
          qApp->quit();
       }
+*/
    }
    else {   
       //
@@ -2104,6 +2209,15 @@ GuiMainWindow::loadSpecFilesDataFiles(SpecFile sf,
                   QString msg2("If you choose \"Yes\" changes to these files will be lost:\n\n");
                   msg2.append(msg);
                   
+                  WuQDataEntryDialog warningDialog(this);
+                  warningDialog.setWindowTitle("Caret 5");
+                  warningDialog.addTextEdit("", msg2, true);
+                  warningDialog.setOkButtonText("Yes");
+                  warningDialog.setCancelButtonText("No");
+                  if (warningDialog.exec() != WuQDataEntryDialog::Accepted) {
+                     return;
+                  }
+
                   if (QMessageBox::warning(this, 
                                           "WARNING",
                                           msg2, 
@@ -2297,6 +2411,7 @@ GuiMainWindow::postSpecFileReadInitializations()
    fileModificationUpdate(fm);
    
    GuiBrainModelOpenGL::setPaintingEnabled(true);
+   GuiToolBar::clearAllYoking();
    GuiToolBar::updateAllToolBars(true);
    
    getBrainSet()->setDisplaySplashImage(false);
@@ -2403,6 +2518,13 @@ GuiMainWindow::updateStatusBarLabel()
          altLeftLabel   = "Rotate(3D)";
          shiftLeftLabel = "Done";
          break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW_NEW:
+         modeLabel      = "DRAW BORDER";
+         leftLabel      = "Draw";
+         ctrlLeftLabel  = "Augment";
+         altLeftLabel   = "Rotate(3D)";
+         shiftLeftLabel = "Done";
+         break;
       case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DELETE:
          modeLabel      = "DELETE BORDER";
          clickLeftLabel      = "Delete Border";
@@ -2434,6 +2556,11 @@ GuiMainWindow::updateStatusBarLabel()
          leftLabel      = "Choose Border 1";
          shiftLeftLabel = "Choose Border 2";
          break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_INTERPOLATE_NEW:
+         modeLabel      = "BORDER INTERPOLATE";
+         leftLabel      = "Choose Border 1";
+         shiftLeftLabel = "Choose Border 2";
+         break;
       case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_MOVE_POINT:
          modeLabel      = "MOVE BORDER POINT";
          leftLabel      = "Move Border Point";
@@ -2447,6 +2574,12 @@ GuiMainWindow::updateStatusBarLabel()
          clickLeftLabel = "Choose Border";
          break;
       case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE:
+         modeLabel      = "BORDER UPDATE";
+         leftLabel      = "Draw Update";
+         shiftLeftLabel = "Done";
+         altLeftLabel   = "Rotate(3D)";
+         break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE_NEW:
          modeLabel      = "BORDER UPDATE";
          leftLabel      = "Draw Update";
          shiftLeftLabel = "Done";
@@ -2487,6 +2620,11 @@ GuiMainWindow::updateStatusBarLabel()
          break;
       case GuiBrainModelOpenGL::MOUSE_MODE_ALIGN_STANDARD_ORIENTATION:
          modeLabel      = "Align to Std Orientation";
+         leftLabel      = "Ventral Tip";
+         shiftLeftLabel = "Dorsal-Medial Tip";
+         break;
+      case GuiBrainModelOpenGL::MOUSE_MODE_ALIGN_STANDARD_ORIENTATION_FULL_HEM_FLATTEN:
+         modeLabel      = "Set Central Sulcus Tips";
          leftLabel      = "Ventral Tip";
          shiftLeftLabel = "Dorsal-Medial Tip";
          break;
@@ -2725,6 +2863,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    bool updateSurfaceShape = false;
    bool updateSurfaceVector = false;
    bool updateStatusBar = false;
+   bool updateStudyCollection = false;
    bool updateStudyMetaData = false;
    bool updateToolBar      = false;
    bool updateTopography = false;
@@ -2900,10 +3039,14 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       updateTransformData = true;
       updateModels = true;
    }
+   if (fm.studyCollection) {
+      updateStudyCollection = true;
+   }
    if (fm.studyMetaData) {
       updateFoci       = true;
       updateFociColors = true;
       updateFociDisplayFlags = true;
+      updateStudyCollection = true;
       updateStudyMetaData = true;
    }
    if (fm.vocabulary) {
@@ -2949,6 +3092,24 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    if (updateBorderColors) {
       getBrainSet()->assignBorderColors();
    }
+   
+   if (updateBorders || updateBorderProjections || updateBorderColors ||
+       updateCoordinates || updatePaint || updateSurfaceShape || updateVolume) {
+      if (borderOperationsDialog != NULL) {
+         borderOperationsDialog->updateDialog();
+      }
+   }
+   
+   if (updateBorders || updateBorderProjections ||
+       updateCoordinates || updatePaint || updateSurfaceShape) {
+      if (flattenFullHemisphereDialog != NULL) {
+         flattenFullHemisphereDialog->updateDialog();
+      }
+      if (standardMeshDialog != NULL) {
+         standardMeshDialog->updateDialog();
+      }
+   }
+   
    if (updateCellColors) {
       getBrainSet()->assignCellColors(); 
    }
@@ -3085,6 +3246,12 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       }
    }
    
+   if (updateStudyCollection) {
+      if (studyCollectionFileEditorDialog != NULL) {
+         studyCollectionFileEditorDialog->updateDialog();
+      }
+   }
+   
    if (updateToolBar) {
       GuiToolBar::updateAllToolBars(true);
       updateDisplayedMenus();
@@ -3116,9 +3283,6 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    if (updateVolume) {
       if (volumeRegionOfInterestDialog != NULL) {
          volumeRegionOfInterestDialog->updateDialog();
-      }
-      if (volumeSureFitMultiHemSegmentationDialog != NULL) {
-         volumeSureFitMultiHemSegmentationDialog->updateDialog();
       }
       if (volumeThresholdSegmentationDialog != NULL) {
          volumeThresholdSegmentationDialog->updateDialog();
@@ -3341,10 +3505,12 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
       QString msg;
       int geometry[4];
       int glWidgetWidthHeight[2];
+      bool yokeFlag = false;
       BrainModel* bm = getBrainSet()->showSceneGetBrainModel(scene,
                                                         i,
                                                         geometry,
                                                         glWidgetWidthHeight,
+                                                        yokeFlag,
                                                         msg);
       if (bm != NULL) {
          if (i == 0) {
@@ -3374,6 +3540,7 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
                   geometry[0] = std::max(geometry[0], screenMinX);
                   geometry[1] = std::max(geometry[1], screenMinY);
                   move(geometry[0], geometry[1]);
+                  resize(geometry[2], geometry[3]);
                   break;
                case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_MAIN_OTHERS_RELATIVE:
                   resize(geometry[2], geometry[3]);
@@ -3388,6 +3555,11 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
          }
          else {
             //
+            // OpenGL for window
+            //
+            GuiBrainModelOpenGL* openGL = GuiBrainModelOpenGL::getBrainModelOpenGLForWindow(
+                                    static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(i));
+            //
             // Create window if needed
             //
             GuiBrainModelViewingWindow* viewWindow = modelWindow[i];
@@ -3396,17 +3568,20 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
                viewWindow = modelWindow[i];
             }
             viewWindow->displayBrainModelInWindow(bm);
+            if (openGL != NULL) {
+               openGL->setYokeView(yokeFlag);
+            }
+            viewWindow->getToolBar()->setYokeStatus(yokeFlag);
             if (geometry[0] < 0) {
-               geometry[0] = mainWindowSceneX + 20.0;
-               geometry[1] = mainWindowSceneY + 20.0;
+               geometry[0] = static_cast<int>(mainWindowSceneX + 20.0);
+               geometry[1] = static_cast<int>(mainWindowSceneY + 20.0);
                
-               GuiBrainModelOpenGL* openGL = GuiBrainModelOpenGL::getBrainModelOpenGLForWindow(
-                                    static_cast<BrainModel::BRAIN_MODEL_VIEW_NUMBER>(i));
                if (openGL != NULL) {
                   const int deltaSizeX = glWidgetWidthHeight[0] - openGL->width();
                   const int deltaSizeY = glWidgetWidthHeight[1] - openGL->height();
                   geometry[2] = viewWindow->width() + deltaSizeX;
                   geometry[3] = viewWindow->height() + deltaSizeY;
+                  
                }
                else {
                   geometry[2] = 512;
@@ -3433,6 +3608,7 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
                case DisplaySettingsScene::WINDOW_POSITIONS_IGNORE_ALL:
                   break;
             }
+            
          }
       }
       else if (i > 0) {
@@ -3537,7 +3713,7 @@ GuiMainWindow::saveScene(std::vector<SceneFile::SceneClass>& mainWindowSceneClas
                mainOpenGL->height()
             };
             SceneFile::SceneClass sc("");
-            getBrainSet()->saveSceneForBrainModelWindow(i, geometry, glWidgetWidthHeight, bm, sc);
+            getBrainSet()->saveSceneForBrainModelWindow(i, geometry, glWidgetWidthHeight, bm, false, sc);
             mainWindowSceneClasses.push_back(sc);
          }
       }
@@ -3561,7 +3737,9 @@ GuiMainWindow::saveScene(std::vector<SceneFile::SceneClass>& mainWindowSceneClas
                      openGL->height()
                   };
                   SceneFile::SceneClass sc("");
-                  getBrainSet()->saveSceneForBrainModelWindow(i, geometry, glWidgetWidthHeight, bm, sc);
+                  getBrainSet()->saveSceneForBrainModelWindow(i, geometry, 
+                                                              glWidgetWidthHeight, bm, 
+                                                              openGL->getYokeView(), sc);
                   mainWindowSceneClasses.push_back(sc);
                }
             }
@@ -3604,7 +3782,11 @@ GuiMainWindow::saveScene(std::vector<SceneFile::SceneClass>& mainWindowSceneClas
    }
    
    if (displayControlDialog != NULL) {
-      mainWindowSceneClasses.push_back(displayControlDialog->saveScene());
+      std::vector<SceneFile::SceneClass> dcSceneClasses = 
+         displayControlDialog->saveScene();
+      for (unsigned int i = 0; i < dcSceneClasses.size(); i++) {
+         mainWindowSceneClasses.push_back(dcSceneClasses[i]);
+      }
    }
 }
      

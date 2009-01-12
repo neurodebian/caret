@@ -1242,7 +1242,7 @@ GuiMapFmriDialog::mapDataToPaintFiles(QProgressDialog& progressDialog)
                   //
                   // Add the metric file to the spec file
                   //
-                  sf.addToSpecFile(SpecFile::paintFileTag, metricName, "", false);
+                  sf.addToSpecFile(SpecFile::getPaintFileTag(), metricName, "", false);
                   
                   //
                   // Write the spec file
@@ -2065,7 +2065,7 @@ GuiMapFmriDialog::mapDataToMetricFiles(QProgressDialog& progressDialog)
                   //
                   // Add the metric file to the spec file
                   //
-                  sf.addToSpecFile(SpecFile::metricFileTag, metricName, "", false);
+                  sf.addToSpecFile(SpecFile::getMetricFileTag(), metricName, "", false);
                   
                   //
                   // Write the spec file
@@ -2797,7 +2797,7 @@ GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
    //
    GuiMapFmriAtlasDialog fad(this, &atlasSpecFileInfo,
                              theMainWindow->getBrainSet()->getPreferencesFile(),
-                             theMainWindow->getBrainSet()->getSpecies(),
+                             theMainWindow->getBrainSet()->getSpecies().getName(),
                              theMainWindow->getBrainSet()->getStructure().getTypeAsString(),
                              false,
                              enableMetricMultiFidOptions, enablePaintMultiFidOptions);
@@ -2846,7 +2846,8 @@ GuiMapFmriDialog::slotAddCaretMapWithAtlasPushButton()
                                         mapToAllCasesFlag);
       }
       
-      if (atlasCoordFileNames.empty() == false) {
+      if ((atlasCoordFileNames.empty() == false) ||
+          (atlasAvgCoordFileName.isEmpty() == false)) {
          //
          // Create the mapping set for use atlas to map to caret metric file
          //
@@ -2930,7 +2931,8 @@ GuiMapFmriDialog::getFiducialSurfaces(std::vector<BrainModelSurface*>& surfaces,
       BrainModelSurface* bms = theMainWindow->getBrainSet()->getBrainModelSurface(i);
       if (bms != NULL) {
          haveAnySurface = true;
-         if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+         if ((bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_RAW) ||
+             (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL)) {
             surfaces.push_back(bms);
          }
       }

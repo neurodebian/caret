@@ -36,6 +36,7 @@
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceDistortion.h"
+#include "BrainModelSurfaceROINodeSelection.h"
 #include "BrainModelSurfaceSmoothing.h"
 #include "BrainModelSurfaceSphericalTessellator.h"
 #include "BrainModelSurfaceTopologyCorrector.h"
@@ -156,6 +157,8 @@ BrainModelSurfaceTopologyCorrector::removeNodesInHighlyCompressedTilesFromAvaila
                                     fiducialSurface,
                                     fiducialSurface->getTopologyFile(),
                                     &ssf,
+                                    BrainModelSurfaceDistortion::DISTORTION_COLUMN_CREATE_NEW,
+                                    BrainModelSurfaceDistortion::DISTORTION_COLUMN_DO_NOT_GENERATE,
                                     "Areal",
                                     "");
    bmsd.execute();
@@ -273,7 +276,25 @@ BrainModelSurfaceTopologyCorrector::getListOfNodesThatWereRemoved(std::vector<in
       }
    }
 }
-      
+
+/**
+ * get a list of node numbers that were removed.
+ */
+void 
+BrainModelSurfaceTopologyCorrector::getListOfNodesThatWereRemoved(
+                       BrainModelSurfaceROINodeSelection& nodesRemovedROI) const
+{
+   nodesRemovedROI.update();
+   nodesRemovedROI.deselectAllNodes();
+   
+   std::vector<int> nodesRemoved;
+   getListOfNodesThatWereRemoved(nodesRemoved);
+   const int num = static_cast<int>(nodesRemoved.size());
+   for (int i = 0; i < num; i++) {
+      nodesRemovedROI.setNodeSelected(nodesRemoved[i], true);
+   }
+}      
+
 /**
  * smooth around removed nodes.
  */

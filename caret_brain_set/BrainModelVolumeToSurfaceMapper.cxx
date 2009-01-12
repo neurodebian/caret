@@ -680,7 +680,7 @@ void
 BrainModelVolumeToSurfaceMapper::algorithmMetricMaximumVoxel(const float* allCoords)
 {
    float maximumVoxelNeighbors = 1.0;
-   algorithmParameters.setAlgorithmMetricMaximumVoxelParameters(maximumVoxelNeighbors);
+   algorithmParameters.getAlgorithmMetricMaximumVoxelParameters(maximumVoxelNeighbors);
    
    for (int i = 0; i < numberOfNodes; i++) {
       float value = 0.0;
@@ -978,6 +978,69 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
                                                              int& kMin, int& kMax,
                                                              const float neighborsCubeSize) const
 {
+   int ijk[3];
+   if (volumeFile->convertCoordinatesToVoxelIJK(xyz, ijk) == false) {
+      return false;
+   }
+   
+   //
+   // Half cube
+   //
+   const float halfCubeSize = neighborsCubeSize * 0.5;
+   
+   //
+   // Min corner
+   //   
+   const float minCorner[3] = {
+      xyz[0] - halfCubeSize,
+      xyz[1] - halfCubeSize,
+      xyz[2] - halfCubeSize
+   };
+   int ijkMin[3];
+   volumeFile->convertCoordinatesToVoxelIJK(minCorner, ijkMin);
+
+   //
+   // Max corner
+   //   
+   const float maxCorner[3] = {
+      xyz[0] + halfCubeSize,
+      xyz[1] + halfCubeSize,
+      xyz[2] + halfCubeSize
+   };
+   int ijkMax[3];
+   volumeFile->convertCoordinatesToVoxelIJK(maxCorner, ijkMax);
+
+   //
+   // Limit dimensions
+   //
+   int dim[3];
+   volumeFile->getDimensions(dim);
+   for (int i = 0; i < 3; i++) {
+      ijkMin[i] = std::max(ijkMin[i], 0);
+      ijkMax[i] = std::min(ijkMax[i], dim[i] - 1);
+   }
+   
+   iMin = ijkMin[0];
+   jMin = ijkMin[1];
+   kMin = ijkMin[2];
+   iMax = ijkMax[0];
+   jMax = ijkMax[1];
+   kMax = ijkMax[2];
+
+   return true;
+}
+
+/**
+ * Get the valid subvolume for neighbor mapping algorithms.
+ * Returns true if the neighbors subvolume is valid (within the volume)
+ *
+bool
+BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
+                                                             int& iMin, int& iMax,
+                                                             int& jMin, int& jMax,
+                                                             int& kMin, int& kMax,
+                                                             const float neighborsCubeSize) const
+{
    //
    // See where the node is located inside the volume
    //
@@ -1010,16 +1073,19 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
          //
          // Half voxel sizes
          //
-         const float halfVoxelI = volumeVoxelSize[0] * 0.5;
-         const float halfVoxelJ = volumeVoxelSize[1] * 0.5;
-         const float halfVoxelK = volumeVoxelSize[2] * 0.5;
+         //const float halfVoxelI = volumeVoxelSize[0] * 0.5;
+         //const float halfVoxelJ = volumeVoxelSize[1] * 0.5;
+         //const float halfVoxelK = volumeVoxelSize[2] * 0.5;
          
          //
          // Look for voxels in positive X
          //
          const float maxX = xyz[0] + halfCube;
          for (int i = ijk[0] + 1; i < maxDimI; i++) {
-            const float x = i * volumeVoxelSize[0] + volumeOrigin[0] + halfVoxelI;
+            float coord[3];
+            volumeFile->getVoxelCoordinate(i, ijk[1], ijk[2], coord);
+            const float x = coord[0];
+            //const float x = i * volumeVoxelSize[0] + volumeOrigin[0] + halfVoxelI;
             if (x <= maxX) {
                iMax = i;
             }
@@ -1033,7 +1099,10 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
          //
          const float minX = xyz[0] - halfCube;
          for (int i = ijk[0] - 1; i >= 0; i--) {
-            const float x = i * volumeVoxelSize[0] + volumeOrigin[0] + halfVoxelI;
+            float coord[3];
+            volumeFile->getVoxelCoordinate(i, ijk[1], ijk[2], coord);
+            const float x = coord[0];
+            //const float x = i * volumeVoxelSize[0] + volumeOrigin[0] + halfVoxelI;
             if (x >= minX) {
                iMin = i;
             }
@@ -1047,7 +1116,10 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
          //
          const float maxY = xyz[1] + halfCube;
          for (int j = ijk[1] + 1; j < maxDimJ; j++) {
-            const float y = j * volumeVoxelSize[1] + volumeOrigin[1] + halfVoxelJ;
+            float coord[3];
+            volumeFile->getVoxelCoordinate(ijk[0], j, ijk[2], coord);
+            const float y = coord[1];
+            //const float y = j * volumeVoxelSize[1] + volumeOrigin[1] + halfVoxelJ;
             if (y <= maxY) {
                jMax = j;
             }
@@ -1061,7 +1133,10 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
          //
          const float minY = xyz[1] - halfCube;
          for (int j = ijk[1] - 1; j >= 0; j--) {
-            const float y = j * volumeVoxelSize[1] + volumeOrigin[1] + halfVoxelJ;
+            float coord[3];
+            volumeFile->getVoxelCoordinate(ijk[0], j, ijk[2], coord);
+            const float y = coord[1];
+            //const float y = j * volumeVoxelSize[1] + volumeOrigin[1] + halfVoxelJ;
             if (y >= minY) {
                jMin = j;
             }
@@ -1075,7 +1150,10 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
          //
          const float maxZ = xyz[2] + halfCube;
          for (int k = ijk[2] + 1; k < maxDimK; k++) {
-            const float z = k * volumeVoxelSize[2] + volumeOrigin[2] + halfVoxelK;
+            float coord[3];
+            volumeFile->getVoxelCoordinate(ijk[0], ijk[1], k, coord);
+            const float z = coord[2];
+            //const float z = k * volumeVoxelSize[2] + volumeOrigin[2] + halfVoxelK;
             if (z <= maxZ) {
                kMax = k;
             }
@@ -1089,7 +1167,10 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
          //
          const float minZ = xyz[2] - halfCube;
          for (int k = ijk[2] - 1; k >= 0; k--) {
-            const float z = k * volumeVoxelSize[2] + volumeOrigin[2] + halfVoxelK;
+            float coord[3];
+            volumeFile->getVoxelCoordinate(ijk[0], ijk[1], k, coord);
+            const float z = coord[2];
+            //const float z = k * volumeVoxelSize[2] + volumeOrigin[2] + halfVoxelK;
             if (z >= minZ) {
                kMin = k;
             }
@@ -1104,6 +1185,7 @@ BrainModelVolumeToSurfaceMapper::getNeighborsSubVolume(const float xyz[3],
    
    return false;
 }
+*/
 
 /**
  * Run the Paint Enclosing Voxel algorithm

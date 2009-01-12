@@ -966,7 +966,7 @@ CommandFileConvert::freeSurferCurvatureToCaretConvert() throw (CommandException)
       //
       std::vector<QString> tags;
       std::vector<QString> values;
-      tags.push_back(SpecFile::surfaceShapeFileTag);
+      tags.push_back(SpecFile::getSurfaceShapeFileTag());
       values.push_back(shapeName);
       updateSpecFile(tags, values);
    }
@@ -1087,7 +1087,7 @@ CommandFileConvert::freeSurferLabelToCaretConvert() throw (CommandException)
       //
       std::vector<QString> tags;
       std::vector<QString> values;
-      tags.push_back(SpecFile::paintFileTag);
+      tags.push_back(SpecFile::getPaintFileTag());
       values.push_back(paintName);
       updateSpecFile(tags, values);
    }
@@ -1145,7 +1145,7 @@ CommandFileConvert::freeSurferFunctionalToCaretConvert() throw (CommandException
       //
       std::vector<QString> tags;
       std::vector<QString> values;
-      tags.push_back(SpecFile::metricFileTag);
+      tags.push_back(SpecFile::getMetricFileTag());
       values.push_back(metricName);
       updateSpecFile(tags, values);
    }
@@ -1186,8 +1186,8 @@ CommandFileConvert::surfaceFileConversion() throw (CommandException)
          case SURFACE_TYPE_CARET:
             {
                SpecFile sf;
-               sf.addToSpecFile(SpecFile::closedTopoFileTag, inputSurfaceName2, "", false);
-               sf.addToSpecFile(SpecFile::fiducialCoordFileTag, inputSurfaceName, "", true);
+               sf.addToSpecFile(SpecFile::getClosedTopoFileTag(), inputSurfaceName2, "", false);
+               sf.addToSpecFile(SpecFile::getFiducialCoordFileTag(), inputSurfaceName, "", true);
                sf.setAllFileSelections(SpecFile::SPEC_TRUE);
                QString errorMessages;
                brainSet->readSpecFile(sf, "spec-name", errorMessages); 

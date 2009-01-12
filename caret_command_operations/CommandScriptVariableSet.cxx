@@ -50,9 +50,11 @@ CommandScriptVariableSet::~CommandScriptVariableSet()
 void 
 CommandScriptVariableSet::getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const
 {
+   QStringList allFilters;
+   FileFilters::getAllFileFilters(allFilters);
    paramsOut.clear();
    paramsOut.addString("Variable Name", "$name");
-   paramsOut.addString("Variable Value", "value");
+   paramsOut.addFile("Variable Value", allFilters, "value");
 }
 
 /**

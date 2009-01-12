@@ -23,14 +23,17 @@ HEADERS += CommandBase.h \
            CommandDeformationMapCreate.h \
            CommandDeformationMapPathUpdate.h \
            CommandException.h \
+           CommandExtend.h \
            CommandFileConvert.h \
            CommandFileReadTime.h \
            CommandFileSubstitution.h \
            CommandGiftiInfo.h \
            CommandImageCombine.h \
            CommandImageCompare.h \
+           CommandImageFormatConvert.h \
            CommandImageInsertText.h \
            CommandImageResize.h \
+           CommandImageToWebPage.h \
            CommandImageView.h \
            CommandHelp.h \
            CommandHelpFull.h \
@@ -73,6 +76,7 @@ HEADERS += CommandBase.h \
            CommandPaintAssignNodesRelativeToLine.h \
            CommandPaintComposite.h \
            CommandPaintFileCreate.h \
+           CommandPreferencesFileSettings.h \
            CommandSceneCreate.h \
            CommandScriptComment.h \
            CommandScriptConvert.h \
@@ -90,10 +94,13 @@ HEADERS += CommandBase.h \
            CommandSpecFileZip.h \
            CommandStatisticSetRandomSeed.h \
            CommandStatisticalUnitTesting.h \
+           CommandStereotaxicSpaces.h \
            CommandStudyMetaDataFileDuplicates.h \
+           CommandSurfaceAffineRegression.h \
            CommandSurfaceAlignToStandardOrientation.h \
            CommandSurfaceApplyTransformationMatrix.h \
            CommandSurfaceAverage.h \
+           CommandSurfaceBorderCreateAverage.h \
            CommandSurfaceBorderCreateParallelBorder.h \
            CommandSurfaceBorderCutter.h \
            CommandSurfaceBorderDelete.h \
@@ -115,11 +122,14 @@ HEADERS += CommandBase.h \
            CommandSurfaceCellUnprojection.h \
            CommandSurfaceCrossoverCheck.h \
            CommandSurfaceCurvature.h \
+           CommandSurfaceDistortion.h \
            CommandSurfaceFlatMultiResMorphing.h \
            CommandSurfaceFlatten.h \
+           CommandSurfaceFociAttributeAssignment.h \
            CommandSurfaceFociCreate.h \
            CommandSurfaceFociDelete.h \
            CommandSurfaceFociProjection.h \
+           CommandSurfaceFociProjectionPals.h \
            CommandSurfaceFociUnprojection.h \
            CommandSurfaceInflate.h \
            CommandSurfaceInformation.h \
@@ -132,6 +142,7 @@ HEADERS += CommandBase.h \
            CommandSurfaceRegistrationSphericalSpecOnly.h \
            CommandSurfaceRoiCoordReport.h \
            CommandSurfaceRoiFoldingMeasures.h \
+           CommandSurfaceRoiShapeMeasures.h \
            CommandSurfaceRoiStatisticalReport.h \
            CommandSurfaceSmoothing.h \
            CommandSurfaceSphericalMultiResMorphing.h \
@@ -207,9 +218,13 @@ HEADERS += CommandBase.h \
            CommandVolumeSetSpacing.h \
            CommandVolumeShiftAxis.h \
            CommandVolumeSmearAxis.h \
+           CommandVolumeTFCE.h \
            CommandVolumeThreshold.h \
            CommandVolumeThresholdDual.h \
            CommandVolumeThresholdInverse.h \
+           CommandVolumeTopologyCorrector.h \
+           CommandVolumeTopologyGraph.h \
+           CommandVolumeTopologyReport.h \
            CommandVolumeVectorCombine.h \
            OffScreenOpenGLWidget.h \
            ScriptBuilderParameters.h
@@ -224,6 +239,7 @@ SOURCES += CommandBase.cxx \
            CommandDeformationMapCreate.cxx \
            CommandDeformationMapPathUpdate.cxx \
            CommandException.cxx \
+           CommandExtend.cxx \
            CommandFileConvert.cxx \
            CommandFileReadTime.cxx \
            CommandFileSubstitution.cxx \
@@ -236,8 +252,10 @@ SOURCES += CommandBase.cxx \
            CommandHelpSearch.cxx \
            CommandImageCombine.cxx \
            CommandImageCompare.cxx \
+           CommandImageFormatConvert.cxx \
            CommandImageInsertText.cxx \
            CommandImageResize.cxx \
+           CommandImageToWebPage.cxx \
            CommandImageView.cxx \
            CommandMetricClustering.cxx \
            CommandMetricComposite.cxx \
@@ -274,6 +292,7 @@ SOURCES += CommandBase.cxx \
            CommandPaintAssignNodesRelativeToLine.cxx \
            CommandPaintComposite.cxx \
            CommandPaintFileCreate.cxx \
+           CommandPreferencesFileSettings.cxx \
            CommandSceneCreate.cxx \
            CommandScriptComment.cxx \
            CommandScriptConvert.cxx \
@@ -291,10 +310,13 @@ SOURCES += CommandBase.cxx \
            CommandSpecFileZip.cxx \
            CommandStatisticSetRandomSeed.cxx \
            CommandStatisticalUnitTesting.cxx \
+           CommandStereotaxicSpaces.cxx \
            CommandStudyMetaDataFileDuplicates.cxx \
+           CommandSurfaceAffineRegression.cxx \
            CommandSurfaceAlignToStandardOrientation.cxx \
            CommandSurfaceApplyTransformationMatrix.cxx \
            CommandSurfaceAverage.cxx \
+           CommandSurfaceBorderCreateAverage.cxx \
            CommandSurfaceBorderCreateParallelBorder.cxx \
            CommandSurfaceBorderCutter.cxx \
            CommandSurfaceBorderDelete.cxx \
@@ -316,11 +338,14 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceCellUnprojection.cxx \
            CommandSurfaceCrossoverCheck.cxx \
            CommandSurfaceCurvature.cxx \
+           CommandSurfaceDistortion.cxx \
            CommandSurfaceFlatMultiResMorphing.cxx \
            CommandSurfaceFlatten.cxx \
+           CommandSurfaceFociAttributeAssignment.cxx \
            CommandSurfaceFociCreate.cxx \
            CommandSurfaceFociDelete.cxx \
            CommandSurfaceFociProjection.cxx \
+           CommandSurfaceFociProjectionPals.cxx \
            CommandSurfaceFociUnprojection.cxx \
            CommandSurfaceGenerateInflated.cxx \
            CommandSurfaceIdentifySulci.cxx \
@@ -334,6 +359,7 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceRegistrationSphericalSpecOnly.cxx \
            CommandSurfaceRoiCoordReport.cxx \
            CommandSurfaceRoiFoldingMeasures.cxx \
+           CommandSurfaceRoiShapeMeasures.cxx \
            CommandSurfaceRoiStatisticalReport.cxx \
            CommandSurfaceSmoothing.cxx \
            CommandSurfaceSphericalMultiResMorphing.cxx \
@@ -408,9 +434,13 @@ SOURCES += CommandBase.cxx \
            CommandVolumeSetSpacing.cxx \
            CommandVolumeShiftAxis.cxx \
            CommandVolumeSmearAxis.cxx \
+           CommandVolumeTFCE.cxx \
            CommandVolumeThreshold.cxx \
            CommandVolumeThresholdDual.cxx \
            CommandVolumeThresholdInverse.cxx \
+           CommandVolumeTopologyCorrector.cxx \
+           CommandVolumeTopologyGraph.cxx \
+           CommandVolumeTopologyReport.cxx \
            CommandVolumeVectorCombine.cxx \
            OffScreenOpenGLWidget.cxx \
            ScriptBuilderParameters.cxx

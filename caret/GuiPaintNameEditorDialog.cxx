@@ -59,7 +59,7 @@
  * constructor.
  */
 GuiPaintNameEditorDialog::GuiPaintNameEditorDialog(QWidget* parent)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    addColumnTitlesToPaintNameLayoutFlag = true;
    

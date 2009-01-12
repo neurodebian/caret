@@ -710,7 +710,8 @@ BrainModelSurfaceFlattenFullHemisphere::executePart2()
    //
    // Set all borders as unmodified
    //
-   bmbs->setAllModifiedStatus(false);
+   bmbs->setAllBordersModifiedStatus(false);
+   bmbs->setProjectionsModified(false);
 }
 
 /**
@@ -953,7 +954,7 @@ BrainModelSurfaceFlattenFullHemisphere::createDeformationBorders(PaintFile* pf)
    //
    // Create a point locator
    //
-   BrainModelSurfacePointLocator locator(flattenSurface, true, &nonMedialWallNodes);
+   BrainModelSurfacePointLocator locator(flattenSurface, true, false, &nonMedialWallNodes);
    
    //
    // Initialize a border projection file
@@ -1039,6 +1040,6 @@ BrainModelSurfaceFlattenFullHemisphere::createDeformationBorders(PaintFile* pf)
       }
       
       bpf.writeFile(borderProjectionFileName);
-      brainSet->addToSpecFile(SpecFile::borderProjectionFileTag, borderProjectionFileName);
+      brainSet->addToSpecFile(SpecFile::getBorderProjectionFileTag(), borderProjectionFileName);
    }
 }

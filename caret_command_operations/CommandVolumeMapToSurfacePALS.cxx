@@ -312,6 +312,7 @@ CommandVolumeMapToSurfacePALS::executeCommand() throw (BrainModelAlgorithmExcept
                              + algorithmName
                              + "\".");
    }
+   mappingParameters.setAlgorithm(algorithm);
 
    //
    // Get the structure

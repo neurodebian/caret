@@ -75,8 +75,9 @@ class SurfaceShapeFile : public MetricFile {
                                          const FILE_FORMAT fileFormat = AbstractFile::FILE_FORMAT_ASCII) throw (FileException);
 };
 
-#ifdef _SURFACE_SHAPE_MAIN_
+#endif // __VE_SURFACE_SHAPE_FILE_H__
 
+#ifdef _SURFACE_SHAPE_MAIN_
    const QString SurfaceShapeFile::arealDistortionColumnName 
                                                     = "Areal Distortion";
    const QString SurfaceShapeFile::gaussianCurvatureColumnName 
@@ -89,7 +90,5 @@ class SurfaceShapeFile : public MetricFile {
                                                     = "Depth";
    const QString SurfaceShapeFile::sulcalDepthSmoothedColumnName 
                                                      = "Depth Smoothed";
-
 #endif // _SURFACE_SHAPE_MAIN_
 
-#endif // __VE_SURFACE_SHAPE_FILE_H__

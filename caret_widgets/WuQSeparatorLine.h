@@ -1,3 +1,7 @@
+
+#ifndef __WU_QSEPARATOR_H__
+#define __WU_QSEPARATOR_H__
+
 /*LICENSE_START*/
 /*
  *  Copyright 1995-2002 Washington University School of Medicine
@@ -23,16 +27,23 @@
  */
 /*LICENSE_END*/
 
-#include "Categories.h"
+#include <QFrame>
 
-/**
- * get a list of valid categories.
- */
-void 
-Categories::getAllCategories(std::vector<QString>& categories)
-{
-   categories.clear();
-   categories.push_back(getAtlasCategoryValue());
-   categories.push_back(getIndividualCategoryValue());
-   categories.push_back(getTutorialCategoryValue());
-}
+/// a separator widget like Motif's Separator (line)
+class WuQSeparatorLine : public QFrame {
+   Q_OBJECT
+   
+   public:
+      // constructor
+      WuQSeparatorLine(const Qt::Orientation orientation,
+                       const int lineWidthOrHeight = 10,
+                       QWidget* parent = 0);
+                   
+      // destructor
+      ~WuQSeparatorLine();
+      
+   protected:
+      
+};
+
+#endif // __WU_QSEPARATOR_H__

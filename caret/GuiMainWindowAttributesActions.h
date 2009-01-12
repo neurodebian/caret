@@ -148,6 +148,9 @@ class GuiMainWindowAttributesActions : public QObject {
       /// get the study meta data editor action
       QAction* getStudyMetaDataEditorDialogAction() { return studyMetaDataEditorDialogAction; }
       
+      /// get the study collection editor action
+      QAction* getStudyCollectionEditorDialogAction() { return studyCollectionEditorDialogAction; }
+      
       /// get the vocabulary file editor action
       QAction* getVocabularyFileEditorDialogAction() { return vocabularyFileEditorDialogAction; }
 
@@ -357,6 +360,9 @@ class GuiMainWindowAttributesActions : public QObject {
       
       /// study meta data action
       QAction* studyMetaDataEditorDialogAction;
+      
+      /// study collection action
+      QAction* studyCollectionEditorDialogAction;
       
       /// vocabulary file editor action
       QAction* vocabularyFileEditorDialogAction;

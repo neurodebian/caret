@@ -29,6 +29,8 @@
 
 #include "CommandBase.h"
 
+class SpecFile;
+
 /// class for creating a spec file
 class CommandSpecFileCreate : public CommandBase {
    public:
@@ -52,6 +54,8 @@ class CommandSpecFileCreate : public CommandBase {
                                    ProgramParametersException,
                                    StatisticException);
 
+      // add all files in the current directory
+      void addFilesInCurrentDirectory(SpecFile& sf);
 };
 
 #endif // __COMMAND_SPEC_FILE_CREATE_H__

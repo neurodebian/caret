@@ -2513,7 +2513,76 @@ BrainModelSurfaceROINodeSelection::findIslands(const BrainModelSurface* selectio
    
    return static_cast<int>(islandRootNode.size());
 }
- 
+
+/**
+ * find islands and place each in an ROI.
+ */
+std::vector<BrainModelSurfaceROINodeSelection*> 
+BrainModelSurfaceROINodeSelection::findIslands(const BrainModelSurface* selectionSurface)
+{
+   std::vector<BrainModelSurfaceROINodeSelection*> islandsOut;
+   
+   //
+   // Determine islands
+   //
+   std::vector<int> islandRootNode, islandNumNodes, nodeRootNeighbor;
+   const int numIslands = findIslands(selectionSurface,
+                                      islandRootNode,
+                                      islandNumNodes,
+                                      nodeRootNeighbor);
+                                      
+   if (numIslands > 0) {
+      const int numNodes = selectionSurface->getNumberOfNodes();
+      
+      //
+      // Contains mapping of Root node to ROI index
+      //
+      std::vector<int> rootNodeToRoiIndex(numNodes, -1);
+
+      //
+      // Create new ROIs for each island
+      //
+      for (int i = 0; i < numIslands; i++) {
+         rootNodeToRoiIndex[islandRootNode[i]] = i;
+         islandsOut.push_back(new BrainModelSurfaceROINodeSelection(brainSet));
+      }
+      
+      //
+      // Loop through nodes
+      //
+      for (int i = 0; i < numNodes; i++) {
+         //
+         // Assign node to proper ROI
+         //
+         const int roiNodeNumber = nodeRootNeighbor[i];
+         if (roiNodeNumber >= 0) {
+            const int roiIndex = rootNodeToRoiIndex[roiNodeNumber];
+            islandsOut[roiIndex]->setNodeSelected(i, true);
+         }
+      }
+      
+/*
+      for (int i = 0; i < numIslands; i++) {
+         const int rootNode = islandRootNode[i];
+         
+         //
+         // Create an ROI containing nodes in the island
+         //
+         BrainModelSurfaceROINodeSelection* island
+            = new BrainModelSurfaceROINodeSelection(brainSet);
+         for (int j = 0; j < numNodes; j++) {
+            if (nodeRootNeighbor[j] == rootNode) {
+               island->setNodeSelected(j, true);
+            }
+         }
+         islandsOut.push_back(island);
+      }
+*/
+   }
+   
+   return islandsOut;
+}
+
 /**
  * find node int ROI nearest the XYZ.
  */

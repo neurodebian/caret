@@ -55,7 +55,7 @@
 #include "BrainModelBorderSet.h"
 #include "BrainModelContours.h"
 #include "BrainSet.h"
-#include "Categories.h"
+#include "Category.h"
 #include "CellColorFile.h"
 #include "CellProjectionFile.h"
 #include "CellFile.h"
@@ -75,7 +75,10 @@
 #include "FociProjectionFile.h"
 #include "FociSearchFile.h"
 #include "GeodesicDistanceFile.h"
+#include "GuiCategoryComboBox.h"
 #include "GuiDataFileOpenDialog.h"
+#include "GuiSpeciesComboBox.h"
+#include "GuiStereotaxicSpaceComboBox.h"
 #include "GuiStructureComboBox.h"
 #include "GuiMainWindow.h"
 #include "LatLonFile.h"
@@ -95,6 +98,7 @@
 #include "Species.h"
 #include "StereotaxicSpace.h"
 #include "StringUtilities.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
@@ -447,54 +451,54 @@ GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
    areaColorGroup = listFiles(filesLayout, 
                               "Area Color Files", 
                               bs->getAreaColorFile(),
-                              SpecFile::areaColorFileTag, 
+                              SpecFile::getAreaColorFileTag(), 
                               specFile.areaColorFile);
    arealEstGroup = listFiles(filesLayout, 
                              "Areal Estimation Files", 
                               bs->getArealEstimationFile(),
-                             SpecFile::arealEstimationFileTag, 
+                             SpecFile::getArealEstimationFileTag(), 
                              specFile.arealEstimationFile);
    borderGroup = listBorderFiles(filesLayout, 
                                  specFile);   
    borderColorGroup = listFiles(filesLayout, 
                                 "Border Color Files", 
                                 bs->getBorderColorFile(),
-                                SpecFile::borderColorFileTag, 
+                                SpecFile::getBorderColorFileTag(), 
                                 specFile.borderColorFile);
    borderProjGroup = listFiles(filesLayout, 
                                "Border Projection Files", 
                                NULL,
-                               SpecFile::borderProjectionFileTag, 
+                               SpecFile::getBorderProjectionFileTag(), 
                                specFile.borderProjectionFile);
    cellGroup = listFiles(filesLayout, 
                          "Cell Files (Fiducial)", 
                          bs->getCellProjectionFile(),  // NOTE: all cells are stored in cell projection file
-                         SpecFile::cellFileTag, 
+                         SpecFile::getCellFileTag(), 
                          specFile.cellFile);
    cellVolumeGroup = listFiles(filesLayout, 
                                "Cell Files (Volume)", 
                                bs->getVolumeCellFile(),
-                               SpecFile::volumeCellFileTag, 
+                               SpecFile::getVolumeCellFileTag(), 
                                specFile.volumeCellFile);
    cellColorGroup = listFiles(filesLayout, 
                               "Cell Color Files", 
                               bs->getCellColorFile(),
-                              SpecFile::cellColorFileTag, 
+                              SpecFile::getCellColorFileTag(), 
                               specFile.cellColorFile);
    cellProjectionGroup = listFiles(filesLayout, 
                                    "Cell Projection Files", 
                                    bs->getCellProjectionFile(),
-                                   SpecFile::cellProjectionFileTag, 
+                                   SpecFile::getCellProjectionFileTag(), 
                                    specFile.cellProjectionFile);
    cerebralHullGroup = listFiles(filesLayout, 
                                  "Cerebral Hull Files", 
                                  NULL,
-                                 SpecFile::cerebralHullFileTag, 
+                                 SpecFile::getCerebralHullFileTag(), 
                                  specFile.cerebralHullFile);
    cocomacGroup = listFiles(filesLayout, 
                             "CoCoMac Connectivity File", 
                               bs->getCocomacFile(),
-                            SpecFile::cocomacConnectivityFileTag, 
+                            SpecFile::getCocomacConnectivityFileTag(), 
                             specFile.cocomacConnectivityFile, 
                             false);
    ContourFile* contourFile = NULL;
@@ -505,206 +509,211 @@ GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
    contourGroup = listFiles(filesLayout, 
                             "Contour File", 
                             contourFile,
-                            SpecFile::contourFileTag, 
+                            SpecFile::getContourFileTag(), 
                             specFile.contourFile);
    contourCellGroup = listFiles(filesLayout, 
                                 "Contour Cell File", 
                                 bs->getContourCellFile(),
-                                SpecFile::contourCellFileTag, 
+                                SpecFile::getContourCellFileTag(), 
                                 specFile.contourCellFile);
    contourCellColorGroup = listFiles(filesLayout,
                                      "Contour Cell Color File", 
                                      bs->getContourCellColorFile(),
-                                     SpecFile::contourCellColorFileTag, 
+                                     SpecFile::getContourCellColorFileTag(), 
                                      specFile.contourCellColorFile);
    cutsGroup = listFiles(filesLayout, 
                          "Cuts File", 
                          bs->getCutsFile(),
-                         SpecFile::cutsFileTag, 
+                         SpecFile::getCutsFileTag(), 
                          specFile.cutsFile);
    defFieldGroup = listFiles(filesLayout, 
                              "Deformation Field File", 
                               bs->getDeformationFieldFile(),
-                             SpecFile::deformationFieldFileTag,
+                             SpecFile::getDeformationFieldFileTag(),
                              specFile.deformationFieldFile);
    defMapGroup = listFiles(filesLayout, 
                            "Deformation Map File", 
                            NULL,
-                           SpecFile::deformationMapFileTag, 
+                           SpecFile::getDeformationMapFileTag(), 
                            specFile.deformationMapFile);
    documentGroup = listFiles(filesLayout,
                              "Document Files",
                              NULL,
-                             SpecFile::documentFileTag,
+                             SpecFile::getDocumentFileTag(),
                              specFile.documentFile);
    fociGroup = listFiles(filesLayout, 
                          "Foci Files (Fiducial)", 
                          bs->getFociProjectionFile(),  // NOTE: All foci are stored in foci projection file
-                         SpecFile::fociFileTag, 
+                         SpecFile::getFociFileTag(), 
                          specFile.fociFile);
    fociColorGroup = listFiles(filesLayout, 
                               "Foci Color File", 
                               bs->getFociColorFile(),
-                              SpecFile::fociColorFileTag, 
+                              SpecFile::getFociColorFileTag(), 
                               specFile.fociColorFile);
    fociProjGroup = listFiles(filesLayout, 
                              "Foci Projection File", 
                               bs->getFociProjectionFile(),
-                             SpecFile::fociProjectionFileTag, 
+                             SpecFile::getFociProjectionFileTag(), 
                              specFile.fociProjectionFile);
    fociSearchGroup = listFiles(filesLayout, 
                              "Foci Search File", 
                               bs->getFociSearchFile(),
-                             SpecFile::fociSearchFileTag, 
+                             SpecFile::getFociSearchFileTag(), 
                              specFile.fociSearchFile);
    geodesicGroup = listFiles(filesLayout, 
                              "Geodesic Distance File", 
                               bs->getGeodesicDistanceFile(),
-                             SpecFile::geodesicDistanceFileTag,
+                             SpecFile::getGeodesicDistanceFileTag(),
                              specFile.geodesicDistanceFile);
    imagesGroup = listFiles(filesLayout, 
                            "Image Files",
                            NULL,
-                           SpecFile::imageFileTag,
+                           SpecFile::getImageFileTag(),
                            specFile.imageFile);
    latLonGroup = listFiles(filesLayout, 
                            "Latitude Longitude Files", 
                            bs->getLatLonFile(),
-                           SpecFile::latLonFileTag, 
+                           SpecFile::getLatLonFileTag(), 
                            specFile.latLonFile);
    metricGroup = listFiles(filesLayout, 
                            "Metric Files", 
                            bs->getMetricFile(),
-                           SpecFile::metricFileTag, 
+                           SpecFile::getMetricFileTag(), 
                            specFile.metricFile);
    paintGroup = listFiles(filesLayout, 
                            "Paint Files", 
                            bs->getPaintFile(),
-                           SpecFile::paintFileTag, 
+                           SpecFile::getPaintFileTag(), 
                            specFile.paintFile);
    paletteGroup = listFiles(filesLayout, 
                            "Palette Files", 
                            bs->getPaletteFile(),
-                           SpecFile::paletteFileTag, 
+                           SpecFile::getPaletteFileTag(), 
                            specFile.paletteFile);
    paramsGroup = listFiles(filesLayout, 
                            "Params File", 
                            bs->getParamsFile(),
-                           SpecFile::paramsFileTag, 
+                           SpecFile::getParamsFileTag(), 
                            specFile.paramsFile);
    probAtlasGroup = listFiles(filesLayout, 
                            "Probabilistic Atlas Files", 
                            bs->getProbabilisticAtlasSurfaceFile(),
-                           SpecFile::atlasFileTag, 
+                           SpecFile::getAtlasFileTag(), 
                            specFile.atlasFile);
    rgbPaintGroup = listFiles(filesLayout, 
                            "RGB Paint Files", 
                            bs->getRgbPaintFile(),
-                           SpecFile::rgbPaintFileTag, 
+                           SpecFile::getRgbPaintFileTag(), 
                            specFile.rgbPaintFile);
    sceneGroup = listFiles(filesLayout, 
                            "Scene Files", 
                            bs->getSceneFile(),
-                           SpecFile::sceneFileTag, 
+                           SpecFile::getSceneFileTag(), 
                            specFile.sceneFile);
    sectionGroup = listFiles(filesLayout, 
                            "Section Files", 
                            bs->getSectionFile(),
-                           SpecFile::sectionFileTag, 
+                           SpecFile::getSectionFileTag(), 
                            specFile.sectionFile);
    shapeGroup = listFiles(filesLayout, 
                            "Surface Shape Files", 
                            bs->getSurfaceShapeFile(),
-                           SpecFile::surfaceShapeFileTag, 
+                           SpecFile::getSurfaceShapeFileTag(), 
                            specFile.surfaceShapeFile);
+   studyCollectionGroup = listFiles(filesLayout, 
+                           "Study Collection Files", 
+                           bs->getStudyCollectionFile(),
+                           SpecFile::getStudyCollectionFileTag(),
+                           specFile.studyCollectionFile);
    studyMetaDataGroup = listFiles(filesLayout, 
                            "Study Metadata Files", 
                            bs->getStudyMetaDataFile(),
-                           SpecFile::studyMetaDataFileTag,
+                           SpecFile::getStudyMetaDataFileTag(),
                            specFile.studyMetaDataFile);
    surfaceVectorGroup = listFiles(filesLayout, 
                            "Surface Vector Files", 
                            bs->getSurfaceVectorFile(),
-                           SpecFile::surfaceVectorFileTag,
+                           SpecFile::getSurfaceVectorFileTag(),
                            specFile.surfaceVectorFile);
    topographyGroup = listFiles(filesLayout, 
                            "Topography Files", 
                            bs->getTopographyFile(),
-                           SpecFile::topographyFileTag, 
+                           SpecFile::getTopographyFileTag(), 
                            specFile.topographyFile);
    transMatrixGroup = listFiles(filesLayout, 
                            "Transformation Matrix Files", 
                            bs->getTransformationMatrixFile(),
-                           SpecFile::transformationMatrixFileTag, 
+                           SpecFile::getTransformationMatrixFileTag(), 
                            specFile.transformationMatrixFile);
    transDataGroup = listFiles(filesLayout, 
                            "Transformation Data Files", 
                            NULL,
-                           SpecFile::transformationDataFileTag, 
+                           SpecFile::getTransformationDataFileTag(), 
                            specFile.transformationDataFile);
    vocabularyGroup = listFiles(filesLayout, 
                                "Vocabulary Files", 
                                bs->getVocabularyFile(),
-                               SpecFile::vocabularyFileTag,
+                               SpecFile::getVocabularyFileTag(),
                                specFile.vocabularyFile);
    volumeAnatomyGroup = listFiles(filesLayout, 
                                   "Volume Files - Anatomy", 
                                   NULL,
-                                  SpecFile::volumeAnatomyFileTag,
+                                  SpecFile::getVolumeAnatomyFileTag(),
                                   specFile.volumeAnatomyFile, 
                                   true, 
                                   true); 
    volumeFuncGroup = listFiles(filesLayout, 
                                "Volume Files - Functional", 
                                NULL,
-                               SpecFile::volumeFunctionalFileTag,
+                               SpecFile::getVolumeFunctionalFileTag(),
                                specFile.volumeFunctionalFile, 
                                true, 
                                true); 
    volumePaintGroup = listFiles(filesLayout, 
                                 "Volume Files - Paint", 
                                 NULL,
-                                SpecFile::volumePaintFileTag,
+                                SpecFile::getVolumePaintFileTag(),
                                 specFile.volumePaintFile, 
                                 true, 
                                 true); 
    volumeProbAtlasGroup = listFiles(filesLayout, 
                                     "Volume Files - Prob Atlas", 
                                     NULL,
-                                    SpecFile::volumeProbAtlasFileTag,
+                                    SpecFile::getVolumeProbAtlasFileTag(),
                                     specFile.volumeProbAtlasFile, 
                                     true, 
                                     true); 
    volumeRgbGroup = listFiles(filesLayout, 
                               "Volume Files - RGB", 
                               NULL,
-                              SpecFile::volumeRgbFileTag,
+                              SpecFile::getVolumeRgbFileTag(),
                               specFile.volumeRgbFile, 
                               true, 
                               true); 
    volumeSegmentGroup = listFiles(filesLayout, 
                            "Volume Files - Segmentation", 
                            NULL,
-                           SpecFile::volumeSegmentationFileTag,
+                           SpecFile::getVolumeSegmentationFileTag(),
                            specFile.volumeSegmentationFile, 
                            true, 
                            true); 
    volumeVectorGroup = listFiles(filesLayout, 
                                  "Volume Files - Vector", 
                                  NULL,
-                                 SpecFile::volumeVectorFileTag,
+                                 SpecFile::getVolumeVectorFileTag(),
                                  specFile.volumeVectorFile, 
                                  true, 
                                  true); 
    vtkModelGroup = listFiles(filesLayout, 
                              "VTK Model Files", 
                              NULL,
-                             SpecFile::vtkModelFileTag,
+                             SpecFile::getVtkModelFileTag(),
                              specFile.vtkModelFile);
    wustlRegionGroup = listFiles(filesLayout, 
                                 "Wustl Region Files", 
                                 bs->getWustlRegionFile(),
-                                SpecFile::wustlRegionFileTag,
+                                SpecFile::getWustlRegionFileTag(),
                                 specFile.wustlRegionFile);
 
    QLabel* dummyLabel = new QLabel(" ");
@@ -749,16 +758,16 @@ GuiSpecFileDialogMainWindow::writeSpecFileIfNeeded()
             specFile.setStructure(structureComboBox->getSelectedStructureAsString());
             specFileNeedsToBeWritten = true;
          }
-         if (savedSpecies != speciesLineEdit->text()) {
-            specFile.setSpecies(speciesLineEdit->text());
+         if (savedSpecies != speciesComboBox->getSelectedSpecies()) {
+            specFile.setSpecies(speciesComboBox->getSelectedSpecies().getName());
             specFileNeedsToBeWritten = true;
          }
-         if (savedSpace != spaceLineEdit->text()) {
-            specFile.setSpace(spaceLineEdit->text());
+         if (savedStereotaxicSpace != spaceComboBox->getSelectedStereotaxicSpace()) {
+            specFile.setSpace(spaceComboBox->getSelectedStereotaxicSpace());
             specFileNeedsToBeWritten = true;
          }
-         if (savedCategory != categoryLineEdit->text()) {
-            specFile.setCategory(categoryLineEdit->text());
+         if (savedCategory != categoryComboBox->getSelectedCategory()) {
+            specFile.setCategory(categoryComboBox->getSelectedCategory());
             specFileNeedsToBeWritten = true;
          }
          if (savedSubject != subjectLineEdit->text()) {
@@ -1062,6 +1071,7 @@ GuiSpecFileDialogMainWindow::disableToolBarButtons()
        (fociColorGroup == NULL) &&
        (fociProjGroup == NULL) &&
        (fociSearchGroup == NULL) &&
+       (studyCollectionGroup == NULL) &&
        (studyMetaDataGroup == NULL)) {
       fociAction->setEnabled(false);
    }
@@ -1084,6 +1094,7 @@ GuiSpecFileDialogMainWindow::disableToolBarButtons()
        (paramsGroup == NULL) &&
        (sectionGroup == NULL) &&
        (shapeGroup == NULL) &&
+       (studyCollectionGroup == NULL) &&
        (studyMetaDataGroup == NULL) &&
        (surfaceVectorGroup == NULL) &&
        (topographyGroup == NULL) &&
@@ -1332,6 +1343,9 @@ GuiSpecFileDialogMainWindow::setToolBarButtons()
    if (shapeGroup != NULL) {
       shapeGroup->setHidden(!showMisc);
    }
+   if (studyCollectionGroup != NULL) {
+      studyCollectionGroup->setHidden(!showMisc && !showFoci);
+   }
    if (studyMetaDataGroup != NULL) {
       studyMetaDataGroup->setHidden(!showMisc && !showFoci);
    }
@@ -1464,10 +1478,10 @@ GuiSpecFileDialogMainWindow::slotCreateSpecButton()
             //
             // Set the hemisphere, space, species, subject and category
             //
-            specFile.setStructure(structureComboBox->getSelectedStructureAsString());
-            specFile.setSpace(spaceLineEdit->text());
-            specFile.setSpecies(speciesLineEdit->text());
-            specFile.setCategory(categoryLineEdit->text());
+            specFile.setStructure(structureComboBox->getSelectedStructure());
+            specFile.setSpace(spaceComboBox->getSelectedStereotaxicSpace());
+            specFile.setSpecies(speciesComboBox->getSelectedSpecies());
+            specFile.setCategory(categoryComboBox->getSelectedCategory());
             specFile.setSubject(subjectLineEdit->text());
             
             //
@@ -1854,38 +1868,18 @@ GuiSpecFileDialogMainWindow::listSurfaceParameters(QVBoxLayout* layout)
    //
    // species
    //
-   QPushButton* speciesPushButton = new QPushButton("Species...");
-   speciesPushButton->setAutoDefault(false);
-   QObject::connect(speciesPushButton, SIGNAL(clicked()),
-                    this, SLOT(slotSpeciesPushButton()));
-   speciesPushButton->setToolTip( 
-                 "Press this button select from\n"
-                 "a list of valid species.");
-   speciesLineEdit = new QLineEdit;
-   speciesLineEdit->setFixedWidth(lineEditWidth);
+   QLabel* speciesLabel = new QLabel("Species");
+   speciesComboBox = new GuiSpeciesComboBox;
    savedSpecies = specFile.getSpecies();
-   speciesLineEdit->setText(savedSpecies);
-   speciesLineEdit->setToolTip(
-                 "Press the Species push button on the\n"
-                 "left to select from a list of valid species.");
+   speciesComboBox->setSelectedSpecies(savedSpecies);
    
    //
    // space
    //
-   QPushButton* spacePushButton = new QPushButton("Space...");
-   spacePushButton->setAutoDefault(false);
-   QObject::connect(spacePushButton, SIGNAL(clicked()),
-                    this, SLOT(slotSpacePushButton()));
-   spacePushButton->setToolTip( 
-                 "Press this button select from a\n"
-                 "list of valid stereotaxic spaces.");
-   spaceLineEdit = new QLineEdit;
-   spaceLineEdit->setFixedWidth(lineEditWidth);
-   savedSpace = specFile.getSpace();
-   spaceLineEdit->setText(savedSpace);
-   spaceLineEdit->setToolTip(
-                 "Press the Space push button on the left to \n"
-                 "select from a list of valid stereotaxic spaces.");
+   QLabel* spaceLabel = new QLabel("Space");
+   savedStereotaxicSpace = specFile.getSpace();
+   spaceComboBox = new GuiStereotaxicSpaceComboBox;
+   spaceComboBox->setSelectedStereotaxicSpace(savedStereotaxicSpace);
    
    //
    // subject
@@ -1902,27 +1896,17 @@ GuiSpecFileDialogMainWindow::listSurfaceParameters(QVBoxLayout* layout)
    //
    // category
    //
-   QPushButton* categoryPushButton = new QPushButton("Category...");
-   categoryPushButton->setAutoDefault(false);
-   QObject::connect(categoryPushButton, SIGNAL(clicked()),
-                    this, SLOT(slotCategoryPushButton()));
-   categoryPushButton->setToolTip(
-                 "Press this button select from\n"
-                 "a list of valid categories.");
-   categoryLineEdit = new QLineEdit;
-   categoryLineEdit->setFixedWidth(lineEditWidth);
+   QLabel* categoryLabel = new QLabel("Category");
+   categoryComboBox = new GuiCategoryComboBox;
    savedCategory = specFile.getCategory();
-   categoryLineEdit->setText(savedCategory);
-   categoryLineEdit->setToolTip(
-                 "Press the Category push button on the left\n"
-                 "to select from a list of valid categories.");
+   categoryComboBox->setSelectedCategory(savedCategory);
 
    //
    // Structure
    //
    QLabel* structureLabel = new QLabel("Structure");
    structureComboBox = new GuiStructureComboBox(0);
-   savedStructure = Structure::convertStringToType(specFile.getStructure());
+   savedStructure = specFile.getStructure().getType();
    structureComboBox->setStructure(savedStructure);
    
    //
@@ -1940,14 +1924,14 @@ GuiSpecFileDialogMainWindow::listSurfaceParameters(QVBoxLayout* layout)
    QGroupBox* paramBox = new QGroupBox("Metadata");
    QGridLayout* gridLayout = new QGridLayout(paramBox);
    gridLayout->setColumnMinimumWidth(2, 10);
-   gridLayout->addWidget(speciesPushButton, 0, 0);
-   gridLayout->addWidget(speciesLineEdit, 0, 1);
-   gridLayout->addWidget(spacePushButton, 0, 3);
-   gridLayout->addWidget(spaceLineEdit, 0, 4);
+   gridLayout->addWidget(speciesLabel, 0, 0);
+   gridLayout->addWidget(speciesComboBox, 0, 1);
+   gridLayout->addWidget(spaceLabel, 0, 3);
+   gridLayout->addWidget(spaceComboBox, 0, 4);
    gridLayout->addWidget(subjectLabel, 1, 0);
    gridLayout->addWidget(subjectLineEdit, 1, 1);
-   gridLayout->addWidget(categoryPushButton, 1, 3);
-   gridLayout->addWidget(categoryLineEdit, 1, 4);
+   gridLayout->addWidget(categoryLabel, 1, 3);
+   gridLayout->addWidget(categoryComboBox, 1, 4);
    gridLayout->addWidget(structureLabel, 2, 0);
    gridLayout->addWidget(structureComboBox, 2, 1);
    gridLayout->addWidget(commentPushButton, 2, 3);
@@ -1957,34 +1941,6 @@ GuiSpecFileDialogMainWindow::listSurfaceParameters(QVBoxLayout* layout)
    layout->addWidget(paramBox);
 
    return paramBox;
-}
-
-/**
- * Called when space button is pressed.
- */
-void 
-GuiSpecFileDialogMainWindow::slotSpacePushButton()
-{
-   std::vector<StereotaxicSpace> spaces;
-   StereotaxicSpace::getAllStereotaxicSpaces(spaces);
-   std::vector<QString> spaceNames;
-   
-   for (unsigned int i = 0; i < spaces.size(); i++) {
-      spaceNames.push_back(spaces[i].getName());
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                 "Stereotaxic Spaces",
-                                 "",
-                                 spaceNames,
-                                 -1);
-
-   if (lbsd.exec() == QDialog::Accepted) {
-      const int item = lbsd.getSelectedItemIndex();
-      if (item >= 0) {
-         spaceLineEdit->setText(spaceNames[item]);
-      }
-   }
 }
 
 /**
@@ -2000,62 +1956,6 @@ GuiSpecFileDialogMainWindow::slotCommentPushButton()
    }
 }
       
-/**
- * Called when species button is pressed.
- */
-void 
-GuiSpecFileDialogMainWindow::slotSpeciesPushButton()
-{
-   std::vector<QString> values;
-   Species::getAllSpecies(values);
-   
-   int defaultIndex = 0;
-   const QString currentValue = speciesLineEdit->text();
-   for (int i = 0; i < static_cast<int>(values.size()); i++) {
-      if (currentValue == values[i]) {
-         defaultIndex = i;
-         break;
-      }
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                  "Choose Species",
-                                  "",
-                                  values,
-                                  defaultIndex);
-   if (lbsd.exec() == QDialog::Accepted) {
-      speciesLineEdit->setText(lbsd.getSelectedText());
-   }
-}
-
-/**
- * Called when category button is pressed.
- */
-void 
-GuiSpecFileDialogMainWindow::slotCategoryPushButton()
-{
-   std::vector<QString> values;
-   Categories::getAllCategories(values);
-   
-   int defaultIndex = 1;
-   const QString currentValue = categoryLineEdit->text();
-   for (int i = 0; i < static_cast<int>(values.size()); i++) {
-      if (currentValue == values[i]) {
-         defaultIndex = i;
-         break;
-      }
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                  "Choose Category",
-                                  "",
-                                  values,
-                                  defaultIndex);
-   if (lbsd.exec() == QDialog::Accepted) {
-      categoryLineEdit->setText(lbsd.getSelectedText());
-   }
-}
-
 /**
  * List topology files for selection by user.
  */
@@ -2108,27 +2008,27 @@ GuiSpecFileDialogMainWindow::listTopologyFiles(QVBoxLayout* layout,
          case 0:
             typeLabel = "CLOSED";
             fileEntryPtr = &sf.closedTopoFile;
-            specFileTag = SpecFile::closedTopoFileTag;
+            specFileTag = SpecFile::getClosedTopoFileTag();
             break;
          case 1:
             typeLabel = "OPEN";
             fileEntryPtr = &sf.openTopoFile;
-            specFileTag = SpecFile::openTopoFileTag;
+            specFileTag = SpecFile::getOpenTopoFileTag();
             break;
          case 2:
             typeLabel = "CUT";
             fileEntryPtr = &sf.cutTopoFile;
-            specFileTag = SpecFile::cutTopoFileTag;
+            specFileTag = SpecFile::getCutTopoFileTag();
             break;
          case 3:
             typeLabel = "LOBAR CUT";
             fileEntryPtr = &sf.lobarCutTopoFile;
-            specFileTag = SpecFile::lobarCutTopoFileTag;
+            specFileTag = SpecFile::getLobarCutTopoFileTag();
             break;
          case 4:
             typeLabel = "UNKNOWN";
             fileEntryPtr = &sf.unknownTopoFile;
-            specFileTag = SpecFile::unknownTopoFileMatchTag;
+            specFileTag = SpecFile::getUnknownTopoFileMatchTag();
             break;
       }
       
@@ -2266,57 +2166,57 @@ GuiSpecFileDialogMainWindow::listCoordinateFiles(QVBoxLayout* layout,
          case 0:
             typeLabel = "RAW";
             fileEntry = &sf.rawCoordFile;
-            specFileTag = SpecFile::rawCoordFileTag;
+            specFileTag = SpecFile::getRawCoordFileTag();
             break;
          case 1:
             typeLabel = "FIDUCIAL";
             fileEntry = &sf.fiducialCoordFile;
-            specFileTag = SpecFile::fiducialCoordFileTag;
+            specFileTag = SpecFile::getFiducialCoordFileTag();
             break;
          case 2:
             typeLabel = "INFLATED";
             fileEntry = &sf.inflatedCoordFile;
-            specFileTag = SpecFile::inflatedCoordFileTag;
+            specFileTag = SpecFile::getInflatedCoordFileTag();
             break;
          case 3:
             typeLabel = "VERY INFLATED";
             fileEntry = &sf.veryInflatedCoordFile;
-            specFileTag = SpecFile::veryInflatedCoordFileTag;
+            specFileTag = SpecFile::getVeryInflatedCoordFileTag();
             break;
          case 4:
             typeLabel = "SPHERICAL";
             fileEntry = &sf.sphericalCoordFile;
-            specFileTag = SpecFile::sphericalCoordFileTag;
+            specFileTag = SpecFile::getSphericalCoordFileTag();
             break;
          case 5:
             typeLabel = "ELLIPSOID";
             fileEntry = &sf.ellipsoidCoordFile;
-            specFileTag = SpecFile::ellipsoidCoordFileTag;
+            specFileTag = SpecFile::getEllipsoidCoordFileTag();
             break;
          case 6:
             typeLabel = "COMP MED WALL";
             fileEntry = &sf.compressedCoordFile;
-            specFileTag = SpecFile::compressedCoordFileTag;
+            specFileTag = SpecFile::getCompressedCoordFileTag();
             break;
          case 7:
             typeLabel = "FLAT";
             fileEntry = &sf.flatCoordFile;
-            specFileTag = SpecFile::flatCoordFileTag;
+            specFileTag = SpecFile::getFlatCoordFileTag();
             break;
          case 8:
             typeLabel = "LOBAR FLAT";
             fileEntry = &sf.lobarFlatCoordFile;
-            specFileTag = SpecFile::lobarFlatCoordFileTag;
+            specFileTag = SpecFile::getLobarFlatCoordFileTag();
             break;
          case 9:
             typeLabel = "HULL";
             fileEntry = &sf.hullCoordFile;
-            specFileTag = SpecFile::hullCoordFileTag;
+            specFileTag = SpecFile::getHullCoordFileTag();
             break;
          case 10:
             typeLabel = "UNKNOWN";
             fileEntry = &sf.unknownCoordFile;
-            specFileTag = SpecFile::unknownCoordFileMatchTag;
+            specFileTag = SpecFile::getUnknownCoordFileMatchTag();
             break;
       }
       
@@ -2454,57 +2354,57 @@ GuiSpecFileDialogMainWindow::listSurfaceFiles(QVBoxLayout* layout,
          case 0:
             typeLabel = "RAW";
             fileEntry = &sf.rawSurfaceFile;
-            specFileTag = SpecFile::rawSurfaceFileTag;
+            specFileTag = SpecFile::getRawSurfaceFileTag();
             break;
          case 1:
             typeLabel = "FIDUCIAL";
             fileEntry = &sf.fiducialSurfaceFile;
-            specFileTag = SpecFile::fiducialSurfaceFileTag;
+            specFileTag = SpecFile::getFiducialSurfaceFileTag();
             break;
          case 2:
             typeLabel = "INFLATED";
             fileEntry = &sf.inflatedSurfaceFile;
-            specFileTag = SpecFile::inflatedSurfaceFileTag;
+            specFileTag = SpecFile::getInflatedSurfaceFileTag();
             break;
          case 3:
             typeLabel = "VERY INFLATED";
             fileEntry = &sf.veryInflatedSurfaceFile;
-            specFileTag = SpecFile::veryInflatedSurfaceFileTag;
+            specFileTag = SpecFile::getVeryInflatedSurfaceFileTag();
             break;
          case 4:
             typeLabel = "SPHERICAL";
             fileEntry = &sf.sphericalSurfaceFile;
-            specFileTag = SpecFile::sphericalSurfaceFileTag;
+            specFileTag = SpecFile::getSphericalSurfaceFileTag();
             break;
          case 5:
             typeLabel = "ELLIPSOID";
             fileEntry = &sf.ellipsoidSurfaceFile;
-            specFileTag = SpecFile::ellipsoidSurfaceFileTag;
+            specFileTag = SpecFile::getEllipsoidSurfaceFileTag();
             break;
          case 6:
             typeLabel = "COMP MED WALL";
             fileEntry = &sf.compressedSurfaceFile;
-            specFileTag = SpecFile::compressedSurfaceFileTag;
+            specFileTag = SpecFile::getCompressedSurfaceFileTag();
             break;
          case 7:
             typeLabel = "FLAT";
             fileEntry = &sf.flatSurfaceFile;
-            specFileTag = SpecFile::flatSurfaceFileTag;
+            specFileTag = SpecFile::getFlatSurfaceFileTag();
             break;
          case 8:
             typeLabel = "LOBAR FLAT";
             fileEntry = &sf.lobarFlatSurfaceFile;
-            specFileTag = SpecFile::lobarFlatSurfaceFileTag;
+            specFileTag = SpecFile::getLobarFlatSurfaceFileTag();
             break;
          case 9:
             typeLabel = "HULL";
             fileEntry = &sf.hullSurfaceFile;
-            specFileTag = SpecFile::hullSurfaceFileTag;
+            specFileTag = SpecFile::getHullSurfaceFileTag();
             break;
          case 10:
             typeLabel = "UNKNOWN";
             fileEntry = &sf.unknownSurfaceFile;
-            specFileTag = SpecFile::unknownSurfaceFileMatchTag;
+            specFileTag = SpecFile::getUnknownSurfaceFileMatchTag();
             break;
       }
       
@@ -2621,62 +2521,62 @@ GuiSpecFileDialogMainWindow::listBorderFiles(QVBoxLayout* layout,
          case 0:
             typeLabel = "RAW";
             fileEntry = &sf.rawBorderFile;
-            specFileTag = SpecFile::rawBorderFileTag;
+            specFileTag = SpecFile::getRawBorderFileTag();
             break;
          case 1:
             typeLabel = "FIDUCIAL";
             fileEntry = &sf.fiducialBorderFile;
-            specFileTag = SpecFile::fiducialBorderFileTag;
+            specFileTag = SpecFile::getFiducialBorderFileTag();
             break;
          case 2:
             typeLabel = "INFLATED";
             fileEntry = &sf.inflatedBorderFile;
-            specFileTag = SpecFile::inflatedBorderFileTag;
+            specFileTag = SpecFile::getInflatedBorderFileTag();
             break;
          case 3:
             typeLabel = "VERY INFLATED";
             fileEntry = &sf.veryInflatedBorderFile;
-            specFileTag = SpecFile::veryInflatedBorderFileTag;
+            specFileTag = SpecFile::getVeryInflatedBorderFileTag();
             break;
          case 4:
             typeLabel = "SPHERICAL";
             fileEntry = &sf.sphericalBorderFile;
-            specFileTag = SpecFile::sphericalBorderFileTag;
+            specFileTag = SpecFile::getSphericalBorderFileTag();
             break;
          case 5:
             typeLabel = "ELLIPSOID";
             fileEntry = &sf.ellipsoidBorderFile;
-            specFileTag = SpecFile::ellipsoidBorderFileTag;
+            specFileTag = SpecFile::getEllipsoidBorderFileTag();
             break;
          case 6:
             typeLabel = "COMP MED WALL";
             fileEntry = &sf.compressedBorderFile;
-            specFileTag = SpecFile::compressedBorderFileTag;
+            specFileTag = SpecFile::getCompressedBorderFileTag();
             break;
          case 7:
             typeLabel = "FLAT";
             fileEntry = &sf.flatBorderFile;
-            specFileTag = SpecFile::flatBorderFileTag;
+            specFileTag = SpecFile::getFlatBorderFileTag();
             break;
          case 8:
             typeLabel = "LOBAR FLAT";
             fileEntry = &sf.lobarFlatBorderFile;
-            specFileTag = SpecFile::lobarFlatBorderFileTag;
+            specFileTag = SpecFile::getLobarFlatBorderFileTag();
             break;
          case 9:
             typeLabel = "HULL";
             fileEntry = &sf.hullBorderFile;
-            specFileTag = SpecFile::hullBorderFileTag;
+            specFileTag = SpecFile::getHullBorderFileTag();
             break;
          case 10:
             typeLabel = "UNKNOWN";
             fileEntry = &sf.unknownBorderFile;
-            specFileTag = SpecFile::unknownBorderFileMatchTag;
+            specFileTag = SpecFile::getUnknownBorderFileMatchTag();
             break;
          case 11:
             typeLabel = "VOLUME";
             fileEntry = &sf.volumeBorderFile;
-            specFileTag = SpecFile::volumeBorderFileTag;
+            specFileTag = SpecFile::getVolumeBorderFileTag();
       }
       
       for (int j = 0; j < static_cast<int>(fileEntry->getNumberOfFiles()); j++ ) {
@@ -2987,34 +2887,34 @@ GuiSpecFileDialogMainWindow::fastOpenButtonSlot(int buttonNumber)
       //
       bool askFlag = true;
       bool appendFile = true;
-      if ((s.specFileTag == SpecFile::rawCoordFileTag) ||
-          (s.specFileTag == SpecFile::fiducialCoordFileTag) ||
-          (s.specFileTag == SpecFile::inflatedCoordFileTag) ||
-          (s.specFileTag == SpecFile::veryInflatedCoordFileTag) ||
-          (s.specFileTag == SpecFile::sphericalCoordFileTag) ||
-          (s.specFileTag == SpecFile::ellipsoidCoordFileTag) ||
-          (s.specFileTag == SpecFile::compressedCoordFileTag) ||
-          (s.specFileTag == SpecFile::flatCoordFileTag) ||
-          (s.specFileTag == SpecFile::lobarFlatCoordFileTag) ||
-          (s.specFileTag == SpecFile::unknownCoordFileMatchTag) ||
-          (s.specFileTag == SpecFile::closedTopoFileTag) ||
-          (s.specFileTag == SpecFile::openTopoFileTag) ||
-          (s.specFileTag == SpecFile::cutTopoFileTag) ||
-          (s.specFileTag == SpecFile::lobarCutTopoFileTag) ||
-          (s.specFileTag == SpecFile::unknownTopoFileMatchTag)) {
+      if ((s.specFileTag == SpecFile::getRawCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getFiducialCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getInflatedCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getVeryInflatedCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getSphericalCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getEllipsoidCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getCompressedCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getFlatCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getLobarFlatCoordFileTag()) ||
+          (s.specFileTag == SpecFile::getUnknownCoordFileMatchTag()) ||
+          (s.specFileTag == SpecFile::getClosedTopoFileTag()) ||
+          (s.specFileTag == SpecFile::getOpenTopoFileTag()) ||
+          (s.specFileTag == SpecFile::getCutTopoFileTag()) ||
+          (s.specFileTag == SpecFile::getLobarCutTopoFileTag()) ||
+          (s.specFileTag == SpecFile::getUnknownTopoFileMatchTag())) {
          askFlag = false;
       }
       //
       // Paint, Metric, and Surface shape get special dialog for appending
       //
-      else if ((s.specFileTag == SpecFile::arealEstimationFileTag) ||
-               (s.specFileTag == SpecFile::paintFileTag) ||
-               (s.specFileTag == SpecFile::metricFileTag) ||
-               (s.specFileTag == SpecFile::surfaceShapeFileTag) ||
-               (s.specFileTag == SpecFile::surfaceVectorFileTag)) {
+      else if ((s.specFileTag == SpecFile::getArealEstimationFileTag()) ||
+               (s.specFileTag == SpecFile::getPaintFileTag()) ||
+               (s.specFileTag == SpecFile::getMetricFileTag()) ||
+               (s.specFileTag == SpecFile::getSurfaceShapeFileTag()) ||
+               (s.specFileTag == SpecFile::getSurfaceVectorFileTag())) {
          askFlag = false;
       }
-      else if (s.specFileTag == SpecFile::atlasFileTag) {
+      else if (s.specFileTag == SpecFile::getAtlasFileTag()) {
          askFlag = false;
          appendFile = false;
       }
@@ -3026,42 +2926,42 @@ GuiSpecFileDialogMainWindow::fastOpenButtonSlot(int buttonNumber)
          if (dataFile != NULL) {
             askFlag = (dataFile->empty() == false);
          }
-         else if ((s.specFileTag == SpecFile::borderProjectionFileTag) ||
-                  (s.specFileTag.indexOf(SpecFile::unknownBorderFileMatchTag) >= 0)) {
+         else if ((s.specFileTag == SpecFile::getBorderProjectionFileTag()) ||
+                  (s.specFileTag.indexOf(SpecFile::getUnknownBorderFileMatchTag()) >= 0)) {
             BrainModelBorderSet* bmbs = bs->getBorderSet();
             askFlag = (bmbs->getNumberOfBorders());
          }
-         else if (s.specFileTag == SpecFile::cerebralHullFileTag) {
+         else if (s.specFileTag == SpecFile::getCerebralHullFileTag()) {
             askFlag = (bs->getCerebralHullFileName().isEmpty() == false);
          }
-         else if (s.specFileTag == SpecFile::deformationMapFileTag) {
+         else if (s.specFileTag == SpecFile::getDeformationMapFileTag()) {
             askFlag = (bs->getDeformationMapFileName().isEmpty() == false);
          }
-         else if (s.specFileTag == SpecFile::imageFileTag) {
+         else if (s.specFileTag == SpecFile::getImageFileTag()) {
             askFlag = (bs->getNumberOfImageFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::transformationDataFileTag) {
+         else if (s.specFileTag == SpecFile::getTransformationDataFileTag()) {
             askFlag = (bs->getNumberOfTransformationDataFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumeAnatomyFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumeAnatomyFileTag()) {
             askFlag = (bs->getNumberOfVolumeAnatomyFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumeFunctionalFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumeFunctionalFileTag()) {
             askFlag = (bs->getNumberOfVolumeFunctionalFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumePaintFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumePaintFileTag()) {
             askFlag = (bs->getNumberOfVolumePaintFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumeProbAtlasFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumeProbAtlasFileTag()) {
             askFlag = (bs->getNumberOfVolumeProbAtlasFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumeRgbFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumeRgbFileTag()) {
             askFlag = (bs->getNumberOfVolumeRgbFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumeSegmentationFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumeSegmentationFileTag()) {
             askFlag = (bs->getNumberOfVolumeSegmentationFiles() > 0);
          }
-         else if (s.specFileTag == SpecFile::volumeVectorFileTag) {
+         else if (s.specFileTag == SpecFile::getVolumeVectorFileTag()) {
             askFlag = (bs->getNumberOfVolumeVectorFiles() > 0);
          }
       }

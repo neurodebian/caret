@@ -708,7 +708,7 @@ BrainModelVolumeVoxelColoring::assignNormalProbAtlasColor(const int iv,
       }
       
       if (highlightFlag) {
-         rgb[0] = 0.0;
+         rgb[0] = 0;
          rgb[1] = 255; 
          rgb[2] = 0;
       }

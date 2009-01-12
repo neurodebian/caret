@@ -25,6 +25,7 @@
 
 #include <iostream>
 
+#include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -35,42 +36,68 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QRadioButton>
+#include <QScrollArea>
 #include <QSpinBox>
+#include <QTextEdit>
 #include "WuQDataEntryDialog.h"
 
 /**
  * constructor.
  */
 WuQDataEntryDialog::WuQDataEntryDialog(QWidget* parent,
+                                       const bool addScrollBarsFlag,
                                        Qt::WindowFlags f)
    : WuQDialog(parent, f)
 {
    //
-   // Layout for user's widgets
+   // Widget and Layout for user's widgets
    //
-   widgetGridLayout = new QGridLayout;
+   QWidget* widgetForGridLayout = new QWidget;
+   widgetGridLayout = new QGridLayout(widgetForGridLayout);
    
    //
-   // Labels for text at top
+   // Labels for text at top, hidden until set by user
    //
    textAtTopLabel = new QLabel;
+   textAtTopLabel->setHidden(true);
+   
+   //
+   // ButtonGroup for radio buttons
+   //
+   radioButtonGroup = new QButtonGroup(this);
    
    //
    // Button box for dialog's buttons
    //
-   QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
-                                                      QDialogButtonBox::Cancel);
+   buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                    QDialogButtonBox::Cancel);
    QObject::connect(buttonBox, SIGNAL(accepted()),
                     this, SLOT(slotOKButtonPressed()));
    QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(reject()));
    
    //
+   // May use scrolling
+   //
+   QScrollArea* scrollArea = NULL;
+   if (addScrollBarsFlag) {
+      scrollArea = new QScrollArea;
+      scrollArea->setWidget(widgetForGridLayout);
+      scrollArea->setWidgetResizable(true);
+   }
+   
+   //
    // Layout for dialog
    //
    QVBoxLayout* dialogLayout = new QVBoxLayout(this);
    dialogLayout->addWidget(textAtTopLabel);
-   dialogLayout->addLayout(widgetGridLayout);
+   if (scrollArea != NULL) {
+      dialogLayout->addWidget(scrollArea);
+   }
+   else {
+      dialogLayout->addWidget(widgetForGridLayout);
+   }
    dialogLayout->addWidget(buttonBox);
 }
                    
@@ -123,6 +150,13 @@ WuQDataEntryDialog::setTextAtTop(const QString& s,
 {
    textAtTopLabel->setText(s);
    textAtTopLabel->setWordWrap(wrapTheText);
+   
+   if (s.isEmpty()) {
+      textAtTopLabel->setHidden(true);
+   }
+   else {
+      textAtTopLabel->setHidden(false);
+   }
 }
       
 /**
@@ -195,6 +229,48 @@ WuQDataEntryDialog::addCheckBox(const QString& text,
    
    return cb;
 }
+
+/**
+ * get radio button selected (-1 if none, value is sequence added).
+ */
+int 
+WuQDataEntryDialog::getRadioButtonSelected() const
+{
+   return radioButtonGroup->checkedId();
+}
+
+/**
+ * add a radio button (all radio buttons will be mutually exclusive).
+ */
+QRadioButton* 
+WuQDataEntryDialog::addRadioButton(const QString& text,
+                                   const bool defaultValue)
+{
+   //
+   // Create radio button
+   //
+   QRadioButton* rb = new QRadioButton(text);
+   rb->setChecked(defaultValue);
+
+   //
+   // Add to radio button group
+   //
+   const int buttNum = radioButtonGroup->buttons().count();
+   radioButtonGroup->addButton(rb, buttNum);
+   
+   //
+   // Keep pointer to widget
+   //
+   widgets.push_back(rb);
+   
+   //
+   // add widget to both columns of layout
+   //
+   const int rowNumber = widgetGridLayout->rowCount();
+   widgetGridLayout->addWidget(rb, rowNumber, 0, 1, 2, Qt::AlignLeft);
+   
+   return rb;
+}                                   
                              
 /**
  * add a combo box.
@@ -327,3 +403,45 @@ WuQDataEntryDialog::addDoubleSpinBox(const QString& labelText,
    
    return sb;
 }                                     
+
+/**
+ * add a text edit.
+ */
+QTextEdit* 
+WuQDataEntryDialog::addTextEdit(const QString& labelText,
+                                const QString& defaultText,
+                                const bool readOnlyFlag)                       
+{
+   //
+   // Create text edit
+   //
+   QTextEdit* te = new QTextEdit;
+   te->setReadOnly(readOnlyFlag);
+   te->setPlainText(defaultText);
+   
+   //
+   // add to dialog
+   //
+   addWidget(labelText, te);
+   
+   return te;
+}
+
+/**
+ * set the OK button text.
+ */
+void 
+WuQDataEntryDialog::setOkButtonText(const QString& s)
+{
+   buttonBox->button(QDialogButtonBox::Ok)->setText(s);
+}
+
+/**
+ * set the Cancel button text.
+ */
+void 
+WuQDataEntryDialog::setCancelButtonText(const QString& s)
+{
+   buttonBox->button(QDialogButtonBox::Cancel)->setText(s);
+}
+      

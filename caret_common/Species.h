@@ -33,10 +33,82 @@
 /// defines valid species
 class Species {
    public:
-      // get a list of valid species
-      static void getAllSpecies(std::vector<QString>& speciesNames);
+      /// type of species
+      enum TYPE {
+         /// unknown
+         TYPE_UNKNOWN,
+         /// baboon
+         TYPE_BABOON,
+         /// chimpanzee
+         TYPE_CHIMPANZEE,
+         /// ferret
+         TYPE_FERRET,
+         /// galago
+         TYPE_GALAGO,
+         /// gibbon
+         TYPE_GIBBON,
+         /// gorilla
+         TYPE_GORILLA,
+         /// human
+         TYPE_HUMAN,
+         /// macaque monkey
+         TYPE_MACAQUE,
+         /// mouse
+         TYPE_MOUSE,
+         /// orangutan
+         TYPE_ORANGUTAN,
+         /// rat
+         TYPE_RAT,
+         /// other
+         TYPE_OTHER
+      };
+      
+      // get a list of valid species types and names
+      static void getAllSpeciesTypesAndNames(std::vector<TYPE>& speciesTypesOut,
+                                             std::vector<QString>& speciesNamesOut);
+      
+      // constructor
+      Species();
+      
+      // constructor
+      Species(const TYPE t);
+      
+      // constructor
+      Species(const QString& name);
+      
+      // destructor
+      ~Species();
+      
+      /// equality operator
+      bool operator==(const Species& ss) { return (type == ss.type); }
+      
+      /// inequality operator
+      bool operator!=(const Species& ss) { return (type != ss.type); }
+      
+      // reset
+      void reset();
+      
+      // get species name
+      QString getName() const;
+      
+      /// get the species type
+      TYPE getType() const { return type; }
+      
+      // set the species using type
+      void setUsingType(const TYPE typeIn);
+      
+      // set the species using name
+      void setUsingName(const QString& nameIn);
+      
+      // is human
+      bool isHuman() const { return type == TYPE_HUMAN; }
+      
+      // is valid (not unknown)
+      bool isValid() const { return type != TYPE_UNKNOWN; }
       
    protected:
+      /// the species type
+      TYPE type;
 };
 
 #endif // __SPECIES_H__

@@ -79,6 +79,8 @@ GuiFilesModified::getAllFilesModified() const
       rgbPaint &&
       scene &&
       section &&
+      studyCollection &&
+      studyMetaData &&
       surfaceShape &&
       surfaceVector &&
       topography &&
@@ -129,6 +131,8 @@ GuiFilesModified::setStatusForAll(const bool status)
    rgbPaint = status;
    scene = status;
    section = status;
+   studyCollection = studyCollection;
+   studyMetaData = studyMetaData;
    surfaceShape = status;
    surfaceVector = status;
    topography = status;

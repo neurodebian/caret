@@ -111,7 +111,7 @@ GuiMainWindowAttributesMenu::createArealEstimationSubMenu(GuiMainWindowAttribute
 {
    arealEstimationSubMenu = addMenu("Areal Estimation");
    
-   arealEstimationSubMenu->addAction(attributesActions->getArealEstimationClearAllOrPartAction());
+   //arealEstimationSubMenu->addAction(attributesActions->getArealEstimationClearAllOrPartAction());
    arealEstimationSubMenu->addAction(attributesActions->getGenerateArealEstimationMapAction());   
 }
 
@@ -145,8 +145,8 @@ GuiMainWindowAttributesMenu::createMetricSubMenu(GuiMainWindowAttributesActions*
 {
    metricSubMenu = addMenu("Metric");
    
-   metricSubMenu->addAction(attributesActions->getMetricClearAllOrPartAction());
-   metricSubMenu->addSeparator();
+   //metricSubMenu->addAction(attributesActions->getMetricClearAllOrPartAction());
+   //metricSubMenu->addSeparator();
 
    metricSubMenu->addAction(attributesActions->getMetricModificationAction());
                                  
@@ -205,7 +205,7 @@ GuiMainWindowAttributesMenu::createPaintSubMenu(GuiMainWindowAttributesActions* 
    paintSubMenu->addAction(attributesActions->getPaintAssignWithinDisplayedBordersAction());
                             
    paintSubMenu->addAction(attributesActions->getPaintCleanNamesAction());
-   paintSubMenu->addAction(attributesActions->getPaintClearAllOrPartAction());
+   //paintSubMenu->addAction(attributesActions->getPaintClearAllOrPartAction());
    paintSubMenu->addAction(attributesActions->getPaintToVolumeAction());
    paintSubMenu->addAction(attributesActions->getPaintNamesEditAction());
    paintSubMenu->addAction(attributesActions->getGenerateColorsForPaints());
@@ -219,6 +219,7 @@ GuiMainWindowAttributesMenu::createStudyMetaDataSubMenu(GuiMainWindowAttributesA
 {
    studyMetaDataMenu = addMenu("Study Metadata");
    
+   studyMetaDataMenu->addAction(attributesActions->getStudyCollectionEditorDialogAction());
    studyMetaDataMenu->addAction(attributesActions->getStudyMetaDataEditorDialogAction());
 }
       
@@ -230,9 +231,9 @@ GuiMainWindowAttributesMenu::createSurfaceShapeSubMenu(GuiMainWindowAttributesAc
 {
    surfaceShapeSubMenu = addMenu("Surface Shape");
    
-   surfaceShapeSubMenu->addAction(attributesActions->getSurfaceShapeClearAllOrPartAction());
+   //surfaceShapeSubMenu->addAction(attributesActions->getSurfaceShapeClearAllOrPartAction());
    
-   surfaceShapeSubMenu->addSeparator();
+   //surfaceShapeSubMenu->addSeparator();
    
    surfaceShapeSubMenu->addAction(attributesActions->getShapeModificationAction());
    surfaceShapeSubMenu->addAction(attributesActions->getShapeMathAction());
@@ -253,7 +254,7 @@ GuiMainWindowAttributesMenu::createLatLonSubMenu(GuiMainWindowAttributesActions*
 {
    latLonSubMenu = addMenu("Lat/Long");
    
-   latLonSubMenu->addAction(attributesActions->getLatLonClearAllOrPartAction());
+   //latLonSubMenu->addAction(attributesActions->getLatLonClearAllOrPartAction());
    latLonSubMenu->addAction(attributesActions->getLatLonGenerateOnSphereAction());
 }
 

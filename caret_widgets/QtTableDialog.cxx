@@ -75,6 +75,9 @@ QtTableDialog::QtTableDialog(QWidget* parent,
          table->setItem(i, j, new QTableWidgetItem(dataTable.getElement(i, j)));
       }
    }
+   if (nc == 1) {
+      table->setColumnWidth(0, 500);
+   }
    dialogLayout->addWidget(table);
    
    //

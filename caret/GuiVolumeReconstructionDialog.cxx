@@ -146,6 +146,9 @@ GuiVolumeReconstructionDialog::GuiVolumeReconstructionDialog(QWidget* parent,
    QtUtilities::makeButtonsSameSize(okButton, cancelButton);
    
    switch (theMainWindow->getBrainSet()->getStructure().getType()) {
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
       case Structure::STRUCTURE_TYPE_INVALID:
          leftHemisphereCheckBox->setChecked(false);
          rightHemisphereCheckBox->setChecked(false);

@@ -37,19 +37,19 @@
 #include <string.h>
 
 #ifdef Q_OS_LINUX
-static char *period = ".";
+static const char *period = ".";
 #endif
 #ifdef Q_OS_MAC
-static char *period = ".";
+static const char *period = ".";
 #endif
 #ifdef Q_OS_WIN32
-static char *period = ".";
+static const char *period = ".";
 #endif
 #ifdef Q_OS_FREEBSD
-static char *period = ".";
+static const char *period = ".";
 #endif
 
-char*
+const char*
 Basename(char* path)
 {
 
@@ -110,7 +110,7 @@ Basename(char* path)
 
 //------------------------------------------------------------
 
-char* Dirname(char* path)
+const char* Dirname(char* path)
 {
 #if defined(Q_OS_MAC) || defined(Q_OS_WIN32)
    if (path == NULL) {

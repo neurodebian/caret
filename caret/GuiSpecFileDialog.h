@@ -37,9 +37,14 @@
 //
 // forward declarations to avoid include files
 //
+class GuiCategoryComboBox;
+class GuiSpeciesComboBox;
+class GuiSpecFileDialogMainWindow;
+class GuiStereotaxicSpaceComboBox;
 class GuiStructureComboBox;
 class QButtonGroup;
 class QCheckBox;
+class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
@@ -47,7 +52,6 @@ class QPushButton;
 class QScrollArea;
 class QToolButton;
 class QVBoxLayout;
-class GuiSpecFileDialogMainWindow;
 
 /// Dialog for making selections from the specification file.
 class GuiSpecFileDialog : public WuQDialog {
@@ -150,15 +154,6 @@ class GuiSpecFileDialogMainWindow : public QMainWindow {
       
       /// Called when a delete (X) button is pressed
       void deleteButtonGroupSlot(int buttonNumber);
-      
-      /// Called when space button is pressed
-      void slotSpacePushButton();
-      
-      /// Called when species button is pressed
-      void slotSpeciesPushButton();
-      
-      /// Called when category button is pressed
-      void slotCategoryPushButton();
       
       /// Called when the toolbar all button is pressed
       void slotToolBarAllButton();
@@ -457,6 +452,9 @@ class GuiSpecFileDialogMainWindow : public QMainWindow {
       /// group box for surface parameters
       QGroupBox* surfaceParametersGroup;
       
+      /// group box for study collection files
+      QGroupBox* studyCollectionGroup;
+      
       /// group box for study metadata files
       QGroupBox* studyMetaDataGroup;
       
@@ -508,14 +506,14 @@ class GuiSpecFileDialogMainWindow : public QMainWindow {
       /// flag set when user removes a file from the spec file
       bool specFileNeedsToBeWritten;
       
-      /// space line edit
-      QLineEdit* spaceLineEdit;
+      /// space combo box
+      GuiStereotaxicSpaceComboBox* spaceComboBox;
 
-      /// species line edit
-      QLineEdit* speciesLineEdit;
+      /// species combo box
+      GuiSpeciesComboBox* speciesComboBox;
       
-      /// category line edit
-      QLineEdit* categoryLineEdit;
+      /// category combo box
+      GuiCategoryComboBox* categoryComboBox;
 
       /// subject line edit
       QLineEdit* subjectLineEdit;
@@ -527,16 +525,16 @@ class GuiSpecFileDialogMainWindow : public QMainWindow {
       QString savedComment;
       
       /// species value at time spec file loaded into dialog
-      QString savedSpecies;
+      Species savedSpecies;
 
       /// structure value at time spec file loaded into dialog
       Structure::STRUCTURE_TYPE savedStructure;
 
       /// space value at time spec file loaded into dialog
-      QString savedSpace;
+      StereotaxicSpace savedStereotaxicSpace;
 
       /// category value at time spec file loaded into dialog
-      QString savedCategory;
+      Category savedCategory;
       
       /// category value at time spec file loaded into dialog
       QString savedSubject;

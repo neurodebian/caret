@@ -171,35 +171,35 @@ CommandSurfaceSulcalIdentificationProbabilistic::executeCommand() throw (BrainMo
    //
    SpecFile specFile;
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), 
                           fiducialCoordFileName, 
                           "", 
                           SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::inflatedCoordFileTag,
+   specFile.addToSpecFile(SpecFile::getInflatedCoordFileTag(),
                           inflatedCoordFileName,
                           "",
                           SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::veryInflatedCoordFileTag,
+   specFile.addToSpecFile(SpecFile::getVeryInflatedCoordFileTag(),
                           veryInflatedCoordFileName,
                           "",
                           SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), 
                           inputTopoFileName, 
                           "", 
                           SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::paintFileTag, 
+   specFile.addToSpecFile(SpecFile::getPaintFileTag(), 
                           paintFileName, 
                           "", 
                           SpecFile::SPEC_FALSE);
    if (inputAreaColorFileName.isEmpty() == false) {
       if (QFile::exists(inputAreaColorFileName)) {
-         specFile.addToSpecFile(SpecFile::areaColorFileTag, 
+         specFile.addToSpecFile(SpecFile::getAreaColorFileTag(), 
                                 inputAreaColorFileName, 
                                 "", 
                                 SpecFile::SPEC_FALSE);
       }
    }
-   specFile.addToSpecFile(SpecFile::surfaceShapeFileTag, 
+   specFile.addToSpecFile(SpecFile::getSurfaceShapeFileTag(), 
                           surfaceShapeFileName, 
                           "", 
                           SpecFile::SPEC_FALSE);

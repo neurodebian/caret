@@ -32,6 +32,7 @@
 
 #include "WuQDialog.h"
 
+class QButtonGroup;
 class QCheckBox;
 class QComboBox;
 class QDialogButtonBox;
@@ -40,7 +41,9 @@ class QGridLayout;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QRadioButton;
 class QSpinBox;
+class QTextEdit;
 
 /// class for a modal data entry dialog
 class WuQDataEntryDialog : public WuQDialog {
@@ -49,6 +52,7 @@ class WuQDataEntryDialog : public WuQDialog {
    public:
       // constructor
       WuQDataEntryDialog(QWidget* parent = 0,
+                         const bool addScrollBarsFlag = false,
                          Qt::WindowFlags f = 0);
                          
       // destructor
@@ -79,6 +83,13 @@ class WuQDataEntryDialog : public WuQDialog {
       QListWidget* addListWidget(const QString& labelText,
                                  const QStringList& listBoxItems);
       
+      // add a radio button (all radio buttons will be mutually exclusive)
+      QRadioButton* addRadioButton(const QString& text,
+                                   const bool defaultValue = false);
+       
+      // get radio button selected (-1 if none, value is sequence added)
+      int getRadioButtonSelected() const;
+      
       // add spin box
       QSpinBox* addSpinBox(const QString& labelText,
                            const int defaultValue,
@@ -94,6 +105,17 @@ class WuQDataEntryDialog : public WuQDialog {
                                        const float singleStep = 1.0,
                                        const int numberOfDecimals = 3);
                             
+      // add a text edit
+      QTextEdit* addTextEdit(const QString& labelText,
+                             const QString& defaultText,
+                             const bool readOnlyFlag);
+                             
+      // set the OK button text
+      void setOkButtonText(const QString& s);
+      
+      // set the Cancel button text
+      void setCancelButtonText(const QString& s);
+      
       // hide the cancel button
       void hideCancelButton();
       
@@ -121,6 +143,9 @@ class WuQDataEntryDialog : public WuQDialog {
   
       /// label for text at dialog top
       QLabel* textAtTopLabel;
+      
+      /// button group for radio buttons
+      QButtonGroup* radioButtonGroup;
 };
 
 #endif // __WU_Q_DATA_ENTRY_DIALOG_H__

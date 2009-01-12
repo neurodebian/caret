@@ -80,6 +80,9 @@ class SurfaceFile : public GiftiDataArrayFile {
       // get the topology metadata (NULL If invalid)
       GiftiMetaData* getTopologyMetaData();
       
+      // convert configuration ID to spec file tag
+      static QString convertConfigurationIDToSpecFileTag(const QString& configID);
+
    protected:
       // the copy helper used by copy constructor and assignement operator
       void copyHelperSurface(const SurfaceFile& sf);

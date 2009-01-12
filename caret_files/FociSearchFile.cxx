@@ -287,6 +287,9 @@ FociSearchFile::insertFociSearchSet(FociSearchSet* fss,
             fociSearchSets.push_back(fss);
          }
       }
+      if (afterIndex >= num) {
+         fociSearchSets.push_back(fss);
+      }
    }
    
    setModified();
@@ -924,6 +927,16 @@ FociSearch::getAttributeTypesAndNames(std::vector<ATTRIBUTE>& typesOut,
    typesOut.clear();
    namesOut.clear();
 
+   for (int i = 0; i < ATTRIBUTE_NUMBER_OF; i++) {
+      const ATTRIBUTE attr = static_cast<ATTRIBUTE>(i);
+      typesOut.push_back(attr);  
+         namesOut.push_back(convertAttributeTypeToName(attr));
+   }
+/*
+   //
+   // NOTE: These MUST be in the same order as the ATTRIBUTE
+   // enumerated type.
+   //
    typesOut.push_back(ATTRIBUTE_ALL);  
       namesOut.push_back(convertAttributeTypeToName(ATTRIBUTE_ALL));
    typesOut.push_back(ATTRIBUTE_FOCUS_AREA);   
@@ -964,6 +977,7 @@ FociSearch::getAttributeTypesAndNames(std::vector<ATTRIBUTE>& typesOut,
       namesOut.push_back(convertAttributeTypeToName(ATTRIBUTE_STUDY_TABLE_SUBHEADER));
    typesOut.push_back(ATTRIBUTE_STUDY_TITLE);   
       namesOut.push_back(convertAttributeTypeToName(ATTRIBUTE_STUDY_TITLE));
+*/
 }
 
 /**
@@ -1005,9 +1019,6 @@ FociSearch::convertAttributeTypeToName(const ATTRIBUTE att)
       case ATTRIBUTE_FOCUS_GEOGRAPHY:   
          s = "Geography";
          break;
-      case ATTRIBUTE_FOCUS_ROI:        
-         s = "ROI";
-         break;
       case ATTRIBUTE_STUDY_KEYWORDS:   
          s = "Keywords";
          break;
@@ -1017,8 +1028,14 @@ FociSearch::convertAttributeTypeToName(const ATTRIBUTE att)
       case ATTRIBUTE_STUDY_NAME:  
          s = "Name";
          break;
+      case ATTRIBUTE_FOCUS_ROI:        
+         s = "ROI";
+         break;
       case ATTRIBUTE_FOCUS_SPATIAL:  
          s = "Spatial";
+         break;
+      case ATTRIBUTE_STUDY_SPECIES:
+         s = "Species";
          break;
       case ATTRIBUTE_FOCUS_STRUCTURE:
          s = "Structure";
@@ -1034,6 +1051,9 @@ FociSearch::convertAttributeTypeToName(const ATTRIBUTE att)
          break;
       case ATTRIBUTE_STUDY_TITLE:   
          s = "Title";
+         break;
+      case ATTRIBUTE_NUMBER_OF:
+         s = "Number of Attributes";
          break;
    }
    
@@ -1078,9 +1098,6 @@ FociSearch::convertAttributeNameToType(const QString& s)
    else if (s == "Geography") {
       att = ATTRIBUTE_FOCUS_GEOGRAPHY;
    }        
-   else if (s == "ROI") {
-      att = ATTRIBUTE_FOCUS_ROI;
-   }   
    else if (s == "Keywords") {
       att = ATTRIBUTE_STUDY_KEYWORDS;
    }   
@@ -1090,6 +1107,9 @@ FociSearch::convertAttributeNameToType(const QString& s)
    else if (s == "Name") {
       att = ATTRIBUTE_STUDY_NAME;
    }  
+   else if (s == "ROI") {
+      att = ATTRIBUTE_FOCUS_ROI;
+   }   
    else if (s == "Spatial") {
       att = ATTRIBUTE_FOCUS_SPATIAL;
    } 
@@ -1107,6 +1127,9 @@ FociSearch::convertAttributeNameToType(const QString& s)
    }   
    else if (s == "Title") {
       att = ATTRIBUTE_STUDY_TITLE;
+   }
+   else if (s == "Number of Attributes") {
+      att = ATTRIBUTE_NUMBER_OF;
    }
 
    return att;

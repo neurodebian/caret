@@ -35,6 +35,7 @@
 
 class AreaColorFile;
 class BorderColorFile;
+class BorderProjection;
 class BorderProjectionFile;
 class BrainModelSurface;
 class BrainModelSurfaceROINodeSelection;
@@ -51,11 +52,8 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
    public:
       /// operations to perform
       enum OPERATION {
-         OPERATION_ID_CALCARINE_SULCUS        =  1,
-         OPERATION_ID_CENTRAL_SULCUS          =  2,
-         OPERATION_ID_MEDIAL_WALL             =  4,
-         OPERATION_ID_SUPERIOR_TEMPORAL_GYRUS =  8,
-         OPERATION_ID_SYLVIAN_FISSURE         = 16,
+         OPERATION_ID_REGISTRATION_LANDMARKS  =  1,
+         OPERATION_ID_FLATTENING_LANDMARKS    =  2,
          OPERATION_ID_ALL             = 0xffffffff
       };
       
@@ -83,6 +81,9 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       // execute the algorithm
       void execute() throw (BrainModelAlgorithmException);
       
+      // space supported for landmark identification?
+      static bool isStereotaxicSpaceSupported(const StereotaxicSpace& stereotaxicSpaceIn);
+      
       /// get probabilistic metric file of sulci locations
       const MetricFile* getMetricFile() const { return metricFile; }
       
@@ -100,6 +101,9 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       
       /// get the name prefix for flattening standard cuts
       static QString getFlattenStandardCutsBorderNamePrefix() { return "FLATTEN.CUT.Std."; }
+      
+      /// get the name of central sulcus registration landmark
+      static QString getCentralSulcusRegistrationLandmarkName() { return "LANDMARK.CentralSulcus"; }
       
    protected:
       // identify the sulci
@@ -271,7 +275,7 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
                             const BrainModelSurface* surface,
                             const int startNodeNumber,
                             const int endNodeNumber,
-                            const int distanceFromStartNode,
+                            const float distanceFromStartNode,
                             const BrainModelSurfaceROINodeSelection* roi = NULL) throw (BrainModelAlgorithmException);
                               
       // draw a border using metric method
@@ -336,6 +340,9 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
                                            float scalingOutLeft[3],
                                            float scalingOutRight[3]);
                                          
+      /// delete the debug files directory and the files within it
+      void deleteDebugFilesDirectoryAndContents();
+      
       /// stereotaxic space
       const StereotaxicSpace stereotaxicSpace;
       
@@ -482,6 +489,12 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
 
       /// surface scale factors for "rough" transformation to 711-2 space
       float surfaceSpaceScaling[3];      
+      
+      /// name of directory containing debug files
+      QString debugFilesDirectoryName;
+      
+      /// all landmarks were sucessfully created
+      bool allLandmarksSuccessfulFlag;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_BORDER_LANDMARK_IDENTIFICATION_H__

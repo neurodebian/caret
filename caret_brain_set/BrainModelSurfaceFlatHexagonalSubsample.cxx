@@ -393,7 +393,7 @@ BrainModelSurfaceFlatHexagonalSubsample::execute() throw (BrainModelAlgorithmExc
 
    BorderFile bf(subSampTopology, flatSubSampSurface->getCoordinateFile());
    bf.setHeaderTag(AbstractFile::headerTagConfigurationID,
-                                  SpecFile::flatBorderFileTagName);
+                                  SpecFile::getFlatBorderFileTagName());
    bf.writeFile("coords_as_border.border");
 }
 

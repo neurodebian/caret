@@ -37,6 +37,7 @@ class GuiMainWindow;
 #include "BrainModelSurface.h"
 
 class GuiBrainSetAndModelSelectionControl;
+class GuiToolBarActions;
 class QComboBox;
 class QDoubleSpinBox;
 class QMainWindow;
@@ -61,8 +62,14 @@ class GuiToolBar : public QToolBar {
       /// update the view controls based upon the loaded brain model
       void updateViewControls();
       
+      /// clear all yoking
+      static void clearAllYoking();
+      
       /// update all toolbars (typically called when new surfaces loaded)
       static void updateAllToolBars(const bool additionalFilesLoaded);
+      
+      /// set yoke status
+      void setYokeStatus(const bool b);
       
       /// called when a standard view is selected
       void setViewSelection(const BrainModel::STANDARD_VIEWS standardView);      
@@ -181,6 +188,9 @@ class GuiToolBar : public QToolBar {
       
       /// Windows OpenGL widget
       GuiBrainModelOpenGL* brainModelOpenGL;
+      
+      /// toolbar's actions
+      GuiToolBarActions* toolBarActions;
       
       /// Keeps track of toolbars so that they can be updated when
       /// the models change.

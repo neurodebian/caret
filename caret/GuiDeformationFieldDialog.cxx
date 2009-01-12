@@ -425,11 +425,11 @@ GuiDeformationFieldDialog::done(int r)
                specFileName.append(SpecFile::getSpecFileExtension());
                SpecFile indivSpecFile;
                indivSpecFile.setFileName(specFileName);
-               indivSpecFile.addToSpecFile(SpecFile::closedTopoFileTag,
+               indivSpecFile.addToSpecFile(SpecFile::getClosedTopoFileTag(),
                                            indivTopoFileName, "", false);
-               indivSpecFile.addToSpecFile(SpecFile::sphericalCoordFileTag,
+               indivSpecFile.addToSpecFile(SpecFile::getSphericalCoordFileTag(),
                                            indivCoordFileName, "", false);
-               indivSpecFile.addToSpecFile(SpecFile::sphericalCoordFileTag,
+               indivSpecFile.addToSpecFile(SpecFile::getSphericalCoordFileTag(),
                                            indivDeformedCoordFileName, "", false);
                indivSpecFile.setAllFileSelections(SpecFile::SPEC_TRUE);                            
                

@@ -105,7 +105,7 @@ CommandVolumeInformation::executeCommand() throw (BrainModelAlgorithmException,
    
    float org[3];
    volume.getOrigin(org);
-   std::cout << "   origin: " << org[0] << ", " << org[1] << ", " << org[2] << std::endl;
+   std::cout << "   origin (center of first voxel): " << org[0] << ", " << org[1] << ", " << org[2] << std::endl;
    
    VolumeFile::ORIENTATION orient[3];
    volume.getOrientation(orient);

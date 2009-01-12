@@ -28,6 +28,7 @@
 
 #include <QDir>
 
+#include "BrainSet.h"
 #include "CommandHelpGlobalOptions.h"
 #include "FileFilters.h"
 #include "ProgramParameters.h"
@@ -92,6 +93,10 @@ CommandHelpGlobalOptions::getHelpInformation() const
        + indent9 + "   AR   - all read\n"
        + indent9 + "   AW   - all write\n"
        + indent9 + "   AX   - all execute\n"
+       + indent9 + "\n"
+       + indent9 + "Adding the parameter \"-RANDOMSEED <seed-value>\" to \n"
+       + indent9 + "the command will result in the random number generator's \n"
+       + indent9 + "seed value being set to the provided value. \n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -235,4 +240,42 @@ CommandHelpGlobalOptions::processSetPermissionsCommand(ProgramParameters& params
    }
 }
       
+/**
+ * process the set random seed.
+ */
+void 
+CommandHelpGlobalOptions::processSetRandomSeedCommand(ProgramParameters& params) throw (CommandException)
+{
+   //
+   // See if seed should be set
+   //
+   const int randomSeedIndex = params.getIndexOfParameterWithValue("-RANDOMSEED");
+   if (randomSeedIndex >= 0) {
+      const int seedIndex = randomSeedIndex + 1;
+      if (seedIndex < params.getNumberOfParameters()) {
+         const QString seedValueString = params.getParameterAtIndex(seedIndex);
+         if (seedValueString.isEmpty() == false) {
+            bool ok = false;
+            const unsigned int seedValue = seedValueString.toUInt(&ok);
+            if (ok == false) {
+               throw CommandException("Invalid random seed value ("
+                                      + seedValueString
+                                      + ")");
+            }
+            
+            BrainSet::setRandomSeed(seedValue);
+         }
+         //
+         // Remove the "-CHMOD" and mode name parameters
+         // Remember, remove largest index first since array shrinks
+         //
+         params.removeParameterAtIndex(randomSeedIndex);
+         params.removeParameterAtIndex(seedIndex);
+      }
+      else {
+         throw CommandException("ERROR: Value missing for \"-RANDOMSEED\" option.");
+      }
+   }
+}
+
 

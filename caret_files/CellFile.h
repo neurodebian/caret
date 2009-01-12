@@ -272,6 +272,8 @@ class CellFile : public AbstractFile {
    friend class CellData;
 };
 
+#endif // __CELL_FILE_H__
+
 #ifdef __CELL_FILE_MAIN__
    const QString CellFile::tagFileVersion = "tag-version";
    const QString CellFile::tagNumberOfCells = 
@@ -284,5 +286,3 @@ class CellFile : public AbstractFile {
    const QString CellFile::tagCommentCitation = "tag-citation";
    const QString CellFile::tagCommentStereotaxicSpace = "tag-space";
 #endif // __CELL_FILE_MAIN__
-
-#endif // __CELL_FILE_H__
