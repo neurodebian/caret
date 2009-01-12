@@ -8,6 +8,7 @@ Standards-Version: 3.8.0
 Homepage: http://brainmap.wustl.edu/caret
 Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/caret.git
 Vcs-Git: git://git.debian.org/git/pkg-exppsy/caret.git
+DM-Upload-Allowed: yes
 
 Package: caret
 Architecture: any
