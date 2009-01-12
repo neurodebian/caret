@@ -808,11 +808,11 @@ class SpecFile : public AbstractFile {
       // update the allEntries vector
       void updateAllEntries();
       
-      static QString SpecFile::getXmlFileTagName1() { return "file1"; }
+      static QString getXmlFileTagName1() { return "file1"; }
          
-      static QString SpecFile::getXmlFileTagName2() { return "file2"; }
-       
-      static QString SpecFile::getXmlFileTagStructure() { return "structure"; }
+      static QString getXmlFileTagName2() { return "file2"; }
+      
+      static QString getXmlFileTagStructure() { return "structure"; }
 
       /// only write selected files flag
       bool writeOnlySelectedFiles;

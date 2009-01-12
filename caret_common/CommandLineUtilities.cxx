@@ -25,7 +25,6 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <cstdlib>
 
 #include "CommandLineUtilities.h"
 #include "StringUtilities.h"
