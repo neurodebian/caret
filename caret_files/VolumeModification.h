@@ -54,7 +54,7 @@ class VoxelModified {
             const int* getIJK() const { return ijk; }
             
             /// get the voxels value
-            const float getVoxelValue() const { return value; }
+            float getVoxelValue() const { return value; }
             
             /// get the voxel's coloring
             const unsigned char* getVoxelColor() const { return color; }

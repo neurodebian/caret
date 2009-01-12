@@ -670,6 +670,33 @@ BrainModelBorderSet::findBorderAndLinkNearestCoordinate(const BrainModelSurface*
 }
 
 /**
+ * delete border not displayed on a brain model.
+ */
+void 
+BrainModelBorderSet::deleteBordersNotDisplayedOnBrainModel(const BrainModel* bm)
+{
+   const int brainModelIndex = brainSet->getBrainModelIndex(bm);
+   if (brainModelIndex < 0) {
+      std::cout << "PROGRAM ERROR: invalid brain model index at " << __LINE__
+                << " in " << __FILE__ << std::endl;
+      return;
+   }
+
+   std::vector<int> bordersToDelete;
+   const int numBorders = getNumberOfBorders();
+   for (int i = (numBorders - 1); i >= 0; i--) {
+      const BrainModelBorder* b = getBorder(i);
+      if (b->getValidForBrainModel(brainModelIndex) &&
+          b->getDisplayFlag()) {
+         // keep border
+      }
+      else {
+         deleteBorder(i);
+      }
+   }
+}
+      
+/**
  * Delete borders using any of the names.
  */
 void
@@ -1034,7 +1061,7 @@ BrainModelBorderSet::unprojectBordersForAllSurfaces(const int firstBorderToProje
                           lastBorderToProject);
       }
    }
-   setAllModifiedStatus(false);
+   setAllBordersModifiedStatus(false);
 }
 
 /**
@@ -1482,14 +1509,13 @@ BrainModelBorderSet::setSurfaceBordersModified(const BrainModelSurface* bms,
  * Set the modification status of all borders and the projections
  */
 void
-BrainModelBorderSet::setAllModifiedStatus(const bool mod)
+BrainModelBorderSet::setAllBordersModifiedStatus(const bool mod)
 {
    const int num = brainSet->getNumberOfBrainModels();
    for (int i = 0; i < num; i++) {
       const BrainModelSurface* bms = brainSet->getBrainModelSurface(i);
-      setSurfaceBordersModified(bms, false);
+      setSurfaceBordersModified(bms, mod);
    }
-   setProjectionsModified(mod);
 }
 
 /**

@@ -143,6 +143,9 @@ class GuiFilesModified {
       /// set section has been modified
       void setSectionModified() { section = true; }
       
+      /// set study collection has been modified
+      void setStudyCollectionModified() { studyCollection = true; }
+      
       /// set study metadata has been modified
       void setStudyMetaDataModified() { studyMetaData = true; }
       
@@ -166,6 +169,9 @@ class GuiFilesModified {
       
       /// set transformation data file has been modified
       void setTransformationDataModified() { transformationData = true; }
+      
+      /// get transformation data file has been modified
+      bool getTransformationDataModified() const { return transformationData; }
       
       /// get volume has been modified
       bool getVolumeModified() const { return volume; }
@@ -222,6 +228,7 @@ class GuiFilesModified {
       bool rgbPaint;
       bool scene;
       bool section;
+      bool studyCollection;
       bool studyMetaData;
       bool surfaceShape;
       bool surfaceVector;

@@ -31,6 +31,8 @@
 
 #include <QWidget>
 
+#include "SceneFile.h"
+
 class FociProjectionFile;
 class FociSearchFile;
 class FociSearchSet;
@@ -60,6 +62,13 @@ class GuiFociSearchWidget : public QWidget {
       // destructor
       ~GuiFociSearchWidget();
       
+      /// apply a scene (set display settings)
+      void showScene(const SceneFile::Scene& scene,
+                     QString& errorMessage);
+
+      /// create a scene (read display settings)
+      SceneFile::SceneClass saveScene();
+                             
       // update the widget
       void updateWidget(FociProjectionFile* fpf,
                         FociSearchFile* fsf);
@@ -114,6 +123,9 @@ class GuiFociSearchWidget : public QWidget {
       void slotSearchNameLineEdit(const QString&);
 
    protected:
+      // add a search set 
+      void addSearchSetToFociSearchFile(FociSearchSet* fss);
+      
       // create the search operations group
       QWidget* createSearchOperationsGroup();
       

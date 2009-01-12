@@ -74,12 +74,19 @@ CommandSurfaceInformation::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<coordinate-file-name> \n"
        + indent9 + "<topology-file-name> \n"
-       + indent9 + "[-text-file  text-file-name] \n"
+       + indent9 + "[-show-volume] \n"
+       + indent9 + "[-text-file  output-text-file-name] \n"
        + indent9 + "\n"
        + indent9 + "Display information about a surface.\n"
        + indent9 + "\n"
+       + indent9 + "If \"-show-volume\" is specified, the volume displaced in\n"
+       + indent9 + "cubic millimeters is displayed.  The supplied topology file \n"
+       + indent9 + "MUST be CLOSED if this option is used.  Use of this option\n"
+       + indent9 + "may significantly increase the execution time of this  \n"
+       + indent9 + "command.\n"
+       + indent9 + "\n"
        + indent9 + "The information is printed to the terminal unless a\n"
-       + indent9 + "text file is supplied.\n"
+       + indent9 + "text file is specified with the \"-text-file\" option.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -104,9 +111,13 @@ CommandSurfaceInformation::executeCommand() throw (BrainModelAlgorithmException,
    // Check optional parameters
    //
    QString textFileName;
+   bool showVolumeFlag = false;
    while (parameters->getParametersAvailable()) {
       const QString paramName = parameters->getNextParameterAsString("SURFACE INFORMATION parameter");
-      if (paramName == "-text-file") {
+      if ("-show-volume") {
+         showVolumeFlag = true;
+      }
+      else if (paramName == "-text-file") {
          textFileName = parameters->getNextParameterAsString("Text File Name");
       }
       else {
@@ -141,6 +152,17 @@ CommandSurfaceInformation::executeCommand() throw (BrainModelAlgorithmException,
    bms->getSurfaceInformation(labels,
                               values);
 
+   if (showVolumeFlag) {
+      const float volumeMM = bms->getSurfaceVolumeDisplacement();
+      labels.push_back("Volume Displacement");
+      if (volumeMM < 0.0) {
+         values.push_back("Volume computation failed.  Open Topology?");
+      }
+      else {
+         values.push_back(QString::number(volumeMM, 'f', 3) + " cubic millimeters");
+      }
+   }
+   
    //
    // Determine minimum width for labels
    //

@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include <QWizard>
+#include "WuQWizard.h"
 
 class BrainModelSurface;
 class CoordinateFile;
@@ -52,7 +52,7 @@ class QStackedWidget;
 class QTextEdit;
 
 /// wizard dialog for surface region of interest operations
-class GuiSurfaceRegionOfInterestDialog: public QWizard {
+class GuiSurfaceRegionOfInterestDialog: public WuQWizard {
    Q_OBJECT
    
    public:

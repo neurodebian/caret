@@ -138,7 +138,7 @@ CommandMetricClustering::executeCommand() throw (BrainModelAlgorithmException,
    const QString modeName =
       parameters->getNextParameterAsString("Cluster Mode Name");
    const int minimumNumberOfNodes =
-      parameters->getNextParameterAsFloat("Minimum Number of Nodes");
+      parameters->getNextParameterAsInt("Minimum Number of Nodes");
    const float minimumSurfaceArea =
       parameters->getNextParameterAsFloat("Minimum Surface Area");
    checkForExcessiveParameters();

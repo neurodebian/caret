@@ -415,6 +415,24 @@ GuiCaretCommandDialog::slotProcessCommandButton()
             }
             
             //
+            // Remove double quotes from any parameters
+            //
+            for (int m = 0; m < commandParameters.count(); m++) {
+               //
+               // Remove anything enclosed in double quotes
+               //
+               QString param = commandParameters[m];
+               if (param.startsWith("\"") &&
+                   param.endsWith("\"")) {
+                  const int len = param.length();
+                  if (len >= 2) {
+                     param = param.mid(1, len - 2);
+                     commandParameters[m] = param;
+                  }
+               }
+            }
+            
+            //
             // Run the program
             //
             BrainModelRunExternalProgram runProgram(caretCommandProgramName,

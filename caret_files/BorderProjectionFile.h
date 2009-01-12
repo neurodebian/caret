@@ -366,10 +366,8 @@ class BorderProjectionFile : public AbstractFile {
    friend class BorderProjectionLink;
 };
 
+#endif // __VE_BORDER_PROJECTION_FILE_H__
+
 #ifdef __BORDER_PROJECTION_MAIN__
 int BorderProjection::uniqueIDSource = 1;
 #endif // __BORDER_PROJECTION_MAIN__
-
-#endif
-
-

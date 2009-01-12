@@ -228,8 +228,9 @@ class RgbPaintFile : public NodeAttributeFile {
       void setNumberOfNodesAndColumns(const int numNodes, const int numColumns);
 };
 
-#ifdef _RGB_PAINT_FILE_MAIN_
+#endif  // __RGB_PAINT_FILE_H__
 
+#ifdef _RGB_PAINT_FILE_MAIN_
    const QString RgbPaintFile::tagCommentRed = "tag-comment-red";
    const QString RgbPaintFile::tagCommentGreen = "tag-comment-green";
    const QString RgbPaintFile::tagCommentBlue = "tag-comment-blue";
@@ -239,7 +240,5 @@ class RgbPaintFile : public NodeAttributeFile {
    const QString RgbPaintFile::tagScaleRed = "tag-scale-red";
    const QString RgbPaintFile::tagScaleGreen = "tag-scale-green";
    const QString RgbPaintFile::tagScaleBlue = "tag-scale-blue";
-
 #endif // _RGB_PAINT_FILE_MAIN_
 
-#endif  // __RGB_PAINT_FILE_H__

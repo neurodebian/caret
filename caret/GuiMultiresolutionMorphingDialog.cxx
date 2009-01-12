@@ -890,13 +890,14 @@ GuiMultiresolutionMorphingDialog::done(int r)
    std::vector<MorphingMeasurements> mm;
    bsmm.getMorphingMeasurements(mm);
    GuiMorphingMeasurementsDialog* mmd = new GuiMorphingMeasurementsDialog(mm, elapsedTime,
-                                                      morphingSurfaceType, theMainWindow);
+                                                      morphingSurfaceType, true, theMainWindow);
    mmd->show();
    
    //
    // Clear modification status of borders
    //                                     
-   bmbs->setAllModifiedStatus(false);
+   bmbs->setAllBordersModifiedStatus(false);
+   bmbs->setProjectionsModified(false);
                           
    //
    // Notify about modified files and redraw all displays

@@ -54,9 +54,9 @@ CommandVolumeSetOrigin::getScriptBuilderParameters(ScriptBuilderParameters& para
    paramsOut.clear();
    paramsOut.addFile("Input Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addFile("Output Volume File Name", FileFilters::getVolumeGenericFileFilter());
-   paramsOut.addFloat("X-Axis-Origin");
-   paramsOut.addFloat("Y-Axis-Origin");
-   paramsOut.addFloat("Z-Axis-Origin");
+   paramsOut.addFloat("X-Axis-Origin (Center of First Voxel)");
+   paramsOut.addFloat("Y-Axis-Origin (Center of First Voxel)");
+   paramsOut.addFloat("Z-Axis-Origin (Center of First Voxel)");
 }
 
 /**
@@ -70,9 +70,9 @@ CommandVolumeSetOrigin::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-volume-file-name>\n"
        + indent9 + "<output-volume-file-name>\n"
-       + indent9 + "<x-axis-origin>\n"
-       + indent9 + "<y-axis-origin>\n"
-       + indent9 + "<z-axis-origin>\n"
+       + indent9 + "<x-axis-origin-at-center-of-first-voxel>\n"
+       + indent9 + "<y-axis-origin-at-center-of-first-voxel>\n"
+       + indent9 + "<z-axis-origin-at-center-of-first-voxel>\n"
        + indent9 + "\n"
        + indent9 + "Set the origin for the volume file.\n"
        + indent9 + "\n");
@@ -100,9 +100,9 @@ CommandVolumeSetOrigin::executeCommand() throw (BrainModelAlgorithmException,
                                                         outputVolumeFileName, 
                                                         outputVolumeFileLabel);
    const float origin[3] = {
-      parameters->getNextParameterAsFloat("X-Axis-Origin"),
-      parameters->getNextParameterAsFloat("Y-Axis-Origin"),
-      parameters->getNextParameterAsFloat("Z-Axis-Origin")
+      parameters->getNextParameterAsFloat("X-Axis-Origin-At-Center-of-First-Voxel"),
+      parameters->getNextParameterAsFloat("Y-Axis-Origin-At-Center-of-First-Voxel"),
+      parameters->getNextParameterAsFloat("Z-Axis-Origin-At-Center-of-First-Voxel")
    };
    checkForExcessiveParameters();
    

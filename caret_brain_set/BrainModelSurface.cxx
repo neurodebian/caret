@@ -61,6 +61,7 @@
 #include "BrainModelSurfacePointLocator.h"
 #include "BrainModelSurfacePointProjector.h"
 #include "BrainModelSurfaceSmoothing.h"
+#include "BrainModelSurfaceToVolumeSegmentationConverter.h"
 #include "BrainSet.h"
 #include "DebugControl.h"
 #include "DeformationFieldFile.h"
@@ -997,10 +998,13 @@ BrainModelSurface::setTopologyFile(TopologyFile* topologyIn)
    }
    coordinates.clearDisplayList();
    
-   const QString topoFileName = FileUtilities::basename(topology->getFileName());
+   QString topoFileName;
+   if (topology != NULL) {
+      topoFileName = FileUtilities::basename(topology->getFileName());
+   }
    if (topoFileName.isEmpty() == false) {
       const unsigned long modifiedStatus = coordinates.getModified();
-      coordinates.setHeaderTag(SpecFile::unknownTopoFileMatchTag, topoFileName);
+      coordinates.setHeaderTag(SpecFile::getUnknownTopoFileMatchTag(), topoFileName);
       coordinates.setModifiedCounter(modifiedStatus);
    }
    
@@ -2287,42 +2291,42 @@ BrainModelSurface::getSurfaceConfigurationIDFromType(const SURFACE_TYPES st)
 QString
 BrainModelSurface::getCoordSpecFileTagFromSurfaceType(const SURFACE_TYPES st)
 {
-   QString tag(SpecFile::unknownCoordFileMatchTag);
+   QString tag(SpecFile::getUnknownCoordFileMatchTag());
    
    switch(st) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
-         tag = SpecFile::rawCoordFileTag;
+         tag = SpecFile::getRawCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
-         tag = SpecFile::fiducialCoordFileTag;
+         tag = SpecFile::getFiducialCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_INFLATED:
-         tag = SpecFile::inflatedCoordFileTag;
+         tag = SpecFile::getInflatedCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
-         tag = SpecFile::veryInflatedCoordFileTag;
+         tag = SpecFile::getVeryInflatedCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
-         tag = SpecFile::sphericalCoordFileTag;
+         tag = SpecFile::getSphericalCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
-         tag = SpecFile::ellipsoidCoordFileTag;
+         tag = SpecFile::getEllipsoidCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
-         tag = SpecFile::compressedCoordFileTag;
+         tag = SpecFile::getCompressedCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT:
-         tag = SpecFile::flatCoordFileTag;
+         tag = SpecFile::getFlatCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
-         tag = SpecFile::lobarFlatCoordFileTag;
+         tag = SpecFile::getLobarFlatCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_HULL:
-         tag = SpecFile::hullCoordFileTag;
+         tag = SpecFile::getHullCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownCoordFileMatchTag;
+         tag = SpecFile::getUnknownCoordFileMatchTag();
          break;
    }
    
@@ -2335,42 +2339,42 @@ BrainModelSurface::getCoordSpecFileTagFromSurfaceType(const SURFACE_TYPES st)
 QString
 BrainModelSurface::getSurfaceSpecFileTagFromSurfaceType(const SURFACE_TYPES st)
 {
-   QString tag(SpecFile::unknownSurfaceFileMatchTag);
+   QString tag(SpecFile::getUnknownSurfaceFileMatchTag());
    
    switch(st) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
-         tag = SpecFile::rawSurfaceFileTag;
+         tag = SpecFile::getRawSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
-         tag = SpecFile::fiducialSurfaceFileTag;
+         tag = SpecFile::getFiducialSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_INFLATED:
-         tag = SpecFile::inflatedSurfaceFileTag;
+         tag = SpecFile::getInflatedSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
-         tag = SpecFile::veryInflatedSurfaceFileTag;
+         tag = SpecFile::getVeryInflatedSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
-         tag = SpecFile::sphericalSurfaceFileTag;
+         tag = SpecFile::getSphericalSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
-         tag = SpecFile::ellipsoidSurfaceFileTag;
+         tag = SpecFile::getEllipsoidSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
-         tag = SpecFile::compressedSurfaceFileTag;
+         tag = SpecFile::getCompressedSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT:
-         tag = SpecFile::flatSurfaceFileTag;
+         tag = SpecFile::getFlatSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
-         tag = SpecFile::lobarFlatSurfaceFileTag;
+         tag = SpecFile::getLobarFlatSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_HULL:
-         tag = SpecFile::hullSurfaceFileTag;
+         tag = SpecFile::getHullSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownSurfaceFileMatchTag;
+         tag = SpecFile::getUnknownSurfaceFileMatchTag();
          break;
    }
    
@@ -3053,6 +3057,87 @@ BrainModelSurface::createFlatGridBorders(BorderFile& bf, const float gridSpacing
    }
 }
 
+/**
+ * get the volume displacment of the surface.  Returns negative if it fails.
+ */
+float 
+BrainModelSurface::getSurfaceVolumeDisplacement() const
+{
+
+   //
+   // Get the bounds of the surface
+   //
+   float bounds[6];
+   getBounds(bounds);
+   const float dx = bounds[1] - bounds[0];
+   const float dy = bounds[3] - bounds[2];
+   const float dz = bounds[5] - bounds[4];
+   
+   //
+   // Create the empty volume
+   //
+   const float pad = 10.0;
+   const int dim[3] = {
+      static_cast<int>(dx + pad),
+      static_cast<int>(dy + pad),
+      static_cast<int>(dz + pad)
+   };
+   const float origin[3] = {
+      bounds[0] - (pad / 2.0),
+      bounds[2] - (pad / 2.0),
+      bounds[4] - (pad / 2.0),
+   };
+   const float spacing[3] = { 1.0, 1.0, 1.0 };
+   const VolumeFile::ORIENTATION orient[3] = {
+      VolumeFile::ORIENTATION_LEFT_TO_RIGHT,
+      VolumeFile::ORIENTATION_POSTERIOR_TO_ANTERIOR,
+      VolumeFile::ORIENTATION_INFERIOR_TO_SUPERIOR
+   };   
+   VolumeFile vf;
+   vf.initialize(VolumeFile::VOXEL_DATA_TYPE_FLOAT,
+                 dim,
+                 orient,
+                 origin,
+                 spacing,
+                 true,
+                 true);
+                 
+   //
+   // Convert the surface to a volume
+   //
+   try {
+      BrainModelSurfaceToVolumeSegmentationConverter
+         s2v((BrainSet*)getBrainSet(),
+             (BrainModelSurface*)this,
+             &vf,
+             true,
+             false);
+      s2v.execute();
+   }
+   catch (BrainModelAlgorithmException&) {
+      return 0;
+   }
+   
+   if (DebugControl::getDebugOn()) {
+      try {
+         vf.writeFile("DebugSurfaceVolumeDisplacement.nii.gz");
+      }
+      catch (FileException&) {
+      }
+   }
+   
+   float displacement = vf.getNumberOfNonZeroVoxels();
+   
+   //
+   // If all voxels set, probably open topology file
+   //
+   if (displacement == vf.getTotalNumberOfVoxelElements()) {
+      displacement = -1;
+   }
+   
+   return displacement;
+}
+      
 /**
  * Get the surface's area
  */
@@ -5606,6 +5691,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
                                                           const bool createVeryInflated,
                                                           const bool createEllipsoid,
                                                           const bool createSphere,
+                                                          const bool createCompressedMedialWall,
                                                           const bool enableFingerSmoothing,
                                                           const bool scaleToMatchFiducialArea,
                                                           const float iterationsScaleIn,
@@ -5614,7 +5700,8 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
    if ((createInflated == false) &&
        (createVeryInflated == false) &&
        (createEllipsoid == false) &&
-       (createSphere == false)) {
+       (createSphere == false) &&
+       (createCompressedMedialWall == false)) {
       return;
    }
    
@@ -5754,7 +5841,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
    //
    BrainModelSurface* highSmoothSurface = NULL;
    BrainModelSurface* ellipsoidSurface = NULL;
-   if (createEllipsoid || createSphere) {   
+   if (createEllipsoid || createSphere || createCompressedMedialWall) {   
       //
       // Copy the surface
       //
@@ -5843,16 +5930,41 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       }
    }
    
-   if (createSphere) {
+   BrainModelSurface* sphereSurface = NULL;
+   if (createSphere || createCompressedMedialWall) {
       //
       // Copy the surface
       //
-      BrainModelSurface* sphereSurface = new BrainModelSurface(*ellipsoidSurface);
+      sphereSurface = new BrainModelSurface(*ellipsoidSurface);
       sphereSurface->setSurfaceType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
       sphereSurface->convertEllipsoidToSphereWithSurfaceArea(fiducialSurfaceArea);
       CoordinateFile* cf = sphereSurface->getCoordinateFile();
       cf->makeDefaultFileName(sphereSurface->getSurfaceTypeName()); 
-      brainSet->addBrainModel(sphereSurface);      
+      if (createSphere) {
+         brainSet->addBrainModel(sphereSurface);
+      }
+   }
+   
+   if (createCompressedMedialWall) {
+      //
+      // Copy the surface
+      //
+      BrainModelSurface* cmwSurface = new BrainModelSurface(*sphereSurface);
+      cmwSurface->setSurfaceType(BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL);
+      CoordinateFile* cf = cmwSurface->getCoordinateFile();
+      cf->makeDefaultFileName(cmwSurface->getSurfaceTypeName()); 
+      
+      cmwSurface->setToStandardView(0, VIEW_MEDIAL);
+      cmwSurface->applyCurrentView(0, true, true, true);
+      TransformationMatrix tm;
+      tm.rotate(TransformationMatrix::ROTATE_X_AXIS, -27.0);
+      cmwSurface->applyTransformationMatrix(tm);
+      cmwSurface->convertSphereToCompressedMedialWall(0.95);   //0.85);
+      cmwSurface->projectCoordinatesToPlane(
+                   BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO);
+      cmwSurface->computeNormals();
+
+      brainSet->addBrainModel(cmwSurface);    
    }
    
    delete lowSmoothSurface;
@@ -5862,6 +5974,11 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
    if (ellipsoidSurface != NULL) {
       if (createEllipsoid == false) {
          delete ellipsoidSurface;
+      }
+   }
+   if (sphereSurface != NULL) {
+      if (createSphere == false) {
+         delete sphereSurface;
       }
    }
    if (createInflated == false) {
@@ -6633,7 +6750,58 @@ void
 BrainModelSurface::projectCoordinatesToPlane(const COORDINATE_PLANE plane)
 {
    const unsigned long modFlag = coordinates.getModified();
-   
+
+   switch (plane) {
+      case COORDINATE_PLANE_NONE:
+         break;
+      case COORDINATE_PLANE_MOVE_POSITIVE_X_TO_ZERO:
+      case COORDINATE_PLANE_MOVE_NEGATIVE_X_TO_ZERO:
+      case COORDINATE_PLANE_MOVE_POSITIVE_Y_TO_ZERO:
+      case COORDINATE_PLANE_MOVE_NEGATIVE_Y_TO_ZERO:
+      case COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO:
+      case COORDINATE_PLANE_MOVE_NEGATIVE_Z_TO_ZERO:
+         {
+            pushCoordinates();
+            
+            const int numNodes = getNumberOfNodes();
+            for (int i = 0; i < numNodes; i++) {
+               float x, y, z;
+               coordinates.getCoordinate(i, x, y, z);
+
+               switch (plane) {
+                  case COORDINATE_PLANE_NONE:
+                     break;
+                  case COORDINATE_PLANE_MOVE_POSITIVE_X_TO_ZERO:
+                     x = std::min(x, 0.0f);
+                     break;
+                  case COORDINATE_PLANE_MOVE_NEGATIVE_X_TO_ZERO:
+                     x = std::max(x, 0.0f);
+                     break;
+                  case COORDINATE_PLANE_MOVE_POSITIVE_Y_TO_ZERO:
+                     y = std::min(y, 0.0f);
+                     break;
+                  case COORDINATE_PLANE_MOVE_NEGATIVE_Y_TO_ZERO:
+                     y = std::max(y, 0.0f);
+                     break;
+                  case COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO:
+                     z = std::min(z, 0.0f);
+                     break;
+                  case COORDINATE_PLANE_MOVE_NEGATIVE_Z_TO_ZERO:
+                     z = std::max(z, 0.0f);
+                     break;
+                  case COORDINATE_PLANE_RESTORE:
+                     break;
+               }
+               
+               coordinates.setCoordinate(i, x, y, z);
+            }
+         }
+         break;
+      case COORDINATE_PLANE_RESTORE:
+         popCoordinates();
+         break;
+   }
+/*   
    const int numNodes = getNumberOfNodes();
    switch (plane) {
       case COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO:
@@ -6662,7 +6830,7 @@ BrainModelSurface::projectCoordinatesToPlane(const COORDINATE_PLANE plane)
          popCoordinates();
          break;
    }
-   
+*/   
    coordinates.setModifiedCounter(modFlag);
 }
 

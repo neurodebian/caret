@@ -49,6 +49,7 @@ BrainModelSurfaceFociSearch::BrainModelSurfaceFociSearch(BrainSet* bsIn,
 {
    numberOfFociInSearch = 0;
    numberOfFociFromMatchingStudies = 0;
+   numberOfStudiesUsedByMatchingFoci = 0;
 }
                             
 /**
@@ -66,6 +67,7 @@ BrainModelSurfaceFociSearch::execute() throw (BrainModelAlgorithmException)
 {
    numberOfFociInSearch = 0;
    numberOfFociFromMatchingStudies = 0;
+   numberOfStudiesUsedByMatchingFoci = 0;
    
    //
    // Make sure there are search parameters
@@ -228,6 +230,8 @@ BrainModelSurfaceFociSearch::execute() throw (BrainModelAlgorithmException)
    if (selectAllFociInMatchingStudiesFlag) {
       includeFociInMatchingStudiesIntoSearch(matchingStudiesPubMedIDs);
    }
+   
+   numberOfStudiesUsedByMatchingFoci = matchingStudiesPubMedIDs.size();
 }
 
 /**
@@ -315,18 +319,20 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
    switch (fociSearch->getAttribute()) {
       case FociSearch::ATTRIBUTE_ALL:
          for (int i = FociSearch::ATTRIBUTE_FOCUS_AREA;
-              i <= FociSearch::ATTRIBUTE_STUDY_TITLE;
+              i < FociSearch::ATTRIBUTE_NUMBER_OF;
               i++) {
             const FociSearch::ATTRIBUTE attributeValue =
                          static_cast<FociSearch::ATTRIBUTE>(i);
-            const QString s = getAttributeText(attributeValue,
-                                               focus,
-                                               studies);
-            if (s.isEmpty() == false) {
-               if (attributeText.isEmpty() == false) {
-                  attributeText += itemSeparator;
+            if (attributeValue != FociSearch::ATTRIBUTE_FOCUS_SPATIAL) {
+               const QString s = getAttributeText(attributeValue,
+                                                  focus,
+                                                  studies);
+               if (s.isEmpty() == false) {
+                  if (attributeText.isEmpty() == false) {
+                     attributeText += itemSeparator;
+                  }
+                  attributeText += s;
                }
-               attributeText += s;
             }
          }
          break;
@@ -366,6 +372,7 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
       case FociSearch::ATTRIBUTE_STUDY_KEYWORDS:
       case FociSearch::ATTRIBUTE_STUDY_MESH_TERMS:
       case FociSearch::ATTRIBUTE_STUDY_NAME:
+      case FociSearch::ATTRIBUTE_STUDY_SPECIES:
       case FociSearch::ATTRIBUTE_STUDY_STEREOTAXIC_SPACE:
       case FociSearch::ATTRIBUTE_STUDY_TABLE_HEADER:
       case FociSearch::ATTRIBUTE_STUDY_TABLE_SUBHEADER:
@@ -374,15 +381,14 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
                                           focus,
                                           studies);
          break;
+      case FociSearch::ATTRIBUTE_NUMBER_OF:
+         break;
    }
 
    //
-   // If attribute is empty, search failed
+   // Get attribute
    //
    attributeText = attributeText.trimmed();
-   if (attributeText.isEmpty()) {
-      return false;
-   }
    
    //
    // Process matching
@@ -390,6 +396,13 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
    switch (fociSearch->getMatching()) {
       case FociSearch::MATCHING_ANY_OF:
          {
+            //
+            // If empty, NOT a match
+            //
+            if (attributeText.isEmpty()) {
+               return false;
+            }
+            
             //
             // split search terms into a list
             //
@@ -410,6 +423,13 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
          break;
       case FociSearch::MATCHING_ALL_OF:
          {
+            //
+            // If empty, NOT a match
+            //
+            if (attributeText.isEmpty()) {
+               return false;
+            }
+
             //
             // split search terms into a list
             //
@@ -436,6 +456,13 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
       case FociSearch::MATCHING_NONE_OF:
          {
             //
+            // If empty, IS a match
+            //
+            if (attributeText.isEmpty()) {
+               return true;
+            }
+            
+            //
             // split search terms into a list
             //
             const QStringList searchList = 
@@ -459,8 +486,16 @@ BrainModelSurfaceFociSearch::applySearchToFocus(const FociSearch* fociSearch,
          }
          break;
       case FociSearch::MATCHING_EXACT_PHRASE:
-         if (attributeText.contains(fociSearch->getSearchText(), Qt::CaseInsensitive)) {
-            return true;
+         {
+            //
+            // If empty, NOT a match
+            //
+            if (attributeText.isEmpty()) {
+               return false;
+            }
+            if (attributeText.contains(fociSearch->getSearchText(), Qt::CaseInsensitive)) {
+               return true;
+            }
          }
          break;
    }
@@ -567,6 +602,14 @@ BrainModelSurfaceFociSearch::getAttributeText(const FociSearch::ATTRIBUTE attrib
             attributeText += studies[i]->getName();
          }
          break;
+      case FociSearch::ATTRIBUTE_STUDY_SPECIES:
+         for (int i = 0; i < numStudies; i++) {
+            if (attributeText.isEmpty() == false) {
+               attributeText += itemSeparator;
+            }
+            attributeText += studies[i]->getSpecies();
+         }
+         break;
       case FociSearch::ATTRIBUTE_STUDY_STEREOTAXIC_SPACE:
          for (int i = 0; i < numStudies; i++) {
             if (attributeText.isEmpty() == false) {
@@ -610,6 +653,8 @@ BrainModelSurfaceFociSearch::getAttributeText(const FociSearch::ATTRIBUTE attrib
             }
             attributeText += studies[i]->getTitle();
          }
+         break;
+      case FociSearch::ATTRIBUTE_NUMBER_OF:
          break;
    }
    

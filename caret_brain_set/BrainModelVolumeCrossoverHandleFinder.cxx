@@ -317,7 +317,7 @@ BrainModelVolumeCrossoverHandleFinder::createVoxelHandleList()
       //
       int ii = 0, jj = 0, kk = 0;
       for (int j = 0; j < numVoxels; j++) {
-         const VolumeFile::VoxelIJK voxelIJK = vg.getVoxel(j);
+         const VoxelIJK voxelIJK = vg.getVoxel(j);
          ii += voxelIJK.getI();
          jj += voxelIJK.getJ();
          kk += voxelIJK.getK();

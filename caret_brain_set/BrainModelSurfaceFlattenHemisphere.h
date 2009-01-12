@@ -44,7 +44,8 @@ class BrainModelSurfaceFlattenHemisphere : public BrainModelAlgorithm {
                                          const BorderProjectionFile* flattenBorderProjectionFileIn,
                                          PaintFile* paintFileInOut,
                                          AreaColorFile* areaColorFileInOut,
-                                         const bool createFiducialWithSmoothedMedialWallFlagIn);
+                                         const bool createFiducialWithSmoothedMedialWallFlagIn,
+                                         const bool autoSaveFilesFlag);
 
       /// destructor
       ~BrainModelSurfaceFlattenHemisphere();
@@ -52,7 +53,7 @@ class BrainModelSurfaceFlattenHemisphere : public BrainModelAlgorithm {
       /// execute the algorithm
       void execute() throw (BrainModelAlgorithmException);
       
-      /// get the spherical surface that was added to the brain set
+      /// get the spherical surface that was added to the brain set (NULL if input was sphere)
       BrainModelSurface* getSphericalSurface() const { return outputSphericalSurface; }
       
       /// get the flat surface that was added to the brain set
@@ -90,9 +91,6 @@ class BrainModelSurfaceFlattenHemisphere : public BrainModelAlgorithm {
       /// the flatten border projection file
       const BorderProjectionFile* inputFlattenBorderProjectionFile;
       
-      /// the create fiducial surface with smoothed medial wall flag
-      const bool createFiducialWithSmoothedMedialWallFlag;
-      
       /// the output spherical surface
       BrainModelSurface* outputSphericalSurface;
       
@@ -119,6 +117,12 @@ class BrainModelSurfaceFlattenHemisphere : public BrainModelAlgorithm {
       
       /// fiducial surface with smoothed medial wall
       BrainModelSurface* outputFiducialSurfaceWithSmoothedMedialWall;
+      
+      /// the create fiducial surface with smoothed medial wall flag
+      const bool createFiducialWithSmoothedMedialWallFlag;
+      
+      /// automatically save files flag
+      const bool autoSaveFilesFlag;
       
 };
 

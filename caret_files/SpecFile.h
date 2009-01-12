@@ -28,7 +28,10 @@
 #define __SPEC_FILE_H__
 
 #include "AbstractFile.h"
+#include "Category.h"
 #include "SceneFile.h"
+#include "Species.h"
+#include "StereotaxicSpace.h"
 #include "Structure.h"
 
 /// SpecFile - This class is used to read, write, and manipulate a specification file.
@@ -80,7 +83,7 @@ class SpecFile : public AbstractFile {
                   bool operator<(const Files& e) const;
             
                   // sort the files
-                  static void setSortMethod(const SORT sortMethod);
+                  static void setSortMethod(const SpecFile::SORT sortMethodIn);
             
                   /// name of file
                   QString filename;
@@ -95,7 +98,7 @@ class SpecFile : public AbstractFile {
                   Structure structure;
              
                   /// how to sort
-                  static SORT sortMethod;
+                  static SpecFile::SORT sortMethod;
             };
             
 
@@ -272,6 +275,10 @@ class SpecFile : public AbstractFile {
       // validate a spec file - all files exist and are readable (true if valid)
       bool validate(QString& errorMessage) const;
       
+      // add a file to the spec file basing spec file tag off of file extension
+      // returns true if added
+      bool addUnknownTypeOfFileToSpecFile(const QString& fileName);
+      
       // add a file to the spec file (returns true if file was written)
       bool addToSpecFile(const QString& tag, 
                          const QString& value1,
@@ -305,10 +312,10 @@ class SpecFile : public AbstractFile {
       void setWriteOnlySelectedFiles(const bool selOnly) { writeOnlySelectedFiles = selOnly; }
    
       // get the species
-      QString getSpecies() const;
+      Species getSpecies() const;
       
       // set the species
-      void setSpecies(const QString& speciesIn);
+      void setSpecies(const Species& speciesIn);
       
       // get the subject
       QString getSubject() const;
@@ -317,22 +324,22 @@ class SpecFile : public AbstractFile {
       void setSubject(const QString& subjectIn);
       
       // get the space
-      QString getSpace() const;
+      StereotaxicSpace getSpace() const;
       
       // set the space
-      void setSpace(const QString& spaceIn);
+      void setSpace(const StereotaxicSpace& spaceIn);
       
       // get the structure
-      QString getStructure() const;
+      Structure getStructure() const;
       
       // set the structure
-      void setStructure(const QString& hem);
+      void setStructure(const Structure& st);
       
       // get the category
-      QString getCategory() const;
+      Category getCategory() const;
       
       // set the category
-      void setCategory(const QString& cat);
+      void setCategory(const Category& cat);
       
       // set current directory to path of spec file
       void setCurrentDirectoryToSpecFileDirectory();
@@ -395,6 +402,8 @@ class SpecFile : public AbstractFile {
                                        std::vector<SpecFile::SPEC_FILE_BOOL>& selectionStatus,
                                        const QString fileName);
                                        
+      // IMPORTANT if new extensions added, update the method
+      //    addUnknownTypeOfFileToSpecFile()
       static QString getTopoFileExtension() { return ".topo"; }
       static QString getCoordinateFileExtension() { return ".coord"; }
       static QString getTransformationMatrixFileExtension() { return ".matrix"; }
@@ -467,13 +476,17 @@ class SpecFile : public AbstractFile {
       static QString getGiftiTopologyFileExtension() { return ".topo.gii"; }
       static QString getCommaSeparatedValueFileExtension() { return ".csv"; }
       static QString getVocabularyFileExtension() { return ".vocabulary"; }
+      static QString getStudyCollectionFileExtension() { return ".study_collection"; }
       static QString getStudyMetaDataFileExtension() { return ".study"; }
-      static QString getStudyMetaAnalysisFileExtension() { return ".meta_analysis"; }
       static QString getXmlFileExtension() { return ".xml"; }
       static QString getTextFileExtension() { return ".txt"; }
       static QString getNeurolucidaFileExtension() { return ".xml"; }
       static QString getCaretScriptFileExtension() { return ".script"; }
       static QString getMniObjeSurfaceFileExtension() { return ".obj"; }
+      static QString getZipFileExtension() { return ".zip"; }
+      
+      // IMPORTANT if new extensions added, update the method
+      //    addUnknownTypeOfFileToSpecFile()
       
       /// all spec file "Entry" DO NOT CLEAR
       std::vector<Entry*> allEntries;
@@ -605,7 +618,7 @@ class SpecFile : public AbstractFile {
       Entry    transformationDataFile;
       
       Entry studyMetaDataFile;
-      Entry metaAnalysisFile;
+      Entry studyCollectionFile;
       
       Entry vocabularyFile;
       
@@ -613,166 +626,130 @@ class SpecFile : public AbstractFile {
       
       Entry scriptFile;
       
-      static const QString volumeFunctionalFileTag;
-      static const QString volumePaintFileTag;
-      static const QString volumeProbAtlasFileTag;
-      static const QString volumeRgbFileTag;
-      static const QString volumeSegmentationFileTag;
-      static const QString volumeAnatomyFileTag;
-      static const QString volumeVectorFileTag;
+      static QString getVolumeFunctionalFileTag()   { return "volume_functional_file"; }
+      static QString getVolumePaintFileTag()        { return "volume_paint_file"; }
+      static QString getVolumeProbAtlasFileTag() { return "volume_prob_atlas_file"; }
+      static QString getVolumeRgbFileTag()     { return "volume_rgb_file"; }
+      static QString getVolumeSegmentationFileTag() { return "volume_segmentation_file"; }
+      static QString getVolumeAnatomyFileTag()   { return "volume_anatomy_file"; }
+      static QString getVolumeVectorFileTag()    { return "volume_vector_file"; }
       
-      static const QString closedTopoFileTag;
-      static const QString openTopoFileTag;
-      static const QString cutTopoFileTag;
-      static const QString lobarCutTopoFileTag;
-      static const QString unknownTopoFileMatchTag;
+      static QString getClosedTopoFileTag()     { return "CLOSEDtopo_file"; }
+      static QString getOpenTopoFileTag()       { return "OPENtopo_file"; }
+      static QString getCutTopoFileTag()        { return "CUTtopo_file"; }
+      static QString getLobarCutTopoFileTag()   { return "LOBAR_CUTtopo_file"; }
+      static QString getUnknownTopoFileMatchTag() { return "topo_file"; }
       
-      static const QString topoFlagTag;
+      static QString getTopoFlagTag()           { return "topo_flag"; }
       
-      static const QString closedTopoFileTagName;
-      static const QString openTopoFileTagName;
-      static const QString cutTopoFileTagName;
-      static const QString lobarCutTopoFileTagName;
-      static const QString unknownTopoFileMatchTagName;
+      static QString getRawCoordFileTag()        { return "RAWcoord_file"; }
+      static QString getFiducialCoordFileTag()   { return "FIDUCIALcoord_file"; }
+      static QString getInflatedCoordFileTag()   { return "INFLATEDcoord_file"; }
+      static QString getVeryInflatedCoordFileTag()   { return "VERY_INFLATEDcoord_file"; }
+      static QString getSphericalCoordFileTag()  { return "SPHERICALcoord_file"; }
+      static QString getEllipsoidCoordFileTag()  { return "ELLIPSOIDcoord_file"; }
+      static QString getCompressedCoordFileTag() { return "COMPRESSED_MEDIAL_WALLcoord_file"; }
+      static QString getFlatCoordFileTag()       { return "FLATcoord_file"; }
+      static QString getLobarFlatCoordFileTag()  { return "LOBAR_FLATcoord_file"; }
+      static QString getHullCoordFileTag()       { return "HULLcoord_file"; }
+      static QString getUnknownCoordFileMatchTag() { return "coord_file"; }
+      static QString getAverageFiducialCoordFileTag() { return "AVERAGE_FIDUCIALcoord_file"; }
       
-      static const QString rawCoordFileTag;
-      static const QString fiducialCoordFileTag;
-      static const QString inflatedCoordFileTag;
-      static const QString veryInflatedCoordFileTag;
-      static const QString sphericalCoordFileTag;
-      static const QString ellipsoidCoordFileTag;
-      static const QString compressedCoordFileTag;
-      static const QString flatCoordFileTag;
-      static const QString lobarFlatCoordFileTag;
-      static const QString hullCoordFileTag;
-      static const QString unknownCoordFileMatchTag;
-      static const QString averageFiducialCoordFileTag;
+      static QString getRawSurfaceFileTag()        { return "RAWsurface_file"; }
+      static QString getFiducialSurfaceFileTag()   { return "FIDUCIALsurface_file"; }
+      static QString getInflatedSurfaceFileTag()   { return "INFLATEDsurface_file"; }
+      static QString getVeryInflatedSurfaceFileTag()   { return "VERY_INFLATEDsurface_file"; }
+      static QString getSphericalSurfaceFileTag()  { return "SPHERICALsurface_file"; }
+      static QString getEllipsoidSurfaceFileTag()  { return "ELLIPSOIDsurface_file"; }
+      static QString getCompressedSurfaceFileTag() { return "COMPRESSED_MEDIAL_WALLsurface_file"; }
+      static QString getFlatSurfaceFileTag()       { return "FLATsurface_file"; }
+      static QString getLobarFlatSurfaceFileTag()  { return "LOBAR_FLATsurface_file"; }
+      static QString getHullSurfaceFileTag()       { return "HULLsurface_file"; }
+      static QString getUnknownSurfaceFileMatchTag() { return "surface_file"; }
       
-      static const QString transformationMatrixFileTag;
-      static const QString transformationDataFileTag;
+      static QString getLatLonFileTag() { return "lat_lon_file"; }
+      static QString getSectionFileTag() { return "section_file"; }
+      static QString getTransformationMatrixFileTag() { return "transformation_matrix_file"; }
+      static QString getTransformationDataFileTag() { return "transformation_data_file"; }
       
-      static const QString latLonFileTag;
+      static QString getPaintFileTag() { return "paint_file"; }
+      static QString getAreaColorFileTag() { return "area_color_file"; }
+      static QString getRgbPaintFileTag() { return "RGBpaint_file"; }
+      static QString getSurfaceVectorFileTag() { return "surface_vector_file"; }
       
-      static const QString sectionFileTag;
+      static QString getRawBorderFileTag()        { return "RAWborder_file"; }
+      static QString getFiducialBorderFileTag()   { return "FIDUCIALborder_file"; }
+      static QString getInflatedBorderFileTag()   { return "INFLATEDborder_file"; }
+      static QString getVeryInflatedBorderFileTag()   { return "VERY_INFLATEDborder_file"; }
+      static QString getSphericalBorderFileTag()  { return "SPHERICALborder_file"; }
+      static QString getEllipsoidBorderFileTag()  { return "ELLIPSOIDborder_file"; }
+      static QString getCompressedBorderFileTag() { return "COMPRESSED_MEDIAL_WALLborder_file"; }
+      static QString getFlatBorderFileTag()  { return "FLATborder_file"; }
+      static QString getLobarFlatBorderFileTag() { return "LOBAR_FLATborder_file"; }
+      static QString getHullBorderFileTag() { return "HULLborder_file"; }
+      static QString getUnknownBorderFileMatchTag() { return "border_file"; }
+      static QString getVolumeBorderFileTag() { return "VOLUMEborder_file"; }
       
-      static const QString rawCoordFileTagName;
-      static const QString fiducialCoordFileTagName;
-      static const QString inflatedCoordFileTagName;
-      static const QString veryInflatedCoordFileTagName;
-      static const QString sphericalCoordFileTagName;
-      static const QString ellipsoidCoordFileTagName;
-      static const QString compressedCoordFileTagName;
-      static const QString flatCoordFileTagName;
-      static const QString lobarFlatCoordFileTagName;
-      static const QString hullCoordFileTagName;
-      static const QString unknownCoordFileMatchTagName;
-      static const QString averageFiducialCoordFileTagName;
-         
-      static const QString rawSurfaceFileTag;
-      static const QString fiducialSurfaceFileTag;
-      static const QString inflatedSurfaceFileTag;
-      static const QString veryInflatedSurfaceFileTag;
-      static const QString sphericalSurfaceFileTag;
-      static const QString ellipsoidSurfaceFileTag;
-      static const QString compressedSurfaceFileTag;
-      static const QString flatSurfaceFileTag;
-      static const QString lobarFlatSurfaceFileTag;
-      static const QString hullSurfaceFileTag;
-      static const QString unknownSurfaceFileMatchTag;
-         
-      static const QString paintFileTag;
-      static const QString areaColorFileTag;
-      static const QString rgbPaintFileTag;
-      static const QString surfaceVectorFileTag;
+      static QString getBorderColorFileTag() { return "border_color_file"; }
+      static QString getBorderProjectionFileTag() { return "borderproj_file"; }
       
-      static const QString rawBorderFileTag;
-      static const QString fiducialBorderFileTag;
-      static const QString inflatedBorderFileTag;
-      static const QString veryInflatedBorderFileTag;
-      static const QString sphericalBorderFileTag;
-      static const QString ellipsoidBorderFileTag;
-      static const QString compressedBorderFileTag;
-      static const QString flatBorderFileTag;
-      static const QString lobarFlatBorderFileTag;
-      static const QString hullBorderFileTag;
-      static const QString unknownBorderFileMatchTag;
-      static const QString volumeBorderFileTag;
+      static QString getPaletteFileTag() { return "palette_file"; }
       
-      static const QString rawBorderFileTagName;
-      static const QString fiducialBorderFileTagName;
-      static const QString inflatedBorderFileTagName;
-      static const QString veryInflatedBorderFileTagName;
-      static const QString sphericalBorderFileTagName;
-      static const QString ellipsoidBorderFileTagName;
-      static const QString compressedBorderFileTagName;
-      static const QString flatBorderFileTagName;
-      static const QString lobarFlatBorderFileTagName;
-      static const QString hullBorderFileTagName;
-      static const QString unknownBorderFileMatchTagName;
-      static const QString volumeBorderFileTagName;
+      static QString getTopographyFileTag() { return "topography_file"; }
       
-      static const QString borderColorFileTag;
-      static const QString borderProjectionFileTag;
-      static const QString momcBorderFileTag;
-      static const QString momcTemplateFileTag;
-      static const QString momcTemplateMatchFileTag;
+      static QString getCellFileTag() { return "cell_file"; }
+      static QString getCellColorFileTag() { return "cell_color_file"; }
+      static QString getCellProjectionFileTag() { return "cellproj_file"; }
+      static QString getVolumeCellFileTag() { return "volume_cell_file"; }
       
-      static const QString paletteFileTag;
+      static QString getContourFileTag() { return "contour_file"; }
+      static QString getContourCellFileTag() { return "contour_cell_file"; }
+      static QString getContourCellColorFileTag() { return "contour_cell_color_file"; }
       
-      static const QString topographyFileTag;
+      static QString getFociFilterFlagTag()     { return "foci_filter_flag"; }
+      static QString getFociFileTag()           { return "foci_file"; }
+      static QString getFociColorFileTag()      { return "foci_color_file"; }
+      static QString getFociProjectionFileTag() { return "fociproj_file"; }
+      static QString getFociSearchFileTag()     { return "foci_search_file"; }
       
-      static const QString cellFileTag;      
-      static const QString cellColorFileTag;
-      static const QString cellProjectionFileTag;
-      static const QString volumeCellFileTag;
+      static QString getAtlasFileTag() { return "atlas_file"; }
       
-      static const QString contourFileTag;
-      static const QString contourCellFileTag;
-      static const QString contourCellColorFileTag;
+      static QString getMetricFileTag() { return "metric_file"; }
+      static QString getSurfaceShapeFileTag() { return "surface_shape_file"; }
       
+      static QString getCocomacConnectivityFileTag() { return "cocomac_connect_file"; }
       
-      static const QString atlasFileTag;
+      static QString getArealEstimationFileTag() { return "areal_estimation_file"; }
       
-      static const QString metricFileTag;
-      static const QString surfaceShapeFileTag;
+      static QString getCutsFileTag() { return "cuts_file"; }
       
-      static const QString cocomacConnectivityFileTag;
+      static QString getParamsFileTag() { return "params_file"; }
       
-      static const QString arealEstimationFileTag;
+      static QString getDeformationMapFileTag() { return "deform_map_file"; }
       
-      static const QString cutsFileTag;
+      static QString getDeformationFieldFileTag() { return "deform_field_file"; }
       
-      static const QString fociFilterFlagTag;
-      static const QString fociFileTag;
-      static const QString fociColorFileTag;
-      static const QString fociProjectionFileTag;
-      static const QString fociSearchFileTag;
+      static QString getCerebralHullFileTag() { return "CEREBRAL_HULLvtk_file"; }
+      
+      static QString getVtkModelFileTag() { return "vtk_model_file"; }
+      
+      static QString getGeodesicDistanceFileTag() { return "geodesic_distance_file"; }
+      
+      static QString getImageFileTag() { return "image_file"; }
+      static QString getSceneFileTag() { return "scene_file"; }
+      static QString getScriptFileTag() { return "script_file"; }
+      
+      static QString getStudyCollectionFileTag() { return "study_collection_file"; }
+      static QString getStudyMetaDataFileTag() { return "study_metadata_file"; }
+      
+      static QString getVocabularyFileTag() { return "vocabulary_file"; }
+      
+      static QString getWustlRegionFileTag() { return "wustl_region_file"; }
+      
+      static QString getDocumentFileTag() { return "document_file"; }
+      static QString getFlatBorderFileTagName() { return "FLAT"; }
+      static QString getSphericalBorderFileTagName() { return "SPHERICAL"; }
 
-      static const QString paramsFileTag;
-
-      static const QString deformationMapFileTag;
-             
-      static const QString deformationFieldFileTag;
-             
-      static const QString cerebralHullFileTag;
-      
-      static const QString vtkModelFileTag;
-
-      static const QString scriptFileTag;
-      
-      static const QString imageFileTag;
-      static const QString sceneFileTag;
-      static const QString geodesicDistanceFileTag;
-      
-      static const QString metaAnalysisFileTag;
-      static const QString studyMetaDataFileTag;
-      static const QString vocabularyFileTag;
-      static const QString wustlRegionFileTag;
-
-      static const QString documentFileTag;
-      static const QString resolutionTag;
-      static const QString samplingTag;
-     
    protected:
       // copy helper used by copy constructor and operator=
       void copyHelperSpecFile(const SpecFile& sf);
@@ -831,195 +808,24 @@ class SpecFile : public AbstractFile {
       // update the allEntries vector
       void updateAllEntries();
       
+      static QString SpecFile::getXmlFileTagName1() { return "file1"; }
+         
+      static QString SpecFile::getXmlFileTagName2() { return "file2"; }
+       
+      static QString SpecFile::getXmlFileTagStructure() { return "structure"; }
+
       /// only write selected files flag
       bool writeOnlySelectedFiles;
       
       std::vector<QString> otherTags;
       std::vector<QString> otherTagsValues;
-      
-      /// name for first XML file name
-      static const QString xmlFileTagName1;
-      
-      /// name for second XML file name
-      static const QString xmlFileTagName2;
-      
-      /// name for XML structure
-      static const QString xmlFileTagStructure;
-      
+
       // NOTE: BE SURE TO UPDATE copyHelperSpecFile() if new *******************
       // variables are added !!!!***********************************************
 };  // class
 
-#ifdef __SPEC_FILE_DEFINE__
-
-   const QString SpecFile::volumeFunctionalFileTag   = "volume_functional_file";
-   const QString SpecFile::volumePaintFileTag        = "volume_paint_file";
-   const QString SpecFile::volumeProbAtlasFileTag = "volume_prob_atlas_file";
-   const QString SpecFile::volumeRgbFileTag     = "volume_rgb_file";
-   const QString SpecFile::volumeSegmentationFileTag = "volume_segmentation_file";
-   const QString SpecFile::volumeAnatomyFileTag   = "volume_anatomy_file";
-   const QString SpecFile::volumeVectorFileTag    = "volume_vector_file";
-   
-   const QString SpecFile::closedTopoFileTag     = "CLOSEDtopo_file";
-   const QString SpecFile::openTopoFileTag       = "OPENtopo_file";
-   const QString SpecFile::cutTopoFileTag        = "CUTtopo_file";
-   const QString SpecFile::lobarCutTopoFileTag   = "LOBAR_CUTtopo_file";
-   const QString SpecFile::unknownTopoFileMatchTag = "topo_file";
-   
-   const QString SpecFile::topoFlagTag           = "topo_flag";
-   
-   const QString SpecFile::closedTopoFileTagName     = "CLOSED";
-   const QString SpecFile::openTopoFileTagName       = "OPEN";
-   const QString SpecFile::cutTopoFileTagName        = "CUT";
-   const QString SpecFile::lobarCutTopoFileTagName   = "LOBAR_CUT";
-   const QString SpecFile::unknownTopoFileMatchTagName = "OTHER";
-   
-   const QString SpecFile::rawCoordFileTag        = "RAWcoord_file";
-   const QString SpecFile::fiducialCoordFileTag   = "FIDUCIALcoord_file";
-   const QString SpecFile::inflatedCoordFileTag   = "INFLATEDcoord_file";
-   const QString SpecFile::veryInflatedCoordFileTag   = "VERY_INFLATEDcoord_file";
-   const QString SpecFile::sphericalCoordFileTag  = "SPHERICALcoord_file";
-   const QString SpecFile::ellipsoidCoordFileTag  = "ELLIPSOIDcoord_file";
-   const QString SpecFile::compressedCoordFileTag = "COMPRESSED_MEDIAL_WALLcoord_file";
-   const QString SpecFile::flatCoordFileTag       = "FLATcoord_file";
-   const QString SpecFile::lobarFlatCoordFileTag  = "LOBAR_FLATcoord_file";
-   const QString SpecFile::hullCoordFileTag       = "HULLcoord_file";
-   const QString SpecFile::unknownCoordFileMatchTag = "coord_file";
-   const QString SpecFile::averageFiducialCoordFileTag = "AVERAGE_FIDUCIALcoord_file";
-   
-   const QString SpecFile::rawCoordFileTagName        = "RAW";
-   const QString SpecFile::fiducialCoordFileTagName   = "FIDUCIAL";
-   const QString SpecFile::inflatedCoordFileTagName   = "INFLATED";
-   const QString SpecFile::veryInflatedCoordFileTagName   = "VERY_INFLATED";
-   const QString SpecFile::sphericalCoordFileTagName  = "SPHERICAL";
-   const QString SpecFile::ellipsoidCoordFileTagName  = "ELLIPSOID";
-   const QString SpecFile::compressedCoordFileTagName = "COMPRESSED_MEDIAL_WALL";
-   const QString SpecFile::flatCoordFileTagName       = "FLAT";
-   const QString SpecFile::lobarFlatCoordFileTagName  = "LOBAR_FLAT";
-   const QString SpecFile::hullCoordFileTagName       = "HULL";
-   const QString SpecFile::averageFiducialCoordFileTagName = "AVERAGE_FIDUCIAL";
-   const QString SpecFile::unknownCoordFileMatchTagName = "OTHER";
-   
-   const QString SpecFile::rawSurfaceFileTag        = "RAWsurface_file";
-   const QString SpecFile::fiducialSurfaceFileTag   = "FIDUCIALsurface_file";
-   const QString SpecFile::inflatedSurfaceFileTag   = "INFLATEDsurface_file";
-   const QString SpecFile::veryInflatedSurfaceFileTag   = "VERY_INFLATEDsurface_file";
-   const QString SpecFile::sphericalSurfaceFileTag  = "SPHERICALsurface_file";
-   const QString SpecFile::ellipsoidSurfaceFileTag  = "ELLIPSOIDsurface_file";
-   const QString SpecFile::compressedSurfaceFileTag = "COMPRESSED_MEDIAL_WALLsurface_file";
-   const QString SpecFile::flatSurfaceFileTag       = "FLATsurface_file";
-   const QString SpecFile::lobarFlatSurfaceFileTag  = "LOBAR_FLATsurface_file";
-   const QString SpecFile::hullSurfaceFileTag       = "HULLsurface_file";
-   const QString SpecFile::unknownSurfaceFileMatchTag = "surface_file";
-   
-   const QString SpecFile::latLonFileTag = "lat_lon_file";
-   const QString SpecFile::sectionFileTag = "section_file";
-   const QString SpecFile::transformationMatrixFileTag = "transformation_matrix_file";
-   const QString SpecFile::transformationDataFileTag = "transformation_data_file";
-   
-   const QString SpecFile::paintFileTag = "paint_file";
-   const QString SpecFile::areaColorFileTag = "area_color_file";
-   const QString SpecFile::rgbPaintFileTag = "RGBpaint_file";
-   const QString SpecFile::surfaceVectorFileTag = "surface_vector_file";
-   
-   const QString SpecFile::rawBorderFileTag        = "RAWborder_file";
-   const QString SpecFile::fiducialBorderFileTag   = "FIDUCIALborder_file";
-   const QString SpecFile::inflatedBorderFileTag   = "INFLATEDborder_file";
-   const QString SpecFile::veryInflatedBorderFileTag   = "VERY_INFLATEDborder_file";
-   const QString SpecFile::sphericalBorderFileTag  = "SPHERICALborder_file";
-   const QString SpecFile::ellipsoidBorderFileTag  = "ELLIPSOIDborder_file";
-   const QString SpecFile::compressedBorderFileTag = "COMPRESSED_MEDIAL_WALLborder_file";
-   const QString SpecFile::flatBorderFileTag  = "FLATborder_file";
-   const QString SpecFile::lobarFlatBorderFileTag = "LOBAR_FLATborder_file";
-   const QString SpecFile::hullBorderFileTag = "HULLborder_file";
-   const QString SpecFile::unknownBorderFileMatchTag = "border_file";
-   const QString SpecFile::volumeBorderFileTag = "VOLUMEborder_file";
-   
-   const QString SpecFile::rawBorderFileTagName        = "RAW";
-   const QString SpecFile::fiducialBorderFileTagName   = "FIDUCIAL";
-   const QString SpecFile::inflatedBorderFileTagName   = "INFLATED";
-   const QString SpecFile::veryInflatedBorderFileTagName   = "VERY_INFLATED";
-   const QString SpecFile::sphericalBorderFileTagName  = "SPHERICAL";
-   const QString SpecFile::ellipsoidBorderFileTagName  = "ELLIPSOID";
-   const QString SpecFile::compressedBorderFileTagName = "COMPRESSED_MEDIAL_WALL";
-   const QString SpecFile::flatBorderFileTagName       = "FLAT";
-   const QString SpecFile::lobarFlatBorderFileTagName  = "LOBAR_FLAT";
-   const QString SpecFile::hullBorderFileTagName = "HULL";
-   const QString SpecFile::unknownBorderFileMatchTagName = "OTHER";
-   const QString SpecFile::volumeBorderFileTagName = "VOLUME";
-   
-      
-   const QString SpecFile::borderColorFileTag = "border_color_file";
-   const QString SpecFile::borderProjectionFileTag = "borderproj_file";
-   
-   const QString SpecFile::momcBorderFileTag = "momc_border_file";
-   const QString SpecFile::momcTemplateFileTag = "momc_template_file";
-   const QString SpecFile::momcTemplateMatchFileTag = "momc_template_match_file";
-   
-   const QString SpecFile::paletteFileTag = "palette_file";
-   
-   const QString SpecFile::topographyFileTag = "topography_file";
-   
-   const QString SpecFile::cellFileTag = "cell_file";
-   const QString SpecFile::cellColorFileTag = "cell_color_file";
-   const QString SpecFile::cellProjectionFileTag = "cellproj_file";
-   const QString SpecFile::volumeCellFileTag = "volume_cell_file";
-   
-   const QString SpecFile::contourFileTag = "contour_file";
-   const QString SpecFile::contourCellFileTag = "contour_cell_file";
-   const QString SpecFile::contourCellColorFileTag = "contour_cell_color_file";
-   
-   const QString SpecFile::fociFilterFlagTag     = "foci_filter_flag";
-   const QString SpecFile::fociFileTag           = "foci_file";
-   const QString SpecFile::fociColorFileTag      = "foci_color_file";
-   const QString SpecFile::fociProjectionFileTag = "fociproj_file";
-   const QString SpecFile::fociSearchFileTag     = "foci_search_file";
-   
-   const QString SpecFile::atlasFileTag = "atlas_file";
-   
-   const QString SpecFile::metricFileTag = "metric_file";
-   const QString SpecFile::surfaceShapeFileTag = "surface_shape_file";
-   
-   const QString SpecFile::cocomacConnectivityFileTag = "cocomac_connect_file";
-   
-   const QString SpecFile::arealEstimationFileTag = "areal_estimation_file";
-   
-   const QString SpecFile::cutsFileTag = "cuts_file";
-   
-   const QString SpecFile::paramsFileTag = "params_file";
-   
-   const QString SpecFile::deformationMapFileTag = "deform_map_file";
-   
-   const QString SpecFile::deformationFieldFileTag = "deform_field_file";
-   
-   const QString SpecFile::cerebralHullFileTag = "CEREBRAL_HULLvtk_file";
-   
-   const QString SpecFile::vtkModelFileTag = "vtk_model_file";
-   
-   const QString SpecFile::geodesicDistanceFileTag = "geodesic_distance_file";
-   
-   const QString SpecFile::imageFileTag = "image_file";
-   const QString SpecFile::sceneFileTag = "scene_file";
-   const QString SpecFile::scriptFileTag = "script_file";
-   
-   const QString SpecFile::metaAnalysisFileTag = "meta_analysis_file";
-   const QString SpecFile::studyMetaDataFileTag = "study_metadata_file";
-   
-   const QString SpecFile::vocabularyFileTag = "vocabulary_file";
-   
-   const QString SpecFile::wustlRegionFileTag = "wustl_region_file";
-   
-   const QString SpecFile::documentFileTag = "document_file";
-   
-   const QString SpecFile::xmlFileTagName1 = "file1";
-      
-   const QString SpecFile::xmlFileTagName2 = "file2";
-   
-   const QString SpecFile::xmlFileTagStructure = "structure";
-   
-   
-   SpecFile::SORT SpecFile::Entry::Files::sortMethod = SpecFile::SORT_DATE;
-
-#endif // __SPEC_FILE_DEFINE__
-
 #endif // __SPEC_FILE_H__
+
+#ifdef __SPEC_FILE_DEFINE__
+   SpecFile::SORT SpecFile::Entry::Files::sortMethod; //  = SpecFile::SORT_DATE;
+#endif // __SPEC_FILE_DEFINE__

@@ -35,9 +35,10 @@ class GuiBrainModelSelectionComboBox;
 class CellFile;
 class QAbstractButton;
 class QCheckBox;
+class QComboBox;
 class QDialogButtonBox;
 class QDoubleSpinBox;
-class QRadioButton;
+class QSpinBox;
 class QVBoxLayout;
 
 /// dialog for cell and foci attribute assignment
@@ -63,9 +64,6 @@ class GuiCellAndFociAttributeAssignmentDialog : public WuQDialog {
       // create the surface section
       QWidget* createSurfaceSection();
       
-      // create the cell/foci section
-      QWidget* createCellFociSection(const QString& typeString);
-                
       // create the assignement options section
       QWidget* createAssignmentSection();
       
@@ -78,26 +76,23 @@ class GuiCellAndFociAttributeAssignmentDialog : public WuQDialog {
       // determine if a check box is shown and checked
       bool checked(const QCheckBox* cb) const;
       
-      /// append to current values 
-      QCheckBox* appendToCurrentValuesCheckBox;
+      /// perform assignment
+      void performAssignment();
       
-      /// clear attribute and do not set check box
-      QCheckBox* clearAttributesWithoutSettingCheckBox;
+      /// perform assignment using algorithm
+      void performAssignmentUsingAlgorithm();
       
-      /// ignore "?" entries
-      QCheckBox* ignoreQuestionEntriesCheckBox;
+      /// assignment method combo box
+      QComboBox* assignmentMethodComboBox;
       
-      /// area radio button
-      QRadioButton* areaRadioButton;
-      
-      /// geography radio button
-      QRadioButton* geographyRadioButton;
-      
-      /// region of interest radio button
-      QRadioButton* regionOfInterestRadioButton;
+      /// assignment attribute combo box
+      QComboBox* assignmentAttributeComboBox;
       
       /// paint name check boxes
       std::vector<QCheckBox*> paintNameCheckBoxes;
+      
+      /// ignore "?" entries
+      QCheckBox* ignorePaintQuestionEntriesCheckBox;
       
       /// layout for paint name checkboxes
       QVBoxLayout* paintNameCheckBoxesLayout;
@@ -131,6 +126,9 @@ class GuiCellAndFociAttributeAssignmentDialog : public WuQDialog {
       
       /// the dialog button box
       QDialogButtonBox* dialogButtonBox;
+      
+      /// attribute ID Spin Box
+      QSpinBox* attributeIDSpinBox;
 };
 
 #endif // __GUI_CELL_AND_FOCI_ATTRIBUTE_ASSIGNMENT_DIALOG_H__

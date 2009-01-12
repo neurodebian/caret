@@ -1263,7 +1263,7 @@ CellProjectionFile::CellProjectionFile(const QString& descriptiveName,
                   FILE_IO_NONE,
                   FILE_IO_NONE,
                   FILE_IO_NONE,
-                  FILE_IO_READ_AND_WRITE)
+                  FILE_IO_READ_ONLY)
 {
    readVersionNumberOnly = 0;
    clear();
@@ -1375,6 +1375,7 @@ CellProjectionFile::getCellFileForRightLeftFiducials(const CoordinateFile* leftC
                cp->getProjectedPosition(rightCF, rightTF, true, false, false, xyz);
             }
             break;
+         case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
          case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
             break;
          case Structure::STRUCTURE_TYPE_CEREBELLUM:
@@ -1384,6 +1385,8 @@ CellProjectionFile::getCellFileForRightLeftFiducials(const CoordinateFile* leftC
                cp->getProjectedPosition(cerebellumCF, cerebellumTF, true, false, false, xyz);
             }
             break;
+         case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+         case Structure::STRUCTURE_TYPE_ALL:
          case Structure::STRUCTURE_TYPE_INVALID:
             break;
       }
@@ -1831,6 +1834,109 @@ CellProjectionFile::setAllSearchStatus(const bool inSearchFlag)
    const int numCells = getNumberOfCellProjections();
    for (int i = 0; i < numCells; i++) {
       cellProjections[i].inSearchFlag = inSearchFlag;
+   }
+}
+      
+/**
+ * update cell class if linked to table subheader.
+ */
+void 
+CellProjectionFile::updateCellClassWithLinkedStudyTableSubheaderShortNames(const StudyMetaDataFile* smdf)
+{
+   const int numStudyMetaData = smdf->getNumberOfStudyMetaData();
+   for (int i = 0; i < numStudyMetaData; i++) {
+      const StudyMetaData* smd = smdf->getStudyMetaData(i);
+      const QString pmid = smd->getPubMedID();
+      if (pmid.isEmpty() == false) {
+         const int numTables = smd->getNumberOfTables();
+         for (int j = 0; j < numTables; j++) {
+            const StudyMetaData::Table* table = smd->getTable(j);
+            const QString tableNumber = table->getNumber();
+            if (tableNumber.isEmpty() == false) {
+               const int numSubHeaders = table->getNumberOfSubHeaders();
+               for (int k = 0; k < numSubHeaders; k++) {
+                  const StudyMetaData::SubHeader* sh = table->getSubHeader(k);
+                  const QString subHeaderNumber = sh->getNumber();
+                  if (subHeaderNumber.isEmpty() == false) {
+                     const QString shortName = sh->getShortName();
+                     if (shortName.isEmpty() == false) {
+                        StudyMetaDataLink smdl;
+                        smdl.setPubMedID(pmid);
+                        smdl.setTableSubHeaderNumber(subHeaderNumber);
+                        smdl.setTableNumber(tableNumber);
+                        transferTableSubHeaderShortNameToCellClass(smdl, shortName);
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+      
+/**
+ * update cell class with linked tabel subheader name, linked figure panel task
+ * description, or page reference subheader short name.
+ */
+void 
+CellProjectionFile::updateCellClassWithLinkedTableFigureOrPageReference(const StudyMetaDataFile* smdf)
+{
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      CellProjection* cp = getCellProjection(i);
+      const StudyMetaDataLinkSet cellSMDLS = cp->getStudyMetaDataLinkSet();
+      const int numSMDL = cellSMDLS.getNumberOfStudyMetaDataLinks();
+      for (int j = 0; j < numSMDL; j++) {
+         const StudyMetaDataLink cellSMDL = cellSMDLS.getStudyMetaDataLink(j);
+         const int studyIndex = smdf->getStudyIndexFromLink(cellSMDL);
+         if (studyIndex >= 0) {
+            const StudyMetaData* smd = smdf->getStudyMetaData(studyIndex);
+            const QString figNum = cellSMDL.getFigureNumber();
+            const QString pageRefNum = cellSMDL.getPageReferencePageNumber();
+            const QString tableNum = cellSMDL.getTableNumber();
+            
+            
+            if (figNum.isEmpty() == false) {
+               const StudyMetaData::Figure* figure = smd->getFigureByFigureNumber(figNum);
+               if (figure != NULL) {
+                  const StudyMetaData::Figure::Panel* panel = 
+                     figure->getPanelByPanelNumberOrLetter(cellSMDL.getFigurePanelNumberOrLetter());
+                  if (panel != NULL) {
+                     const QString txt = panel->getTaskDescription();
+                     if (txt.isEmpty() == false) {
+                        cp->setClassName(txt);
+                     }
+                  }
+               }
+            }
+            if (pageRefNum.isEmpty() == false) {
+               const StudyMetaData::PageReference* pageRef = smd->getPageReferenceByPageNumber(pageRefNum);
+               if (pageRef != NULL) {
+                  const StudyMetaData::SubHeader* subHeader = 
+                     pageRef->getSubHeaderBySubHeaderNumber(cellSMDL.getPageReferenceSubHeaderNumber());
+                  if (subHeader != NULL) {
+                     const QString txt = subHeader->getShortName();
+                     if (txt.isEmpty() == false) {
+                        cp->setClassName(txt);
+                     }
+                  }
+               }
+            }
+            if (tableNum.isEmpty() == false) {
+               const StudyMetaData::Table* table = smd->getTableByTableNumber(tableNum);
+               if (table != NULL) {
+                  const StudyMetaData::SubHeader* subHeader = 
+                     table->getSubHeaderBySubHeaderNumber(cellSMDL.getTableSubHeaderNumber());
+                  if (subHeader != NULL) {
+                     const QString txt = subHeader->getShortName();
+                     if (txt.isEmpty() == false) {
+                        cp->setClassName(txt);
+                     }
+                  }
+               }
+            }
+         }
+      }
    }
 }
       
@@ -2379,16 +2485,83 @@ CellProjectionFile::deleteAllNonDisplayedCellProjections(const Structure& keepTh
       //
       if (cp->getDisplayFlag()) {
          
+         bool isLeftCellFlag = false;
+         bool isRightCellFlag = false;
+         bool isCerebellumCellFlag = false;
+         switch (cp->getCellStructure()) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               isLeftCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               isRightCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+               isCerebellumCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+               isLeftCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+               isRightCellFlag = true;
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+               break;
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+               break;
+            case Structure::STRUCTURE_TYPE_ALL:
+               break;
+            case Structure::STRUCTURE_TYPE_INVALID:
+               break;
+         }
+         
          //
          // Limit to a specific structure
          //
-         if (keepThisStructureOnly.isLeftCortex() ||
+         switch (keepThisStructureOnly.getType()) {
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+               if (isLeftCellFlag == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+               if (isRightCellFlag == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM:
+               if (isCerebellumCellFlag == false) {
+                  continue;
+               }
+               break;
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+            case Structure::STRUCTURE_TYPE_ALL:
+            case Structure::STRUCTURE_TYPE_INVALID:
+               break;
+         }
+
+/*         
+         isdff (keepThisStructureOnly.isLeftCortex() ||
              keepThisStructureOnly.isRightCortex()) {
             if (cp->getCellStructure() != keepThisStructureOnly.getType()) {
                continue;
             }
          }
-         
+*/         
          //
          // Keep this one
          //
@@ -2581,16 +2754,23 @@ CellProjectionFile::setStudyInfo(const int index, const CellStudyInfo& csi)
  * get indices to all linked studies.
  */
 void 
-CellProjectionFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const
+CellProjectionFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs,
+                                                         const bool displayedFociOnlyFlag) const
 {
    std::set<QString> pmidSet;
    const int numCells = getNumberOfCellProjections();
    for (int i = 0; i < numCells; i++) {
       const CellProjection* cp = getCellProjection(i);
-      const StudyMetaDataLinkSet smdl = cp->getStudyMetaDataLinkSet();
-      std::vector<QString> pmids;
-      smdl.getAllLinkedPubMedIDs(pmids);
-      pmidSet.insert(pmids.begin(), pmids.end());
+      bool useIt = true;
+      if (displayedFociOnlyFlag) {
+         useIt = cp->getDisplayFlag();
+      }
+      if (useIt) {
+         const StudyMetaDataLinkSet smdl = cp->getStudyMetaDataLinkSet();
+         std::vector<QString> pmids;
+         smdl.getAllLinkedPubMedIDs(pmids);
+         pmidSet.insert(pmids.begin(), pmids.end());
+      }
    }
    studyPMIDs.clear();
    studyPMIDs.insert(studyPMIDs.end(),
@@ -3352,7 +3532,7 @@ CellProjectionFile::readFileVersion3(QFile& /*file*/, QTextStream& stream,
  * read the file with an xml stream reader.
  */
 void 
-CellProjectionFile::readFileWithXmlStreamReader(QFile& file) throw (FileException)
+CellProjectionFile::readFileWithXmlStreamReader(QFile& /*file*/) throw (FileException)
 {
 /*
    //

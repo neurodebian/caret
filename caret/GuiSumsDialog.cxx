@@ -53,6 +53,7 @@
 #include <QUrl>
 
 #include "DebugControl.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiFileDialogWithInstructions.h"
 #include "GuiSumsDialog.h"
@@ -72,7 +73,7 @@
  * constructor.
  */
 GuiSumsDialog::GuiSumsDialog(QWidget* parent, PreferencesFile* preferencesFileIn)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    setWindowTitle("SumsDB Database");
    dialogMode = DIALOG_MODE_NONE;
@@ -241,6 +242,7 @@ GuiSumsDialog::initializeDialog()
    //
    availableDatabaseHostNames.clear();
    availableDatabaseHostNames.push_back("http://sumsdb.wustl.edu:8081");
+   availableDatabaseHostNames.push_back("http://sumsdb.wustl.edu");
    
    //
    // Get hosts from  preferences file
@@ -344,7 +346,9 @@ GuiSumsDialog::slotLogoutButton()
 void
 GuiSumsDialog::slotCloseButton()
 {
-   QDialog::close();
+   if (WuQDialog::close() == false) {
+      std::cout << "Closing of SumsDB Dialog rejected." << std::endl;
+   }
 }
 
 /**
@@ -355,7 +359,7 @@ GuiSumsDialog::show()
 {
    slotEnableDisablePushButtons();
    
-   QDialog::show();
+   WuQDialog::show();
 }
 
 /**
@@ -742,11 +746,13 @@ GuiSumsDialog::createDownloadAtlasPage()
    // 
    QLabel* speciesLabel = new QLabel("Species ");
    downloadAtlasSpeciesComboBox = new QComboBox;
-   std::vector<QString> species;
-   Species::getAllSpecies(species);
+   std::vector<Species::TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   Species::getAllSpeciesTypesAndNames(speciesTypes, speciesNames);
+   
    downloadAtlasSpeciesComboBox->addItem("Any");
-   for (int i = 0; i < static_cast<int>(species.size()); i++) {
-      downloadAtlasSpeciesComboBox->addItem(species[i]);
+   for (int i = 0; i < static_cast<int>(speciesNames.size()); i++) {
+      downloadAtlasSpeciesComboBox->addItem(speciesNames[i]);
    }
    
    //
@@ -890,7 +896,6 @@ void
 GuiSumsDialog::slotUploadAddPushButton()
 {
    const QString allFilesFilter("All Files (*)");
-   const QString specFilesFilter(QString("Spec Files (*%1)").arg(SpecFile::getSpecFileExtension()));
    QString instructions = "To select files, hold down the CTRL key while selecting "
                           "border file names with the mouse (Macintosh users should "
                           "hold downthe Apple key).";
@@ -899,11 +904,12 @@ GuiSumsDialog::slotUploadAddPushButton()
    addUploadFileDialog.setWindowTitle("Choose Files For Uploading");
    addUploadFileDialog.setFileMode(GuiFileDialogWithInstructions::ExistingFiles);
    QStringList filterList;
-   filterList.append(specFilesFilter);
+   filterList.append(FileFilters::getSpecFileFilter());
+   filterList.append(FileFilters::getZipFileFilter());
    filterList.append(allFilesFilter);
    addUploadFileDialog.setFilters(filterList);
-   addUploadFileDialog.selectFilter(specFilesFilter);
-   if (addUploadFileDialog.exec() == QDialog::Accepted) {
+   addUploadFileDialog.selectFilter(FileFilters::getSpecFileFilter());
+   if (addUploadFileDialog.exec() == GuiSumsDialog::Accepted) {
       QStringList list = addUploadFileDialog.selectedFiles();
       QStringList::Iterator it = list.begin();
       while( it != list.end() ) {
@@ -1088,11 +1094,12 @@ GuiSumsDialog::createDownloadSearchPage()
    // 
    downloadSearchSpeciesLabel = new QLabel("Species ");
    downloadSearchSpeciesComboBox = new QComboBox;
-   std::vector<QString> species;
-   Species::getAllSpecies(species);
+   std::vector<Species::TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   Species::getAllSpeciesTypesAndNames(speciesTypes, speciesNames);   
    downloadSearchSpeciesComboBox->addItem("Any");
-   for (int i = 0; i < static_cast<int>(species.size()); i++) {
-      downloadSearchSpeciesComboBox->addItem(species[i]);
+   for (int i = 0; i < static_cast<int>(speciesNames.size()); i++) {
+      downloadSearchSpeciesComboBox->addItem(speciesNames[i]);
    }
    
    //
@@ -1557,7 +1564,7 @@ GuiSumsDialog::slotDirectoryPushButton()
    //
    // Popup the dialog
    //
-   if (fd.exec() == QDialog::Accepted) {   
+   if (fd.exec() == GuiSumsDialog::Accepted) {   
       directoryNameLineEdit->setText(fd.selectedFiles().at(0));
    }
 }
@@ -3127,18 +3134,6 @@ GuiSumsDialog::getSumsDataFileListing(const QString& specFileID)
 }
 
 /**
- * Overrides parents close method.
- */
-void
-GuiSumsDialog::done(int)
-{
-   //
-   // Do nothing - overriding this method prevents the window from closing
-   // when the Finish button is pressed.
-   //
-}
-
-/**
  * Called to select the back page.
  */
 void 
@@ -3440,6 +3435,7 @@ GuiSumsDialog::loginToSums()
    if (responseCode != 302) {
       QString msg("Initial login attemp failed (login.do).  Try again.\n");
       msg.append(errorMessage);
+      QApplication::restoreOverrideCursor();
       QMessageBox::critical(this, "ERROR", msg);
       return false;
    }
@@ -3447,7 +3443,18 @@ GuiSumsDialog::loginToSums()
       //
       // Get the session ID
       //
-      sumsSessionID = headerTagsOut["set-cookie"];
+      if (headerTagsOut.find("set-cookie") != headerTagsOut.end()) {
+         sumsSessionID = headerTagsOut["set-cookie"];
+      }
+      else if (headerTagsOut.find("Set-Cookie") != headerTagsOut.end()) {
+         sumsSessionID = headerTagsOut["Set-Cookie"];
+      }
+      else {
+         QApplication::restoreOverrideCursor();
+         QMessageBox::critical(this, "ERROR", "Unable to find header tag "
+            "\"Set-Cookie\" or \"set-cookie\" that is returned by SumsDB");
+         return false;
+      }
       sumsCookie = "";
       if (DebugControl::getDebugOn()) {
          std::cout << "Session ID tag: " << sumsSessionID.toAscii().constData() << std::endl;
@@ -3540,6 +3547,7 @@ GuiSumsDialog::loginToSums()
       if (responseCode != 302) {
          QString msg("Second phase of login attempt failed (j_security_check).  Try again.\n");
          msg.append(errorMessage);
+         QApplication::restoreOverrideCursor();
          QMessageBox::critical(this, "ERROR", msg);
          return false;
       }
@@ -3549,6 +3557,7 @@ GuiSumsDialog::loginToSums()
          //
          url = databaseHostName;
          url.append("/sums/logon.do");
+         //url.append("/sums/login/login.jsp");
          if (sumsSessionID.isEmpty() == false) {
             url.append(sumsSessionID);
          }
@@ -3570,6 +3579,7 @@ GuiSumsDialog::loginToSums()
             QString msg("Third phase of login attempt failed (login.do).\n"
                             "Check username and password.\n");
             msg.append(errorMessage);
+            QApplication::restoreOverrideCursor();
             QMessageBox::critical(this, "ERROR", msg);
             return false;
          }
@@ -3586,6 +3596,7 @@ GuiSumsDialog::loginToSums()
             QString msg("Login successful, however, unable to parse\n"
                                     "user information.\n");
             msg.append(e.whatQString());
+            QApplication::restoreOverrideCursor();
             QMessageBox::information(this, "INFO", 
                                        msg);
             return true;  // login successful

@@ -304,7 +304,7 @@ CommandSurfaceCellCreate::executeCommand() throw (BrainModelAlgorithmException,
       }
       else if (paramName == "-at-node") {
          const QString cellName = parameters->getNextParameterAsString(s + " Name");
-         const int nodeNumber = parameters->getNextParameterAsFloat(s + " Node Number");
+         const int nodeNumber = parameters->getNextParameterAsInt(s + " Node Number");
          if ((nodeNumber >= 0) &&
              (nodeNumber < numNodes)) {
             const float* xyz = bms->getCoordinateFile()->getCoordinate(nodeNumber);

@@ -218,6 +218,8 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
       static const QString tagNumberOfColumns;
 };
 
+#endif // __GIFTI_NODE_DATA_FILE_H__
+
 #ifdef __GIFTI_NODE_DATA_FILE_MAIN_H__
    const QString GiftiNodeDataFile::tagColumnName    = "tag-column-name";
    const QString GiftiNodeDataFile::tagColumnComment = "tag-column-comment";
@@ -225,6 +227,4 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
    const QString GiftiNodeDataFile::tagNumberOfNodes = "tag-number-of-nodes";
    const QString GiftiNodeDataFile::tagNumberOfColumns = "tag-number-of-columns";
 #endif // __GIFTI_NODE_DATA_FILE_MAIN_H__
-
-#endif // __GIFTI_NODE_DATA_FILE_H__
 

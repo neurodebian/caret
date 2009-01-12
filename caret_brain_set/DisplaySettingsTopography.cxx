@@ -78,6 +78,8 @@ static const QString topographyID("topography-column");
 void 
 DisplaySettingsTopography::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    const int numClasses = scene.getNumberOfSceneClasses();
    for (int nc = 0; nc < numClasses; nc++) {
       const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
@@ -108,8 +110,10 @@ DisplaySettingsTopography::showScene(const SceneFile::Scene& scene, QString& err
  */
 void 
 DisplaySettingsTopography::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    TopographyFile* tf = brainSet->getTopographyFile();
    if (onlyIfSelected) {
       if (tf->getNumberOfColumns() <= 0) {

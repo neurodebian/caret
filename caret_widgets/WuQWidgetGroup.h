@@ -66,6 +66,9 @@ class WuQWidgetGroup : public QObject {
       // of largest widget
       void resizeAllToLargestSizeHint();
       
+      // set status of all checkboxes
+      void setAllCheckBoxesChecked(const bool b);
+      
    protected:
       /// keeps track of the widgets
       QVector<QWidget*> widgets;

@@ -184,10 +184,8 @@ class ArealEstimationFile : public NodeAttributeFile {
    friend class ArealEstimationNode;
 };
 
-#ifdef __AREAL_ESTIMATION_FILE_DEFINE__
-
-const QString ArealEstimationFile::tagLongName = "tag-long-name";
-
-#endif // __AREAL_ESTIMATION_FILE_DEFINE__
-
 #endif // __AREAL_ESTIMATION_FILE__
+
+#ifdef __AREAL_ESTIMATION_FILE_DEFINE__
+const QString ArealEstimationFile::tagLongName = "tag-long-name";
+#endif // __AREAL_ESTIMATION_FILE_DEFINE__

@@ -25,7 +25,7 @@
 
 #include <QApplication>
 #include <QGridLayout>
-#include <QGroupBox>>
+#include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>

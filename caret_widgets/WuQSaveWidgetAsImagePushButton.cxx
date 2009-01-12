@@ -157,9 +157,16 @@ WuQSaveWidgetAsImagePushButton::slotClicked()
       }
       
       QImage image = QPixmap::grabWidget(widgetToSaveImageOf).toImage();
+/*
       if (image.save(name, fileFormats[fileFilterIndex].toAscii().constData(), 100) == false) {
          QApplication::beep();
          QMessageBox::critical(this, "ERROR", "Unable to save image.", "OK");
+      }
+*/   
+      QImageWriter imageWriter(name, fileFormats[fileFilterIndex].toAscii());
+      if (imageWriter.write(image) == false) {
+         QApplication::beep();
+         QMessageBox::critical(this, "ERROR", imageWriter.errorString());
       }
    }
 }

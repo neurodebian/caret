@@ -445,6 +445,8 @@ class TransformationMatrixFile : public AbstractFile {
    friend class TransformationMatrix;
 };
 
+#endif  //  __TRANSFORMATION_MATRIX_FILE_H__
+
 #ifdef _TRANSFORMATION_FILE_MAIN_
     const QString TransformationMatrixFile::tagMatrixFileVersion = 
                                      "tag-transformation-matrix-file-version";
@@ -453,5 +455,3 @@ class TransformationMatrixFile : public AbstractFile {
     const QString TransformationMatrixFile::tagEndOfTags =
                                      "tag-end-of-tags";
 #endif  //  _TRANSFORMATION_FILE_MAIN_
-
-#endif  //  __TRANSFORMATION_MATRIX_FILE_H__

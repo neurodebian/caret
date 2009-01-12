@@ -28,7 +28,6 @@
 #include <QFileInfo>
 
 #include "BrainModelVolumeSegmentationStereotaxic.h"
-#include "BrainModelVolumeSureFitSegmentation.h"
 #include "BrainSet.h"
 #include "CommaSeparatedValueFile.h"
 #include "FileUtilities.h"
@@ -43,20 +42,20 @@
  * constructor.
  */
 BrainModelVolumeSegmentationStereotaxic::BrainModelVolumeSegmentationStereotaxic(
-                                                BrainSet* brainSetIn,
-                                                const VolumeFile* anatomicalVolumeFileIn,
-                                                const int uniformityIterationsIn,
-                                                const bool disconnectEyeFlagIn,
-                                                const bool errorCorrectVolumeFlagIn,
-                                                const bool errorCorrectSurfaceFlagIn,
-                                                const bool maxPolygonsFlagIn,
-                                                const bool flatteningFilesFlagIn)
+   BrainSet* brainSetIn,
+   const VolumeFile* anatomicalVolumeFileIn,
+   const int uniformityIterationsIn,
+   const bool disconnectEyeFlagIn,
+   const BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD errorCorrectVolumeMethodIn,
+   const bool errorCorrectSurfaceFlagIn,
+   const bool maxPolygonsFlagIn,
+   const bool flatteningFilesFlagIn)
    : BrainModelAlgorithm(brainSetIn),
      anatomicalVolumeFile(anatomicalVolumeFileIn)
 {
    disconnectEyeFlag = disconnectEyeFlagIn;
    uniformityIterations = uniformityIterationsIn;
-   errorCorrectVolumeFlag = errorCorrectVolumeFlagIn;
+   errorCorrectVolumeMethod = errorCorrectVolumeMethodIn;
    errorCorrectSurfaceFlag = errorCorrectSurfaceFlagIn;
    maxPolygonsFlag = maxPolygonsFlagIn;
    flatteningFilesFlag = flatteningFilesFlagIn;
@@ -84,7 +83,7 @@ BrainModelVolumeSegmentationStereotaxic::execute() throw (BrainModelAlgorithmExc
    if (anatomicalVolumeFile == NULL) {
       throw BrainModelAlgorithmException("Anatomical volume file is NULL.");
    }
-   const QString& stereotaxicSpaceName = brainSet->getStereotaxicSpace();
+   const QString& stereotaxicSpaceName = brainSet->getStereotaxicSpace().getName();
    if (stereotaxicSpaceName.isEmpty()) {
       throw BrainModelAlgorithmException("SpecFile has no stereotaxic space.");
    }
@@ -118,6 +117,15 @@ BrainModelVolumeSegmentationStereotaxic::execute() throw (BrainModelAlgorithmExc
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
          throw BrainModelAlgorithmException("Structure RIGHT CEREBELLUM not allowed, must be RIGHT or LEFT");
+         break;
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+         throw BrainModelAlgorithmException("Structure CEREBRUM CEREBELLUM not allowed, must be RIGHT or LEFT");
+         break;
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+         throw BrainModelAlgorithmException("Structure SUBCORTICAL not allowed, must be RIGHT or LEFT");
+         break;
+      case Structure::STRUCTURE_TYPE_ALL:
+         throw BrainModelAlgorithmException("Structure ALL not allowed, must be RIGHT or LEFT");
          break;
       case Structure::STRUCTURE_TYPE_INVALID:
          throw BrainModelAlgorithmException("Structure in SpecFile is invalid");
@@ -160,7 +168,8 @@ BrainModelVolumeSegmentationStereotaxic::generateSegmentation(
    // Get extent of the non-zero voxels in the max volume
    //
    int maskExtent[6];
-   maskVolume.getNonZeroVoxelExtent(maskExtent);
+   float coordExtent[6];
+   maskVolume.getNonZeroVoxelExtent(maskExtent, coordExtent);
    const int padExtent = 1;
    maskExtent[0] -= padExtent;
    maskExtent[1] += padExtent;
@@ -175,13 +184,13 @@ BrainModelVolumeSegmentationStereotaxic::generateSegmentation(
    const int minMaskExtent[3] = { maskExtent[0], maskExtent[2], maskExtent[4] };
    const int maxMaskExtent[3] = { maskExtent[1], maskExtent[3], maskExtent[5] };
    float minExtentXYZ[3], maxExtentXYZ[3];
-   maskVolume.getVoxelCoordinate(minMaskExtent, false, minExtentXYZ);
-   maskVolume.getVoxelCoordinate(maxMaskExtent, false, maxExtentXYZ);
+   maskVolume.getVoxelCoordinate(minMaskExtent, minExtentXYZ);
+   maskVolume.getVoxelCoordinate(maxMaskExtent, maxExtentXYZ);
 
    //
    // Add anatomical volume name to spec file
    //
-   brainSet->addToSpecFile(SpecFile::volumeAnatomyFileTag,
+   brainSet->addToSpecFile(SpecFile::getVolumeAnatomyFileTag(),
                            anatomicalVolumeFile->getFileName());
    
    //
@@ -308,7 +317,7 @@ BrainModelVolumeSegmentationStereotaxic::generateSegmentation(
    BrainModelVolumeSureFitSegmentation sureFit(brainSet,
                                                &volume,
                                                NULL,
-                                               VolumeFile::FILE_READ_WRITE_TYPE_NIFTI,
+                                               VolumeFile::FILE_READ_WRITE_TYPE_NIFTI_GZIP,
                                                acIJK,
                                                padding,
                                                whitePeak,
@@ -321,15 +330,18 @@ BrainModelVolumeSegmentationStereotaxic::generateSegmentation(
                                                true,   // cut corpus callosum
                                                true,   // segment anatomy
                                                true,   // fill ventricles
-                                               errorCorrectVolumeFlag, // correct volume 
+                                               errorCorrectVolumeMethod, // correct volume 
                                                true,   // generate surfaces
                                                maxPolygonsFlag,  // max polygons
                                                errorCorrectSurfaceFlag, // correct surface
                                                true,   // inflated
                                                flatteningFilesFlag,  // very inflated
                                                flatteningFilesFlag,  // ellipsoid
+                                               flatteningFilesFlag,  // sphere
+                                               flatteningFilesFlag,  // CMW
                                                flatteningFilesFlag,  // hull,
-                                               flatteningFilesFlag,  // ID Sulci
+                                               flatteningFilesFlag,  // Depth, Curve, Geography
+                                               false,  // Landmarks
                                                true);   // auto save
    sureFit.setVolumeMask(&maskVolume);
    //sureFit.setWhiteMatterMaximum(whiteMatterMaximum);

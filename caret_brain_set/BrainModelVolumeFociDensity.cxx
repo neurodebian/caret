@@ -38,10 +38,12 @@
 BrainModelVolumeFociDensity::BrainModelVolumeFociDensity(BrainSet* bsIn,
                                   const FociProjectionFile* fociProjectionFileIn,
                                   const float regionCubeSizeIn,
+                                  const DENSITY_UNITS densityUnitsIn,
                                   VolumeFile* outputVolumeFileIn)
    : BrainModelAlgorithm(bsIn),
      fociProjectionFile(fociProjectionFileIn),
      regionCubeSize(regionCubeSizeIn),
+     densityUnits(densityUnitsIn),
      outputVolumeFile(outputVolumeFileIn)
 {
 }                            
@@ -88,6 +90,18 @@ BrainModelVolumeFociDensity::execute() throw (BrainModelAlgorithmException)
    // Set all voxels to zero
    //
    outputVolumeFile->setAllVoxels(0.0);
+   
+   //
+   // Add units to comment
+   //
+   switch (densityUnits) {
+      case DENSITY_UNITS_FOCI_PER_CUBIC_CENTIMETER:
+         outputVolumeFile->appendToFileComment("\nUnits are number of foci per cubic centimeter.");
+         break;
+      case DENSITY_UNITS_FOCI_PER_CUBIC_MILLIMETER:
+         outputVolumeFile->appendToFileComment("\nUnits are number of foci per cubic millimeter.");
+         break;
+   }
    
    //
    // Create progress dialog
@@ -165,8 +179,19 @@ BrainModelVolumeFociDensity::execute() throw (BrainModelAlgorithmException)
    outputVolumeFile->getDimensions(dim);
    float voxelSize[3];
    outputVolumeFile->getSpacing(voxelSize);
-   const float mm3voxel = (regionCubeSize * regionCubeSize * regionCubeSize)
-                        * (voxelSize[0] * voxelSize[1] * voxelSize[2]);
+   float voxelVolume = voxelSize[0] * voxelSize[1] * voxelSize[2];
+   float regionCubeVolume = regionCubeSize * regionCubeSize * regionCubeSize;
+   
+   switch (densityUnits) {
+      case DENSITY_UNITS_FOCI_PER_CUBIC_CENTIMETER:
+         voxelVolume = voxelSize[0]/10.0 * voxelSize[1]/10.0 * voxelSize[2]/10.0;
+         //regionCubeVolume = regionCubeSize/10.0 * regionCubeSize/10.0 * regionCubeSize/10.0;
+         break;
+      case DENSITY_UNITS_FOCI_PER_CUBIC_MILLIMETER:
+         break;
+   }
+   float mm3voxel = regionCubeVolume * voxelVolume;
+
    for (int i = 0; i < dim[0]; i++) {
       for (int j = 0; j < dim[1]; j++) {
          for (int k = 0; k < dim[2]; k++) {

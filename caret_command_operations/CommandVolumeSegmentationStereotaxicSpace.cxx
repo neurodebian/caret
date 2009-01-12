@@ -40,10 +40,6 @@ CommandVolumeSegmentationStereotaxicSpace::CommandVolumeSegmentationStereotaxicS
    : CommandBase("-volume-segment-stereo-space",
                  "VOLUME SEGMENTATION STEREOTAXIC SPACE")
 {
-   const QString maskVolumesDirectory(BrainSet::getCaretHomeDirectory()
-                                      + "/data_files/segmentation_masks/");
-   maskVolumeListFileName = maskVolumesDirectory
-                            + "mask_list.txt.csv";
 }
 
 /**
@@ -59,9 +55,15 @@ CommandVolumeSegmentationStereotaxicSpace::~CommandVolumeSegmentationStereotaxic
 void 
 CommandVolumeSegmentationStereotaxicSpace::getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const
 {
+   std::vector<BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD> errorCorrectionValues;
+   std::vector<QString> errorCorrectionNames;
+   BrainModelVolumeSureFitSegmentation::getErrorCorrectionMethodsAndNames(
+      errorCorrectionNames, errorCorrectionValues);
+
    paramsOut.clear();
    paramsOut.addFile("Input Anatomical Volume File Name", FileFilters::getVolumeAnatomyFileFilter());
    paramsOut.addFile("Spec File Name", FileFilters::getSpecFileFilter());
+   paramsOut.addListOfItems("Volume Error Correction", errorCorrectionNames, errorCorrectionNames);
    paramsOut.addVariableListOfParameters("Options");
 }
 
@@ -71,19 +73,20 @@ CommandVolumeSegmentationStereotaxicSpace::getScriptBuilderParameters(ScriptBuil
 QString 
 CommandVolumeSegmentationStereotaxicSpace::getHelpInformation() const
 {
+   std::vector<BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD> errorCorrectionValues;
+   std::vector<QString> errorCorrectionNames;
+   BrainModelVolumeSureFitSegmentation::getErrorCorrectionMethodsAndNames(
+      errorCorrectionNames, errorCorrectionValues);
+
    SegmentationMaskListFile maskVolumeListFile;
-   try {
-      maskVolumeListFile.readFile(maskVolumeListFileName);
-   }
-   catch (FileException&) {
-   }
+   getMaskVolumeListFile(maskVolumeListFile, false);
    
    QString helpInfo =
       (indent3 + getShortDescription() + "\n"
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-anatomical-volume-file-name>\n"
        + indent9 + "<spec-file-name>\n"
-       + indent9 + "[-ecv]\n"
+       + indent9 + "<volume-error-correction-method>\n"
        + indent9 + "[-ecs]\n"
        + indent9 + "[-flat]\n"
        + indent9 + "[-mp]\n"
@@ -108,12 +111,16 @@ CommandVolumeSegmentationStereotaxicSpace::getHelpInformation() const
        + indent9 + "      histogram peaks are estimated, the volume is segmented, and \n"
        + indent9 + "      fiducial and inflated surfaces are generated. \n"
        + indent9 + " \n"
+       + indent9 + "      volume-error-correction-method\n");
+       for (unsigned int i = 0; i < errorCorrectionNames.size(); i++) {
+          helpInfo += (
+               indent9 + indent9 + errorCorrectionNames[i] + "\n");
+       }
+   helpInfo += ("\n"
        + indent9 + "      Stereotaxic Spaces Supported \n"
        +    maskVolumeListFile.getAvailableMasks(indent9 +"         ")
        + indent9 + "       \n"
        + indent9 + "      OPTIONS \n"
-       + indent9 + "         -ecv   Perform error correction of the segmentation volume. \n"
-       + indent9 + "       \n"
        + indent9 + "         -ecs   Perform error correction of the surface. \n"
        + indent9 + "       \n"
        + indent9 + "         -flat  Generate files for flattening (very inflated, ellipsoidal, \n"
@@ -142,19 +149,17 @@ CommandVolumeSegmentationStereotaxicSpace::executeCommand() throw (BrainModelAlg
       parameters->getNextParameterAsString("Input Anatomical Volume File Name");
    const QString specFileName =
       parameters->getNextParameterAsString("Spec File Name");
+   const QString volumeErrorCorrectionName =
+      parameters->getNextParameterAsString("Volume Error Correction Name");
 
    bool disconnectEyeAndSkull = true;
-   bool errorCorrectVolumeFlag = false;
    bool errorCorrectSurfaceFlag = false;
    bool maxPolygonsFlag = false;
    bool flatteningFlag = false;
    int uniformityIterations = BrainModelVolumeSegmentationStereotaxic::getDefaultUniformityIterations();
    while (parameters->getParametersAvailable()) {
       const QString paramName = parameters->getNextParameterAsString("Segment Option");
-      if (paramName == "-ecv") {
-         errorCorrectVolumeFlag = true;
-      }
-      else if (paramName == "-ecs") {
+      if (paramName == "-ecs") {
          errorCorrectSurfaceFlag = true;
       }
       else if (paramName == "-flat") {
@@ -176,13 +181,32 @@ CommandVolumeSegmentationStereotaxicSpace::executeCommand() throw (BrainModelAlg
    }
    
    //
+   // Get error correction
+   //
+   std::vector<BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD> errorCorrectionValues;
+   std::vector<QString> errorCorrectionNames;
+   BrainModelVolumeSureFitSegmentation::getErrorCorrectionMethodsAndNames(
+      errorCorrectionNames, errorCorrectionValues);
+   
+   BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD errorCorrectionMethod =
+      BrainModelVolumeSureFitSegmentation::ERROR_CORRECTION_METHOD_NONE;
+   bool foundErrorCorrectionFlag = false;
+   for (unsigned int i = 0; i < errorCorrectionNames.size(); i++) {
+       if (volumeErrorCorrectionName == errorCorrectionNames[i]) {
+          errorCorrectionMethod = errorCorrectionValues[i];
+          foundErrorCorrectionFlag = true;
+          break;
+       }
+   }
+   if (foundErrorCorrectionFlag == false) {
+      throw CommandException("Invalid error correction: " + volumeErrorCorrectionName);
+   }
+   
+   //
    // Read in segmentation masks list file
    //
    SegmentationMaskListFile maskVolumeListFile;
-   maskVolumeListFile.readFile(maskVolumeListFileName);
-   
-   
-                                          
+   getMaskVolumeListFile(maskVolumeListFile, true);
    
    //
    // Setup spec file with anatomy volume file name and params file
@@ -209,7 +233,7 @@ CommandVolumeSegmentationStereotaxicSpace::executeCommand() throw (BrainModelAlg
    // Select anatomy and params
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::volumeAnatomyFileTag,
+   specFile.addToSpecFile(SpecFile::getVolumeAnatomyFileTag(),
                           inputVolumeFileName,
                           "",
                           false);
@@ -239,7 +263,7 @@ CommandVolumeSegmentationStereotaxicSpace::executeCommand() throw (BrainModelAlg
                                                    brainSet.getVolumeAnatomyFile(0),
                                                    uniformityIterations,
                                                    disconnectEyeAndSkull,
-                                                   errorCorrectVolumeFlag,
+                                                   errorCorrectionMethod,
                                                    errorCorrectSurfaceFlag,
                                                    maxPolygonsFlag,
                                                    flatteningFlag);
@@ -249,6 +273,34 @@ CommandVolumeSegmentationStereotaxicSpace::executeCommand() throw (BrainModelAlg
    //
    segment.execute();
 }
+
+/**
+ * get the segmentation mask file.
+ */
+void 
+CommandVolumeSegmentationStereotaxicSpace::getMaskVolumeListFile(
+               SegmentationMaskListFile& smlf,
+               const bool throwExceptionIfReadErrorFlag) const throw (CommandException)
+{
+   const QString maskVolumesDirectory(BrainSet::getCaretHomeDirectory()
+                                      + "/data_files/segmentation_masks/");
+   const QString maskVolumeListFileName = maskVolumesDirectory
+                                        + "mask_list.txt.csv";
+   try {
+      smlf.readFile(maskVolumeListFileName);
+   }
+   catch (FileException& e) {
+      if (throwExceptionIfReadErrorFlag) {
+         throw CommandException(e);
+      }
+      else {
+         std::cout << "ERROR: Failed to read :"
+                    << maskVolumeListFileName.toAscii().constData()
+                    << std::endl;
+      }
+   }
+}
+      
 
       
 

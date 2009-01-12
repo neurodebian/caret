@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include "DebugControl.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowLayersActions.h"
 #include "GuiMainWindowLayersMenu.h"
@@ -107,6 +108,7 @@ GuiMainWindowLayersMenu::createFociSubMenu(GuiMainWindowLayersActions* layersAct
    fociSubMenu->addSeparator();
    
    fociSubMenu->addAction(layersActions->getFociReportAction());
+   fociSubMenu->addAction(layersActions->getFociAttributeReportAction());
    fociSubMenu->addSeparator();
 
    fociSubMenu->addAction(layersActions->getFociMapStereotaxicFocusAction());
@@ -126,6 +128,7 @@ GuiMainWindowLayersMenu::createFociSubMenu(GuiMainWindowLayersActions* layersAct
    fociSubMenu->addAction(layersActions->getFociDeleteUsingMouseAction());
    
    fociSubMenu->addSeparator();
+   fociSubMenu->addAction(layersActions->getFociUpdateClassesWithTableSubheaderShortNamesAction());
    fociSubMenu->addAction(layersActions->getFociUpdatePubMedIDIfFocusNameMatchesStudyNameAction());
    fociSubMenu->addAction(layersActions->getFociStudyInfoToStudyMetaDataFileAction());
 }
@@ -138,7 +141,10 @@ GuiMainWindowLayersMenu::createBordersSubMenu(GuiMainWindowLayersActions* layers
 {
    bordersSubMenu = addMenu("Borders");
 
-   bordersSubMenu->addAction(layersActions->getBordersCompareAction());
+   //if (DebugControl::getTestFlag1()) {
+      bordersSubMenu->addAction(layersActions->getBorderOperationsDialogAction());
+   //}
+   //bordersSubMenu->addAction(layersActions->getBordersCompareAction());
    bordersSubMenu->addAction(layersActions->getBordersVolumeToBordersFiducialAction());
    bordersSubMenu->addAction(layersActions->getBordersVolumeToFiducialCellsAction());
    bordersSubMenu->addAction(layersActions->getBordersConvertToVtkModelAction());

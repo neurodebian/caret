@@ -95,29 +95,6 @@ class WuNilAttribute {
       static const QString NAME_IMAGEDATA_BYTE_ORDER;
 };
 
-#ifdef __WUNIL_HEADER_DEFINE__
-
-   const QString WuNilAttribute::NAME_CARET_METADATA = "caret_metadata";
-   const QString WuNilAttribute::NAME_NUMBER_FORMAT = "number format";
-   const QString WuNilAttribute::NAME_NUMBER_OF_BYTES_PER_PIXEL = "number of bytes per pixel";
-   const QString WuNilAttribute::NAME_ORIENTATION = "orientation";
-   const QString WuNilAttribute::NAME_NUMBER_OF_DIMENSIONS = "number of dimensions";
-   const QString WuNilAttribute::NAME_SCALING_FACTOR_1 = "scaling factor (mm/pixel) [1]";
-   const QString WuNilAttribute::NAME_SCALING_FACTOR_2 = "scaling factor (mm/pixel) [2]";
-   const QString WuNilAttribute::NAME_SCALING_FACTOR_3 = "scaling factor (mm/pixel) [3]";
-   const QString WuNilAttribute::NAME_MATRIX_SIZE_1 = "matrix size [1]";
-   const QString WuNilAttribute::NAME_MATRIX_SIZE_2 = "matrix size [2]";
-   const QString WuNilAttribute::NAME_MATRIX_SIZE_3 = "matrix size [3]";
-   const QString WuNilAttribute::NAME_MATRIX_SIZE_4 = "matrix size [4]";
-   const QString WuNilAttribute::NAME_DATE   = "date";
-   const QString WuNilAttribute::NAME_CENTER = "center";
-   const QString WuNilAttribute::NAME_MMPPIX = "mmppix";
-   const QString WuNilAttribute::NAME_CONVERSION_PROGRAM = "conversion program";
-   const QString WuNilAttribute::NAME_REGION_NAME = "region names";
-   const QString WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER = "imagedata byte order";
-
-#endif // __WUNIL_HEADER_DEFINE__
-
 
 /// class for storing a Washingtion University Neuro Imaging Laboratory Header File
 class WuNilHeader {
@@ -188,4 +165,25 @@ class WuNilHeader {
 };
 
 #endif //  __VE_WUNIL_HEADER_H__
+
+#ifdef __WUNIL_HEADER_DEFINE__
+   const QString WuNilAttribute::NAME_CARET_METADATA = "caret_metadata";
+   const QString WuNilAttribute::NAME_NUMBER_FORMAT = "number format";
+   const QString WuNilAttribute::NAME_NUMBER_OF_BYTES_PER_PIXEL = "number of bytes per pixel";
+   const QString WuNilAttribute::NAME_ORIENTATION = "orientation";
+   const QString WuNilAttribute::NAME_NUMBER_OF_DIMENSIONS = "number of dimensions";
+   const QString WuNilAttribute::NAME_SCALING_FACTOR_1 = "scaling factor (mm/pixel) [1]";
+   const QString WuNilAttribute::NAME_SCALING_FACTOR_2 = "scaling factor (mm/pixel) [2]";
+   const QString WuNilAttribute::NAME_SCALING_FACTOR_3 = "scaling factor (mm/pixel) [3]";
+   const QString WuNilAttribute::NAME_MATRIX_SIZE_1 = "matrix size [1]";
+   const QString WuNilAttribute::NAME_MATRIX_SIZE_2 = "matrix size [2]";
+   const QString WuNilAttribute::NAME_MATRIX_SIZE_3 = "matrix size [3]";
+   const QString WuNilAttribute::NAME_MATRIX_SIZE_4 = "matrix size [4]";
+   const QString WuNilAttribute::NAME_DATE   = "date";
+   const QString WuNilAttribute::NAME_CENTER = "center";
+   const QString WuNilAttribute::NAME_MMPPIX = "mmppix";
+   const QString WuNilAttribute::NAME_CONVERSION_PROGRAM = "conversion program";
+   const QString WuNilAttribute::NAME_REGION_NAME = "region names";
+   const QString WuNilAttribute::NAME_IMAGEDATA_BYTE_ORDER = "imagedata byte order";
+#endif // __WUNIL_HEADER_DEFINE__
 

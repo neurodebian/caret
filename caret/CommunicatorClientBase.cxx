@@ -330,6 +330,9 @@ CommunicatorClientBase::socketErrorSlot(QAbstractSocket::SocketError errorCode)
       case QTcpSocket::UnknownSocketError:
          msg.append(" unknown socket error");
          break;
+      case QTcpSocket::SslHandshakeFailedError:
+         msg.append(" SSL Handshake Failed error");
+         break;
       case QTcpSocket::ProxyAuthenticationRequiredError:
          msg.append(" proxy authentication required error");
          break;

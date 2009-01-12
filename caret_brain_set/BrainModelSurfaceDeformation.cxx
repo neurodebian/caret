@@ -1375,14 +1375,14 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
          switch(deformationMapFile->getFlatOrSphereSelection()) {
             case DeformationMapFile::DEFORMATION_TYPE_FLAT:
                deformedToSourceSpecFile.addToSpecFile(
-                  SpecFile::flatCoordFileTag,
+                  SpecFile::getFlatCoordFileTag(),
                   deformationMapFile->getSourceDeformedFlatCoordFileName(),
                   "",
                   true);
                break;
             case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
                deformedToSourceSpecFile.addToSpecFile(
-                  SpecFile::sphericalCoordFileTag,
+                  SpecFile::getSphericalCoordFileTag(),
                   deformationMapFile->getSourceDeformedSphericalCoordFileName(),
                   "",
                   true);

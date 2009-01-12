@@ -70,13 +70,16 @@ class GuiBrainModelOpenGLMouseEvent;
          MOUSE_MODE_NONE,
          MOUSE_MODE_VIEW,
          MOUSE_MODE_BORDER_DRAW,
+         MOUSE_MODE_BORDER_DRAW_NEW,
          MOUSE_MODE_BORDER_DELETE,
          MOUSE_MODE_BORDER_DELETE_POINT,
          MOUSE_MODE_BORDER_INTERPOLATE,
+         MOUSE_MODE_BORDER_INTERPOLATE_NEW,
          MOUSE_MODE_BORDER_MOVE_POINT,
          MOUSE_MODE_BORDER_REVERSE,
          MOUSE_MODE_BORDER_RENAME,
          MOUSE_MODE_BORDER_UPDATE,
+         MOUSE_MODE_BORDER_UPDATE_NEW,
          MOUSE_MODE_CUT_DRAW,
          MOUSE_MODE_CUT_DELETE,
          MOUSE_MODE_FOCI_DELETE,
@@ -87,6 +90,7 @@ class GuiBrainModelOpenGLMouseEvent;
          MOUSE_MODE_SURFACE_ROI_METRIC_NODE_SELECT,
          MOUSE_MODE_SURFACE_ROI_GEODESIC_NODE_SELECT,
          MOUSE_MODE_ALIGN_STANDARD_ORIENTATION,
+         MOUSE_MODE_ALIGN_STANDARD_ORIENTATION_FULL_HEM_FLATTEN,
          MOUSE_MODE_CONTOUR_SET_SCALE,
          MOUSE_MODE_CONTOUR_DRAW,
          MOUSE_MODE_CONTOUR_ALIGN,
@@ -321,6 +325,9 @@ class GuiBrainModelOpenGLMouseEvent;
        /// mouse processing for border draw mode
        void mouseBorderDraw(const GuiBrainModelOpenGLMouseEvent& me);
        
+       /// mouse processing for border draw mode NEW
+       void mouseBorderDrawNew(const GuiBrainModelOpenGLMouseEvent& me);
+       
        /// mouse processing for border delete mode
        void mouseBorderDelete(const GuiBrainModelOpenGLMouseEvent& me);
        
@@ -333,6 +340,9 @@ class GuiBrainModelOpenGLMouseEvent;
        /// mouse processing for border interpolate
        void mouseBorderInterpolate(const GuiBrainModelOpenGLMouseEvent& me);
        
+       /// mouse processing for border interpolate NEW
+       void mouseBorderInterpolateNew(const GuiBrainModelOpenGLMouseEvent& me);
+       
        /// mouse processing for border reverse
        void mouseBorderReverse(const GuiBrainModelOpenGLMouseEvent& me);
        
@@ -341,6 +351,9 @@ class GuiBrainModelOpenGLMouseEvent;
        
        /// mouse processing for border update
        void mouseBorderUpdate(const GuiBrainModelOpenGLMouseEvent& me);
+       
+       /// mouse processing for border update NEW
+       void mouseBorderUpdateNew(const GuiBrainModelOpenGLMouseEvent& me);
        
        /// mouse processing for draw cut mode
        void mouseCutDraw(const GuiBrainModelOpenGLMouseEvent& me);
@@ -371,6 +384,9 @@ class GuiBrainModelOpenGLMouseEvent;
        
        /// mouse processing for align surface to standard orientation
        void mouseAlignStandardOrientation(const GuiBrainModelOpenGLMouseEvent& me);
+       
+       /// mouse processing for align surface to standard orientation on flatten full hem
+       void mouseAlignStandardOrientationFullHemFlatten(const GuiBrainModelOpenGLMouseEvent& me);
        
        /// mouse process for cell add mode
        void mouseCellAdd(const GuiBrainModelOpenGLMouseEvent& me);

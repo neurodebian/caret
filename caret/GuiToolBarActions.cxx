@@ -288,7 +288,7 @@ GuiToolBarActions::swapSlot()
                                     parentToolBar->getViewWindowNumber();
    const QString myViewTransformation = 
       myBrainModel->getTransformationsAsString(myWindowNumber);
-   VolumeFile::VOLUME_AXIS myVolumeAxis;
+   VolumeFile::VOLUME_AXIS myVolumeAxis = VolumeFile::VOLUME_AXIS_UNKNOWN;
    int myVolumeSlices[3];
    BrainModelVolume* myBrainModelVolume = dynamic_cast<BrainModelVolume*>(myBrainModel);
    if (myBrainModelVolume != NULL) {
@@ -306,7 +306,7 @@ GuiToolBarActions::swapSlot()
    }
    const QString mainWindowTransformation =
       mainWindowBrainModel->getTransformationsAsString(BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
-   VolumeFile::VOLUME_AXIS mainWindowVolumeAxis;
+   VolumeFile::VOLUME_AXIS mainWindowVolumeAxis = VolumeFile::VOLUME_AXIS_UNKNOWN;
    int mainWindowVolumeSlices[3];
    BrainModelVolume* mainWindowBrainModelVolume = dynamic_cast<BrainModelVolume*>(mainWindowBrainModel);
    if (mainWindowBrainModelVolume != NULL) {

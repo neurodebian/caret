@@ -2546,7 +2546,7 @@ MetricFile::exportFreeSurferAsciiFunctionalFile(const int columnNumber,
    if ((columnNumber >= 0) && (columnNumber < getNumberOfColumns())) {
       FreeSurferFunctionalFile fsff;
       const int numNodes = getNumberOfNodes();
-      fsff.setNumberOfFunctionalItems(numNodes);
+      //fsff.setNumberOfFunctionalItems(numNodes);
       for (int i = 0; i < numNodes; i++) {
          const float metric = getValue(i, columnNumber);
          if (metric != 0.0) {

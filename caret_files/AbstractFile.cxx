@@ -523,7 +523,14 @@ AbstractFile::getHeaderTag(const QString& name) const
 void
 AbstractFile::setHeaderTag(const QString& name, const QString& value)
 {
-   const QString nameLower(name.toLower());
+   QString nameLower(name.toLower());
+   
+   //
+   // "hem_flag" has been replaced by "structure"
+   //
+   if (nameLower == "hem_flag") {
+      nameLower = AbstractFile::headerTagStructure;
+   }
    
    //
    // ignore "version_id"
@@ -903,12 +910,16 @@ AbstractFile::isCommaSeparatedValueFile(QFile& file)
 {
    bool isCSVF = false;
    
+   //
+   // There is a bug in some versions of QT in that QFile::peek() returns 
+   // 1 fewer characters than it should, so read extra
+   //
    const QString id(CommaSeparatedValueFile::getFirstLineCommaSeparatedValueFileIdentifier());
-   const qint64 len = id.length();
+   const qint64 len = id.length() + 5;
    
    if (len > 0) {
       const QString charsRead = file.peek(len);
-      if (charsRead == id) {
+      if (charsRead.indexOf(id) >= 0) {
          isCSVF = true;
       }
    }
@@ -2493,6 +2504,11 @@ AbstractFile::getSubClassDataFile(const QString& filename,
       }
       if (StringUtilities::endsWith(filename, SpecFile::getCocomacConnectivityFileExtension())) {
          ext = SpecFile::getCocomacConnectivityFileExtension();
+      }
+   }
+   else if (ext == ".gz") {
+      if (filename.endsWith(SpecFile::getNiftiGzipVolumeFileExtension())) {
+         ext = SpecFile::getNiftiVolumeFileExtension();
       }
    }
    else if (ext == SpecFile::getFreeSurferAsciiSurfaceFileExtension()) {

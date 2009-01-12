@@ -26,9 +26,9 @@
  */ 
 /*LICENSE_END*/
 
-#include <QDialog>
 
 #include "AbstractFile.h"
+#include "WuQDialog.h"
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
@@ -50,7 +50,7 @@ class QTextEdit;
 class WuQWidgetGroup;
 
 /// dialog for saving Caret data files.
-class GuiDataFileSaveDialog : public QDialog {
+class GuiDataFileSaveDialog : public WuQDialog {
    Q_OBJECT
    
    public:

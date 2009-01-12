@@ -34,6 +34,7 @@
 #include "BorderFileProjector.h"
 #include "BorderProjectionFile.h"
 #include "BrainModelSurfacePointProjector.h"
+#include "DebugControl.h"
 
 /**
  * Constructor.  If "barycentricModeIn" is true, the border file will be projected to
@@ -146,7 +147,7 @@ BorderFileProjector::projectBorderFile(const BorderFile* bf,
                                            b->getLinkRadius(j));
                   bp.addBorderProjectionLink(bpl);
                }
-               else {
+               else if (DebugControl::getDebugOn()) {
                   std::cout << "INFO: Border Link (" << i << "," << j << ") in "<< name.toAscii().constData() 
                             << " does not project to a tile and has been discarded" << std::endl;
                }

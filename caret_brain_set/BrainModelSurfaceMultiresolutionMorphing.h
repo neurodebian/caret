@@ -184,6 +184,12 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       void setCrossoverSmoothAtEndOfEachCycle(const bool b)
                   { crossoverSmoothAtEndOfEachCycle = b; }
       
+      /// get automatically save all created files
+      bool getAutoSaveAllFiles() const { return autoSaveFilesFlag; }
+      
+      /// set automatically save all created files
+      void setAutoSaveAllFiles(const bool b) { autoSaveFilesFlag = b; }
+      
    protected:
       enum {
          SURFACE_FIDUCIAL_INDEX  = 0,
@@ -337,6 +343,9 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       
       /// crossover smoothing neighbor depth
       int crossoverSmoothNeighborDepth;
+      
+      /// auto save all created files
+      bool autoSaveFilesFlag;
 };
 
 

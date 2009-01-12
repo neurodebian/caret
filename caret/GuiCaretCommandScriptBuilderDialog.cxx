@@ -24,6 +24,8 @@
  */
 /*LICENSE_END*/
 
+#include <cstdlib>
+
 #include <QApplication>
 #include <QDir>
 #include "WuQFileDialog.h"
@@ -116,6 +118,15 @@ GuiCaretCommandScriptBuilderDialog::GuiCaretCommandScriptBuilderDialog(QWidget* 
                     this, SLOT(slotRunPushButton()));
                     
    //
+   // help push button
+   //
+   QPushButton* helpPushButton = new QPushButton("Help...");
+   helpPushButton->setAutoDefault(false);
+   helpPushButton->setFixedSize(helpPushButton->sizeHint());
+   QObject::connect(helpPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotHelpPushButton()));
+                    
+   //
    // Close push button
    //
    QPushButton* closePushButton = new QPushButton("Close");
@@ -131,6 +142,7 @@ GuiCaretCommandScriptBuilderDialog::GuiCaretCommandScriptBuilderDialog(QWidget* 
                                     openPushButton,
                                     savePushButton,
                                     runPushButton,
+                                    helpPushButton,
                                     closePushButton);
    //
    // Layout for buttons
@@ -140,6 +152,7 @@ GuiCaretCommandScriptBuilderDialog::GuiCaretCommandScriptBuilderDialog(QWidget* 
    buttonsLayout1->addWidget(openPushButton);
    buttonsLayout1->addWidget(savePushButton);
    buttonsLayout1->addWidget(runPushButton);
+   buttonsLayout1->addWidget(helpPushButton);
    buttonsLayout1->addWidget(closePushButton);
 
    //
@@ -512,6 +525,15 @@ GuiCaretCommandScriptBuilderDialog::slotClosePushButton()
    close();
 } 
 
+/**
+ * called when help button pressed.
+ */
+void 
+GuiCaretCommandScriptBuilderDialog::slotHelpPushButton()
+{
+   theMainWindow->showHelpViewerDialog("caret_scripting/CaretScripting.html");
+}
+      
 /**
  * get the caret command operations.
  */
