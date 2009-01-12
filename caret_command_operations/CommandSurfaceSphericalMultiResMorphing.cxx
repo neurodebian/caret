@@ -134,11 +134,11 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
    // Set the selected files
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag, closedTopologyFileName, 
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(), closedTopologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, fiducialCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), fiducialCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::sphericalCoordFileTag, sphericalCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getSphericalCoordFileTag(), sphericalCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    //

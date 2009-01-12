@@ -896,16 +896,9 @@ class BrainModelIdentification : public QObject {
                                            BrainSet* brainSet,
                                            BrainModelSurface* bms);
       
-      // get the identification text for a meta-analysis studies attached to the input study
-      QString getIdentificationTextForMetaAnalysisStudies(const StudyMetaData* smd);
-      
-      // get the identification text for a meta-analysis study
-      QString getIdentificationTextForMetaAnalysisStudy(const QString& pubMedID);
-      
       // get the identification text for studies
       QString getIdentificationTextForStudies(const StudyMetaDataFile* smdf,
-                                              const StudyMetaDataLinkSet& smdls,
-                                              const bool showMetaAnalysisFlag);
+                                              const StudyMetaDataLinkSet& smdls);
                                               
       // get the identification text for a study
       QString getIdentificationTextForStudy(const StudyMetaData* smd,

@@ -109,9 +109,10 @@ main(int argc, char* argv[])
       //
       // Get image plugins so JPEGs can be loaded
       //
-      //Q_IMPORT_PLUGIN(QJpegPlugin)
-      //Q_IMPORT_PLUGIN(QGifPlugin)
-
+      //Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
+      //Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
+      //Q_IMPORT_PLUGIN(qtiff) 
+      
       //
       // Get all of the available commands
       //
@@ -136,6 +137,15 @@ main(int argc, char* argv[])
          std::cout << "To see help for a specific command, specify the command with no parameters." << std::endl
                    << "If the prefix of a command is supplied, a list of matching commands " << std::endl
                    << "will be displayed." << std::endl;
+         std::cout << std::endl;
+         
+         std::cout << "On Linux and Mac OSX, the \"apply\" command may be used to " << std::endl
+                   << "run caret_command on multiple files in the current directory." << std::endl
+                   << "For example, to resize all of the JPEG images in the current" << std::endl
+                   << "directory so that they are a width of 320 and a height of" << std::endl
+                   << "240, run the following command:" << std::endl
+                   << "  apply \"caret_command -image-resize %1 %1 PIXEL 320 240\" *.jpg" << std::endl;
+         std::cout << std::endl;
          std::exit(0);
       }
       

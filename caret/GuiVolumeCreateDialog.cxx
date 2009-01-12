@@ -147,7 +147,7 @@ GuiVolumeCreateDialog::GuiVolumeCreateDialog(QWidget* parent)
    //
    // origin
    //
-   QLabel* originLabel = new QLabel("Origin ");
+   QLabel* originLabel = new QLabel("Origin at Center\nof First Voxel");
    xOriginDoubleSpinBox = new QDoubleSpinBox;
    xOriginDoubleSpinBox->setMinimum(-50000.0);
    xOriginDoubleSpinBox->setMaximum(50000.0);

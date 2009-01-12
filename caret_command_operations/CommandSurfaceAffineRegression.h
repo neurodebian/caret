@@ -1,9 +1,6 @@
 
-#ifndef __CATEGORIES_H__
-#define __CATEGORIES_H__
-
-#include <QString>
-#include <vector>
+#ifndef __COMMAND_SURFACE_AFFINE_REGRESSION_H__
+#define __COMMAND_SURFACE_AFFINE_REGRESSION_H__
 
 /*LICENSE_START*/
 /*
@@ -30,25 +27,32 @@
  */
 /*LICENSE_END*/
 
-#include <QString>
+#include "CommandBase.h"
 
-/// valid categories
-class Categories {
+/// class for
+class CommandSurfaceAffineRegression : public CommandBase {
    public:
-      // get a list of valid categories
-      static void getAllCategories(std::vector<QString>& categories);
+      // constructor 
+      CommandSurfaceAffineRegression();
       
-      // get the category values for an atlas
-      static QString getAtlasCategoryValue() { return "ATLAS"; }
+      // destructor
+      ~CommandSurfaceAffineRegression();
       
-      // get the category values for an individual
-      static QString getIndividualCategoryValue() { return "INDIVIDUAL"; }
+      // get full help information
+      QString getHelpInformation() const;
       
-      // get the category values for an tutorial
-      static QString getTutorialCategoryValue() { return "TUTORIAL"; }
+      // get the script builder parameters
+      virtual void getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const;
       
    protected:
+      // execute the command
+      void executeCommand() throw (BrainModelAlgorithmException,
+                                   CommandException,
+                                   FileException,
+                                   ProgramParametersException,
+                                   StatisticException);
+
 };
 
-#endif // __CATEGORIES_H__
+#endif // __COMMAND_VOLUME_SEGMENTATION_LIGASE_H__
 

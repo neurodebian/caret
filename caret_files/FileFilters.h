@@ -352,7 +352,7 @@ class FileFilters {
       static QString getWustlRegionFileFilter() { return QString("Wustl Region File (*%1)").arg(SpecFile::getWustlRegionFileExtension()); }
 
       /// file filer for  file
-      static QString getMetaAnalysisFileFilter() { return QString("Meta-Analysis File (*%1)").arg(SpecFile::getStudyMetaAnalysisFileExtension()); }
+      static QString getStudyCollectionFileFilter() { return QString("Study Collection File (*%1)").arg(SpecFile::getStudyCollectionFileExtension()); }
       
       /// file filer for  file
       static QString getStudyMetaDataFileFilter() { return QString("Study Metadata File (*%1)").arg(SpecFile::getStudyMetaDataFileExtension()); }
@@ -444,34 +444,34 @@ class FileFilters {
       static QString getRawVolumeFileFilter() { return "Raw Volume File (*)"; }
 
       /// file filer for  file
-      static QString getGiftiGenericFileFilter() { return QString("GIFTI Generic File (*%1)").arg(SpecFile::getGiftiGenericFileExtension()); }
+      static QString getGiftiGenericFileFilter() { return QString("GIfTI Generic File (*%1)").arg(SpecFile::getGiftiGenericFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiCoordinateFileFilter() { return QString("GIFTI Coordinate File (*%1)").arg(SpecFile::getGiftiCoordinateFileExtension()); }
+      static QString getGiftiCoordinateFileFilter() { return QString("GIfTI Coordinate File (*%1)").arg(SpecFile::getGiftiCoordinateFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiFunctionalFileFilter() { return QString("GIFTI Functional File (*%1)").arg(SpecFile::getGiftiFunctionalFileExtension()); }
+      static QString getGiftiFunctionalFileFilter() { return QString("GIfTI Functional File (*%1)").arg(SpecFile::getGiftiFunctionalFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiLabelFileFilter() { return QString("GIFTI Label File (*%1)").arg(SpecFile::getGiftiLabelFileExtension()); }
+      static QString getGiftiLabelFileFilter() { return QString("GIfTI Label File (*%1)").arg(SpecFile::getGiftiLabelFileExtension()); }
 
       /// file filer for  file
-      static QString getGiftiRgbaFileFilter() { return QString("GIFTI RGBA File (*%1)").arg(SpecFile::getGiftiRgbaFileExtension()); }
+      static QString getGiftiRgbaFileFilter() { return QString("GIfTI RGBA File (*%1)").arg(SpecFile::getGiftiRgbaFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiShapeFileFilter() { return QString("GIFTI Shape File (*%1)").arg(SpecFile::getGiftiShapeFileExtension()); }
+      static QString getGiftiShapeFileFilter() { return QString("GIfTI Shape File (*%1)").arg(SpecFile::getGiftiShapeFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiSurfaceFileFilter() { return QString("GIFTI Surface File (*%1)").arg(SpecFile::getGiftiSurfaceFileExtension()); }
+      static QString getGiftiSurfaceFileFilter() { return QString("GIfTI Surface File (*%1)").arg(SpecFile::getGiftiSurfaceFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiTensorFileFilter() { return QString("GIFTI Tensor File (*%1)").arg(SpecFile::getGiftiTensorFileExtension()); }
+      static QString getGiftiTensorFileFilter() { return QString("GIfTI Tensor File (*%1)").arg(SpecFile::getGiftiTensorFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiTimeSeriesFileFilter() { return QString("GIFTI Time Series File (*%1)").arg(SpecFile::getGiftiTimeSeriesFileExtension()); }
+      static QString getGiftiTimeSeriesFileFilter() { return QString("GIfTI Time Series File (*%1)").arg(SpecFile::getGiftiTimeSeriesFileExtension()); }
       
       /// file filer for  file
-      static QString getGiftiTopologyFileFilter() { return QString("GIFTI Topology File (*%1)").arg(SpecFile::getGiftiTopologyFileExtension()); }
+      static QString getGiftiTopologyFileFilter() { return QString("GIfTI Topology File (*%1)").arg(SpecFile::getGiftiTopologyFileExtension()); }
       
       /// file filters for opening images
       static void getImageOpenFileFilters(QStringList& fileFiltersOut,
@@ -500,7 +500,7 @@ class FileFilters {
       static QString getHTMLFileFilter() { return "HTML File (*.html)"; }
       
       /// file filter for zip file
-      static QString getZipFileFilter() { return "Zip File (*.zip)"; }
+      static QString getZipFileFilter() { return QString("Zip File (*%1)").arg(SpecFile::getZipFileExtension()); }
       
       /// file filter for python script
       static QString getPythonFileFilter() { return "Python Script File (*.py)"; }

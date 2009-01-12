@@ -24,10 +24,8 @@
 /*LICENSE_END*/
 
 #include <QGlobalStatic>
-#ifdef Q_OS_WIN32
-#define NOMINMAX
-#endif
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <sstream>
@@ -1068,3 +1066,33 @@ CoordinateFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStr
    
 }
 
+/**
+ * get spec file tag from configuration id.
+ */
+QString 
+CoordinateFile::getSpecFileTagUsingConfigurationID() const
+{
+   const QString name = getHeaderTag(AbstractFile::headerTagConfigurationID);
+   return convertConfigurationIDToSpecFileTag(name);
+}
+
+/**
+ * convert configuration ID to spec file tag.
+ */
+QString 
+CoordinateFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
+{   
+   const QString name(nameIn.toUpper());
+   if (name == "RAW") return SpecFile::getRawCoordFileTag();
+   else if (name == "FIDUCIAL") return SpecFile::getFiducialCoordFileTag();
+   else if (name == "INFLATED") return SpecFile::getInflatedCoordFileTag();
+   else if (name == "VERY_INFLATED") return SpecFile::getVeryInflatedCoordFileTag();
+   else if (name == "SPHERICAL") return SpecFile::getSphericalCoordFileTag();
+   else if (name == "ELLIPSOIDAL") return SpecFile::getEllipsoidCoordFileTag();
+   else if (name == "CMW") return SpecFile::getCompressedCoordFileTag();
+   else if (name == "FLAT") return SpecFile::getFlatCoordFileTag();
+   else if (name == "FLAT_LOBAR") return SpecFile::getLobarFlatCoordFileTag();
+   else if (name == "HULL") return SpecFile::getHullCoordFileTag();
+   else return SpecFile::getUnknownCoordFileMatchTag();
+}
+      

@@ -545,7 +545,8 @@ GuiSurfaceDeformationDialog::editBorderFile(const QString& specFileName,
    //
    // Get the type of border file
    //
-   GuiBorderAttributesDialog::BORDER_FILE_TYPE borderFileType;
+   GuiBorderAttributesDialog::BORDER_FILE_TYPE borderFileType =
+      GuiBorderAttributesDialog::BORDER_FILE_TYPE_BORDER;
    switch(fileType) {
       case DeformationDataFiles::DATA_FILE_BORDER_FLAT:
          borderFileType = GuiBorderAttributesDialog::BORDER_FILE_TYPE_BORDER;

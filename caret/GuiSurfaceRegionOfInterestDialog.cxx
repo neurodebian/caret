@@ -83,6 +83,7 @@
 #include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
 #include "QtUtilities.h"
+#include "PreferencesFile.h"
 #include "SurfaceShapeFile.h"
 #include "WuQFileDialog.h"
 #include "WuQWidgetGroup.h"
@@ -92,7 +93,7 @@
  * constructor.
  */
 GuiSurfaceRegionOfInterestDialog::GuiSurfaceRegionOfInterestDialog(QWidget* parent)
-   : QWizard(parent)
+   : WuQWizard(parent)
 {
    setWindowTitle("Surface Region of Interest");
    setOption(QWizard::NoCancelButton, false);
@@ -136,7 +137,7 @@ GuiSurfaceRegionOfInterestDialog::show()
    roiNodeSelectionPage->slotShowSelectedNodesCheckBox(roiNodeSelectionPage->showSelectedNodesCheckBox->isChecked());
    roiNodeSelectionPage->updateNumberOfSelectedNodesLabel();
 
-   QWizard::show();
+   WuQWizard::show();
 }
       
 /**
@@ -159,7 +160,7 @@ GuiSurfaceRegionOfInterestDialog::reject()
    theMainWindow->getBrainSet()->clearAllDisplayLists();
    GuiBrainModelOpenGL::updateAllGL();
 
-   QWizard::reject();
+   WuQWizard::reject();
 }
       
 /**
@@ -301,7 +302,7 @@ GuiSurfaceROIReportPage::GuiSurfaceROIReportPage(GuiSurfaceRegionOfInterestDialo
    // The report text edit
    //
    reportTextEdit = new QTextEdit;
-   reportTextEdit->setReadOnly(true);
+   //reportTextEdit->setReadOnly(true);
    reportTextEdit->setLineWrapMode(QTextEdit::NoWrap);
 
    //
@@ -419,6 +420,7 @@ GuiSurfaceROIReportPage::slotSaveReportToTextFile()
    fd.setWindowTitle("Choose Report Text File Name");
    fd.setFilter(FileFilters::getTextFileFilter());
    fd.setFileMode(WuQFileDialog::AnyFile);
+   fd.setHistory(theMainWindow->getBrainSet()->getPreferencesFile()->getRecentDataFileDirectories());
    if (fd.exec() == QDialog::Accepted) {
       if (fd.selectedFiles().count() > 0) {
          const QString fileName = fd.selectedFiles().at(0);
@@ -1862,6 +1864,7 @@ GuiSurfaceROISurfaceAndTopologySelectionPage::getCopyOfOperationSurface()
       TopologyFile* tf = operationTopologyComboBox->getSelectedTopologyFile();
       if (tf != NULL) {
          BrainModelSurface* bmsCopy = new BrainModelSurface(*bms);
+         bmsCopy->getCoordinateFile()->setFileName(bms->getCoordinateFile()->getFileName());
          bmsCopy->setTopologyFile(tf);
          return bmsCopy;
       }
@@ -3383,8 +3386,7 @@ GuiSurfaceROIOperationPage::slotCreateVolumeFromQueryNodesButton()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_ROI_NODES,
-                                             svd.getIntersectionMode());
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_ROI_NODES);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
       try {

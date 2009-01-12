@@ -31,13 +31,16 @@
 
 #include "AreaColorFile.h"
 #include "BorderColorFile.h"
+#include "BorderFile.h"
 #include "BorderProjectionFile.h"
 #include "CellColorFile.h"
+#include "CellFile.h"
 #include "CellProjectionFile.h"
 #include "CommandColorFileCreateMissingColors.h"
 #include "FileFilters.h"
 #include "FileUtilities.h"
 #include "FociColorFile.h"
+#include "FociFile.h"
 #include "FociProjectionFile.h"
 #include "PaintFile.h"
 #include "ProgramParameters.h"
@@ -78,8 +81,11 @@ CommandColorFileCreateMissingColors::getScriptBuilderParameters(ScriptBuilderPar
                     << FileFilters::getFociColorFileFilter();
                     
    QStringList dataFileFilters;
-   dataFileFilters << FileFilters::getBorderProjectionFileFilter()
+   dataFileFilters << FileFilters::getBorderGenericFileFilter()
+                   << FileFilters::getBorderProjectionFileFilter()
+                   << FileFilters::getCellFileFilter()
                    << FileFilters::getCellProjectionFileFilter()
+                   << FileFilters::getFociFileFilter()
                    << FileFilters::getFociProjectionFileFilter()
                    << FileFilters::getPaintFileFilter()
                    << FileFilters::getVolumePaintFileFilter();
@@ -126,8 +132,11 @@ CommandColorFileCreateMissingColors::getHelpInformation() const
        + indent9 + "name may be specified by two consecutive double quotes (\"\").\n"
        + indent9 + "\n"
        + indent9 + "The data file may be a:\n"
+       + indent9 + "   Border File\n"
        + indent9 + "   Border Projection File\n"
+       + indent9 + "   Cell File\n"
        + indent9 + "   Cell Projection File\n"
+       + indent9 + "   Foci File\n"
        + indent9 + "   Foci Projection File\n"
        + indent9 + "   Paint File\n"
        + indent9 + "   Volume Paint File\n"
@@ -204,6 +213,24 @@ CommandColorFileCreateMissingColors::executeCommand() throw (BrainModelAlgorithm
          names.insert(bp->getName());
       }
    }
+   else if (dataFileName.endsWith(SpecFile::getBorderFileExtension())) {
+      BorderFile bf;
+      bf.readFile(dataFileName);
+      const int numBorders = bf.getNumberOfBorders();
+      for (int i = 0; i < numBorders; i++) {
+         const Border* bp = bf.getBorder(i);
+         names.insert(bp->getName());
+      }
+   }
+   else if (dataFileName.endsWith(SpecFile::getCellFileExtension())) {
+      CellFile cf;
+      cf.readFile(dataFileName);
+      const int numCells = cf.getNumberOfCells();
+      for (int i = 0; i < numCells; i++) {
+         const CellData* cd = cf.getCell(i);
+         names.insert(cd->getName());
+      }
+   }
    else if (dataFileName.endsWith(SpecFile::getCellProjectionFileExtension())) {
       CellProjectionFile cpf;
       cpf.readFile(dataFileName);
@@ -220,6 +247,15 @@ CommandColorFileCreateMissingColors::executeCommand() throw (BrainModelAlgorithm
       for (int i = 0; i < numCells; i++) {
          const CellProjection* cp = fpf.getCellProjection(i);
          names.insert(cp->getName());
+      }
+   }
+   else if(dataFileName.endsWith(SpecFile::getFociFileExtension())) {
+      FociFile ff;
+      ff.readFile(dataFileName);
+      const int numCells = ff.getNumberOfCells();
+      for (int i = 0; i < numCells; i++) {
+         const CellData* cd = ff.getCell(i);
+         names.insert(cd->getName());
       }
    }
    else if (dataFileName.endsWith(SpecFile::getPaintFileExtension())) {

@@ -303,6 +303,7 @@ GuiMainWindowWindowActions::slotTextFileEditor()
    QStringList caretFileFilters;
    FileFilters::getAllCaretFileFilters(caretFileFilters);
    tfed->addAdditionalFileFilters(caretFileFilters);
+   tfed->setPreferencesFile(theMainWindow->getBrainSet()->getPreferencesFile());
    tfed->show();
 }      
 

@@ -99,6 +99,13 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
       // Get first selected column that is an overlay for the brain model (-1 if none)
       int getFirstSelectedColumnForBrainModel(const int brainModelIndex) const;
       
+      /// apply a scene (set display settings)
+      virtual void showScene(const SceneFile::Scene& scene, QString& errorMessage);
+      
+      /// create a scene (read display settings)
+      virtual void saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
+                             QString& errorMessage);
+                       
    protected:
       /// get the number of columns for the file
       int getFileNumberOfColumns() const;
@@ -137,13 +144,13 @@ class DisplaySettingsNodeAttributeFile : public DisplaySettings {
       NodeAttributeFile* naf;
       
       /// type of overlay for this data type
-      BrainModelSurfaceOverlay::OVERLAY_SELECTIONS overlayType;
+      const BrainModelSurfaceOverlay::OVERLAY_SELECTIONS overlayType;
       
       /// threshold column is valid 
-      bool thresholdColumnValidFlag;
+      const bool thresholdColumnValidFlag;
 
       /// allow each surface to have its own column selection
-      bool allowSurfaceUniqueColumnSelectionFlag;
+      const bool allowSurfaceUniqueColumnSelectionFlag;
       
       /// apply coloring with corresponding structures
       bool applySelectionToLeftAndRightStructuresFlag;

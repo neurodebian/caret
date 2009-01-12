@@ -47,6 +47,7 @@
 #include "QtMultipleInputDialog.h"
 #include "QtTextFileEditorDialog.h"
 #include "QtUtilities.h"
+#include "PreferencesFile.h"
 #include "TextFile.h"
 #include "WuQFileDialog.h"
 
@@ -56,6 +57,7 @@
 QtTextFileEditorDialog::QtTextFileEditorDialog(QWidget* parent)
    : WuQDialog(parent)
 {
+   preferencesFile = NULL;
    findReplaceDialog = NULL;
    setAttribute(Qt::WA_DeleteOnClose);
    resize(400, 200);
@@ -292,6 +294,15 @@ QtTextFileEditorDialog::~QtTextFileEditorDialog()
 }
 
 /**
+ * set the preferences file.
+ */
+void 
+QtTextFileEditorDialog::setPreferencesFile(PreferencesFile* pf)
+{
+   preferencesFile = pf;
+}
+
+/**
  * called when print button is pressed.
  */
 void 
@@ -410,9 +421,17 @@ QtTextFileEditorDialog::slotFileOpen()
    }
    fd.setFilters(filters);
    fd.selectFilter(currentFileFilter);
+   if (preferencesFile != NULL) {
+      fd.setHistory(preferencesFile->getRecentDataFileDirectories());
+   }
    if (fd.exec() == QDialog::Accepted) {
       currentFileFilter = fd.selectedFilter();
       loadFile(fd.selectedFiles().at(0), (currentFileFilter == richTextFilter));
+      
+      if (preferencesFile != NULL) {
+         preferencesFile->addToRecentDataFileDirectories(
+            FileUtilities::dirname(fd.selectedFiles().at(0)), true);
+      }
    }
 }
 
@@ -473,6 +492,9 @@ QtTextFileEditorDialog::slotFileSaveAs()
          filters << *it;
       }
    }
+   if (preferencesFile != NULL) {
+      fd.setHistory(preferencesFile->getRecentDataFileDirectories());
+   }
    fd.setFilters(filters);
    fd.selectFilter(currentFileFilter);
    fd.setDirectory(FileUtilities::dirname(filename));
@@ -482,6 +504,11 @@ QtTextFileEditorDialog::slotFileSaveAs()
       if (fd.selectedFiles().count() > 0) {
          filename = fd.selectedFiles().at(0);
          saveFile(filename);
+      
+         if (preferencesFile != NULL) {
+            preferencesFile->addToRecentDataFileDirectories(
+               FileUtilities::dirname(fd.selectedFiles().at(0)), true);
+         }
       }
    }
 }

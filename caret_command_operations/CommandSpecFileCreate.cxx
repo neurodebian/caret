@@ -23,7 +23,11 @@
  */
 /*LICENSE_END*/
 
-#include "Categories.h"
+#include <algorithm>
+
+#include <QDir>
+
+#include "Category.h"
 #include "CommandSpecFileCreate.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
@@ -61,15 +65,16 @@ CommandSpecFileCreate::getScriptBuilderParameters(ScriptBuilderParameters& param
       spaceNames.push_back(allSpaces[i].getName());
    }
       
-   std::vector<QString> allSpecies;
-   Species::getAllSpecies(allSpecies);
+   std::vector<Species::TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   Species::getAllSpeciesTypesAndNames(speciesTypes, speciesNames);
    
    std::vector<Structure::STRUCTURE_TYPE> structureTypes;
    std::vector<QString> structureNames;
    Structure::getAllTypesAndNames(structureTypes, structureNames, false);
       
    paramsOut.clear();
-   paramsOut.addListOfItems("Species", allSpecies, allSpecies);
+   paramsOut.addListOfItems("Species", speciesNames, speciesNames);
    paramsOut.addString("Subject", "");
    paramsOut.addListOfItems("Structure", structureNames, structureNames);
    paramsOut.addListOfItems("Stereotaxic Space", spaceNames, spaceNames);
@@ -84,16 +89,26 @@ CommandSpecFileCreate::getHelpInformation() const
 {
    std::vector<StereotaxicSpace> allSpaces;
    StereotaxicSpace::getAllStereotaxicSpaces(allSpaces);
-      
-   std::vector<QString> allSpecies;
-   Species::getAllSpecies(allSpecies);
+   std::vector<QString> spaceNames;
+   for (int i = 0; i < static_cast<int>(allSpaces.size()); i++) {
+      spaceNames.push_back(allSpaces[i].getName());
+   }
+   std::sort(spaceNames.begin(), spaceNames.end());
+   
+   std::vector<Species::TYPE> speciesTypes;
+   std::vector<QString> speciesNames;
+   Species::getAllSpeciesTypesAndNames(speciesTypes, speciesNames);
+   std::sort(speciesNames.begin(), speciesNames.end());
    
    std::vector<Structure::STRUCTURE_TYPE> structureTypes;
    std::vector<QString> structureNames;
    Structure::getAllTypesAndNames(structureTypes, structureNames, false);
+   std::sort(structureNames.begin(), structureNames.end());
    
-   std::vector<QString> allCategories;
-   Categories::getAllCategories(allCategories);
+   std::vector<Category::TYPE> categoryTypes;
+   std::vector<QString> categoryNames;
+   Category::getAllCategoryTypesAndNames(categoryTypes, categoryNames);
+   std::sort(structureNames.begin(), structureNames.end());
 
    QString helpInfo =
       (indent3 + getShortDescription() + "\n"
@@ -102,10 +117,15 @@ CommandSpecFileCreate::getHelpInformation() const
        + indent9 + "<subject>\n"
        + indent9 + "<structure>\n"
        + indent9 + "<stereotaxic-space>\n"
+       + indent9 + "[-add-files-in-directory]\n"
        + indent9 + "[-category   category-name]\n"
        + indent9 + "[-spec-file-name  spec-file-name]\n"
        + indent9 + "\n"
        + indent9 + "Create a Spec File\n"
+       + indent9 + "\n"
+       + indent9 + "If \"-add-files-in-directory\" is specified, all files in \n"
+       + indent9 + "the directory that end with caret data file extensions are\n"
+       + indent9 + "added to the spec file.\n"
        + indent9 + "\n"
        + indent9 + "The \"spec-file-name\" is optional and should only be specified\n"
        + indent9 + "if you must name the spec file.  If the \"spec-file-name\" is not\n"
@@ -113,30 +133,27 @@ CommandSpecFileCreate::getHelpInformation() const
        + indent9 + "standard which composes the spec file name using the species,\n"
        + indent9 + "subject, and structure.\n"
        + indent9 + "\n"
-       + indent9 + "The category is optional and the default value is "
-       +                Categories::getIndividualCategoryValue() + "\n"
-       + indent9 + "      \n"
-       + indent9 + "Examples of \"species\" are: \n");
-      for (int i = 0; i < static_cast<int>(allSpecies.size()); i++) {
-         helpInfo += (indent9 + "   " + allSpecies[i] + "\n");
+       + indent9 + "Valid species for \"species\" are: \n");
+      for (int i = 0; i < static_cast<int>(speciesNames.size()); i++) {
+         helpInfo += (indent9 + "   " + speciesNames[i] + "\n");
       }
       helpInfo += "\n";
 
-      helpInfo += (indent9 + "Examples of \"structure\" are: \n");
+      helpInfo += (indent9 + "Valid structures for \"structure\" are: \n");
       for (int i = 0; i < static_cast<int>(structureNames.size()); i++) {
          helpInfo += (indent9 + "   " + structureNames[i] + "\n");
       }
       helpInfo += "\n";
 
-      helpInfo += (indent9 + "Examples of \"stereotaxic-space\" are: \n");
-      for (int i = 0; i < static_cast<int>(allSpaces.size()); i++) {
-         helpInfo += (indent9 + "   " + allSpaces[i].getName() + "\n");
+      helpInfo += (indent9 + "Valid stereotaxic spaces for \"stereotaxic-space\" are: \n");
+      for (int i = 0; i < static_cast<int>(spaceNames.size()); i++) {
+         helpInfo += (indent9 + "   " + spaceNames[i] + "\n");
       }
       helpInfo += "\n";
 
-      helpInfo += (indent9 + "   Examples of \"category\" are: \n");
-      for (int i = 0; i < static_cast<int>(allCategories.size()); i++) {
-         helpInfo += (indent9 + "   " + allCategories[i] + "\n");
+      helpInfo += (indent9 + "Valid categories for \"category\" are: \n");
+      for (int i = 0; i < static_cast<int>(categoryNames.size()); i++) {
+         helpInfo += (indent9 + "   " + categoryNames[i] + "\n");
       }
       helpInfo += "\n";
       
@@ -167,17 +184,22 @@ CommandSpecFileCreate::executeCommand() throw (BrainModelAlgorithmException,
    //
    QString categoryName;
    QString specFileName;
+   bool addFilesInCurrentDirectoryFlag = false;
    while (parameters->getParametersAvailable()) {
       const QString paramName = parameters->getNextParameterAsString("Spec File Create Option");
-      if (paramName == "-category") {
+      if (paramName == "-add-files-in-directory") {
+         addFilesInCurrentDirectoryFlag = true;
+      }
+      else if (paramName == "-category") {
          categoryName = parameters->getNextParameterAsString("Category");
       }
       else if (paramName == "-spec-file-name") {
          specFileName = parameters->getNextParameterAsString("Spec File Name");
       }
       else {
-         throw CommandException("Volume Create Corpus Callosum invalid parameter "
-                                + paramName);
+         throw CommandException("Invalid parameter \""
+                                + paramName
+                                + "\"");
       }
    }
 
@@ -194,8 +216,26 @@ CommandSpecFileCreate::executeCommand() throw (BrainModelAlgorithmException,
    sf.setSpace(spaceName); 
    sf.setStructure(structure.getTypeAsString());
    sf.setCategory(categoryName);   
+   
+   if (addFilesInCurrentDirectoryFlag) {
+      addFilesInCurrentDirectory(sf);
+   }
+   
    sf.writeFile(specFileName);
 }
 
+
+/**
+ * add all files in the current directory.
+ */
+void 
+CommandSpecFileCreate::addFilesInCurrentDirectory(SpecFile& sf)
+{
+   QDir dir(QDir::currentPath());
+   QFileInfoList list = dir.entryInfoList(QDir::Files);
+   for (int i = 0; i < list.size(); i++) {
+      sf.addUnknownTypeOfFileToSpecFile(list.at(i).fileName());
+   }
+}
       
 

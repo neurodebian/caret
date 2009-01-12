@@ -93,9 +93,10 @@ CommandVolumeResample::getHelpInformation() const
        + indent9 + "   INTERP_LINEAR\n"
        + indent9 + "   INTERP_NEAREST_NEIGHBOR\n"
        + indent9 + "\n"
-       + indent9 + "For paint and probabilistic atlas volumes, you MUST use\n"
-       + indent9 + "INTERP_NEAREST_NEIGHBOR for the interpolation mode.\n"
-       + indent9 + "INTERP_CUBIC is recommended for all other volume file types.\n"
+       + indent9 + "For paint, probabilistic atlas, and segmentation volumes,\n"
+       + indent9 + " you MUST use INTERP_NEAREST_NEIGHBOR for the interpolation.\n"
+       + indent9 + "mode.  INTERP_CUBIC is recommended for all other volume file\n"
+       + indent9 + "types.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -132,10 +133,10 @@ CommandVolumeResample::executeCommand() throw (BrainModelAlgorithmException,
       interpolationType = VolumeFile::INTERPOLATION_TYPE_CUBIC;
    }
    else if (interpolationName == "INTERP_LINEAR") {
-      interpolationType = VolumeFile::INTERPOLATION_TYPE_CUBIC;
+      interpolationType = VolumeFile::INTERPOLATION_TYPE_LINEAR;
    }
    else if (interpolationName == "INTERP_NEAREST_NEIGHBOR") {
-      interpolationType = VolumeFile::INTERPOLATION_TYPE_CUBIC;
+      interpolationType = VolumeFile::INTERPOLATION_TYPE_NEAREST_NEIGHBOR;
    }
    else {
       throw CommandException("Invalid interpolation value \""

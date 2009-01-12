@@ -43,6 +43,7 @@
 #include "BrainSet.h"
 #include "BrainModelSurface.h"
 #include "DebugControl.h"
+#include "FileFilters.h"
 #include "FileUtilities.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelViewingWindow.h"
@@ -174,6 +175,7 @@ GuiMainWindowFileActions::GuiMainWindowFileActions(GuiMainWindow* parent) :
 
    loadedFileManagementAction = new QAction(parent);
    loadedFileManagementAction->setText("Manage Loaded Files...");
+   loadedFileManagementAction->setShortcut(Qt::CTRL+Qt::Key_M);
    loadedFileManagementAction->setObjectName("loadedFileManagementAction");
    QObject::connect(loadedFileManagementAction, SIGNAL(triggered(bool)),
                     this, SLOT(loadedFileManagementSlot()));
@@ -296,10 +298,13 @@ GuiMainWindowFileActions::recordAsMpegSlot()
 void 
 GuiMainWindowFileActions::dataFileOpenSlot()
 {
+   PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+   
    static GuiDataFileOpenDialog* fd = NULL;
    if (fd == NULL) {
       fd = new GuiDataFileOpenDialog(theMainWindow);
    }
+   fd->setHistory(pf->getRecentDataFileDirectories());
    fd->setDirectory(QDir::currentPath());
    fd->show();
    fd->raise();
@@ -370,11 +375,14 @@ GuiMainWindowFileActions::printMainWindowImage()
 void 
 GuiMainWindowFileActions::addDocumentToSpecFileSlot()
 {
+   QStringList allFileFilters;
+   FileFilters::getAllFileFilters(allFileFilters);
+
    WuQFileDialog fd(theMainWindow);
    fd.setAcceptMode(WuQFileDialog::AcceptOpen);
    fd.setDirectory(".");
    fd.setFileMode(WuQFileDialog::ExistingFile);
-   fd.setFilter("Any File (*)");
+   fd.setFilters(allFileFilters);
    fd.setLabelText(WuQFileDialog::Accept, "Add");
    if (fd.exec() == WuQFileDialog::Accepted) {
       if (fd.selectedFiles().size() > 0) {

@@ -38,6 +38,7 @@ class QPushButton;
 class QToolButton;
 class QtTextFileEditor;
 class QtTextFileEditorSearchDialog;
+class PreferencesFile;
 
 /// Dialog for editing text files
 class QtTextFileEditorDialog : public WuQDialog {
@@ -57,6 +58,9 @@ class QtTextFileEditorDialog : public WuQDialog {
       void loadFile(const QString& fileName,
                     const bool richTextFlag = false);
       
+      /// set the preferences file
+      void setPreferencesFile(PreferencesFile* pf);
+
    private slots:
       /// called when open button is pressed
       void slotFileOpen();
@@ -127,6 +131,9 @@ class QtTextFileEditorDialog : public WuQDialog {
       
       /// previous Go To Line Number
       int previousLineNumber;
+      
+      /// the preferences file
+      PreferencesFile* preferencesFile;
 };
 
 /// text editor

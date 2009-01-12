@@ -26,10 +26,9 @@
  */
 /*LICENSE_END*/
 
-#include <QDialog>
-
 #include "GenericXmlFile.h"
 #include "SumsFileListFile.h"
+#include "WuQDialog.h"
 
 class PreferencesFile;
 class QCheckBox;
@@ -48,7 +47,7 @@ class QTableWidget;
 class QTextEdit;
 
 /// dialog for interacting with SuMS database
-class GuiSumsDialog : public QDialog {
+class GuiSumsDialog : public WuQDialog {
    Q_OBJECT
    
    public:
@@ -187,9 +186,6 @@ class GuiSumsDialog : public QDialog {
       /// Create the upload files page
       QWidget* createUploadFilesPage();
 
-      /// override's parent's done method
-      void done(int r);
-      
       /// Insert the session ID into the URL.
       QString insertSessionIdIntoURL(const QString urlIn);
 

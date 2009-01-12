@@ -97,19 +97,19 @@ class BrainModelVolumeToSurfaceMapperAlgorithmParameters {
       void setAlgorithmParametersFromString(const QString& s);
       
       // get the average voxel parameters
-      void getAlgorithmMetricAverageVoxelParameters(float neighborsOut) const;
+      void getAlgorithmMetricAverageVoxelParameters(float& neighborsOut) const;
       
       // set the average voxel parameters
       void setAlgorithmMetricAverageVoxelParameters(const float neighborsIn);
       
       // get the maximum voxel parameters
-      void getAlgorithmMetricMaximumVoxelParameters(float neighborsOut) const;
+      void getAlgorithmMetricMaximumVoxelParameters(float& neighborsOut) const;
       
       // set the maximum voxel parameters
       void setAlgorithmMetricMaximumVoxelParameters(const float neighborsIn);
       
       // get the strongest voxel parameters
-      void getAlgorithmMetricStrongestVoxelParameters(float neighborsOut) const;
+      void getAlgorithmMetricStrongestVoxelParameters(float& neighborsOut) const;
       
       // set the strongest voxel parameters
       void setAlgorithmMetricStrongestVoxelParameters(const float neighborsIn);

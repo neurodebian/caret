@@ -54,7 +54,7 @@ class BrainModelVolumeSureFitErrorCorrection : public BrainModelAlgorithm {
       ~BrainModelVolumeSureFitErrorCorrection();
       
       // get the output volume
-      VolumeFile* getOutputVolume() { return outputVolume; }
+      const VolumeFile* getOutputVolume() const { return outputVolume; }
       
       // execute the algorithm
       void execute() throw (BrainModelAlgorithmException);
@@ -325,6 +325,9 @@ class BrainModelVolumeSureFitErrorCorrection : public BrainModelAlgorithm {
       
       /// type of volume files to write
       VolumeFile::FILE_READ_WRITE_TYPE typeOfVolumeFilesToWrite;
+      
+      /// was error correction successful?
+      bool errorCorrectionWasSuccessfulFlag;
 };
 
 #endif //  __BRAIN_MODEL_VOLUME_SUREFIT_ERROR_CORRECTION_H__

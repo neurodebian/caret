@@ -39,8 +39,6 @@ class QDomDocument;
 class QDomElement;
 class QDomNode;
 class FociProjectionFile;
-class StringTable;
-class StudyMetaAnalysisFile;
 class StudyMetaDataFile;
 class StudyMetaDataLink;
 class StudyMetaDataTextDisplayFilter;
@@ -108,14 +106,6 @@ class StudyMetaData {
                   void writeXML(QDomDocument& xmlDoc,
                                 QDomElement&  parentElement) const throw (FileException);
                
-                  // write the data into a comma separated value file
-                  static void writeDataIntoCommaSeparatedValueFile(const std::vector<Panel*>& panels,
-                                                       CommaSeparatedValueFile& csvf)  throw (FileException);
-                  
-                  // read the data from a StringTable
-                  static void readDataFromStringTable(std::vector<Panel*>& panels,
-                                                      const StringTable& st) throw (FileException);
-                  
                   /// set parent
                   void setParent(Figure* parentFigureIn);
                   
@@ -207,14 +197,6 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
-            // write the data into a comma separated value file
-            static void writeDataIntoCommaSeparatedValueFile(const std::vector<Figure*>& figures,
-                                                 CommaSeparatedValueFile& csvf)  throw (FileException);
-            
-            // read the data from a StringTable
-            static void readDataFromStringTable(std::vector<Figure*>& figures,
-                                                const StringTable& st) throw (FileException);
-            
             /// set parent
             void setParent(StudyMetaData* parentStudyMetaDataIn);
             
@@ -306,14 +288,6 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
-            // write the data into a comma separated value file
-            static void writeDataIntoCommaSeparatedValueFile(const std::vector<SubHeader*>& subHeaders,
-                                                 CommaSeparatedValueFile& csvf)  throw (FileException);
-            
-            // read the data from a StringTable
-            static void readDataFromStringTable(std::vector<SubHeader*>& subHeaders,
-                                                const StringTable& st) throw (FileException);
-            
             // set parent
             void setParent(Table* parentTableIn);
             
@@ -456,14 +430,6 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
-            // write the data into a comma separated value file
-            static void writeDataIntoCommaSeparatedValueFile(const std::vector<Table*>& t,
-                                                 CommaSeparatedValueFile& csvf)  throw (FileException);
-            
-            // read the data from a StringTable
-            static void readDataFromStringTable(std::vector<Table*>& t,
-                                                const StringTable& st) throw (FileException);
-            
             /// set parent
             void setParent(StudyMetaData* parentStudyMetaDataIn);
             
@@ -715,9 +681,6 @@ class StudyMetaData {
       // constructor (from old CellStudyInfo)
       StudyMetaData(const CellStudyInfo& csi);
 
-      // constructor
-      StudyMetaData(const StudyMetaAnalysisFile* smaf);
-      
       // destructor
       ~StudyMetaData();
 
@@ -740,14 +703,6 @@ class StudyMetaData {
       void writeXML(QDomDocument& xmlDoc,
                             QDomElement&  parentElement) const throw (FileException);
    
-      // write the data into a comma separated value file
-      static void writeDataIntoCommaSeparatedValueFile(const std::vector<StudyMetaData*>& smd,
-                                     CommaSeparatedValueFile& csvf) throw (FileException);
-      
-      // read the data from a StringTable
-      static void readDataFromStringTable(std::vector<StudyMetaData*>& smd,
-                                    const StringTable& st) throw (FileException);
-      
       // get the study data format entries
       static void getStudyDataFormatEntries(std::vector<QString>& entries);
       
@@ -847,12 +802,6 @@ class StudyMetaData {
       // get a page reference by its page number (const method)
       const PageReference* getPageReferenceByPageNumber(const QString& pageNumber) const;
       
-      // get a pointer to the meta-analysis studies
-      StudyNamePubMedID* getMetaAnalysisStudies() { return &metaAnalysisStudies; }
-      
-      // get a pointer to the meta-analysis studies (const method)
-      const StudyNamePubMedID* getMetaAnalysisStudies() const { return &metaAnalysisStudies; }
-      
       /// get authors
       QString getAuthors() const { return authors; }
       
@@ -883,12 +832,18 @@ class StudyMetaData {
       // get the keywords
       void getKeywords(std::vector<QString>& keywordsOut) const;
       
+      // see if study contains a keyword
+      bool containsKeyword(const QString& kw) const;
+      
       // get all table headers
       void getAllTableHeaders(std::vector<QString>& namesOut) const;
       
       // get all table sub header short names in this study
       void getAllTableSubHeaderShortNames(std::vector<QString>& tableSubHeaderShortNamesOut) const;
       
+      // see if study contains a sub header short names.
+      bool containsSubHeaderShortName(const QString& shsn) const;
+
       // set keywords
       void setKeywords(const QString& s);
       
@@ -927,6 +882,12 @@ class StudyMetaData {
       
       // see if the PubMed ID is actually a Project ID
       bool getPubMedIDIsAProjectID() const;
+      
+      /// get species
+      QString getSpecies() const { return species; }
+      
+      // set species
+      void setSpecies(const QString& s);
       
       /// get stereotaxic space
       QString getStereotaxicSpace() const { return stereotaxicSpace; }
@@ -988,18 +949,42 @@ class StudyMetaData {
       // set parent
       void setParent(StudyMetaDataFile* parentStudyMetaDataFile);
       
+      /// get MSL ID
+      QString getMslID() const { return mslID; }
+      
+      /// set MSL ID
+      void setMslID(const QString& s);
+      
+      /// get parent ID
+      QString getParentID() const { return parentID; }
+      
+      /// set parent ID
+      void setParentID(const QString& s);
+      
+      /// get core data completed
+      QString getCoreDataCompleted() const { return coreDataCompleted; }
+      
+      /// set core data completed
+      void setCoreDataCompleted(const QString& s);
+      
+      /// get completed
+      QString getCompleted() const { return completed; }
+      
+      /// set completed
+      void setCompleted(const QString& s);
+      
+      /// get public access
+      QString getPublicAccess() const { return publicAccess; }
+      
+      /// set public access
+      void setPublicAccess(const QString& s);
+      
       // set this study info is modified
       void setModified();
       
       // clear this study info is modified
       void clearModified();
       
-      /// get meta-analysis flag
-      bool getMetaAnalysisFlag() const { return metaAnalysisFlag; }
-      
-      /// set meta-analysis flag
-      void setMetaAnalysisFlag(const bool b);
-
    protected:
       // copy helper used by copy constructor and assignment operator
       void copyHelper(const StudyMetaData& smd);
@@ -1052,6 +1037,9 @@ class StudyMetaData {
       /// study data type
       QString studyDataType;
       
+      /// the species
+      QString species;
+      
       /// stereotaxic space
       QString stereotaxicSpace;
       
@@ -1060,6 +1048,21 @@ class StudyMetaData {
       
       /// study title
       QString title;
+      
+      /// MSL ID
+      QString mslID;
+      
+      /// parent ID
+      QString parentID;
+      
+      /// core data completed
+      QString coreDataCompleted;
+      
+      /// completed
+      QString completed;
+      
+      /// public access
+      QString publicAccess;
       
       /// tables in the study
       std::vector<Table*> tables;
@@ -1072,12 +1075,6 @@ class StudyMetaData {
       
       /// page references
       std::vector<PageReference*> pageReferences;
-      
-      /// the meta-analysis studies
-      StudyNamePubMedID metaAnalysisStudies;
-      
-      /// meta-analysis flag
-      bool metaAnalysisFlag;
       
       /// the date and time stamps  (DO NOT COPY)
       mutable QString dateAndTimeStamps;
@@ -1157,20 +1154,10 @@ class StudyMetaDataFile : public AbstractFile {
       /// get the number of study metadata
       int getNumberOfStudyMetaData() const { return studyMetaData.size(); }
       
-      // given a study, report any meta-analysis studies of which it is a member
-      void getMetaAnalysisStudiesForStudy(const StudyMetaData* mySMD,
-                                          std::vector<QString>& metaAnalysisStudyPMIDsOut) const;
-                                          
       // find out if comma separated file conversion supported
       virtual void getCommaSeparatedFileSupport(bool& readFromCSV,
                                                 bool& writeToCSV) const;
                                     
-      // write the file's data into a comma separated values file (throws exception if not supported)              
-      virtual void writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) throw (FileException);
-      
-      // read the file's data from a comma separated values file (throws exception if not supported)               
-      virtual void readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& csv) throw (FileException); 
-
       // clear study meta data modified (prevents date and time stamp updates)
       void clearAllStudyMetaDataElementsModified();
       
@@ -1210,20 +1197,6 @@ class StudyMetaDataFile : public AbstractFile {
       
       // retrieve data from PubMed using PubMed ID for all studies
       void updateAllStudiesWithDataFromPubMedDotCom() throw (FileException);
-      
-      // check for any studies matching those in meta-analysis file
-      void checkForMatchingStudies(const StudyMetaAnalysisFile* smaf,
-                                   std::vector<int>& matchingStudyMetaDataFileStudyNumbers,
-                                   std::vector<int>& matchingMetaAnalysisFileStudyIndices) const;
-                                   
-      // add meta-analysis study
-      void addMetaAnalysisStudy(const StudyMetaAnalysisFile* smaf,
-                                const bool createMetaAnalysisStudiesFlag,
-                                const bool fetchDataFromPubMedFlag) throw (FileException);
-      
-      // create new studies from these meta-analysis studies
-      void createStudiesFromMetaAnalysisStudiesWithPubMedDotCom(const StudyNamePubMedID* ms,
-                                                              const bool fetchDataFromPubMedFlag) throw (FileException);
       
       // count the number of studies without at least one provenance entry
       int getNumberOfStudyMetaDatWithoutProvenceEntries() const;

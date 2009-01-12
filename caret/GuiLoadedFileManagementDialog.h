@@ -30,6 +30,7 @@
 
 #include "WuQDialog.h"
 
+#include "BorderProjectionFile.h"
 #include "BrainModelSurface.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
@@ -39,7 +40,9 @@ class AbstractFile;
 class BrainModelBorderFileInfo;
 class BrainModelBorderSet;
 class QButtonGroup;
+class QCheckBox;
 class QGridLayout;
+class QLineEdit;
 class QToolButton;
 class VolumeFile;
 
@@ -82,6 +85,9 @@ class GuiLoadedFileManagementDialog : public WuQDialog {
       /// called to save border projections
       void slotSaveBorderProjections();
       
+      /// save all checked files
+      void slotSaveAllCheckFiles();
+      
    private:
       /// class for storing data file and pointers to its labels
       class DataFile {
@@ -89,47 +95,60 @@ class GuiLoadedFileManagementDialog : public WuQDialog {
             /// constructor
             DataFile(AbstractFile* dataFileIn,
                      GuiFilesModified dataFileTypeMaskIn,
-                     QLabel* descriptionLabelIn,
-                     QLabel* nameLabelIn,
-                     QLabel* modifiedLabelIn) {
-               dataFile = dataFileIn;
-               descriptionLabel = descriptionLabelIn;
-               nameLabel = nameLabelIn;
-               dataFileTypeMask = dataFileTypeMaskIn;
-               modifiedLabel = modifiedLabelIn;
-            }
+                     QWidget* fileTypeCheckBoxOrLabelIn,
+                     QLineEdit* nameLineEditIn,
+                     QLabel* modifiedLabelIn,
+                     const QString& specFileTagIn);
+            
+            /// destructor
+            ~DataFile();
+            
+            /// set modified
+            void setModified();
+            
+            /// clear modified
+            void clearModified();
+                        
+            /// save the file if it is checked
+            QString saveFileIfChecked();
             
             ///  the data file
             AbstractFile* dataFile;
             
-            /// description label
-            QLabel* descriptionLabel;
+            /// file type checkbox or label
+            QWidget* fileTypeCheckBoxOrLabel;
             
-            /// name label
-            QLabel* nameLabel;
+            /// name line edit
+            QLineEdit* nameLineEdit;
             
             /// data file type mask
             GuiFilesModified dataFileTypeMask;
             
             /// modified label
             QLabel* modifiedLabel;
+            
+            /// the spec file tag
+            QString specFileTag;
       };
       
       /// add a file to the list of files
       void addFileToGrid(AbstractFile* af,
                          const GuiFilesModified& fileMask,
-                         const char* typeName = NULL);
+                         const char* typeName,
+                         const QString& specFileTagIn);
       
       /// add a file to the list of files
       void addFileToGrid(AbstractFile* af,
                          const GuiFilesModified& fileMask,
                          const SpecFile::Entry& dataFileInfo,
-                         const char* typeName = NULL);
+                         const char* typeName,
+                         const QString& specFileTagIn);
                          
       /// add a border file to the list of files
       void addBorderFileToGrid(BrainModelBorderSet* bmbs,
                                const BrainModelSurface::SURFACE_TYPES surfaceType,
-                               const char* typeName);
+                               const char* typeName,
+                               const QString& specFileTagIn);
       
       /// Add a border projection file to the grid.
       void addBorderProjectionFileToGrid(BrainModelBorderSet* bmbs);
@@ -224,11 +243,11 @@ class GuiLoadedFileManagementDialog : public WuQDialog {
       /// text for comment/header button
       QString commentHeaderPushButtonText;
       
-      /// text for modified file label
-      QString modifiedFileLabelText;
-      
       /// text for save file button
       QString saveFilePushButtonText;
+      
+      /// border projection file
+      BorderProjectionFile borderProjectionFileForGrid;
 };
 
 #endif // __GUI_LOADED_FILE_MANAGEMENT_DIALOG_H__

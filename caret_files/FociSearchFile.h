@@ -215,40 +215,46 @@ class FociSearch {
          LOGIC_INTERSECTION
       };
       
+      //
+      // If the order in the ATTRIBUTE enumerated type changes,
+      // FociSearch::getAttributeTypesAndNames() must be updated.
+      //
       /// attribute for searching
       enum ATTRIBUTE {
          /// all attributes
-         ATTRIBUTE_ALL,
+         ATTRIBUTE_ALL,  // Must be first for BrainModelSurfaceFociSearch::applySearchToFocus
          /// focus area
-         ATTRIBUTE_FOCUS_AREA,
+         ATTRIBUTE_FOCUS_AREA, // IF MOVED update BrainModelSurfaceFociSearch::applySearchToFocus
+         /// study authors
+         ATTRIBUTE_STUDY_AUTHORS,
+         /// study citation
+         ATTRIBUTE_STUDY_CITATION,         
          /// focus class
          ATTRIBUTE_FOCUS_CLASS,
          /// focus comment
          ATTRIBUTE_FOCUS_COMMENT,
-         /// focus geography
-         ATTRIBUTE_FOCUS_GEOGRAPHY,
-         /// focus ROI
-         ATTRIBUTE_FOCUS_ROI,
-         /// focus spatial search
-         ATTRIBUTE_FOCUS_SPATIAL,
-         /// focus structure
-         ATTRIBUTE_FOCUS_STRUCTURE,
-         /// study authors
-         ATTRIBUTE_STUDY_AUTHORS,
-         /// study citation
-         ATTRIBUTE_STUDY_CITATION,
          /// study comment
          ATTRIBUTE_STUDY_COMMENT,
          /// study data format
          ATTRIBUTE_STUDY_DATA_FORMAT,
          /// study data type
          ATTRIBUTE_STUDY_DATA_TYPE,
+         /// focus geography
+         ATTRIBUTE_FOCUS_GEOGRAPHY,
          /// study keywords
          ATTRIBUTE_STUDY_KEYWORDS,
          /// study Medical Subject Headings terms
          ATTRIBUTE_STUDY_MESH_TERMS,
          /// study name
          ATTRIBUTE_STUDY_NAME,
+         /// focus ROI
+         ATTRIBUTE_FOCUS_ROI,
+         /// focus spatial search
+         ATTRIBUTE_FOCUS_SPATIAL,
+         /// study species
+         ATTRIBUTE_STUDY_SPECIES,
+         /// focus structure
+         ATTRIBUTE_FOCUS_STRUCTURE,
          /// study stereotaxic space
          ATTRIBUTE_STUDY_STEREOTAXIC_SPACE,
          /// study table header
@@ -256,7 +262,9 @@ class FociSearch {
          /// study table sub-header
          ATTRIBUTE_STUDY_TABLE_SUBHEADER,
          /// study title
-         ATTRIBUTE_STUDY_TITLE
+         ATTRIBUTE_STUDY_TITLE,
+         /// number of attributes (NOT USED IN SEARCH)
+         ATTRIBUTE_NUMBER_OF
       };
       
       /// matching for searches
@@ -387,6 +395,8 @@ class FociSearch {
       friend class FociSearchSet;
 };
 
+#endif // __FOCI_SEARCH_FILE_H__
+
 #ifdef __FOCI_SEARCH_FILE_MAIN__
 const QString FociSearch::tagFociSearch = "FociSearch";
 const QString FociSearch::tagFociSearchLogic = "Logic";
@@ -394,5 +404,3 @@ const QString FociSearch::tagFociSearchAttribute = "Attribute";
 const QString FociSearch::tagFociSearchMatching = "Matching";
 const QString FociSearch::tagFociSearchText = "Text";
 #endif // __FOCI_SEARCH_FILE_MAIN__
-
-#endif // __FOCI_SEARCH_FILE_H__

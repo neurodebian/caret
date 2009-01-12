@@ -127,6 +127,7 @@ SceneFile::replaceScene(const int sceneIndex,
 {
    if ((sceneIndex >= 0) && (sceneIndex < getNumberOfScenes())) {
       scenes[sceneIndex] = s;
+      setModified();
    }
 }            
 

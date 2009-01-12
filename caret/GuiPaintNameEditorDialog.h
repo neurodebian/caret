@@ -29,7 +29,7 @@
 
 #include <vector>
 
-#include <QDialog>
+#include "WuQDialog.h"
 
 class GuiNodeAttributeColumnSelectionComboBox;
 class QLabel;
@@ -38,7 +38,7 @@ class QSignalMapper;
 class WuQWidgetGroup;
 
 /// class for editing paint names
-class GuiPaintNameEditorDialog : public QDialog {
+class GuiPaintNameEditorDialog : public WuQDialog {
    Q_OBJECT
    
    public:

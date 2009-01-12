@@ -87,7 +87,7 @@ double fifdmin1(double,double);
 double fifdsign(double,double);
 long fifidint(double);
 long fifmod(long,long);
-void ftnstop(char*);
+void ftnstop(const char*);
 extern int ipmpar(int*);
 
 #endif //__STATISTIC_DCDFLIB_H__

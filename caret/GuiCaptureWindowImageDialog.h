@@ -27,9 +27,9 @@
  */
 /*LICENSE_END*/
 
-#include <QDialog>
 
 #include "BrainModel.h"
+#include "WuQDialog.h"
 
 class GuiImageFormatComboBox;
 class QCheckBox;
@@ -41,7 +41,7 @@ class QTabWidget;
 class WuQWidgetGroup;
 
 /// dialog for capturing images of caret windows
-class GuiCaptureWindowImageDialog : public QDialog {
+class GuiCaptureWindowImageDialog : public WuQDialog {
    Q_OBJECT
    
    public:

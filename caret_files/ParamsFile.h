@@ -154,6 +154,9 @@ class ParamsFile : public AbstractFile {
                         const float& parameterValue);
 };  
 
+
+#endif // __VE_PARAMS_FILE_H__
+
 #ifdef PARAMS_FILE_DEFINE
 
    const QString ParamsFile::keyComment = "comment";
@@ -196,5 +199,3 @@ class ParamsFile : public AbstractFile {
    const QString ParamsFile::keyValueYes = "yes";
    const QString ParamsFile::keyValueNo  = "no";
 #endif // PARAMS_FILE_DEFINE
-
-#endif // __VE_PARAMS_FILE_H__

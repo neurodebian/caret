@@ -43,6 +43,14 @@ class PaintFile;
 /// Class for coloring nodes in a "BrainModelSurface"
 class BrainModelSurfaceNodeColoring {
    public:
+      /// coloring mode
+      enum COLORING_MODE {
+         /// coloring mode normal
+         COLORING_MODE_NORMAL,
+         /// coloring mode blend overlays
+         COLORING_MODE_OVERLAY_BLENDING
+      };
+      
       /// Constructor
       BrainModelSurfaceNodeColoring(BrainSet* bs);
       
@@ -52,11 +60,19 @@ class BrainModelSurfaceNodeColoring {
       /// Assign colors to the Brain Surfaces Nodes
       void assignColors();
       
+      /// get the coloring mode
+      COLORING_MODE getColoringMode() const { return coloringMode; }
+      
+      /// set the coloring mode
+      void setColoringMode(const COLORING_MODE mode) { coloringMode = mode; }
+      
       /// get the colors for a node
       const unsigned char* getNodeColor(const int model, const int index) const;
       
       /// set the colors for a node
-      void setNodeColor(const int model, const int index, const unsigned char rgb[3]);
+      void setNodeColor(const int model, const int index, 
+                        const unsigned char rgb[3],
+                        const unsigned char alpha = 255);
       
       /// get the color source for a node
       int getNodeColorSource(const int model, const int index) const;
@@ -90,8 +106,12 @@ class BrainModelSurfaceNodeColoring {
             
             NodeColor()  { reset(); }
             void reset() { r = g = b = -1; }
+            inline bool isValid() const { return ((r >= 0) || (g >= 0) || (b >= 0)); }
       };
 
+      /// the coloring mode
+      COLORING_MODE coloringMode;
+      
       /// used to help apply colors to nodes
       std::vector<NodeColor> nodeColors;
 

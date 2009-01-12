@@ -504,7 +504,7 @@ BrainModelSurfaceDeformationSpherical::updateSphereFiducialDistortion(const int 
        << cycle
        << SpecFile::getSurfaceShapeFileExtension().toAscii().constData();
    fiducialSphereDistortion.writeFile(str.str().c_str());
-   brainSet->addToSpecFile(SpecFile::surfaceShapeFileTag, str.str().c_str());
+   brainSet->addToSpecFile(SpecFile::getSurfaceShapeFileTag(), str.str().c_str());
    intermediateFiles.push_back(str.str().c_str());
 }
 

@@ -175,6 +175,12 @@ class DisplaySettingsSurface : public DisplaySettings {
       /// set the identify node color
       void setIdentifyNodeColor(const IDENTIFY_NODE_COLOR idc) { identifyNodeColor = idc; }
       
+      /// get the opacity
+      float getOpacity() const { return opacity; }
+      
+      /// set the opacity
+      void setOpacity(const float opacityIn) { opacity = opacityIn; };
+      
       /// Reinitialize all display settings
       void reset();
       
@@ -242,6 +248,9 @@ class DisplaySettingsSurface : public DisplaySettings {
       
       /// identify node color
       IDENTIFY_NODE_COLOR identifyNodeColor;
+      
+      /// surface opacity
+      float opacity;
 };
 
 #endif // __VE_DISPLAY_SETTINGS_SURFACE_H__

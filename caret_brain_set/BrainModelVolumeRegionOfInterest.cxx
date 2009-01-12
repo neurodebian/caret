@@ -24,7 +24,9 @@
  */
 /*LICENSE_END*/
 
+#include <algorithm>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <limits>
@@ -228,7 +230,7 @@ BrainModelVolumeRegionOfInterest::operationPaintRegionCenterOfGravity(
                voxelCOG[paintIndex3 + 2] += k;
                
                float xyz[3];
-               paintVolume->getVoxelCoordinate(i, j, k, true, xyz);
+               paintVolume->getVoxelCoordinate(i, j, k, xyz);
                coordCOG[paintIndex3 + 0] += xyz[0];
                coordCOG[paintIndex3 + 1] += xyz[1];
                coordCOG[paintIndex3 + 2] += xyz[2];
@@ -614,7 +616,7 @@ BrainModelVolumeRegionOfInterest::determineVoxelsWithinVolumeROI(const VolumeFil
                // Get stereotaxic coordinate of volume's voxel
                //
                float xyz[3];
-               volume->getVoxelCoordinate(i, j, k, true, xyz);
+               volume->getVoxelCoordinate(i, j, k, xyz);
                
                //
                // See if voxel is in the ROI using the stereotaxic coordinate
@@ -665,7 +667,7 @@ BrainModelVolumeRegionOfInterest::operationSegmentationRegionCenterOfGravity(
                // Get stereotaxic coordinate of segmentation voxel
                //
                float xyz[3];
-               segmentVolume->getVoxelCoordinate(i, j, k, true, xyz);
+               segmentVolume->getVoxelCoordinate(i, j, k, xyz);
                
                //
                // See if voxel is in the ROI using the stereotaxic coordinate

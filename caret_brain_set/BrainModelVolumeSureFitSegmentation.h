@@ -39,6 +39,20 @@ class PaintFile;
 /// class for performing segmentation operations
 class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
    public:
+      /// error correction method
+      enum ERROR_CORRECTION_METHOD {
+         /// No Error Correction
+         ERROR_CORRECTION_METHOD_NONE,
+         /// Graph-Based Error Correction
+         ERROR_CORRECTION_METHOD_GRAPH,
+         /// SureFit Error Correction
+         ERROR_CORRECTION_METHOD_SUREFIT,
+         /// SureFit Error Correction followed by Graph Correction
+         ERROR_CORRECTION_METHOD_SUREFIT_AND_GRAPH,
+         /// Graph Error Correction followed by SureFit Error
+         ERROR_CORRECTION_METHOD_GRAPH_AND_SUREFIT
+      };
+      
       /// Constructor
       BrainModelVolumeSureFitSegmentation(BrainSet* bs,
                                    const VolumeFile* anatomyVolumeIn,
@@ -56,15 +70,18 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
                                    const bool cutCorpusCallosumFlagIn,
                                    const bool segmentAnatomyFlagIn,
                                    const bool fillVentriclesFlagIn,
-                                   const bool automaticErrorCorrectionFlagIn,
+                                   const ERROR_CORRECTION_METHOD errorCorrectionMethodIn,
                                    const bool generateRawAndFidualSurfacesFlagIn,
                                    const bool maximumPolygonsFlagIn,
                                    const bool generateTopologicallyCorrectFiducialSurfaceFlagIn,
                                    const bool generateInflatedSurfaceFlagIn,
                                    const bool generateVeryInflatedSurfaceFlagIn,
                                    const bool generateEllipsoidSurfaceFlagIn,
+                                   const bool generateSphericalSurfaceFlagIn,
+                                   const bool generateCompressedMedialWallSurfaceFlagIn,
                                    const bool generateHullSurfaceFlagIn,
-                                   const bool identifySulciFlagIn,
+                                   const bool generateDepthCurvatureGeographyFlagIn,
+                                   const bool identifyRegisterFlattenLandmarksFlagIn,
                                    const bool autoSaveFilesFlagIn);
                                    
       /// Constructor used for identifying sulci only.  
@@ -77,6 +94,10 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       /// Destructor
       ~BrainModelVolumeSureFitSegmentation();
       
+      /// get error correction methods and names
+      static void getErrorCorrectionMethodsAndNames(std::vector<QString>& namesOut,
+                                  std::vector<ERROR_CORRECTION_METHOD>& methodsOut);
+                                  
       /// set the volume mask applied prior to inner and outer boundary determination
       void setVolumeMask(const VolumeFile* volumeMaskIn);
       
@@ -131,11 +152,20 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       /// fill ventricles
       void fillVentricles() throw (BrainModelAlgorithmException);
       
-      /// do automatic error correction
-      VolumeFile* automaticErrorCorrection(VolumeFile* vf);
+      /// do graph-based automatic error correction
+      VolumeFile* graphBasedErrorCorrection(VolumeFile* vf);
       
-      /// do indentification of sulci
-      void identifySulci(VolumeFile* vf);
+      /// do SureFit automatic error correction
+      VolumeFile* sureFitAutomaticErrorCorrection(VolumeFile* vf);
+      
+      /// generate depth, curvature, and geography
+      void generateDepthCurvatureGeography(const VolumeFile* vf);
+      
+      /// generate landmarks borders for flattening and registration
+      void generateRegistrationFlatteningLandmarkBorders() throw (BrainModelAlgorithmException);
+      
+      /// generate default scenes
+      void generateDefaultScenes() throw (BrainModelAlgorithmException);
       
       /// get parameters from the parameters file
       void getParameters() throw (BrainModelAlgorithmException);
@@ -290,17 +320,26 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       /// generate ellipsoid surfaces
       bool generateEllipsoidSurfaceFlag;
       
+      /// generate spherical surface
+      bool generateSphericalSurfaceFlag;
+      
+      /// generate compressed medial wall surface
+      bool generateCompressedMedialWallSurfaceFlag;
+      
       /// generate hull surface
       bool generateHullSurfaceFlag;
       
       /// fill ventricles flag
       bool fillVentriclesFlag;
       
-      /// automatic error correction flag
-      bool automaticErrorCorrectionFlag;
+      /// error correction method
+      ERROR_CORRECTION_METHOD errorCorrectionMethod;
       
-      /// identify sulci flag
-      bool identifySulciFlag;
+      /// generate depth, curvature, geography flag
+      bool generateDepthCurvatureGeographyFlag;
+      
+      /// generate landmarks for registration and flattening
+      bool identifyRegisterFlattenLandmarksFlag;
       
       /// auto-save files flag
       bool autoSaveFilesFlag;

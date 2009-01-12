@@ -23,12 +23,15 @@
  */
 /*LICENSE_END*/
 
+#include <set>
+
 #include <QAction>
 #include <QApplication>
 #include <QDoubleSpinBox>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRadioButton>
 
 #include "BorderColorFile.h"
 #include "BrainModelBorderSet.h"
@@ -48,6 +51,7 @@
 #include "DisplaySettingsBorders.h"
 #include "DisplaySettingsFoci.h"
 #include "DisplaySettingsPaint.h"
+#include "DisplaySettingsStudyMetaData.h"
 #include "FociColorFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
@@ -78,8 +82,10 @@
 #include "GuiVolumeFileSelectionComboBox.h"
 #include "PaintFile.h"
 #include "QtTableDialog.h"
+#include "StringTable.h"
 #include "StudyMetaDataFile.h"
 #include "WuQDataEntryDialog.h"
+#include "WuQMessageBox.h"
 #include "global_variables.h"
 
 /**
@@ -90,6 +96,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
 {
    setObjectName("GuiMainWindowLayersActions");
    
+   borderOperationsDialogAction = new QAction(parent);
+   borderOperationsDialogAction->setText("Border Operations (In Development)...");
+   borderOperationsDialogAction->setObjectName("borderOperationsDialogAction");
+   QObject::connect(borderOperationsDialogAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayBorderOperationsDialog()));
+                    
    bordersDrawAction = new QAction(parent);
    bordersDrawAction->setText("Draw Borders...");
    bordersDrawAction->setObjectName("bordersDrawAction");
@@ -336,6 +348,12 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    QObject::connect(fociReportAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociReport()));
        
+   fociAttributeReportAction = new QAction(parent);
+   fociAttributeReportAction->setText("Foci Attribute Report...");
+   fociAttributeReportAction->setObjectName("fociAttributeReportAction");
+   QObject::connect(fociAttributeReportAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociAttributeReport()));
+       
    fociAttributeAssignmentAction = new QAction(parent);
    fociAttributeAssignmentAction->setText("Attribute Assignment...");
    fociAttributeAssignmentAction->setObjectName("fociAttributeAssigmentAction");
@@ -353,7 +371,13 @@ GuiMainWindowLayersActions::GuiMainWindowLayersActions(GuiMainWindow* parent)
    fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction->setObjectName("fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction");
    QObject::connect(fociUpdatePubMedIDIfFocusNameMatchesStudyNameAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotFociUpdatePubMedIDIfFocusNameMatchesStudyName()));
-                    
+    
+   fociUpdateClassesWithTableSubheaderShortNamesAction = new QAction(parent);
+   fociUpdateClassesWithTableSubheaderShortNamesAction->setText("Update Focus' Class Name With Table/Fig/Page Short Names");
+   fociUpdateClassesWithTableSubheaderShortNamesAction->setObjectName("fociUpdateClassesWithTableSubheaderShortNames");
+   QObject::connect(fociUpdateClassesWithTableSubheaderShortNamesAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotFociUpdateClassWithTableSubheaderShortName()));
+                                 
    fociClearHighlightingAction = new QAction(parent);
    fociClearHighlightingAction->setText("Clear Foci Highlighting");
    fociClearHighlightingAction->setObjectName("fociClearHighlightingAction");
@@ -744,6 +768,31 @@ GuiMainWindowLayersActions::slotCellsDeleteUsingMouse()
 }
 
 /**
+ * slot for updating foci classes with linked table subheader short names.
+ */
+void 
+GuiMainWindowLayersActions::slotFociUpdateClassWithTableSubheaderShortName()
+{
+   if (QMessageBox::question(theMainWindow,
+                               "Confirm",
+                               "Update foci classes with linked figure/page ref/table?",
+                               (QMessageBox::Yes | QMessageBox::No),
+                               QMessageBox::Yes)
+                                  == QMessageBox::Yes) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      BrainSet* bs = theMainWindow->getBrainSet();
+      FociProjectionFile* fpf = bs->getFociProjectionFile();
+      StudyMetaDataFile* smdf = bs->getStudyMetaDataFile();
+      fpf->updateCellClassWithLinkedTableFigureOrPageReference(smdf);
+
+      GuiFilesModified fm;
+      fm.setFociModified();
+      theMainWindow->fileModificationUpdate(fm);
+      QApplication::restoreOverrideCursor();
+   }
+}
+      
+/**
  * slot for updating foci PubMed ID if focus name same as study name.
  */
 void 
@@ -804,22 +853,37 @@ GuiMainWindowLayersActions::slotFociClearHighlighting()
 void 
 GuiMainWindowLayersActions::slotFociDensityToFunctionalVolume()
 {
+   QStringList unitLabels;
+   QList<QVariant> unitValues;
+   unitLabels.append("Foci per Cubic Centimeter");
+   unitValues.append(static_cast<int>(BrainModelVolumeFociDensity::DENSITY_UNITS_FOCI_PER_CUBIC_CENTIMETER));
+   unitLabels.append("Foci per Cubic Millimeter");
+   unitValues.append(static_cast<int>(BrainModelVolumeFociDensity::DENSITY_UNITS_FOCI_PER_CUBIC_MILLIMETER));
+   
    WuQDataEntryDialog ded(theMainWindow);
    ded.setWindowTitle("Foci Density to Volume");
    GuiVolumeFileSelectionComboBox* volumeSelectionComboBox =
       new GuiVolumeFileSelectionComboBox(VolumeFile::VOLUME_TYPE_FUNCTIONAL);
    ded.addWidget("Functional Volume", volumeSelectionComboBox);
    QDoubleSpinBox* roiSizeDoubleSpinBox =
-      ded.addDoubleSpinBox("ROI Size for Density", 3.0);
+      ded.addDoubleSpinBox("ROI Size for Density (MM)", 3.0);
    roiSizeDoubleSpinBox->setSingleStep(2.0);
+   QComboBox* unitsComboBox = ded.addComboBox("Units",
+                                              unitLabels,
+                                              &unitValues);
+                                              
    if (ded.exec() == WuQDataEntryDialog::Accepted) {
 
       try {
+         const BrainModelVolumeFociDensity::DENSITY_UNITS units = 
+            static_cast<BrainModelVolumeFociDensity::DENSITY_UNITS>(
+               unitsComboBox->itemData(unitsComboBox->currentIndex()).toInt());
          BrainSet* brainSet = theMainWindow->getBrainSet();
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          BrainModelVolumeFociDensity bmvfd(brainSet,
                                            brainSet->getFociProjectionFile(),
                                            roiSizeDoubleSpinBox->value(),
+                                           units,
                                            volumeSelectionComboBox->getSelectedVolumeFile());
          bmvfd.execute();
          QApplication::restoreOverrideCursor();
@@ -848,6 +912,7 @@ GuiMainWindowLayersActions::slotFociDensityToMetric()
       QMessageBox::critical(theMainWindow, 
                             "ERROR", 
                             "The surface in the main window must be flat.");
+      return;
    }
    
    static float gridSpacing = 5.0;
@@ -900,6 +965,235 @@ GuiMainWindowLayersActions::slotFociReport()
    if (tableDialog != NULL) {
       tableDialog->show();
       tableDialog->activateWindow();
+   }
+}
+      
+/**
+ * slot for foci attribute report.
+ */
+void 
+GuiMainWindowLayersActions::slotFociAttributeReport()
+{
+   WuQDataEntryDialog ded(theMainWindow);
+   ded.setWindowTitle("Foci Attribute Report");
+   QRadioButton* fociClassRadioButton   = ded.addRadioButton("Class");
+   QRadioButton* fociColorRadioButton   = ded.addRadioButton("Color");
+   QRadioButton* fociKeywordRadioButton = ded.addRadioButton("Keyword");
+   QRadioButton* fociNameRadioButton    = ded.addRadioButton("Name");
+   QRadioButton* fociTableRadioButton   = ded.addRadioButton("Table");
+   fociClassRadioButton->setChecked(true);
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+      bool displayedFociOnlyFlag = true;
+      
+      std::vector<QString> names;
+      
+      QString noneMessage("There are no ");
+      QString title;
+
+      std::vector<int> numberOfFociAssociatedWithItem;
+      
+      FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile(); 
+      if (fociClassRadioButton->isChecked()) {
+         std::vector<int> sortedFociClassIndices;
+         fpf->getCellClassIndicesSortedByName(sortedFociClassIndices, 
+                                             false,
+                                             displayedFociOnlyFlag);
+         const int numValidFociClasses = static_cast<int>(sortedFociClassIndices.size());
+         if (numValidFociClasses > 0) {
+            for (int i = 0; i < numValidFociClasses; i++) {
+               const int classIndex = sortedFociClassIndices[i];
+               names.push_back(fpf->getCellClassNameByIndex(classIndex));
+            }
+
+            //
+            // Count the foci using each class
+            //
+            numberOfFociAssociatedWithItem.resize(numValidFociClasses, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int i = 0; i < numFoci; i++) {
+               bool useIt = true;
+               const CellProjection* focus = fpf->getCellProjection(i);
+               if (displayedFociOnlyFlag) {
+                  useIt = focus->getDisplayFlag();
+               }
+               if (useIt) {
+                  const int classIndex = focus->getClassIndex();
+                  for (int j = 0; j < numValidFociClasses; j++) {
+                     if (sortedFociClassIndices[j] == classIndex) {
+                        numberOfFociAssociatedWithItem[j]++;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+         
+         noneMessage += "foci classes.";
+         title = "Foci Classes";
+      }
+      else if (fociColorRadioButton->isChecked()) {
+         FociColorFile* fcf = theMainWindow->getBrainSet()->getFociColorFile();
+         std::vector<int> sortedFociColorIndices;
+         fcf->getColorIndicesSortedByName(theMainWindow->getBrainSet()->getFociProjectionFile(),
+                                                 sortedFociColorIndices, 
+                                                 false,
+                                                 displayedFociOnlyFlag);
+         const int numValidFociColors = static_cast<int>(sortedFociColorIndices.size());
+         if (numValidFociColors > 0) {
+            for (int i = 0; i < numValidFociColors; i++) {
+               const int colorIndex = sortedFociColorIndices[i];
+               names.push_back(fcf->getColorNameByIndex(colorIndex));
+            }
+
+            //
+            // Count the foci using each color
+            //
+            numberOfFociAssociatedWithItem.resize(numValidFociColors, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int i = 0; i < numFoci; i++) {
+               bool useIt = true;
+               const CellProjection* focus = fpf->getCellProjection(i);
+               if (displayedFociOnlyFlag) {
+                  useIt = focus->getDisplayFlag();
+               }
+               if (useIt) {
+                  const int colorIndex = focus->getColorIndex();
+                  for (int j = 0; j < numValidFociColors; j++) {
+                     if (sortedFociColorIndices[j] == colorIndex) {
+                        numberOfFociAssociatedWithItem[j]++;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+         
+         noneMessage += "foci colors.";
+         title = "Foci Colors";
+      }
+      else if (fociKeywordRadioButton->isChecked()) {
+         DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
+         std::vector<QString> keywords;
+         std::vector<int> numberOfFociUsingKeyword;
+         dssmd->getKeywordsAndUsageByFoci(keywords, 
+                                          numberOfFociUsingKeyword);
+         names = keywords;
+         numberOfFociAssociatedWithItem = numberOfFociUsingKeyword;
+         
+/*         const int numValidKeywords = static_cast<int>(keywords.size());
+         if (numValidKeywords > 0) {
+            for (int i = 0; i < numValidKeywords; i++) {
+               const int keywordIndex = sortedFociKeywordIndices[i];
+               names.push_back(dssmd->getKeywordNameByIndex(keywordIndex));
+            }
+            
+            // SLOW!!!
+            //
+            // Count the foci using each keyword
+            //
+            numberOfFociAssociatedWithItem.resize(numValidKeywords, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int m = 0; m < numValidKeywords; m++) {
+               const QString keyword = names[m];
+               for (int i = 0; i < numFoci; i++) {
+                  bool useIt = true;
+                  const CellProjection* focus = fpf->getCellProjection(i);
+                  if (displayedFociOnlyFlag) {
+                     useIt = focus->getDisplayFlag();
+                  }
+                  if (useIt) {
+                     StudyMetaDataLinkSet smdls = focus->getStudyMetaDataLinkSet();
+                     for (int j = 0; j < smdls.getNumberOfStudyMetaDataLinks(); j++) {
+                        StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(j);
+                        const int studyIndex = smdf->getStudyIndexFromLink(smdl);
+                        StudyMetaData* smd = smdf->getStudyMetaData(studyIndex);
+                        if (smd->containsKeyword(keyword)) {
+                           numberOfFociAssociatedWithItem[m]++;
+                           break;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+*/
+         noneMessage += "study keywords.";
+         title = "Study Keywords";
+      }
+      else if (fociNameRadioButton->isChecked()) {
+         std::vector<int> sortedFociUniqueNameIndices;
+         fpf->getCellUniqueNameIndicesSortedByName(sortedFociUniqueNameIndices, 
+                                                   false,
+                                                   displayedFociOnlyFlag);
+         const int numValidNames = static_cast<int>(sortedFociUniqueNameIndices.size());
+         if (numValidNames > 0) {
+            for (int i = 0; i < numValidNames; i++) {
+                  const int nameIndex = sortedFociUniqueNameIndices[i];
+                  names.push_back(fpf->getCellUniqueNameByIndex(nameIndex));      
+            }
+            
+            //
+            // Count the foci using each name
+            //
+            numberOfFociAssociatedWithItem.resize(numValidNames, 0);
+            const int numFoci = fpf->getNumberOfCellProjections();
+            for (int i = 0; i < numFoci; i++) {
+               bool useIt = true;
+               const CellProjection* focus = fpf->getCellProjection(i);
+               if (displayedFociOnlyFlag) {
+                  useIt = focus->getDisplayFlag();
+               }
+               if (useIt) {
+                  const QString name = focus->getName();
+                  for (int j = 0; j < numValidNames; j++) {
+                     if (name == names[j]) {
+                        numberOfFociAssociatedWithItem[j]++;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+
+         noneMessage += "foci.";
+         title = "Foci Names";
+      }
+      else if (fociTableRadioButton->isChecked()) {
+         DisplaySettingsStudyMetaData* dssmd = theMainWindow->getBrainSet()->getDisplaySettingsStudyMetaData();
+         std::vector<QString> subheaders;
+         std::vector<int> numberOfFociUsingKeyword;
+         dssmd->getSubheadersAndUsageByFoci(subheaders, 
+                                          numberOfFociUsingKeyword);
+         names = subheaders;
+         numberOfFociAssociatedWithItem = numberOfFociUsingKeyword;
+
+         noneMessage += "tables with subheaders.";
+         title = "Table Subheaders";
+      }
+      
+      const int numNames = names.size();
+      if (numNames > 0) {
+         StringTable st(numNames, 2, (title + " Report"));
+         st.setColumnTitle(0, "Focus\nCount");
+         st.setColumnTitle(1, title);
+         const int num = static_cast<int>(names.size());
+         const bool doCountsFlag = (num == static_cast<int>(numberOfFociAssociatedWithItem.size()));
+         for (int i = 0; i < num; i++) { 
+            if (doCountsFlag) {
+               st.setElement(i, 0, numberOfFociAssociatedWithItem[i]);
+            }
+            st.setElement(i, 1, names[i]);
+         }
+         QtTableDialog* td = new QtTableDialog(theMainWindow,
+                                               "Foci Attribute Report.",
+                                               st,
+                                               true);
+         td->show();
+      }
+      else {
+         WuQMessageBox::critical(theMainWindow, "ERROR", noneMessage);
+         return;
+      }
    }
 }
       
@@ -1194,7 +1488,8 @@ GuiMainWindowLayersActions::slotFociDeleteNonDisplayed()
    QPushButton* yesPushButton = msgBox.addButton("Yes", QMessageBox::YesRole);
    QPushButton* yesStructurePushButton = NULL;
    if ((structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) ||
-       (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT)) {
+       (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) ||
+       (structure.getType() == Structure::STRUCTURE_TYPE_CEREBELLUM)) {
       yesStructurePushButton = msgBox.addButton("Yes, Not on Main Window Surface",
                                                 QMessageBox::YesRole);
       msg += ("\n"
@@ -1559,15 +1854,15 @@ GuiMainWindowLayersActions::slotBordersCreateAnalysisGrid()
       //
       WuQDataEntryDialog ded(theMainWindow);
       ded.setWindowTitle("Create Analysis Grid Borders");
-      QSpinBox* xMinSpinBox = ded.addSpinBox("X-Min",
+      QDoubleSpinBox* xMinSpinBox = ded.addDoubleSpinBox("X-Min",
                                                    bounds[0]);
-      QSpinBox* xMaxSpinBox = ded.addSpinBox("X-Max",
+      QDoubleSpinBox* xMaxSpinBox = ded.addDoubleSpinBox("X-Max",
                                                    bounds[1]);
-      QSpinBox* yMinSpinBox = ded.addSpinBox("Y-Min",
+      QDoubleSpinBox* yMinSpinBox = ded.addDoubleSpinBox("Y-Min",
                                                    bounds[2]);
-      QSpinBox* yMaxSpinBox = ded.addSpinBox("Y-Max",
+      QDoubleSpinBox* yMaxSpinBox = ded.addDoubleSpinBox("Y-Max",
                                                    bounds[3]);
-      QSpinBox* spacingSpinBox = ded.addSpinBox("Spacing",
+      QDoubleSpinBox* spacingSpinBox = ded.addDoubleSpinBox("Spacing",
                                                       10.0,
                                                       0.01,
                                                       1000000.0,

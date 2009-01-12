@@ -371,6 +371,7 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                GuiMorphingMeasurementsDialog* fmmd = 
                   new GuiMorphingMeasurementsDialog(fmm, flatElapsedTime,
                                       BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT,
+                                      true,
                                       theMainWindow);
                fmmd->show();
                
@@ -382,6 +383,7 @@ GuiFlattenHemisphereInstructionsDialog::done(int r)
                GuiMorphingMeasurementsDialog* smmd = 
                   new GuiMorphingMeasurementsDialog(smm, sphericalElapsedTime,
                                  BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL,
+                                 true,
                                  theMainWindow);
                smmd->show();
                

@@ -96,6 +96,8 @@ static const QString surfaceShapeViewID("surface-shape-column");
 void 
 DisplaySettingsSurfaceShape::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
+
    SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
          
    const int numClasses = scene.getNumberOfSceneClasses();
@@ -164,8 +166,10 @@ DisplaySettingsSurfaceShape::showScene(const SceneFile::Scene& scene, QString& e
  */
 void 
 DisplaySettingsSurfaceShape::saveScene(SceneFile::Scene& scene, const bool onlyIfSelected,
-                             QString& /*errorMessage*/)
+                             QString& errorMessage)
 {
+   DisplaySettingsNodeAttributeFile::saveScene(scene, onlyIfSelected, errorMessage);
+
    SurfaceShapeFile* ssf = brainSet->getSurfaceShapeFile();
    
    if (onlyIfSelected) {

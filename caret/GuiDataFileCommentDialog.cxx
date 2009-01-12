@@ -52,6 +52,7 @@
 #include "NodeAttributeFile.h"
 #include "PaintFile.h"
 #include "ParamsFile.h"
+#include "RgbPaintFile.h"
 #include "StringUtilities.h"
 #include "VolumeFile.h"
 #include "global_variables.h"
@@ -132,6 +133,51 @@ GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent,
       textEditor->setPlainText("ERROR: Invalid file.");
    }
    
+}
+
+/**
+ * Constructor for an RGB Paint File Column Color in memory.
+ */
+GuiDataFileCommentDialog::GuiDataFileCommentDialog(QWidget* parent, 
+                                                   RgbPaintFile* rgbPaintFileIn,
+                                                   const int rgbPaintColumnIn,
+                                                   const int rgbColorComponentIn)
+   : WuQDialog(parent)
+{
+   setAttribute(Qt::WA_DeleteOnClose);
+   
+   initialize();
+   
+   rgbPaintFile = rgbPaintFileIn;
+   rgbPaintColumn = rgbPaintColumnIn;
+   rgbColorComponent = rgbColorComponentIn;
+   
+   dataFile = rgbPaintFile;
+   
+   //
+   // Create the dialog
+   //
+   std::vector<QString> namesVector;
+   createDialog(DIALOG_MODE_RGB_PAINT_FILE_IN_MEMORY, rgbPaintFile->getFileName(), namesVector, false);
+   
+   //
+   // Add comment to the text browser
+   //
+   QString commentText;
+   switch (rgbColorComponent) {
+      case 0:
+         commentText = rgbPaintFile->getCommentRed(rgbPaintColumn);
+         break;
+      case 1:
+         commentText = rgbPaintFile->getCommentGreen(rgbPaintColumn);
+         break;
+      case 2:
+         commentText = rgbPaintFile->getCommentBlue(rgbPaintColumn);
+         break;
+   }
+   textBrowser->setText(commentText);
+   textEditor->setPlainText(commentText);
+   textEditor->document()->setModified(false);
 }
 
 /**
@@ -573,6 +619,8 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
          break;
       case DIALOG_MODE_BORDER_FILE_INFO_IN_MEMORY:
          break;
+      case DIALOG_MODE_RGB_PAINT_FILE_IN_MEMORY:
+         break;
    }
    
    //
@@ -627,6 +675,8 @@ GuiDataFileCommentDialog::createDialog(const DIALOG_MODE modeIn, const QString& 
          }
          break;
       case DIALOG_MODE_NODE_ATTRIBUTE_FILE_COLUMN_IN_MEMORY:
+         break;
+      case DIALOG_MODE_RGB_PAINT_FILE_IN_MEMORY:
          break;
    }
    
@@ -831,6 +881,23 @@ GuiDataFileCommentDialog::slotCloseDialog()
          if (borderFileInfo != NULL) {
             if (textEditor->document()->isModified()) {
                borderFileInfo->setFileComment(textEditor->toPlainText());
+            }
+         }
+         break;
+      case DIALOG_MODE_RGB_PAINT_FILE_IN_MEMORY:
+         if (rgbPaintFile != NULL) {
+            if (rgbPaintColumn >= 0) {
+               switch (rgbColorComponent) {
+                  case 0:
+                     rgbPaintFile->setCommentRed(rgbPaintColumn, textEditor->toPlainText());
+                     break;
+                  case 1:
+                     rgbPaintFile->setCommentGreen(rgbPaintColumn, textEditor->toPlainText());
+                     break;
+                  case 2:
+                     rgbPaintFile->setCommentBlue(rgbPaintColumn, textEditor->toPlainText());
+                     break;
+               }
             }
          }
          break;

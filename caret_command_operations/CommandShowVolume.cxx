@@ -168,7 +168,7 @@ CommandShowVolume::executeCommand() throw (BrainModelAlgorithmException,
    // Add the volume to a spec file
    //
    SpecFile sf;
-   sf.addToSpecFile(SpecFile::volumeAnatomyFileTag,
+   sf.addToSpecFile(SpecFile::getVolumeAnatomyFileTag(),
                     volumeFileName,
                     "",
                     false);

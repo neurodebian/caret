@@ -183,8 +183,7 @@ CommandSurfacesToSegmentationVolumeMask::executeCommand() throw (BrainModelAlgor
                                                  innerBoundary,
                                                  outerBoundary,
                                                  intersectionStep,
-                                                 BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES,
-                                                 BrainModelSurfaceToVolumeConverter::INTERSECTION_MODE_INTERSECT_TILES_AND_VOXELS);
+                                                 BrainModelSurfaceToVolumeConverter::CONVERT_TO_SEGMENTATION_VOLUME_USING_NODES);
          bmsv.execute();
          
          VolumeFile* vf = bmsv.getOutputVolume();

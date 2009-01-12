@@ -295,12 +295,11 @@ class PaletteFile : public AbstractFile {
       void removePalette(const int palNum);
 };
 
-#ifdef __PALETTE_FILE_DEFINED__
+#endif // __VE_PALETTE_FILE_H__
 
+#ifdef __PALETTE_FILE_DEFINED__
 const QString PaletteColor::noneColorName = "none";
 const QString PaletteColor::missingColorName = "missing";
 const QString PaletteFile::grayInterpPaletteName = "Gray_Interp";
-
 #endif // __PALETTE_FILE_DEFINED__
 
-#endif // __VE_PALETTE_FILE_H__

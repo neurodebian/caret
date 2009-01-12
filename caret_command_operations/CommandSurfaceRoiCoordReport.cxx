@@ -131,16 +131,16 @@ CommandSurfaceRoiCoordReport::executeCommand() throw (BrainModelAlgorithmExcepti
    //
    SpecFile specFile;
    for (int i = 0; i < numInputCoordFiles; i++) {
-      specFile.addToSpecFile(SpecFile::fiducialCoordFileTag,
+      specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(),
                              inputCoordFileNames[i],
                              "",
                              false);
    }
-   specFile.addToSpecFile(SpecFile::closedTopoFileTag,
+   specFile.addToSpecFile(SpecFile::getClosedTopoFileTag(),
                           topoFileName,
                           "",
                           false);
-   specFile.addToSpecFile(SpecFile::paintFileTag,
+   specFile.addToSpecFile(SpecFile::getPaintFileTag(),
                           paintFileName,
                           "",
                           false);

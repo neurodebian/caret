@@ -31,9 +31,11 @@ HEADERS += BorderFileProjector.h \
       BrainModelRunExternalProgram.h \
       BrainModelStandardSurfaceReplacement.h \
       BrainModelSurface.h \
+      BrainModelSurfaceAffineRegression.h \
 	   BrainModelSurfaceAndVolume.h \
       BrainModelSurfaceBorderCutter.h \
       BrainModelSurfaceBorderLandmarkIdentification.h \
+      BrainModelSurfaceCellAttributeAssignment.h \
       BrainModelSurfaceCellDensityToMetric.h \
       BrainModelSurfaceClusterToBorderConverter.h \
 	   BrainModelSurfaceConnectedSearch.h \
@@ -103,7 +105,6 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfaceToVolumeConverter.h \
       BrainModelSurfaceToVolumeSegmentationConverter.h \
       BrainModelSurfaceTopologyCorrector.h \
-      BrainModelVolumeThresholdSegmentation.h \
 	   BrainModelVolume.h \
       BrainModelVolumeBiasCorrection.h \
       BrainModelVolumeCrossoverHandleFinder.h \
@@ -118,12 +119,16 @@ HEADERS += BorderFileProjector.h \
       BrainModelVolumeSegmentationStereotaxic.h \
       BrainModelVolumeSureFitErrorCorrection.h \
       BrainModelVolumeSureFitSegmentation.h \
+      BrainModelVolumeTFCE.h \
+      BrainModelVolumeThresholdSegmentation.h \
 	   BrainModelVolumeToSurfaceConverter.h \
       BrainModelVolumeToSurfaceMapper.h \
       BrainModelVolumeToSurfaceMapperAlgorithmParameters.h \
       BrainModelVolumeToSurfaceMapperPALS.h \
       BrainModelVolumeToVtkSurfaceMapper.h \
       BrainModelVolumeTopologicalError.h \
+      BrainModelVolumeTopologyGraph.h \
+      BrainModelVolumeTopologyGraphCorrector.cxx \
 	   BrainModelVolumeVoxelColoring.h \
       BrainSet.h  \
       BrainSetDataFileReader.h \
@@ -181,9 +186,11 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelRunExternalProgram.cxx \
       BrainModelStandardSurfaceReplacement.cxx \
       BrainModelSurface.cxx \
+      BrainModelSurfaceAffineRegression.cxx \
 	   BrainModelSurfaceAndVolume.cxx \
       BrainModelSurfaceBorderCutter.cxx \
       BrainModelSurfaceBorderLandmarkIdentification.cxx \
+      BrainModelSurfaceCellAttributeAssignment.cxx \
       BrainModelSurfaceCellDensityToMetric.cxx \
       BrainModelSurfaceClusterToBorderConverter.cxx \
 	   BrainModelSurfaceConnectedSearch.cxx \
@@ -267,6 +274,7 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelVolumeSegmentationStereotaxic.cxx \
       BrainModelVolumeSureFitErrorCorrection.cxx \
       BrainModelVolumeSureFitSegmentation.cxx \
+      BrainModelVolumeTFCE.cxx \
       BrainModelVolumeThresholdSegmentation.cxx \
 	   BrainModelVolumeToSurfaceConverter.cxx \
       BrainModelVolumeToSurfaceMapper.cxx \
@@ -274,6 +282,8 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelVolumeToSurfaceMapperPALS.cxx \
       BrainModelVolumeToVtkSurfaceMapper.cxx \
       BrainModelVolumeTopologicalError.cxx \
+      BrainModelVolumeTopologyGraph.cxx \
+      BrainModelVolumeTopologyGraphCorrector.cxx \
 	   BrainModelVolumeVoxelColoring.cxx \
       BrainSet.cxx \
       BrainSetDataFileReader.cxx \

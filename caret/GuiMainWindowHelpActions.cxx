@@ -32,6 +32,7 @@
 #include "CaretVersion.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiCaretTipsDialog.h"
+#include "GuiHelpAssistantWindow.h"
 #include "GuiMainWindow.h"
 #include "GuiMainWindowHelpActions.h"
 #include "QtTextEditDialog.h"
@@ -50,6 +51,7 @@
 GuiMainWindowHelpActions::GuiMainWindowHelpActions(QWidget* parent)
  : QObject(parent)
 {
+   assistantWindow = NULL;
    setObjectName("GuiMainWindowHelpActions");
    
    aboutAction = new QAction(parent);
@@ -76,11 +78,23 @@ GuiMainWindowHelpActions::GuiMainWindowHelpActions(QWidget* parent)
    QObject::connect(caretHelpAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuCaretHelp()));
 
+   caretHelpAssistantAction = new QAction(parent);
+   caretHelpAssistantAction->setText("Caret Help Assistant...");
+   caretHelpAssistantAction->setObjectName("caretHelpAssistantAction");
+   QObject::connect(caretHelpAssistantAction, SIGNAL(triggered(bool)),
+                    this, SLOT(helpMenuCaretHelpAssistant()));
+
    caretOnlineHelpAction = new QAction(parent);
    caretOnlineHelpAction->setText("Caret Help (Online)...");
    caretOnlineHelpAction->setObjectName("caretOnlineHelpAction");
    QObject::connect(caretOnlineHelpAction, SIGNAL(triggered(bool)),
                     this, SLOT(helpMenuOnlineCaretHelp()));
+
+   caretUsersListArchiveAction = new QAction(parent);
+   caretUsersListArchiveAction->setText("Caret User's Email Archive (Online)...");
+   caretUsersListArchiveAction->setObjectName("caretUsersListArchiveAction");
+   QObject::connect(caretUsersListArchiveAction, SIGNAL(triggered(bool)),
+                    this, SLOT(slotCaretUsersListArchiveAction()));
 
    caretTipsAction = new QAction(parent);
    caretTipsAction->setText("Caret Tips...");
@@ -134,6 +148,25 @@ GuiMainWindowHelpActions::helpMenuCaretHelp()
 {
    theMainWindow->showHelpViewerDialog();
 }
+
+/**
+ * Called when caret help selected
+ */
+void
+GuiMainWindowHelpActions::helpMenuCaretHelpAssistant()
+{
+   assistantWindow = new GuiHelpAssistantWindow("/usr/local/caret_libraries/qt-software/qt/bin/");
+   assistantWindow->showPage("");
+}
+
+/**
+ * display caret users email archive.
+ */
+void 
+GuiMainWindowHelpActions::slotCaretUsersListArchiveAction()
+{
+   theMainWindow->displayWebPage("http://www.mail-archive.com/caret-users@brainvis.wustl.edu/index.html");
+}      
 
 /**
  * display online caret help.

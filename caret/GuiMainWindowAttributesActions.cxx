@@ -275,9 +275,14 @@ GuiMainWindowAttributesActions::GuiMainWindowAttributesActions(GuiMainWindow* pa
                     parent, SLOT(displayModelsEditorDialog()));
          
    studyMetaDataEditorDialogAction = new QAction(parent);
-   studyMetaDataEditorDialogAction->setText("Edit...");
+   studyMetaDataEditorDialogAction->setText("Edit Studies...");
    QObject::connect(studyMetaDataEditorDialogAction, SIGNAL(triggered(bool)),
                     parent, SLOT(displayStudyMetaDataFileEditorDialog()));
+                    
+   studyCollectionEditorDialogAction = new QAction(parent);
+   studyCollectionEditorDialogAction->setText("Edit Collections...");
+   QObject::connect(studyCollectionEditorDialogAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayStudyCollectionFileEditorDialog()));
                     
    vocabularyFileEditorDialogAction = new QAction(parent);
    vocabularyFileEditorDialogAction->setText("Edit...");
@@ -482,8 +487,7 @@ GuiMainWindowAttributesActions::slotMetricToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                                             svd.getMetricConversionMode(),
-                                             svd.getIntersectionMode());
+                                             svd.getMetricConversionMode());
       stv.setNodeAttributeColumn(metricColumn);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
@@ -528,16 +532,16 @@ GuiMainWindowAttributesActions::slotMetricAverageDeviation()
    meanLineEdit->setText("Mean");
    QObject::connect(meanCheckBox, SIGNAL(toggled(bool)),
                     meanLineEdit, SLOT(setEnabled(bool)));
-   meanCheckBox->setChecked(false);
-   meanLineEdit->setEnabled(false);
+   meanCheckBox->setChecked(true);
+   meanLineEdit->setEnabled(true);
    
    QCheckBox* stdDevCheckBox = new QCheckBox("");
    QLineEdit* stdDevLineEdit = new QLineEdit;
    stdDevLineEdit->setText("Sample Standard Deviation");
    QObject::connect(stdDevCheckBox, SIGNAL(toggled(bool)),
                     stdDevLineEdit, SLOT(setEnabled(bool)));
-   stdDevCheckBox->setChecked(false);
-   stdDevLineEdit->setEnabled(false);
+   stdDevCheckBox->setChecked(true);
+   stdDevLineEdit->setEnabled(true);
    
    QCheckBox* stdErrorCheckBox = new QCheckBox("");
    QLineEdit* stdErrorLineEdit = new QLineEdit;
@@ -564,7 +568,7 @@ GuiMainWindowAttributesActions::slotMetricAverageDeviation()
    maxAbsLineEdit->setEnabled(false);
    
    WuQDataEntryDialog ded(theMainWindow);
-   ded.setWindowTitle("Surface Shape Statistics");
+   ded.setWindowTitle("Metric Statistics");
    ded.setTextAtTop("Choose Statistical Measurements", false);
    ded.addWidgetsToNextRow(meanCheckBox, meanLineEdit);
    ded.addWidgetsToNextRow(stdDevCheckBox, stdDevLineEdit);
@@ -856,8 +860,7 @@ GuiMainWindowAttributesActions::slotPaintToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT,
-                                             svd.getIntersectionMode());
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT);
       stv.setNodeAttributeColumn(paintColumn);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
@@ -911,8 +914,7 @@ GuiMainWindowAttributesActions::slotCopyColoringToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_RGB_VOLUME_USING_NODE_COLORING,
-                                             svd.getIntersectionMode());
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_RGB_VOLUME_USING_NODE_COLORING);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
 
@@ -968,6 +970,9 @@ GuiMainWindowAttributesActions::slotPaintCleanNames()
    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
    pf->cleanUpPaintNames();
+   GuiFilesModified fm;
+   fm.setPaintModified();
+   theMainWindow->fileModificationUpdate(fm);
    GuiBrainModelOpenGL::updateAllGL(NULL);
    QApplication::restoreOverrideCursor();
 }
@@ -1015,16 +1020,16 @@ GuiMainWindowAttributesActions::slotSurfaceShapeAverageDeviation()
    meanLineEdit->setText("Mean");
    QObject::connect(meanCheckBox, SIGNAL(toggled(bool)),
                     meanLineEdit, SLOT(setEnabled(bool)));
-   meanCheckBox->setChecked(false);
-   meanLineEdit->setEnabled(false);
+   meanCheckBox->setChecked(true);
+   meanLineEdit->setEnabled(true);
    
    QCheckBox* stdDevCheckBox = new QCheckBox("");
    QLineEdit* stdDevLineEdit = new QLineEdit;
    stdDevLineEdit->setText("Sample Standard Deviation");
    QObject::connect(stdDevCheckBox, SIGNAL(toggled(bool)),
                     stdDevLineEdit, SLOT(setEnabled(bool)));
-   stdDevCheckBox->setChecked(false);
-   stdDevLineEdit->setEnabled(false);
+   stdDevCheckBox->setChecked(true);
+   stdDevLineEdit->setEnabled(true);
    
    QCheckBox* stdErrorCheckBox = new QCheckBox("");
    QLineEdit* stdErrorLineEdit = new QLineEdit;
@@ -1143,8 +1148,7 @@ GuiMainWindowAttributesActions::slotSurfaceShapeToVolume()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE,
-                                             svd.getIntersectionMode());
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE);
       stv.setNodeAttributeColumn(shapeColumn);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());

@@ -41,6 +41,7 @@ class GuiMorphingMeasurementsDialog : public WuQDialog {
       GuiMorphingMeasurementsDialog(const std::vector<MorphingMeasurements>& mm,
                         const float totalTime, 
                         const BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE morphingType,
+                        const bool deleteDialogWhenClosedFlag,
                         QWidget* parent);
       
       /// destructor

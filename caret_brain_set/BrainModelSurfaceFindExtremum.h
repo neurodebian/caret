@@ -27,6 +27,8 @@
  */
 /*LICENSE_END*/
 
+#include <vector>
+
 #include "BrainModelAlgorithm.h"
 
 class BrainModelSurface;

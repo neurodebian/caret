@@ -24,6 +24,7 @@
 /*LICENSE_END*/
 
 #include <limits>
+
 #include <QDir>
 
 #include "BorderProjectionFile.h"

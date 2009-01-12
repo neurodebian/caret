@@ -44,12 +44,6 @@ class GuiFociPalsProjectionDialog : public WuQDialog {
       
       /// Destructor
       ~GuiFociPalsProjectionDialog();
-      
-      /// get cerebral cutoff distance
-      static float getCerebralCutoffDistance() { return cerebralCutoffDistance; }
-      
-      /// get cerebellar cutoff distance
-      static float getCerebellarCutoffDistance() { return cerebellarCutoffDistance; }
 
    protected slots:
       /// called when help button is pressed
@@ -76,18 +70,7 @@ class GuiFociPalsProjectionDialog : public WuQDialog {
       
       /// cerebellar cutoff distance spin box
       QDoubleSpinBox* cerebellarCutoffDistanceDoubleSpinBox;
-      
-      /// cerebral cutoff distance
-      static float cerebralCutoffDistance;
-      
-      /// cerebellar cutoff distance
-      static float cerebellarCutoffDistance;
 };
-
-#ifdef __GUI_FOCI_PALS_PROJECTION_DIALOG_MAIN__
-float GuiFociPalsProjectionDialog::cerebralCutoffDistance = 2.0;
-float GuiFociPalsProjectionDialog::cerebellarCutoffDistance = 4.0;
-#endif // __GUI_FOCI_PALS_PROJECTION_DIALOG_MAIN__
 
 #endif // __GUI_FOCI_PALS_PROJECTION_DIALOG_H__
 

@@ -304,6 +304,8 @@ class GiftiCommon {
       
 };
 
+#endif // __GIFTI_COMMON_H__
+
 #ifdef __GIFTI_COMMON_MAIN__
    const QString GiftiCommon::tagGIFTI  = "GIFTI";
    const QString GiftiCommon::tagMetaData = "MetaData";
@@ -400,6 +402,4 @@ class GiftiCommon {
    const QString GiftiCommon::metaDataValueAnatomicalStructureSecondarGrayCSF = "GrayCSF";
    const QString GiftiCommon::metaDataValueAnatomicalStructureSecondaryMidLayer = "MidLayer";
 #endif // __GIFTI_COMMON_MAIN__
-
-#endif // __GIFTI_COMMON_H__
 

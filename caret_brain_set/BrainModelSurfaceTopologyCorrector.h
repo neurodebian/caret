@@ -36,6 +36,7 @@
 class QTime;
 
 class BrainModelSurface;
+class BrainModelSurfaceROINodeSelection;
 class CoordinateFile;
 class PointLocator;
 class TopologyFile;
@@ -63,6 +64,9 @@ class BrainModelSurfaceTopologyCorrector : public BrainModelAlgorithm {
       
       // get a list of node numbers that were removed
       void getListOfNodesThatWereRemoved(std::vector<int>& nodesRemoved) const;
+      
+      // get a list of node numbers that were removed
+      void getListOfNodesThatWereRemoved(BrainModelSurfaceROINodeSelection& nodesRemovedROI) const;
       
    protected:
       /// smooth around removed nodes

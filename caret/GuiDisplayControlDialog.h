@@ -86,7 +86,7 @@ class GuiDisplayControlDialog : public WuQDialog {
                      QString& errorMessage);
 
       /// create a scene (read display settings)
-      SceneFile::SceneClass saveScene();
+      std::vector<SceneFile::SceneClass> saveScene();
                              
       /// Called when a new spec file is loaded
       void newSpecFileLoaded();
@@ -275,6 +275,12 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// update rgb paint overlay/underlay selections
       void updateRgbPaintOverlayUnderlaySelection();
       
+      /// update rgb paint main page
+      void updateRgbPaintMainPage();
+      
+      /// update rgb paint selection page
+      void updateRgbPaintSelectionPage();
+      
       /// update all rgb paint items in dialog
       void updateRgbPaintItems();
             
@@ -312,6 +318,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// If negative then controlling all surfaces
       int getSurfaceModelIndex() const { return surfaceModelIndex; }
       
+      /// update surface coloring mode section
+      void updateSurfaceColoringModeSection();
+      
    private slots:
       /// called by OK (relabeled "Apply") button press.  Overriding qtabdialog's
       /// accept prevents Ok button from closing the dialog.
@@ -322,6 +331,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// called when overlay selection combo box is changed
       void slotOverlayNumberComboBox(int item);
+      
+      /// called when surface coloring mode is changed
+      void slotSurfaceColoringModeComboBox();
       
       /// called when page combo box selection is made
       void pageComboBoxSelection(int item);
@@ -518,9 +530,24 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// called when an rgb paint file column is selected
       void rgbPaintFileSelection(int col);
       
-      /// called when a "?" on rgb tab page is selected
-      void rgbPaintCommentSelection(int buttonNum);
-           
+      /// called for RGB Paint Red comment display
+      void rgbPaintRedCommentSelection(int col);
+      
+      /// called for RGB Paint Green comment display
+      void rgbPaintGreenCommentSelection(int col);
+      
+      /// called for RGB Paint Blue comment display
+      void rgbPaintBlueCommentSelection(int col);
+      
+      /// called for RGB Paint Red histogram display
+      void rgbPaintRedHistogramSelection(int col);
+      
+      /// called for RGB Paint Green histogram display
+      void rgbPaintGreenHistogramSelection(int col);
+      
+      /// called for RGB Paint Blue histogram display
+      void rgbPaintBlueHistogramSelection(int col);
+      
       /// called when an RGB Paint display mode selected
       void rgbDisplayModeSelection(int itemNumber);
 
@@ -535,6 +562,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// called when a surface shape column metadata M is selected
       void surfaceShapeMetaDataColumnSelection(int item);
+      
+      /// called when a surface shape column histogram H is selected
+      void surfaceShapeHistogramColumnSelection(int item);
       
       /// reads the volume selections
       void readVolumeSelections();
@@ -725,8 +755,11 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// read rgb paint L-to-L, R-to-R
       void readRgbPaintL2LR2R();
       
-      /// read the rgb paint selections
-      void readRgbPaintSelections();
+      /// read the rgb paint main page
+      void readRgbPaintPageMain();
+      
+      /// read the rgb paint selection page
+      void readRgbPaintPageSelection();
       
       /// read the surface shape selections
       void readShapeSelections();
@@ -950,8 +983,11 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// create the topography page
       void createTopographyPage();
       
-      /// create the rgb paint page
-      void createRgbPaintPage();
+      /// create the rgb paint main page
+      void createRgbPaintMainPage();
+      
+      /// create the rgb paint selection page
+      void createRgbPaintSelectionPage();
       
       /// create the geodesic page
       void createGeodesicPage();
@@ -1164,7 +1200,8 @@ class GuiDisplayControlDialog : public WuQDialog {
          PAGE_NAME_PROB_ATLAS_VOLUME_AREA,
          PAGE_NAME_PROB_ATLAS_VOLUME_CHANNEL,
          PAGE_NAME_REGION,
-         PAGE_NAME_RGB_PAINT,
+         PAGE_NAME_RGB_PAINT_MAIN,
+         PAGE_NAME_RGB_PAINT_SELECTION,
          PAGE_NAME_SCENE,
          PAGE_NAME_SECTION_MAIN,
          PAGE_NAME_SHAPE_SELECTION,
@@ -1347,56 +1384,65 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// topography page
       QWidget* pageTopography;
       
-      /// rgb paint page
+      /// rgb paint main page
       QWidget* pageRgbPaintMain;
       
-      /// rgb paint page file selection box
-      QComboBox* rgbSelectionComboBox;
+      /// widget group for rgb paint main page
+      WuQWidgetGroup* pageRgbPaintMainWidgetGroup;
+      
+      /// rgb selection page grid layout
+      QGridLayout* rgbSelectionPageGridLayout;
+      
+      /// widget group for each row in RGB selection
+      std::vector<WuQWidgetGroup*> rgbSelectionRowWidgetGroup;
+      
+      /// rgb selection page radio buttons
+      std::vector<QRadioButton*> rgbSelectionRadioButtons;
+      
+      /// rgb selection column name line edits
+      std::vector<QLineEdit*> rgbSelectionNameLineEdits;
+      
+      /// rgb selection button group for column selection
+      QButtonGroup* rgbSelectionRadioButtonsButtonGroup;
+      
+      /// rgb selection red comment button group
+      QButtonGroup* rgbSelectionRedCommentButtonGroup;
+      
+      /// rgb selection green comment button group
+      QButtonGroup* rgbSelectionGreenCommentButtonGroup;
+      
+      /// rgb selection blue comment button group
+      QButtonGroup* rgbSelectionBlueCommentButtonGroup;
+      
+      /// rgb selection red histogram button group
+      QButtonGroup* rgbSelectionRedHistogramButtonGroup;
+      
+      /// rgb selection green histogram button group
+      QButtonGroup* rgbSelectionGreenHistogramButtonGroup;
+      
+      /// rgb selection blue histogram button group
+      QButtonGroup* rgbSelectionBlueHistogramButtonGroup;
+      
+      /// rgb paint selection page
+      QWidget* pageRgbPaintSelection;
       
       /// rgb red selection checkbox
       QCheckBox* rgbRedCheckBox;
       
-      /// rgb red name label
-      QLabel* rgbRedNameLabel;
-      
-      /// rgb red threshold line edit
-      QLineEdit* rgbRedThreshLineEdit;
-      
-      /// rgb red neg max label
-      QLabel* rgbRedNegMaxLabel;
-      
-      /// rgb red pos max label
-      QLabel* rgbRedPosMaxLabel;
+      /// rgb red threshold double spin box
+      QDoubleSpinBox* rgbRedThreshDoubleSpinBox;
       
       /// rgb green selection checkbox
       QCheckBox* rgbGreenCheckBox;
       
-      /// rgb green name label
-      QLabel* rgbGreenNameLabel;
-      
-      /// rgb green threshold line edit
-      QLineEdit* rgbGreenThreshLineEdit;
-      
-      /// rgb green neg max label
-      QLabel* rgbGreenNegMaxLabel;
-      
-      /// rgb green pos max label
-      QLabel* rgbGreenPosMaxLabel;
+      /// rgb green threshold double spin box
+      QDoubleSpinBox* rgbGreenThreshDoubleSpinBox;
       
       /// rgb blue selection checkbox
       QCheckBox* rgbBlueCheckBox;
       
-      /// rgb blue name label
-      QLabel* rgbBlueNameLabel;
-      
-      /// rgb blue threshold line edit
-      QLineEdit* rgbBlueThreshLineEdit;
-      
-      /// rgb blue neg max label
-      QLabel* rgbBlueNegMaxLabel;
-      
-      /// rgb blue pos max label
-      QLabel* rgbBluePosMaxLabel;
+      /// rgb blue threshold double spin box
+      QDoubleSpinBox* rgbBlueThreshDoubleSpinBox;
       
       /// rgb positive only radio button
       QRadioButton* rgbPositiveOnlyRadioButton;
@@ -1485,6 +1531,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// surface shape metadata push button group
       QButtonGroup* surfaceShapeMetaDataButtonGroup;
       
+      /// surface shape histogram push button group
+      QButtonGroup* surfaceShapeHistogramButtonGroup;
+      
       /// surface shape column number labels
       std::vector<QLabel*> surfaceShapeColumnNumberLabels;
       
@@ -1496,6 +1545,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// surface shape selection metadata push buttons
       std::vector<QToolButton*> surfaceShapeColumnMetaDataPushButtons;
+      
+      /// surface shape selection histogram push buttons
+      std::vector<QToolButton*> surfaceShapeColumnHistogramPushButtons;
       
       /// surface shape name line edits
       std::vector<QLineEdit*> surfaceShapeColumnNameLineEdits;
@@ -2037,11 +2089,14 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// draw mode combo box
       QComboBox* miscDrawModeComboBox;
       
-      /// brightness line edit
-      QLineEdit* miscBrightnessLineEdit;
+      /// brightness double spin box
+      QDoubleSpinBox* miscBrightnessDoubleSpinBox;
       
-      /// contrast line edit
-      QLineEdit* miscContrastLineEdit;
+      /// contrast double spin box
+      QDoubleSpinBox* miscContrastDoubleSpinBox;
+      
+      /// opacity double spin box
+      QDoubleSpinBox* opacityDoubleSpinBox;
       
       /// node size spin box
       QDoubleSpinBox* miscNodeSizeSpinBox;
@@ -2069,6 +2124,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// surface axes group box
       QGroupBox* miscAxesGroupBox;
+      
+      /// surfac misc page widget group
+      WuQWidgetGroup* surfaceMiscWidgetGroup;
       
       /// surface axes
       QCheckBox* miscAxesShowLettersCheckBox;
@@ -2672,6 +2730,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// paint column metadat push buttons
       std::vector<QToolButton*> paintColumnMetaDataPushButtons;
+      
+      /// combo box for surface overlay mode
+      QComboBox* surfaceColoringModeComboBox;
       
       ///  radio button on overlay underlay surface page
       QCheckBox* layersBorderCheckBox;
