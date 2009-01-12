@@ -111,8 +111,4 @@ class SectionFile : public NodeAttributeFile {
    public:      
 };
 
-#ifdef _SECTION_FILE_MAIN_
-
-#endif // _SECTION_FILE_MAIN_
-
 #endif // __VE_SECTIONS_FILE__

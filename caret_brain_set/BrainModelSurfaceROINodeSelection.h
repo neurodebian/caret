@@ -196,7 +196,10 @@ class BrainModelSurfaceROINodeSelection {
                       std::vector<int>& islandRootNode,
                       std::vector<int>& islandNumNodes,
                       std::vector<int>& nodeRootNeighbor);
-                       
+      
+      // find islands and place each in an ROI
+      std::vector<BrainModelSurfaceROINodeSelection*> findIslands(const BrainModelSurface* selectionSurface);
+
       // erode the selected nodes
       void erode(const BrainModelSurface* selectionSurface,
                  int numberOfIterations);

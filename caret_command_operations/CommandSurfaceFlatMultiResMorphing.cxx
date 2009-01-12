@@ -134,11 +134,11 @@ CommandSurfaceFlatMultiResMorphing::executeCommand() throw (BrainModelAlgorithmE
    // Set the selected files
    //
    specFile.setAllFileSelections(SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::cutTopoFileTag, cutTopologyFileName, 
+   specFile.addToSpecFile(SpecFile::getCutTopoFileTag(), cutTopologyFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::fiducialCoordFileTag, fiducialCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFiducialCoordFileTag(), fiducialCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
-   specFile.addToSpecFile(SpecFile::flatCoordFileTag, flatCoordinateFileName, 
+   specFile.addToSpecFile(SpecFile::getFlatCoordFileTag(), flatCoordinateFileName, 
                           "", SpecFile::SPEC_FALSE);
     
    //

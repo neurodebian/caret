@@ -50,7 +50,7 @@ class BrainModelVolumeToSurfaceConverter : public BrainModelAlgorithm {
       
       /// Constructor
       BrainModelVolumeToSurfaceConverter(BrainSet* bs,
-                                         VolumeFile* segmentationVolumeFileIn,
+                                         const VolumeFile* segmentationVolumeFileIn,
                                          const RECONSTRUCTION_MODE reconstructionModeIn,
                                          const bool rightHemisphereFlagIn,
                                          const bool leftHemisphereFlagIn,

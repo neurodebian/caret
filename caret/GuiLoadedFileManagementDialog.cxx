@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <iostream>
 #include <sstream>
 
 #include <QApplication>
@@ -31,6 +32,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QLayout>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
@@ -79,6 +81,7 @@
 #include "RgbPaintFile.h"
 #include "SceneFile.h"
 #include "SectionFile.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
@@ -91,6 +94,9 @@
 #include "WustlRegionFile.h"
 #include "global_variables.h"
 
+// text for modified file label
+static const QString modifiedFileLabelText = "***";
+      
 /**
  * Constructor
  */
@@ -119,7 +125,6 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    clearFileColumnPushButtonText = "CC";
    viewFilePushButtonText = "V";
    commentHeaderPushButtonText = "Edit";
-   modifiedFileLabelText = "***";
    saveFilePushButtonText = "Save";
     
    //
@@ -148,9 +153,9 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    //
    fileGridWidget = new QWidget;
    fileGridLayout = new QGridLayout(fileGridWidget);
-   //fileGridLayout->setSpacing(5);
    fileGridLayout->setHorizontalSpacing(10);
    fileGridLayout->setVerticalSpacing(2);
+   fileGridLayout->setColumnStretch(columnFileNameIndex, 1000);
    
    // QVBox* vbox = new QVBox(sv, "vbox");  // prevents background from showing through
    //fileGrid = new QGrid(2, Qt::Horizontal, vbox, "fileGrid");
@@ -228,43 +233,56 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    addFileToGrid(theMainWindow->getBrainSet()->getAreaColorFile(), 
                  fm,
                  sf->areaColorFile,
-                 "Area Color File");
+                 "Area Color File",
+                 SpecFile::getAreaColorFileTag());
 
    fm.setStatusForAll(false);
    fm.setArealEstimationModified();
    addFileToGrid(theMainWindow->getBrainSet()->getArealEstimationFile(), 
                  fm,
                  sf->arealEstimationFile,
-                 "Areal Estimation File");
+                 "Areal Estimation File",
+                 SpecFile::getArealEstimationFileTag());
 
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_RAW,
-                                               "Border - Raw");
+                                               "Border - Raw",
+                                                SpecFile::getRawBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
-                                               "Border - Fiducial");
+                                               "Border - Fiducial",
+                                                SpecFile::getFiducialBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_INFLATED,
-                                               "Border - Inflated");
+                                               "Border - Inflated",
+                                                SpecFile::getInflatedBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_VERY_INFLATED,
-                                               "Border - Very Inflated");
+                                               "Border - Very Inflated",
+                                                SpecFile::getVeryInflatedBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_SPHERICAL,
-                                               "Border - Spherical");
+                                               "Border - Spherical",
+                                                SpecFile::getSphericalBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL,
-                                               "Border - Ellipsoid");
+                                               "Border - Ellipsoid",
+                                                SpecFile::getEllipsoidBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL,
-                                               "Border - Comp Med Wall");
+                                               "Border - Comp Med Wall",
+                                                SpecFile::getCompressedBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_FLAT,
-                                               "Border - Flat");
+                                               "Border - Flat",
+                                                SpecFile::getFlatBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR,
-                                               "Border - Flat Lobar");
+                                               "Border - Flat Lobar",
+                                                SpecFile::getLobarFlatBorderFileTag());
    addBorderFileToGrid(bmbs, BrainModelSurface::SURFACE_TYPE_UNKNOWN,
-                                               "Border - Unknown");
+                                               "Border - Unknown",
+                                                SpecFile::getUnknownBorderFileMatchTag());
                                                
    
    fm.setStatusForAll(false);
    fm.setBorderColorModified();
    addFileToGrid(theMainWindow->getBrainSet()->getBorderColorFile(),
                  fm,
-                  "Border Color File");
+                  "Border Color File",
+                 SpecFile::getBorderColorFileTag());
 
    addBorderProjectionFileToGrid(bmbs);
                        
@@ -273,37 +291,45 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    addFileToGrid(theMainWindow->getBrainSet()->getCellColorFile(),
                  fm,
                  sf->cellColorFile,
-                  "Cell Color File");
+                  "Cell Color File",
+                 SpecFile::getCellColorFileTag());
                   
    fm.setStatusForAll(false);
    fm.setCellProjectionModified();
    addFileToGrid(theMainWindow->getBrainSet()->getCellProjectionFile(), fm, 
-                 sf->cellProjectionFile);
+                 sf->cellProjectionFile,
+                 "",
+                 SpecFile::getCellProjectionFileTag());
 
    fm.setStatusForAll(false);
    fm.setCellModified();
    addFileToGrid(theMainWindow->getBrainSet()->getVolumeCellFile(), fm, 
                  sf->volumeCellFile,
-                 "Cell File (Volume)");
+                 "Cell File (Volume)",
+                 SpecFile::getVolumeCellFileTag());
 
    fm.setStatusForAll(false);
    fm.setCocomacModified();
    addFileToGrid(theMainWindow->getBrainSet()->getCocomacFile(), fm,
-                 sf->cocomacConnectivityFile);
+                 sf->cocomacConnectivityFile,
+                 "",
+                 SpecFile::getCocomacConnectivityFileTag());
 
    fm.setStatusForAll(false);
    fm.setContourCellModified();
    addFileToGrid(theMainWindow->getBrainSet()->getContourCellFile(), 
                  fm,
                  sf->contourCellFile,
-                 "Contour Cells File");
+                 "Contour Cells File",
+                 SpecFile::getContourCellFileTag());
 
    fm.setStatusForAll(false);
    fm.setCellColorModified();
    addFileToGrid(theMainWindow->getBrainSet()->getContourCellColorFile(),
                  fm,
                  sf->contourCellColorFile,
-                 "Contour Cell Color File");
+                 "Contour Cell Color File",
+                 SpecFile::getContourCellColorFileTag());
                  
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfBrainModels(); i++) {
       BrainModel* bm = theMainWindow->getBrainSet()->getBrainModel(i);
@@ -314,7 +340,8 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
                ContourFile* cf = bmc->getContourFile();
                fm.setStatusForAll(false);
                fm.setContourModified();
-               addFileToGrid(cf, fm); 
+               addFileToGrid(cf, fm, "",
+                 SpecFile::getContourFileTag()); 
             }
             break;
          case BrainModel::BRAIN_MODEL_SURFACE:
@@ -323,7 +350,9 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
                CoordinateFile* cf = bms->getCoordinateFile();
                fm.setStatusForAll(false);
                fm.setCoordinateModified();
-               addFileToGrid(cf, fm);
+               addFileToGrid(cf, fm, "",
+                             BrainModelSurface::getCoordSpecFileTagFromSurfaceType(
+                                bms->getSurfaceType()));
             }
             break;
          case BrainModel::BRAIN_MODEL_VOLUME:
@@ -338,189 +367,248 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    addFileToGrid(theMainWindow->getBrainSet()->getCutsFile(), 
                  fm,
                  sf->cutsFile,
-                 "Cuts File");
+                 "Cuts File",
+                 SpecFile::getCutsFileTag());
    
    fm.setStatusForAll(false);
    fm.setDeformationFieldModified();
    addFileToGrid(theMainWindow->getBrainSet()->getDeformationFieldFile(),
                  fm,
                  sf->deformationFieldFile,
-                 "Deformation Field File");
+                 "Deformation Field File",
+                 SpecFile::getDeformationFieldFileTag());
    
    fm.setStatusForAll(false);
    fm.setFociColorModified();
    addFileToGrid(theMainWindow->getBrainSet()->getFociColorFile(),
                  fm,
                  sf->fociColorFile,
-                 "Foci Color File");
+                 "Foci Color File",
+                 SpecFile::getFociColorFileTag());
    
    fm.setStatusForAll(false);
    fm.setFociProjectionModified();
    addFileToGrid(theMainWindow->getBrainSet()->getFociProjectionFile(),
                  fm,
                  sf->fociProjectionFile,
-                 "Foci Projection File");
+                 "Foci Projection File",
+                 SpecFile::getFociProjectionFileTag());
    
    fm.setStatusForAll(false);
    fm.setFociSearchModified();
    addFileToGrid(theMainWindow->getBrainSet()->getFociSearchFile(),
                  fm,
                  sf->fociSearchFile,
-                 "Foci Search File");
+                 "Foci Search File",
+                 SpecFile::getFociSearchFileTag());
    
    fm.setStatusForAll(false);
    fm.setGeodesicModified();
    addFileToGrid(theMainWindow->getBrainSet()->getGeodesicDistanceFile(), fm,
-                 sf->geodesicDistanceFile);
+                 sf->geodesicDistanceFile,
+                 "",
+                 SpecFile::getGeodesicDistanceFileTag());
    
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfImageFiles(); i++) {
       fm.setStatusForAll(false);
       fm.setImagesModified();
-      addFileToGrid(theMainWindow->getBrainSet()->getImageFile(i), fm);
+      addFileToGrid(theMainWindow->getBrainSet()->getImageFile(i), fm, "",
+                    SpecFile::getImageFileTag());
    }
    
    fm.setStatusForAll(false);
    fm.setLatLonModified();
    addFileToGrid(theMainWindow->getBrainSet()->getLatLonFile(), fm,
-                 sf->latLonFile);
+                 sf->latLonFile, "",
+                 SpecFile::getLatLonFileTag());
    
    fm.setStatusForAll(false);
    fm.setMetricModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getMetricFile(), fm, sf->metricFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getMetricFile(), fm, sf->metricFile, "",
+                 SpecFile::getMetricFileTag());
    
    fm.setStatusForAll(false);
    fm.setPaintModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getPaintFile(), fm, sf->paintFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getPaintFile(), fm, sf->paintFile, "",
+                 SpecFile::getPaintFileTag());
    
    fm.setStatusForAll(false);
    fm.setParameterModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getParamsFile(), fm, sf->paramsFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getParamsFile(), fm, sf->paramsFile, "",
+                 SpecFile::getParamsFileTag());
    
    fm.setStatusForAll(false);
    fm.setProbabilisticAtlasModified();
    addFileToGrid(theMainWindow->getBrainSet()->getProbabilisticAtlasSurfaceFile(), 
                  fm,
                  sf->atlasFile,
-                 "Probabilistic Atlas File");
+                 "Probabilistic Atlas File",
+                 SpecFile::getAtlasFileTag());
    
    fm.setStatusForAll(false);
    fm.setPaletteModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getPaletteFile(), fm, sf->paletteFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getPaletteFile(), fm, sf->paletteFile, "",
+                 SpecFile::getPaletteFileTag());
    
    fm.setStatusForAll(false);
    fm.setRgbPaintModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getRgbPaintFile(), fm, sf->rgbPaintFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getRgbPaintFile(), fm, sf->rgbPaintFile, "",
+                 SpecFile::getRgbPaintFileTag());
    
    fm.setStatusForAll(false);
    fm.setSectionModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getSectionFile(), fm, sf->sectionFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getSectionFile(), fm, sf->sectionFile, "",
+                 SpecFile::getSectionFileTag());
    
    fm.setStatusForAll(false);
    fm.setSceneModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getSceneFile(), fm, sf->sceneFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getSceneFile(), fm, sf->sceneFile, "",
+                 SpecFile::getSceneFileTag());
+   
+   fm.setStatusForAll(false);
+   fm.setStudyCollectionModified();
+   addFileToGrid(theMainWindow->getBrainSet()->getStudyCollectionFile(), fm, sf->studyCollectionFile, "",
+                 SpecFile::getStudyCollectionFileTag());
    
    fm.setStatusForAll(false);
    fm.setStudyMetaDataModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getStudyMetaDataFile(), fm, sf->studyMetaDataFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getStudyMetaDataFile(), fm, sf->studyMetaDataFile, "",
+                 SpecFile::getStudyMetaDataFileTag());
    
    fm.setStatusForAll(false);
    fm.setSurfaceShapeModified();
    addFileToGrid(theMainWindow->getBrainSet()->getSurfaceShapeFile(), 
                  fm,
                  sf->surfaceShapeFile,
-                 "Surface Shape File");
+                 "Surface Shape File",
+                 SpecFile::getSurfaceShapeFileTag());
    
    fm.setStatusForAll(false);
    fm.setSurfaceVectorModified();
    addFileToGrid(theMainWindow->getBrainSet()->getSurfaceVectorFile(), 
                  fm,
                  sf->surfaceVectorFile,
-                 "Surface Vector File");
+                 "Surface Vector File",
+                 SpecFile::getSurfaceVectorFileTag());
    
    fm.setStatusForAll(false);
    fm.setTopographyModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getTopographyFile(), fm);
+   addFileToGrid(theMainWindow->getBrainSet()->getTopographyFile(), fm, "",
+                 SpecFile::getTopographyFileTag());
 
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfTopologyFiles(); i++) {
       TopologyFile* tf = theMainWindow->getBrainSet()->getTopologyFile(i);   
       fm.setStatusForAll(false);
       fm.setTopologyModified();
-      addFileToGrid(tf, fm);
+      addFileToGrid(tf, fm, "",
+                    TopologyFile::getSpecFileTagFromTopologyType(
+                       tf->getTopologyType()));
    }   
+   
+   for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfTransformationDataFiles(); i++) {
+      AbstractFile* tdf = theMainWindow->getBrainSet()->getTransformationDataFile(i);
+      fm.setStatusForAll(false);
+      fm.setTransformationDataModified();
+      addFileToGrid(tdf, fm, "Transformation Data File",
+                 SpecFile::getTransformationDataFileTag());
+   }
+   
+   fm.setStatusForAll(false);
+   fm.setTransformationMatrixModified();
+   addFileToGrid(theMainWindow->getBrainSet()->getTransformationMatrixFile(), 
+                 fm,
+                 sf->transformationMatrixFile,
+                 "Transformation Matrix File",
+                 SpecFile::getTransformationMatrixFileTag());
    
    fm.setStatusForAll(false);
    fm.setVocabularyModified();
    addFileToGrid(theMainWindow->getBrainSet()->getVocabularyFile(), 
                  fm,
                  sf->vocabularyFile,
-                 "Vocabulary File");
+                 "Vocabulary File",
+                 SpecFile::getVocabularyFileTag());
    
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeAnatomyFiles(); i++) {   
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumeAnatomyFile(i), 
                  fm,
-                 "Volume File - Anatomy");
+                 "Volume File - Anatomy",
+                 SpecFile::getVolumeAnatomyFileTag());
    }
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeFunctionalFiles(); i++) {
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumeFunctionalFile(i), 
                  fm,
-                 "Volume File - Functional");
+                 "Volume File - Functional",
+                 SpecFile::getVolumeFunctionalFileTag());
    }
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumePaintFiles(); i++) {   
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumePaintFile(i), 
                  fm,
-                 "Volume File - Paint");
+                 "Volume File - Paint",
+                 SpecFile::getVolumePaintFileTag());
    }
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeProbAtlasFiles(); i++) {   
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumeProbAtlasFile(i), 
                  fm,
-                 "Volume File - Prob Atlas");
+                 "Volume File - Prob Atlas",
+                 SpecFile::getVolumeProbAtlasFileTag());
    }
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeRgbFiles(); i++) {
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumeRgbFile(i), 
                  fm,
-                 "Volume File - RGB");
+                 "Volume File - RGB",
+                 SpecFile::getVolumeRgbFileTag());
    }
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeSegmentationFiles(); i++) {   
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumeSegmentationFile(i), 
                  fm,
-                 "Volume File - Segmentation");
+                 "Volume File - Segmentation",
+                 SpecFile::getVolumeSegmentationFileTag());
    }
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumeVectorFiles(); i++) {   
       fm.setStatusForAll(false);
       fm.setVolumeModified();
       addFileToGrid(theMainWindow->getBrainSet()->getVolumeVectorFile(i), 
                  fm,
-                 "Volume File - Vector");
+                 "Volume File - Vector",
+                 SpecFile::getVolumeVectorFileTag());
    }
 
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVtkModelFiles(); i++) {   
       fm.setStatusForAll(false);
       fm.setVtkModelModified();
-      addFileToGrid(theMainWindow->getBrainSet()->getVtkModelFile(i), fm);
+      addFileToGrid(theMainWindow->getBrainSet()->getVtkModelFile(i), fm, "",
+                 SpecFile::getVtkModelFileTag());
    }
    
    fm.setStatusForAll(false);
    fm.setWustlRegionModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getWustlRegionFile(), fm, sf->wustlRegionFile);
+   addFileToGrid(theMainWindow->getBrainSet()->getWustlRegionFile(), fm, sf->wustlRegionFile, "",
+                 SpecFile::getWustlRegionFileTag());
    
    //
    // Scrolled widget for files 
    //
+   QWidget* scrollAreaWidget = new QWidget;
+   QVBoxLayout* scrollAreaWidgetLayout = new QVBoxLayout(scrollAreaWidget);
+   scrollAreaWidgetLayout->addWidget(fileGridWidget);
+   scrollAreaWidgetLayout->addStretch();
    QScrollArea* sv = new QScrollArea(this);
+   sv->setWidgetResizable(true);
+   sv->setWidget(scrollAreaWidget);
    dialogLayout->addWidget(sv);
-   sv->setWidget(fileGridWidget);
    
    //
    // Horizontal layout for buttons
@@ -530,16 +618,33 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    buttonsLayout->setSpacing(2);
    
    //
+   // Save all checked files button
+   //
+   QPushButton* saveButton = new QPushButton("Save All Checked Files");
+   saveButton->setAutoDefault(false);
+   saveButton->setFixedSize(saveButton->sizeHint());
+   buttonsLayout->addWidget(saveButton);
+   QObject::connect(saveButton, SIGNAL(clicked()),
+                    this, SLOT(slotSaveAllCheckFiles()));
+                    
+   //
    // Close button
    //
-   QPushButton* closeButton = new QPushButton("Close", this);
+   QPushButton* closeButton = new QPushButton("Close");
    closeButton->setAutoDefault(false);
    closeButton->setFixedSize(closeButton->sizeHint());
    buttonsLayout->addWidget(closeButton);
    QObject::connect(closeButton, SIGNAL(clicked()),
                     this, SLOT(close()));
                     
-   resize(std::max(width(), 700), height());
+   resize(std::max(width(), 800), height());
+}
+
+/**
+ * Destructor
+ */
+GuiLoadedFileManagementDialog::~GuiLoadedFileManagementDialog()
+{
 }
 
 /**
@@ -556,6 +661,18 @@ GuiLoadedFileManagementDialog::slotInfoButtonGroup(int item)
 }
 
 /**
+ * save all checked files.
+ */
+void 
+GuiLoadedFileManagementDialog::slotSaveAllCheckFiles()
+{
+   const int num = static_cast<int>(dataFiles.size());
+   for (int i = 0; i < num; i++) {
+      dataFiles[i].saveFileIfChecked();
+   }
+}      
+
+/**
  * called when a save button is pressed.
  */
 void 
@@ -563,15 +680,16 @@ GuiLoadedFileManagementDialog::slotSaveButtonGroup(int item)
 {
    AbstractFile* af = dataFiles[item].dataFile;
    if (af != NULL) {
+      af->setFileName(dataFiles[item].nameLineEdit->text());
+
       GuiDataFileSaveDialog fd(this);
       fd.selectFile(af);
       if (fd.exec() == GuiDataFileSaveDialog::Accepted) {
          if (dataFiles[item].modifiedLabel != NULL) {
             if (af->getModified() == 0) {
-               dataFiles[item].modifiedLabel->setText(" ");
-               dataFiles[item].nameLabel->setText(
-                  FileUtilities::basename(fd.getSelectedFileName()));
+               dataFiles[item].clearModified();
             }
+            dataFiles[item].nameLineEdit->setText(fd.getSelectedFileName());
          }
       }
    }
@@ -641,8 +759,8 @@ GuiLoadedFileManagementDialog::slotRemoveFileColumnButtonGroup(int item)
       }
       
       std::vector<QCheckBox*> dataColumnCheckBoxes;
-      WuQDataEntryDialog ded(this);
-      ded.setTextAtTop("Select columns for that you want removed from the file.", true);
+      WuQDataEntryDialog ded(this, true);
+      ded.setTextAtTop("Select columns that you want REMOVED from the file.", true);
       for (int i = 0; i < numCols; i++) {
          dataColumnCheckBoxes.push_back(ded.addCheckBox(columnNames[i], false));
       }
@@ -698,7 +816,7 @@ GuiLoadedFileManagementDialog::slotClearFileColumnButtonGroup(int item)
       }
       
       std::vector<QCheckBox*> dataColumnCheckBoxes;
-      WuQDataEntryDialog ded(this);
+      WuQDataEntryDialog ded(this, true);
       ded.setTextAtTop("Select columns for that you want cleared (zeroized) in the file.", true);
       for (int i = 0; i < numCols; i++) {
          dataColumnCheckBoxes.push_back(ded.addCheckBox(columnNames[i], false));
@@ -766,6 +884,9 @@ GuiLoadedFileManagementDialog::slotRemoveFileButtonGroup(int item)
       }
       else if (fm.getTopologyModified()) {
          theMainWindow->getBrainSet()->deleteTopologyFile(dynamic_cast<TopologyFile*>(af));
+      }
+      else if (fm.getTransformationDataModified()) {
+         theMainWindow->getBrainSet()->deleteTransformationDataFile(af);
       }
       else if (fm.getVtkModelModified()) {
          theMainWindow->getBrainSet()->deleteVtkModelFile(dynamic_cast<VtkModelFile*>(af));
@@ -861,6 +982,9 @@ GuiLoadedFileManagementDialog::slotRemoveFileButtonGroup(int item)
       else if (dynamic_cast<SectionFile*>(af) != NULL) {
          theMainWindow->getBrainSet()->clearSectionFile();
       }
+      else if (dynamic_cast<StudyCollectionFile*>(af) != NULL) {
+         theMainWindow->getBrainSet()->clearStudyCollectionFile();
+      }
       else if (dynamic_cast<StudyMetaDataFile*>(af) != NULL) {
          theMainWindow->getBrainSet()->clearStudyMetaDataFile();
       }
@@ -885,8 +1009,8 @@ GuiLoadedFileManagementDialog::slotRemoveFileButtonGroup(int item)
             //af->clear();
       }
       dataFiles[item].dataFile = NULL;
-      dataFiles[item].descriptionLabel->setEnabled(false);
-      dataFiles[item].nameLabel->setEnabled(false);
+      dataFiles[item].fileTypeCheckBoxOrLabel->setEnabled(false);
+      dataFiles[item].nameLineEdit->setEnabled(false);
       
       //
       // Disable info & clear button
@@ -924,7 +1048,8 @@ GuiLoadedFileManagementDialog::slotRemoveFileButtonGroup(int item)
 void
 GuiLoadedFileManagementDialog::addBorderFileToGrid(BrainModelBorderSet* bmbs,
                                                const BrainModelSurface::SURFACE_TYPES surfaceType,
-                                               const char* typeName)
+                                               const char* typeName,
+                                               const QString& specFileTagIn)
 {
    BrainModelBorderFileInfo* bmi = bmbs->getBorderFileInfo(surfaceType);
    if (bmi != NULL) {
@@ -949,15 +1074,17 @@ GuiLoadedFileManagementDialog::addBorderFileToGrid(BrainModelBorderSet* bmbs,
                borderInfoFileInfo.push_back(bmi);
                
                fileGridLayout->addWidget(new QLabel(" "), rowNum, columnRemoveFileIndex);    // X button
-               QLabel* fileNameLabel = new QLabel(fileName);
-               fileGridLayout->addWidget(fileNameLabel, rowNum, columnFileNameIndex);
+               QLineEdit* fileNameLineEdit = new QLineEdit;
+               fileNameLineEdit->setText(fileName);
+               fileGridLayout->addWidget(fileNameLineEdit, rowNum, columnFileNameIndex);
                
                GuiFilesModified noMask;
                dataFiles.push_back(DataFile(NULL,
                                             noMask,
                                             typeNameLabel,
-                                            fileNameLabel,
-                                            modifyLabel));
+                                            fileNameLineEdit,
+                                            modifyLabel,
+                                            specFileTagIn));
             }
             if (bf != NULL) {
                delete bf;
@@ -977,17 +1104,20 @@ GuiLoadedFileManagementDialog::addBorderProjectionFileToGrid(BrainModelBorderSet
    if (bmi != NULL) {
       const QString fileName(bmi->getFileName());
       if (fileName.isEmpty() == false) {
-         BorderProjectionFile bpf;
-         bmbs->copyBordersToBorderProjectionFile(bpf);
-         if (bpf.getNumberOfBorderProjections() > 0) {
+         bmbs->copyBordersToBorderProjectionFile(borderProjectionFileForGrid);
+         if (borderProjectionFileForGrid.getNumberOfBorderProjections() > 0) {
             const int rowNum = fileGridLayout->rowCount(); // + 1;
-            QLabel* typeNameLabel = new QLabel("Border Projection");
-            fileGridLayout->addWidget(typeNameLabel, rowNum, columnFileTypeIndex);
+            QCheckBox* typeNameCheckBox = new QCheckBox("Border Projection File");
+            fileGridLayout->addWidget(typeNameCheckBox, rowNum, columnFileTypeIndex);
             QLabel* modifyLabel = new QLabel(" ");
             modifyLabel->setStyleSheet("color: red; font: bold"); // show text in red, bold
-            fileGridLayout->addWidget(modifyLabel, rowNum, columnModifiedIndex);
+            fileGridLayout->addWidget(modifyLabel, rowNum, columnModifiedIndex, Qt::AlignHCenter);
             if (bmbs->getProjectionsModified()) {
                modifyLabel->setText("***");
+               borderProjectionFileForGrid.setModified();
+            }
+            else {
+               borderProjectionFileForGrid.clearModified();
             }
             
             borderProjInfoPB = new QToolButton;
@@ -1014,16 +1144,19 @@ GuiLoadedFileManagementDialog::addBorderProjectionFileToGrid(BrainModelBorderSet
                                    "The file is NOT deleted.");
             fileGridLayout->addWidget(borderProjClearPB, rowNum, columnRemoveFileIndex, Qt::AlignHCenter);
 
-            QLabel* fileNameLabel = new QLabel(fileName);
-            fileGridLayout->addWidget(fileNameLabel, rowNum, columnFileNameIndex);
+            QLineEdit* fileNameLineEdit = new QLineEdit;
+            fileNameLineEdit->setText(fileName);
+            fileGridLayout->addWidget(fileNameLineEdit, rowNum, columnFileNameIndex);
 
             borderProjectionDataFileIndex = static_cast<int>(dataFiles.size());
-            GuiFilesModified noMask;
-            dataFiles.push_back(DataFile(NULL,
-                                         noMask,
-                                         typeNameLabel,
-                                         fileNameLabel,
-                                         modifyLabel));
+            GuiFilesModified borderProjModMask;
+            borderProjModMask.setBorderModified();
+            dataFiles.push_back(DataFile(&borderProjectionFileForGrid,
+                                         borderProjModMask,
+                                         typeNameCheckBox,
+                                         fileNameLineEdit,
+                                         modifyLabel,
+                                         SpecFile::getBorderProjectionFileTag()));
          }
       }
    }
@@ -1036,12 +1169,17 @@ void
 GuiLoadedFileManagementDialog::slotSaveBorderProjections()
 {
    BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+   BrainModelBorderFileInfo* bmi = bmbs->getBorderProjectionFileInfo();
+   bmi->setFileName(dataFiles[borderProjectionDataFileIndex].nameLineEdit->text());
+   bmbs->copyBordersToBorderProjectionFile(borderProjectionFileForGrid);
+
    GuiDataFileSaveDialog fd(this);
    fd.selectFileType(FileFilters::getBorderProjectionFileFilter());
    if (fd.exec() == GuiDataFileSaveDialog::Accepted) {
       if (dataFiles[borderProjectionDataFileIndex].modifiedLabel != NULL) {
          if (bmbs->getProjectionsModified() == false) {
-            dataFiles[borderProjectionDataFileIndex].modifiedLabel->setText(" ");
+            dataFiles[borderProjectionDataFileIndex].clearModified();
+            bmi->setFileName(fd.getSelectedFileName());
          }
       }
    }
@@ -1063,8 +1201,8 @@ GuiLoadedFileManagementDialog::slotDeleteBorderProjections()
    theMainWindow->fileModificationUpdate(fm);
    GuiBrainModelOpenGL::updateAllGL();
    
-   dataFiles[borderProjectionDataFileIndex].descriptionLabel->setEnabled(false);
-   dataFiles[borderProjectionDataFileIndex].nameLabel->setEnabled(false);
+   dataFiles[borderProjectionDataFileIndex].fileTypeCheckBoxOrLabel->setEnabled(false);
+   dataFiles[borderProjectionDataFileIndex].nameLineEdit->setEnabled(false);
    borderProjInfoPB->setEnabled(false);
    borderProjClearPB->setEnabled(false);
    borderProjSavePB->setEnabled(false);
@@ -1078,10 +1216,11 @@ GuiLoadedFileManagementDialog::slotDeleteBorderProjections()
 void
 GuiLoadedFileManagementDialog::addFileToGrid(AbstractFile* af,
                                          const GuiFilesModified& fileMask,
-                                         const char* typeName)
+                                         const char* typeName,
+                                         const QString& specFileTagIn)
 {
    SpecFile::Entry dummyEntry;
-   addFileToGrid(af, fileMask, dummyEntry, typeName);
+   addFileToGrid(af, fileMask, dummyEntry, typeName, specFileTagIn);
 }
 
 /**
@@ -1091,13 +1230,16 @@ void
 GuiLoadedFileManagementDialog::addFileToGrid(AbstractFile* af,
                                const GuiFilesModified& fileMask,
                                const SpecFile::Entry& dataFileInfo,
-                               const char* typeName)
+                               const char* typeName,
+                               const QString& specFileTagIn)
 {
    if (af != NULL) {
       if (af->empty() == false) {
          QString label(af->getDescriptiveName());
          if (typeName != NULL) {
-            label = typeName;
+            if (strlen(typeName) > 0) {
+               label = typeName;
+            }
          }
          QString modifiedLabelText(" ");
          if (af->getModified()) {
@@ -1105,8 +1247,8 @@ GuiLoadedFileManagementDialog::addFileToGrid(AbstractFile* af,
          }
          const int rowNum = fileGridLayout->rowCount(); // + 1;
          
-         QLabel* fileTypeLabel = new QLabel(label);
-         fileGridLayout->addWidget(fileTypeLabel, rowNum, columnFileTypeIndex);
+         QCheckBox* fileTypeCheckBox = new QCheckBox(label);
+         fileGridLayout->addWidget(fileTypeCheckBox, rowNum, columnFileTypeIndex);
          
          QLabel* modifiedLabel = new QLabel;
          modifiedLabel->setStyleSheet("color: red; font: bold"); // show text in red, bold
@@ -1179,14 +1321,16 @@ GuiLoadedFileManagementDialog::addFileToGrid(AbstractFile* af,
          }
          
          const QString filename(FileUtilities::basename(af->getFileName()));
-         QLabel* nameLabel = new QLabel(filename);
-         fileGridLayout->addWidget(nameLabel, rowNum, columnFileNameIndex);
+         QLineEdit* fileNameLineEdit = new QLineEdit;
+         fileNameLineEdit->setText(filename);
+         fileGridLayout->addWidget(fileNameLineEdit, rowNum, columnFileNameIndex);
          
          dataFiles.push_back(DataFile(af,
                                       fileMask,
-                                      fileTypeLabel,
-                                      nameLabel,
-                                      modifiedLabel));
+                                      fileTypeCheckBox,
+                                      fileNameLineEdit,
+                                      modifiedLabel,
+                                      specFileTagIn));
          
          for (int i = 0; i < dataFileInfo.getNumberOfFiles(); i++) {
             if (dataFileInfo.files[i].selected == SpecFile::SPEC_TRUE) {
@@ -1208,9 +1352,127 @@ GuiLoadedFileManagementDialog::addFileToGrid(AbstractFile* af,
    }
 }                         
 
+//
+//=============================================================================
+//=============================================================================
+//
+
 /**
- * Destructor
+ * constructor.
  */
-GuiLoadedFileManagementDialog::~GuiLoadedFileManagementDialog()
+GuiLoadedFileManagementDialog::DataFile::DataFile(AbstractFile* dataFileIn,
+                                                  GuiFilesModified dataFileTypeMaskIn,
+                                                  QWidget* fileTypeCheckBoxOrLabelIn,
+                                                  QLineEdit* nameLineEditIn,
+                                                  QLabel* modifiedLabelIn,
+                                                  const QString& specFileTagIn) 
 {
+   dataFile = dataFileIn;
+   fileTypeCheckBoxOrLabel = fileTypeCheckBoxOrLabelIn;
+   nameLineEdit = nameLineEditIn;
+   dataFileTypeMask = dataFileTypeMaskIn;
+   modifiedLabel = modifiedLabelIn;
+   specFileTag = specFileTagIn;
+   
+   if (dataFile != NULL) {
+      if (dataFile->getModified()) {
+         setModified();
+      }
+   }
+}
+
+/**
+ * destructor.
+ */
+GuiLoadedFileManagementDialog::DataFile::~DataFile()
+{
+}
+            
+/**
+ * set modified.
+ */
+void 
+GuiLoadedFileManagementDialog::DataFile::setModified()
+{
+   modifiedLabel->setText(modifiedFileLabelText);
+   QCheckBox* cb = dynamic_cast<QCheckBox*>(fileTypeCheckBoxOrLabel);
+   if (cb != NULL) {
+      cb->setChecked(true);
+   }
+}
+            
+/**
+ * save the file if it is checked.
+ */
+QString 
+GuiLoadedFileManagementDialog::DataFile::saveFileIfChecked()
+{
+   QCheckBox* cb = dynamic_cast<QCheckBox*>(fileTypeCheckBoxOrLabel);
+   if (cb != NULL) {
+      if (cb->isChecked()) {
+         const QString name = nameLineEdit->text();
+         if (name.isEmpty() == false) {
+            // std::cout << "Saving: " << name.toAscii().constData() << std::endl;
+            if (dataFile != NULL) {
+               if (dynamic_cast<BorderProjectionFile*>(dataFile) != NULL) {
+                  BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+                  BrainModelBorderFileInfo* bmi = bmbs->getBorderProjectionFileInfo();
+                  bmi->setFileName(nameLineEdit->text());
+                  try {
+                     theMainWindow->getBrainSet()->writeBorderProjectionFile(
+                                       name, "", "");
+                  }
+                  catch (FileException& e) {
+                     return e.whatQString();
+                  }
+                  
+                  if (bmbs->getProjectionsModified() == false) {
+                     modifiedLabel->setText(" ");
+                     cb->setChecked(false);
+                  }
+               }
+               else {
+                  dataFile->setFileName(name);
+                  try {
+                     dataFile->writeFile(name);
+                  }
+                  catch (FileException& e) {
+                     return e.whatQString();
+                  }
+                  
+                  if (dataFile->getModified() == false) {
+                     modifiedLabel->setText(" ");
+                     cb->setChecked(false);
+                  }
+               }
+               
+               QString name2;
+               VolumeFile* vf = dynamic_cast<VolumeFile*>(dataFile);
+               if (vf != NULL) {
+                  name2 = vf->getDataFileName();
+               }
+               
+               theMainWindow->getBrainSet()->addToSpecFile(
+                  specFileTag,
+                  name,
+                  name2);
+            }
+         }
+      }
+   }
+   
+   return "";
+}
+            
+/**
+ * clear modified.
+ */
+void 
+GuiLoadedFileManagementDialog::DataFile::clearModified() 
+{
+   modifiedLabel->setText(" ");
+   QCheckBox* cb = dynamic_cast<QCheckBox*>(fileTypeCheckBoxOrLabel);
+   if (cb != NULL) {
+      cb->setChecked(false);
+   }
 }

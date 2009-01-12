@@ -209,7 +209,7 @@ FileFilters::getAllFileFilters(QStringList& allFileFiltersOut)
    allFileFiltersOut.append(getVtkModelFileFilter());
    allFileFiltersOut.append(getVocabularyFileFilter());
    allFileFiltersOut.append(getWustlRegionFileFilter());
-   allFileFiltersOut.append(getMetaAnalysisFileFilter());
+   allFileFiltersOut.append(getStudyCollectionFileFilter());
    allFileFiltersOut.append(getStudyMetaDataFileFilter());
    allFileFiltersOut.append(getSpecFileFilter());
    allFileFiltersOut.append(getMdPlotFileFilter());

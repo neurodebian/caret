@@ -133,6 +133,7 @@
 #include "SectionFile.h"
 #include "StatisticRandomNumber.h"
 #include "StringUtilities.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
@@ -365,6 +366,7 @@ BrainSet::constructBrainSet()
    rgbPaintFile           = new RgbPaintFile;
    sceneFile              = new SceneFile;
    sectionFile            = new SectionFile;
+   studyCollectionFile    = new StudyCollectionFile;
    studyMetaDataFile      = new StudyMetaDataFile;
    surfaceShapeFile       = new SurfaceShapeFile;
    surfaceVectorFile      = new SurfaceVectorFile;
@@ -509,6 +511,42 @@ BrainSet::setRandomSeed(unsigned int randomSeed)
 }      
 
 /**
+ * get caret's home directory.
+ */
+QString 
+BrainSet::getCaretHomeDirectory() 
+{ 
+   static QString caretHomeDirectory;
+   
+   if (caretHomeDirectory.isEmpty()) {
+      const char* caretHome = getenv("CARET5_HOME");
+      if (caretHome != NULL) {
+         caretHomeDirectory = caretHome;
+      }
+      else {
+         caretHomeDirectory = qApp->applicationDirPath();
+         if (caretHomeDirectory.isEmpty() == false) {
+            caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
+#ifdef Q_OS_MACX
+            const bool appFlag = (caretHomeDirectory.indexOf(".app/") > 0);
+            if (appFlag) {
+               caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
+               caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
+               caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
+            }
+#endif
+         }
+      }
+
+      if (DebugControl::getDebugOn()) {    
+         std::cout << "Caret Home Directory: " << caretHomeDirectory.toAscii().constData() << std::endl;
+      }
+   }
+   
+   return caretHomeDirectory;
+}
+      
+/**
  * Read the user's caret5 preferences file and intialize other things.
  */
 void
@@ -519,32 +557,6 @@ BrainSet::initializeStaticStuff()
    }
    staticStuffInitialized = true;
 
-/*
-#ifdef Q_OS_WIN32
-   caretHomeDirectory = "C:\\caret");
-#else
-   caretHomeDirectory = "/usr/local/caret");
-#endif
-*/
-   const char* caretHome = getenv("CARET5_HOME");
-   if (caretHome != NULL) {
-      caretHomeDirectory = caretHome;
-   }
-   else {
-      caretHomeDirectory = qApp->applicationDirPath();
-      if (caretHomeDirectory.isEmpty() == false) {
-         caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
-#ifdef Q_OS_MACX
-         const bool appFlag = (caretHomeDirectory.indexOf(".app/") > 0);
-         if (appFlag) {
-            caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
-            caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
-            caretHomeDirectory = FileUtilities::dirname(caretHomeDirectory);
-         }
-#endif
-      }
-   }
-   
    //
    // Might be set at command line
    //
@@ -586,10 +598,6 @@ BrainSet::initializeStaticStuff()
    if (debugOn) {
       DebugControl::setDebugOn(true);
    }
-
-   if (DebugControl::getDebugOn()) {    
-      std::cout << "Caret Home Directory: " << caretHomeDirectory.toAscii().constData() << std::endl;
-   }
 }
 
 /**
@@ -628,6 +636,7 @@ BrainSet::~BrainSet()
    delete rgbPaintFile;
    delete sceneFile;
    delete sectionFile;
+   delete studyCollectionFile;
    delete studyMetaDataFile;
    delete surfaceShapeFile;
    delete topographyFile;
@@ -855,6 +864,7 @@ BrainSet::clearAllDisplayLists()
    probabilisticAtlasSurfaceFile->clearDisplayList();
    rgbPaintFile->clearDisplayList();
    sectionFile->clearDisplayList();
+   studyCollectionFile->clearDisplayList();
    studyMetaDataFile->clearDisplayList();
    surfaceShapeFile->clearDisplayList();
    topographyFile->clearDisplayList();
@@ -911,8 +921,8 @@ BrainSet::reset(const bool keepSceneData)
    
    specDataFileTransformationMatrix.identity();
    
-   stereotaxicSpace = "";
-   setSpecies("");
+   stereotaxicSpace.reset();
+   species.reset();
    setSubject("");
    
    deleteAllBrainModels();
@@ -1007,6 +1017,7 @@ BrainSet::resetDataFiles(const bool keepSceneData,
    }
    
    if (keepFociAndFociColorsAndStudyMetaData == false) {
+      clearStudyCollectionFile();
       clearStudyMetaDataFile();
    }
    
@@ -1074,6 +1085,7 @@ BrainSet::showSceneGetBrainModel(const int sceneIndex,
                                  const int viewingWindowNumberIn,
                                  int geometryOut[4],
                                  int glWidthHeightOut[2],
+                                 bool& yokeOut,
                                  QString& errorMessageOut)
 {
    SceneFile* sf = getSceneFile();
@@ -1082,6 +1094,7 @@ BrainSet::showSceneGetBrainModel(const int sceneIndex,
                                     viewingWindowNumberIn,
                                     geometryOut,
                                     glWidthHeightOut,
+                                    yokeOut,
                                     errorMessageOut);
    }
    return NULL;
@@ -1095,6 +1108,7 @@ BrainSet::showSceneGetBrainModel(const SceneFile::Scene* scene,
                                  const int viewingWindowNumber,
                                  int geometryOut[4],
                                  int glWidthHeightOut[2],
+                                 bool& yokeOut,
                                  QString& errorMessageOut)
 {
    geometryOut[0] = -1;
@@ -1103,6 +1117,7 @@ BrainSet::showSceneGetBrainModel(const SceneFile::Scene* scene,
    geometryOut[3] = -1;
    glWidthHeightOut[0] = -1;
    glWidthHeightOut[1] = -1;
+   yokeOut = false;
    errorMessageOut = "";
    
    //SceneFile* sf = getSceneFile();
@@ -1271,6 +1286,9 @@ BrainSet::showSceneGetBrainModel(const SceneFile::Scene* scene,
                   glWidthHeightOut[1] = StringUtilities::toInt(tokens[1]);
                }
             }
+            else if (infoName == "Yoke") {
+               yokeOut = si->getValueAsBool();
+            }
          }
       }
    }
@@ -1286,6 +1304,7 @@ BrainSet::saveSceneForBrainModelWindow(const int viewingWindowNumber,
                                        const int geometry[4],
                                        const int glWidthHeight[2],
                                        const BrainModel* bm,
+                                       const bool yokeIn,
                                        SceneFile::SceneClass& sceneClass)
 {
    if (viewingWindowNumber < 0) {
@@ -1377,6 +1396,8 @@ BrainSet::saveSceneForBrainModelWindow(const int viewingWindowNumber,
       str << glWidthHeight[0] << " "
           << glWidthHeight[1];
       sceneClass.addSceneInfo(SceneFile::SceneInfo("GLWidgetSize", str.str().c_str()));
+
+      sceneClass.addSceneInfo(SceneFile::SceneInfo("Yoke", yokeIn));
    }
 }
 
@@ -2084,12 +2105,21 @@ BrainSet::setSubject(const QString& s)
 }
 
 /**
+ * set the stereotaxic space (const method).
+ */
+void 
+BrainSet::setStereotaxicSpace(const StereotaxicSpace& ss) 
+{
+   stereotaxicSpace = ss;
+}
+      
+/**
  * set the species.
  */
 void 
-BrainSet::setSpecies(const QString& s) 
-{ 
-   species = s; 
+BrainSet::setSpecies(const Species& s)
+{
+   species = s;
    updateDefaultFileNamePrefix();
 }
 
@@ -2099,7 +2129,7 @@ BrainSet::setSpecies(const QString& s)
 void 
 BrainSet::guessSubjectSpeciesStructureFromCoordTopoFileNames()
 {
-   if (species.isEmpty() ||
+   if ((species.getType() == Species::TYPE_UNKNOWN) ||
        subject.isEmpty() ||
        (structure.getType() == Structure::STRUCTURE_TYPE_INVALID)) {
       //
@@ -2140,9 +2170,9 @@ BrainSet::guessSubjectSpeciesStructureFromCoordTopoFileNames()
             //
             // Update data
             //
-            if (species.isEmpty() &&
-                (fSpecies.isEmpty() == false)) {
-               species = fSpecies;
+            if ((species.getType() == Species::TYPE_UNKNOWN) &&
+                (fSpecies != "")) {
+               species.setUsingName(fSpecies);
             }
             if (subject.isEmpty() &&
                 (fCasename.isEmpty() == false)) {
@@ -2160,7 +2190,7 @@ BrainSet::guessSubjectSpeciesStructureFromCoordTopoFileNames()
          //
          // See if done
          //
-         if ((species.isEmpty() == false) &&
+         if ((species.getType() != Species::TYPE_UNKNOWN) &&
              (subject.isEmpty() == false) &&
              (structure.getType() == Structure::STRUCTURE_TYPE_INVALID)) {
             break;
@@ -2183,9 +2213,9 @@ BrainSet::updateDefaultFileNamePrefix()
       const QString hem = structure.getTypeAsAbbreviatedString();
       if ((hem != "U") && 
           (hem.isEmpty() == false) && 
-          (species.isEmpty() == false) && 
+          (species.getType() != Species::TYPE_UNKNOWN) && 
           (subject.isEmpty() == false)) {
-         defaultFileNamePrefix.append(species);
+         defaultFileNamePrefix.append(species.getName());
          defaultFileNamePrefix.append(".");
          defaultFileNamePrefix.append(subject);
          defaultFileNamePrefix.append(".");
@@ -2990,7 +3020,7 @@ BrainSet::createSpecFromScenes(const std::vector<int>& sceneIndices,
    // Set metadata
    //
    newSpecFile.setStructure(structure.getTypeAsString());
-   newSpecFile.setSpecies(species);
+   newSpecFile.setSpecies(species.getName());
    newSpecFile.setSubject(subject);
    newSpecFile.setSpace(stereotaxicSpace);
 
@@ -3031,7 +3061,7 @@ BrainSet::createSpecFromScenes(const std::vector<int>& sceneIndices,
    //
    // Add the scene to the spec file 
    //
-   newSpecFile.addToSpecFile(SpecFile::sceneFileTag,
+   newSpecFile.addToSpecFile(SpecFile::getSceneFileTag(),
                              FileUtilities::basename(newSceneFileName),
                              "",
                              false);
@@ -3088,11 +3118,20 @@ BrainSet::addToSpecFile(const QString& specFileTag, const QString& fileName,
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
          loadedFilesSpecFile.setStructure(Structure::getRightCerebralOrCerebellumAsString());
          break;
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+         loadedFilesSpecFile.setStructure(Structure::getCerebrumAndCerebellumAsString());
+         break;
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+         loadedFilesSpecFile.setStructure(Structure::getSubCorticalAsString());
+         break;
+      case Structure::STRUCTURE_TYPE_ALL:
+         loadedFilesSpecFile.setStructure(Structure::getAllAsString());
+         break;
       case Structure::STRUCTURE_TYPE_INVALID:
          // do not override if unknown
          break;
    }
-   loadedFilesSpecFile.setSpecies(getSpecies());
+   loadedFilesSpecFile.setSpecies(getSpecies().getName());
    loadedFilesSpecFile.setSubject(getSubject());
    //sf.setSpace(getSpace());
    //sf.setCategory(getCategory());
@@ -3115,11 +3154,11 @@ BrainSet::addToSpecFile(const QString& specFileTag, const QString& fileName,
             // since file may not yet exist, ignore read error
          }
          sf.setFileName(specFileName);
-         if (loadedFilesSpecFile.getStructure().isEmpty() == false) {
+         if (loadedFilesSpecFile.getStructure().isValid()) {
             sf.setStructure(loadedFilesSpecFile.getStructure());
          }
-         if (loadedFilesSpecFile.getSpecies().isEmpty() == false) {
-            sf.setSpecies(loadedFilesSpecFile.getSpecies());
+         if (loadedFilesSpecFile.getSpecies().isValid()) {
+            sf.setSpecies(loadedFilesSpecFile.getSpecies().getName());
          }
          if (loadedFilesSpecFile.getSubject().isEmpty() == false) {
             sf.setSubject(loadedFilesSpecFile.getSubject());
@@ -3137,7 +3176,7 @@ BrainSet::writeAreaColorFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.areaColorFile.setAllSelections(SpecFile::SPEC_FALSE);
    areaColorFile->writeFile(name);
-   addToSpecFile(SpecFile::areaColorFileTag, name);
+   addToSpecFile(SpecFile::getAreaColorFileTag(), name);
 }
 /**
  * Read the area color data file file
@@ -3173,7 +3212,7 @@ BrainSet::readAreaColorFile(const QString& name, const bool append,
    areaColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::areaColorFileTag, name);
+      addToSpecFile(SpecFile::getAreaColorFileTag(), name);
    }
 }
 
@@ -3183,7 +3222,7 @@ BrainSet::readAreaColorFile(const QString& name, const bool append,
 void 
 BrainSet::addDocumentFile(const QString& documentFileName)
 {
-   addToSpecFile(SpecFile::documentFileTag, documentFileName);
+   addToSpecFile(SpecFile::getDocumentFileTag(), documentFileName);
 }
       
 /** 
@@ -3194,7 +3233,7 @@ BrainSet::writeArealEstimationFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.arealEstimationFile.setAllSelections(SpecFile::SPEC_FALSE);
    arealEstimationFile->writeFile(name);
-   addToSpecFile(SpecFile::arealEstimationFileTag, name);
+   addToSpecFile(SpecFile::getArealEstimationFileTag(), name);
 }
 
 /**      
@@ -3242,7 +3281,7 @@ BrainSet::readArealEstimationFile(const QString& name, const bool append,
    displaySettingsArealEstimation->update();  
 
    if (updateSpec) {
-      addToSpecFile(SpecFile::arealEstimationFileTag, name);
+      addToSpecFile(SpecFile::getArealEstimationFileTag(), name);
    }
 }
       
@@ -3289,7 +3328,7 @@ BrainSet::readArealEstimationFile(const QString& name,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::arealEstimationFileTag, name);
+      addToSpecFile(SpecFile::getArealEstimationFileTag(), name);
    }
 }
 
@@ -3316,7 +3355,7 @@ BrainSet::readVolumeBorderFile(const QString& name,
    }
 
    if (updateSpec) {
-      addToSpecFile(SpecFile::volumeBorderFileTag, name);
+      addToSpecFile(SpecFile::getVolumeBorderFileTag(), name);
    }
 }
 
@@ -3339,7 +3378,7 @@ BrainSet::writeVolumeBorderFile(const QString& name,
    borderFile->setHeaderTag(AbstractFile::headerTagConfigurationID, "VOLUME");
    
    borderFile->writeFile(name);
-   addToSpecFile(SpecFile::volumeBorderFileTag, name);
+   addToSpecFile(SpecFile::getVolumeBorderFileTag(), name);
 }                                 
 
 /** 
@@ -3378,49 +3417,49 @@ BrainSet::writeBorderFile(const QString& name,
    
    switch(borderFileType) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
-         tag = SpecFile::rawBorderFileTag;
+         tag = SpecFile::getRawBorderFileTag();
          loadedFilesSpecFile.rawBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
-         tag = SpecFile::fiducialBorderFileTag;
+         tag = SpecFile::getFiducialBorderFileTag();
          loadedFilesSpecFile.fiducialBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_INFLATED:
-         tag = SpecFile::inflatedBorderFileTag;
+         tag = SpecFile::getInflatedBorderFileTag();
          loadedFilesSpecFile.inflatedBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
-         tag = SpecFile::veryInflatedBorderFileTag;
+         tag = SpecFile::getVeryInflatedBorderFileTag();
          loadedFilesSpecFile.veryInflatedBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
-         tag = SpecFile::sphericalBorderFileTag;
+         tag = SpecFile::getSphericalBorderFileTag();
          loadedFilesSpecFile.sphericalBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
-         tag = SpecFile::ellipsoidBorderFileTag;
+         tag = SpecFile::getEllipsoidBorderFileTag();
          loadedFilesSpecFile.ellipsoidBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
-         tag = SpecFile::compressedBorderFileTag;
+         tag = SpecFile::getCompressedBorderFileTag();
          loadedFilesSpecFile.compressedBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT:
-         tag = SpecFile::flatBorderFileTag;
+         tag = SpecFile::getFlatBorderFileTag();
          loadedFilesSpecFile.flatBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
-         tag = SpecFile::lobarFlatBorderFileTag;
+         tag = SpecFile::getLobarFlatBorderFileTag();
          loadedFilesSpecFile.lobarFlatBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_HULL:
-         tag = SpecFile::hullCoordFileTag;
+         tag = SpecFile::getHullCoordFileTag();
          loadedFilesSpecFile.hullBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
       default:
-         tag = SpecFile::unknownBorderFileMatchTag;
+         tag = SpecFile::getUnknownBorderFileMatchTag();
          loadedFilesSpecFile.unknownBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
          break;
    }
@@ -3459,38 +3498,38 @@ BrainSet::readBorderFile(const QString& name, const BrainModelSurface::SURFACE_T
    
    switch(st) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
-         tag = SpecFile::rawBorderFileTag;
+         tag = SpecFile::getRawBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
-         tag = SpecFile::fiducialBorderFileTag;
+         tag = SpecFile::getFiducialBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_INFLATED:
-         tag = SpecFile::inflatedBorderFileTag;
+         tag = SpecFile::getInflatedBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
-         tag = SpecFile::veryInflatedBorderFileTag;
+         tag = SpecFile::getVeryInflatedBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
-         tag = SpecFile::sphericalBorderFileTag;
+         tag = SpecFile::getSphericalBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
-         tag = SpecFile::ellipsoidBorderFileTag;
+         tag = SpecFile::getEllipsoidBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
-         tag = SpecFile::compressedBorderFileTag;
+         tag = SpecFile::getCompressedBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT:
-         tag = SpecFile::flatBorderFileTag;
+         tag = SpecFile::getFlatBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
-         tag = SpecFile::lobarFlatBorderFileTag;
+         tag = SpecFile::getLobarFlatBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_HULL:
-         tag = SpecFile::hullBorderFileTag;
+         tag = SpecFile::getHullBorderFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownBorderFileMatchTag;
+         tag = SpecFile::getUnknownBorderFileMatchTag();
          break;
    }
    
@@ -3550,7 +3589,7 @@ BrainSet::writeBorderColorFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.borderColorFile.setAllSelections(SpecFile::SPEC_FALSE);
    borderColorFile->writeFile(name);
-   addToSpecFile(SpecFile::borderColorFileTag, name);
+   addToSpecFile(SpecFile::getBorderColorFileTag(), name);
 }
 
 /**      
@@ -3587,7 +3626,7 @@ BrainSet::readBorderColorFile(const QString& name, const bool append,
    borderColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::borderColorFileTag, name);
+      addToSpecFile(SpecFile::getBorderColorFileTag(), name);
    }
 }
       
@@ -3611,7 +3650,7 @@ BrainSet::writeBorderProjectionFile(const QString& name,
    borderProjFile.setFileComment(commentText);
    borderProjFile.setFilePubMedID(pubMedID);
    borderProjFile.writeFile(name);
-   addToSpecFile(SpecFile::borderProjectionFileTag, name);
+   addToSpecFile(SpecFile::getBorderProjectionFileTag(), name);
    BrainModelBorderFileInfo* bmi = brainModelBorderSet->getBorderProjectionFileInfo();
    bmi->setFileName(name);
    bmi->setFileComment(commentText);
@@ -3651,11 +3690,12 @@ BrainSet::readBorderProjectionFile(const QString& name,
    }
    
    if (hadBorders == false) {
-      brainModelBorderSet->setAllModifiedStatus(false);
+      brainModelBorderSet->setAllBordersModifiedStatus(false);
+      brainModelBorderSet->setProjectionsModified(false);
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::borderProjectionFileTag, name);
+      addToSpecFile(SpecFile::getBorderProjectionFileTag(), name);
    }
 }
      
@@ -3689,7 +3729,7 @@ BrainSet::writeCellFile(const QString& name,
    cf.setFileComment(commentText);
    cf.setFileWriteType(fileFormat);
    cf.writeFile(name);
-   addToSpecFile(SpecFile::cellFileTag, name);
+   addToSpecFile(SpecFile::getCellFileTag(), name);
 }
 
 /**      
@@ -3727,7 +3767,7 @@ BrainSet::readCellFile(const QString& name,
    cellProjectionFile->appendFiducialCellFile(cellFile);
 
    if (updateSpec) {
-      addToSpecFile(SpecFile::cellFileTag, name);
+      addToSpecFile(SpecFile::getCellFileTag(), name);
    }
 }
       
@@ -3742,7 +3782,7 @@ BrainSet::writeVolumeCellFile(const QString& name) throw (FileException)
    CellFile* cf = getVolumeCellFile();
    if (cf != NULL) {
       cf->writeFile(name);
-      addToSpecFile(SpecFile::volumeCellFileTag, name);
+      addToSpecFile(SpecFile::getVolumeCellFileTag(), name);
    }
    else {
       throw FileException("", "There is no volume cell file to write.");
@@ -3803,7 +3843,7 @@ BrainSet::readVolumeCellFile(const QString& name,
    displaySettingsCells->update();
 
    if (updateSpec) {
-      addToSpecFile(SpecFile::volumeCellFileTag, name);
+      addToSpecFile(SpecFile::getVolumeCellFileTag(), name);
    }
 }
       
@@ -3815,7 +3855,7 @@ BrainSet::writeCellColorFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.cellColorFile.setAllSelections(SpecFile::SPEC_FALSE);
    cellColorFile->writeFile(name);
-   addToSpecFile(SpecFile::cellColorFileTag, name);
+   addToSpecFile(SpecFile::getCellColorFileTag(), name);
 }
 
 /**      
@@ -3852,7 +3892,7 @@ BrainSet::readCellColorFile(const QString& name, const bool append,
    cellColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::cellColorFileTag, name);
+      addToSpecFile(SpecFile::getCellColorFileTag(), name);
    }
 }
       
@@ -3864,7 +3904,7 @@ BrainSet::writeCellProjectionFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.cellProjectionFile.setAllSelections(SpecFile::SPEC_FALSE);
    cellProjectionFile->writeFile(name);
-   addToSpecFile(SpecFile::cellProjectionFileTag, name);
+   addToSpecFile(SpecFile::getCellProjectionFileTag(), name);
 }
 
 /**      
@@ -3903,7 +3943,7 @@ BrainSet::readCellProjectionFile(const QString& name,
    displaySettingsCells->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::cellProjectionFileTag, name);
+      addToSpecFile(SpecFile::getCellProjectionFileTag(), name);
    }
 }
 
@@ -3915,7 +3955,7 @@ BrainSet::writeCocomacConnectivityFile(const QString& name) throw (FileException
 {
    loadedFilesSpecFile.cocomacConnectivityFile.setAllSelections(SpecFile::SPEC_FALSE);
    cocomacFile->writeFile(name);
-   addToSpecFile(SpecFile::cocomacConnectivityFileTag, name);
+   addToSpecFile(SpecFile::getCocomacConnectivityFileTag(), name);
 }
 
 /**
@@ -3956,7 +3996,7 @@ BrainSet::readCocomacConnectivityFile(const QString& name, const bool append,
    displaySettingsCoCoMac->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::cocomacConnectivityFileTag, name);
+      addToSpecFile(SpecFile::getCocomacConnectivityFileTag(), name);
    }
 }
 
@@ -3968,7 +4008,7 @@ BrainSet::writeContourFile(const QString& name, ContourFile* cf) throw (FileExce
 {
    loadedFilesSpecFile.contourFile.setAllSelections(SpecFile::SPEC_FALSE);
    cf->writeFile(name);
-   addToSpecFile(SpecFile::contourFileTag, name);
+   addToSpecFile(SpecFile::getContourFileTag(), name);
 }
 
 /**
@@ -3997,7 +4037,7 @@ BrainSet::readContourFile(const QString& name,
          addBrainModel(bmc);
       }
       if (updateSpec) {
-         addToSpecFile(SpecFile::contourFileTag, name);
+         addToSpecFile(SpecFile::getContourFileTag(), name);
       }
    }
    catch (FileException& e) {
@@ -4017,7 +4057,7 @@ BrainSet::writeContourCellFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.contourCellFile.setAllSelections(SpecFile::SPEC_FALSE);
    contourCellFile->writeFile(name);
-   addToSpecFile(SpecFile::contourCellFileTag, name);
+   addToSpecFile(SpecFile::getContourCellFileTag(), name);
 }
 
 /**      
@@ -4055,7 +4095,7 @@ BrainSet::readContourCellFile(const QString& name,
    displaySettingsCells->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::contourCellFileTag, name);
+      addToSpecFile(SpecFile::getContourCellFileTag(), name);
    }
 }
 
@@ -4067,7 +4107,7 @@ BrainSet::writeContourCellColorFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.contourCellColorFile.setAllSelections(SpecFile::SPEC_FALSE);
    contourCellColorFile->writeFile(name);
-   addToSpecFile(SpecFile::contourCellColorFileTag, name);
+   addToSpecFile(SpecFile::getContourCellColorFileTag(), name);
 }
 
 /**      
@@ -4104,7 +4144,7 @@ BrainSet::readContourCellColorFile(const QString& name,
    displaySettingsContours->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::contourCellColorFileTag, name);
+      addToSpecFile(SpecFile::getContourCellColorFileTag(), name);
    }
 }
 
@@ -4116,7 +4156,7 @@ BrainSet::setDeformationMapFileName(const QString& name, const bool updateSpec)
 {
    deformationMapFileName = name;
    if (updateSpec) {
-      addToSpecFile(SpecFile::deformationMapFileTag, name);
+      addToSpecFile(SpecFile::getDeformationMapFileTag(), name);
    }
 }      
       
@@ -4128,7 +4168,7 @@ BrainSet::writeCutsFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.cutsFile.setAllSelections(SpecFile::SPEC_FALSE);
    cutsFile->writeFile(name);
-   addToSpecFile(SpecFile::cutsFileTag, name);
+   addToSpecFile(SpecFile::getCutsFileTag(), name);
 }
 
 /**
@@ -4168,7 +4208,7 @@ BrainSet::readCutsFile(const QString& name, const bool append,
    displaySettingsCuts->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::cutsFileTag, name);
+      addToSpecFile(SpecFile::getCutsFileTag(), name);
    }
 } 
 
@@ -4342,7 +4382,7 @@ BrainSet::writeCoordinateFile(const QString& name,
                }
             }
    
-            cf->setHeaderTag(SpecFile::unknownTopoFileMatchTag, topoFileName);
+            cf->setHeaderTag(SpecFile::getUnknownTopoFileMatchTag(), topoFileName);
             const Structure::STRUCTURE_TYPE hem = bms->getStructure().getType();
             if (hem != Structure::STRUCTURE_TYPE_INVALID) {
                cf->setHeaderTag(AbstractFile::headerTagStructure,
@@ -4431,21 +4471,21 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
             clearVolumeAnatomyFiles();
          }
          volumeAnatomyFiles.push_back(vf);
-         tag = SpecFile::volumeAnatomyFileTag;
+         tag = SpecFile::getVolumeAnatomyFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
          if (append == false) {
             clearVolumeFunctionalFiles();
          }
          volumeFunctionalFiles.push_back(vf);
-         tag = SpecFile::volumeFunctionalFileTag;
+         tag = SpecFile::getVolumeFunctionalFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_PAINT:
          if (append == false) {
             clearVolumePaintFiles();
          }
          volumePaintFiles.push_back(vf);
-         tag = SpecFile::volumePaintFileTag;
+         tag = SpecFile::getVolumePaintFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
          if (append == false) {
@@ -4470,7 +4510,7 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
          //if (volumeProbAtlasFiles.size() > 1) {
          //   volumeProbAtlasFiles[0]->setVoxelColoringInvalid();
          //}
-         tag = SpecFile::volumeProbAtlasFileTag;
+         tag = SpecFile::getVolumeProbAtlasFileTag();
          displaySettingsProbabilisticAtlasVolume->update();
          break;
       case VolumeFile::VOLUME_TYPE_RGB:
@@ -4478,7 +4518,7 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
             clearVolumeRgbFiles();
          }
          volumeRgbFiles.push_back(vf);
-         tag = SpecFile::volumeRgbFileTag;
+         tag = SpecFile::getVolumeRgbFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_ROI:
          return;
@@ -4494,7 +4534,7 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
                vf->clearModified();
             }
             volumeSegmentationFiles.push_back(vf);
-            tag = SpecFile::volumeSegmentationFileTag;
+            tag = SpecFile::getVolumeSegmentationFileTag();
          }
          break;
       case VolumeFile::VOLUME_TYPE_VECTOR:
@@ -4503,7 +4543,7 @@ BrainSet::addVolumeFile(const VolumeFile::VOLUME_TYPE vt, VolumeFile* vf,
                clearVolumeVectorFiles();
             }
             volumeVectorFiles.push_back(vf);
-            tag = SpecFile::volumeVectorFileTag;
+            tag = SpecFile::getVolumeVectorFileTag();
          }
          break;
       case VolumeFile::VOLUME_TYPE_UNKNOWN:
@@ -4755,32 +4795,32 @@ BrainSet::writeMultiVolumeFile(const QString& name,
    //
    // Set spec file tag
    //
-   QString tag(SpecFile::volumeAnatomyFileTag);
+   QString tag(SpecFile::getVolumeAnatomyFileTag());
 
    switch (volumeType) {
       case VolumeFile::VOLUME_TYPE_ANATOMY:
-         tag = SpecFile::volumeAnatomyFileTag;
+         tag = SpecFile::getVolumeAnatomyFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
-         tag = SpecFile::volumeFunctionalFileTag;
+         tag = SpecFile::getVolumeFunctionalFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_PAINT:
-         tag = SpecFile::volumePaintFileTag;
+         tag = SpecFile::getVolumePaintFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
-         tag = SpecFile::volumeProbAtlasFileTag;
+         tag = SpecFile::getVolumeProbAtlasFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_RGB:
-         tag = SpecFile::volumeRgbFileTag;
+         tag = SpecFile::getVolumeRgbFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_ROI:
          throw FileException(FileUtilities::basename(name), "Unrecognized volume type");
          break;
       case VolumeFile::VOLUME_TYPE_SEGMENTATION:
-         tag = SpecFile::volumeSegmentationFileTag;
+         tag = SpecFile::getVolumeSegmentationFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_VECTOR:
-         tag = SpecFile::volumeVectorFileTag;
+         tag = SpecFile::getVolumeVectorFileTag();
          break;
       case VolumeFile::VOLUME_TYPE_UNKNOWN:
          throw FileException(FileUtilities::basename(name), "Unrecognized volume type");
@@ -4833,38 +4873,38 @@ BrainSet::writeVolumeFile(const QString& nameIn,
    //
    // Set spec file tag
    //
-   QString tag(SpecFile::volumeAnatomyFileTag);
+   QString tag(SpecFile::getVolumeAnatomyFileTag());
 
    switch (volumeType) {
       case VolumeFile::VOLUME_TYPE_ANATOMY:
-         tag = SpecFile::volumeAnatomyFileTag;
+         tag = SpecFile::getVolumeAnatomyFileTag();
          loadedFilesSpecFile.volumeAnatomyFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_FUNCTIONAL:
-         tag = SpecFile::volumeFunctionalFileTag;
+         tag = SpecFile::getVolumeFunctionalFileTag();
          loadedFilesSpecFile.volumeFunctionalFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_PAINT:
-         tag = SpecFile::volumePaintFileTag;
+         tag = SpecFile::getVolumePaintFileTag();
          loadedFilesSpecFile.volumePaintFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_PROB_ATLAS:
-         tag = SpecFile::volumeProbAtlasFileTag;
+         tag = SpecFile::getVolumeProbAtlasFileTag();
          loadedFilesSpecFile.volumeProbAtlasFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_RGB:
-         tag = SpecFile::volumeRgbFileTag;
+         tag = SpecFile::getVolumeRgbFileTag();
          loadedFilesSpecFile.volumeRgbFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_ROI:
          throw FileException(FileUtilities::basename(name), "Unrecognized volume type=ROI");
          break;
       case VolumeFile::VOLUME_TYPE_SEGMENTATION:
-         tag = SpecFile::volumeSegmentationFileTag;
+         tag = SpecFile::getVolumeSegmentationFileTag();
          loadedFilesSpecFile.volumeSegmentationFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_VECTOR:
-         tag = SpecFile::volumeVectorFileTag;
+         tag = SpecFile::getVolumeVectorFileTag();
          loadedFilesSpecFile.volumeVectorFile.clearSelectionStatus(vf->getFileName());
          break;
       case VolumeFile::VOLUME_TYPE_UNKNOWN:
@@ -4959,40 +4999,40 @@ BrainSet::readSurfaceFile(const QString& name,
    bool applyTransformFlag = false;
    switch(surfaceType) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
-         tag = SpecFile::rawSurfaceFileTag;
+         tag = SpecFile::getRawSurfaceFileTag();
          applyTransformFlag = (specDataFileTransformationMatrix.isIdentity() == false);
          break;
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
-         tag = SpecFile::fiducialSurfaceFileTag;
+         tag = SpecFile::getFiducialSurfaceFileTag();
          applyTransformFlag = (specDataFileTransformationMatrix.isIdentity() == false);
          break;
       case BrainModelSurface::SURFACE_TYPE_INFLATED:
-         tag = SpecFile::inflatedSurfaceFileTag;
+         tag = SpecFile::getInflatedSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
-         tag = SpecFile::veryInflatedSurfaceFileTag;
+         tag = SpecFile::getVeryInflatedSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
-         tag = SpecFile::sphericalSurfaceFileTag;
+         tag = SpecFile::getSphericalSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
-         tag = SpecFile::ellipsoidSurfaceFileTag;
+         tag = SpecFile::getEllipsoidSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
-         tag = SpecFile::compressedSurfaceFileTag;
+         tag = SpecFile::getCompressedSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT:
-         tag = SpecFile::flatSurfaceFileTag;
+         tag = SpecFile::getFlatSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
-         tag = SpecFile::lobarFlatSurfaceFileTag;
+         tag = SpecFile::getLobarFlatSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_HULL:
-         tag = SpecFile::hullSurfaceFileTag;
+         tag = SpecFile::getHullSurfaceFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownSurfaceFileMatchTag;
+         tag = SpecFile::getUnknownSurfaceFileMatchTag();
          break;
       default:
          throw FileException(FileUtilities::basename(name),
@@ -5122,7 +5162,7 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
 
 /*   
    if (readingSpecFile) {
-      const QString topoFile = cf->getHeaderTag(SpecFile::unknownTopoFileMatchTag);
+      const QString topoFile = cf->getHeaderTag(SpecFile::UnknownTopoFileMatchTag);
       if (topoFile.empty() == false) {
          for (int i = 0; i < getNumberOfTopologyFiles(); i++) {
             if (FileUtilities::basename(topoFile) == 
@@ -5143,7 +5183,7 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
       //
       // Load matching topo file if it is not already loaded
       //
-      const QString topoFile = cf->getHeaderTag(SpecFile::unknownTopoFileMatchTag);
+      const QString topoFile = cf->getHeaderTag(SpecFile::getUnknownTopoFileMatchTag());
       if (topoFile.isEmpty() == false) {
          bool loadIt = true;
          for (int i = 0; i < getNumberOfTopologyFiles(); i++) {
@@ -5156,7 +5196,13 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
          }
          if (QFile::exists(topoFile) && loadIt) {
             try {
-               readTopologyFile(topoFile, TopologyFile::TOPOLOGY_TYPE_UNSPECIFIED, true, false);
+               //
+               // Want to update spec file even if reading files from spec file
+               //
+               const bool readingSpecFileFlagCOPY = readingSpecFileFlag;
+               readingSpecFileFlag = false;
+               readTopologyFile(topoFile, TopologyFile::TOPOLOGY_TYPE_UNSPECIFIED, true, true);
+               readingSpecFileFlag = readingSpecFileFlagCOPY;
                //const int topoIndex = getNumberOfTopologyFiles() - 1;
                //if ((topoIndex >= 0) && (topoIndex < getNumberOfTopologyFiles())) {
                //
@@ -5189,50 +5235,50 @@ BrainSet::readCoordinateFile(const QString& name, const BrainModelSurface::SURFA
    switch(st) {
       case BrainModelSurface::SURFACE_TYPE_RAW:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::rawCoordFileTag;
+         tag = SpecFile::getRawCoordFileTag();
          applyTransformFlag = (specDataFileTransformationMatrix.isIdentity() == false);
          break;
       case BrainModelSurface::SURFACE_TYPE_FIDUCIAL:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::fiducialCoordFileTag;
+         tag = SpecFile::getFiducialCoordFileTag();
          applyTransformFlag = (specDataFileTransformationMatrix.isIdentity() == false);
          break;
       case BrainModelSurface::SURFACE_TYPE_INFLATED:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::inflatedCoordFileTag;
+         tag = SpecFile::getInflatedCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_VERY_INFLATED:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::veryInflatedCoordFileTag;
+         tag = SpecFile::getVeryInflatedCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_SPHERICAL:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::sphericalCoordFileTag;
+         tag = SpecFile::getSphericalCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_ELLIPSOIDAL:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::ellipsoidCoordFileTag;
+         tag = SpecFile::getEllipsoidCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::compressedCoordFileTag;
+         tag = SpecFile::getCompressedCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT:
          topoError = bms->setTopologyFile(topologyCut);
-         tag = SpecFile::flatCoordFileTag;
+         tag = SpecFile::getFlatCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR:
          topoError = bms->setTopologyFile(topologyLobarCut);
-         tag = SpecFile::lobarFlatCoordFileTag;
+         tag = SpecFile::getLobarFlatCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_HULL:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::hullCoordFileTag;
+         tag = SpecFile::getHullCoordFileTag();
          break;
       case BrainModelSurface::SURFACE_TYPE_UNKNOWN:
       case BrainModelSurface::SURFACE_TYPE_UNSPECIFIED:
          topoError = bms->setTopologyFile(topologyClosed);
-         tag = SpecFile::unknownCoordFileMatchTag;
+         tag = SpecFile::getUnknownCoordFileMatchTag();
          break;
       default:
          throw FileException(FileUtilities::basename(name),
@@ -5417,7 +5463,7 @@ BrainSet::writeFociFile(const QString& name,
    ff.setFileComment(commentText);
    ff.setFileWriteType(fileFormat);
    ff.writeFile(name);
-   addToSpecFile(SpecFile::fociFileTag, name);
+   addToSpecFile(SpecFile::getFociFileTag(), name);
 }
 
 /**
@@ -5435,7 +5481,7 @@ BrainSet::writeFociFileOriginalCoordinates(const QString& name,
    ff.setFileWriteType(fileFormat);
    ff.writeFile(name);
 
-   addToSpecFile(SpecFile::fociFileTag, name);
+   addToSpecFile(SpecFile::getFociFileTag(), name);
 }
       
 /**      
@@ -5473,7 +5519,7 @@ BrainSet::readFociFile(const QString& name,
    fociProjectionFile->appendFiducialCellFile(fociFile);
 
    if (updateSpec) {
-      addToSpecFile(SpecFile::fociFileTag, name);
+      addToSpecFile(SpecFile::getFociFileTag(), name);
    }
 }
       
@@ -5485,7 +5531,7 @@ BrainSet::writeFociColorFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.fociColorFile.setAllSelections(SpecFile::SPEC_FALSE);
    fociColorFile->writeFile(name);
-   addToSpecFile(SpecFile::fociColorFileTag, name);
+   addToSpecFile(SpecFile::getFociColorFileTag(), name);
 }
 
 /**      
@@ -5521,7 +5567,7 @@ BrainSet::readFociColorFile(const QString& name, const bool append,
    fociColorFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::fociColorFileTag, name);
+      addToSpecFile(SpecFile::getFociColorFileTag(), name);
    }
 }
       
@@ -5533,7 +5579,7 @@ BrainSet::writeFociProjectionFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.fociProjectionFile.setAllSelections(SpecFile::SPEC_FALSE);
    fociProjectionFile->writeFile(name);
-   addToSpecFile(SpecFile::fociProjectionFileTag, name);
+   addToSpecFile(SpecFile::getFociProjectionFileTag(), name);
 }
 
 /**      
@@ -5574,7 +5620,7 @@ BrainSet::readFociProjectionFile(const QString& name,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::fociProjectionFileTag, name);
+      addToSpecFile(SpecFile::getFociProjectionFileTag(), name);
    }
 }
       
@@ -5586,7 +5632,7 @@ BrainSet::writeFociSearchFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.fociSearchFile.setAllSelections(SpecFile::SPEC_FALSE);
    fociSearchFile->writeFile(name);
-   addToSpecFile(SpecFile::fociSearchFileTag, name);
+   addToSpecFile(SpecFile::getFociSearchFileTag(), name);
 }
 
 /**      
@@ -5627,7 +5673,7 @@ BrainSet::readFociSearchFile(const QString& name,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::fociSearchFileTag, name);
+      addToSpecFile(SpecFile::getFociSearchFileTag(), name);
    }
 }
 
@@ -5639,7 +5685,7 @@ BrainSet::writeGeodesicDistanceFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.geodesicDistanceFile.setAllSelections(SpecFile::SPEC_FALSE);
    geodesicDistanceFile->writeFile(name);
-   addToSpecFile(SpecFile::geodesicDistanceFileTag, name);
+   addToSpecFile(SpecFile::getGeodesicDistanceFileTag(), name);
 }
 
 /**
@@ -5674,7 +5720,7 @@ BrainSet::readGeodesicDistanceFile(const QString& name,
    displaySettingsGeodesicDistance->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::geodesicDistanceFileTag, name);
+      addToSpecFile(SpecFile::getGeodesicDistanceFileTag(), name);
    }
 }
 
@@ -5722,7 +5768,7 @@ BrainSet::readGeodesicDistanceFile(const QString& name, const bool append,
    displaySettingsGeodesicDistance->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::geodesicDistanceFileTag, name);
+      addToSpecFile(SpecFile::getGeodesicDistanceFileTag(), name);
    }
 }
       
@@ -5734,7 +5780,7 @@ BrainSet::writeLatLonFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.latLonFile.setAllSelections(SpecFile::SPEC_FALSE);
    latLonFile->writeFile(name);
-   addToSpecFile(SpecFile::latLonFileTag, name);
+   addToSpecFile(SpecFile::getLatLonFileTag(), name);
 }
 
 /**
@@ -5768,7 +5814,7 @@ BrainSet::readLatLonFile(const QString& name,
    latLonFile->setModified();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::latLonFileTag, name);
+      addToSpecFile(SpecFile::getLatLonFileTag(), name);
    }
 }
 
@@ -5815,7 +5861,7 @@ BrainSet::readLatLonFile(const QString& name, const bool append,
    latLonFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::latLonFileTag, name);
+      addToSpecFile(SpecFile::getLatLonFileTag(), name);
    }
 }
       
@@ -5827,7 +5873,7 @@ BrainSet::writeMetricFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.metricFile.setAllSelections(SpecFile::SPEC_FALSE);
    metricFile->writeFile(name);
-   addToSpecFile(SpecFile::metricFileTag, name);
+   addToSpecFile(SpecFile::getMetricFileTag(), name);
 }
 
 /**
@@ -5874,7 +5920,7 @@ BrainSet::readMetricFile(const QString& name,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::metricFileTag, name);
+      addToSpecFile(SpecFile::getMetricFileTag(), name);
    }
 }
 
@@ -5926,7 +5972,7 @@ BrainSet::readMetricFile(const QString& name, const bool append,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::metricFileTag, name);
+      addToSpecFile(SpecFile::getMetricFileTag(), name);
    }
 }
  
@@ -5938,7 +5984,7 @@ BrainSet::writeDeformationFieldFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.deformationMapFile.setAllSelections(SpecFile::SPEC_FALSE);
    deformationFieldFile->writeFile(name);
-   addToSpecFile(SpecFile::deformationFieldFileTag, name);
+   addToSpecFile(SpecFile::getDeformationFieldFileTag(), name);
 }
 
 /**
@@ -5973,7 +6019,7 @@ BrainSet::readDeformationFieldFile(const QString& name,
    displaySettingsDeformationField->update(); 
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::deformationFieldFileTag, name);
+      addToSpecFile(SpecFile::getDeformationFieldFileTag(), name);
    }
 }
 
@@ -6022,7 +6068,7 @@ BrainSet::readDeformationFieldFile(const QString& name, const bool append,
    displaySettingsDeformationField->update(); 
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::deformationFieldFileTag, name);
+      addToSpecFile(SpecFile::getDeformationFieldFileTag(), name);
    }
 }
       
@@ -6034,7 +6080,7 @@ BrainSet::writePaintFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.paintFile.setAllSelections(SpecFile::SPEC_FALSE);
    paintFile->writeFile(name);
-   addToSpecFile(SpecFile::paintFileTag, name);
+   addToSpecFile(SpecFile::getPaintFileTag(), name);
 }
 
 /**
@@ -6080,7 +6126,7 @@ BrainSet::readPaintFile(const QString& name,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::paintFileTag, name);
+      addToSpecFile(SpecFile::getPaintFileTag(), name);
    }
 }
 
@@ -6131,7 +6177,7 @@ BrainSet::readPaintFile(const QString& name, const bool append,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::paintFileTag, name);
+      addToSpecFile(SpecFile::getPaintFileTag(), name);
    }
 }
 
@@ -6167,7 +6213,7 @@ BrainSet::readStudyMetaDataFile(const QString& name, const bool append,
    studyMetaDataFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::studyMetaDataFileTag, name);
+      addToSpecFile(SpecFile::getStudyMetaDataFileTag(), name);
    }
    
    if (readingSpecFileFlag == false) {
@@ -6183,9 +6229,59 @@ BrainSet::writeStudyMetaDataFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.studyMetaDataFile.setAllSelections(SpecFile::SPEC_FALSE);
    studyMetaDataFile->writeFile(name);
-   addToSpecFile(SpecFile::studyMetaDataFileTag, name);
+   addToSpecFile(SpecFile::getStudyMetaDataFileTag(), name);
 }
 
+/**      
+ * Read the study collection file 
+ */
+void 
+BrainSet::readStudyCollectionFile(const QString& name, const bool append,
+                                  const bool updateSpec) throw (FileException)
+{
+   QMutexLocker locker(&mutexStudyCollectionFile);
+   
+   if (append == false) {
+      clearStudyCollectionFile();
+   }
+   const unsigned long modified = studyCollectionFile->getModified();
+   
+   if (studyCollectionFile->empty()) {
+      try {
+         studyCollectionFile->readFile(name);
+      }
+      catch (FileException& e) {
+         clearStudyCollectionFile();
+         throw e;
+      }
+   }
+   else {
+      StudyCollectionFile scf;
+      scf.readFile(name);
+      studyCollectionFile->append(scf);
+   }
+   
+   studyCollectionFile->setModifiedCounter(modified);
+   
+   if (updateSpec) {
+      addToSpecFile(SpecFile::getStudyCollectionFileTag(), name);
+   }
+   
+   if (readingSpecFileFlag == false) {
+///      displaySettingsStudyMetaData->update();
+   }
+}
+      
+/** 
+ * Write the study collection file.
+ */ 
+void
+BrainSet::writeStudyCollectionFile(const QString& name) throw (FileException)
+{
+   loadedFilesSpecFile.studyCollectionFile.setAllSelections(SpecFile::SPEC_FALSE);
+   studyCollectionFile->writeFile(name);
+   addToSpecFile(SpecFile::getStudyCollectionFileTag(), name);
+}
 
       
 /**      
@@ -6220,7 +6316,7 @@ BrainSet::readVocabularyFile(const QString& name, const bool append,
    vocabularyFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::vocabularyFileTag, name);
+      addToSpecFile(SpecFile::getVocabularyFileTag(), name);
    }
 }
       
@@ -6232,7 +6328,7 @@ BrainSet::writeVocabularyFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.vocabularyFile.setAllSelections(SpecFile::SPEC_FALSE);
    vocabularyFile->writeFile(name);
-   addToSpecFile(SpecFile::vocabularyFileTag, name);
+   addToSpecFile(SpecFile::getVocabularyFileTag(), name);
 }
 
 /**      
@@ -6268,7 +6364,7 @@ BrainSet::readWustlRegionFile(const QString& name, const bool append,
    displaySettingsWustlRegion->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::wustlRegionFileTag, name);
+      addToSpecFile(SpecFile::getWustlRegionFileTag(), name);
    }
 }
       
@@ -6280,7 +6376,7 @@ BrainSet::writeWustlRegionFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.wustlRegionFile.setAllSelections(SpecFile::SPEC_FALSE);
    wustlRegionFile->writeFile(name);
-   addToSpecFile(SpecFile::wustlRegionFileTag, name);
+   addToSpecFile(SpecFile::getWustlRegionFileTag(), name);
 }
 
 /** 
@@ -6291,7 +6387,7 @@ BrainSet::writePaletteFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.paletteFile.setAllSelections(SpecFile::SPEC_FALSE);
    paletteFile->writeFile(name);
-   addToSpecFile(SpecFile::paletteFileTag, name);
+   addToSpecFile(SpecFile::getPaletteFileTag(), name);
 }
 
 /**      
@@ -6328,7 +6424,7 @@ BrainSet::readPaletteFile(const QString& name, const bool append,
    displaySettingsSurfaceShape->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::paletteFileTag, name);
+      addToSpecFile(SpecFile::getPaletteFileTag(), name);
    }
 }
       
@@ -6340,7 +6436,7 @@ BrainSet::writeParamsFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.paramsFile.setAllSelections(SpecFile::SPEC_FALSE);
    paramsFile->writeFile(name);
-   addToSpecFile(SpecFile::paramsFileTag, name);
+   addToSpecFile(SpecFile::getParamsFileTag(), name);
 }
 
 /**      
@@ -6379,7 +6475,7 @@ BrainSet::readParamsFile(const QString& name, const bool append,
    paramsFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::paramsFileTag, name);
+      addToSpecFile(SpecFile::getParamsFileTag(), name);
    }
 }
       
@@ -6391,7 +6487,7 @@ BrainSet::writeProbabilisticAtlasFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.atlasFile.setAllSelections(SpecFile::SPEC_FALSE);
    probabilisticAtlasSurfaceFile->writeFile(name);
-   addToSpecFile(SpecFile::atlasFileTag, name);
+   addToSpecFile(SpecFile::getAtlasFileTag(), name);
 }
 
 /**      
@@ -6438,7 +6534,7 @@ BrainSet::readProbabilisticAtlasFile(const QString& name, const bool append,
    displaySettingsProbabilisticAtlasSurface->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::atlasFileTag, name);
+      addToSpecFile(SpecFile::getAtlasFileTag(), name);
    }
 }
       
@@ -6450,7 +6546,7 @@ BrainSet::writeRgbPaintFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.rgbPaintFile.setAllSelections(SpecFile::SPEC_FALSE);
    rgbPaintFile->writeFile(name);
-   addToSpecFile(SpecFile::rgbPaintFileTag, name);
+   addToSpecFile(SpecFile::getRgbPaintFileTag(), name);
 }
 
 /**      
@@ -6497,7 +6593,7 @@ BrainSet::readRgbPaintFile(const QString& name, const bool append,
    displaySettingsRgbPaint->update();  
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::rgbPaintFileTag, name);
+      addToSpecFile(SpecFile::getRgbPaintFileTag(), name);
    }
 }
       
@@ -6509,7 +6605,7 @@ BrainSet::writeSceneFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.sceneFile.setAllSelections(SpecFile::SPEC_FALSE);
    sceneFile->writeFile(name);
-   addToSpecFile(SpecFile::sceneFileTag, name);
+   addToSpecFile(SpecFile::getSceneFileTag(), name);
 }
 
 /**      
@@ -6560,7 +6656,7 @@ BrainSet::readSceneFile(const QString& name, const bool append,
    displaySettingsScene->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::sceneFileTag, name);
+      addToSpecFile(SpecFile::getSceneFileTag(), name);
    }
 }
       
@@ -6572,7 +6668,7 @@ BrainSet::writeSectionFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.sectionFile.setAllSelections(SpecFile::SPEC_FALSE);
    sectionFile->writeFile(name);
-   addToSpecFile(SpecFile::sectionFileTag, name);
+   addToSpecFile(SpecFile::getSectionFileTag(), name);
 }
 
 /**      
@@ -6618,7 +6714,7 @@ BrainSet::readSectionFile(const QString& name, const bool append,
    sectionFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::sectionFileTag, name);
+      addToSpecFile(SpecFile::getSectionFileTag(), name);
    }
    displaySettingsSection->update();
 }
@@ -6631,7 +6727,7 @@ BrainSet::writeSurfaceShapeFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.surfaceShapeFile.setAllSelections(SpecFile::SPEC_FALSE);
    surfaceShapeFile->writeFile(name);
-   addToSpecFile(SpecFile::surfaceShapeFileTag, name);
+   addToSpecFile(SpecFile::getSurfaceShapeFileTag(), name);
 }
 
 /**
@@ -6679,7 +6775,7 @@ BrainSet::readSurfaceShapeFile(const QString& name,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::surfaceShapeFileTag, name);
+      addToSpecFile(SpecFile::getSurfaceShapeFileTag(), name);
    }
 }
 
@@ -6730,7 +6826,7 @@ BrainSet::readSurfaceShapeFile(const QString& name, const bool append,
    }
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::surfaceShapeFileTag, name);
+      addToSpecFile(SpecFile::getSurfaceShapeFileTag(), name);
    }
 }
       
@@ -6742,7 +6838,7 @@ BrainSet::writeSurfaceVectorFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.surfaceVectorFile.setAllSelections(SpecFile::SPEC_FALSE);
    surfaceVectorFile->writeFile(name);
-   addToSpecFile(SpecFile::surfaceVectorFileTag, name);
+   addToSpecFile(SpecFile::getSurfaceVectorFileTag(), name);
 }
 
 /**
@@ -6785,7 +6881,7 @@ BrainSet::readSurfaceVectorFile(const QString& name,
    displaySettingsSurfaceVectors->update();  
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::surfaceVectorFileTag, name);
+      addToSpecFile(SpecFile::getSurfaceVectorFileTag(), name);
    }
 }
 
@@ -6833,7 +6929,7 @@ BrainSet::readSurfaceVectorFile(const QString& name, const bool append,
    displaySettingsSurfaceVectors->update();  
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::surfaceVectorFileTag, name);
+      addToSpecFile(SpecFile::getSurfaceVectorFileTag(), name);
    }
 }
 
@@ -6845,7 +6941,7 @@ BrainSet::writeTopographyFile(const QString& name) throw (FileException)
 {
    loadedFilesSpecFile.topographyFile.setAllSelections(SpecFile::SPEC_FALSE);
    topographyFile->writeFile(name);
-   addToSpecFile(SpecFile::topographyFileTag, name);
+   addToSpecFile(SpecFile::getTopographyFileTag(), name);
 }
 
 /**      
@@ -6894,7 +6990,7 @@ BrainSet::readTopographyFile(const QString& name, const bool append,
    displaySettingsTopography->update();
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::topographyFileTag, name);
+      addToSpecFile(SpecFile::getTopographyFileTag(), name);
    }
 }
 
@@ -6906,7 +7002,7 @@ BrainSet::writeTransformationMatrixFile(const QString& name) throw (FileExceptio
 {
    loadedFilesSpecFile.transformationMatrixFile.setAllSelections(SpecFile::SPEC_FALSE);
    transformationMatrixFile->writeFile(name);
-   addToSpecFile(SpecFile::transformationMatrixFileTag, name);
+   addToSpecFile(SpecFile::getTransformationMatrixFileTag(), name);
 }
 
 /**      
@@ -6941,7 +7037,7 @@ BrainSet::readTransformationMatrixFile(const QString& name, const bool append,
    transformationMatrixFile->setModifiedCounter(modified);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::transformationMatrixFileTag, name);
+      addToSpecFile(SpecFile::getTransformationMatrixFileTag(), name);
    }
 }
 
@@ -6969,7 +7065,7 @@ BrainSet::readTransformationDataFile(const QString& name, const bool append,
    transformationDataFiles.push_back(ab);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::transformationDataFileTag, name);
+      addToSpecFile(SpecFile::getTransformationDataFileTag(), name);
    }
 }
 
@@ -7005,20 +7101,20 @@ BrainSet::writeTopologyFile(const QString& name,
    QString tag;
    switch(tt) {
       case TopologyFile::TOPOLOGY_TYPE_CLOSED:
-         tag = SpecFile::closedTopoFileTag;
+         tag = SpecFile::getClosedTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_OPEN:
-         tag = SpecFile::openTopoFileTag;
+         tag = SpecFile::getOpenTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_CUT:
-         tag = SpecFile::cutTopoFileTag;
+         tag = SpecFile::getCutTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_LOBAR_CUT:
-         tag = SpecFile::lobarCutTopoFileTag;
+         tag = SpecFile::getLobarCutTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_UNKNOWN:
       case TopologyFile::TOPOLOGY_TYPE_UNSPECIFIED:
-         tag = SpecFile::unknownTopoFileMatchTag;
+         tag = SpecFile::getUnknownTopoFileMatchTag();
          break;
    }
    
@@ -7104,21 +7200,21 @@ BrainSet::readTopologyFile(const QString& name, const TopologyFile::TOPOLOGY_TYP
 
    switch(tt) {
       case TopologyFile::TOPOLOGY_TYPE_CLOSED:
-         tag = SpecFile::closedTopoFileTag;
+         tag = SpecFile::getClosedTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_OPEN:
-         tag = SpecFile::openTopoFileTag;
+         tag = SpecFile::getOpenTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_CUT:
-         tag = SpecFile::cutTopoFileTag;
+         tag = SpecFile::getCutTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_LOBAR_CUT:
-         tag = SpecFile::lobarCutTopoFileTag;
+         tag = SpecFile::getLobarCutTopoFileTag();
          break;
       case TopologyFile::TOPOLOGY_TYPE_UNKNOWN:
       case TopologyFile::TOPOLOGY_TYPE_UNSPECIFIED:
       default:
-         tag = SpecFile::unknownTopoFileMatchTag;
+         tag = SpecFile::getUnknownTopoFileMatchTag();
          break;
    }
    
@@ -7395,7 +7491,7 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
          
          specFileName = specFileNameIn;
          
-         structure.setTypeFromString(specFileIn.getStructure());
+         structure = specFileIn.getStructure();
 /*
          hemisphere = Hemisphere::HEMISPHERE_UNKNOWN;
          if (specFileIn.getStructure() == "right") {
@@ -7917,6 +8013,24 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
          }
          try {
             readRgbPaintFile(specFileIn.rgbPaintFile.files[i].filename, true, true);
+         }
+         catch (FileException& e) {
+            errorMessages.push_back(e.whatQString());
+         }
+      }
+   }
+
+   //
+   // Read the study collection files
+   //
+   for (unsigned int i = 0; i < specFileIn.studyCollectionFile.files.size(); i++) {
+      if (specFileIn.studyCollectionFile.files[i].selected) {
+         if (updateFileReadProgressDialog(specFileIn.studyCollectionFile.files[i].filename, 
+                                          progressFileCounter, progressDialog)) {
+            return true;
+         }
+         try {
+            readStudyCollectionFile(specFileIn.studyCollectionFile.files[i].filename, true, true);
          }
          catch (FileException& e) {
             errorMessages.push_back(e.whatQString());
@@ -8832,7 +8946,7 @@ BrainSet::readSpecFileMultiThreaded(const SPEC_FILE_READ_MODE specReadMode,
          
          specFileName = specFileNameIn;
          
-         structure.setTypeFromString(specFileIn.getStructure());
+         structure = specFileIn.getStructure();
 /*
          hemisphere = Hemisphere::HEMISPHERE_UNKNOWN;
          if (specFileIn.getStructure() == "right") {
@@ -9063,7 +9177,8 @@ BrainSet::postSpecFileReadInitializations()
 
    clearNodeAttributes();
 
-   brainModelBorderSet->setAllModifiedStatus(false);
+   brainModelBorderSet->setAllBordersModifiedStatus(false);
+   brainModelBorderSet->setProjectionsModified(false);
 
    if (sectionFile->getNumberOfColumns() == 0) {
       BrainModelSurface* bms = getActiveFiducialSurface();
@@ -9589,7 +9704,7 @@ BrainSet::generateCerebralHullVtkFile(const VolumeFile* segmentationVolume,
    //
    // Update spec file 
    //
-   addToSpecFile(SpecFile::cerebralHullFileTag, vtkName);
+   addToSpecFile(SpecFile::getCerebralHullFileTag(), vtkName);
 
    //
    // Set name of cerebral null
@@ -9828,6 +9943,33 @@ BrainSet::assignFociColors()
    assignTransformationDataFileColors();
 }
 
+/**
+ * delete a transformation data file.
+ */
+void 
+BrainSet::deleteTransformationDataFile(const int fileIndex)
+{
+   if ((fileIndex >= 0) &&
+       (fileIndex < getNumberOfTransformationDataFiles())) {
+      delete transformationDataFiles[fileIndex];
+      transformationDataFiles.erase(transformationDataFiles.begin() + fileIndex);
+   }
+}
+
+/**
+ * delete a transformation data file.
+ */
+void 
+BrainSet::deleteTransformationDataFile(AbstractFile* af)
+{
+   for (int i = 0; i < getNumberOfTransformationDataFiles(); i++) {
+      if (getTransformationDataFile(i) == af) {
+         deleteTransformationDataFile(i);
+         break;
+      }
+   }
+}
+      
 /**
  * get have transformation data cell files.
  */
@@ -10197,7 +10339,7 @@ BrainSet::readImageFile(const QString& name, const bool append,
    imageFiles.push_back(img);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::imageFileTag, name);
+      addToSpecFile(SpecFile::getImageFileTag(), name);
    }
    displaySettingsImages->update();
 }
@@ -10211,7 +10353,7 @@ BrainSet::writeImageFile(const QString& name,
 {
    loadedFilesSpecFile.imageFile.clearSelectionStatus(img->getFileName());
    img->writeFile(name);
-   addToSpecFile(SpecFile::imageFileTag, name);
+   addToSpecFile(SpecFile::getImageFileTag(), name);
    displaySettingsImages->update();
 }
 
@@ -10296,7 +10438,7 @@ BrainSet::readVtkModelFile(const QString& name, const bool append,
    vtkModelFiles.push_back(vmf);
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::vtkModelFileTag, name);
+      addToSpecFile(SpecFile::getVtkModelFileTag(), name);
    }
    displaySettingsModels->update();
 }
@@ -10310,7 +10452,7 @@ BrainSet::writeVtkModelFile(const QString& name,
 {
    loadedFilesSpecFile.vtkModelFile.clearSelectionStatus(vmf->getFileName());
    vmf->writeFile(name);
-   addToSpecFile(SpecFile::vtkModelFileTag, name);
+   addToSpecFile(SpecFile::getVtkModelFileTag(), name);
 }      
 
 /**
@@ -12478,6 +12620,16 @@ BrainSet::clearStudyMetaDataFile()
 {
    studyMetaDataFile->clear();
    loadedFilesSpecFile.studyMetaDataFile.setAllSelections(SpecFile::SPEC_FALSE);
+}
+
+/**
+ * clear the file
+ */
+void 
+BrainSet::clearStudyCollectionFile()
+{
+   studyCollectionFile->clear();
+   loadedFilesSpecFile.studyCollectionFile.setAllSelections(SpecFile::SPEC_FALSE);
 }
 
 /**

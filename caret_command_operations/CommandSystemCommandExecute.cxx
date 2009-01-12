@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <cstdlib>
 #include <iostream>
 
 #include <QProcess>
@@ -92,7 +93,23 @@ CommandSystemCommandExecute::executeCommand() throw (BrainModelAlgorithmExceptio
    while (parameters->getParametersAvailable()) {
       systemCommandParameters += parameters->getNextParameterAsString("System Command Parameters");
    }
-   
+
+//
+// Use the system() command.  The reason is that when the script executor is run
+// it is already in a QProcess and this would also run in another QProcess and 
+// running a QProcess in another QProcess does not seem to work.
+//
+#define USE_SYSTEM_COMMAND
+#ifdef USE_SYSTEM_COMMAND
+   const QString cmdText(systemCommandName
+                         + " "
+                         + systemCommandParameters.join(" "));
+   const int result = std::system(cmdText.toAscii().constData());
+   if (result != 0) {
+      throw CommandException("Error Code: " + QString::number(result) 
+                             + " running: " + cmdText);
+   }
+#else  // USE_SYSTEM_COMMAND   
    //
    // Create a new QProcess and add its arguments
    //
@@ -132,6 +149,7 @@ CommandSystemCommandExecute::executeCommand() throw (BrainModelAlgorithmExceptio
          errorMessage.append("COMMAND FAILED1: ");
          errorMessage.append(cmdText);
          errorMessage.append("\nExit Code " + QString::number(process.exitCode()));
+         errorMessage.append("\nError Message" + process.errorString());
          errorMessage.append("\nCommand output: "
                              + processOutput);
       }
@@ -144,6 +162,7 @@ CommandSystemCommandExecute::executeCommand() throw (BrainModelAlgorithmExceptio
    if (errorMessage.isEmpty() == false) {
       throw CommandException(errorMessage);
    }
+#endif // USE_SYSTEM_COMMAND
 }
 
       

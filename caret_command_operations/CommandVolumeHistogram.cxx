@@ -41,6 +41,8 @@ CommandVolumeHistogram::CommandVolumeHistogram()
    : CommandBase("-volume-histogram",
                  "VOLUME HISTOGRAM")
 {
+   numberOfBuckets = 64;
+   yMaximum        = 500000.0;
 }
 
 /**
@@ -48,8 +50,6 @@ CommandVolumeHistogram::CommandVolumeHistogram()
  */
 CommandVolumeHistogram::~CommandVolumeHistogram()
 {
-   numberOfBuckets = 64;
-   yMaximum        = 500000.0;
 }
 
 /**

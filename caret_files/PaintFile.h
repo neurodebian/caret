@@ -237,6 +237,8 @@ class PaintFile : public GiftiNodeDataFile {
       void copyHelperPaint(const PaintFile& pf);
 };
 
+#endif // __PAINT_FILE_H__
+
 #ifdef _PAINT_FILE_MAIN_
     const QString PaintFile::columnNameLobes = "Lobes";
     const QString PaintFile::columnNameGeography = "Geography";
@@ -245,5 +247,3 @@ class PaintFile : public GiftiNodeDataFile {
     const QString PaintFile::columnNameModality = "Modality";
     const QString PaintFile::tagNumberOfPaintNames = "tag-number-of-paint-names";
 #endif // _PAINT_FILE_MAIN_
-
-#endif // __PAINT_FILE_H__

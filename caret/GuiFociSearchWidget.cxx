@@ -36,6 +36,7 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QScrollArea>
 #include <QSignalMapper>
 #include <QSpinBox>
@@ -51,6 +52,7 @@
 #include "GuiFociSearchWidget.h"
 #include "GuiMainWindow.h"
 #include "GuiNameSelectionDialog.h"
+#include "StudyMetaDataFile.h"
 #include "WuQDataEntryDialog.h"
 #include "WuQWidgetGroup.h"
 #include "global_variables.h"
@@ -120,6 +122,53 @@ GuiFociSearchWidget::~GuiFociSearchWidget()
 {
 }
                      
+/**
+ * create a scene (read display settings).
+ */
+SceneFile::SceneClass 
+GuiFociSearchWidget::saveScene()
+{
+   SceneFile::SceneClass sc("GuiFociSearchWidget");
+   if (searchNameLineEdit != NULL) {
+      sc.addSceneInfo(SceneFile::SceneInfo("searchNameLineEdit", 
+                                            searchNameLineEdit->text()));
+   }
+
+   return sc;
+}
+                             
+/**
+ * apply a scene (set display settings).
+ */
+void 
+GuiFociSearchWidget::showScene(const SceneFile::Scene& scene,
+                                   QString& /*errorMessage*/)
+{
+   const int numClasses = scene.getNumberOfSceneClasses();
+   for (int nc = 0; nc < numClasses; nc++) {
+      const SceneFile::SceneClass* sc = scene.getSceneClass(nc);
+      if (sc->getName() == "GuiFociSearchWidget") {
+         const int num = sc->getNumberOfSceneInfo();
+         for (int i = 0; i < num; i++) {
+            const SceneFile::SceneInfo* si = sc->getSceneInfo(i);
+            const QString infoName = si->getName();
+
+            if (infoName == "searchNameLineEdit") {
+               const QString searchName = si->getValueAsString();
+               const int numSearchSets = fociSearchFile->getNumberOfFociSearchSets();
+               for (int is = 0; is < numSearchSets; is++) {
+                  const FociSearchSet* fss = fociSearchFile->getFociSearchSet(is);
+                  if (fss->getName() == searchName) {
+                     searchSelectionSpinBox->setValue(is + 1); // indexes 1..N
+                     slotSearchSelectionSpinBox(searchSelectionSpinBox->value());
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+
 /**
  * create the search operation group.
  */
@@ -400,13 +449,54 @@ void
 GuiFociSearchWidget::slotAddSearchPushButton()
 {
    FociSearchSet* fss = new FociSearchSet;
-   fociSearchFile->addFociSearchSet(fss);
+   addSearchSetToFociSearchFile(fss);
+}
+
+/**
+ * add a search set.
+ */
+void 
+GuiFociSearchWidget::addSearchSetToFociSearchFile(FociSearchSet* fss)
+{
+   int selectedSearchNumber = 0;
+   if (fociSearchFile->getNumberOfFociSearchSets() <= 0) {
+      fociSearchFile->addFociSearchSet(fss);
+      selectedSearchNumber = fociSearchFile->getNumberOfFociSearchSets();
+   }
+   else {
+      WuQDataEntryDialog ded(this);
+      ded.setTextAtTop("Insert New Search: ", false);
+      QRadioButton* beginningRadioButton = ded.addRadioButton("At Beginning"); 
+      QRadioButton* afterSelectedRadioButton = ded.addRadioButton("After Current"); 
+      QRadioButton* endRadioButton = ded.addRadioButton("At End"); 
+      endRadioButton->setChecked(true);
+      if (ded.exec() == WuQDataEntryDialog::Accepted) { 
+         int afterIndex = 0;          
+         if (beginningRadioButton->isChecked()) {
+            afterIndex = -1;
+            selectedSearchNumber = 1;
+         }
+         else if (afterSelectedRadioButton->isChecked()) {
+            afterIndex = searchSelectionSpinBox->value() - 1;
+            selectedSearchNumber = afterIndex + 2;
+         }
+         else if (endRadioButton->isChecked()) {
+            afterIndex = fociSearchFile->getNumberOfFociSearchSets();
+            selectedSearchNumber = afterIndex + 1;
+         }
+         fociSearchFile->insertFociSearchSet(fss, afterIndex);
+      }
+      else {
+         delete fss;
+         return;
+      }
+   }
    
    //
    // Note that "searchSelectionSpinBox" indexes 1..N
    //
    loadFociSearches();
-   searchSelectionSpinBox->setValue(fociSearchFile->getNumberOfFociSearchSets());
+   searchSelectionSpinBox->setValue(selectedSearchNumber);
    slotSearchSelectionSpinBox(searchSelectionSpinBox->value());
 }
 
@@ -482,15 +572,13 @@ GuiFociSearchWidget::slotCopySearchSetPushButton()
    const int searchNumber = searchSelectionSpinBox->value() - 1;
    if ((searchNumber >= 0) &&
        (searchNumber < fociSearchFile->getNumberOfFociSearchSets())) {
-      fociSearchFile->copySearchSetToNewSearchSet(searchNumber);
+      const FociSearchSet* copySearchSet = fociSearchFile->getFociSearchSet(searchNumber);
+      if (copySearchSet != NULL) {
+         FociSearchSet* fss = new FociSearchSet(*copySearchSet);
+         fss->setName("Copy of " + fss->getName());
+         addSearchSetToFociSearchFile(fss);
+      }
    }
-
-   //
-   // Note that "searchSelectionSpinBox" indexes 1..N
-   //
-   loadFociSearches();
-   searchSelectionSpinBox->setValue(fociSearchFile->getNumberOfFociSearchSets());
-   slotSearchSelectionSpinBox(searchSelectionSpinBox->value());
 }
       
 /**
@@ -768,7 +856,7 @@ GuiFociSearchWidget::slotAssistanceToolButtonClicked(int item)
             QDoubleSpinBox* xDSB = ded.addDoubleSpinBox("X", 0.0);
             QDoubleSpinBox* yDSB = ded.addDoubleSpinBox("Y", 0.0);
             QDoubleSpinBox* zDSB = ded.addDoubleSpinBox("Z", 0.0);
-            QDoubleSpinBox* distanceDSB = ded.addDoubleSpinBox("Distance", 10.0);
+            QDoubleSpinBox* distanceDSB = ded.addDoubleSpinBox("Sphere Radius", 10.0);
             if (ded.exec() == WuQDataEntryDialog::Accepted) {
                const QString s = 
                   QString::number(xDSB->value(), 'f', 3) + " "
@@ -784,6 +872,9 @@ GuiFociSearchWidget::slotAssistanceToolButtonClicked(int item)
             
             return;
          }
+         break;
+      case FociSearch::ATTRIBUTE_STUDY_SPECIES:
+         defaultItem = GuiNameSelectionDialog::LIST_SPECIES;
          break;
       case FociSearch::ATTRIBUTE_FOCUS_STRUCTURE:
          defaultItem = GuiNameSelectionDialog::LIST_STRUCTURE;
@@ -819,6 +910,8 @@ GuiFociSearchWidget::slotAssistanceToolButtonClicked(int item)
          defaultItem = GuiNameSelectionDialog::LIST_STUDY_TABLE_SUBHEADERS;
          break;
       case FociSearch::ATTRIBUTE_STUDY_TITLE:
+         break;
+      case FociSearch::ATTRIBUTE_NUMBER_OF:
          break;
    }
    
@@ -1006,7 +1099,8 @@ GuiFociSearchWidget::performSearch(const bool searchDisplayedOnlyFlag)
    }
    
    searchResultsLabel->setText("");
-   
+
+   StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();   
    FociSearchSet* fss = getSelectedSearchSet();
    if (fss != NULL) {
       BrainModelSurfaceFociSearch fociSearch(theMainWindow->getBrainSet(),
@@ -1036,7 +1130,11 @@ GuiFociSearchWidget::performSearch(const bool searchDisplayedOnlyFlag)
                                   + matchingStudiesString
                                   + " of "
                                   + QString::number(fociProjectionFile->getNumberOfCellProjections())
-                                  + " foci matched.");
+                                  + " foci matched from "
+                                  + QString::number(fociSearch.getNumberOfStudiesUsedByMatchingFoci())
+                                  + " of "
+                                  + QString::number(smdf->getNumberOfStudyMetaData())
+                                  + " studies.");
       DisplaySettingsFoci* dsf = theMainWindow->getBrainSet()->getDisplaySettingsFoci();
       dsf->determineDisplayedFoci();   
       GuiBrainModelOpenGL::updateAllGL();         

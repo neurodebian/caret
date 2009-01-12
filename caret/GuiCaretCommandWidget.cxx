@@ -221,7 +221,15 @@ GuiCaretCommandWidget::getCommandLineForCommandExecution(QString& commandSwitchO
                //
                //QStringList sl;
                //StringUtilities::tokenStringsWithQuotes(param, sl);
-               commandParametersOut += param;
+               if (param.count() == 1) {
+                  const QString p = param.at(0).trimmed();
+                  if (p.isEmpty() == false) {
+                     commandParametersOut += param;
+                  }
+               }
+               else {
+                  commandParametersOut += param;
+               }
             }
             else {
                commandParametersOut += param;
@@ -292,7 +300,28 @@ GuiCaretCommandWidget::setParameters(const QStringList& parametersIn)
    for (int i = 0; i < num; i++) {
       GuiCaretCommandParameter* cmdParam = commandParameters[i];
       if (cmdParam->getOptionalSwitch().isEmpty()) {
-         cmdParam->setParameterValueFromText(parametersIn.at(i));
+         //
+         // If parameter is variable list, use all 
+         // remaining parameters
+         //
+         GuiCaretCommandParameterVariableList* varListParam =
+           dynamic_cast<GuiCaretCommandParameterVariableList*>(cmdParam);
+         if (varListParam != NULL) {
+            QString str = "";
+            while (i < static_cast<int>(parameters.count())) {
+               if (str.isEmpty() == false) {
+                  str += " ";
+               }
+               str += parametersIn.at(i);
+               
+               i++;
+            } 
+            cmdParam->setParameterValueFromText(str);
+         }
+         else {
+            cmdParam->setParameterValueFromText(parametersIn.at(i));
+         }
+         
       }
    }
 }
@@ -372,7 +401,10 @@ GuiCaretCommandParameter::getParameterForGUI(bool& parameterValidOut) const
    }
    
    if (parameterValidOut) {
-      cmdParams += getParameterValueAsText().trimmed();
+      const QStringList sl = getParameterValueAsText();
+      for (int i = 0; i < sl.count(); i++) {
+         cmdParams += sl.at(i).trimmed();
+      }
    }
    
    return cmdParams;
@@ -499,11 +531,11 @@ GuiCaretCommandParameterFloat::~GuiCaretCommandParameterFloat()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList
 GuiCaretCommandParameterFloat::getParameterValueAsText() const
 {
    const QString s = QString::number(doubleSpinBox->value(), 'f', 3);
-   return s;
+   return QStringList(s);
 }
    
 /**
@@ -555,11 +587,11 @@ GuiCaretCommandParameterInt::~GuiCaretCommandParameterInt()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterInt::getParameterValueAsText() const
 {
    const QString s = QString::number(spinBox->value());
-   return s;
+   return QStringList(s);
 }
    
 /**
@@ -615,14 +647,14 @@ GuiCaretCommandParameterBoolean::~GuiCaretCommandParameterBoolean()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterBoolean::getParameterValueAsText() const
 {
    QString s("false");
    if (comboBox->currentIndex() == 1) {
       s = "true";
    }
-   return s;
+   return QStringList(s);
 }
    
 /**
@@ -723,10 +755,10 @@ GuiCaretCommandParameterFile::slotPushButtonPressed()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterFile::getParameterValueAsText() const
 {
-   return fileNameLineEdit->text();
+   return QStringList(fileNameLineEdit->text().split(' ', QString::SkipEmptyParts));
 }
 
 /**
@@ -793,10 +825,10 @@ GuiCaretCommandParameterDirectory::slotPushButtonPressed()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterDirectory::getParameterValueAsText() const
 {
-   return directoryNameLineEdit->text();
+   return QStringList(directoryNameLineEdit->text());
 }
 
 /**
@@ -847,12 +879,12 @@ GuiCaretCommandParameterDataItemList::~GuiCaretCommandParameterDataItemList()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterDataItemList::getParameterValueAsText() const
 {
    const int indx = comboBox->currentIndex();
    const QString s = dataValues[indx];
-   return s;
+   return QStringList(s);
 }
 
 /**
@@ -910,12 +942,12 @@ GuiCaretCommandParameterStructure::~GuiCaretCommandParameterStructure()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterStructure::getParameterValueAsText() const
 {
    const int indx = comboBox->currentIndex();
    const QString s = comboBoxValues[indx];
-   return s;
+   return QStringList(s);
 }
 
 /**
@@ -969,11 +1001,11 @@ GuiCaretCommandParameterString::~GuiCaretCommandParameterString()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterString::getParameterValueAsText() const
 {
    const QString s = lineEdit->text();
-   return s;
+   return QStringList(s);
 }
    
 /**
@@ -1013,7 +1045,7 @@ GuiCaretCommandParameterVariableList::GuiCaretCommandParameterVariableList(const
    const int rowNumber = gridLayout->rowCount();
    gridLayout->addWidget(label, rowNumber, GRID_COLUMN_DESCRIPTION);
    gridLayout->addWidget(addFilePushButton, rowNumber + 1, GRID_COLUMN_DESCRIPTION);
-   gridLayout->addWidget(textEdit, rowNumber, 1, rowNumber + 2, GRID_COLUMN_VALUE);
+   gridLayout->addWidget(textEdit, rowNumber, GRID_COLUMN_VALUE, 2, 1);
    gridLayout->setRowStretch(rowNumber, 0);
    gridLayout->setRowStretch(rowNumber + 1, 0);
    gridLayout->setRowStretch(rowNumber + 2, 100);
@@ -1064,11 +1096,79 @@ GuiCaretCommandParameterVariableList::slotAddFileButton()
 /**
  * get parameter value as text.
  */
-QString 
+QStringList 
 GuiCaretCommandParameterVariableList::getParameterValueAsText() const
 {
    const QString s = textEdit->toPlainText();
-   return s;
+   
+   QStringList sl;
+   QString str;
+   bool inDoubleQuoteFlag = false;
+   
+   //
+   // Loop through the string keeping anything between double quotes intact
+   //
+   const int slen = s.length();
+   for (int i = 0; i < slen; i++) {
+      const QChar c = s[i];
+      
+      //
+      // Beginning or end of double quote
+      //
+      if (c == '"') {
+         str += c;
+         
+         if (inDoubleQuoteFlag) {
+            //
+            // String in double quotes is complete
+            //
+            sl += str;
+            str = "";
+            inDoubleQuoteFlag = false;
+         }
+         else {
+            //
+            // Starting string in double quotes
+            //
+            inDoubleQuoteFlag = true;
+         }
+      }
+      else if ((c == ' ') ||
+               (c == '\n') ||
+               (c == '\r')) {
+         if (inDoubleQuoteFlag) {
+            //
+            // Keep blanks in double quotes
+            //
+            str += c;
+         }
+         else {
+            if (str.isEmpty() == false) {
+               //
+               // Conclude string
+               //
+               sl += str;
+               str = "";
+            }
+         }
+      }
+      else {
+         //
+         // Add character to string
+         //
+         str += c;
+      }
+   }
+
+   //
+   // Use any remaining string at end of text
+   //
+   if (str.isEmpty() == false) {
+      sl += str;
+   }
+   //QStringList sl = s.split(' ', QString::SkipEmptyParts);
+
+   return sl;
 }
    
 /**

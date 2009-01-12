@@ -1261,6 +1261,16 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
                                           (unsigned char*)buffer);
             buffer[compressedLength] = '\0';
             
+            if (DebugControl::getDebugOn()) {
+               if (compressedLength > 4) {
+                  std::cout << "Bytes: " 
+                            << (int)buffer[0] << " "
+                            << (int)buffer[1] << " "
+                            << (int)buffer[2] << " "
+                            << (int)buffer[3] << std::endl;
+               }
+            }
+            
             //
             // Write the data
             //
@@ -1642,7 +1652,7 @@ GiftiDataArray::updateMetaDataAfterReading()
             caretGeomType = "Inflated";
          }
          else if (giftiGeomType == GiftiCommon::metaDataValueGeometricTypeVeryInflated) {
-            caretGeomType = "VeryInflated";
+            caretGeomType = "Very_Inflated";
          }
          else if (giftiGeomType == GiftiCommon::metaDataValueGeometricTypeSpherical) {
             caretGeomType = "Spherical";
@@ -1750,7 +1760,7 @@ GiftiDataArray::updateMetaDataBeforeWriting()
          else if (caretGeomType == "Inflated") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeInflated;
          }
-         else if (caretGeomType == "VeryInflated") {
+         else if (caretGeomType == "Very_Inflated") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeVeryInflated;
          }
          else if (caretGeomType == "Spherical") {

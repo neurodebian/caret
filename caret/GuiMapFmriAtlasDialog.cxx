@@ -409,9 +409,9 @@ GuiMapFmriAtlasDialog::slotSelectSpecPushButton()
       try {
          SpecFile sf;
          sf.readFile(specFileName);
-         space = StringUtilities::makeLowerCase(sf.getSpace());
-         species = StringUtilities::makeLowerCase(sf.getSpecies());
-         structureName = StringUtilities::makeLowerCase(sf.getStructure());
+         space = StringUtilities::makeLowerCase(sf.getSpace().getName());
+         species = StringUtilities::makeLowerCase(sf.getSpecies().getName());
+         structureName = StringUtilities::makeLowerCase(sf.getStructure().getTypeAsString());
       }
       catch (FileException& e) {
       }

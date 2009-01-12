@@ -414,11 +414,10 @@ GuiApplyDeformationMapDialog::slotSourceDirectoryButton()
    //
    // Popup the dialog
    //
-   if (fd.exec() == QDialog::Accepted) {   
-      if (fd.selectedFiles().count() > 0) {
-         sourceDirectoryLineEdit->setText(fd.selectedFiles().at(0));
-         deformationMapFile.setSourceDirectory(fd.selectedFiles().at(0));
-      }
+   if (fd.exec() == QDialog::Accepted) { 
+      const QString name(fd.directory().absolutePath());
+      sourceDirectoryLineEdit->setText(name);
+      deformationMapFile.setSourceDirectory(name);
    }
 }
 
@@ -439,10 +438,9 @@ GuiApplyDeformationMapDialog::slotTargetDirectoryButton()
    // Popup the dialog
    //
    if (fd.exec() == QDialog::Accepted) {   
-      if (fd.selectedFiles().count() > 0) {
-         targetDirectoryLineEdit->setText(fd.selectedFiles().at(0));
-         deformationMapFile.setTargetDirectory(fd.selectedFiles().at(0));
-      }
+      const QString name(fd.directory().absolutePath());
+      targetDirectoryLineEdit->setText(name);
+      deformationMapFile.setTargetDirectory(name);
    }
 }
       

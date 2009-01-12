@@ -427,4 +427,23 @@ SurfaceFile::getTopologyMetaData()
    return NULL;
 }
       
+/**
+ * convert configuration ID to spec file tag.
+ */
+QString 
+SurfaceFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
+{   
+   const QString name(nameIn.toUpper());
+   if (name == "RAW") return SpecFile::getRawSurfaceFileTag();
+   else if (name == "FIDUCIAL") return SpecFile::getFiducialSurfaceFileTag();
+   else if (name == "INFLATED") return SpecFile::getInflatedSurfaceFileTag();
+   else if (name == "VERY_INFLATED") return SpecFile::getVeryInflatedSurfaceFileTag();
+   else if (name == "SPHERICAL") return SpecFile::getSphericalSurfaceFileTag();
+   else if (name == "ELLIPSOIDAL") return SpecFile::getEllipsoidSurfaceFileTag();
+   else if (name == "CMW") return SpecFile::getCompressedSurfaceFileTag();
+   else if (name == "FLAT") return SpecFile::getFlatSurfaceFileTag();
+   else if (name == "FLAT_LOBAR") return SpecFile::getLobarFlatSurfaceFileTag();
+   else if (name == "HULL") return SpecFile::getHullSurfaceFileTag();
+   else return SpecFile::getUnknownSurfaceFileMatchTag();
+}
     

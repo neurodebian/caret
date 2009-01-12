@@ -107,6 +107,19 @@ CommandVolumeSegmentationToCerebralHull::executeCommand() throw (BrainModelAlgor
    segmentationVolume.readFile(hullVolumeFileName);
    
    //
+   // Expand around edges with empty slices
+   //
+   int expDim[3];
+   segmentationVolume.getDimensions(expDim);
+   const int expSlices = 7;
+   const int resizeCrop[6] = { 
+      -expSlices, expDim[0] + expSlices,
+      -expSlices, expDim[1] + expSlices,
+      -expSlices, expDim[2] + expSlices
+   };
+   segmentationVolume.resize(resizeCrop);
+
+   //
    // Generate hull volume and surface
    //
    BrainSet bs;

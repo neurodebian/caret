@@ -40,7 +40,9 @@
 #include <QToolTip>
 
 #include "BrainSet.h"
-#include "Categories.h"
+#include "GuiCategoryComboBox.h"
+#include "GuiSpeciesComboBox.h"
+#include "GuiStereotaxicSpaceComboBox.h"
 #include "GuiStructureComboBox.h"
 #include "GuiMainWindow.h"
 #include "GuiSpecFileCreationDialog.h"
@@ -102,20 +104,13 @@ GuiSpecFileCreationDialog::GuiSpecFileCreationDialog(QDialog* parent)
    //
    // Species name line edit
    //
-   QPushButton* speciesButton = new QPushButton("Species...");
-   speciesButton->setAutoDefault(false);
-   speciesButton->setToolTip(
-                 "Press this button select from\n"
-                 "a list of valid species.");
-   QObject::connect(speciesButton, SIGNAL(clicked()),
-                    this, SLOT(slotSpeciesPushButton()));
-   speciesLineEdit = new QLineEdit;
-   speciesLineEdit->setMinimumWidth(lineEditWidth);
-   QString defSpecies(theMainWindow->getBrainSet()->getSpecies());
-   if (defSpecies.isEmpty()) {
-      defSpecies = "Human";
+   QLabel* speciesLabel = new QLabel("Species");
+   speciesComboBox = new GuiSpeciesComboBox;
+   Species species = theMainWindow->getBrainSet()->getSpecies();
+   if (species.isValid() == false) {
+      species.setUsingType(Species::TYPE_HUMAN);
    }
-   speciesLineEdit->setText(defSpecies);
+   speciesComboBox->setSelectedSpecies(species);
     
    //
    // case name line edit
@@ -139,35 +134,15 @@ GuiSpecFileCreationDialog::GuiSpecFileCreationDialog(QDialog* parent)
    //
    // space
    //
-   QPushButton* spacePushButton = new QPushButton("Space...");
-   spacePushButton->setAutoDefault(false);
-   QObject::connect(spacePushButton, SIGNAL(clicked()),
-                    this, SLOT(slotSpacePushButton()));
-   spacePushButton->setToolTip(
-                 "Press this button select from a\n"
-                 "list of valid stereotaxic spaces.");
-   spaceLineEdit = new QLineEdit;
-   spaceLineEdit->setFixedWidth(lineEditWidth);
-   QString defSpace(theMainWindow->getBrainSet()->getStereotaxicSpace());
-   if (defSpace.isEmpty()) {
-      defSpace = "Other";
-   }
-   spaceLineEdit->setText(defSpace);
+   QLabel* spaceLabel = new QLabel("Space");
+   stereotaxicSpaceComboBox = new GuiStereotaxicSpaceComboBox;
+   stereotaxicSpaceComboBox->setSelectedStereotaxicSpace(theMainWindow->getBrainSet()->getStereotaxicSpace());
    
    //
    // Category line edit
    //
-   QPushButton* categoryPushButton = new QPushButton("Category...");
-   categoryPushButton->setAutoDefault(false);
-   QObject::connect(categoryPushButton, SIGNAL(clicked()),
-                    this, SLOT(slotCategoryPushButton()));
-   categoryPushButton->setToolTip(
-                 "Press this button select from\n"
-                 "a list of valid categories.");
-   categoryLineEdit = new QLineEdit;
-   categoryLineEdit->setMinimumWidth(lineEditWidth);
-   std::vector<QString> categoryValues;
-   categoryLineEdit->setText("INDIVIDUAL");
+   QLabel* categoryLabel = new QLabel("Category");
+   categoryComboBox = new GuiCategoryComboBox;
    
    //
    // Group box for spec info
@@ -176,8 +151,8 @@ GuiSpecFileCreationDialog::GuiSpecFileCreationDialog(QDialog* parent)
    dialogLayout->addWidget(specInfoGroupBox);
    QGridLayout* specInfoLayout = new QGridLayout(specInfoGroupBox);
    int rowNum = 0;
-   specInfoLayout->addWidget(speciesButton, rowNum, 0);
-   specInfoLayout->addWidget(speciesLineEdit, rowNum, 1);
+   specInfoLayout->addWidget(speciesLabel, rowNum, 0);
+   specInfoLayout->addWidget(speciesComboBox, rowNum, 1);
    rowNum++;
    specInfoLayout->addWidget(subjectLabel, rowNum, 0);
    specInfoLayout->addWidget(subjectLineEdit, rowNum, 1);
@@ -185,11 +160,11 @@ GuiSpecFileCreationDialog::GuiSpecFileCreationDialog(QDialog* parent)
    specInfoLayout->addWidget(structureLabel, rowNum, 0);
    specInfoLayout->addWidget(structureComboBox, rowNum, 1);
    rowNum++;
-   specInfoLayout->addWidget(spacePushButton, rowNum, 0);
-   specInfoLayout->addWidget(spaceLineEdit, rowNum, 1);
+   specInfoLayout->addWidget(spaceLabel, rowNum, 0);
+   specInfoLayout->addWidget(stereotaxicSpaceComboBox, rowNum, 1);
    rowNum++;
-   specInfoLayout->addWidget(categoryPushButton, rowNum, 0);
-   specInfoLayout->addWidget(categoryLineEdit, rowNum, 1);
+   specInfoLayout->addWidget(categoryLabel, rowNum, 0);
+   specInfoLayout->addWidget(categoryComboBox, rowNum, 1);
    rowNum++;
    
    //
@@ -254,91 +229,6 @@ GuiSpecFileCreationDialog::slotDirectoryPushButton()
 }
 
 /**
- * called when species button pressed.
- */
-void 
-GuiSpecFileCreationDialog::slotSpeciesPushButton()      
-{
-   std::vector<QString> values;
-   Species::getAllSpecies(values);
-   
-   int defaultIndex = 0;
-   const QString currentValue = speciesLineEdit->text();
-   for (int i = 0; i < static_cast<int>(values.size()); i++) {
-      if (currentValue == values[i]) {
-         defaultIndex = i;
-         break;
-      }
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                  "Choose Species",
-                                  "",
-                                  values,
-                                  defaultIndex);
-   if (lbsd.exec() == QDialog::Accepted) {
-      speciesLineEdit->setText(lbsd.getSelectedText());
-   }
-}
-
-/** 
- * called when category button pressed.
- */
-void 
-GuiSpecFileCreationDialog::slotCategoryPushButton()
-{
-   std::vector<QString> values;
-   Categories::getAllCategories(values);
-   
-   int defaultIndex = 1;
-   const QString currentValue = categoryLineEdit->text();
-   for (int i = 0; i < static_cast<int>(values.size()); i++) {
-      if (currentValue == values[i]) {
-         defaultIndex = i;
-         break;
-      }
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                  "Choose Category",
-                                  "",
-                                  values,
-                                  defaultIndex);
-   if (lbsd.exec() == QDialog::Accepted) {
-      categoryLineEdit->setText(lbsd.getSelectedText());
-   }
-}
-
-/**
- * called when space button pressed.
- */
-void 
-GuiSpecFileCreationDialog::slotSpacePushButton()
-{
-   std::vector<StereotaxicSpace> allSpaces;
-   StereotaxicSpace::getAllStereotaxicSpaces(allSpaces);
-
-   std::vector<QString> values;   
-   int defaultIndex = 0;
-   const QString currentValue = spaceLineEdit->text();
-   for (int i = 0; i < static_cast<int>(allSpaces.size()); i++) {
-      values.push_back(allSpaces[i].getName());
-      if (currentValue == values[i]) {
-         defaultIndex = i;
-      }
-   }
-   
-   QtListBoxSelectionDialog lbsd(this,
-                                  "Choose Stereotaxic Space",
-                                  "",
-                                  values,
-                                  defaultIndex);
-   if (lbsd.exec() == QDialog::Accepted) {
-      spaceLineEdit->setText(lbsd.getSelectedText());
-   }
-}
-      
-/**
  * called when OK or Cancel button pressed.
  */
 void 
@@ -378,9 +268,9 @@ GuiSpecFileCreationDialog::done(int r)
            break;
       }
 */      
-      QString species = speciesLineEdit->text();
-      if (species.isEmpty()) {
-         msg.append("No Species was entered.\n");
+      const Species species = speciesComboBox->getSelectedSpecies();
+      if (species.isValid() == false) {
+         msg.append("Species is invalid.\n");
       }
       
       QString subject = subjectLineEdit->text();
@@ -393,11 +283,10 @@ GuiSpecFileCreationDialog::done(int r)
          return;
       }
       
-      species = StringUtilities::replace(species, ' ', '_');
       subject = StringUtilities::replace(subject, ' ', '_');
       
       std::ostringstream str;
-      str << species.toAscii().constData()
+      str << species.getName().toAscii().constData()
           << "."
           << subject.toAscii().constData()
           << "."
@@ -461,7 +350,7 @@ GuiSpecFileCreationDialog::done(int r)
          //
          // Set brain parameters
          //
-         theMainWindow->getBrainSet()->setStereotaxicSpace(spaceLineEdit->text());
+         theMainWindow->getBrainSet()->setStereotaxicSpace(stereotaxicSpaceComboBox->getSelectedStereotaxicSpace());
          theMainWindow->getBrainSet()->setSubject(subject);
          theMainWindow->getBrainSet()->setSpecies(species);
          theMainWindow->getBrainSet()->setStructure(hem);
@@ -473,8 +362,8 @@ GuiSpecFileCreationDialog::done(int r)
          sf.setSpecies(species);
          sf.setSubject(subject);
          sf.setStructure(Structure::convertTypeToString(hem));
-         sf.setSpace(spaceLineEdit->text());
-         sf.setCategory(categoryLineEdit->text());
+         sf.setSpace(stereotaxicSpaceComboBox->getSelectedStereotaxicSpace());
+         sf.setCategory(categoryComboBox->getSelectedCategory().getName());
          
          //
          // Write the spec file

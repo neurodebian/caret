@@ -87,6 +87,7 @@
 #include "RgbPaintFile.h"
 #include "SectionFile.h"
 #include "StereotaxicSpace.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
 #include "SurfaceVectorFile.h"
@@ -107,7 +108,7 @@ static const bool alwaysSaveAllProbAtlasVolumes = true;
  * constructor.
  */
 GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
-   : QDialog(parent)
+   : WuQDialog(parent)
 {
    fileOptionsWidgetGroup = NULL;
    setWindowTitle("Save Data File");
@@ -268,6 +269,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    filterNames << FileFilters::getRgbPaintFileFilter();
    filterNames << FileFilters::getSceneFileFilter();
    filterNames << FileFilters::getSectionFileFilter();
+   filterNames << FileFilters::getStudyCollectionFileFilter();
    filterNames << FileFilters::getStudyMetaDataFileFilter();
    filterNames << FileFilters::getSurfaceShapeFileFilter();
    filterNames << FileFilters::getSurfaceVectorFileFilter();
@@ -358,15 +360,22 @@ GuiDataFileSaveDialog::selectFileType(const QString& fileFilterName)
 void 
 GuiDataFileSaveDialog::slotFileNamePushButton()
 {
-   const QString name = WuQFileDialog::getSaveFileName(this,
-                                                       "Select File Name",
-                                                       QDir::currentPath(),
-                                                       fileTypeComboBox->currentText(),
-                                                       0,
-                                                       WuQFileDialog::DontConfirmOverwrite);
-   if (name.isEmpty() == false) {
-      fileNameLineEdit->setText(name);
-   }
+   PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+   
+   WuQFileDialog fd(this);
+   fd.setHistory(pf->getRecentDataFileDirectories());
+   fd.setWindowTitle("Select File Name");
+   fd.setDirectory(QDir::currentPath());
+   fd.setFilters(QStringList(fileTypeComboBox->currentText()));
+   fd.setFileMode(WuQFileDialog::AnyFile);
+   fd.setAcceptMode(WuQFileDialog::AcceptSave);
+   fd.setConfirmOverwrite(false);
+   if (fd.exec() == Accepted) { 
+      if (fd.selectedFiles().count() > 0) {
+         const QString name = fd.selectedFiles().at(0);
+         fileNameLineEdit->setText(name);
+      }                      
+   }            
 }
       
 /**
@@ -741,6 +750,9 @@ GuiDataFileSaveDialog::selectFile(AbstractFile* af)
    }
    else if (dynamic_cast<SectionFile*>(af) != NULL) {
       fileFilterName = FileFilters::getSectionFileFilter();
+   }
+   else if (dynamic_cast<StudyCollectionFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getStudyCollectionFileFilter();
    }
    else if (dynamic_cast<StudyMetaDataFile*>(af) != NULL) {
       fileFilterName = FileFilters::getStudyMetaDataFileFilter();
@@ -1878,6 +1890,9 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
    else if (filterName == FileFilters::getSectionFileFilter()) {
       af = brainSet->getSectionFile();
    }
+   else if (filterName == FileFilters::getStudyCollectionFileFilter()) {
+      af = brainSet->getStudyCollectionFile();
+   }
    else if (filterName == FileFilters::getStudyMetaDataFileFilter()) {
       af = brainSet->getStudyMetaDataFile();
    }
@@ -2277,7 +2292,7 @@ void
 GuiDataFileSaveDialog::done(int r)
 {
    
-   if (r == QDialog::Accepted) {
+   if (r == GuiDataFileSaveDialog::Accepted) {
       BrainSet* brainSet = theMainWindow->getBrainSet();
       QString fileName = fileNameLineEdit->text();
       
@@ -2722,6 +2737,13 @@ GuiDataFileSaveDialog::done(int r)
                                   fileName,
                                   SpecFile::getSectionFileExtension());
             brainSet->writeSectionFile(fileName);
+         }
+         else if (filterName == FileFilters::getStudyCollectionFileFilter()) {
+            StudyCollectionFile* scf = brainSet->getStudyCollectionFile();
+            updateMetadataAndName(scf,
+                                  fileName,
+                                  SpecFile::getStudyCollectionFileExtension());
+            brainSet->writeStudyCollectionFile(fileName);
          }
          else if (filterName == FileFilters::getStudyMetaDataFileFilter()) {
             StudyMetaDataFile* smdf = brainSet->getStudyMetaDataFile();
@@ -3271,6 +3293,9 @@ GuiDataFileSaveDialog::done(int r)
             throw FileException(msg);
          }
 
+         PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+         pf->addToRecentDataFileDirectories(FileUtilities::dirname(fileName), true);
+
          QApplication::restoreOverrideCursor();
       }
       catch (FileException& e) {
@@ -3284,6 +3309,6 @@ GuiDataFileSaveDialog::done(int r)
       }
    }
    
-   QDialog::done(r);
+   WuQDialog::done(r);
 }
 

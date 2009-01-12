@@ -31,10 +31,11 @@
 
 #include <QString>
 
+
 class QDomDocument;
 class QDomElement;
 class QDomNode;
-class StudyMetaAnalysisFile;
+class StudyCollection;
 class StudyMetaData;
 
 /// Study Name and PubMed ID
@@ -42,6 +43,11 @@ class StudyNamePubMedID {
    public:
       // constructor
       StudyNamePubMedID();
+      
+      // constructor
+      StudyNamePubMedID(const QString& nameIn,
+                        const QString& pubMedIDIn,
+                        const QString& mslIDIn);
       
       // destructor
       ~StudyNamePubMedID();
@@ -55,68 +61,46 @@ class StudyNamePubMedID {
       // clear the studies
       void clear();
       
-      // set the study names and PubMed IDs as a string
-      void setAll(const QString& s);
+      /// get the name
+      QString getName() const { return name; }
       
-      // get the study names and PubMed IDs as a string
-      QString getAll() const;
+      // set the name
+      void setName(const QString& s);
       
-      /// get the number of studies
-      int getNumberOfStudies() const { return studyData.size(); }
+      /// get the PubMed ID
+      QString getPubMedID() const { return pubMedID; }
       
-      // get a study name and PubMed ID
-      void getStudyNameAndPubMedID(const int indx,
-                                   QString& nameOut,
-                                   QString& pubMedIDOut) const;
+      // set the PubMed ID
+      void setPubMedID(const QString& s);
       
-      // set a study name and PubMed ID
-      void setStudyNameAndPubMedID(const int indx,
-                                   const QString& nameIn,
-                                   const QString& pubMedIDIn);
-                                   
-      // add a study name and PubMed ID
-      void addStudyNameAndPubMedID(const QString& nameIn,
-                                   const QString& pubMedIDIn);
+      /// get the MSL ID
+      QString getMslID() const { return mslID; }
       
-      // remove a study
-      void removeStudy(const int indx);
-      
-      // remove studies
-      void removeStudiesByIndex(const std::vector<int>& studyIndices);
+      // set the MSL ID
+      void setMslID(const QString& s);
       
       // set parent for study metadata
       void setParent(StudyMetaData* parentIn);
       
-      // set parent for study meta-analysis
-      void setParent(StudyMetaAnalysisFile* parentIn);
+      // set parent for study collection
+      void setParent(StudyCollection* parentIn);
       
-      // read the data from a StringTable
-      void readDataFromStringTable(const StringTable& st) throw (FileException);
-                  
+   protected:
       // called to read from an XML structure
       void readXML(QDomNode& node) throw (FileException);
       
       // called to write to an XML structure
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement) const throw (FileException);
-         
-   protected:
-      /// class for name and PubMed ID
-      class StudyNamePMID {
-         public:
-            /// constructor
-            StudyNamePMID(const QString& nameIn,
-                          const QString& pmidIn) {
-               name = nameIn;
-               pmid = pmidIn;
-            }
-         
-            /// the study name
-            QString name;
-            
-            /// the PubMed ID
-            QString pmid;
-      };
+      
+      /// the study name
+      QString name;
+      
+      /// the PubMed ID
+      QString pubMedID;
+      
+      /// MSL ID
+      QString mslID;
       
       // copy helper used by copy constructor and assignment operator
       void copyHelper(const StudyNamePubMedID& as);
@@ -127,15 +111,14 @@ class StudyNamePubMedID {
       /// study metadata that is parent of this pubmed ID list (DO NOT COPY)
       StudyMetaData* parentStudyMetaData;
       
-      /// study meta-analysis that is parent of this pubmed ID list
-      StudyMetaAnalysisFile* parentStudyMetaAnalysisFile;
-      
-      /// the name and PubMed ID of the study
-      std::vector<StudyNamePMID> studyData;
+      /// study collection that is parent of this pubmed ID list
+      StudyCollection* parentStudyCollection;
       
       // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       // If additional members are added be sure to update copyHelper() method.
       // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+   friend class StudyCollection;
 };
       
 #endif // __STUDY_NAME_PUBMED_ID_H__

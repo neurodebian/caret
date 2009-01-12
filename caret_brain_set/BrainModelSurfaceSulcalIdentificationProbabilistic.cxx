@@ -26,8 +26,10 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 #include "AreaColorFile.h"
 #include "BrainModelSurface.h"
@@ -504,12 +506,29 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
    float centralSulcusCOG[3] = { 0.0, 0.0, 0.0 };
    const QString postCentralSulcusName("SUL.PoCeS");
    
+   std::vector<QString> allowRelaxedDepthNames;
+   allowRelaxedDepthNames.push_back("SUL.HF");
+   
    const int numColumns = probabilisticMetricFile->getNumberOfColumns();
    for (int j = 0; j < numColumns; j++) {
+   
+      BrainModelSurfaceMetricClustering* bmsmc = NULL;
+      
       //
-      // Find the clusters with specified depth range
+      // Some depths may be too deep, so if no clusters found, relax depth
+      // and try again
       //
-      BrainModelSurfaceMetricClustering bmsmc(brainSet,
+      float depthTestValue = sulcalNamesAndVolumes[j].getDepthThreshold();
+      const int numTries = 10;
+      for (int mm = 0; mm < numTries; mm++) {
+         //
+         // Find the clusters with specified depth range
+         //
+         if (bmsmc != NULL) {
+            delete bmsmc;
+            bmsmc = NULL;
+         }
+         bmsmc = new BrainModelSurfaceMetricClustering(brainSet,
                                               (BrainModelSurface*)fiducialSurface,
                                               probabilisticMetricFile,
                                               BrainModelSurfaceMetricClustering::CLUSTER_ALGORITHM_MINIMUM_NUMBER_OF_NODES,
@@ -518,19 +537,34 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
                                               "Clusters",  // output column  name
                                               1,           // min number nodes
                                               0.001,       // min surface area
-                                              sulcalNamesAndVolumes[j].getDepthThreshold(),       // neg min
+                                              depthTestValue,       // neg min
                                               -100000000.0,// neg max
                                               5.0,         // pos min
                                               4.0,         // pos max
                                               false);      // only clusters with min nodes or more
-      try {
-         bmsmc.execute();
-      }
-      catch (BrainModelAlgorithmException& e) {
-         throw BrainModelAlgorithmException("Finding clusters: " + e.whatQString());
+         try {
+            bmsmc->execute();
+            
+            //
+            // Should depth be relaxed
+            //
+            if ((bmsmc->getNumberOfClusters() <= 0) &&
+                (std::find(allowRelaxedDepthNames.begin(),
+                           allowRelaxedDepthNames.end(),
+                           sulcalNamesAndVolumes[j].getSulcusName()) !=
+                        allowRelaxedDepthNames.end())) {
+               depthTestValue += 5.0;
+            }
+            else {
+               mm = numTries;  // get out of loop
+            }
+         }
+         catch (BrainModelAlgorithmException& e) {
+            throw BrainModelAlgorithmException("Finding clusters: " + e.whatQString());
+         }
       }
       
-      const int numClusters = bmsmc.getNumberOfClusters();
+      const int numClusters = bmsmc->getNumberOfClusters();
 
       //
       // Sum the total values of probabilistic times depth for each cluster
@@ -542,7 +576,7 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
          // Look at the nodes in each cluster
          //
          double sum = 0.0;
-         BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc.getCluster(i);
+         BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc->getCluster(i);
          const int numClusterNodes = cluster->getNumberOfNodesInCluster();
          for (int k = 0; k < numClusterNodes; k++) {
             const int node = cluster->getNodeInCluster(k);
@@ -587,7 +621,7 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
       
          vis.addValueIndexPair(i, std::fabs(sum));  // use abs since negative sums
       }  // for (i = 0; i < numClusters...
-      
+
       //
       // Sort the items
       //
@@ -609,7 +643,7 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
                //
                // Set paint for nodes in cluster
                //
-               const BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc.getCluster(indx);
+               const BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc->getCluster(indx);
                float clusterCOG[3];
                cluster->getCenterOfGravity(clusterCOG);
                std::cout << "PoCeS Cluster Very Inflated COG: "
@@ -658,8 +692,8 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
             vis.getValueAndIndex(numSortedItems - 1, indx1, value1);
             vis.getValueAndIndex(numSortedItems - 2, indx2, value2);
             float cog1[3], cog2[3];
-            bmsmc.getCluster(indx1)->getCenterOfGravity(cog1);
-            bmsmc.getCluster(indx2)->getCenterOfGravity(cog2);
+            bmsmc->getCluster(indx1)->getCenterOfGravity(cog1);
+            bmsmc->getCluster(indx2)->getCenterOfGravity(cog2);
             const float dist = std::fabs(cog1[1] - cog2[1]);
             
             //
@@ -688,7 +722,7 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
          //
          // Set paint for nodes in cluster
          //
-         const BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc.getCluster(indx);
+         const BrainModelSurfaceMetricClustering::Cluster* cluster = bmsmc->getCluster(indx);
          const int numClusterNodes = cluster->getNumberOfNodesInCluster();
          for (int k = 0; k < numClusterNodes; k++) {
             const int node = cluster->getNodeInCluster(k);
@@ -702,6 +736,14 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
             cluster->getCenterOfGravityForSurface(rotatedVeryInflatedSurface,
                                                   centralSulcusCOG);
          }
+      }
+
+      //
+      // Free memory
+      //      
+      if (bmsmc != NULL) {
+         delete bmsmc;
+         bmsmc = NULL;
       }
    }
 }

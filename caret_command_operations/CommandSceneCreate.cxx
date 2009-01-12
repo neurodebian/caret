@@ -274,7 +274,7 @@ CommandSceneCreate::executeCommand() throw (BrainModelAlgorithmException,
    specFile.setAllFileSelections(SpecFile::SPEC_TRUE);
    specFile.sceneFile.setAllSelections(SpecFile::SPEC_FALSE);
    if (inputSceneFileName.isEmpty() == false) {
-      specFile.addToSpecFile(SpecFile::sceneFileTag,
+      specFile.addToSpecFile(SpecFile::getSceneFileTag(),
                              inputSceneFileName,
                              "",
                              false);
@@ -554,6 +554,7 @@ CommandSceneCreate::executeCommand() throw (BrainModelAlgorithmException,
                                                windowGeometry,
                                                graphicsSize,
                                                bms,
+                                               false,
                                                windowSceneClass);
          windowSceneClasses.push_back(windowSceneClass);
       }
@@ -598,6 +599,7 @@ CommandSceneCreate::executeCommand() throw (BrainModelAlgorithmException,
                                                windowGeometry,
                                                graphicsSize,
                                                bms,
+                                               false,
                                                windowSceneClass);
          windowSceneClasses.push_back(windowSceneClass);
       }
@@ -696,6 +698,7 @@ CommandSceneCreate::executeCommand() throw (BrainModelAlgorithmException,
                                                windowGeometry,
                                                graphicsSize,
                                                bmv,
+                                               false,
                                                windowSceneClass);
          windowSceneClasses.push_back(windowSceneClass);
       }

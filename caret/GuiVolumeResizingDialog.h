@@ -51,7 +51,7 @@ class GuiVolumeResizingDialog : public WuQDialog {
       
    public slots:
       /// Called when OK button pressed
-      void slotOKButton();
+      void slotApplyButton();
       
       /// called when dialog is being closed
       virtual void close();

@@ -96,7 +96,7 @@ class GuiCaretCommandParameter : public QObject {
                                   QWidget* valueWidget);
                             
       // get parameter value as text
-      virtual QString getParameterValueAsText() const = 0;
+      virtual QStringList getParameterValueAsText() const = 0;
       
       // set the parameter description
       void setParameterDescription(const QString& parameterDescriptionIn);
@@ -125,7 +125,7 @@ class GuiCaretCommandParameterFloat : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterFloat();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -149,7 +149,7 @@ class GuiCaretCommandParameterInt : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterInt();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -173,7 +173,7 @@ class GuiCaretCommandParameterBoolean : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterBoolean();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -198,7 +198,7 @@ class GuiCaretCommandParameterFile : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterFile();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -232,7 +232,7 @@ class GuiCaretCommandParameterDirectory : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterDirectory();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -260,7 +260,7 @@ class GuiCaretCommandParameterString : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterString();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -287,7 +287,7 @@ class GuiCaretCommandParameterVariableList : public GuiCaretCommandParameter {
       virtual bool getParameterAllowedToBeEmpty() const { return true; }
       
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -315,7 +315,7 @@ class GuiCaretCommandParameterDataItemList : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterDataItemList();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);
@@ -342,7 +342,7 @@ class GuiCaretCommandParameterStructure : public GuiCaretCommandParameter {
       virtual ~GuiCaretCommandParameterStructure();
 
       // get parameter value as text
-      QString getParameterValueAsText() const;
+      QStringList getParameterValueAsText() const;
    
       // set parameter value from text
       void setParameterValueFromText(const QString& s);

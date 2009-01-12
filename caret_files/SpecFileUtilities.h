@@ -92,11 +92,12 @@ class SpecFileUtilities {
 
 };
 
+
+#endif // __SPEC_FILE_UTILITIES_H__
+
 #ifdef __SPEC_FILE_UTILITIES_MAIN__
 SpecFileUtilities::MODE_COPY_SPEC_FILE SpecFileUtilities::copySpecFileMode;
 QString SpecFileUtilities::copySpecSourcePath;
 QString SpecFileUtilities::copySpecTargetPath;
 #endif // __SPEC_FILE_UTILITIES_MAIN__
-
-#endif // __SPEC_FILE_UTILITIES_H__
 

@@ -23,6 +23,9 @@
  */
 /*LICENSE_END*/
 
+#include <set>
+
+#include <QApplication>
 #include <QCheckBox>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -31,6 +34,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QToolButton>
 
 #include "BrainModelSurfacePointLocator.h"
 #include "BrainSet.h"
@@ -45,6 +49,8 @@
 #include "StudyMetaDataFile.h"
 #include "QtTableDialog.h"
 #include "QtUtilities.h"
+#include "WuQDataEntryDialog.h"
+#include "WuQWidgetGroup.h"
 #include "global_variables.h"
 
 /**
@@ -66,35 +72,51 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
    setWindowTitle(typeString + " Report");
    
    //
-   // Layout for dialog
-   //
-   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
-   dialogLayout->setSpacing(5);
-   dialogLayout->setMargin(5);
-   
-   //
    // Create surface section
    //
-   dialogLayout->addWidget(createSurfaceSection());
+   QWidget* surfaceWidget = createSurfaceSection();
+   
+   //
+   // Selection section
+   //
+   QWidget* selectionSection = createCellSelectionSection();
    
    //
    // Create cell/foci section
    //
-   dialogLayout->addWidget(createCellFociSection(typeString));
+   QWidget* attributeWidget = createCellFociSection();
    
    //
    // Create the paint section
    //
    QWidget* paintWidget = createPaintSection();
+   
+   
+   //
+   // Layout for dialog
+   //
+   QWidget* widget = new QWidget;
+   QVBoxLayout* widgetLayout = new QVBoxLayout(widget);
+   widgetLayout->setSpacing(5);
+   widgetLayout->setMargin(5);
+   widgetLayout->addWidget(selectionSection);
+   widgetLayout->addWidget(surfaceWidget);
+   widgetLayout->addWidget(attributeWidget);
    if (paintWidget != NULL) {
-      dialogLayout->addWidget(paintWidget);
+      widgetLayout->addWidget(paintWidget);
    }
+   
+   //
+   // Scroll Area for Dialog
+   //
+   QScrollArea* scrollArea = new QScrollArea;
+   scrollArea->setWidgetResizable(true);
+   scrollArea->setWidget(widget);
    
    //
    // Layout for buttons
    //
    QHBoxLayout* buttonsLayout = new QHBoxLayout;
-   dialogLayout->addLayout(buttonsLayout);
    buttonsLayout->setSpacing(5);
    
    //
@@ -116,6 +138,13 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
                     this, SLOT(reject()));
    
    QtUtilities::makeButtonsSameSize(okButton, cancelButton);
+
+   //
+   // Dialog Layout
+   //
+   QVBoxLayout* dialogLayout = new QVBoxLayout(this);
+   dialogLayout->addWidget(scrollArea);
+   dialogLayout->addLayout(buttonsLayout);
 }
                            
 /**
@@ -125,7 +154,31 @@ GuiCellAndFociReportDialog::~GuiCellAndFociReportDialog()
 {
 }
 
-// create the surface section
+/**
+ * creat cell selection section.
+ */
+QWidget* 
+GuiCellAndFociReportDialog::createCellSelectionSection()
+{
+   //
+   // Limit report to just displayed cells/foci
+   //
+   includeDisplayedCellsOnlyCheckBox = new QCheckBox("Show Only Displayed "
+                                                     + typeString);
+   
+   //
+   // GroupBox and Layout for section
+   //
+   QGroupBox* selectionGroupBox = new QGroupBox(typeString + " Selection");
+   QVBoxLayout* selectionLayout = new QVBoxLayout(selectionGroupBox);
+   selectionLayout->addWidget(includeDisplayedCellsOnlyCheckBox);
+   
+   return selectionGroupBox;
+}
+      
+/**
+ * create the surface section.
+ */
 QWidget* 
 GuiCellAndFociReportDialog::createSurfaceSection()
 {
@@ -223,112 +276,251 @@ GuiCellAndFociReportDialog::createSurfaceSection()
  * create the cell/foci section.
  */
 QWidget* 
-GuiCellAndFociReportDialog::createCellFociSection(const QString& typeString)
+GuiCellAndFociReportDialog::createCellFociSection()
 {
    //
-   // Group box for cell/foci attributes
+   // All On button
    //
-   QGroupBox* attrGroupBox = new QGroupBox(typeString + " Attributes");
-   QVBoxLayout* attrGroupLayout = new QVBoxLayout(attrGroupBox);
+   allAttributesOnToolButton = new QToolButton;
+   allAttributesOnToolButton->setText("All On");
+   QObject::connect(allAttributesOnToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotAttributesAllOnToolButton()));
+   
+   //
+   // All Off button
+   //
+   allAttributesOffToolButton = new QToolButton;
+   allAttributesOffToolButton->setText("All Off");
+   QObject::connect(allAttributesOffToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotAttributesAllOffToolButton()));
+   
+   //
+   // Core On button
+   //
+   coreAttributesOnToolButton = new QToolButton;
+   coreAttributesOnToolButton->setText("Core On");
+   QObject::connect(coreAttributesOnToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotAttributesCoreOnToolButton()));
+   
+   //
+   // Layout for tool buttons
+   //
+   QHBoxLayout* toolButtonLayout = new QHBoxLayout;
+   toolButtonLayout->addWidget(allAttributesOnToolButton);
+   toolButtonLayout->addWidget(allAttributesOffToolButton);
+   toolButtonLayout->addWidget(coreAttributesOnToolButton);
+   toolButtonLayout->addStretch();
    
    //
    // check box
    //
    numberCheckBox = new QCheckBox("Number");
    numberCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(numberCheckBox);
    
    //
    // name check box
    //
    nameCheckBox = new QCheckBox("Name");
    nameCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(nameCheckBox);
    
    //
    // position check box
    //
    positionCheckBox = new QCheckBox("Position");
    positionCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(positionCheckBox);
    
    //
    // class check box
    //
    classCheckBox = new QCheckBox("Class");
    classCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(classCheckBox);
    
    //
    // area check box
    //
    areaCheckBox = new QCheckBox("Area");
    areaCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(areaCheckBox);
    
    //
    // geography check box
    //
    geographyCheckBox = new QCheckBox("Geography");
    geographyCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(geographyCheckBox);
    
    //
    // region of interest check box
    //
    regionOfInterestCheckBox = new QCheckBox("Region Of Interest");
    regionOfInterestCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(regionOfInterestCheckBox);
    
    //
    // size check box
    //
    sizeCheckBox = new QCheckBox("Size");
    sizeCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(sizeCheckBox);
    
    //
    // statistic check box
    //
    statisticCheckBox = new QCheckBox("Statistic");
    statisticCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(statisticCheckBox);
    
    //
    // hemisphere check box
    //
    structureCheckBox = new QCheckBox("Structure");
    structureCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(structureCheckBox);
    
    //
    // study name check box
    //
-   studyNameCheckBox = new QCheckBox("Study Name");
+   studyNameCheckBox = new QCheckBox("Study Title");
    studyNameCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(studyNameCheckBox);
+   
+   //
+   // study name check box
+   //
+   studyPMIDCheckBox = new QCheckBox("Study PMID");
+   studyPMIDCheckBox->setChecked(true);
    
    //
    // study data format check box
    //
    studyDataFormatCheckBox = new QCheckBox("Study Data Format");
    studyDataFormatCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(studyDataFormatCheckBox);
    
    //
    // study data type check box
    //
    studyDataTypeCheckBox = new QCheckBox("Study Data Type");
    studyDataTypeCheckBox->setChecked(true);
-   attrGroupLayout->addWidget(studyDataTypeCheckBox);
+   
+   //
+   // study stereotaxic space check box
+   //
+   studyStereotaxicSpaceCheckBox = new QCheckBox("Study Stereotaxic Space");
+   studyStereotaxicSpaceCheckBox->setChecked(true);
+   
+   //
+   // study table number check box
+   //
+   studyTableNumberCheckBox = new QCheckBox("Study Table Number");
+   studyTableNumberCheckBox->setChecked(true);
+   
+   //
+   // study table subheader check box
+   //
+   studyTableSubHeaderCheckBox = new QCheckBox("Study Table Subheader");
+   studyTableSubHeaderCheckBox->setChecked(true);
+   
+   //
+   // study study figure number check box
+   //
+   studyFigureNumberCheckBox = new QCheckBox("Study Figure Number");
+   studyFigureNumberCheckBox->setChecked(true);
+   
+   //
+   // study study figure panel check box
+   //
+   studyFigurePanelCheckBox = new QCheckBox("Study Figure Panel");
+   studyFigurePanelCheckBox->setChecked(true);
+   
+   //
+   // study page reference number check box
+   //
+   studyPageReferenceNumberCheckBox = new QCheckBox("Study Page Reference Number");
+   studyPageReferenceNumberCheckBox->setChecked(true);
+       
+   //
+   // study page reference subheader check box
+   //
+   studyPageReferenceSubHeaderCheckBox = new QCheckBox("Study Page Reference Subheader");
+   studyPageReferenceSubHeaderCheckBox->setChecked(true);
+       
+   //
+   // study study page number check box
+   //
+   studyPageNumberCheckBox = new QCheckBox("Study Page Number");
+   studyPageNumberCheckBox->setChecked(true);
    
    //
    // comment check box
    //
    commentCheckBox = new QCheckBox("Comment");
    commentCheckBox->setChecked(true);
+   
+   
+   //
+   // Group box for cell/foci attributes
+   //
+   QGroupBox* attrGroupBox = new QGroupBox(typeString + " Attributes");
+   QVBoxLayout* attrGroupLayout = new QVBoxLayout(attrGroupBox);
+   attrGroupLayout->addLayout(toolButtonLayout);
+   attrGroupLayout->addWidget(numberCheckBox);
+   attrGroupLayout->addWidget(nameCheckBox);
+   attrGroupLayout->addWidget(positionCheckBox);
+   attrGroupLayout->addWidget(classCheckBox);
+   attrGroupLayout->addWidget(areaCheckBox);
+   attrGroupLayout->addWidget(geographyCheckBox);
+   attrGroupLayout->addWidget(regionOfInterestCheckBox);
+   attrGroupLayout->addWidget(sizeCheckBox);
+   attrGroupLayout->addWidget(statisticCheckBox);
+   attrGroupLayout->addWidget(structureCheckBox);
+   attrGroupLayout->addWidget(studyNameCheckBox);
+   attrGroupLayout->addWidget(studyPMIDCheckBox);
+   attrGroupLayout->addWidget(studyDataFormatCheckBox);
+   attrGroupLayout->addWidget(studyDataTypeCheckBox);
+   attrGroupLayout->addWidget(studyStereotaxicSpaceCheckBox);
+   attrGroupLayout->addWidget(studyTableNumberCheckBox);
+   attrGroupLayout->addWidget(studyTableSubHeaderCheckBox);
+   attrGroupLayout->addWidget(studyFigureNumberCheckBox);
+   attrGroupLayout->addWidget(studyFigurePanelCheckBox);
+   attrGroupLayout->addWidget(studyPageNumberCheckBox);
+   attrGroupLayout->addWidget(studyPageReferenceNumberCheckBox);
+   attrGroupLayout->addWidget(studyPageReferenceSubHeaderCheckBox);
    attrGroupLayout->addWidget(commentCheckBox);
    
+   //
+   // Widget group for all attributes
+   // 
+   allAttributesWidgetGroup = new WuQWidgetGroup(this);
+   allAttributesWidgetGroup->addWidget(numberCheckBox);
+   allAttributesWidgetGroup->addWidget(nameCheckBox);
+   allAttributesWidgetGroup->addWidget(positionCheckBox);
+   allAttributesWidgetGroup->addWidget(classCheckBox);
+   allAttributesWidgetGroup->addWidget(areaCheckBox);
+   allAttributesWidgetGroup->addWidget(geographyCheckBox);
+   allAttributesWidgetGroup->addWidget(regionOfInterestCheckBox);
+   allAttributesWidgetGroup->addWidget(sizeCheckBox);
+   allAttributesWidgetGroup->addWidget(statisticCheckBox);
+   allAttributesWidgetGroup->addWidget(structureCheckBox);
+   allAttributesWidgetGroup->addWidget(studyNameCheckBox);
+   allAttributesWidgetGroup->addWidget(studyPMIDCheckBox);
+   allAttributesWidgetGroup->addWidget(studyDataFormatCheckBox);
+   allAttributesWidgetGroup->addWidget(studyDataTypeCheckBox);
+   allAttributesWidgetGroup->addWidget(studyStereotaxicSpaceCheckBox);
+   allAttributesWidgetGroup->addWidget(studyTableNumberCheckBox);
+   allAttributesWidgetGroup->addWidget(studyTableSubHeaderCheckBox);
+   allAttributesWidgetGroup->addWidget(studyFigureNumberCheckBox);
+   allAttributesWidgetGroup->addWidget(studyFigurePanelCheckBox);
+   allAttributesWidgetGroup->addWidget(studyPageNumberCheckBox);
+   allAttributesWidgetGroup->addWidget(studyPageReferenceNumberCheckBox);
+   allAttributesWidgetGroup->addWidget(studyPageReferenceSubHeaderCheckBox);
+   allAttributesWidgetGroup->addWidget(commentCheckBox);
+   
+   //
+   // Widget group for core items
+   //
+   coreAttributesWidgetGroup = new WuQWidgetGroup(this);
+   coreAttributesWidgetGroup->addWidget(numberCheckBox);
+   coreAttributesWidgetGroup->addWidget(nameCheckBox);
+   coreAttributesWidgetGroup->addWidget(positionCheckBox);
+   coreAttributesWidgetGroup->addWidget(classCheckBox);
+   coreAttributesWidgetGroup->addWidget(areaCheckBox);
+   coreAttributesWidgetGroup->addWidget(geographyCheckBox);
+   coreAttributesWidgetGroup->addWidget(regionOfInterestCheckBox);
+   coreAttributesWidgetGroup->addWidget(structureCheckBox);
+   coreAttributesWidgetGroup->addWidget(studyPMIDCheckBox);
    
    //
    // If doing a cell report, hide items specific to foci
@@ -341,19 +533,80 @@ GuiCellAndFociReportDialog::createCellFociSection(const QString& typeString)
       statisticCheckBox->hide();
       commentCheckBox->hide();
       studyNameCheckBox->hide();
+      studyPMIDCheckBox->hide();
       studyDataFormatCheckBox->hide();
       studyDataTypeCheckBox->hide();
+      studyStereotaxicSpaceCheckBox->hide();
+      studyTableNumberCheckBox->hide();
+      studyTableSubHeaderCheckBox->hide();
+      studyFigureNumberCheckBox->hide();
+      studyFigurePanelCheckBox->hide();
+      studyPageNumberCheckBox->hide();
+      studyPageReferenceNumberCheckBox->hide();
+      studyPageReferenceSubHeaderCheckBox->hide();
    }
    
    return attrGroupBox;
 }
                            
 /**
+ * called when attributes all on button clicked.
+ */\
+void
+GuiCellAndFociReportDialog::slotAttributesAllOnToolButton()
+{
+   allAttributesWidgetGroup->setAllCheckBoxesChecked(true);
+}
+
+/**
+ * called when attributes all off button clicked.
+ */
+void
+GuiCellAndFociReportDialog::slotAttributesAllOffToolButton()
+{
+   allAttributesWidgetGroup->setAllCheckBoxesChecked(false);
+}
+
+/**
+ * called when attributes core on button clicked.
+ */
+void
+GuiCellAndFociReportDialog::slotAttributesCoreOnToolButton()
+{
+   allAttributesWidgetGroup->setAllCheckBoxesChecked(false);
+   coreAttributesWidgetGroup->setAllCheckBoxesChecked(true);
+}
+
+/**
  * create the paint section.
  */
 QWidget* 
 GuiCellAndFociReportDialog::createPaintSection()
 {
+   //
+   // All On button
+   //
+   QToolButton* allPaintAttributesOnToolButton = new QToolButton;
+   allPaintAttributesOnToolButton->setText("All On");
+   QObject::connect(allPaintAttributesOnToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotPaintAttributesAllOnToolButton()));
+   
+   //
+   // All Off button
+   //
+   QToolButton* allPaintAttributesOffToolButton = new QToolButton;
+   allPaintAttributesOffToolButton->setText("All Off");
+   QObject::connect(allPaintAttributesOffToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotPaintAttributesAllOffToolButton()));
+   
+   //
+   // Layout for tool buttons
+   //
+   QHBoxLayout* toolButtonLayout = new QHBoxLayout;
+   toolButtonLayout->addWidget(allPaintAttributesOnToolButton);
+   toolButtonLayout->addWidget(allPaintAttributesOffToolButton);
+   toolButtonLayout->addStretch();
+
    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
    const int numCols = pf->getNumberOfColumns();
    if (numCols <= 0) {
@@ -365,23 +618,14 @@ GuiCellAndFociReportDialog::createPaintSection()
    //
    QGroupBox* paintGroupBox = new QGroupBox("Paint Attributes");
    QVBoxLayout* paintGroupLayout = new QVBoxLayout(paintGroupBox);
+   paintGroupLayout->addLayout(toolButtonLayout);
    
-   //
-   // Scroll view
-   //
-   QScrollArea* paintScrollView = new QScrollArea;
-   paintGroupLayout->addWidget(paintScrollView);
-   QWidget* paintScrollWidget = new QWidget;
-   QVBoxLayout* paintScrollLayout = new QVBoxLayout(paintScrollWidget);
-   paintScrollView->setWidget(paintScrollWidget);
-   paintScrollView->setWidgetResizable(true);
-
    //
    // Add check boxes for paint columns
    //
    for (int i = 0; i < numCols; i++) {
       QCheckBox* pcb = new QCheckBox(pf->getColumnName(i));
-      paintScrollLayout->addWidget(pcb);
+      paintGroupLayout->addWidget(pcb);
       pcb->setChecked(false);
       paintNameCheckBoxes.push_back(pcb);
    }
@@ -389,6 +633,30 @@ GuiCellAndFociReportDialog::createPaintSection()
    return paintGroupBox;
 }      
 
+/**
+ * called when paint attributes all on button clicked.
+ */
+void 
+GuiCellAndFociReportDialog::slotPaintAttributesAllOnToolButton()
+{
+   const int num = static_cast<int>(paintNameCheckBoxes.size());
+   for (int i = 0; i < num; i++) {
+      paintNameCheckBoxes[i]->setChecked(true);
+   }
+}
+
+/**
+ * called when paint attributes all off button clicked.
+ */
+void 
+GuiCellAndFociReportDialog::slotPaintAttributesAllOffToolButton()
+{
+   const int num = static_cast<int>(paintNameCheckBoxes.size());
+   for (int i = 0; i < num; i++) {
+      paintNameCheckBoxes[i]->setChecked(false);
+   }
+}
+      
 /**
  * called when ok/cancel button pressed.
  */
@@ -491,10 +759,22 @@ GuiCellAndFociReportDialog::done(int r)
                statisticColumn = numTableColumns++;
             }
             
+            int commentColumn = -1;
+            if (checked(commentCheckBox)) {
+               columnTitle.push_back("Comment");
+               commentColumn = numTableColumns++;
+            }
+            
             int studyNameColumn = -1;
             if (checked(studyNameCheckBox)) {
-               columnTitle.push_back("Study Name");
+               columnTitle.push_back("Study Title");
                studyNameColumn = numTableColumns++;
+            }
+            
+            int studyPMIDColumn = -1;
+            if (checked(studyPMIDCheckBox)) {
+               columnTitle.push_back("Study PMID");
+               studyPMIDColumn = numTableColumns++;
             }
             
             int studyDataFormatColumn = -1;
@@ -509,10 +789,52 @@ GuiCellAndFociReportDialog::done(int r)
                studyDataTypeColumn = numTableColumns++;
             }
             
-            int commentColumn = -1;
-            if (checked(commentCheckBox)) {
-               columnTitle.push_back("Comment");
-               commentColumn = numTableColumns++;
+            int stereotaxicSpaceColumn = -1;
+            if (checked(studyStereotaxicSpaceCheckBox)) {
+               columnTitle.push_back("Study Stereotaxic Space");
+               stereotaxicSpaceColumn = numTableColumns++;
+            }
+            
+            int studyTableNumberColumn = -1;
+            if (checked(studyTableNumberCheckBox)) {
+               columnTitle.push_back("Study Table Number");
+               studyTableNumberColumn = numTableColumns++;
+            }
+            
+            int studyTableSubHeaderColumn = -1;
+            if (checked(studyTableSubHeaderCheckBox)) {
+               columnTitle.push_back("Study Table Subheader");
+               studyTableSubHeaderColumn = numTableColumns++;
+            }
+            
+            int studyFigureNumberColumn = -1;
+            if (checked(studyFigureNumberCheckBox)) {
+               columnTitle.push_back("Study Figure Number");
+               studyFigureNumberColumn = numTableColumns++;
+            }
+            
+            int studyFigurePanelColumn = -1;
+            if (checked(studyFigurePanelCheckBox)) {
+               columnTitle.push_back("Study Figure Panel");
+               studyFigurePanelColumn = numTableColumns++;
+            }
+            
+            int studyPageNumberColumn = -1;
+            if (checked(studyPageNumberCheckBox)) {
+               columnTitle.push_back("Study Page Number");
+               studyPageNumberColumn = numTableColumns++;
+            }
+            
+            int studyPageReferenceNumberColumn = -1;
+            if (checked(studyPageReferenceNumberCheckBox)) {
+               columnTitle.push_back("Study Page Reference Number");
+               studyPageReferenceNumberColumn = numTableColumns++;
+            }
+            
+            int studyPageReferenceSubheaderColumn = -1;
+            if (checked(studyPageReferenceSubHeaderCheckBox)) {
+               columnTitle.push_back("Study Page Reference Subheader");
+               studyPageReferenceSubheaderColumn = numTableColumns++;
             }
             
             //
@@ -548,9 +870,9 @@ GuiCellAndFociReportDialog::done(int r)
                   cerebellumPointLocator = 
                      new BrainModelSurfacePointLocator(cerebellumBMS, true);
                }
+               
                for (int i = 0; i < numCells; i++) {
                   const CellProjection* cp = cf->getCellProjection(i);
-                  
                   float xyz[3];
                   cp->getXYZ(xyz);
                   
@@ -581,6 +903,9 @@ GuiCellAndFociReportDialog::done(int r)
                      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
                         rightFlag = true;
                         break;
+                     case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+                     case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+                     case Structure::STRUCTURE_TYPE_ALL:
                      case Structure::STRUCTURE_TYPE_INVALID:
                         if (xyz[0] >= 0) {
                            rightFlag = true;
@@ -623,7 +948,7 @@ GuiCellAndFociReportDialog::done(int r)
                         }
                      }
                   }
-               }
+               }  // for
                
                if (cerebellumPointLocator != NULL) {
                   delete cerebellumPointLocator;
@@ -631,149 +956,305 @@ GuiCellAndFociReportDialog::done(int r)
             }
             
             //
-            // Create the QString table
+            // Count number of cells for table
             //
-            StringTable cellTable(numCells, numTableColumns);
-            
-            //
-            // Set the column titles
-            //
-            for (int j = 0; j < static_cast<int>(columnTitle.size()); j++) {
-               cellTable.setColumnTitle(j, columnTitle[j]);
-            }
-            
-            //
-            // Handle columns that contain integer data so sorted correctly
-            //
-            if (numberColumn >= 0) {
-               cellTable.setColumnMaxInteger(numberColumn, numCells);
-            }
-            
-            //
-            // Process the cells
-            //
+            std::vector<int> cellsForReport;
             for (int i = 0; i < numCells; i++) {
-               //
-               // Load cell data into the table
-               //
                const CellProjection* cd = cf->getCellProjection(i);
+               bool useFocusFlag = true;
+               if (includeDisplayedCellsOnlyCheckBox->isChecked()) {
+                  useFocusFlag = cd->getDisplayFlag();
+               }
+               
+               if (useFocusFlag) {
+                  cellsForReport.push_back(i);
+               }
+            }
+            
+            const int numCellsForTable = static_cast<int>(cellsForReport.size());
+            if (numCellsForTable > 0) {
+               //
+               // Create the QString table
+               //
+               StringTable cellTable(numCellsForTable, numTableColumns);
+               
+               //
+               // Set the column titles
+               //
+               for (int j = 0; j < static_cast<int>(columnTitle.size()); j++) {
+                  cellTable.setColumnTitle(j, columnTitle[j]);
+               }
+               
+               //
+               // Handle columns that contain integer data so sorted correctly
+               //
                if (numberColumn >= 0) {
-                  cellTable.setElement(i, numberColumn, i);
+                  cellTable.setColumnMaxInteger(numberColumn, numCellsForTable);
                }
                
-               if (nameColumn >= 0) {
-                  cellTable.setElement(i, nameColumn, cd->getName());
-               }
-               
-               if (positionColumn >= 0) {
-                  const float* xyz = cd->getXYZ();
-                  cellTable.setElement(i, positionColumn, xyz[0]);
-                  cellTable.setElement(i, positionColumn + 1, xyz[1]);
-                  cellTable.setElement(i, positionColumn + 2, xyz[2]);
-               }
-               
-               if (classColumn >= 0) {
-                  cellTable.setElement(i, classColumn, cd->getClassName());
-               }
-
-               if (areaColumn >= 0) {
-                  cellTable.setElement(i, areaColumn, cd->getArea());
-               }
-               
-               if (geographyColumn >= 0) {
-                  cellTable.setElement(i, geographyColumn, cd->getGeography());
-               }
-
-               if (regionOfInterestColumn >= 0) {
-                  cellTable.setElement(i, regionOfInterestColumn, cd->getRegionOfInterest());
-               }
-               
-               if (sizeColumn >= 0) {
-                  cellTable.setElement(i, sizeColumn, cd->getSize());
-               }
-
-               if (statisticColumn >= 0) {
-                  cellTable.setElement(i, statisticColumn, cd->getStatistic());
-               }
-
-               if (hemisphereColumn >= 0) {
-                  cellTable.setElement(i, hemisphereColumn, 
-                     Structure::convertTypeToString(cd->getCellStructure()));
-               }
-
-               StudyMetaData* smd = NULL;
-               const StudyMetaDataLinkSet smdls = cd->getStudyMetaDataLinkSet();
-               if (smdls.getNumberOfStudyMetaDataLinks() > 0) {
-                  StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(0);
-                  const int indx = studyMetaDataFile->getStudyIndexFromLink(smdl);
-                  if (indx >= 0) {
-                     smd = studyMetaDataFile->getStudyMetaData(indx);
-                  }
-               }
-               
-               if (studyNameColumn >= 0) {
-                  QString studyTitle;
-                  if (smd != NULL) {
-                     studyTitle = smd->getTitle();
-                  }
-                  cellTable.setElement(i, studyNameColumn, studyTitle);
-               }
-
-               if (studyDataFormatColumn >= 0) {
-                  QString dataFormat;
-                  if (smd != NULL) {
-                     dataFormat = smd->getStudyDataFormat();
-                  }
-                  cellTable.setElement(i, studyDataFormatColumn, dataFormat);
-               }
-               
-               if (studyDataTypeColumn >= 0) {
-                  QString dataType;
-                  if (smd != NULL) {
-                     dataType = smd->getStudyDataType();
-                  }
-                  cellTable.setElement(i, studyDataTypeColumn, dataType);
-               }
-               
-               if (commentColumn >= 0) {
-                  cellTable.setElement(i, commentColumn, cd->getComment());
-               }
-
                //
-               // Load paint into the table
+               // Counts for missing items
                //
-               if (havePaints) {
-                  int node = -1;
-                  if (cellsNearestLeftNode[i] >= 0) {
-                     node = cellsNearestLeftNode[i];
+               int countFociLackMatchingStudyName = 0;
+               int countFociLackMatchingPubMedID  = 0;
+               std::set<QString> fociLackMatchingStudyName;
+               
+               //
+               // Process the cells
+               //
+               for (int ii = 0; ii < numCellsForTable; ii++) {
+                  const int tableRowNumber = ii;
+                  const int cellNumber = cellsForReport[ii];
+                  const CellProjection* cd = cf->getCellProjection(cellNumber);
+                  //
+                  // Load cell data into the table
+                  //
+                  if (numberColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, numberColumn, cellNumber);
                   }
-                  else if (cellsNearestRightNode[i] >= 0) {
-                     node = cellsNearestRightNode[i];
+                  
+                  if (nameColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, nameColumn, cd->getName());
                   }
-                  else if (cellsNearestCerebellumNode[i] >= 0) {
-                     node = cellsNearestCerebellumNode[i];
+                  
+                  if (positionColumn >= 0) {
+                     const float* xyz = cd->getXYZ();
+                     cellTable.setElement(tableRowNumber, positionColumn, xyz[0]);
+                     cellTable.setElement(tableRowNumber, positionColumn + 1, xyz[1]);
+                     cellTable.setElement(tableRowNumber, positionColumn + 2, xyz[2]);
                   }
-                  if (node >= 0) {
-                     for (int j = 0; j < numPaintCols; j++) {
-                        if (paintNameCheckBoxes[j]->isChecked()) {
-                           const int paintIndex = pf->getPaint(node, j);
-                           const QString paintName = pf->getPaintNameFromIndex(paintIndex);
-                           cellTable.setElement(i, paintTableColumn[j], paintName);
+                  
+                  if (classColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, classColumn, cd->getClassName());
+                  }
+
+                  if (areaColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, areaColumn, cd->getArea());
+                  }
+                  
+                  if (geographyColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, geographyColumn, cd->getGeography());
+                  }
+
+                  if (regionOfInterestColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, regionOfInterestColumn, cd->getRegionOfInterest());
+                  }
+                  
+                  if (sizeColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sizeColumn, cd->getSize());
+                  }
+
+                  if (statisticColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, statisticColumn, cd->getStatistic());
+                  }
+
+                  if (hemisphereColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, hemisphereColumn, 
+                        Structure::convertTypeToString(cd->getCellStructure()));
+                  }
+
+                  QString pubMedID;
+                  StudyMetaData* linkedStudyMetaData = NULL;
+                  const StudyMetaDataLinkSet smdls = cd->getStudyMetaDataLinkSet();
+                  StudyMetaDataLink metaDataLink;
+                  if (smdls.getNumberOfStudyMetaDataLinks() > 0) {
+                     metaDataLink = smdls.getStudyMetaDataLink(0);
+                     pubMedID = metaDataLink.getPubMedID();
+                     const int indx = studyMetaDataFile->getStudyIndexFromLink(metaDataLink);
+                     if (indx >= 0) {
+                        linkedStudyMetaData = studyMetaDataFile->getStudyMetaData(indx);
+                     }
+                  }
+                  
+                  if (studyNameColumn >= 0) {
+                     QString studyTitle;
+                     if (linkedStudyMetaData != NULL) {
+                        studyTitle = linkedStudyMetaData->getTitle();
+                     }
+                     cellTable.setElement(tableRowNumber, studyNameColumn, studyTitle);
+                  }
+                  
+                  if (studyPMIDColumn >= 0) {
+                     //QString studyPMID;
+                     //if (linkedStudyMetaData != NULL) {
+                     //   studyPMID = linkedStudyMetaData->getPubMedID();
+                     //}
+                     //cellTable.setElement(tableRowNumber, studyPMIDColumn, studyPMID);
+                     cellTable.setElement(tableRowNumber, studyPMIDColumn, pubMedID);
+                  }
+
+                  if (cd->getName().isEmpty() == false) {
+                     int nameIndx = studyMetaDataFile->getStudyIndexFromName(cd->getName());
+                     if (nameIndx >= 0) {
+                        int pmidIndex = -1;
+                        if (pubMedID.isEmpty() == false) {
+                           pmidIndex = studyMetaDataFile->getStudyIndexFromPubMedID(pubMedID);
+                        }
+                        if (nameIndx != pmidIndex) {
+                           countFociLackMatchingPubMedID++;
+                           fociLackMatchingStudyName.insert("Focus "
+                                                            + QString::number(cellNumber)
+                                                            + " "
+                                                            + cd->getName()
+                                                            + " Study Index="
+                                                            + QString::number(pmidIndex+1)
+                                                            + ", Study With Same Name Uses Study Index=" 
+                                                            + QString::number(nameIndx+1));
+                        }
+                     }
+                     else {
+                        countFociLackMatchingStudyName++;
+                        fociLackMatchingStudyName.insert("No Study Name Matches " 
+                                                         + QString::number(cellNumber)
+                                                         + " "
+                                                         + cd->getName());
+                     }
+                  }
+                  
+                  if (studyDataFormatColumn >= 0) {
+                     QString dataFormat;
+                     if (linkedStudyMetaData != NULL) {
+                        dataFormat = linkedStudyMetaData->getStudyDataFormat();
+                     }
+                     cellTable.setElement(tableRowNumber, studyDataFormatColumn, dataFormat);
+                  }
+                  
+                  if (studyDataTypeColumn >= 0) {
+                     QString dataType;
+                     if (linkedStudyMetaData != NULL) {
+                        dataType = linkedStudyMetaData->getStudyDataType();
+                     }
+                     cellTable.setElement(tableRowNumber, studyDataTypeColumn, dataType);
+                  }
+               
+                  if (stereotaxicSpaceColumn >= 0) {
+                     QString spaceName;
+                     if (linkedStudyMetaData != NULL) {
+                        spaceName = linkedStudyMetaData->getStereotaxicSpace();
+                     }
+                     cellTable.setElement(tableRowNumber, stereotaxicSpaceColumn, spaceName);
+                  }
+                  
+                  if (studyTableNumberColumn >= 0) {
+                     QString txt = metaDataLink.getTableNumber();
+                     cellTable.setElement(tableRowNumber, studyTableNumberColumn, txt);
+                  }
+                  
+                  if (studyTableSubHeaderColumn >= 0) {
+                     QString txt = metaDataLink.getTableSubHeaderNumber();
+                     cellTable.setElement(tableRowNumber, studyTableSubHeaderColumn, txt);
+                  }
+                  
+                  if (studyFigureNumberColumn >= 0) {
+                     QString txt = metaDataLink.getFigureNumber();
+                     cellTable.setElement(tableRowNumber, studyFigureNumberColumn, txt);
+                  }
+                  
+                  if (studyFigurePanelColumn >= 0) {
+                     QString txt = metaDataLink.getFigurePanelNumberOrLetter();
+                     cellTable.setElement(tableRowNumber, studyFigurePanelColumn, txt);
+                  }
+                  
+                  if (studyPageNumberColumn >= 0) {
+                     QString txt = metaDataLink.getPageNumber();
+                     cellTable.setElement(tableRowNumber, studyPageNumberColumn, txt);
+                  }
+                  
+                  if (studyPageReferenceNumberColumn >= 0) {
+                     QString txt = metaDataLink.getPageReferencePageNumber();
+                     cellTable.setElement(tableRowNumber, studyPageReferenceNumberColumn, txt);
+                  }
+                  
+                  if (studyPageReferenceSubheaderColumn >= 0) {
+                     QString txt = metaDataLink.getPageReferenceSubHeaderNumber();
+                     cellTable.setElement(tableRowNumber, studyPageReferenceSubheaderColumn, txt);
+                  }
+                  
+                  if (commentColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, commentColumn, cd->getComment());
+                  }
+
+                  //
+                  // Load paint into the table
+                  //
+                  if (havePaints) {
+                     int node = -1;
+                     if (cellsNearestLeftNode[cellNumber] >= 0) {
+                        node = cellsNearestLeftNode[cellNumber];
+                     }
+                     else if (cellsNearestRightNode[cellNumber] >= 0) {
+                        node = cellsNearestRightNode[cellNumber];
+                     }
+                     else if (cellsNearestCerebellumNode[cellNumber] >= 0) {
+                        node = cellsNearestCerebellumNode[cellNumber];
+                     }
+                     if (node >= 0) {
+                        for (int j = 0; j < numPaintCols; j++) {
+                           if (paintNameCheckBoxes[j]->isChecked()) {
+                              const int paintIndex = pf->getPaint(node, j);
+                              const QString paintName = pf->getPaintNameFromIndex(paintIndex);
+                              cellTable.setElement(tableRowNumber, paintTableColumn[j], paintName);
+                           }
                         }
                      }
                   }
-               }
-            } // for (i = 0; i < numCells...
+               } // for (ii = 0; ii < numCells...
             
-            //
-            // Create and display the table dialog
-            //
-            const QString titleString(typeString
-                                      + " Report ");
-            resultsTableDialog = new QtTableDialog(theMainWindow,
-                                                   titleString,
-                                                   cellTable,
-                                                   true);
+               //
+               // Create and display the table dialog
+               //
+               const QString titleString(typeString
+                                         + " Report ");
+               resultsTableDialog = new QtTableDialog(theMainWindow,
+                                                      titleString,
+                                                      cellTable,
+                                                      true);
+               resultsTableDialog->show();
+               resultsTableDialog->activateWindow();
+               QApplication::processEvents();
+                                                      
+               //
+               // Missing name/pub med ID alerts
+               //
+               QString msg;
+               if (countFociLackMatchingStudyName > 0) {
+                  if (msg.isEmpty() == false) {
+                     msg += "\n\n";
+                  }
+                  msg += (QString::number(countFociLackMatchingStudyName)
+                          + " foci lack a matching study name.");
+               }
+               if (countFociLackMatchingPubMedID > 0) {
+                  if (msg.isEmpty() == false) {
+                     msg += "\n\n";
+                  }
+                  msg += (QString::number(countFociLackMatchingPubMedID)
+                          + " foci have mismatched PMID in foci file and study file.");
+               }
+               if (msg.isEmpty() == false) {
+                  msg += ("\n\n"
+                          "Use 'Layers->Foci->Update Focus PubMed ID if Focus Name Matches Study Name'\n"
+                          "to correct mismatches.");
+                  WuQDataEntryDialog ded(resultsTableDialog);
+                  ded.setWindowTitle("Mismatched Foci");
+                  ded.setTextAtTop(msg, true);
+                  QStringList namesStringList;
+                  for (std::set<QString>::iterator iter = fociLackMatchingStudyName.begin();
+                       iter != fociLackMatchingStudyName.end();
+                       iter++) {
+                     namesStringList += *iter;
+                  }
+                  ded.addListWidget("", namesStringList);
+                  ded.exec();
+               }
+               
+            } // if (numCellsForTable > 0)
+            else {
+               QString msg("There are no ");
+               msg.append(typeString);
+               msg.append(" meeting display criteria.");
+               QMessageBox::critical(this, "ERROR", msg);
+            }
          }  // if (numCells > 0)
          else {
             QString msg("There are no ");

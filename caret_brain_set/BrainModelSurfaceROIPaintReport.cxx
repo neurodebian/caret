@@ -145,28 +145,35 @@ BrainModelSurfaceROIPaintReport::executeOperation() throw (BrainModelAlgorithmEx
       const QString str = ("Paint Subregion Name: "
                            + reportPaintFile->getPaintNameFromIndex(paintIndex));
       
-      reportText = "";
-      BrainModelSurfaceROITextReport roiReport(brainSet,
-                                               bms,
-                                               operationSurfaceROI,
-                                               reportMetricFile,
-                                               selectedMetricColumnsForReport,
-                                               reportShapeFile,
-                                               selectedShapeColumnsForReport,
-                                               reportPaintFile,
-                                               selectedPaintColumnsForReport,
-                                               reportLatLonFile,
-                                               0,
-                                               str,
-                                               reportMetricFile,
-                                               metricCorrectionColumn,
-                                               semicolonSeparateReportFlag);
-      try {
-         roiReport.execute();
-         paintReportText += roiReport.getReportText();
+      if (operationSurfaceROI->getNumberOfNodesSelected() > 0) {
+         reportText = "";
+         BrainModelSurfaceROITextReport roiReport(brainSet,
+                                                  bms,
+                                                  operationSurfaceROI,
+                                                  reportMetricFile,
+                                                  selectedMetricColumnsForReport,
+                                                  reportShapeFile,
+                                                  selectedShapeColumnsForReport,
+                                                  reportPaintFile,
+                                                  selectedPaintColumnsForReport,
+                                                  reportLatLonFile,
+                                                  0,
+                                                  str,
+                                                  reportMetricFile,
+                                                  metricCorrectionColumn,
+                                                  semicolonSeparateReportFlag);
+         try {
+            roiReport.execute();
+            paintReportText += roiReport.getReportText();
+         }
+         catch (BrainModelAlgorithmException& e) {
+            throw BrainModelAlgorithmException(e.whatQString());
+         }
       }
-      catch (BrainModelAlgorithmException& e) {
-         throw BrainModelAlgorithmException(e.whatQString());
+      else {
+         QString s = str;
+         s += "\n   No nodes in ROI\n\n";
+         paintReportText += s;
       }
       
       //

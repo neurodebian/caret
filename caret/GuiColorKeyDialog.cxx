@@ -46,6 +46,7 @@
 #include "BrainModelSurface.h"
 #include "BrainModelVolume.h"
 #include "CellColorFile.h"
+#include "CellFile.h"
 #include "CellProjectionFile.h"
 #include "ColorFile.h"
 #include "DisplaySettingsArealEstimation.h"
@@ -91,26 +92,10 @@ GuiColorKeyDialog::GuiColorKeyDialog(QWidget* parent,
    QObject::connect(updatePushButton, SIGNAL(clicked()),
                     this, SLOT(updateDialog()));
                     
-   switch (colorKey) {
-      case COLOR_KEY_AREAL_ESTIMATION:
-      case COLOR_KEY_BORDERS:
-      case COLOR_KEY_CELLS:
-      case COLOR_KEY_FOCI:
-      case COLOR_KEY_PAINT:
-      case COLOR_KEY_PROBABILISTIC_ATLAS:
-         break;
-      case COLOR_KEY_VOLUME_PAINT:
-      case COLOR_KEY_VOLUME_PROBABILISTIC_ATLAS:
-         {
-            QPushButton* clearPushButton = new QPushButton("Clear");
-            clearPushButton->setToolTip("Clear Volume Highlighting");
-            buttonBox->addButton(clearPushButton,
-                                 QDialogButtonBox::ActionRole);
-            QObject::connect(clearPushButton, SIGNAL(clicked()),
-                             this, SLOT(slotClearHighlighting()));
-         }
-         break;
-   }
+   QPushButton* clearPushButton = new QPushButton("Clear Highlighting");
+   clearPushButton->setAutoDefault(false);
+   QObject::connect(clearPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotClearHighlighting()));
 
    //
    // Place the names and a color swatch into the layout
@@ -130,6 +115,7 @@ GuiColorKeyDialog::GuiColorKeyDialog(QWidget* parent,
    //
    QVBoxLayout* dialogLayout = new QVBoxLayout(this);  
    dialogLayout->addWidget(scrollArea);
+   dialogLayout->addWidget(clearPushButton);
    dialogLayout->addWidget(buttonBox);
 }
 
@@ -442,7 +428,7 @@ GuiColorKeyDialog::updateArealEstimationKey(BrainSet* bs,
          for (int i = 0; i < numNodes; i++) {
             int nameIndices[4];
             float areas[4];
-            aef->getNodeData(i, i, nameIndices, areas);
+            aef->getNodeData(i, ic, nameIndices, areas);
             areaNamesUsed[nameIndices[0]] = true;
             areaNamesUsed[nameIndices[1]] = true;
             areaNamesUsed[nameIndices[2]] = true;
@@ -546,31 +532,66 @@ GuiColorKeyDialog::updateCellKey(BrainSet* bs,
    //
    CellProjectionFile* cpf = bs->getCellProjectionFile();
    CellColorFile* ccf = bs->getCellColorFile();
-   const int numberOfCellColors = ccf->getNumberOfColors();
    
    std::set<QString> uniqueCellNames;
-   const int num = cpf->getNumberOfCellProjections();
-   for (int i = 0; i < num; i++) {
-      const CellProjection* cp = cpf->getCellProjection(i);
-      if (cp->getDisplayFlag()) {
-         const QString name = cp->getName();
-         if (uniqueCellNames.find(name) == uniqueCellNames.end()) {
-            int red = -1;
-            int green = -1;
-            int blue = -1;
-            const int cellColorFileIndex = cp->getColorIndex();
-            if ((cellColorFileIndex >= 0) &&
-                (cellColorFileIndex < numberOfCellColors)) {
-               unsigned char r, g, b;
-               ccf->getColorByIndex(cellColorFileIndex, r, g, b);
-               red = r;
-               green = g;
-               blue = b;
-            }
-            names.push_back(NameAndColor(name, red, green, blue));
+   
+   {
+      const int num = cpf->getNumberOfCellProjections();
+      for (int i = 0; i < num; i++) {
+         const CellProjection* cp = cpf->getCellProjection(i);
+         if (cp->getDisplayFlag()) {
+            const QString name = cp->getName();
             uniqueCellNames.insert(name);
          }
       }
+   }
+      
+   {
+      CellFile* cf = bs->getVolumeCellFile();
+      const int num = cf->getNumberOfCells();
+      for (int i = 0; i < num; i++) {
+         const CellData* cd = cf->getCell(i);
+         if (cd->getDisplayFlag()) {
+            const QString name = cd->getName();
+            uniqueCellNames.insert(name);
+         }
+      }
+   }
+   
+   {
+      const int numFiles = bs->getNumberOfTransformationDataFiles();
+      for (int j = 0; j < numFiles; j++) {
+         AbstractFile* tdf = bs->getTransformationDataFile(j);
+         CellFile* cf = dynamic_cast<CellFile*>(tdf);
+         if (cf != NULL) {
+            const int num = cf->getNumberOfCells();
+            for (int i = 0; i < num; i++) {
+               const CellData* cd = cf->getCell(i);
+               const QString name = cd->getName();
+               uniqueCellNames.insert(name);
+            }
+         }
+      }
+   }
+   
+   for (std::set<QString>::iterator iter = uniqueCellNames.begin();
+        iter != uniqueCellNames.end();
+        iter++) {
+      const QString name = *iter;
+      int red = -1;
+      int green = -1;
+      int blue = -1;
+      unsigned char r, g, b, a;
+      bool exactMatch = false;
+      const int cellColorFileIndex = 
+         ccf->getColorByName(name, exactMatch, r, g, b, a);
+      if (cellColorFileIndex >= 0) {
+         red = r;
+         green = g;
+         blue = b;
+      }
+      names.push_back(NameAndColor(name, red, green, blue));
+      uniqueCellNames.insert(name);
    }
 }
 
@@ -1152,19 +1173,31 @@ GuiColorKeyDialog::slotNameLabelClicked(const QString& name)
 void 
 GuiColorKeyDialog::slotClearHighlighting()
 {
+   bool clearNodesFlag = false;
    BrainSet* bs = theMainWindow->getBrainSet();
    switch (colorKey) {
       case COLOR_KEY_AREAL_ESTIMATION:
+         clearNodesFlag = true;
          break;
       case COLOR_KEY_BORDERS:
+         {
+            BrainModelBorderSet* bmbs = theMainWindow->getBrainSet()->getBorderSet();
+            bmbs->clearBorderHighlighting();
+         }
          break;
       case COLOR_KEY_CELLS:
          break;
       case COLOR_KEY_FOCI:
+         {
+            FociProjectionFile* fpf = theMainWindow->getBrainSet()->getFociProjectionFile();
+            fpf->clearAllHighlightFlags();
+         }
          break;
       case COLOR_KEY_PAINT:
+         clearNodesFlag = true;
          break;
       case COLOR_KEY_PROBABILISTIC_ATLAS:
+         clearNodesFlag = true;
          break;
       case COLOR_KEY_VOLUME_PAINT:
          if (bs->getNumberOfVolumePaintFiles() > 0) {
@@ -1175,10 +1208,15 @@ GuiColorKeyDialog::slotClearHighlighting()
       case COLOR_KEY_VOLUME_PROBABILISTIC_ATLAS:
          if (bs->getNumberOfVolumeProbAtlasFiles() > 0) {
             bs->getVolumeProbAtlasFile(0)->clearRegionHighlighting();
-            GuiBrainModelOpenGL::updateAllGL();
          }
          break;
    }
+   
+   if (clearNodesFlag) {
+      theMainWindow->getBrainSet()->clearNodeHighlightSymbols();
+   }
+   
+   GuiBrainModelOpenGL::updateAllGL();
 }
       
 /**

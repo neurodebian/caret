@@ -125,9 +125,8 @@ class NeurolucidaFile : public AbstractFile {
       
 };
 
+#endif // __NEUROLUCIDA_FILE_H__
+
 #ifdef __NEUROLUCIDA_MAIN__
    float NeurolucidaFile::micronsToMillimeters = 0.001;
 #endif // __NEUROLUCIDA_MAIN__
-
-#endif // __NEUROLUCIDA_FILE_H__
-

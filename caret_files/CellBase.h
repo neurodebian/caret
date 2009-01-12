@@ -218,6 +218,24 @@ class CellBase {
       /// set the SuMS parent cell base ID
       void setSumsParentCellBaseID(const QString& s);
       
+      /// get the SuMS version number
+      QString getSumsVersionNumber() const { return sumsVersionNumber; }
+      
+      /// set the SuMS version number
+      void setSumsVersionNumber(const QString& s);
+      
+      /// get the SuMS mslid
+      QString getSumsMSLID() const { return sumsMSLID; }
+      
+      /// set the SuMS mslid
+      void setSumsMSLID(const QString& s);
+      
+      /// get the attribute ID
+      QString getAttributeID() const { return attributeID; }
+      
+      /// set the attribute ID
+      void setAttributeID(const QString& s);
+      
    protected:
       /// called to read from an XML DOM structure
       virtual void readXMLWithDOM(QDomNode& node) throw (FileException);
@@ -301,6 +319,15 @@ class CellBase {
       /// SuMS parent cell base ID
       QString sumsParentCellBaseID;
       
+      /// SuMS version number
+      QString sumsVersionNumber;
+      
+      /// SuMS mslid
+      QString sumsMSLID;
+      
+      /// the attribute id
+      QString attributeID;
+      
       /// tag for reading and writing cells
       static const QString tagCellBase;
       
@@ -354,7 +381,18 @@ class CellBase {
       
       /// tag for reading and writing cells
       static const QString tagSumsParentCellBaseID;                 
+
+      /// tag for reading and writing cells
+      static const QString tagSumsVersionNumber;
+      
+      /// tag for reading and writing cells
+      static const QString tagSumsMSLID;
+      
+      /// tag for reading and writing cells
+      static const QString tagAttributeID;
 };
+
+#endif // __CELL_BASE__
 
 #ifdef __CELL_BASE_MAIN__
       const QString CellBase::tagCellBase = "CellBase";
@@ -375,7 +413,7 @@ class CellBase {
       const QString CellBase::tagSumsIDNumber = "tagSumsIDNumber";
       const QString CellBase::tagSumsRepeatNumber = "tagSumsRepeatNumber";
       const QString CellBase::tagSumsParentCellBaseID = "tagSumsParentCellBaseID";
+      const QString CellBase::tagSumsVersionNumber = "tagSumsVersionNumber";
+      const QString CellBase::tagSumsMSLID = "tagSumsMSLID";
+      const QString CellBase::tagAttributeID = "tagAttributeID";
 #endif // __CELL_BASE_MAIN__
-
-#endif // __CELL_BASE__
-

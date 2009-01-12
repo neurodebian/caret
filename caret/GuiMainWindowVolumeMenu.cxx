@@ -121,6 +121,7 @@ GuiMainWindowVolumeMenu::createPaintSubMenu()
    paintSubMenu = addMenu("Paint");
    
    paintSubMenu->addAction(volumeActions->getEditPaintVolumeAction());
+   paintSubMenu->addAction(volumeActions->getPaintVolumeGenerateColorsAction());
 }
 
 /**

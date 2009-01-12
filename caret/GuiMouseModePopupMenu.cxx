@@ -93,11 +93,13 @@ GuiMouseModePopupMenu::slotMenuItemSelected(QAction* action)
          
       if (name == getActionBorderDrawName()) {
          brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW);
+         //brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_DRAW_NEW);
          QAction* action = layersActions->getBordersDrawAction();
          action->trigger();
       }
       else if (name == getActionBorderDrawUpdateName()) {
          brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE);
+         //brainModelOpenGL->setMouseMode(GuiBrainModelOpenGL::MOUSE_MODE_BORDER_UPDATE_NEW);
          QAction* action = layersActions->getBorderDrawUpdateAction();
          action->trigger();
       }

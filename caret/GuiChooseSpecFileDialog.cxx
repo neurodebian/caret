@@ -66,6 +66,7 @@ GuiChooseSpecFileDialog::GuiChooseSpecFileDialog(QWidget* parent,
    setModal(modalIn);
    std::vector<QString> specFileNames;
    pf->getRecentSpecFiles(specFileNames);
+   setHistory(pf->getRecentDataFileDirectories());
    createDialog(specFileNames,
                 allowMultipleSelectionsFlag);
 }

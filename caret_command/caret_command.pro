@@ -7,7 +7,7 @@ TEMPLATE = app
 #
 # For JPEG support with static linking
 #
-QTPLUGIN += qgif qjpeg
+QTPLUGIN += qgif qjpeg qtiff
 LIBS     += -L$(QTDIR)/plugins/imageformats
 
 CONFIG   += qt console

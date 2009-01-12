@@ -68,6 +68,9 @@ class BrainModelSurfaceFociSearch : public BrainModelAlgorithm {
       /// get the number of foci from matching studies
       int getNumberOfFociFromMatchingStudies() const { return numberOfFociFromMatchingStudies; }
       
+      /// number of studies from which matched foci originate
+      int getNumberOfStudiesUsedByMatchingFoci() const { return numberOfStudiesUsedByMatchingFoci; }
+   
    protected:
       // apply the search to a focus
       bool applySearchToFocus(const FociSearch* fociSearch,
@@ -102,6 +105,9 @@ class BrainModelSurfaceFociSearch : public BrainModelAlgorithm {
       
       /// number of foci from matching studies
       int numberOfFociFromMatchingStudies;      
+      
+      /// number of studies from which matched foci originate
+      int numberOfStudiesUsedByMatchingFoci;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_FOCI_SEARCH_H__

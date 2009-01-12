@@ -640,7 +640,7 @@ BrainModelVolumeHandleFinder::findHandles(const VolumeFile::VOLUME_AXIS searchAx
                      }
                   }
                   float voxelXYZ[3];
-                  segmentationVolume->getVoxelCoordinate(ijk, true, voxelXYZ);
+                  segmentationVolume->getVoxelCoordinate(ijk, voxelXYZ);
                   handlesFound.push_back(BrainModelVolumeTopologicalError(ijk,
                                                 voxelXYZ,
                                                 slices,

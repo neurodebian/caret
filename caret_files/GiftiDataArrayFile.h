@@ -258,9 +258,8 @@ class GiftiDataArrayFile : public AbstractFile {
    //
 };
 
+#endif // __GIFTI_DATA_ARRAY_FILE_H__
+
 #ifdef __GIFTI_DATA_ARRAY_FILE_MAIN__
    bool GiftiDataArrayFile::giftiXMLFilesEnabled = true;
 #endif // __GIFTI_DATA_ARRAY_FILE_MAIN__
-
-#endif // __GIFTI_DATA_ARRAY_FILE_H__
-

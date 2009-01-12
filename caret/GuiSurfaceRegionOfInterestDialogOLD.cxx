@@ -4515,8 +4515,7 @@ GuiSurfaceRegionOfInterestDialogOLD::slotCreateVolumeFromQueryNodesButton()
                                              svd.getSurfaceInnerBoundary(),
                                              svd.getSurfaceOuterBoundary(),
                                              svd.getSurfaceThicknessStep(),
-                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_ROI_NODES,
-                                             svd.getIntersectionMode());
+                   BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_ROI_NODES);
       stv.setNodeToVoxelMappingEnabled(svd.getNodeToVoxelMappingEnabled(),
                                        svd.getNodeToVoxelMappingFileName());
       try {

@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <algorithm>
 #include <cmath>
 
 #include <QStringList>

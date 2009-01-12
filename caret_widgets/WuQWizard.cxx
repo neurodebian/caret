@@ -1,0 +1,155 @@
+/*LICENSE_START*/
+/*
+ *  Copyright 1995-2002 Washington University School of Medicine
+ *
+ *  http://brainmap.wustl.edu
+ *
+ *  This file is part of CARET.
+ *
+ *  CARET is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  CARET is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with CARET; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+/*LICENSE_END*/
+
+#include <QApplication>
+#include <QClipboard>
+#include <QContextMenuEvent>
+#include <QImage>
+#include <QKeyEvent>
+#include <QMenu>
+#include <QMessageBox>
+#include <QPixmap>
+#include <QTimer>
+
+#include "WuQWizard.h"
+
+/**
+ * constructor.
+ */
+WuQWizard::WuQWizard(QWidget* parent,
+                     Qt::WindowFlags f)
+   : QWizard(parent, f)
+{
+   setFocusPolicy(Qt::ClickFocus);
+}
+              
+/**
+ * destructor.
+ */
+WuQWizard::~WuQWizard()
+{
+}
+      
+/**
+ * called to capture image after timeout so nothing obscures window.
+ */
+void 
+WuQWizard::slotCaptureImageAfterTimeOut()
+{
+   QImage image = QPixmap::grabWindow(this->winId()).toImage();
+   if (image.isNull() == false) {
+      QClipboard* clipboard = QApplication::clipboard();
+      clipboard->setImage(image);
+      
+      QMessageBox::information(this,
+          "Information",
+          "An image of this dialog has been placed onto the computer's clipboard.");
+   }
+}
+
+/**
+ * called to capture image of window and place it on the clipboard
+ */
+void 
+WuQWizard::slotMenuCaptureImageOfWindowToClipboard()
+{ 
+   //
+   // Need to delay capture so that the context sensistive
+   // menu closes or else the menu will be in the captured image.
+   //
+   QApplication::processEvents();
+   QTimer::singleShot(1000, this, SLOT(slotCaptureImageAfterTimeOut()));
+}
+
+/**
+ * add a capture image of window menu item to the menu.
+ */
+void 
+WuQWizard::addImageCaptureToMenu(QMenu* menu)
+{
+   menu->addAction("Capture Image to Clipboard",
+                   this,
+                   SLOT(slotMenuCaptureImageOfWindowToClipboard()));
+}
+
+/**
+ * called by parent when context menu event occurs.
+ */
+void 
+WuQWizard::contextMenuEvent(QContextMenuEvent* cme)
+{
+   //
+   // Popup menu for selection of pages
+   // 
+   QMenu menu(this);
+
+   //
+   // Add menu item for image capture
+   //
+   addImageCaptureToMenu(&menu);
+   
+   //
+   // Popup the menu
+   //
+   menu.exec(cme->globalPos());
+}
+
+/**
+ * ring the bell.
+ */
+void 
+WuQWizard::beep()
+{
+   QApplication::beep();
+}
+
+/**
+ * show the watch cursor.
+ */
+void 
+WuQWizard::showWaitCursor()
+{
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+}
+
+/**
+ * normal cursor.
+ */
+void 
+WuQWizard::showNormalCursor()
+{
+   QApplication::restoreOverrideCursor();
+}
+
+/**
+ * called to close.
+ */
+bool 
+WuQWizard::close()
+{
+   return QDialog::close();
+}
+      
+

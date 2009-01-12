@@ -79,17 +79,19 @@ CommandSurfaceGenerateInflated::getHelpInformation() const
        + indent9 + "[-generate-very-inflated] \n"
        + indent9 + "[-generate-ellipsoid] \n"
        + indent9 + "[-generate-sphere] \n"
+       + indent9 + "[-generate-cmw] \n"
        + indent9 + "[-output-spec    output-spec-file-name]\n"
        + indent9 + "[-output-inflated-file-name  output-inflated-coordinate-file-name]\n"
        + indent9 + "[-output-very-inflated-name  output-very-inflated-coordinate-file-name]\n"
        + indent9 + "[-output-ellipsoid-file-name output-ellipsoid-coordinate-file-name]\n"
        + indent9 + "[-output-sphere-file-name    output-spherical-coordinate-file-name]\n"
+       + indent9 + "[-output-cmw-file-name       output-cmw-coordinate-file-name]\n"
        + indent9 + "\n"
-       + indent9 + "Generate inflated, very-inflated, ellipsoid, and spherical\n"
-       + indent9 + "coordinate files.  The input fiducial surface should be\n"
-       + indent9 + "free of topological defects.  Run the command \n"
-       + indent9 + "\"-surface-topology-report\" to examine a surface's \n"
-       + indent9 + "topology.\n"
+       + indent9 + "Generate inflated, very-inflated, ellipsoid, spherical,\n"
+       + indent9 + "and compresed medial wall coordinate files.  The input \n"
+       + indent9 + "fiducial surface should be free of topological defects.\n"
+       + indent9 + "Run the command \"-surface-topology-report\" to examine\n"
+       + indent9 + "a surface's topology.\n"
        + indent9 + "\n"
        + indent9 + "If the file name for a surface is not specified, the name\n"
        + indent9 + "of the output file will be automatically generated.\n"
@@ -131,12 +133,14 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
    bool createVeryInflatedFlag = false;
    bool createEllipsoidFlag = false;
    bool createSphereFlag = false; 
+   bool createCompMedWallFlag = false;
    float iterationsScale = 1.0;  
    QString outputSpecFileName;
    QString inflatedCoordinateFileName;
    QString veryInflateCoordinateFileName;
    QString ellipsoidCoordinateFileName;
    QString sphericalCoordinateFileName;
+   QString compMedWallCoordinateFileName;
    while (parameters->getParametersAvailable()) {
       //
       // Get the next parameter and process it
@@ -161,6 +165,9 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       else if (paramName == "-generate-sphere") {
          createSphereFlag = true;
       }
+      else if (paramName == "-generate-cmw") {
+         createCompMedWallFlag = true;
+      }
       else if (paramName == "-output-inflated-file-name") {
          inflatedCoordinateFileName = 
             parameters->getNextParameterAsString("Inflated Coordinate File Name");
@@ -176,6 +183,10 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       else if (paramName == "-output-sphere-file-name") {
          sphericalCoordinateFileName = 
             parameters->getNextParameterAsString("Sphere Coordinate File Name");
+      }
+      else if (paramName == "-output-cmw-file-name") {
+         compMedWallCoordinateFileName = 
+            parameters->getNextParameterAsString("Comp Med Wall Coordinate File Name");
       }
       else {
          throw CommandException("Unrecognized surface option: "
@@ -212,6 +223,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
                                                            createVeryInflatedFlag,
                                                            createEllipsoidFlag,
                                                            createSphereFlag,
+                                                           createCompMedWallFlag,
                                                            smoothFingersFlag,
                                                            scaleToMatchFiduciaFlag,
                                                            iterationsScale,
@@ -228,7 +240,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       writeCoordUpdateSpec(surface,
                            inflatedCoordinateFileName,
                            outputSpecFileName,
-                           SpecFile::inflatedCoordFileTag);
+                           SpecFile::getInflatedCoordFileTag());
    }
    if (createVeryInflatedFlag) {
       BrainModelSurface* surface = 
@@ -239,7 +251,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       writeCoordUpdateSpec(surface,
                            veryInflateCoordinateFileName,
                            outputSpecFileName,
-                           SpecFile::veryInflatedCoordFileTag);
+                           SpecFile::getVeryInflatedCoordFileTag());
    }
    if (createEllipsoidFlag) {
       BrainModelSurface* surface = 
@@ -250,7 +262,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       writeCoordUpdateSpec(surface,
                            ellipsoidCoordinateFileName,
                            outputSpecFileName,
-                           SpecFile::ellipsoidCoordFileTag);
+                           SpecFile::getEllipsoidCoordFileTag());
    }
    if (createSphereFlag) {
       BrainModelSurface* surface = 
@@ -261,7 +273,18 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       writeCoordUpdateSpec(surface,
                            sphericalCoordinateFileName,
                            outputSpecFileName,
-                           SpecFile::sphericalCoordFileTag);
+                           SpecFile::getSphericalCoordFileTag());
+   }
+   if (createCompMedWallFlag) {
+      BrainModelSurface* surface = 
+         brainSet.getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_COMPRESSED_MEDIAL_WALL);
+      if (surface == NULL) {
+         throw CommandException("compressed medial wall surface generation failed.");
+      }
+      writeCoordUpdateSpec(surface,
+                           compMedWallCoordinateFileName,
+                           outputSpecFileName,
+                           SpecFile::getSphericalCoordFileTag());
    }
 }
 

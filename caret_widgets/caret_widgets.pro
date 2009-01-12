@@ -36,8 +36,11 @@ HEADERS += \
       WuQDialog.h \
       WuQFileDialog.h \
       WuQMessageBox.h \
+      WuQMultiPageDialog.h \
       WuQSaveWidgetAsImagePushButton.h \
-      WuQWidgetGroup.h
+      WuQSeparatorLine.h \
+      WuQWidgetGroup.h \
+      WuQWizard.h
 
 SOURCES += \
       QtDialogWizard.cxx \
@@ -53,6 +56,9 @@ SOURCES += \
       WuQDialog.cxx \
       WuQFileDialog.cxx \
       WuQMessageBox.cxx \
+      WuQMultiPageDialog.cxx \
       WuQSaveWidgetAsImagePushButton.cxx \
-      WuQWidgetGroup.cxx
+      WuQSeparatorLine.cxx \
+      WuQWidgetGroup.cxx \
+      WuQWizard.cxx 
 

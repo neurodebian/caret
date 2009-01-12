@@ -253,6 +253,8 @@ TopographyFile::deformFile(const DeformationMapFile& dmf,
 {
    TopographyFile& deformedTopographyFile = dynamic_cast<TopographyFile&>(deformedFile);
    const int numNodes = dmf.getNumberOfNodes();
+   const int numColumns = getNumberOfColumns();
+   deformedTopographyFile.setNumberOfNodesAndColumns(numNodes, numColumns);
    
    //
    // Transfer stuff in AbstractFile and NodeAttributeFile

@@ -181,6 +181,8 @@ class DeformationFieldFile : public NodeAttributeFile {
       static const QString tagTopologyFile;
 };
 
+#endif  //  __DEFORMATION_FIELD_FILE_H__
+
 #ifdef __DEFORMATION_FIELD_FILE_MAIN__
    const QString DeformationFieldFile::tagPreDeformedCoordinateFile = "tag-pre-deform-coord-file";
    const QString DeformationFieldFile::tagDeformedCoordinateFile = "tag-deformed-coord-file";
@@ -188,6 +190,4 @@ class DeformationFieldFile : public NodeAttributeFile {
    const QString DeformationFieldFile::tagCoordinateFile = "tag-input-coord-file";
    const QString DeformationFieldFile::tagTopologyFile = "tag-input-topology-file";
 #endif // __DEFORMATION_FIELD_FILE_MAIN__
-
-#endif  //  __DEFORMATION_FIELD_FILE_H__
 

@@ -24,6 +24,8 @@
  */
 /*LICENSE_END*/
 
+#include <QDirIterator>
+
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -113,6 +115,7 @@ BrainModelSurfaceBorderLandmarkIdentification::BrainModelSurfaceBorderLandmarkId
    temporalPoleNodeNumber = -1;
    
    calcarineSulcusLandmarkName = "LANDMARK.CalcarineSulcus";
+   allLandmarksSuccessfulFlag = false;
 }
                                    
 /**
@@ -140,6 +143,48 @@ BrainModelSurfaceBorderLandmarkIdentification::~BrainModelSurfaceBorderLandmarkI
       delete fociColorFile;
       fociColorFile = NULL;
    }
+   
+   //
+   // delete debug files only if debugging off and all landmarks okay
+   //
+   if (DebugControl::getDebugOn() == false) {
+      if (allLandmarksSuccessfulFlag) {
+         deleteDebugFilesDirectoryAndContents();
+      }
+   }
+}
+
+/**
+ * delete the debug files directory and the files within it.
+ */
+void 
+BrainModelSurfaceBorderLandmarkIdentification::deleteDebugFilesDirectoryAndContents()
+{
+   if (debugFilesDirectoryName.isEmpty() == false) {
+      QDir debugDir(debugFilesDirectoryName);
+      if (debugDir.exists()) {
+         //
+         // Delete all files
+         //
+         QDirIterator dit(debugDir);
+         while (dit.hasNext()) {
+            const QString name(dit.next());
+            QFileInfo fi(name);
+            if (fi.isFile()) {
+               //std::cout << "Deleting: " 
+               //          << name.toAscii().constData()
+               //          << std::endl;
+               QFile::remove(name);
+            }
+         }
+         
+         //
+         // Delete the directory
+         //
+         debugDir.cdUp();
+         debugDir.rmdir(debugFilesDirectoryName);
+      }
+   }
 }
 
 /**
@@ -148,6 +193,8 @@ BrainModelSurfaceBorderLandmarkIdentification::~BrainModelSurfaceBorderLandmarkI
 void 
 BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgorithmException)
 {
+   allLandmarksSuccessfulFlag = false;
+   
    if (anatomicalVolumeFile == NULL) {
       throw BrainModelAlgorithmException("The anatomical volume is invalid.");
    }
@@ -158,7 +205,10 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
       throw BrainModelAlgorithmException("The inflated surface is invalid.");
    }
    if (veryInflatedSurface == NULL) {
-      throw BrainModelAlgorithmException("The very inflated is invalid.");
+      throw BrainModelAlgorithmException("The very inflated surface is invalid.");
+   }
+   if (ellipsoidSurface == NULL) {
+      throw BrainModelAlgorithmException("The ellipsoid surface is invalid.");
    }
    if (depthSurfaceShapeFile == NULL) {
       throw BrainModelAlgorithmException("The surface shape file is invalid.");
@@ -179,6 +229,16 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
        (depthSurfaceShapeFileColumnNumber >= depthSurfaceShapeFile->getNumberOfColumns())) {
       throw BrainModelAlgorithmException("Surface Shape File Depth column is invalid.");
    }
+
+   const int originalNumberOfBorderColors = borderColorFile->getNumberOfColors();
+   
+   //
+   // Create a subdirectory for debug files
+   //
+   debugFilesDirectoryName = "LANDMARK_BORDER_DEBUG_FILES";
+   deleteDebugFilesDirectoryAndContents();
+   QDir debugFilesDir(QDir::currentPath());
+   debugFilesDir.mkdir(debugFilesDirectoryName);
    
    //
    // Clear out debug files
@@ -211,8 +271,71 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
       case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
       case Structure::STRUCTURE_TYPE_INVALID:
-         throw ("Structure must be left or right hemisphere.");
+         throw BrainModelAlgorithmException("Structure must be left or right hemisphere in fiducial coordinate file.");
+         break;
+   }
+   switch (inflatedSurface->getStructure().getType()) {
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT:  
+         leftHemisphereFlag = true;
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+         leftHemisphereFlag = false;
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
+      case Structure::STRUCTURE_TYPE_INVALID:
+         throw BrainModelAlgorithmException("Structure must be left or right hemisphere in inflated coordinate file.");
+         break;
+   }
+   switch (veryInflatedSurface->getStructure().getType()) {
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT:  
+         leftHemisphereFlag = true;
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+         leftHemisphereFlag = false;
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
+      case Structure::STRUCTURE_TYPE_INVALID:
+         throw BrainModelAlgorithmException("Structure must be left or right hemisphere in very inflated coordinate file.");
+         break;
+   }
+   switch (ellipsoidSurface->getStructure().getType()) {
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT:  
+         leftHemisphereFlag = true;
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+         leftHemisphereFlag = false;
+         break;
+      case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
+      case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
+      case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
+      case Structure::STRUCTURE_TYPE_SUBCORTICAL:
+      case Structure::STRUCTURE_TYPE_ALL:
+      case Structure::STRUCTURE_TYPE_INVALID:
+         throw BrainModelAlgorithmException("Structure must be left or right hemisphere in ellipsoid coordinate file.");
          break;
    }
    
@@ -329,6 +452,44 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
    if (errorMessageStringList.isEmpty() == false) {
       throw BrainModelAlgorithmException(errorMessageStringList.join("\n"));
    }
+   
+   //
+   // All created successfully
+   //
+   allLandmarksSuccessfulFlag = true;
+   
+   //
+   // If NOT generating flattening landmarks
+   //
+   if ((operationSelectionMask & OPERATION_ID_FLATTENING_LANDMARKS) == 0) {
+      const int num = borderProjectionFile->getNumberOfBorderProjections();
+      for (int i = (num - 1); i >= 0; i--) {
+         BorderProjection* bp = borderProjectionFile->getBorderProjection(i);
+         if (bp->getName().startsWith("FLATTEN")) {
+            borderProjectionFile->removeBorderProjection(i);
+         }
+      }
+   }
+   
+   //
+   // If NOT generating registration landmarks
+   // 
+   if ((operationSelectionMask & OPERATION_ID_REGISTRATION_LANDMARKS) == 0) {
+      const int num = borderProjectionFile->getNumberOfBorderProjections();
+      for (int i = (num - 1); i >= 0; i--) {
+         BorderProjection* bp = borderProjectionFile->getBorderProjection(i);
+         if (bp->getName().startsWith("LANDMARK")) {
+            borderProjectionFile->removeBorderProjection(i);
+         }
+      }
+   }
+   
+   borderProjectionFile->setFileName(
+      borderProjectionFile->makeDefaultFileName("Landmarks"));
+   if (originalNumberOfBorderColors <= 0) {
+      borderColorFile->setFileName(
+         borderColorFile->makeDefaultFileName("Landmark"));
+   }
 }      
 
 /**
@@ -362,14 +523,16 @@ BrainModelSurfaceBorderLandmarkIdentification::createAndScaleFiducialSurface() t
    }
    fiducialSurface->applyTransformationMatrix(tm);
 
-   if (DebugControl::getDebugOn()) {
-      try {
-         CoordinateFile* cf = fiducialSurface->getCoordinateFile();
-         cf->writeFile(cf->makeDefaultFileName("LandmarkFiducialScaled"));
-      }
-      catch (FileException&) {
-         std::cout << "WARNING: Unable to write LandmarkFiducialScaled surface." << std::endl;
-      }
+   CoordinateFile* cf = fiducialSurface->getCoordinateFile();
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + cf->makeDefaultFileName("LandmarkFiducialScaled"));
+
+   try {
+      cf->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write LandmarkFiducialScaled surface." << std::endl;
    }
 }
 
@@ -392,6 +555,20 @@ BrainModelSurfaceBorderLandmarkIdentification::getSupportedStereotaxicSpaces(
          spacesOut.push_back(allSpaces[i]);
       }
    }
+}
+      
+/**
+ * space supported for landmark identification?.
+ */
+bool 
+BrainModelSurfaceBorderLandmarkIdentification::isStereotaxicSpaceSupported(
+                                    const StereotaxicSpace& stereotaxicSpaceIn)
+{
+   float scaleLeft[3], scaleRight[3];
+   bool valid = getScalingForStereotaxicSpace(stereotaxicSpaceIn,
+                                              scaleLeft,
+                                              scaleRight);
+   return valid;
 }
       
 /**
@@ -510,20 +687,12 @@ BrainModelSurfaceBorderLandmarkIdentification::getScalingForStereotaxicSpace(
          break;
       case StereotaxicSpace::SPACE_WU_7112B:
       case StereotaxicSpace::SPACE_WU_7112B_111:
-      case StereotaxicSpace::SPACE_WU_7112B_222:
-      case StereotaxicSpace::SPACE_WU_7112B_333:
       case StereotaxicSpace::SPACE_WU_7112C:
       case StereotaxicSpace::SPACE_WU_7112C_111:
-      case StereotaxicSpace::SPACE_WU_7112C_222:
-      case StereotaxicSpace::SPACE_WU_7112C_333:
       case StereotaxicSpace::SPACE_WU_7112O:
       case StereotaxicSpace::SPACE_WU_7112O_111:
-      case StereotaxicSpace::SPACE_WU_7112O_222:
-      case StereotaxicSpace::SPACE_WU_7112O_333:
       case StereotaxicSpace::SPACE_WU_7112Y:
       case StereotaxicSpace::SPACE_WU_7112Y_111:
-      case StereotaxicSpace::SPACE_WU_7112Y_222:
-      case StereotaxicSpace::SPACE_WU_7112Y_333:
          spaceLeftMaxXYZ[0] = 63.90;
          spaceLeftMaxXYZ[1] = 62.17;
          spaceLeftMaxXYZ[2] = 73.99;
@@ -531,6 +700,15 @@ BrainModelSurfaceBorderLandmarkIdentification::getScalingForStereotaxicSpace(
          spaceRightMaxXYZ[1] = 63.09;
          spaceRightMaxXYZ[2] = 73.64;
          spaceValid = true;
+         break;
+      case StereotaxicSpace::SPACE_WU_7112B_222:
+      case StereotaxicSpace::SPACE_WU_7112B_333:
+      case StereotaxicSpace::SPACE_WU_7112C_222:
+      case StereotaxicSpace::SPACE_WU_7112C_333:
+      case StereotaxicSpace::SPACE_WU_7112O_222:
+      case StereotaxicSpace::SPACE_WU_7112O_333:
+      case StereotaxicSpace::SPACE_WU_7112Y_222:
+      case StereotaxicSpace::SPACE_WU_7112Y_333:
          break;
       case StereotaxicSpace::SPACE_NUMBER_OF_SPACES:
          break;
@@ -597,14 +775,14 @@ BrainModelSurfaceBorderLandmarkIdentification::generateSurfaceCurvatures() throw
    infCurve.execute();
    curvatureInflatedMeanColumnNumber = curvatureShapeFile->getNumberOfColumns() - 1;
    
-   if (DebugControl::getDebugOn()) {
-      try {
-         curvatureShapeFile->writeFile(
-            curvatureShapeFile->makeDefaultFileName("LandmarkCurvatures"));
-      }
-      catch (FileException&) {
-         std::cout << "WARNING: Unable to write landmark curvatures file." << std::endl;
-      }
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + curvatureShapeFile->makeDefaultFileName("LandmarkCurvatures"));
+   try {
+      curvatureShapeFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark curvatures file." << std::endl;
    }
 }
 
@@ -1073,9 +1251,6 @@ BrainModelSurfaceBorderLandmarkIdentification::paintSulcalIdentification() throw
    }
    
    //
-   // Find the "Sulcus ID" paint column
-   //
-   //
    // Get the output files of the probabilistic identification
    //
    metricFile = new MetricFile(*sid.getMetricFile());
@@ -1105,7 +1280,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCentralSulcus() throw (Br
    //
    // Name for central sulcus
    //
-   const QString centralSulcusLandmarkName("LANDMARK.CentralSulcus");
+   const QString centralSulcusLandmarkName(getCentralSulcusRegistrationLandmarkName());
    const QString cesMedialFocusName("CeS-medial");
    const QString cesVentralFocusName("CeS-ventral");
    const QString cesMedialLandmarkFocusName("CeS-medial-Landmark");
@@ -1444,13 +1619,14 @@ BrainModelSurfaceBorderLandmarkIdentification::drawBorderMetric(
                                NULL);
    borderProjectionFile->append(bpf);
    
-   if (DebugControl::getDebugOn()) {
-      try {
-         borderProjectionFile->writeFile(borderDebugFileName);
-      }
-      catch (FileException&) {
-         std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
-      }
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + borderDebugFileName);
+   try {
+      borderProjectionFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
    }
 }
                             
@@ -1509,13 +1685,14 @@ BrainModelSurfaceBorderLandmarkIdentification::drawBorderGeodesic(
                                NULL);
    borderProjectionFile->append(bpf);
 
-   if (DebugControl::getDebugOn()) {
-      try {
-         borderProjectionFile->writeFile(borderDebugFileName);
-      }
-      catch (FileException&) {
-         std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
-      }
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + borderDebugFileName);
+   try {
+      borderProjectionFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
    }
 }
  
@@ -1527,7 +1704,7 @@ BrainModelSurfaceBorderLandmarkIdentification::findNodeAlongGeodesicPathBetweenN
                       const BrainModelSurface* surface,
                       const int startNodeNumber,
                       const int endNodeNumber,
-                      const int distanceFromStartNode,
+                      const float distanceFromStartNode,
                       const BrainModelSurfaceROINodeSelection* roiIn) throw (BrainModelAlgorithmException)
 {
    BrainModelSurfaceROINodeSelection roi(brainSet);
@@ -1864,13 +2041,14 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusColor(
                            3, 1,
                            ColorFile::ColorStorage::SYMBOL_SPHERE);
                            
-   if (DebugControl::getDebugOn()) {
-      try {
-         fociColorFile->writeFile(fociColorDebugFileName);
-      }
-      catch (FileException&) {
-         std::cout << "WARNING: Unable to write landmark debug foci color file." << std::endl;
-      }
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + fociColorDebugFileName);
+   try {
+      fociColorFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug foci color file." << std::endl;
    }
 }                         
 
@@ -1938,13 +2116,15 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusAtNode(
                                            fiducialSurface->getCoordinateFile(),
                                            placeAtNodeNumber,
                                            fiducialSurface->getStructure()));
-      if (DebugControl::getDebugOn()) {
-         try {
-            fociProjectionFile->writeFile(fociProjectionDebugFileName);
-         }
-         catch (FileException&) {
-            std::cout << "WARNING: Unable to write landmark debug foci projection file." << std::endl;
-         }
+
+      const QString name(debugFilesDirectoryName
+                         + "/"
+                         + fociProjectionDebugFileName);
+      try {
+         fociProjectionFile->writeFile(name);
+      }
+      catch (FileException&) {
+         std::cout << "WARNING: Unable to write landmark debug foci projection file." << std::endl;
       }
    }
    else {
@@ -1988,13 +2168,14 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusAtXYZ(
    
    fociProjectionFile->addCellProjection(cp);
 
-   if (DebugControl::getDebugOn()) {
-      try {
-         fociProjectionFile->writeFile(fociProjectionDebugFileName);
-      }
-      catch (FileException&) {
-         std::cout << "WARNING: Unable to write landmark debug foci projection file." << std::endl;
-      }
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + fociProjectionDebugFileName);
+   try {
+      fociProjectionFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug foci projection file." << std::endl;
    }
 }
 
@@ -2041,21 +2222,23 @@ BrainModelSurfaceBorderLandmarkIdentification::saveRoiToFile(
                    const BrainModelSurfaceROINodeSelection& roi,
                    const QString& roiFileName)
 {
-   if (DebugControl::getDebugOn()) {
+      const QString name(debugFilesDirectoryName
+                         + "/"
+                         + roiFileName);
+
       NodeRegionOfInterestFile nroi;
       roi.setRegionOfInterestIntoFile(nroi);
       try {
-         nroi.writeFile(roiFileName);
+         nroi.writeFile(name);
       }
       catch (FileException& e) {
          std::cout << "WARNING: Unable to write ROI file named "
-                   << roiFileName.toAscii().constData()
+                   << name.toAscii().constData()
                    << std::endl
                    << "   Error Message: "
                    << e.whatQString().toAscii().constData()
                    << std::endl;
       }      
-   }
 }
                          
 /**
@@ -4392,6 +4575,8 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
    const QString hippocampalAnteriorFocusName("HF.Anterior");
    const QString hippocampalFissureRoiFileName(createFileName("HF",
                                       SpecFile::getRegionOfInterestFileExtension()));
+   const QString hippocampalFissureDeepRoiFileName(createFileName("HF.DEEP",
+                                      SpecFile::getRegionOfInterestFileExtension()));
    const QString landmarkSpleniumLimitToHFDorsalName("LANDMARK.MW.SpleniumLimitToHFDorsal");
    const QString landmarkSpleniumLimitToHFDorsalNameAlternate("LANDMARK.MW.SpleniumLimitToHFDorsalAlternate");
    const QString landmarkHFDorsalToHFVentralName("LANDMARK.MW.HFDorsalToHFVentral"); 
@@ -4402,6 +4587,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
    // Delete old stuff
    //
    QFile::remove(hippocampalFissureRoiFileName);
+   QFile::remove(hippocampalFissureDeepRoiFileName);
    fociProjectionFile->deleteCellProjectionsWithName(hippocampalDorsalFocusName);
    fociProjectionFile->deleteCellProjectionsWithName(hippocampalVentralFocusName);
    fociProjectionFile->deleteCellProjectionsWithName(hippocampalAnteriorFocusName);
@@ -4429,7 +4615,13 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
                               paintFile,
                               paintFileSulcusIdColumnNumber,
                               "SUL.HF");
+   if (hfRoi.getNumberOfNodesSelected() <= 0) {
+      throw BrainModelAlgorithmException(
+         "\"SUL.HF\", the hippocampal fissure paint contains no nodes.");
+   }
                               
+/*
+ * ccSpleniumLimitNodeNumber NOT DEFINED !!!!  JWH 07/11/2008
    //
    // Limit Z-Max to the Z of the splenium limit
    //
@@ -4445,7 +4637,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
    };
    hfRoi.limitExtent(fiducialSurface,
                      hfMaxExtent);
-   
+*/   
    //
    // Save the HF Roi
    //
@@ -4467,7 +4659,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
    // Save the Deep HF Roi
    //
    saveRoiToFile(hfDeepRoi,
-                 hippocampalFissureRoiFileName);
+                 hippocampalFissureDeepRoiFileName);
    
                                    
 
@@ -4653,14 +4845,28 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
          // Draw a border connecting the splenium limit node to the dorsal HF node
          //
           const QString seg0NameAlternate("seg0NameAlternate");
-          drawBorderMetric(inflatedSurface,
-                           BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_NEGATIVE,
-                           curvatureShapeFile,
-                           curvatureFiducialSmoothedMeanColumnNumber,
-                           seg0NameAlternate,
-                           ccPosteriorNodeNumber,
-                           hfDorsalNodeNumber,
-                           3.0);
+          try {
+             drawBorderMetric(inflatedSurface,
+                              BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_NEGATIVE,
+                              curvatureShapeFile,
+                              curvatureFiducialSmoothedMeanColumnNumber,
+                              seg0NameAlternate,
+                              ccPosteriorNodeNumber,
+                              hfDorsalNodeNumber,
+                              3.0);
+          }
+          catch (BrainModelAlgorithmException&) {
+            //
+            // If drawing using metric failed, try geodesic
+            //
+            drawBorderGeodesic(inflatedSurface,
+                               NULL,
+                               seg0NameAlternate,
+                               ccPosteriorNodeNumber,
+                               hfDorsalNodeNumber,
+                               3.0);
+          }
+          
           BorderProjection medialWallVentralBorderProjectionTest(medialWallVentralSectionName);
           medialWallVentralBorderProjectionTest.append(
              *borderProjectionFile->getFirstBorderProjectionByName(
@@ -4719,8 +4925,8 @@ BrainModelSurfaceBorderLandmarkIdentification::createFileName(const QString& des
                                                      const QString& extension) const
 {
    QString species("Species");
-   if (brainSet->getSpecies().isEmpty() == false) {
-      species = brainSet->getSpecies();
+   if (brainSet->getSpecies().getName().isEmpty() == false) {
+      species = brainSet->getSpecies().getName();
    }
    QString subject("Subject");
    if (brainSet->getSubject().isEmpty() == false) {

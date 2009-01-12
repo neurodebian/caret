@@ -187,6 +187,12 @@ class CoordinateFile : public GiftiNodeDataFile {
       // apply GIFTI transformation matrix
       void applyGiftiTransformationMatrix();
       
+      // get spec file tag from configuration id
+      QString getSpecFileTagUsingConfigurationID() const;
+      
+      // convert configuration ID to spec file tag
+      static QString convertConfigurationIDToSpecFileTag(const QString& configID);
+      
    protected:
       // copy helper used by assignment operator and copy constructor
       void copyHelperCoordinate(const CoordinateFile& mf);

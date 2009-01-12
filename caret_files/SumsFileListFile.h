@@ -239,9 +239,10 @@ class SumsFileListFile : public AbstractFile {
       bool excludeSpecFileFlag;
 };
 
+
+#endif // __SUMS_FILE_LIST_FILE_H__
+
 #ifdef __SUMS_FILE_LIST_FILE_MAIN__
 SumsFileInfo::SORTING_KEY SumsFileInfo::sortingKey = SumsFileInfo::SORTING_KEY_TYPE;
 #endif // __SUMS_FILE_LIST_FILE_MAIN__
-
-#endif // __SUMS_FILE_LIST_FILE_H__
 
