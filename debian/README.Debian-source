@@ -8,7 +8,7 @@ http://svn.debian.org/wsvn/pkg-exppsy/tools/dh_wraporig
 
 For this package dh_wraporig performed following actions:
 * Extracted files from
- md5:b7cacc95503fdd58bcba25e05db1f5f2  ../caret_5.6.1.tar.gz
+ md5:94ea24cced57512b0b5ac04d86298f7c  ../caret_source.v5.61.zip
 * Removed following files/directories:
   caret_vtk4_classes
 * Additional parameters for tar on tarball creation were:
