@@ -178,7 +178,7 @@ BrainModelContourToSurfaceConverter::execute() throw (BrainModelAlgorithmExcepti
       lastSectionNumberValid = true;
       
       if (pointCount > 2) {
-         cells->InsertNextCell(pointCount, verts);
+         cells->InsertNextCell((vtkIdType)pointCount, (vtkIdType*)verts);
       }
       else {
          printf("Contour %d has less than 3 points\n", i);
