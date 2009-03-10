@@ -317,9 +317,9 @@ BrainModelVolumeToSurfaceConverter::generateSureFitSurface(const bool maxPolygon
       decimater->SetErrorIsAbsolute(1);
       
       if (DebugControl::getDebugOn()) {
-         decimater->PrintSelf(std::cout, 3);
+         decimater->PrintSelf(std::cout, (vtkIndent)3);
          decimater->Update();
-         decimater->PrintSelf(std::cout, 3);
+         decimater->PrintSelf(std::cout, (vtkIndent)3);
          vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
          writer->SetInput(decimater->GetOutput());
          writer->SetFileName("surface_decimated.vtk");
