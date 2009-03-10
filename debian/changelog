@@ -1,8 +1,10 @@
 caret (5.6.1~dfsg.1-2) unstable; urgency=low
 
-  * Patched to build with VTK 5.2.
+  * Patched to build with VTK 5.2 (Closes: #518640).
+  * Updated the upstream homepage field. Thanks to Francesco Poli for pointing
+    this out.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Sat, 07 Mar 2009 09:02:33 +0100
+ -- Michael Hanke <michael.hanke@gmail.com>  Tue, 10 Mar 2009 13:09:01 +0100
 
 caret (5.6.1~dfsg.1-1) unstable; urgency=low
 
