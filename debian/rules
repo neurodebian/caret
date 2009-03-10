@@ -3,9 +3,8 @@
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
-
 # caret build depends on some env vars
-export VTK_INC_DIR=/usr/include/vtk-5.0
+export VTK_INC_DIR=$(shell dirname $$(find /usr/include/ -type f -name vtkConfigure.h | head -n1))
 export VTK_LIB_DIR=/usr/lib
 export QWT_INC_DIR=/usr/include/qwt-qt4
 export QWT_LIB_DIR=/usr/lib
