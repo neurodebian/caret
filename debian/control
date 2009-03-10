@@ -17,7 +17,17 @@ Suggests: caret-data (>= 5.6~dfsg.1)
 Description: Computerized Anatomical Reconstruction and Editing Toolkit
  This software allows for creating, viewing and manipulating surface
  reconstructions of the cerebral and cerebellar cortex, viewing volumes and for
- displaying experimental data on the surfaces and volumes.
+ displaying experimental data on the surfaces and volumes. While Caret is
+ primarily a GUI application with 'caret_command' there is also a versatile
+ command line tool, that allows access to a substantial proportion of Caret's
+ functionality.
  .
  Caret can download and use stereotaxic atlases (human, monkey, mouse and rat)
  from an open online database.
+ .
+ Reference:
+ .
+  Van Essen, D.C., Dickson, J., Harwell, J., Hanlon, D., Anderson, C.H. and
+  Drury, H.A. 2001. An Integrated Software System for Surface-based Analyses of
+  Cerebral Cortex. Journal of American Medical Informatics Association, 8(5),
+  443-459.
