@@ -468,8 +468,8 @@ VtkModelFile::readPolyData(vtkPolyData* polyData)
    const int numVertices = polyData->GetNumberOfVerts();
    if (numVertices > 0) {
       vtkCellArray* verts = polyData->GetVerts();
-      int npts;
-      int* pts;
+      vtkIdType npts;
+      vtkIdType* pts;
       for (verts->InitTraversal(); verts->GetNextCell(npts, pts); ) {
          for (int i = 0; i < npts; i++) {
             vertices.push_back(pts[i]);
@@ -483,8 +483,8 @@ VtkModelFile::readPolyData(vtkPolyData* polyData)
    const int numLines = polyData->GetNumberOfLines();
    if (numLines > 0) {
       vtkCellArray* cellLines = polyData->GetLines();
-      int npts;
-      int* pts;
+      vtkIdType npts;
+      vtkIdType* pts;
       for (cellLines->InitTraversal(); cellLines->GetNextCell(npts, pts); ) {
          lines.push_back(VtkModelObject(pts, npts));
       }
@@ -496,8 +496,8 @@ VtkModelFile::readPolyData(vtkPolyData* polyData)
    vtkCellArray* polys = polyData->GetPolys();
    const int numPolys = polyData->GetNumberOfPolys();
    if (numPolys > 0) {
-      int npts;
-      int* pts;
+      vtkIdType npts;
+      vtkIdType* pts;
       for (polys->InitTraversal(); polys->GetNextCell(npts,pts); ) {
          if (npts == 3) {
             triangles.push_back(pts[0]);
