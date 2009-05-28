@@ -1069,7 +1069,7 @@ BrainModelSurface::convertToVtkPolyData() const
          for (int j = 0; j < numTiles; j++) {
             int v[3];
             topology->getTile(j, v[0], v[1], v[2]);
-            cells->InsertNextCell((vtkIdType)3, (vtkIdType*)v);
+            cells->InsertNextCell(static_cast<vtkIdType>(3), static_cast<vtkIdType*>(v));
          }
          
          vtkPolyData* polyData = vtkPolyData::New();
