@@ -1,3 +1,12 @@
+caret (5.6.1~dfsg.1-5) unstable; urgency=low
+
+  * Applied patch for compatibility with GCC 4.4 (Closes: #525789).
+    Thanks to Martin Michlmayr.
+  * Add fixes for compatibility with VTK 5.2 (Closes: #520701, #520867).
+  * Bumped Standards-Version to 3.8.1 -- no changes necessary.
+
+ -- Michael Hanke <michael.hanke@gmail.com>  Thu, 28 May 2009 12:36:13 +0200
+
 caret (5.6.1~dfsg.1-4) unstable; urgency=low
 
   * Clarify copyright statement of the pieces of the Caret sources that have
