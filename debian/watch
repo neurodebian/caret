@@ -6,7 +6,13 @@ version=3
 
 # Following lines should at least check for the most recent available
 # release (for QA page)
-opts="dversionmangle=s/~dfsg\.\d+$//" \
+
+# Convert numeric portion of version after the '.' into a list of
+# numbers separated with a '.' since upstream seems to use string
+# comparisons for their versions, so line of versions like
+#  5.6 5.61 5.611 5.62
+# is in increasing order
+opts="dversionmangle=s/~dfsg\.\d+$//,uversionmangle=s/(?!^)(\d)(?=[^\.])/$1./" \
   http://brainvis.wustl.edu/wiki/index.php/Caret:Download \
   http://brainmap.wustl.edu/pub/caret/caret_source.v(.*).zip
 
