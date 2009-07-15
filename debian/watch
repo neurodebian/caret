@@ -3,8 +3,16 @@ version=3
 
 # download area is password protected so this will not work!
 # however, the password is known -- not listing it here to be polite
+
+# Following lines should at least check for the most recent available
+# release (for QA page)
 opts="dversionmangle=s/~dfsg\.\d+$//" \
-  http://brainvis.wustl.edu/pub/caret/index.html \
-  caret_source\.v(.*)\.zip debian dh_wraporig
+  http://brainvis.wustl.edu/wiki/index.php/Caret:Download \
+  http://brainmap.wustl.edu/pub/caret/caret_source.v(.*).zip
+
+# Actual sources could be downloaded from following link
+# but authorization is required ATM
+#   http://brainvis.wustl.edu/pub/caret/index.html \
+#   caret_source\.v(.*)\.zip debian dh_wraporig
 
 
