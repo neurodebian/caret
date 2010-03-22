@@ -44,7 +44,12 @@ class BrainModelSurfaceDeformDataFile {
                                  const bool linkFociColorFiles,
                                  QString& deformErrorsMessage)
                                        throw (BrainModelAlgorithmException);
-                                 
+
+      /// create a deformed spec file name
+      static QString createDeformedSpecFileName(const QString& deformedFileNamePrefix,
+                                                const QString& sourceSpecFileName,
+                                                const QString& targetSpecFileName);
+
       /// create a deformed data file name
       static QString createDeformedFileName(
                                          const QString& deformingFromFileName,
@@ -169,7 +174,7 @@ class BrainModelSurfaceDeformDataFile {
                                              const AbstractFile* inputFile,
                                              AbstractFile* outputFile);
                                                             
-   protected:                                              
+   protected:
       /// Help out with linking one type of color files.
       static void linkColorFileHelper(const SpecFile::Entry& colorFiles,
                                       const QString& sourceSpecFilePath,

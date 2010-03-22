@@ -186,6 +186,7 @@ class ContourFile : public AbstractFile {
    
       static const QString tagNumberOfContours;
       static const QString tagSectionSpacing;
+      static const QString tagMainWindowScaling;
 
       /// selected section type
       SECTION_TYPE sectionType;
@@ -207,6 +208,9 @@ class ContourFile : public AbstractFile {
       
       /// maximum selected section
       int maximumSelectedSection;
+
+      /// scaling for main window
+      float mainWindowScaling[3];
 
       /// Set the minimum and maximum section numbers.
       void setMinMaxSections();
@@ -319,6 +323,12 @@ class ContourFile : public AbstractFile {
       /// set the maximum selected section
       void setMaximumSelectedSection(const int sect);
 
+      /// get main window scaling (invalid if negative values)
+      void getMainWindowScaling(float scaleOut[3]) const;
+
+      /// set the main window scaling
+      void setMainWindowScaling(const float scaleIn[3]);
+
       /// resample all of the contours
       void resampleAllContours(const float distanceBetweenPoints);
       
@@ -351,5 +361,6 @@ class ContourFile : public AbstractFile {
 #ifdef _CONTOUR_FILE_MAIN_
 const QString ContourFile::tagNumberOfContours = "tag-number-of-contours";
 const QString ContourFile::tagSectionSpacing = "tag-section-spacing";
+const QString ContourFile::tagMainWindowScaling = "tag-main-window-scaling";
 #endif // _CONTOUR_FILE_MAIN_
 

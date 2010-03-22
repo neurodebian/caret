@@ -91,6 +91,10 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
    //
    QWidget* paintWidget = createPaintSection();
    
+   //
+   // Create the sums section
+   //
+   QWidget* sumsWidget = createSumsSection();
    
    //
    // Layout for dialog
@@ -104,6 +108,9 @@ GuiCellAndFociReportDialog::GuiCellAndFociReportDialog(QWidget* parent,
    widgetLayout->addWidget(attributeWidget);
    if (paintWidget != NULL) {
       widgetLayout->addWidget(paintWidget);
+   }
+   if (sumsWidget != NULL) {
+      widgetLayout->addWidget(sumsWidget);
    }
    
    //
@@ -428,20 +435,20 @@ GuiCellAndFociReportDialog::createCellFociSection()
    //
    // study page reference number check box
    //
-   studyPageReferenceNumberCheckBox = new QCheckBox("Study Page Reference Number");
+   studyPageReferenceNumberCheckBox = new QCheckBox("Study Page Number");
    studyPageReferenceNumberCheckBox->setChecked(true);
        
    //
    // study page reference subheader check box
    //
-   studyPageReferenceSubHeaderCheckBox = new QCheckBox("Study Page Reference Subheader");
+   studyPageReferenceSubHeaderCheckBox = new QCheckBox("Study Page Subheader");
    studyPageReferenceSubHeaderCheckBox->setChecked(true);
        
    //
    // study study page number check box
    //
-   studyPageNumberCheckBox = new QCheckBox("Study Page Number");
-   studyPageNumberCheckBox->setChecked(true);
+   //studyPageNumberCheckBox = new QCheckBox("Study Page Number");
+   //studyPageNumberCheckBox->setChecked(true);
    
    //
    // comment check box
@@ -475,7 +482,7 @@ GuiCellAndFociReportDialog::createCellFociSection()
    attrGroupLayout->addWidget(studyTableSubHeaderCheckBox);
    attrGroupLayout->addWidget(studyFigureNumberCheckBox);
    attrGroupLayout->addWidget(studyFigurePanelCheckBox);
-   attrGroupLayout->addWidget(studyPageNumberCheckBox);
+   //attrGroupLayout->addWidget(studyPageNumberCheckBox);
    attrGroupLayout->addWidget(studyPageReferenceNumberCheckBox);
    attrGroupLayout->addWidget(studyPageReferenceSubHeaderCheckBox);
    attrGroupLayout->addWidget(commentCheckBox);
@@ -503,7 +510,7 @@ GuiCellAndFociReportDialog::createCellFociSection()
    allAttributesWidgetGroup->addWidget(studyTableSubHeaderCheckBox);
    allAttributesWidgetGroup->addWidget(studyFigureNumberCheckBox);
    allAttributesWidgetGroup->addWidget(studyFigurePanelCheckBox);
-   allAttributesWidgetGroup->addWidget(studyPageNumberCheckBox);
+   //allAttributesWidgetGroup->addWidget(studyPageNumberCheckBox);
    allAttributesWidgetGroup->addWidget(studyPageReferenceNumberCheckBox);
    allAttributesWidgetGroup->addWidget(studyPageReferenceSubHeaderCheckBox);
    allAttributesWidgetGroup->addWidget(commentCheckBox);
@@ -541,7 +548,7 @@ GuiCellAndFociReportDialog::createCellFociSection()
       studyTableSubHeaderCheckBox->hide();
       studyFigureNumberCheckBox->hide();
       studyFigurePanelCheckBox->hide();
-      studyPageNumberCheckBox->hide();
+      //studyPageNumberCheckBox->hide();
       studyPageReferenceNumberCheckBox->hide();
       studyPageReferenceSubHeaderCheckBox->hide();
    }
@@ -576,6 +583,101 @@ GuiCellAndFociReportDialog::slotAttributesCoreOnToolButton()
    allAttributesWidgetGroup->setAllCheckBoxesChecked(false);
    coreAttributesWidgetGroup->setAllCheckBoxesChecked(true);
 }
+
+/**
+ * create the sums section.
+ */
+QWidget* 
+GuiCellAndFociReportDialog::createSumsSection()
+{
+   //
+   // All On button
+   //
+   QToolButton* allSumsAttributesOnToolButton = new QToolButton;
+   allSumsAttributesOnToolButton->setText("All On");
+   QObject::connect(allSumsAttributesOnToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotSumsAttributesAllOnToolButton()));
+   
+   //
+   // All Off button
+   //
+   QToolButton* allSumsAttributesOffToolButton = new QToolButton;
+   allSumsAttributesOffToolButton->setText("All Off");
+   QObject::connect(allSumsAttributesOffToolButton, SIGNAL(clicked()),
+                    this, SLOT(slotSumsAttributesAllOffToolButton()));
+   
+   //
+   // Layout for tool buttons
+   //
+   QHBoxLayout* toolButtonLayout = new QHBoxLayout;
+   toolButtonLayout->addWidget(allSumsAttributesOnToolButton);
+   toolButtonLayout->addWidget(allSumsAttributesOffToolButton);
+   toolButtonLayout->addStretch();
+
+   //
+   // Group box for sums attributes
+   //
+   QGroupBox* sumsGroupBox = new QGroupBox("Sums Attributes");
+   QVBoxLayout* sumsGroupLayout = new QVBoxLayout(sumsGroupBox);
+   sumsGroupLayout->addLayout(toolButtonLayout);
+
+   sumsIDNumberCheckBox = new QCheckBox("SuMS ID Number");
+   sumsGroupLayout->addWidget(sumsIDNumberCheckBox);
+   sumsIDNumberCheckBox->setChecked(false);
+   sumsCheckBoxes.push_back(sumsIDNumberCheckBox);
+
+   sumsRepeatNumberCheckBox = new QCheckBox("SuMS Repeat Number");
+   sumsGroupLayout->addWidget(sumsRepeatNumberCheckBox);
+   sumsRepeatNumberCheckBox->setChecked(false);
+   sumsCheckBoxes.push_back(sumsRepeatNumberCheckBox);
+
+   sumsParentCellBaseIDCheckBox = new QCheckBox("SuMS Parent Cell Base ID");
+   sumsGroupLayout->addWidget(sumsParentCellBaseIDCheckBox);
+   sumsParentCellBaseIDCheckBox->setChecked(false);
+   sumsCheckBoxes.push_back(sumsParentCellBaseIDCheckBox);
+
+   sumsVersionNumberCheckBox = new QCheckBox("SuMS Version Number");
+   sumsGroupLayout->addWidget(sumsVersionNumberCheckBox);
+   sumsVersionNumberCheckBox->setChecked(false);
+   sumsCheckBoxes.push_back(sumsVersionNumberCheckBox);
+
+   sumsMSLIDCheckBox = new QCheckBox("SuMS MSL ID");
+   sumsGroupLayout->addWidget(sumsMSLIDCheckBox);
+   sumsMSLIDCheckBox->setChecked(false);
+   sumsCheckBoxes.push_back(sumsMSLIDCheckBox);
+
+   sumsAttributeIDCheckBox = new QCheckBox("Attribute ID");
+   sumsGroupLayout->addWidget(sumsAttributeIDCheckBox);
+   sumsAttributeIDCheckBox->setChecked(false);
+   sumsCheckBoxes.push_back(sumsAttributeIDCheckBox);
+
+
+   return sumsGroupBox;
+}
+
+/**
+ * called when sums attributes all on button clicked.
+ */
+void 
+GuiCellAndFociReportDialog::slotSumsAttributesAllOnToolButton()
+{
+   const int num = static_cast<int>(sumsCheckBoxes.size());
+   for (int i = 0; i < num; i++) {
+      sumsCheckBoxes[i]->setChecked(true);
+   }
+}
+
+/**
+ * called when sums attributes all off button clicked.
+ */
+void 
+GuiCellAndFociReportDialog::slotSumsAttributesAllOffToolButton()
+{
+   const int num = static_cast<int>(sumsCheckBoxes.size());
+   for (int i = 0; i < num; i++) {
+      sumsCheckBoxes[i]->setChecked(false);
+   }
+}      
 
 /**
  * create the paint section.
@@ -819,22 +921,58 @@ GuiCellAndFociReportDialog::done(int r)
                studyFigurePanelColumn = numTableColumns++;
             }
             
-            int studyPageNumberColumn = -1;
-            if (checked(studyPageNumberCheckBox)) {
-               columnTitle.push_back("Study Page Number");
-               studyPageNumberColumn = numTableColumns++;
-            }
+            //int studyPageNumberColumn = -1;
+            //if (checked(studyPageNumberCheckBox)) {
+            //   columnTitle.push_back("Study Page Number");
+            //   studyPageNumberColumn = numTableColumns++;
+            //}
             
             int studyPageReferenceNumberColumn = -1;
             if (checked(studyPageReferenceNumberCheckBox)) {
-               columnTitle.push_back("Study Page Reference Number");
+               columnTitle.push_back("Study Page Number");
                studyPageReferenceNumberColumn = numTableColumns++;
             }
             
             int studyPageReferenceSubheaderColumn = -1;
             if (checked(studyPageReferenceSubHeaderCheckBox)) {
-               columnTitle.push_back("Study Page Reference Subheader");
+               columnTitle.push_back("Study Page Subheader");
                studyPageReferenceSubheaderColumn = numTableColumns++;
+            }
+            
+            int sumsIDNumberColumn = -1;
+            if (checked(sumsIDNumberCheckBox)) {
+               columnTitle.push_back("SuMS ID Number");
+               sumsIDNumberColumn = numTableColumns++;
+            }
+            
+            int sumsRepeatNumberColumn = -1;
+            if (checked(sumsRepeatNumberCheckBox)) {
+               columnTitle.push_back("SuMS Repeat Number");
+               sumsRepeatNumberColumn = numTableColumns++;
+            }
+            
+            int sumsParentCellBaseIDColumn = -1;
+            if (checked(sumsParentCellBaseIDCheckBox)) {
+               columnTitle.push_back("Sums Parent Cell Base ID");
+               sumsParentCellBaseIDColumn = numTableColumns++;
+            }
+            
+            int sumsVersionNumberColumn = -1;
+            if (checked(sumsVersionNumberCheckBox)) {
+               columnTitle.push_back("SuMS Version Number");
+               sumsVersionNumberColumn = numTableColumns++;
+            }
+            
+            int sumsMSLIDColumn = -1;
+            if (checked(sumsMSLIDCheckBox)) {
+               columnTitle.push_back("SuMS MSL ID");
+               sumsMSLIDColumn = numTableColumns++;
+            }
+            
+            int sumsAttributeIDColumn = -1;
+            if (checked(sumsAttributeIDCheckBox)) {
+               columnTitle.push_back("Attribute ID");
+               sumsAttributeIDColumn = numTableColumns++;
             }
             
             //
@@ -1155,10 +1293,10 @@ GuiCellAndFociReportDialog::done(int r)
                      cellTable.setElement(tableRowNumber, studyFigurePanelColumn, txt);
                   }
                   
-                  if (studyPageNumberColumn >= 0) {
-                     QString txt = metaDataLink.getPageNumber();
-                     cellTable.setElement(tableRowNumber, studyPageNumberColumn, txt);
-                  }
+                  //if (studyPageNumberColumn >= 0) {
+                  //   QString txt = metaDataLink.getPageNumber();
+                  //   cellTable.setElement(tableRowNumber, studyPageNumberColumn, txt);
+                  //}
                   
                   if (studyPageReferenceNumberColumn >= 0) {
                      QString txt = metaDataLink.getPageReferencePageNumber();
@@ -1174,6 +1312,30 @@ GuiCellAndFociReportDialog::done(int r)
                      cellTable.setElement(tableRowNumber, commentColumn, cd->getComment());
                   }
 
+                  if (sumsIDNumberColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sumsIDNumberColumn, cd->getSumsIDNumber());
+                  }
+                  
+                  if (sumsRepeatNumberColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sumsRepeatNumberColumn, cd->getSumsRepeatNumber());
+                  }
+                  
+                  if (sumsParentCellBaseIDColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sumsParentCellBaseIDColumn, cd->getSumsParentCellBaseID());
+                  }
+                  
+                  if (sumsVersionNumberColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sumsVersionNumberColumn, cd->getSumsVersionNumber());
+                  }
+                  
+                  if (sumsMSLIDColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sumsMSLIDColumn, cd->getSumsMSLID());
+                  }
+                  
+                  if (sumsAttributeIDColumn >= 0) {
+                     cellTable.setElement(tableRowNumber, sumsAttributeIDColumn, cd->getAttributeID());
+                  }
+                  
                   //
                   // Load paint into the table
                   //
@@ -1198,6 +1360,7 @@ GuiCellAndFociReportDialog::done(int r)
                         }
                      }
                   }
+                  
                } // for (ii = 0; ii < numCells...
             
                //

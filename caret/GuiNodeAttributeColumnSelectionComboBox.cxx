@@ -37,7 +37,6 @@
 #include "RgbPaintFile.h"
 #include "SectionFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
 #include "ProbabilisticAtlasFile.h"
 #include "TopographyFile.h"
 #include "global_variables.h"
@@ -277,9 +276,6 @@ GuiNodeAttributeColumnSelectionComboBox::updateComboBox()
          break;
       case GUI_NODE_FILE_TYPE_SURFACE_SHAPE:
          giftiNodeDataFile = bs->getSurfaceShapeFile();
-         break;
-      case GUI_NODE_FILE_TYPE_SURFACE_VECTOR:
-         nodeAttFile = bs->getSurfaceVectorFile();
          break;
       case GUI_NODE_FILE_TYPE_TOPOGRAPHY:
          nodeAttFile = bs->getTopographyFile();

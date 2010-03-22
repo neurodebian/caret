@@ -74,6 +74,7 @@
 #include "BrainModelVolumeVoxelColoring.h"
 #include "BrainModelVolumeRegionOfInterest.h"
 #include "BrainSetMultiThreadedSpecFileReader.h"
+#include "BrainSetAutoLoaderManager.h"
 #include "BrainVoyagerFile.h"
 #include "CellColorFile.h"
 #include "CellFile.h"
@@ -108,7 +109,7 @@
 #include "DisplaySettingsScene.h"
 #include "DisplaySettingsStudyMetaData.h"
 #include "DisplaySettingsSurfaceShape.h"
-#include "DisplaySettingsSurfaceVectors.h"
+#include "DisplaySettingsVectors.h"
 #include "DisplaySettingsTopography.h"
 #include "DisplaySettingsVolume.h"
 #include "DisplaySettingsWustlRegion.h"
@@ -136,11 +137,11 @@
 #include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
 #include "TopographyFile.h"
 #include "TopologyFile.h"
 #include "TopologyHelper.h"
 #include "TransformationMatrixFile.h"
+#include "VectorFile.h"
 #include "VocabularyFile.h"
 #include "VtkModelFile.h"
 #include "WustlRegionFile.h"
@@ -369,7 +370,6 @@ BrainSet::constructBrainSet()
    studyCollectionFile    = new StudyCollectionFile;
    studyMetaDataFile      = new StudyMetaDataFile;
    surfaceShapeFile       = new SurfaceShapeFile;
-   surfaceVectorFile      = new SurfaceVectorFile;
    topographyFile         = new TopographyFile;
    transformationMatrixFile = new TransformationMatrixFile;
    vocabularyFile         = new VocabularyFile;
@@ -378,6 +378,8 @@ BrainSet::constructBrainSet()
    brainModelBorderSet    = new BrainModelBorderSet(this);
    
    brainModelIdentification       = new BrainModelIdentification(this);
+   brainSetAutoLoaderManager     = new BrainSetAutoLoaderManager(this);
+
    nodeColoring                   = new BrainModelSurfaceNodeColoring(this);
    voxelColoring                  = new BrainModelVolumeVoxelColoring(this);
    brainModelSurfaceRegionOfInterestNodeSelection = new BrainModelSurfaceROINodeSelection(this);
@@ -399,7 +401,7 @@ BrainSet::constructBrainSet()
    displaySettingsScene           = new DisplaySettingsScene(this);
    displaySettingsStudyMetaData   = new DisplaySettingsStudyMetaData(this);
    displaySettingsSurfaceShape    = new DisplaySettingsSurfaceShape(this);
-   displaySettingsSurfaceVectors  = new DisplaySettingsSurfaceVectors(this);
+   displaySettingsVectors         = new DisplaySettingsVectors(this);
    displaySettingsCells           = new DisplaySettingsCells(this);
    displaySettingsCoCoMac         = new DisplaySettingsCoCoMac(this);
    displaySettingsCuts            = new DisplaySettingsCuts(this);
@@ -547,6 +549,30 @@ BrainSet::getCaretHomeDirectory()
 }
       
 /**
+ * get the preferences file.
+ */
+PreferencesFile*
+BrainSet::getPreferencesFile() {
+   if (preferencesFile == NULL) {
+       QString preferencesFileName = QDir::homePath();
+       if (preferencesFileName.isEmpty() == false) {
+          preferencesFileName.append("/");
+       }
+       preferencesFileName.append(".caret5_preferences");
+
+       preferencesFile = new PreferencesFile;
+       try {
+          preferencesFile->readFile(preferencesFileName);
+       }
+       catch (FileException) {
+       }
+       preferencesFile->setFileName(preferencesFileName);
+   }
+
+   return preferencesFile;
+}
+
+/**
  * Read the user's caret5 preferences file and intialize other things.
  */
 void
@@ -562,17 +588,11 @@ BrainSet::initializeStaticStuff()
    //
    const bool debugOn = DebugControl::getDebugOn();
 
-   preferencesFileName = QDir::homePath();
-   if (preferencesFileName.isEmpty() == false) {
-      preferencesFileName.append("/");
-   }
-   preferencesFileName.append(".caret5_preferences");
    try {
-      preferencesFile.readFile(preferencesFileName);
       AbstractFile::setTextFileDigitsRightOfDecimal(
-          preferencesFile.getTextFileDigitsRightOfDecimal());
+          getPreferencesFile()->getTextFileDigitsRightOfDecimal());
       AbstractFile::setPreferredWriteType(
-          preferencesFile.getPreferredWriteDataType()); 
+          getPreferencesFile()->getPreferredWriteDataType());
    }
    catch (FileException& /*e*/) {
       //std::cerr << "Warning: reading caret preferences file: "
@@ -582,11 +602,11 @@ BrainSet::initializeStaticStuff()
    //
    // Random seed generator
    //
-   if (preferencesFile.getRandomSeedOverride()) {
+   if (getPreferencesFile()->getRandomSeedOverride()) {
       //
       // Use seed provided by user
       //
-      setRandomSeed(preferencesFile.getRandomSeedOverrideValue());
+      setRandomSeed(getPreferencesFile()->getRandomSeedOverrideValue());
    }
    else {
       //
@@ -645,7 +665,8 @@ BrainSet::~BrainSet()
    delete wustlRegionFile;
    
    delete brainModelBorderSet;
-   
+
+   delete brainSetAutoLoaderManager;
    delete brainModelIdentification;
    delete nodeColoring;
    delete voxelColoring;
@@ -656,7 +677,7 @@ BrainSet::~BrainSet()
    delete displaySettingsDeformationField;
    delete displaySettingsGeodesicDistance;
    delete displaySettingsImages;
-   delete displaySettingsMetric; 
+   delete displaySettingsMetric;
    delete displaySettingsModels;
    delete displaySettingsSection;
    delete displaySettingsSurface;
@@ -666,7 +687,7 @@ BrainSet::~BrainSet()
    delete displaySettingsScene;
    delete displaySettingsStudyMetaData;
    delete displaySettingsSurfaceShape;  
-   delete displaySettingsSurfaceVectors;
+   delete displaySettingsVectors;
    delete displaySettingsCells;
    delete displaySettingsCoCoMac;
    delete displaySettingsContours;
@@ -933,13 +954,14 @@ BrainSet::reset(const bool keepSceneData)
    }
    
    deleteAllBorders();
-   
+
+   brainSetAutoLoaderManager->reset();
    displaySettingsArealEstimation->reset();  
    displaySettingsBorders->reset();
    displaySettingsDeformationField->reset();
    displaySettingsGeodesicDistance->reset();
    displaySettingsImages->reset();
-   displaySettingsMetric->reset(); 
+   displaySettingsMetric->reset();
    displaySettingsModels->reset();
    displaySettingsSection->reset();
    displaySettingsSurface->reset();
@@ -951,7 +973,7 @@ BrainSet::reset(const bool keepSceneData)
    }
    displaySettingsStudyMetaData->reset();
    displaySettingsSurfaceShape->reset();  
-   displaySettingsSurfaceVectors->reset();
+   displaySettingsVectors->reset();
    displaySettingsCells->reset();
    displaySettingsCoCoMac->reset();
    displaySettingsContours->reset();
@@ -1004,6 +1026,8 @@ BrainSet::resetDataFiles(const bool keepSceneData,
    paletteFile->addDefaultPalettes();
    paletteFile->clearModified();
    
+   clearVectorFiles();
+
    clearBorderColorFile();
    
    clearCellColorFile();
@@ -1060,9 +1084,6 @@ BrainSet::resetNodeAttributeFiles()
    
    clearSurfaceShapeFile();
    surfaceShapeFile->clearModified();
-   
-   clearSurfaceVectorFile();
-   surfaceVectorFile->clearModified();
    
    clearTopographyFile();
    topographyFile->clearModified();
@@ -1405,11 +1426,13 @@ BrainSet::saveSceneForBrainModelWindow(const int viewingWindowNumber,
  * apply a scene (set display settings).
  */
 void 
-BrainSet::showScene(const int sceneIndex, QString& errorMessage)
+BrainSet::showScene(const int sceneIndex, 
+                    QString& errorMessage,
+                    QString& warningMessage)
 {
    SceneFile* sf = getSceneFile();
    if ((sceneIndex >= 0) && (sceneIndex < sf->getNumberOfScenes())) {
-      showScene(sf->getScene(sceneIndex), false, errorMessage);
+      showScene(sf->getScene(sceneIndex), false, errorMessage, warningMessage);
    }
 }
 
@@ -1433,7 +1456,8 @@ BrainSet::showSceneIdentificationFilters(const SceneFile::Scene* ss,
 void 
 BrainSet::showScene(const SceneFile::Scene* ss, 
                     const bool checkSpecFlag,
-                    QString& errorMessage)
+                    QString& errorMessage,
+                    QString& warningMessage)
 {
    errorMessage = "";
    
@@ -1527,14 +1551,19 @@ BrainSet::showScene(const SceneFile::Scene* ss,
                    NULL);
       errorMessage.append(specMsg);
       paletteFile->clearModified();
-       
+
+      //
+      // Auto-Loaded Files
+      //
+      brainSetAutoLoaderManager->showScene(*ss, errorMessage);
+
       //
       // Update overlays
       //
       for (int i = 0; i < getNumberOfSurfaceOverlays(); i++) {
          getSurfaceOverlay(i)->showScene(*ss, errorMessage);
       }
-      
+       
       //
       // Update node/voxel coloring
       //
@@ -1554,7 +1583,7 @@ BrainSet::showScene(const SceneFile::Scene* ss,
       // transformation matrices
       //
       transformationMatrixFile->showScene(*ss, errorMessage);
-      
+
       //
       // display settings
       //
@@ -1579,7 +1608,7 @@ BrainSet::showScene(const SceneFile::Scene* ss,
       displaySettingsStudyMetaData->showScene(*ss, errorMessage);
       displaySettingsSurface->showScene(*ss, errorMessage);
       displaySettingsSurfaceShape->showScene(*ss, errorMessage);
-      displaySettingsSurfaceVectors->showScene(*ss, errorMessage);
+      displaySettingsVectors->showScene(*ss, errorMessage);
       displaySettingsTopography->showScene(*ss, errorMessage);
       displaySettingsVolume->showScene(*ss, errorMessage);
       displaySettingsWustlRegion->showScene(*ss, errorMessage);
@@ -1592,6 +1621,8 @@ BrainSet::showScene(const SceneFile::Scene* ss,
       displaySettingsCells->determineDisplayedCells();
       displaySettingsFoci->determineDisplayedCells(true);
       
+      clearNodeHighlightSymbols();
+
       const int numClasses = ss->getNumberOfSceneClasses();
       for (int nc = 0; nc < numClasses; nc++) {
          const SceneFile::SceneClass* sc = ss->getSceneClass(nc);
@@ -1761,7 +1792,7 @@ BrainSet::showScene(const SceneFile::Scene* ss,
       voxelColoring->setVolumeAllColoringInvalid();
    }
    
-   checkNodeAttributeFilesForDuplicateColumnNames(errorMessage);
+   checkNodeAttributeFilesForDuplicateColumnNames(warningMessage);
 }
 
 /**
@@ -1771,11 +1802,12 @@ void
 BrainSet::saveScene(SceneFile* sf,
                     const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                     const QString& sceneName, const bool onlyIfSelectedFlag,
-                                  QString& errorMessageOut)
+                    QString& errorMessageOut,
+                    QString& warningMessageOut)
 {
    SceneFile::Scene scene(sceneName);
    
-   saveReplaceSceneHelper(scene, mainWindowSceneClasses, onlyIfSelectedFlag, errorMessageOut);
+   saveReplaceSceneHelper(scene, mainWindowSceneClasses, onlyIfSelectedFlag, errorMessageOut, warningMessageOut);
    
    if (errorMessageOut.isEmpty()) {
       sf->addScene(scene);
@@ -1793,11 +1825,12 @@ BrainSet::insertScene(SceneFile* sf,
                       const int insertAfterIndex,
                       const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                       const QString& sceneName, const bool onlyIfSelectedFlag,
-                      QString& errorMessageOut)
+                      QString& errorMessageOut,
+                      QString& warningMessageOut)
 {
    SceneFile::Scene scene(sceneName);
    
-   saveReplaceSceneHelper(scene, mainWindowSceneClasses, onlyIfSelectedFlag, errorMessageOut);
+   saveReplaceSceneHelper(scene, mainWindowSceneClasses, onlyIfSelectedFlag, errorMessageOut, warningMessageOut);
    
    if (errorMessageOut.isEmpty()) {
       sf->insertScene(insertAfterIndex, scene);
@@ -1815,11 +1848,12 @@ BrainSet::replaceScene(SceneFile* sf,
                        const int sceneIndex,
                        const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                        const QString& sceneName, const bool onlyIfSelectedFlag,
-                                  QString& errorMessageOut)
+                       QString& errorMessageOut,
+                       QString& warningMessageOut)
 {
    SceneFile::Scene scene(sceneName);
    
-   saveReplaceSceneHelper(scene, mainWindowSceneClasses, onlyIfSelectedFlag, errorMessageOut);
+   saveReplaceSceneHelper(scene, mainWindowSceneClasses, onlyIfSelectedFlag, errorMessageOut, warningMessageOut);
    
    if (errorMessageOut.isEmpty()) {
       sf->replaceScene(sceneIndex, scene);
@@ -1836,9 +1870,11 @@ void
 BrainSet::saveReplaceSceneHelper(SceneFile::Scene& scene,
                                  const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                                  const bool onlyIfSelectedFlag,
-                                 QString& errorMessageOut)
+                                 QString& errorMessageOut,
+                                 QString& warningMessageOut)
 {
    errorMessageOut = "";
+   warningMessageOut = "";
    
    if (mainWindowSceneClasses.empty() == false) {
       for (unsigned int i = 0; i < mainWindowSceneClasses.size(); i++) {
@@ -1908,10 +1944,12 @@ BrainSet::saveReplaceSceneHelper(SceneFile::Scene& scene,
    displaySettingsStudyMetaData->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    displaySettingsSurface->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    displaySettingsSurfaceShape->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
-   displaySettingsSurfaceVectors->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+   displaySettingsVectors->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    displaySettingsTopography->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    displaySettingsVolume->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    displaySettingsWustlRegion->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
+
+   brainSetAutoLoaderManager->saveScene(scene, onlyIfSelectedFlag, errorMessageOut);
    
    SceneFile::SceneClass sc("NodeHighlighting");   
    const int numNodes = getNumberOfNodes();
@@ -1969,7 +2007,7 @@ BrainSet::saveReplaceSceneHelper(SceneFile::Scene& scene,
       scene.addSceneClass(sca);
    }
    
-   checkNodeAttributeFilesForDuplicateColumnNames(errorMessageOut);
+   checkNodeAttributeFilesForDuplicateColumnNames(warningMessageOut);
 }                     
 
 /**
@@ -2502,10 +2540,11 @@ BrainSet::getFirstBrainModelSurfaceIndex() const
       
 /**
  * Set the name of the spec file.  Also sets the current directory
- * to the directory of the spec file.
+ * to the directory of the spec file.  If name is empty, the
+ * spec file is cleared.
  */
 void
-BrainSet::setSpecFileName(const QString& name) 
+BrainSet::setSpecFileName(const QString& name, const bool readOldSpecFileFlag)
 { 
    //
    // MUST read with the old spec file name and then
@@ -2514,11 +2553,13 @@ BrainSet::setSpecFileName(const QString& name)
    const QString oldSpecFileName(specFileName);
    SpecFile sf;
    bool specValidFlag = false;
-   try {
-      sf.readFile(specFileName);
-      specValidFlag = true;
-   }
-   catch (FileException&) {
+   if (readOldSpecFileFlag) {
+       try {
+          sf.readFile(specFileName);
+          specValidFlag = true;
+       }
+       catch (FileException&) {
+       }
    }
 
    specFileName = name;
@@ -5899,7 +5940,9 @@ BrainSet::readMetricFile(const QString& name,
    try {
       for (int i = 0; i < mf.getNumberOfColumns(); i++) {
          if (i < static_cast<int>(fileBeingReadColumnNames.size())) {
-            mf.setColumnName(i, fileBeingReadColumnNames[i]);
+            if (fileBeingReadColumnNames[i].isEmpty() == false) {
+               mf.setColumnName(i, fileBeingReadColumnNames[i]);
+            }
          }
       }
       std::vector<int> columnDestination2 = columnDestination;
@@ -5916,7 +5959,8 @@ BrainSet::readMetricFile(const QString& name,
    }
 
    if (readingSpecFileFlag == false) {
-      displaySettingsMetric->update(); 
+      displaySettingsMetric->update();
+      brainSetAutoLoaderManager->update();
    }
    
    if (updateSpec) {
@@ -5968,7 +6012,8 @@ BrainSet::readMetricFile(const QString& name, const bool append,
    metricFile->setModifiedCounter(modified);
 
    if (readingSpecFileFlag == false) {
-      displaySettingsMetric->update(); 
+      displaySettingsMetric->update();
+      brainSetAutoLoaderManager->update();
    }
    
    if (updateSpec) {
@@ -6110,6 +6155,7 @@ BrainSet::readPaintFile(const QString& name,
       }
       std::vector<int> columnDestination2 = columnDestination;
       paintFile->append(pf, columnDestination2, fcm);
+      paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
    }
    catch (FileException& e) {
       throw FileException(FileUtilities::basename(name), e.whatQString());
@@ -6150,6 +6196,7 @@ BrainSet::readPaintFile(const QString& name, const bool append,
          if (paintFile->getNumberOfNodes() != getNumberOfNodes()) {
             throw FileException(FileUtilities::basename(name), numNodesMessage);
          }
+         paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
       }
       catch (FileException& e) {
          clearPaintFile();
@@ -6165,6 +6212,7 @@ BrainSet::readPaintFile(const QString& name, const bool append,
       }
       try {
          paintFile->append(pf);
+         paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
       }
       catch (FileException& e) {
          throw FileException(FileUtilities::basename(name), e.whatQString());
@@ -6831,106 +6879,46 @@ BrainSet::readSurfaceShapeFile(const QString& name, const bool append,
 }
       
 /** 
- * Write the surface vector data file.
+ * Write the vector data file.
  */ 
 void
-BrainSet::writeSurfaceVectorFile(const QString& name) throw (FileException)
+BrainSet::writeVectorFile(VectorFile* vf, const QString& name) throw (FileException)
 {
-   loadedFilesSpecFile.surfaceVectorFile.setAllSelections(SpecFile::SPEC_FALSE);
-   surfaceVectorFile->writeFile(name);
-   addToSpecFile(SpecFile::getSurfaceVectorFileTag(), name);
-}
-
-/**
- * read the surface vector file file (only selected columns).
- */
-void 
-BrainSet::readSurfaceVectorFile(const QString& name, 
-                               const std::vector<int>& columnDestination,
-                               const std::vector<QString>& fileBeingReadColumnNames,
-                               const AbstractFile::FILE_COMMENT_MODE fcm,
-                               const bool updateSpec) throw (FileException)
-{
-   QMutexLocker locker(&mutexSurfaceVectorFile);
-   
-   const bool vectorsEmpty = surfaceVectorFile->empty();
-   
-   SurfaceVectorFile svf;
-   svf.readFile(name);
-   if (svf.getNumberOfNodes() != getNumberOfNodes()) {
-      throw FileException(FileUtilities::basename(name), numNodesMessage);
-   }
-   try {
-      for (int i = 0; i < svf.getNumberOfColumns(); i++) {
-         if (i < static_cast<int>(fileBeingReadColumnNames.size())) {
-            svf.setColumnName(i, fileBeingReadColumnNames[i]);
-         }
-      }
-      surfaceVectorFile->append(svf, columnDestination, fcm);
-   }
-   catch (FileException& e) {
-      throw FileException(FileUtilities::basename(name), e.whatQString());
-   }
-   
-   if (vectorsEmpty) {
-      surfaceVectorFile->clearModified();
-   }
-   else {
-      surfaceVectorFile->setModified();
-   }
-   displaySettingsSurfaceVectors->update();  
-   
-   if (updateSpec) {
-      addToSpecFile(SpecFile::getSurfaceVectorFileTag(), name);
-   }
+   loadedFilesSpecFile.vectorFile.clearSelectionStatus(vf->getFileName());
+   vf->writeFile(name);
+   addToSpecFile(SpecFile::getVectorFileTag(), name);
 }
 
 /**      
- * Read the surface vector data file file
+ * Read the vector data file file
  */
 void 
-BrainSet::readSurfaceVectorFile(const QString& name, const bool append,
+BrainSet::readVectorFile(const QString& name, const bool append,
                             const bool updateSpec) throw (FileException)
 {
-   QMutexLocker locker(&mutexSurfaceVectorFile);
+   QMutexLocker locker(&mutexVectorFile);
    
    if (append == false) {
-      clearSurfaceVectorFile();
+      clearVectorFiles();
    }
-   const unsigned long modified = surfaceVectorFile->getModified();
-   
-   if (surfaceVectorFile->getNumberOfColumns() == 0) {         
-      try {
-         surfaceVectorFile->readFile(name);
-         if (surfaceVectorFile->getNumberOfNodes() != getNumberOfNodes()) {
-            throw FileException(FileUtilities::basename(name), numNodesMessage);
-         }
-      }
-      catch (FileException& e) {
-         clearSurfaceVectorFile();
-         throw FileException(FileUtilities::basename(name), e.whatQString());
-      }
+   VectorFile* vf = NULL;
+   try {
+      vf = new VectorFile();
+      vf->readFile(name);
+      addVectorFile(vf);
    }
-   else {
-      // Append to existing 
-      SurfaceVectorFile svf;
-      svf.readFile(name);
-      if (svf.getNumberOfNodes() != getNumberOfNodes()) {
-         throw FileException(FileUtilities::basename(name), numNodesMessage);
+   catch (FileException& e) {
+      if (vf != NULL) {
+         delete vf;
       }
-      try {
-         surfaceVectorFile->append(svf);
-      }
-      catch (FileException& e) {
-         throw FileException(FileUtilities::basename(name), e.whatQString());
-      }
+      throw FileException(FileUtilities::basename(name), e.whatQString());
    }
-   surfaceVectorFile->setModifiedCounter(modified);
-   displaySettingsSurfaceVectors->update();  
+   displaySettingsVectors->update();  
    
    if (updateSpec) {
-      addToSpecFile(SpecFile::getSurfaceVectorFileTag(), name);
+      addToSpecFile(SpecFile::getVectorFileTag(), name);
    }
+   clearAllDisplayLists();
 }
 
 /** 
@@ -7447,7 +7435,7 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
                        const TransformationMatrix* specTransformationMatrixIn,
                        QProgressDialog* progressDialog)
 {
-   if (preferencesFile.getNumberOfFileReadingThreads() > 1) {
+   if (getPreferencesFile()->getNumberOfFileReadingThreads() > 1) {
       return readSpecFileMultiThreaded(specReadMode,
                                 specFileIn,
                                 specFileNameIn,
@@ -8359,16 +8347,16 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
    }
    
    //
-   // Read the surface vector files
+   // Read the vector files
    //
-   for (unsigned int i = 0; i < specFileIn.surfaceVectorFile.files.size(); i++) {
-      if (specFileIn.surfaceVectorFile.files[i].selected) {
-         if (updateFileReadProgressDialog(specFileIn.surfaceVectorFile.files[i].filename, 
+   for (unsigned int i = 0; i < specFileIn.vectorFile.files.size(); i++) {
+      if (specFileIn.vectorFile.files[i].selected) {
+         if (updateFileReadProgressDialog(specFileIn.vectorFile.files[i].filename,
                                           progressFileCounter, progressDialog)) {
             return true;
          }
          try {
-            readSurfaceVectorFile(specFileIn.surfaceVectorFile.files[i].filename, true, true);
+            readVectorFile(specFileIn.vectorFile.files[i].filename, true, true);
          }
          catch (FileException& e) {
             errorMessages.push_back(e.whatQString());
@@ -8974,7 +8962,7 @@ BrainSet::readSpecFileMultiThreaded(const SPEC_FILE_READ_MODE specReadMode,
    //
    // Create the multi-threaded reader and read files
    //
-   const int numThreads = preferencesFile.getNumberOfFileReadingThreads();
+   const int numThreads = getPreferencesFile()->getNumberOfFileReadingThreads();
    BrainSetMultiThreadedSpecFileReader multiThreadReader(this);
    multiThreadReader.readDataFiles(numThreads,
                                    specFileIn,
@@ -9134,6 +9122,7 @@ BrainSet::sortBrainModels()
 void
 BrainSet::updateAllDisplaySettings()
 {
+   brainSetAutoLoaderManager->update();
    displaySettingsArealEstimation->update();  
    displaySettingsBorders->update();
    displaySettingsCells->update();
@@ -9150,7 +9139,7 @@ BrainSet::updateAllDisplaySettings()
    displaySettingsSection->update();
    displaySettingsStudyMetaData->update();
    displaySettingsSurfaceShape->update();
-   displaySettingsSurfaceVectors->update();  
+   displaySettingsVectors->update();  
    displaySettingsTopography->update();
    displaySettingsVolume->update();
    displaySettingsProbabilisticAtlasVolume->update();
@@ -9569,10 +9558,10 @@ BrainSet::getBrainModelSurfaceOfType(const BrainModelSurface::SURFACE_TYPES st)
 }
 
 /**
- * Get a brain model surface with the specified file name (NULL if not found).
+ * Get a brain model surface with the specified coordinate file name (NULL if not found).
  */
 BrainModelSurface* 
-BrainSet::getBrainModelSurfaceWithFileName(const QString& fileNameIn)
+BrainSet::getBrainModelSurfaceWithCoordinateFileName(const QString& fileNameIn)
 {
    const QString fileName(FileUtilities::basename(fileNameIn));
    
@@ -10115,9 +10104,11 @@ BrainSet::removeUnlinkedStudiesFromStudyMetaDataFile()
    
    surfaceShapeFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
    pmidSet.insert(pmids.begin(), pmids.end());
-   
-   surfaceVectorFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
-   pmidSet.insert(pmids.begin(), pmids.end());
+
+   for (int i = 0; i < getNumberOfVectorFiles(); i++) {
+      getVectorFile(i)->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
+      pmidSet.insert(pmids.begin(), pmids.end());
+   }
    
    topographyFile->getPubMedIDsOfAllLinkedStudyMetaData(pmids);
    pmidSet.insert(pmids.begin(), pmids.end());
@@ -12224,7 +12215,101 @@ BrainSet::getVolumeVectorFile(const int index) const
       return NULL;
    }
 }
-      
+
+/**
+ * Get the paint volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumePaintFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumePaintFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the prob atlas volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeProbAtlasFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumeProbAtlasFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the RGB volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeRgbFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumeRgbFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the segmentation volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeSegmentationFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumeSegmentationFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the anatomy volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeAnatomyFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumeAnatomyFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the functional volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeFunctionalFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumeFunctionalFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the vector volume file with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeVectorFileWithName(const QString& name)
+{
+   std::vector<VolumeFile*> files;
+   getVolumeVectorFiles(files);
+   return getVolumeFileWithName(files, name);
+}
+
+/**
+ * Get the volume file name with the specified name (NULL if not found).
+ */
+VolumeFile*
+BrainSet::getVolumeFileWithName(const std::vector<VolumeFile*>& files,
+                                const QString& fileName)
+{
+   const QString name = FileUtilities::basename(fileName);
+   for (unsigned int i = 0; i < files.size(); i++) {
+      if (name == files[i]->getFileNameNoPath()) {
+         return files[i];
+      }
+   }
+   
+   return NULL;
+}
+
 /**
  * clear all node highlight symbols.
  */
@@ -12302,6 +12387,60 @@ BrainSet::updateNodeDisplayFlags()
 }
 
 /**
+ * remove coordinate and topoology files from spec file.
+ */
+void
+BrainSet::removeCoordAndTopoFromSpecFile()
+{
+   loadedFilesSpecFile.rawCoordFile.clear(false);
+   loadedFilesSpecFile.fiducialCoordFile.clear(false);
+   loadedFilesSpecFile.inflatedCoordFile.clear(false);
+   loadedFilesSpecFile.veryInflatedCoordFile.clear(false);
+   loadedFilesSpecFile.sphericalCoordFile.clear(false);
+   loadedFilesSpecFile.ellipsoidCoordFile.clear(false);
+   loadedFilesSpecFile.compressedCoordFile.clear(false);
+   loadedFilesSpecFile.flatCoordFile.clear(false);
+   loadedFilesSpecFile.lobarFlatCoordFile.clear(false);
+   loadedFilesSpecFile.hullCoordFile.clear(false);
+   loadedFilesSpecFile.unknownCoordFile.clear(false);
+
+   loadedFilesSpecFile.closedTopoFile.clear(false);
+   loadedFilesSpecFile.openTopoFile.clear(false);
+   loadedFilesSpecFile.cutTopoFile.clear(false);
+   loadedFilesSpecFile.lobarCutTopoFile.clear(false);
+
+   if (specFileName.isEmpty() == false) {
+      try {
+         SpecFile sf;
+         sf.readFile(specFileName);
+
+         sf.rawCoordFile.clear(false);
+         sf.fiducialCoordFile.clear(false);
+         sf.inflatedCoordFile.clear(false);
+         sf.veryInflatedCoordFile.clear(false);
+         sf.sphericalCoordFile.clear(false);
+         sf.ellipsoidCoordFile.clear(false);
+         sf.compressedCoordFile.clear(false);
+         sf.flatCoordFile.clear(false);
+         sf.lobarFlatCoordFile.clear(false);
+         sf.hullCoordFile.clear(false);
+         sf.unknownCoordFile.clear(false);
+
+         sf.closedTopoFile.clear(false);
+         sf.openTopoFile.clear(false);
+         sf.cutTopoFile.clear(false);
+         sf.lobarCutTopoFile.clear(false);
+
+         sf.writeFile(specFileName);
+      }
+      catch (FileException) {
+         // do nothing
+      }
+   }
+}
+
+
+/**
  * Delete all borders
  */
 void
@@ -12318,6 +12457,7 @@ BrainSet::deleteAllBorders()
    loadedFilesSpecFile.compressedBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
    loadedFilesSpecFile.flatBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
    loadedFilesSpecFile.lobarFlatBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
+   loadedFilesSpecFile.hullBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
    loadedFilesSpecFile.unknownBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
    loadedFilesSpecFile.volumeBorderFile.setAllSelections(SpecFile::SPEC_FALSE);
 }
@@ -12570,13 +12710,64 @@ BrainSet::clearSurfaceShapeFile()
 }
 
 /**
+ * Add a vector file.
+ */
+void
+BrainSet::addVectorFile(VectorFile* vf)
+{
+   vectorFiles.push_back(vf);
+}
+
+/**
+ * Remove a vector file.
+ */
+void
+BrainSet::removeVectorFile(const int indx)
+{
+   loadedFilesSpecFile.vectorFile.clearSelectionStatus(vectorFiles[indx]->getFileName());
+   vectorFiles.erase(vectorFiles.begin() + indx);
+}
+
+/**
+ * Remove a vector file.
+ */
+void
+BrainSet::removeVectorFile(VectorFile* vf)
+{
+   for (int i = 0; i < getNumberOfVectorFiles(); i++) {
+      if (getVectorFile(i) == vf) {
+         removeVectorFile(i);
+         break;
+      }
+   }
+}
+
+/**
+ *  get vector file's index.
+ */
+int
+BrainSet::getVectorFileIndex(VectorFile* vf)
+{
+   for (int i = 0; i < getNumberOfVectorFiles(); i++) {
+      if (vectorFiles[i] == vf) {
+         return i;
+      }
+   }
+   return -1;
+}
+
+/**
  * clear the file
  */
 void 
-BrainSet::clearSurfaceVectorFile()
+BrainSet::clearVectorFiles()
 {
-   surfaceVectorFile->clear();
-   loadedFilesSpecFile.surfaceVectorFile.setAllSelections(SpecFile::SPEC_FALSE);
+   for (int i = 0; i < getNumberOfVectorFiles(); i++) {
+      delete vectorFiles[i];
+   }
+   vectorFiles.clear();
+   loadedFilesSpecFile.vectorFile.setAllSelections(SpecFile::SPEC_FALSE);
+   clearAllDisplayLists();
 }
 
 /**

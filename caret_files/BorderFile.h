@@ -89,7 +89,8 @@ class Border {
       
       /// resample a border
       void resampleBorder(const float* xorig, const float* yorig, 
-                          const float* zorig, const int numPointsIn,
+                          const float* zorig, 
+                          const int numPointsIn,
                           const float density,
                           float* xout, float* yout, float* zout,
                           const int numPointsOut);
@@ -104,6 +105,9 @@ class Border {
       
       /// determine if two borders are the same (same name and links)
       bool operator==(const Border& b) const;
+      
+      /// append a border this "this" one
+      void appendBorder(const Border& b);
       
       /// Apply transformation matrix to border
       void applyTransformationMatrix(TransformationMatrix& tm);
@@ -179,6 +183,9 @@ class Border {
                    
       /// get the uncertainty
       float getArealUncertainty() const { return arealUncertainty; }
+
+      // set the uncertainty
+      void setArealUncertainty(const float uncertainty);
 
       /// get the sampling density for a border
       float getSamplingDensity() const { return samplingDensity; }
@@ -418,9 +425,21 @@ class BorderFile : public AbstractFile {
       /// resample displayed borders
       void resampleDisplayedBorders(const float density);
 
+      /// resample all borders
+      void resampleAllBorders(const float density);
+
       /// resample to match landmark border file (borders with same names have same number of points)
       void resampleToMatchLandmarkBorders(const BorderFile& landmarkBorderFile) throw (FileException);
       
+      /// compute landmark variability
+      static void evaluateLandmarkVariability(const BorderFile& indivBorderFile,
+                                       const BorderFile& atlasBorderFile,
+                                       const float badThreshold,
+                                       const float extremeThreshold,
+                                       const bool useAbsoluteDistanceFlag,
+                                       BorderFile& outputBorderFile,
+                                       QString& outputTextReport) throw (FileException);
+                                       
       /// orient displayed borders clockwise
       void orientDisplayedBordersClockwise();
 
@@ -430,6 +449,12 @@ class BorderFile : public AbstractFile {
       /// set the radius of a spherical border file
       void setSphericalBorderRadius(const float radius);
       
+      // convert configuration ID to spec file tag
+      static QString convertConfigurationIDToSpecFileTag(const QString& configID);
+      
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
       /// read the file's data
       void readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,

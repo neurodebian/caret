@@ -50,6 +50,7 @@
 #include "BrainModelSurfaceGeodesic.h"
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainModelSurfaceROIAssignMetric.h"
+#include "BrainModelSurfaceROIAssignMetricNodeArea.h"
 #include "BrainModelSurfaceROIAssignPaint.h"
 #include "BrainModelSurfaceROIAssignShape.h"
 #include "BrainModelSurfaceROICreateBorderUsingGeodesic.h"
@@ -85,6 +86,7 @@
 #include "QtUtilities.h"
 #include "PreferencesFile.h"
 #include "SurfaceShapeFile.h"
+#include "WuQDataEntryDialog.h"
 #include "WuQFileDialog.h"
 #include "WuQWidgetGroup.h"
 #include "global_variables.h"
@@ -579,6 +581,15 @@ GuiSurfaceROINodeSelectionPage::GuiSurfaceROINodeSelectionPage(GuiSurfaceRegionO
                     this, SLOT(slotErodeROIPushButton()));
 
    //
+   // Extent push button
+   //
+   extentPushButton = new QPushButton("Extent...");
+   extentPushButton->setToolTip("Limit nodes to a coordinate bounded region.\n");
+   extentPushButton->setAutoDefault(false);
+   QObject::connect(extentPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotExtentPushButton()));
+                    
+   //
    // Invert ROI push button
    //
    invertSelectedNodesPushButton = new QPushButton("Invert");
@@ -611,6 +622,7 @@ GuiSurfaceROINodeSelectionPage::GuiSurfaceROINodeSelectionPage(GuiSurfaceRegionO
    row2Layout->addWidget(removeIslandsPushButton);
    row2Layout->addWidget(dilateSelectedNodesPushButton);
    row2Layout->addWidget(erodeSelectedNodesPushButton);
+   row2Layout->addWidget(extentPushButton);
    row2Layout->addStretch();
    QGroupBox* modifyROIGroupBox = new QGroupBox("Select Nodes and Modify Region of Interest");
    QVBoxLayout* modifyROILayout = new QVBoxLayout(modifyROIGroupBox);
@@ -1671,6 +1683,68 @@ GuiSurfaceROINodeSelectionPage::slotErodeROIPushButton()
 }
 
 /**
+ * called when extent push button pressed.
+ */
+void 
+GuiSurfaceROINodeSelectionPage::slotExtentPushButton()
+{
+   //
+   // Get operational surface
+   //
+   const BrainModelSurface* bms = roiDialog->getCopyOfOperationSurface();
+   if (bms == NULL) {
+      QMessageBox::critical(this,
+                            "ERROR",
+                            "The operational surface is invalid.");
+      return;
+   }
+
+   const float defaultValue = 10000000.0;
+   WuQDataEntryDialog ded(this);
+   QDoubleSpinBox* xMinSpinBox = ded.addDoubleSpinBox("X-Min",
+                                                      -defaultValue);
+   QDoubleSpinBox* xMaxSpinBox = ded.addDoubleSpinBox("X-Max",
+                                                      defaultValue);
+   QDoubleSpinBox* yMinSpinBox = ded.addDoubleSpinBox("Y-Min",
+                                                      -defaultValue);
+   QDoubleSpinBox* yMaxSpinBox = ded.addDoubleSpinBox("Y-Max",
+                                                      defaultValue);
+   QDoubleSpinBox* zMinSpinBox = ded.addDoubleSpinBox("Z-Min",
+                                                      -defaultValue);
+   QDoubleSpinBox* zMaxSpinBox = ded.addDoubleSpinBox("Z-Max",
+                                                      defaultValue);
+   if (ded.exec() == WuQDataEntryDialog::Accepted) {
+      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+      const float extent[6] = {
+         xMinSpinBox->value(),
+         xMaxSpinBox->value(),
+         yMinSpinBox->value(),
+         yMaxSpinBox->value(),
+         zMinSpinBox->value(),
+         zMaxSpinBox->value()
+      };
+      BrainModelSurfaceROINodeSelection* roi = 
+         theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+      roi->limitExtent(bms, extent);
+      updateNumberOfSelectedNodesLabel();
+      theMainWindow->getBrainSet()->clearAllDisplayLists();
+      GuiBrainModelOpenGL::updateAllGL(NULL);
+      QApplication::restoreOverrideCursor();
+   }
+   
+   //
+   // Free the copy of the surface
+   //
+   delete bms;
+   bms = NULL;
+   
+   //
+   // Update complete status
+   //
+   emit completeChanged();
+}
+      
+/**
  * clean up the page.
  */
 void 
@@ -1923,6 +1997,8 @@ GuiSurfaceROIOperationPage::GuiSurfaceROIOperationPage(GuiSurfaceRegionOfInteres
    //
    operationSelectionComboBox->addItem("Assign Metric",
                                        OPERATION_MODE_ASSIGN_METRIC);
+   operationSelectionComboBox->addItem("Assign Metric With Node Areas",
+                                       OPERATION_MODE_ASSIGN_METRIC_NODE_AREAS);
    operationSelectionComboBox->addItem("Assign Paint",
                                        OPERATION_MODE_ASSIGN_PAINT);
    operationSelectionComboBox->addItem("Assign Surface Shape",
@@ -1968,6 +2044,9 @@ GuiSurfaceROIOperationPage::GuiSurfaceROIOperationPage(GuiSurfaceRegionOfInteres
    // the assign metric page
    //
    assignMetricPage = createAssignMetricPage();
+   
+   // assign metric with node areas
+   nodeAreaMetricPage = createNodeAreasPage();
    
    // the assign paint page
    assignPaintPage = createAssignPaintPage();
@@ -2022,6 +2101,7 @@ GuiSurfaceROIOperationPage::GuiSurfaceROIOperationPage(GuiSurfaceRegionOfInteres
    //
    operationsStackedWidget = new QStackedWidget;
    operationsStackedWidget->addWidget(assignMetricPage);
+   operationsStackedWidget->addWidget(nodeAreaMetricPage);
    operationsStackedWidget->addWidget(assignPaintPage);
    operationsStackedWidget->addWidget(assignShapePage);
    operationsStackedWidget->addWidget(computeIntegratedFoldingIndexPage);
@@ -2146,6 +2226,9 @@ GuiSurfaceROIOperationPage::slotOperationSelectionComboBox(int indx)
       case OPERATION_MODE_ASSIGN_METRIC:
          operationsStackedWidget->setCurrentWidget(assignMetricPage);
          break;
+      case OPERATION_MODE_ASSIGN_METRIC_NODE_AREAS:
+         operationsStackedWidget->setCurrentWidget(nodeAreaMetricPage);
+         break;
       case OPERATION_MODE_ASSIGN_PAINT:
          operationsStackedWidget->setCurrentWidget(assignPaintPage);
          break;
@@ -2196,6 +2279,128 @@ GuiSurfaceROIOperationPage::slotOperationSelectionComboBox(int indx)
          break;
    }
 }
+
+/**
+ * create the node areas page.
+ */
+QWidget* 
+GuiSurfaceROIOperationPage::createNodeAreasPage()
+{
+   //
+   // Column selection
+   //
+   QLabel* metricLabel = new QLabel("Metric Column Selection");
+   nodeAreaMetricColumnSelectionComboBox = 
+      new GuiNodeAttributeColumnSelectionComboBox(GUI_NODE_FILE_TYPE_METRIC,
+                                                  true,
+                                                  false,
+                                                  false);
+   
+   // 
+   // Edit Column name
+   //
+   QLabel* editLabel = new QLabel("Edit Column Name");
+   nodeAreaMetricColumnNameLineEdit = new QLineEdit;
+   QObject::connect(nodeAreaMetricColumnSelectionComboBox, SIGNAL(itemNameSelected(const QString&)),
+                    nodeAreaMetricColumnNameLineEdit, SLOT(setText(const QString&)));
+
+   //
+   // Percentage check box
+   //
+   nodeAreaPercentageCheckBox = new QCheckBox("Set Percentage of Total Surface Area");
+   nodeAreaPercentageCheckBox->setToolTip("If this box is checked, the value \n"
+                                          "assigned to each node is the percentage\n"
+                                          "of the total surface contributed by the\n"
+                                          "node.");
+                                          
+   //
+   // node area metric button
+   //
+   QPushButton* nodeAreaMetricPushButton = new QPushButton("Assign Metric Node Areas");
+   nodeAreaMetricPushButton->setAutoDefault(false);
+   nodeAreaMetricPushButton->setFixedSize(nodeAreaMetricPushButton->sizeHint());
+   QObject::connect(nodeAreaMetricPushButton, SIGNAL(clicked()),
+                    this, SLOT(slotNodeAreaMetricPushButton()));
+                    
+   //
+   // Layout widgets
+   //
+   QGridLayout* gridLayout = new QGridLayout;
+   gridLayout->addWidget(metricLabel, 0, 0);
+   gridLayout->addWidget(nodeAreaMetricColumnSelectionComboBox, 0, 1);
+   gridLayout->addWidget(editLabel, 1, 0);
+   gridLayout->addWidget(nodeAreaMetricColumnNameLineEdit, 1, 1);
+   gridLayout->addWidget(nodeAreaPercentageCheckBox, 2, 0, 2, 1);
+   QWidget* w = new QWidget;
+   QVBoxLayout* layout = new QVBoxLayout(w);
+   layout->addLayout(gridLayout);
+   layout->addWidget(nodeAreaMetricPushButton);
+   layout->addStretch();
+
+   return w;
+}
+      
+/**
+ * called to set node areas for metric.
+ */
+void 
+GuiSurfaceROIOperationPage::slotNodeAreaMetricPushButton()
+{
+   QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+
+   QString errorMessage;
+
+   BrainModelSurface* bms = roiDialog->getCopyOfOperationSurface();
+   MetricFile* mf = theMainWindow->getBrainSet()->getMetricFile();
+   int metricColumn = nodeAreaMetricColumnSelectionComboBox->currentIndex();
+
+   try {
+      BrainModelSurfaceROINodeSelection* roi = 
+         theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
+
+      BrainModelSurfaceROIAssignMetricNodeArea metricROI(theMainWindow->getBrainSet(),
+                                                 bms,
+                                                 roi,
+                                                 mf,
+                                                 metricColumn,
+                                                 assignMetricColumnNameLineEdit->text(),
+                                                 nodeAreaPercentageCheckBox->isChecked());
+      metricROI.execute();
+      metricColumn = metricROI.getAssignedMetricColumn();
+   }
+   catch (BrainModelAlgorithmException& e) {
+      errorMessage = e.whatQString();
+   }
+   
+   delete bms;
+   
+   //
+   // Metric File has changed
+   //
+   GuiFilesModified fm;
+   fm.setMetricModified();
+   theMainWindow->fileModificationUpdate(fm);
+
+   //
+   // Update node colors and redraw
+   //
+   theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
+   GuiBrainModelOpenGL::updateAllGL(NULL); 
+   
+   //
+   // Save assigned column since it may be new
+   //
+   assignMetricColumnSelectionComboBox->setCurrentIndex(metricColumn);
+   assignMetricColumnNameLineEdit->setText(assignMetricColumnSelectionComboBox->currentText());
+   
+   QApplication::restoreOverrideCursor();
+   
+   if (errorMessage.isEmpty() == false) {
+      QMessageBox::critical(this,
+                            "ERROR",
+                            errorMessage);
+   }                            
+}      
 
 /**
  * create the assign metric page.

@@ -321,8 +321,8 @@ BrainSetDataFileReader::execute() throw (BrainModelAlgorithmException)
                      true,
                      true);
       }
-      else if (specFileTag == SpecFile::getSurfaceVectorFileTag()) {
-         brainSet->readSurfaceVectorFile(fileName,
+      else if (specFileTag == SpecFile::getVectorFileTag()) {
+         brainSet->readVectorFile(fileName,
                      true,
                      true);
       }

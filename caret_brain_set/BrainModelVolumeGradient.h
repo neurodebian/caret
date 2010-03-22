@@ -28,7 +28,7 @@
 /*LICENSE_END*/
 #include "BrainModelAlgorithm.h"
 
-class VectorFile;          
+class SureFitVectorFile;
 class VolumeFile;
 
 /// class for creating a gradient on a volume
@@ -41,7 +41,7 @@ class BrainModelVolumeGradient : public BrainModelAlgorithm {
                                const bool maskingFlag, 
                                VolumeFile* volumeFileIn,
                                VolumeFile* wholeMaskVolumeIn,
-                               VectorFile* gradFileIn);
+                               SureFitVectorFile* gradFileIn);
                                
       /// Destructor
       ~BrainModelVolumeGradient();
@@ -66,7 +66,7 @@ class BrainModelVolumeGradient : public BrainModelAlgorithm {
       VolumeFile* wholeMaskVolume;
       
       /// gradient file
-      VectorFile* gradFile;
+      SureFitVectorFile* gradFile;
       
       /// misc enums
       enum { 

@@ -27,7 +27,7 @@
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 /**
@@ -56,8 +56,8 @@ CommandVolumeReplaceVectorMagnitudeWithVolume::getScriptBuilderParameters(Script
    values.push_back("REPLACE");   descriptions.push_back("REPLACE");
    values.push_back("MULTIPLY");   descriptions.push_back("MULTIPLY");
    paramsOut.clear();
-   paramsOut.addFile("Input Vector File Name", FileFilters::getVectorFileFilter());
-   paramsOut.addFile("Output Vector File Name", FileFilters::getVectorFileFilter());
+   paramsOut.addFile("Input Vector File Name", FileFilters::getSureFitVectorFileFilter());
+   paramsOut.addFile("Output Vector File Name", FileFilters::getSureFitVectorFileFilter());
    paramsOut.addFile("Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addListOfItems("Operation", values, descriptions);
 }
@@ -106,12 +106,12 @@ CommandVolumeReplaceVectorMagnitudeWithVolume::executeCommand() throw (BrainMode
       parameters->getNextParameterAsString("Operation").toUpper();
    checkForExcessiveParameters();
 
-   VectorFile::COMBINE_VOLUME_OPERATION operation;
+   SureFitVectorFile::COMBINE_VOLUME_OPERATION operation;
    if (operationString == "REPLACE") {
-      operation = VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME;
+      operation = SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME;
    }
    else if (operationString == "MULTIPLY") {
-      operation = VectorFile::COMBINE_VOLUME_MULTIPLY_MAGNITUDE_WITH_VOLUME;
+      operation = SureFitVectorFile::COMBINE_VOLUME_MULTIPLY_MAGNITUDE_WITH_VOLUME;
    }
    else {
       throw CommandException("Invalid operation \"" + operationString + "\"");
@@ -120,7 +120,7 @@ CommandVolumeReplaceVectorMagnitudeWithVolume::executeCommand() throw (BrainMode
    //
    // Read the input files
    //
-   VectorFile vector;
+   SureFitVectorFile vector;
    vector.readFile(inputVectorFileName);
    VolumeFile volume;
    volume.readFile(volumeFileName);

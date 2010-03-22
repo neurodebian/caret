@@ -43,6 +43,7 @@ class StudyMetaDataFile;
 class StudyMetaDataLink;
 class StudyMetaDataTextDisplayFilter;
 class VocabularyFile;
+class XmlGenericWriter;
 
 /// Class for storing study meta data
 class StudyMetaData {
@@ -106,6 +107,9 @@ class StudyMetaData {
                   void writeXML(QDomDocument& xmlDoc,
                                 QDomElement&  parentElement) const throw (FileException);
                
+                  // called to write XML
+                  void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
                   /// set parent
                   void setParent(Figure* parentFigureIn);
                   
@@ -197,6 +201,9 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
+            // called to write XML
+            void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
             /// set parent
             void setParent(StudyMetaData* parentStudyMetaDataIn);
             
@@ -288,6 +295,9 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
+            // called to write XML
+            void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
             // set parent
             void setParent(Table* parentTableIn);
             
@@ -430,6 +440,9 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
+            // called to write XML
+            void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
             /// set parent
             void setParent(StudyMetaData* parentStudyMetaDataIn);
             
@@ -563,6 +576,9 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
+            // called to write XML
+            void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
             // set parent
             void setParent(StudyMetaData* parentStudyMetaDataIn);
             
@@ -648,6 +664,9 @@ class StudyMetaData {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const throw (FileException);
          
+            // called to write XML
+            void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
             // set parent
             void setParent(StudyMetaData* parentStudyMetaDataIn);
             
@@ -703,6 +722,9 @@ class StudyMetaData {
       void writeXML(QDomDocument& xmlDoc,
                             QDomElement&  parentElement) const throw (FileException);
    
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter, int indx) const throw (FileException);
+
       // get the study data format entries
       static void getStudyDataFormatEntries(std::vector<QString>& entries);
       
@@ -1210,6 +1232,14 @@ class StudyMetaDataFile : public AbstractFile {
       static void findDuplicateStudies(const std::vector<QString>& studyFileNames,
                                        std::multimap<QString,QString>& duplicatesStudiesOut)
                                                                 throw (FileException);
+
+      // validate the study metadata file (missing table numbers, duplicate studies, etc)
+      QStringList validStudyMetaDataFile() const;
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
+
    protected:
       // copy helper used by copy constructor and assignment operator
       void copyHelper(const StudyMetaDataFile& smdf);

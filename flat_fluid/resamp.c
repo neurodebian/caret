@@ -7,10 +7,10 @@ void	resample_line (double *xorig, double *yorig, int totpoints,
 		double *xout, double *yout, double ddd, int *numpoint, int flag)
 {
 	int 	i, j, k, l;
-	double 	totdist, curd, dj, dj1;
+	double 	totdist, dj, dj1;
 	double 	x1, y1, frac;
 
-	if (flag == 1){
+	if (flag == 1) {
 	   totdist = 0.0;
 	   for (i = 1; i < totpoints; i++)
 	      totdist += dist (xorig [i], yorig [i], xorig [i-1], yorig [i-1]);

@@ -181,7 +181,6 @@ FileFilters::getAllFileFilters(QStringList& allFileFiltersOut)
    allFileFiltersOut.append(getSceneFileFilter());
    allFileFiltersOut.append(getSectionFileFilter());
    allFileFiltersOut.append(getSurfaceShapeFileFilter());
-   allFileFiltersOut.append(getSurfaceVectorFileFilter());
    allFileFiltersOut.append(getTopographyFileFilter());
    allFileFiltersOut.append(getTopologyClosedFileFilter());
    allFileFiltersOut.append(getTopologyOpenFileFilter());
@@ -244,7 +243,8 @@ FileFilters::getAllFileFilters(QStringList& allFileFiltersOut)
    allFileFiltersOut.append(getGiftiFunctionalFileFilter());
    allFileFiltersOut.append(getGiftiShapeFileFilter());
    allFileFiltersOut.append(getGiftiLabelFileFilter());
-   allFileFiltersOut.append(getVectorFileFilter());
+   allFileFiltersOut.append(getGiftiVectorFileFilter());
+   allFileFiltersOut.append(getSureFitVectorFileFilter());
    allFileFiltersOut.append(getPDFFileFilter());
    allFileFiltersOut.append(getHTMLFileFilter());
    allFileFiltersOut.append(getZipFileFilter());
@@ -300,7 +300,6 @@ FileFilters::getAllCaretFileFilters(QStringList& allFileFiltersOut)
    allFileFiltersOut.append(getSpecFileFilter());
    allFileFiltersOut.append(getStudyMetaDataFileFilter());
    allFileFiltersOut.append(getSurfaceShapeFileFilter());
-   allFileFiltersOut.append(getSurfaceVectorFileFilter());
    allFileFiltersOut.append(getTopographyFileFilter());
    allFileFiltersOut.append(getTopologyGenericFileFilter());
    allFileFiltersOut.append(getTransformationMatrixFileFilter());

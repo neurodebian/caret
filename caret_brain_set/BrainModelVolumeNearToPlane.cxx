@@ -29,7 +29,7 @@
 #include "BrainModelVolumeNearToPlane.h"
 #include "DebugControl.h"
 #include "MathUtilities.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 #include "vtkMath.h"
 
@@ -58,7 +58,7 @@ static float thetas[6] = {
  */
 BrainModelVolumeNearToPlane::BrainModelVolumeNearToPlane(
                                  BrainSet* bs,
-                                 VectorFile* vecFileIn,
+                                 SureFitVectorFile* vecFileIn,
                                  const float sigmaNIn, 
                                  const float sigmaWIn, 
                                  const float offsetIn, 

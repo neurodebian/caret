@@ -282,6 +282,8 @@ GuiMetricModificationDialog::slotApplyButton()
             switch (algorithm) {
                case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
                   break;
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_DILATE:
+                  break;
                case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
                   QApplication::restoreOverrideCursor();
                   QMessageBox::information(this, 
@@ -658,6 +660,9 @@ GuiMetricModificationDialog::slotSmoothingAlgorithmComboBox(int item)
    switch (static_cast<BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM>(item)) {
       case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
          break;
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_DILATE:
+         enableStrengthParams = false;
+         break;
       case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
          enableFwhmParams = true;
          enableStrengthParams = false;
@@ -718,6 +723,8 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
    smoothingAlgorithmComboBox = new QComboBox;
    smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
                                           "Average Neighbors");
+   smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_DILATE,
+                                          "Dilation");
    smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM,
                                           "Full Width Half Maximum");
    smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN,

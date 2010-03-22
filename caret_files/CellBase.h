@@ -35,6 +35,7 @@
 class QDomDocument;
 class QDomElement;
 class QDomNode;
+class StudyMetaDataFile;
 
 /// base class for CellData and CellProjection
 class CellBase {
@@ -235,6 +236,9 @@ class CellBase {
       
       /// set the attribute ID
       void setAttributeID(const QString& s);
+      
+      /// validate the study metadata link (returns error message)
+      QStringList validateStudyMetaDataLink(StudyMetaDataFile* smdf) const;
       
    protected:
       /// called to read from an XML DOM structure

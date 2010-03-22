@@ -35,6 +35,8 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfaceAndVolume.h \
       BrainModelSurfaceBorderCutter.h \
       BrainModelSurfaceBorderLandmarkIdentification.h \
+       BrainModelSurfaceBorderToMetricConverter.h \
+      BrainModelSurfaceBorderToPaintConverter.h \
       BrainModelSurfaceCellAttributeAssignment.h \
       BrainModelSurfaceCellDensityToMetric.h \
       BrainModelSurfaceClusterToBorderConverter.h \
@@ -48,8 +50,10 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfaceDeformationFlat.h \
       BrainModelSurfaceDeformationMapCreate.h \
       BrainModelSurfaceDeformationMeasurement.h \
+      BrainModelSurfaceDeformationMultiStageSphericalVector.h \
 	   BrainModelSurfaceDeformationSpherical.h \
       BrainModelSurfaceDeformationSphericalSlits.h \
+       BrainModelSurfaceDeformationSphericalVector.h \
 	   BrainModelSurfaceDistortion.h \
       BrainModelSurfaceFindExtremum.h \
 	   BrainModelSurfaceFlatHexagonalSubsample.h \
@@ -81,7 +85,9 @@ HEADERS += BorderFileProjector.h \
       BrainModelSurfacePaintToBorderConverter.h \
 	   BrainModelSurfacePointLocator.h \
 	   BrainModelSurfacePointProjector.h \
+      BrainModelSurfacePolyhedron.h \
       BrainModelSurfaceROIAssignMetric.h \
+      BrainModelSurfaceROIAssignMetricNodeArea.h \
       BrainModelSurfaceROIAssignPaint.h \
       BrainModelSurfaceROIAssignShape.h \
       BrainModelSurfaceROICreateBorderUsingGeodesic.h \
@@ -99,6 +105,7 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfaceResection.h \
 	   BrainModelSurfaceSmoothing.h \
       BrainModelSurfaceSphericalTessellator.h \
+      BrainModelSurfaceStandardSphere.h \
 	   BrainModelSurfaceSulcalDepth.h \
       BrainModelSurfaceSulcalDepthWithNormals.h \
       BrainModelSurfaceSulcalIdentificationProbabilistic.h \
@@ -131,6 +138,10 @@ HEADERS += BorderFileProjector.h \
       BrainModelVolumeTopologyGraphCorrector.cxx \
 	   BrainModelVolumeVoxelColoring.h \
       BrainSet.h  \
+      BrainSetAutoLoaderFile.h \
+      BrainSetAutoLoaderManager.h \
+      BrainSetAutoLoaderFileMetric.h \
+      BrainSetAutoLoaderFilePaintCluster.h \
       BrainSetDataFileReader.h \
       BrainSetMultiThreadedSpecFileReader.h \
 	   BrainSetNodeAttribute.h \
@@ -148,6 +159,7 @@ HEADERS += BorderFileProjector.h \
       DisplaySettingsGeodesicDistance.h \
       DisplaySettingsImages.h \
       DisplaySettingsMetric.h \
+      BrainSetAutoLoaderFileFunctionalVolume.h \
 	   DisplaySettingsModels.h \
       DisplaySettingsNodeAttributeFile.h \
 	   DisplaySettingsSurface.h \
@@ -158,9 +170,10 @@ HEADERS += BorderFileProjector.h \
       DisplaySettingsSection.h \
       DisplaySettingsStudyMetaData.h \
       DisplaySettingsSurfaceShape.h \
-      DisplaySettingsSurfaceVectors.h \
+      DisplaySettingsVectors.h \
       DisplaySettingsTopography.h \
-	   DisplaySettingsVolume.h \
+      DisplaySettingsVectors.h \
+ 	   DisplaySettingsVolume.h \
       DisplaySettingsWustlRegion.h \
       FociFileToPalsProjector.h \
       MapFmriAtlasSpecFileInfo.h \
@@ -190,6 +203,8 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelSurfaceAndVolume.cxx \
       BrainModelSurfaceBorderCutter.cxx \
       BrainModelSurfaceBorderLandmarkIdentification.cxx \
+      BrainModelSurfaceBorderToMetricConverter.cxx \
+      BrainModelSurfaceBorderToPaintConverter.cxx \
       BrainModelSurfaceCellAttributeAssignment.cxx \
       BrainModelSurfaceCellDensityToMetric.cxx \
       BrainModelSurfaceClusterToBorderConverter.cxx \
@@ -203,7 +218,9 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelSurfaceDeformationFlat.cxx \
       BrainModelSurfaceDeformationMapCreate.cxx \
       BrainModelSurfaceDeformationMeasurement.cxx \
+      BrainModelSurfaceDeformationMultiStageSphericalVector.cxx \
       BrainModelSurfaceDeformationSphericalSlits.cxx \
+       BrainModelSurfaceDeformationSphericalVector.cxx \
 	   BrainModelSurfaceDeformationSpherical.cxx \
 	   BrainModelSurfaceDistortion.cxx \
       BrainModelSurfaceFindExtremum.cxx \
@@ -236,7 +253,9 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelSurfacePaintToBorderConverter.cxx \
 	   BrainModelSurfacePointLocator.cxx \
 	   BrainModelSurfacePointProjector.cxx \
+      BrainModelSurfacePolyhedron.cxx \
       BrainModelSurfaceROIAssignMetric.cxx \
+      BrainModelSurfaceROIAssignMetricNodeArea.cxx \
       BrainModelSurfaceROIAssignPaint.cxx \
       BrainModelSurfaceROIAssignShape.cxx \
       BrainModelSurfaceROICreateBorderUsingGeodesic.cxx \
@@ -254,6 +273,7 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelSurfaceResection.cxx \
       BrainModelSurfaceSphericalTessellator.cxx \
 	   BrainModelSurfaceSmoothing.cxx \
+      BrainModelSurfaceStandardSphere.cxx \
 	   BrainModelSurfaceSulcalDepth.cxx \
       BrainModelSurfaceSulcalDepthWithNormals.cxx \
       BrainModelSurfaceSulcalIdentificationProbabilistic.cxx \
@@ -286,6 +306,11 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelVolumeTopologyGraphCorrector.cxx \
 	   BrainModelVolumeVoxelColoring.cxx \
       BrainSet.cxx \
+      BrainSetAutoLoaderFile.cxx \
+      BrainSetAutoLoaderManager.cxx \
+      BrainSetAutoLoaderFileMetric.cxx \
+      BrainSetAutoLoaderFileFunctionalVolume.cxx \
+      BrainSetAutoLoaderFilePaintCluster.cxx \
       BrainSetDataFileReader.cxx \
       BrainSetMultiThreadedSpecFileReader.cxx \
 	   BrainSetNodeAttribute.cxx \
@@ -313,8 +338,8 @@ SOURCES += BorderFileProjector.cxx \
       DisplaySettingsSection.cxx \
       DisplaySettingsStudyMetaData.cxx \
       DisplaySettingsSurfaceShape.cxx \
-      DisplaySettingsSurfaceVectors.cxx \
       DisplaySettingsTopography.cxx \
+      DisplaySettingsVectors.cxx \
 	   DisplaySettingsVolume.cxx \
       DisplaySettingsWustlRegion.cxx \
       FociFileToPalsProjector.cxx \

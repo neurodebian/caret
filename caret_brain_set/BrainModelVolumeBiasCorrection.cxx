@@ -28,7 +28,7 @@
 Program:   Insight Segmentation & Registration Toolkit
 Module:    $RCSfile: BrainModelVolumeBiasCorrection.cxx,v $
 Language:  C++
-Date:      $Date: 2007/07/10 14:10:05 $
+Date:      $Date: 2009/04/09 15:50:54 $
 Version:   $Revision: 1.1.1.1 $
 
 Copyright (c) 2002 Insight Consortium. All rights reserved.

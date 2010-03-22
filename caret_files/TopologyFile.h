@@ -204,6 +204,12 @@ class TopologyFile : public GiftiDataArrayFile {
       // see if the topology file is equivalent to this one (contains exact same tiles)
       bool equivalent(const TopologyFile& tf) const;
       
+      /// Update the file's metadata for Caret6
+      virtual void updateMetaDataForCaret6();
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
       // copy helper used by copy constructor and assignment operator
       void copyHelperTopology(const TopologyFile& tf);

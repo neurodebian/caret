@@ -720,23 +720,30 @@ CommandSceneCreate::executeCommand() throw (BrainModelAlgorithmException,
    //
    // Create the scene
    //
+   QString warningMessage;
    if (sceneIndex >= 0) {
       brainSet.replaceScene(sceneFile,
                        sceneIndex,
                        windowSceneClasses,
                        sceneName,
                        false,
-                       errorMessage);
+                       errorMessage,
+                       warningMessage);
    }
    else {
       brainSet.saveScene(brainSet.getSceneFile(),
                          windowSceneClasses,
                          sceneName,
                          false,
-                         errorMessage);
+                         errorMessage,
+                         warningMessage);
    }
    if (errorMessage.isEmpty() == false) {
       throw CommandException("ERROR saving scene: " + errorMessage);
+   }
+   
+   if (warningMessage.isEmpty() == false) {
+      std::cout << "WARNING: " << warningMessage.toAscii().constData() << std::endl;
    }
    
    //
@@ -969,7 +976,8 @@ CommandSceneCreate::selectVolumeOfType(BrainSet& brainSet,
    int fileIndex = -1;
    const int numFiles = static_cast<int>(volumeFiles.size());
    for (int i = 0; i < numFiles; i++) {
-      if (FileUtilities::basename(volumeFiles[i]->getFileName()) == volumeFileName) {
+      const QString name(FileUtilities::basename(volumeFiles[i]->getFileName()));
+      if (name == volumeFileName) {
          fileIndex = i + subVolumeNumber - 1;
          break;
       }

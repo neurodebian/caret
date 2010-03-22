@@ -27,7 +27,6 @@
 #include <iostream>
 #include <sstream>
 
-#include <QDateTime>
 #include <QDomDocument>
 #include <QDomElement>
 #include <QDomNode>
@@ -38,11 +37,13 @@
 #define __AFNI_HEADER_DEFINE__
 #include "AfniHeader.h"
 #undef __AFNI_HEADER_DEFINE__
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "StringUtilities.h"
 #include "VolumeFile.h"
 #include "nifti1.h"
+#include "GiftiLabelTable.h"
 
 /**
  * Constructor.
@@ -99,12 +100,14 @@ AfniHeader::clear()
    //
    // Create the almost required default attributes
    //
-   AfniAttribute icodeString(AfniAttribute::NAME_IDCODE_STRING, 
-                       QDateTime::currentDateTime().toString("dd_MMMM_yyyy_hh_mm_ss_zzz"));
+   AfniAttribute icodeString(AfniAttribute::NAME_IDCODE_STRING,
+                       DateAndTime::getDateAndTimeForNaming());
+                       //QDateTime::currentDateTime().toString("dd_MMMM_yyyy_hh_mm_ss_zzz"));
    addAttribute(icodeString);
    
    AfniAttribute icodeDate(AfniAttribute::NAME_IDCODE_DATE,
-                           QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
+                        DateAndTime::getDateAndTimeAsString());
+                       //    QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
    addAttribute(icodeDate);
    
    const float stats[2] = { 0.0, 255.0 };
@@ -347,7 +350,8 @@ AfniHeader::writeHeader(QTextStream& stream) throw (FileException)
    // Set the date
    //
    AfniAttribute icodeDate(AfniAttribute::NAME_IDCODE_DATE,
-                           QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
+                           DateAndTime::getDateAndTimeAsString());
+                           //QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
    addAttribute(icodeDate);
    
    //
@@ -545,7 +549,8 @@ AfniHeader::readFromNiftiExtension(const QString& niftiExtension) throw (FileExc
  * setup the AfniHeader from volume file(s).
  */
 void 
-AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite) throw (FileException)
+AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite,
+                                 const ColorFile* colorFile) throw (FileException)
 {
    if (volumesToWrite.empty()) {
       return;
@@ -628,6 +633,13 @@ AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite)
    
    AfniAttribute orig(AfniAttribute::NAME_ORIGIN, originTemp, 3);
 */
+   //
+   // Caret always writes LPI and in AFNI left is positive-X, posterior
+   // is positive Y, and inferior is negative Z
+   //
+   volumeOrigin[0] = std::fabs(volumeOrigin[0]);
+   volumeOrigin[1] = std::fabs(volumeOrigin[1]);
+   volumeOrigin[2] = -std::fabs(volumeOrigin[2]);
    AfniAttribute orig(AfniAttribute::NAME_ORIGIN, volumeOrigin, 3);
    addAttribute(orig);
    
@@ -795,6 +807,26 @@ AfniHeader::setupFromVolumeFiles(const std::vector<VolumeFile*>& volumesToWrite)
       const QString names = StringUtilities::combine(regNames, "~");
       AfniAttribute typeString(AfniAttribute::NAME_LUT_NAMES, names);
       addAttribute(typeString);
+
+      //
+      // Label table used by Caret6
+      //
+      GiftiLabelTable labelTable;
+      int numNames = static_cast<int>(regNames.size());
+      for (int i = 0; i < numNames; i++) {
+         QString name = regNames[i];
+         labelTable.addLabel(name);
+      }
+      if (colorFile != NULL) {
+         labelTable.assignColors(*colorFile);
+      }
+      QString labelString;
+      QTextStream labelStream(&labelString, QIODevice::WriteOnly);
+      labelTable.writeAsXML(labelStream, 0);
+      labelString = labelString.remove(QRegExp("\\n")); // remove newlines
+
+      AfniAttribute labelAttr(AfniAttribute::NAME_LABEL_TABLE, labelString);
+      addAttribute(labelAttr);
    }
    
    //
@@ -829,7 +861,8 @@ AfniHeader::writeToNiftiExtension(QString& niftiExtension,
    // Set the date
    //
    AfniAttribute icodeDate(AfniAttribute::NAME_IDCODE_DATE,
-                           QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
+                           DateAndTime::getDateAndTimeAsString());
+                           //QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
    addAttribute(icodeDate);
    
    //
@@ -847,7 +880,7 @@ AfniHeader::writeToNiftiExtension(QString& niftiExtension,
       rootElement.setAttribute("self_idcode", attr->getValue());
    }
    else {
-      rootElement.setAttribute("self_idcode", QDateTime::currentDateTime().toString("dd_MMMM_yyyy_hh_mm_ss_zzz"));
+      rootElement.setAttribute("self_idcode", DateAndTime::getDateAndTimeForNaming()); //QDateTime::currentDateTime().toString("dd_MMMM_yyyy_hh_mm_ss_zzz"));
    }
    rootElement.setAttribute("ni_form", "ni_group");
    QString niftiNums;

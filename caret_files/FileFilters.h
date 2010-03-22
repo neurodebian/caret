@@ -220,9 +220,6 @@ class FileFilters {
       static QString getSurfaceShapeOrMetricAsShapeFileFilter() { return QString("Surface Shape [or Metric] Files (*%1 *%2)").arg(SpecFile::getMetricFileExtension()).arg(SpecFile::getSurfaceShapeFileExtension()); }
       
       /// file filer for  file
-      static QString getSurfaceVectorFileFilter() { return QString("Surface Vector Files (*%1)").arg(SpecFile::getSurfaceVectorFileExtension()); }
-      
-      /// file filer for  file
       static QString getTopographyFileFilter() { return QString("Topography Files (*%1)").arg(SpecFile::getTopographyFileExtension()); }
       
       /// file filer for  file
@@ -252,7 +249,7 @@ class FileFilters {
                                                          SpecFile::getVtkModelFileExtension()).arg(
                                                          SpecFile::getContourFileExtension()).arg(
                                                          SpecFile::getContourCellFileExtension()); }
-                          
+
       /// file filer for  file
       static QString getVolumeAnatomyFileFilter() { return QString("Volume Anatomy Files (*%1 *%2 *%3 *%4 *%5)").arg(
                                                   SpecFile::getAfniVolumeFileExtension()).arg(
@@ -473,6 +470,9 @@ class FileFilters {
       /// file filer for  file
       static QString getGiftiTopologyFileFilter() { return QString("GIfTI Topology File (*%1)").arg(SpecFile::getGiftiTopologyFileExtension()); }
       
+      /// file filter for GIFTI vector file 
+      static QString getGiftiVectorFileFilter() { return QString("GIFTI Vector File (*%1)").arg(SpecFile::getGiftiVectorFileExtension()); }
+
       /// file filters for opening images
       static void getImageOpenFileFilters(QStringList& fileFiltersOut,
                                           QStringList& fileExtensionsOut);
@@ -488,7 +488,7 @@ class FileFilters {
       static QString getImageSaveFileFilter();
       
       /// file filter for vector file
-      static QString getVectorFileFilter() { return QString("Vector File (%1)").arg(SpecFile::getVectorFileExtension()); }
+      static QString getSureFitVectorFileFilter() { return QString("Vector File (%1)").arg(SpecFile::getSureFitVectorFileExtension()); }
       
       /// file filter for Caret Script File
       static QString getCaretScriptFileFilter() { return QString("Caret Script File (*%1)").arg(SpecFile::getCaretScriptFileExtension()); }

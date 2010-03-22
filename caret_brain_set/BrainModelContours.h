@@ -137,6 +137,12 @@ class BrainModelContours : public BrainModel {
       /// get the alignment matrix
       void setAlignmentMatrix(const TransformationMatrix tm) { alignmentMatrix = tm; }
       
+      /// set the model's scaling
+      virtual void setScaling(const int viewNumber, const float scaleIn[3]);
+
+      /// set the model's scaling
+      virtual void setScaling(const int viewNumber, const float sx, const float sy, const float sz);
+
    private:
       /// the contours
       ContourFile contours;      

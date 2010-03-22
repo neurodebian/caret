@@ -93,6 +93,9 @@ class StudyNamePubMedID {
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement) const throw (FileException);
       
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
       /// the study name
       QString name;
       

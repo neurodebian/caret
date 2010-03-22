@@ -36,6 +36,7 @@ class GuiStructureComboBox;
 class GuiSurfaceTypeComboBox;
 class GuiTopologyFileComboBox;
 class GuiTopologyTypeComboBox;
+class GuiVectorFileComboBox;
 class GuiVolumeFileSelectionComboBox;
 class GuiVolumeSelectionControl;
 class GuiVolumeVoxelDataTypeComboBox;
@@ -118,7 +119,10 @@ class GuiDataFileSaveDialog : public WuQDialog {
       
       // create the topology options section
       QGroupBox* createTopologyOptionsSection();
-      
+
+      // create the vector options section
+      QGroupBox* createVectorOptionsSection();
+
       // create the volume anatomy options section
       QGroupBox* createVolumeAnatomyOptionsSection();
       
@@ -221,7 +225,13 @@ class GuiDataFileSaveDialog : public WuQDialog {
       
       /// topology options group box
       QGroupBox* topologyOptionsGroupBox;
-      
+
+      /// vector options group box
+      QGroupBox* vectorOptionsGroupBox;
+
+      /// vector file selection combo box
+      GuiVectorFileComboBox* vectorFileSelectionComboBox;
+
       /// volume anatomy options group box
       QGroupBox* volumeAnatomyOptionsGroupBox;
       

@@ -71,7 +71,7 @@
 #include "DisplaySettingsMetric.h"
 #include "DisplaySettingsSurface.h"
 #include "DisplaySettingsSurfaceShape.h"
-#include "DisplaySettingsSurfaceVectors.h"
+#include "DisplaySettingsVectors.h"
 #include "DisplaySettingsVolume.h"
 #include "DisplaySettingsModels.h"
 #include "FileUtilities.h"
@@ -83,7 +83,7 @@
 #include "PaletteFile.h"
 #include "SectionFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "TopologyHelper.h"
 #include "TransformationMatrixFile.h"
 #include "VtkModelFile.h"
@@ -1309,7 +1309,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
       checkForOpenGLError(bms, "At beginning of drawBrainModelSurface()");
    }
    
-   const DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
+   const DisplaySettingsSurface* dss = brainSet->getDisplaySettingsSurface();
 
    //
    // Don't set projection matrix when selecting
@@ -1321,7 +1321,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
       const double aspectRatio = (static_cast<double>(viewport[2])) /
                                  (static_cast<double>(viewport[3]));     
                                  
-      switch (dsn->getViewingProjection()) {
+      switch (dss->getViewingProjection()) {
          case DisplaySettingsSurface::VIEWING_PROJECTION_ORTHOGRAPHIC:
             glOrtho(orthographicLeft[viewingWindowNumber], orthographicRight[viewingWindowNumber], 
                     orthographicBottom[viewingWindowNumber], orthographicTop[viewingWindowNumber], 
@@ -1339,7 +1339,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
    glMatrixMode(GL_MODELVIEW);
    glLoadIdentity();
    
-   switch (dsn->getViewingProjection()) {
+   switch (dss->getViewingProjection()) {
          case DisplaySettingsSurface::VIEWING_PROJECTION_ORTHOGRAPHIC:
             break;
          case DisplaySettingsSurface::VIEWING_PROJECTION_PERSPECTIVE:
@@ -1387,59 +1387,12 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
       drawLinearObject();
       return;
    }
-   
+
    //
-   // Check for partial view
+   // Allow clipping planes
    //
-   const GLenum partialViewClippingPlane = GL_CLIP_PLANE0;
-   switch (dsn->getPartialView()) {
-      case DisplaySettingsSurface::PARTIAL_VIEW_ALL:
-         glDisable(partialViewClippingPlane);
-         break;
-      case DisplaySettingsSurface::PARTIAL_VIEW_POSITIVE_X:
-         {
-            GLdouble plane[4] = { 1.0, 0.0, 0.0, 0.0 };
-            glClipPlane(partialViewClippingPlane, plane);
-            glEnable(partialViewClippingPlane);
-         };
-         break;
-      case DisplaySettingsSurface::PARTIAL_VIEW_NEGATIVE_X:
-         {
-            GLdouble plane[4] = { -1.0, 0.0, 0.0, 0.0 };
-            glClipPlane(partialViewClippingPlane, plane);
-            glEnable(partialViewClippingPlane);
-         };
-         break;
-      case DisplaySettingsSurface::PARTIAL_VIEW_POSITIVE_Y:
-         {
-            GLdouble plane[4] = { 0.0, 1.0, 0.0, 0.0 };
-            glClipPlane(partialViewClippingPlane, plane);
-            glEnable(partialViewClippingPlane);
-         };
-         break;
-      case DisplaySettingsSurface::PARTIAL_VIEW_NEGATIVE_Y:
-         {
-            GLdouble plane[4] = { 0.0, -1.0, 0.0, 0.0 };
-            glClipPlane(partialViewClippingPlane, plane);
-            glEnable(partialViewClippingPlane);
-         };
-         break;
-      case DisplaySettingsSurface::PARTIAL_VIEW_POSITIVE_Z:
-         {
-            GLdouble plane[4] = { 0.0, 0.0, 1.0, 0.0 };
-            glClipPlane(partialViewClippingPlane, plane);
-            glEnable(partialViewClippingPlane);
-         };
-         break;
-      case DisplaySettingsSurface::PARTIAL_VIEW_NEGATIVE_Z:
-         {
-            GLdouble plane[4] = { 0.0, 0.0, -1.0, 0.0 };
-            glClipPlane(partialViewClippingPlane, plane);
-            glEnable(partialViewClippingPlane);
-         };
-         break;
-   }
-   
+   enableSurfaceClippingPlanes(bms);
+
    const CoordinateFile* cf = bms->getCoordinateFile();
    const int modelNumber = bms->getBrainModelIndex();
    const int numCoords = cf->getNumberOfCoordinates();
@@ -1466,6 +1419,11 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
    }
 
    //
+   // Draw cells and foci here so that they show through a transparent surface
+   //
+   drawCellAndFociProjections(bms);
+
+   //
    // Get display list number for this surface
    //  
    PreferencesFile* pf = brainSet->getPreferencesFile();
@@ -1489,13 +1447,23 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
          creatingDisplayList = true;
       }
       
+      //
+      // Draw vectors here so surface opacity functions successfully.
+      // Otherwise Z-Buffer prevents vectors from being drawn inside the surface.
+      //
+      if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+         this->disableSurfaceClippingPlanes();
+         drawVectorFile3D(bms);
+         this->enableSurfaceClippingPlanes(bms);
+      }
+
       int numTiles = -1;
       TopologyFile* tf = bms->getTopologyFile();
       if (tf != NULL) {
          numTiles = tf->getNumberOfTiles();
       }
       
-      const DisplaySettingsSurface::DRAW_MODE surfaceDrawingMode = dsn->getDrawMode();
+      const DisplaySettingsSurface::DRAW_MODE surfaceDrawingMode = dss->getDrawMode();
       
       if ((numCoords > 0) && drawTheSurface) {
          glColor3ub(170, 170, 170);
@@ -1540,6 +1508,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
                   glEnable(GL_CULL_FACE);
                   glCullFace(GL_BACK);
                   if (surfaceDrawingMode == DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL) {
+                     glLineWidth(getValidLineWidth(dss->getLinkSize()));
                      glPolygonMode(GL_FRONT, GL_LINE);
                   }
                   drawSurfaceTiles(bsnc, bms, cf, tf, numTiles, numCoords);
@@ -1590,8 +1559,7 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
                drawNodeHighlighting(bms, numCoords);
             glPopMatrix();
             
-            DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
-            if (dsn->getShowNormals()) {
+            if (dss->getShowNormals()) {
                drawSurfaceNormals(bms, cf, numCoords);
             }
             drawSurfaceForces(cf, numCoords);
@@ -1622,16 +1590,14 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
 
    drawBorders(bms);
    
-   drawCellAndFociProjections(bms);
+   //drawCellAndFociProjections(bms);
    
    drawCuts();
    
    drawGeodesicPath(cf);
    
    drawDeformationFieldVectors(bms);
-   
-   drawSurfaceVectors(bms);
-   
+
    drawSurfaceAxes(bms);
    
    drawTransformationMatrixAxes(bms);
@@ -1660,8 +1626,8 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
 */
 
    if ((bmsv == NULL) && (surfaceInVolumeAllViewFlag == false)) {
-      drawMetricPalette(viewingWindowNumber, true);
-      drawShapePalette(viewingWindowNumber);
+      drawMetricPalette(modelNumber, true);
+      drawShapePalette(modelNumber);
       
       const int num = linearObjectBeingDrawn.getNumberOfLinks();
       if (num > 0) {
@@ -1677,11 +1643,138 @@ BrainModelOpenGL::drawBrainModelSurface(BrainModelSurface* bms,
       }
    }
 
-   glDisable(partialViewClippingPlane);
+   disableSurfaceClippingPlanes();
 
    if (DebugControl::getOpenGLDebugOn()) {
       checkForOpenGLError(bms, "At end of drawBrainModelSurface()");
    }
+}
+
+/**
+ * Enable the surface clipping planes.
+ */
+void
+BrainModelOpenGL::enableSurfaceClippingPlanes(BrainModelSurface* bms)
+{
+   //
+   // Setup clipping planes
+   //
+   DisplaySettingsSurface* dss = brainSet->getDisplaySettingsSurface();
+   bool applyClippingPlanesFlag = false;
+   switch (dss->getClippingPlaneApplication()) {
+      case DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_MAIN_WINDOW_ONLY:
+         if (viewingWindowNumber == BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW) {
+            applyClippingPlanesFlag = true;
+         }
+         break;
+      case DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_FIDUCIAL_SURFACES_ONLY:
+         if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+            applyClippingPlanesFlag = true;
+         }
+         break;
+      case DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_ALL_SURFACES:
+         applyClippingPlanesFlag = true;
+         break;
+   }
+   if (applyClippingPlanesFlag) {
+      //
+      // Negative X
+      //
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_NEGATIVE)) {
+         GLdouble plane[4] = {
+            1.0,
+            0.0,
+            0.0,
+            -dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_NEGATIVE)
+         };
+         glClipPlane(GL_CLIP_PLANE0, plane);
+         glEnable(GL_CLIP_PLANE0);
+      }
+
+      //
+      // Positive X
+      //
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_POSITIVE)) {
+         GLdouble plane[4] = {
+            -1.0,
+            0.0,
+            0.0,
+            dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_POSITIVE)
+         };
+         glClipPlane(GL_CLIP_PLANE1, plane);
+         glEnable(GL_CLIP_PLANE1);
+      }
+
+      //
+      // Negative Y
+      //
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_NEGATIVE)) {
+         GLdouble plane[4] = {
+            0.0,
+            1.0,
+            0.0,
+            -dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_NEGATIVE)
+         };
+         glClipPlane(GL_CLIP_PLANE2, plane);
+         glEnable(GL_CLIP_PLANE2);
+      }
+
+      //
+      // Positive Y
+      //
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_POSITIVE)) {
+         GLdouble plane[4] = {
+            0.0,
+            -1.0,
+            0.0,
+            dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_POSITIVE)
+         };
+         glClipPlane(GL_CLIP_PLANE3, plane);
+         glEnable(GL_CLIP_PLANE3);
+      }
+
+      //
+      // Negative Z
+      //
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_NEGATIVE)) {
+         GLdouble plane[4] = {
+            0.0,
+            0.0,
+            1.0,
+            -dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_NEGATIVE)
+         };
+         glClipPlane(GL_CLIP_PLANE4, plane);
+         glEnable(GL_CLIP_PLANE4);
+      }
+
+      //
+      // Positive Z
+      //
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_POSITIVE)) {
+         GLdouble plane[4] = {
+            0.0,
+            0.0,
+            -1.0,
+            dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_POSITIVE)
+         };
+         glClipPlane(GL_CLIP_PLANE5, plane);
+         glEnable(GL_CLIP_PLANE5);
+      }
+   }
+}
+
+/**
+ * Disable the surface clipping planes.
+ */
+void
+BrainModelOpenGL::disableSurfaceClippingPlanes()
+{
+   glDisable(GL_CLIP_PLANE0);
+   glDisable(GL_CLIP_PLANE1);
+   glDisable(GL_CLIP_PLANE2);
+   glDisable(GL_CLIP_PLANE3);
+   glDisable(GL_CLIP_PLANE4);
+   glDisable(GL_CLIP_PLANE5);
 }
 
 /**
@@ -2750,7 +2843,7 @@ BrainModelOpenGL::drawBrainModelSurfaceAndVolume(BrainModelSurfaceAndVolume* bms
    //
    // Draw the palette
    //
-   drawMetricPalette(bmsv->getBrainModelIndex(), bmsv->getBrainModelIndex());
+   drawMetricPalette(bmsv->getBrainModelIndex(), true);
    
    //
    // Draw shape bar
@@ -2927,7 +3020,14 @@ BrainModelOpenGL::drawVolumeSliceOverlayAndUnderlay(BrainModelVolume* bmv,
                          volumeSliceCoordinate,
                          firstVolumeVoxelSize);
    }
-   
+
+   //
+   // Draw vectors on the volume
+   //
+   drawVectorsOnVolume(volumeSliceAxis,
+                       volumeSliceCoordinate,
+                       firstVolumeVoxelSize);
+
    //
    // Draw contours over volume slices
    //
@@ -3397,7 +3497,7 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
             vtkTransform* rotationMatrix = bmv->getObliqueRotationMatrix();
             TransformationMatrix rotMatrix;
             rotMatrix.setMatrix(rotationMatrix);
-            tm.multiply(rotMatrix);
+            tm.preMultiply(rotMatrix);
          }
          break;
       case VolumeFile::VOLUME_AXIS_OBLIQUE_X:
@@ -3445,7 +3545,7 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                rotMatrix.multiplyPoint(offsetXYZ);
                TransformationMatrix tm2;
                tm2.translate(offsetXYZ[0], offsetXYZ[1], offsetXYZ[2]);
-               tm.multiply(tm2);
+               tm.preMultiply(tm2);
             }
             else {
                //
@@ -3495,7 +3595,7 @@ BrainModelOpenGL::drawBrainModelVolumeObliqueAxisSlice(BrainModelVolume* bmv,
                rotMatrix.multiplyPoint(offsetXYZ);
                TransformationMatrix tm2;
                tm2.translate(offsetXYZ[0], offsetXYZ[1], offsetXYZ[2]);
-               tm.multiply(tm2);
+               tm.preMultiply(tm2);
             }
          }
          break;
@@ -6779,7 +6879,8 @@ BrainModelOpenGL::createCylinderQuadricAndDisplayList()
 void 
 BrainModelOpenGL::drawingCommandsCylinder()
 {
-   gluCylinder(cylinderQuadric, 0.5, 0.5, 1.0, 10, 10);
+   //gluCylinder(cylinderQuadric, 0.5, 0.5, 1.0, 10, 10);
+   gluCylinder(cylinderQuadric, 0.5, 0.5, 1.0, 10, 1);
 }
       
 /**
@@ -6839,7 +6940,7 @@ BrainModelOpenGL::createConeQuadricAndDisplayList()
 void 
 BrainModelOpenGL::drawingCommandsCone()
 {
-   gluCylinder(coneQuadric, 0.5, 0.0, 1.0, 10, 10);
+   gluCylinder(coneQuadric, 0.5, 0.0, 1.0, 10, 1); //10);
 }
 
 /**
@@ -7700,6 +7801,7 @@ BrainModelOpenGL::drawSurfaceLinks(const BrainModelSurfaceNodeColoring* bs,
  * Draw the surface as links with hidden line removal.
  * From page 585 of OpenGL Programming Guide Version 1.2.
  */
+/*
 void 
 BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring* bs,
                                         const int modelNumber,
@@ -7708,21 +7810,21 @@ BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring
 {
    glDisable(GL_LIGHTING);
    glDisable(GL_COLOR_MATERIAL);
-   
+
    BrainSetNodeAttribute* attributes = brainSet->getNodeAttributes(0);
    DisplaySettingsSurface* dsn = brainSet->getDisplaySettingsSurface();
-   
+
    glLineWidth(getValidLineWidth(dsn->getLinkSize()));
-   
+
    //
    // First, draw as wireframe
    //
-   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);   
+   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
    for (int i = 0; i < numTiles; i++) {
       int v1, v2, v3;
       tf->getTile(i, v1, v2, v3);
-      if (attributes[v1].getDisplayFlag() || 
-          attributes[v2].getDisplayFlag() || 
+      if (attributes[v1].getDisplayFlag() ||
+          attributes[v2].getDisplayFlag() ||
           attributes[v3].getDisplayFlag()) {
          glBegin(GL_POLYGON);
             glColor4ubv(bs->getNodeColor(modelNumber, v1));
@@ -7734,7 +7836,8 @@ BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring
          glEnd();
       }
    }
-   
+   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
    //
    // set background color
    //
@@ -7742,18 +7845,19 @@ BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring
    PreferencesFile* pref = brainSet->getPreferencesFile();
    pref->getSurfaceBackgroundColor(rb, gb, bb);
    glColor3ub(rb, gb, bb);
-   
+
    //
    // Now draw with tiles to hide the "hidden" portion
    //
    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
    glEnable(GL_POLYGON_OFFSET_FILL);
    glPolygonOffset(1.0, 1.0);
+   // glLineWidth(getValidLineWidth(1.0));
    for (int i = 0; i < numTiles; i++) {
       int v1, v2, v3;
       tf->getTile(i, v1, v2, v3);
-      if (attributes[v1].getDisplayFlag() || 
-          attributes[v2].getDisplayFlag() || 
+      if (attributes[v1].getDisplayFlag() ||
+          attributes[v2].getDisplayFlag() ||
           attributes[v3].getDisplayFlag()) {
          glBegin(GL_POLYGON);
             glVertex3fv(cf->getCoordinate(v1));
@@ -7764,6 +7868,7 @@ BrainModelOpenGL::drawSurfaceLinksNoBackside(const BrainModelSurfaceNodeColoring
    }
    glDisable(GL_POLYGON_OFFSET_FILL);
 }
+*/
 
 /**
  * Draw the surface as tiles, possibly with lighting.
@@ -8033,7 +8138,8 @@ BrainModelOpenGL::drawNodeHighlighting(const BrainModelSurface* bms, const int n
          const float* xyz = cf->getCoordinate(i);
          bool drawIt = false;
          
-         if (bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_LOCAL) {
+         if ((bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_LOCAL) ||
+             (bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_REMOTE)) {
             glColor3ub(0, 255, 0);
             drawIt = true;
             
@@ -8055,10 +8161,10 @@ BrainModelOpenGL::drawNodeHighlighting(const BrainModelSurface* bms, const int n
                   break;
             }
          }
-         else if (bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_REMOTE) {
-            glColor3ub(0, 0, 255);
-            drawIt = true;
-         }
+         //else if (bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_REMOTE) {
+         //   glColor3ub(0, 0, 255);
+         //   drawIt = true;
+         //}
          
          if (drawIt) {
             if (shapeColumn >= 0) {
@@ -8441,7 +8547,7 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
       }
    }
    const float opacity = dsc->getOpacity();
-   
+
    //
    // Draw cells larger when selecting on a flat surface
    //
@@ -8460,6 +8566,13 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
    const int numCells = cellProjectionFile->getNumberOfCellProjections();
    
    if (numCells > 0) {
+      //
+      // If backfaces are on with opacity, one can get foci that are
+      // half dark and half light
+      //
+      glEnable(GL_CULL_FACE);
+      glCullFace(GL_BACK);
+
       const int numColors = colorFile->getNumberOfColors();
       const CoordinateFile* cf = bms->getCoordinateFile();
       const TopologyFile* tf = bms->getTopologyFile();
@@ -8643,6 +8756,8 @@ BrainModelOpenGL::drawCellOrFociProjectionFile(BrainModelSurface* bms,
          }
       }
       
+      glDisable(GL_CULL_FACE);
+
       glDisable(GL_BLEND);
       glDisable(GL_LIGHTING);
       glDisable(GL_COLOR_MATERIAL);
@@ -9040,6 +9155,7 @@ BrainModelOpenGL::drawBorders(BrainModelSurface* s)
                         glVertex3fv(pos2);
                      }
                   glEnd();
+                  glLineWidth(getValidLineWidth(1.0));
                }
             }
             
@@ -10414,65 +10530,709 @@ BrainModelOpenGL::drawDeformationFieldVectors(BrainModelSurface* bms)
 }
 
 /**
- * Draw the surface vectors.
+ * Check a vector's orientation (true if orientation is valid for display).
  */
-void 
-BrainModelOpenGL::drawSurfaceVectors(BrainModelSurface* bms)
+bool
+BrainModelOpenGL::checkVectorOrientation(const float vector[3])
 {
-   SurfaceVectorFile* svf = brainSet->getSurfaceVectorFile();
-   if (svf->getNumberOfColumns() <= 0) {
-      return;
-   }
-   
-   DisplaySettingsSurfaceVectors* dssv = brainSet->getDisplaySettingsSurfaceVectors();
-   switch (dssv->getDisplayMode()) {
-      case DisplaySettingsDeformationField::DISPLAY_MODE_ALL:
-         break;
-      case DisplaySettingsDeformationField::DISPLAY_MODE_NONE:
-         break;
-      case DisplaySettingsDeformationField::DISPLAY_MODE_SPARSE:
-         break;
-   }
-   const CoordinateFile* coords = bms->getCoordinateFile();
-   const int numNodes = bms->getNumberOfNodes();
+   bool valid = true;
 
-   const int column = dssv->getSelectedColumn(bms->getBrainModelIndex());
-   
-   const TopologyHelper* th = bms->getTopologyFile()->getTopologyHelper(false, true, false);
-   
-   float lengthMultiplier = dssv->getLengthMultiplier();
+   DisplaySettingsVectors* dsv = brainSet->getDisplaySettingsVectors();
+   const DisplaySettingsVectors::DISPLAY_ORIENTATION orientation =
+      dsv->getDisplayOrientation();
+   if (orientation != DisplaySettingsVectors::DISPLAY_ORIENTATION_ANY) {
+      float axisVector[3];
+      switch (orientation) {
+         case DisplaySettingsVectors::DISPLAY_ORIENTATION_ANY:
+            break;
+         case DisplaySettingsVectors::DISPLAY_ORIENTATION_LEFT_RIGHT:
+            axisVector[0] = 1.0;
+            axisVector[1] = 0.0;
+            axisVector[2] = 0.0;
+            break;
+         case DisplaySettingsVectors::DISPLAY_ORIENTATION_POSTERIOR_ANTERIOR:
+            axisVector[0] = 0.0;
+            axisVector[1] = 1.0;
+            axisVector[2] = 0.0;
+            break;
+         case DisplaySettingsVectors::DISPLAY_ORIENTATION_INFERIOR_SUPERIOR:
+            axisVector[0] = 0.0;
+            axisVector[1] = 0.0;
+            axisVector[2] = 1.0;
+            break;
+      }
 
-   const float* xyz = coords->getCoordinate(0);
-   glBegin(GL_LINES);
-      for (int i = 0; i < numNodes; i++) {
-         const int i3 = i * 3;
-         
-         //
-         // If vector should be displayed
-         //
-         if (dssv->getDisplayVectorForNode(i)) {
-            //
-            // If node has neighbors
-            //
-            if (th->getNodeHasNeighbors(i)) {
-               //
-               // Start drawing at node and continue to tip
-               //
-               glColor3ub(255, 255, 0);
-               glVertex3fv(&xyz[i3]);
-               glColor3ub(255, 0, 0);
-               float vec[3] = { 0.0, 0.0, 0.0 };
-               svf->getVector(i, column, vec);
-               float endPoint[3] = {
-                  xyz[i3+0] + vec[0] * lengthMultiplier,
-                  xyz[i3+1] + vec[1] * lengthMultiplier,
-                  xyz[i3+2] + vec[2] * lengthMultiplier
-               };
-               glVertex3fv(endPoint);
+      const DisplaySettingsVectors::VECTOR_TYPE vectorType = dsv->getVectorType();
+      bool directedFlag = false;
+      switch (vectorType) {
+         case DisplaySettingsVectors::VECTOR_TYPE_BIDIRECTIONAL:
+            break;
+         case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_ARROW:
+         case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_CYLINDER:
+            directedFlag = true;
+            break;
+      }
+
+      //
+      // Dot produce is cosine of angle between vectors
+      //
+      const float angle = dsv->getDisplayOrientationAngle();
+      if (directedFlag) {
+         float angleCosine = std::cos(angle
+                                      * MathUtilities::degreesToRadians());
+         float dot = MathUtilities::dotProduct(vector, axisVector);
+         if (angle < 0.0) {
+            angleCosine = -angleCosine;
+            if (dot >= angleCosine) {
+               valid = false;
+            }
+         }
+         else {
+            if (dot < angleCosine) {
+               valid = false;
             }
          }
       }
-   glEnd();
+      else {
+         const float angleCosine = std::cos(angle
+                                            * MathUtilities::degreesToRadians());
+         float dot = std::fabs(MathUtilities::dotProduct(vector, axisVector));
+         if (dot < angleCosine) {
+            valid = false;
+         }
+      }
+   }
+
+   return valid;
+}
+
+/**
+ * Draw the vectors in 3D space.
+ */
+void 
+BrainModelOpenGL::drawVectorFile3D(BrainModelSurface* bms)
+{
+   const int numVectorFiles = brainSet->getNumberOfVectorFiles();
+   if (numVectorFiles <= 0) {
+      return;
+   }
+
+   DisplaySettingsVectors* dsv = brainSet->getDisplaySettingsVectors();
+   int displayIncrement = 1;
+   switch (dsv->getDisplayModeSurface()) {
+      case DisplaySettingsVectors::DISPLAY_MODE_ALL:
+         break;
+      case DisplaySettingsVectors::DISPLAY_MODE_NONE:
+         return;
+         break;
+      case DisplaySettingsVectors::DISPLAY_MODE_SPARSE:
+         displayIncrement = dsv->getSparseDisplayDistance();
+         break;
+   }
+
+   DisplaySettingsSurface* dss = brainSet->getDisplaySettingsSurface();
+   //
+   // Setup clipping planes
+   //
+   bool applyClippingPlanesFlag = false;
+   switch (dss->getClippingPlaneApplication()) {
+      case DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_MAIN_WINDOW_ONLY:
+         if (viewingWindowNumber == BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW) {
+            applyClippingPlanesFlag = true;
+         }
+         break;
+      case DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_FIDUCIAL_SURFACES_ONLY:
+         if (bms->getSurfaceType() == BrainModelSurface::SURFACE_TYPE_FIDUCIAL) {
+            applyClippingPlanesFlag = true;
+         }
+         break;
+      case DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_ALL_SURFACES:
+         applyClippingPlanesFlag = true;
+         break;
+   }
+
+   //
+   // Surface clipping, use coordinate of vector rather than clipping
+   // planes since clipping planes chop off part of a vector instead
+   // of the whole thing.
+   //
+   float xMin = -std::numeric_limits<float>::max();
+   float xMax =  std::numeric_limits<float>::max();
+   float yMin = -std::numeric_limits<float>::max();
+   float yMax =  std::numeric_limits<float>::max();
+   float zMin = -std::numeric_limits<float>::max();
+   float zMax =  std::numeric_limits<float>::max();
+   if (applyClippingPlanesFlag) {
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_NEGATIVE)) {
+         xMin = dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_NEGATIVE);
+      }
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_POSITIVE)) {
+         xMax = dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_X_POSITIVE);
+      }
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_NEGATIVE)) {
+         yMin = dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_NEGATIVE);
+      }
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_POSITIVE)) {
+         yMax = dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Y_POSITIVE);
+      }
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_NEGATIVE)) {
+         zMin = dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_NEGATIVE);
+      }
+      if (dss->getClippingPlaneEnabled(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_POSITIVE)) {
+         zMax = dss->getClippingPlaneCoordinate(DisplaySettingsSurface::CLIPPING_PLANE_AXIS_Z_POSITIVE);
+      }
+   }
+   
+   
+   const DisplaySettingsVectors::COLOR_MODE colorMode = dsv->getColorMode();
+   const DisplaySettingsVectors::VECTOR_TYPE vectorType = dsv->getVectorType();
+   const DisplaySettingsVectors::SURFACE_SYMBOL surfaceSymbol = dsv->getSurfaceSymbol();
+   const bool drawWithMagnitudeFlag = dsv->getDrawWithMagnitude();
+   const float lengthMultiplier = dsv->getLengthMultiplier();
+   const float minimumMagnitude = dsv->getMagnitudeThreshold();
+   const float lineRadius = dsv->getSurfaceVectorLineWidth();
+
+   VolumeFile* segmentationMaskVolume = NULL;
+   if (dsv->getSegmentationMaskingVolumeEnabled()) {
+      segmentationMaskVolume = dsv->getSegmentationMaskingVolumeFile();
+   }
+   VolumeFile* functionalMaskVolume = NULL;
+   const float functionalMaskNegThresh = dsv->getFunctionalMaskingVolumeNegativeThreshold();
+   const float functionalMaskPosThresh = dsv->getFunctionalMaskingVolumePositiveThreshold();
+   if (dsv->getFunctionalMaskingVolumeEnabled()) {
+      functionalMaskVolume = dsv->getFunctionalMaskingVolumeFile();
+   }
+
+   glColor3f(0.0, 1.0, 0.0);
+   switch (surfaceSymbol) {
+      case DisplaySettingsVectors::SURFACE_SYMBOL_3D:
+         glEnable(GL_COLOR_MATERIAL);
+         glEnable(GL_LIGHTING);
+         break;
+      case DisplaySettingsVectors::SURFACE_SYMBOL_2D_LINE:
+         glDisable(GL_COLOR_MATERIAL);
+         glDisable(GL_LIGHTING);
+         break;
+   }
+
+   for (int m = 0; m < numVectorFiles; m++) {
+      if (dsv->getDisplayVectorFile(m)) {
+         VectorFile* vf = brainSet->getVectorFile(m);
+         const int numVectors = vf->getNumberOfVectors();
+         for (int i = 0; i < numVectors; i += displayIncrement) {
+            float xyz[3], vector[3], rgba[4], magnitude, radius;
+            int nodeNumber;
+            vf->getVectorData(i, xyz, vector, magnitude, nodeNumber, rgba, radius);
+            if (magnitude < minimumMagnitude) {
+               continue;
+            }
+            float length = lengthMultiplier;
+            if (drawWithMagnitudeFlag) {
+               length *= magnitude;
+            }
+
+            //
+            // Adjust radius for surface vector line width for drawing as lines
+            //
+            switch (surfaceSymbol) {
+               case DisplaySettingsVectors::SURFACE_SYMBOL_3D:
+                  break;
+               case DisplaySettingsVectors::SURFACE_SYMBOL_2D_LINE:
+                  radius *= lineRadius;
+                  break;
+            }
+
+            switch (vectorType) {
+               case DisplaySettingsVectors::VECTOR_TYPE_BIDIRECTIONAL:
+                  {
+                     xyz[0] -= (vector[0] * length * 0.5);
+                     xyz[1] -= (vector[1] * length * 0.5);
+                     xyz[2] -= (vector[2] * length * 0.5);
+                  }
+                  break;
+               case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_ARROW:
+               case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_CYLINDER:
+                  break;
+            }
+
+            //
+            // Check surface clipping
+            //
+            if (applyClippingPlanesFlag) {
+               if (xyz[0] < xMin) {
+                  continue;
+               }
+               if (xyz[0] > xMax) {
+                  continue;
+               }
+               if (xyz[1] < yMin) {
+                  continue;
+               }
+               if (xyz[1] > yMax) {
+                  continue;
+               }
+               if (xyz[2] < zMin) {
+                  continue;
+               }
+               if (xyz[2] > zMax) {
+                  continue;
+               }
+            }
+
+            //
+            // Is coordinate within the mask volume
+            //
+            if (segmentationMaskVolume != NULL) {
+               int ijk[3];
+               if (segmentationMaskVolume->convertCoordinatesToVoxelIJK(xyz, ijk)) {
+                  if (segmentationMaskVolume->getVoxel(ijk) == 0.0) {
+                     continue;
+                  }
+               }
+               else {
+                  continue;
+               }
+            }
+            if (functionalMaskVolume != NULL) {
+               int ijk[3];
+               if (functionalMaskVolume->convertCoordinatesToVoxelIJK(xyz, ijk)) {
+                  const float value = functionalMaskVolume->getVoxel(ijk);
+                  if (value > 0.0) {
+                     if (value < functionalMaskPosThresh) {
+                        continue;
+                     }
+                  }
+                  else if (value < 0.0) {
+                     if (value > functionalMaskNegThresh) {
+                        continue;
+                     }
+                  }
+                  else {
+                     continue;
+                  }
+               }
+               else {
+                  continue;
+               }
+            }
+
+            if (checkVectorOrientation(vector) == false) {
+               continue;
+            }
+
+            float endPoint[3] = {
+               xyz[0] + vector[0] * length,
+               xyz[1] + vector[1] * length,
+               xyz[2] + vector[2] * length
+            };
+
+            switch(colorMode) {
+               case DisplaySettingsVectors::COLOR_MODE_VECTOR_COLORS:
+                  break;
+               case DisplaySettingsVectors::COLOR_MODE_XYZ_AS_RGB:
+                  rgba[0] = std::fabs(vector[0]);
+                  rgba[1] = std::fabs(vector[1]);
+                  rgba[2] = std::fabs(vector[2]);
+                  rgba[3] = 1.0;
+                  break;
+            }
+            glColor4fv(rgba);
+            switch (vectorType) {
+               case DisplaySettingsVectors::VECTOR_TYPE_BIDIRECTIONAL:
+                  switch (surfaceSymbol) {
+                     case DisplaySettingsVectors::SURFACE_SYMBOL_3D:
+                        drawCylinderSymbol(xyz, endPoint, radius);
+                        break;
+                     case DisplaySettingsVectors::SURFACE_SYMBOL_2D_LINE:
+                        {
+                           glLineWidth(getValidLineWidth(radius));
+                           glBegin(GL_LINES);
+                              glVertex3fv(xyz);
+                              glVertex3fv(endPoint);
+                           glEnd();
+                        }
+                        break;
+                  }
+                  break;
+               case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_ARROW:
+                  switch (surfaceSymbol) {
+                     case DisplaySettingsVectors::SURFACE_SYMBOL_3D:
+                        drawArrowSymbol(xyz, endPoint, radius);
+                        break;
+                     case DisplaySettingsVectors::SURFACE_SYMBOL_2D_LINE:
+                        {
+                           glLineWidth(getValidLineWidth(radius));
+                           glBegin(GL_LINES);
+                              glVertex3fv(xyz);
+                              glVertex3fv(endPoint);
+                           glEnd();
+                           glPointSize(getValidPointSize(radius * 3.0));
+                           glBegin(GL_POINTS);
+                              glVertex3fv(endPoint);
+                           glEnd();
+                        }
+                        break;
+                  }
+                  break;
+               case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_CYLINDER:
+                  switch (surfaceSymbol) {
+                     case DisplaySettingsVectors::SURFACE_SYMBOL_3D:
+                        drawCylinderSymbol(xyz, endPoint, radius);
+                        break;
+                     case DisplaySettingsVectors::SURFACE_SYMBOL_2D_LINE:
+                        {
+                           glLineWidth(getValidLineWidth(radius));
+                           glBegin(GL_LINES);
+                              glVertex3fv(xyz);
+                              glVertex3fv(endPoint);
+                           glEnd();
+                        }
+                        break;
+                  }
+                  break;
+            }
+         }
+      }
+   }
+
+   glDisable(GL_COLOR_MATERIAL);
+   glDisable(GL_LIGHTING);
+
+   glDisable(GL_BLEND);
+}
+
+/**
+ * Draw the volume foci file.
+ */
+void
+BrainModelOpenGL::drawVectorsOnVolume(const VolumeFile::VOLUME_AXIS axis,
+                                      const float axisCoord,
+                                      const float /*voxelSize*/)
+{
+   //const float halfVoxelSize = voxelSize * 0.6;
+   const int numVectorFiles = brainSet->getNumberOfVectorFiles();
+   if (numVectorFiles <= 0) {
+      return;
+   }
+
+   DisplaySettingsVectors* dsv = brainSet->getDisplaySettingsVectors();
+   int displayIncrement = 1;
+   switch (dsv->getDisplayModeVolume()) {
+      case DisplaySettingsVectors::DISPLAY_MODE_ALL:
+         break;
+      case DisplaySettingsVectors::DISPLAY_MODE_NONE:
+         return;
+         break;
+      case DisplaySettingsVectors::DISPLAY_MODE_SPARSE:
+         displayIncrement = dsv->getSparseDisplayDistance();
+         break;
+   }
+
+   int axisIndex = 0;
+   switch (axis) {
+      case VolumeFile::VOLUME_AXIS_X:
+         axisIndex = 0;
+         break;
+      case VolumeFile::VOLUME_AXIS_Y:
+         axisIndex = 1;
+         break;
+      case VolumeFile::VOLUME_AXIS_Z:
+         axisIndex = 2;
+         break;
+      case VolumeFile::VOLUME_AXIS_ALL:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_X:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_Y:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_Z:
+      case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
+      case VolumeFile::VOLUME_AXIS_UNKNOWN:
+         return;
+         break;
+   }
+
+   const DisplaySettingsVectors::COLOR_MODE colorMode = dsv->getColorMode();
+   const bool drawWithMagnitudeFlag = dsv->getDrawWithMagnitude();
+   const DisplaySettingsVectors::VECTOR_TYPE vectorType = dsv->getVectorType();
+   const float lengthMultiplier = dsv->getLengthMultiplier();
+   const float aboveLimit = dsv->getVolumeSliceDistanceAboveLimit();
+   const float belowLimit = dsv->getVolumeSliceDistanceBelowLimit();
+   const float minimumMagnitude = dsv->getMagnitudeThreshold();
+   VolumeFile* segmentationMaskVolume = NULL;
+   if (dsv->getSegmentationMaskingVolumeEnabled()) {
+      segmentationMaskVolume = dsv->getSegmentationMaskingVolumeFile();
+   }
+   VolumeFile* functionalMaskVolume = NULL;
+   const float functionalMaskNegThresh = dsv->getFunctionalMaskingVolumeNegativeThreshold();
+   const float functionalMaskPosThresh = dsv->getFunctionalMaskingVolumePositiveThreshold();
+   if (dsv->getFunctionalMaskingVolumeEnabled()) {
+      functionalMaskVolume = dsv->getFunctionalMaskingVolumeFile();
+   }
+
+
+   glLineWidth(1.0);
+
+   for (int m = 0; m < numVectorFiles; m++) {
+      VectorFile* vf = brainSet->getVectorFile(m);
+      const int numVectors = vf->getNumberOfVectors();
+      if (dsv->getDisplayVectorFile(m)) {
+         for (int i = 0; i < numVectors; i += displayIncrement) {
+            float xyzOrigin[3], vector[3], rgba[4], magnitude, radius;
+            int nodeNumber;
+            vf->getVectorData(i, xyzOrigin, vector, magnitude,
+                              nodeNumber, rgba, radius);
+            if (magnitude < minimumMagnitude) {
+               continue;
+            }
+            const float dist = xyzOrigin[axisIndex] - axisCoord;
+            if ((dist > belowLimit) &&
+                (dist < aboveLimit)) {
+               //
+               // Is coordinate within the mask volume
+               //
+               if (segmentationMaskVolume != NULL) {
+                  int ijk[3];
+                  if (segmentationMaskVolume->convertCoordinatesToVoxelIJK(xyzOrigin, ijk)) {
+                     if (segmentationMaskVolume->getVoxel(ijk) == 0.0) {
+                        continue;
+                     }
+                  }
+                  else {
+                     continue;
+                  }
+               }
+               if (functionalMaskVolume != NULL) {
+                  int ijk[3];
+                  if (functionalMaskVolume->convertCoordinatesToVoxelIJK(xyzOrigin, ijk)) {
+                     const float value = functionalMaskVolume->getVoxel(ijk);
+                     if (value > 0.0) {
+                        if (value < functionalMaskPosThresh) {
+                           continue;
+                        }
+                     }
+                     else if (value < 0.0) {
+                        if (value > functionalMaskNegThresh) {
+                           continue;
+                        }
+                     }
+                     else {
+                        continue;
+                     }
+                  }
+                  else {
+                     continue;
+                  }
+               }
+
+               if (checkVectorOrientation(vector) == false) {
+                  continue;
+               }
+
+               float xyzScreen[3] = { xyzOrigin[0], xyzOrigin[1], xyzOrigin[2] };
+               convertVolumeItemXYZToScreenXY(axis, xyzScreen);
+
+               float lengthMag = lengthMultiplier;
+               if (drawWithMagnitudeFlag) {
+                  lengthMag *= magnitude;
+               }
+               float endPoint[3] = {
+                  xyzOrigin[0] + vector[0] * lengthMag,
+                  xyzOrigin[1] + vector[1] * lengthMag,
+                  xyzOrigin[2] + vector[2] * lengthMag
+               };
+               convertVolumeItemXYZToScreenXY(axis, endPoint);
+
+               const float dz = endPoint[2] - xyzScreen[2];
+               const float dy = endPoint[1] - xyzScreen[1];
+               const float dx = endPoint[0] - xyzScreen[0];
+               const float length = std::sqrt(dx*dx + dy*dy + dz*dz);
+               const float rotation = std::atan2(dy, dx);
+               glPushMatrix();
+               glTranslatef(xyzScreen[0], xyzScreen[1], xyzScreen[2]);
+               glRotatef(rotation * MathUtilities::radiansToDegrees(),
+                         0.0, 0.0, 1.0);
+               const float z = xyzScreen[2];
+
+               glLineWidth(getValidLineWidth(radius));
+
+               switch(colorMode) {
+                  case DisplaySettingsVectors::COLOR_MODE_VECTOR_COLORS:
+                     break;
+                  case DisplaySettingsVectors::COLOR_MODE_XYZ_AS_RGB:
+                     rgba[0] = std::fabs(vector[0]);
+                     rgba[1] = std::fabs(vector[1]);
+                     rgba[2] = std::fabs(vector[2]);
+                     rgba[3] = 1.0;
+                     break;
+               }
+
+               switch (vectorType) {
+                  case DisplaySettingsVectors::VECTOR_TYPE_BIDIRECTIONAL:
+                     {
+                        glScalef(length, length * radius, 1.0);
+                        glBegin(GL_LINES);
+                        glColor4fv(rgba);
+                        glVertex3f(-0.5, 0.0, z);
+                        glVertex3f( 0.5, 0.0, z);
+                        glEnd();
+                     }
+                     break;
+                  case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_ARROW:
+                     {
+                        glScalef(length, length * radius, 1.0);
+                        glBegin(GL_LINES);
+                        glColor4fv(rgba);
+                        glVertex3f(0.0, 0.0, z);
+                        glVertex3f(1.0, 0.0, z);
+                        glVertex3f(1.0, 0.0, z);
+                        glVertex3f(0.75, 0.25, z);
+                        glVertex3f(1.0, 0.0, z);
+                        glVertex3f(0.75, -0.25, z);
+                        glEnd();
+                     }
+                     break;
+                  case DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_CYLINDER:
+                     {
+                        glScalef(length, length * radius, 1.0);
+                        glBegin(GL_LINES);
+                        glColor4fv(rgba);
+                        glVertex3f(0.0, 0.0, z);
+                        glVertex3f(1.0, 0.0, z);
+                        glEnd();
+                     }
+                     break;
+               }
+
+               glPopMatrix();
+            }
+         }
+      }
+   }
+}
+
+/**
+ * Draw an arrow symbol.
+ * From: http://lifeofaprogrammergeek.blogspot.com/2008/07/rendering-cylinder-between-two-points.html
+ */
+void
+BrainModelOpenGL::drawArrowSymbol(const float xyz[3],
+                                  const float tipXYZ[3],
+                                  const float radius)
+{
+    const float x1 = xyz[0];
+    const float y1 = xyz[1];
+    const float z1 = xyz[2];
+    float vx = tipXYZ[0] - x1; //x2-x1;
+    float vy = tipXYZ[1] - y1; //y2-y1;
+    float vz = tipXYZ[2] - z1; //z2-z1;
+
+    float v = std::sqrt( vx*vx + vy*vy + vz*vz );
+    double ax = 0.0;
+
+
+
+    double zero = 1.0e-3;
+
+    if (std::fabs(vz) < zero) {
+        ax = 57.2957795*std::acos( vx/v ); // rotation angle in x-y plane
+        if ( vx <= 0.0 ) ax = -ax;
+    }
+    else {
+        ax = 57.2957795*std::acos( vz/v ); // rotation angle
+        if ( vz <= 0.0 ) ax = -ax;
+    }
+
+    float rx = -vy*vz;
+    float ry = vx*vz;
+    glPushMatrix();
+        glTranslatef( x1,y1,z1 );
+        if (fabs(vz) < zero)  {
+            glRotated(90.0, 0, 1, 0.0); // Rotate & align with x axis
+            glRotated(ax, -1.0, 0.0, 0.0); // Rotate to point 2 in x-y plane
+        }
+        else {
+            glRotated(ax, rx, ry, 0.0); // Rotate about rotation vector
+        }
+        
+        glPushMatrix();
+            glScalef(radius, radius, v);
+            drawCylinder();
+        glPopMatrix();
+
+        glPushMatrix();
+           glTranslatef(0.0, 0.0, v);
+           glScalef(radius*2, radius*2, 1.0);
+           drawCone();
+        glPopMatrix();
+
+        glPushMatrix();
+           glTranslatef(0.0, 0.0, 0.0);
+           glScalef(radius, radius, 1.0);
+           drawDisk(1.0);
+        glPopMatrix();
+    glPopMatrix();
+}
+
+/**
+ * Draw a cylinder symbol.
+ * From: http://lifeofaprogrammergeek.blogspot.com/2008/07/rendering-cylinder-between-two-points.html
+ */
+void
+BrainModelOpenGL::drawCylinderSymbol(const float xyz[3],
+                                     const float tipXYZ[3],
+                                     const float radius)
+{
+    const float x1 = xyz[0];
+    const float y1 = xyz[1];
+    const float z1 = xyz[2];
+    float vx = tipXYZ[0] - x1; //x2-x1;
+    float vy = tipXYZ[1] - y1; //y2-y1;
+    float vz = tipXYZ[2] - z1; //z2-z1;
+
+    float v = std::sqrt( vx*vx + vy*vy + vz*vz );
+    double ax = 0.0;
+
+
+
+    double zero = 1.0e-3;
+
+    if (std::fabs(vz) < zero) {
+        ax = 57.2957795*std::acos( vx/v ); // rotation angle in x-y plane
+        if ( vx <= 0.0 ) ax = -ax;
+    }
+    else {
+        ax = 57.2957795*std::acos( vz/v ); // rotation angle
+        if ( vz <= 0.0 ) ax = -ax;
+    }
+
+    float rx = -vy*vz;
+    float ry = vx*vz;
+    glPushMatrix();
+        glTranslatef( x1,y1,z1 );
+        if (fabs(vz) < zero)  {
+            glRotated(90.0, 0, 1, 0.0); // Rotate & align with x axis
+            glRotated(ax, -1.0, 0.0, 0.0); // Rotate to point 2 in x-y plane
+        }
+        else {
+            glRotated(ax, rx, ry, 0.0); // Rotate about rotation vector
+        }
+
+        glPushMatrix();
+            glScalef(radius, radius, v);
+            drawCylinder();
+        glPopMatrix();
+
+        glPushMatrix();
+           glTranslatef(0.0, 0.0, v);
+           glScalef(radius, radius, 1.0);
+           drawDisk(1.0);
+        glPopMatrix();
+
+        glPushMatrix();
+           glTranslatef(0.0, 0.0, 0.0);
+           glScalef(radius, radius, 1.0);
+           drawDisk(1.0);
+        glPopMatrix();
+    glPopMatrix();
 }
 
 /**
@@ -11921,6 +12681,11 @@ BrainModelOpenGL::processSelectedItems(const int numItems)
             const double dy = windowPos[1] - selectionY;
             const double dist = std::sqrt(dx*dx + dy*dy);
             
+            if (DebugControl::getDebugOn()) {
+               std::cout << "   minDepth=" << minDepth
+                         << ", dist=" << dist
+                         << std::endl;
+            }
             switch(sm) {
                case SELECTION_MASK_TILE:
                   selectedSurfaceTile.replaceIfCloser(minDepth, dist,

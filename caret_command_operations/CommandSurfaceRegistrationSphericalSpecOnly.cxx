@@ -253,7 +253,7 @@ CommandSurfaceRegistrationSphericalSpecOnly::executeCommand() throw (BrainModelA
    defMapFile.setSourceSphericalCoordFileName(indivSphericalCoordFileName);
    defMapFile.setSourceDeformedFlatCoordFileName(indivFlatCoordFileName);
    defMapFile.setTargetSpecFileName(atlasSpecFileName);
-   defMapFile.setTargetBorderFileName(atlasBorderFileName, DeformationMapFile::BORDER_FILE_PROJECTION);
+   defMapFile.setTargetBorderFileName(0, atlasBorderFileName, DeformationMapFile::BORDER_FILE_PROJECTION);
    defMapFile.setTargetClosedTopoFileName(atlasClosedTopoFileName);
    defMapFile.setTargetCutTopoFileName(atlasCutTopologyFileName);
    defMapFile.setTargetFiducialCoordFileName(atlasFiducialCoordFileName);

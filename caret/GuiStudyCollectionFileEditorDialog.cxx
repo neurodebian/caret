@@ -247,6 +247,14 @@ GuiStudyCollectionFileEditorDialog::createStudyCollectionSection()
                     this, SLOT(slotCollectionFociListIDLineEditChanged(const QString&)));
     
    //
+   // Foci Color List ID
+   //
+   QLabel* collectionFociColorListIDLabel = new QLabel("Foci Color List ID");
+   collectionFociColorListIDLineEdit = new QLineEdit;
+   QObject::connect(collectionFociColorListIDLineEdit, SIGNAL(textEdited(const QString&)),
+                    this, SLOT(slotCollectionFociColorListIDLineEditChanged(const QString&)));
+    
+   //
    // topic
    //
    QLabel* collectionTopicLabel = new QLabel("Topic");
@@ -295,7 +303,9 @@ GuiStudyCollectionFileEditorDialog::createStudyCollectionSection()
    infoGridLayout->addWidget(collectionSearchIDLineEdit, 9, 1);
    infoGridLayout->addWidget(collectionFociListIDLabel, 10, 0);
    infoGridLayout->addWidget(collectionFociListIDLineEdit, 10, 1);
-   infoGridLayout->addWidget(new QLabel(" "), 11, 0); // empty row
+   infoGridLayout->addWidget(collectionFociColorListIDLabel, 11, 0);
+   infoGridLayout->addWidget(collectionFociColorListIDLineEdit, 11, 1);
+   infoGridLayout->addWidget(new QLabel(" "), 12, 0); // empty row
    
    //
    // Layout for study name/PMIDs
@@ -419,6 +429,15 @@ void
 GuiStudyCollectionFileEditorDialog::slotCollectionFociListIDLineEditChanged(const QString& text)
 {
    getSelectedCollection()->setFociListID(text);
+}
+      
+/**
+ * called when collection foci color list ID changed.
+ */
+void 
+GuiStudyCollectionFileEditorDialog::slotCollectionFociColorListIDLineEditChanged(const QString& text)
+{
+   getSelectedCollection()->setFociColorListID(text);
 }
       
 /**
@@ -697,6 +716,7 @@ GuiStudyCollectionFileEditorDialog::loadSelectedCollectionIntoEditor()
       collectionSearchIDLineEdit->setText(sc->getSearchID());
       collectionTopicLineEdit->setText(sc->getTopic());
       collectionFociListIDLineEdit->setText(sc->getFociListID());
+      collectionFociColorListIDLineEdit->setText(sc->getFociColorListID());
       collectionCategoryIDLineEdit->setText(sc->getCategoryID());
       collectionIDLineEdit->setText(sc->getStudyCollectionID());
       

@@ -415,13 +415,13 @@ BrainModelSurfaceMorphing::execute() throw (BrainModelAlgorithmException)
          // Smooth for one iteration
          //
          setIndicesOfNodesToMorph(0, numberOfNodes - 1);
-         run();
+         run(i);
       }
       
       //
       // morph one iteration
       //
-      //run();
+      //run(i);
       
       if (DebugControl::getDebugOn()) {
          if ((DebugControl::getDebugNodeNumber() >= 0) &&
@@ -736,7 +736,7 @@ BrainModelSurfaceMorphing::setForcesOnNoMorphNodes()
  * Morph the surface
  */
 void
-BrainModelSurfaceMorphing::run()
+BrainModelSurfaceMorphing::run(int iteration)
 {
    //
    // set looping flag for non-threaded execution so that we do an iteration
@@ -900,6 +900,17 @@ BrainModelSurfaceMorphing::run()
             outputCoords[j*3+1] = nodePos[1] + stepSize * nodeInfo.totalForce[1];
             outputCoords[j*3+2] = nodePos[2] + stepSize * nodeInfo.totalForce[2];
             
+            if (DebugControl::getDebugOn()) {
+               if (checkNaN(&outputCoords[j*3], 3)) {
+                  QString s = "PROGRAM ERROR: NaN detected for coordinate "
+                            + QString::number(j)
+                            + " iteration "
+                            + QString::number(iteration)
+                            + " in "
+                            + FileUtilities::basename(morphingSurface->getCoordinateFile()->getFileName());
+                  throw BrainModelAlgorithmException(s);
+               }
+            }            
          }  // if (nodeInfo.numNeighbors > 1)
          
          //
@@ -934,6 +945,20 @@ BrainModelSurfaceMorphing::run()
    } // while (keepLooping)
 }
 
+/**
+ * check for not a number (true if any data are NaN).
+ */
+bool 
+BrainModelSurfaceMorphing::checkNaN(float* data, int numberOfData) const
+{
+   for (int i = 0; i < numberOfData; i++) {
+      if (MathUtilities::isNaN(data[i])) {
+         return true;
+      }
+   }
+   return false;
+}
+      
 /**
  * Map forces to a plane (used in spherical morphing).
  */
@@ -1077,6 +1102,15 @@ BrainModelSurfaceMorphing::computeAngularForce(const float* coords,
       force[0] =  angularForce * mag1 * direction1[0];
       force[1] =  angularForce * mag1 * direction1[1];
       force[2] =  angularForce * mag1 * direction1[2];
+      if (DebugControl::getDebugOn()) {
+         if (checkNaN(force, 3)) {
+            QString s = "PROGRAM ERROR: NaN detected for angular force node  "
+                      + QString::number(nodeInfo.nodeNumber)
+                      + " in "
+                      + FileUtilities::basename(morphingSurface->getCoordinateFile()->getFileName());
+            throw BrainModelAlgorithmException(s);
+         }
+      }
       if (crossover) {
          force[0] = -force[0];
          force[1] = -force[1];
@@ -1147,6 +1181,15 @@ BrainModelSurfaceMorphing::computeAngularForce(const float* coords,
       force[0] =  angularForce * mag2 * direction2[0];
       force[1] =  angularForce * mag2 * direction2[1];
       force[2] =  angularForce * mag2 * direction2[2];
+      if (DebugControl::getDebugOn()) {
+         if (checkNaN(force, 3)) {
+            QString s = "PROGRAM ERROR: NaN detected for angular force node  "
+                      + QString::number(nodeInfo.nodeNumber)
+                      + " in "
+                      + FileUtilities::basename(morphingSurface->getCoordinateFile()->getFileName());
+            throw BrainModelAlgorithmException(s);
+         }
+      }
       if (crossover) {
          force[0] = -force[0];
          force[1] = -force[1];
@@ -1204,11 +1247,12 @@ BrainModelSurfaceMorphing::computeLinearForce(const float* coords,
    
    //
    // If neighbor is very close do not update forces
-   // IS THIS 
+   // Added back, 01 April 2009 as node and neighbor had
+   // identical position resulting in NaN
    //
-//   if (neighborDistance <= 0.000001) {
-//      return;
-//   }
+   if (neighborDistance <= 0.000001) {
+      return;
+   }
    
    //
    // distance to neighbor in fiducial surface
@@ -1254,6 +1298,17 @@ BrainModelSurfaceMorphing::computeLinearForce(const float* coords,
    force[1] = errorDistance * errorComponents[1] / neighborDistance;
    force[2] = errorDistance * errorComponents[2] / neighborDistance;
    
+   if (DebugControl::getDebugOn()) {
+      if (checkNaN(force, 3)) {
+         QString s = "PROGRAM ERROR: NaN detected for linear force node and neighbor "
+                   + QString::number(nodeNum)
+                   + " & "
+                   + QString::number(neighNodeNum)
+                   + " in "
+                   + FileUtilities::basename(morphingSurface->getCoordinateFile()->getFileName());
+         throw BrainModelAlgorithmException(s);
+      }
+   }
    if (DebugControl::getDebugOn()) {
       if (DebugControl::getDebugNodeNumber() == nodeNum) {
          std::cout << std::endl;

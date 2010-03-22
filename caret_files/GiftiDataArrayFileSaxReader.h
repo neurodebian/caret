@@ -142,6 +142,18 @@ class GiftiDataArrayFileSaxReader : public QXmlDefaultHandler {
       /// label index
       int labelIndex;
       
+      /// label color component
+      float labelRed;
+
+      /// label color component
+      float labelGreen;
+
+      /// label color component
+      float labelBlue;
+
+      /// label color component
+      float labelAlpha;
+
       /// endian attribute data
       QString endianAttributeNameForReadingArrayData;
       

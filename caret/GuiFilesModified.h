@@ -21,7 +21,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with CARET; if not, write to the Free Software
+ *  ualong with CARET; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
@@ -152,8 +152,8 @@ class GuiFilesModified {
       /// set surface shape has been modified
       void setSurfaceShapeModified() { surfaceShape = true; }
       
-      /// set surface vector has been modified
-      void setSurfaceVectorModified() { surfaceVector = true; }
+      /// set vector has been modified
+      void setVectorModified() { vector = true; }
       
       /// set topography has been modified
       void setTopographyModified() { topography = true; }
@@ -231,7 +231,7 @@ class GuiFilesModified {
       bool studyCollection;
       bool studyMetaData;
       bool surfaceShape;
-      bool surfaceVector;
+      bool vector;
       bool topography;
       bool topology;
       bool transformationMatrix;

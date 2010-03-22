@@ -29,6 +29,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <list>
 
 #include "AreaColorFile.h"
 #include "BorderColorFile.h"
@@ -41,6 +42,7 @@
 #include "BrainModelSurfaceCurvature.h"
 #include "BrainModelSurfaceClusterToBorderConverter.h"
 #include "BrainModelSurfaceFindExtremum.h"
+#include "BrainModelSurfaceGeodesic.h"
 #include "BrainModelSurfacePaintSulcalIdentification.h"
 #include "BrainModelSurfaceROICreateBorderUsingGeodesic.h"
 #include "BrainModelSurfaceROINodeSelection.h"
@@ -50,20 +52,29 @@
 #include "DebugControl.h"
 #include "FociColorFile.h"
 #include "FociProjectionFile.h"
+#include "GeodesicDistanceFile.h"
 #include "MetricFile.h"
 #include "NodeRegionOfInterestFile.h"
 #include "PaintFile.h"
+#include "StatisticHistogram.h"
 #include "SurfaceShapeFile.h"
+#include "TopologyFile.h"
+#include "TopologyHelper.h"
 #include "VocabularyFile.h"
 #include "VolumeFile.h"
 
 /**
  * constructor.
+ *
+ * Note: Anatomical volume is used only for generation of corpus callosum.
+ * If desired, an anatomical volume containing just the corpus callosum may
+ * be used, and, if so, its filename must contain the case-insensitive
+ * words "corpus" and "callosum".
  */
 BrainModelSurfaceBorderLandmarkIdentification::BrainModelSurfaceBorderLandmarkIdentification(
                                    BrainSet* bs,
                                    const StereotaxicSpace& stereotaxicSpaceIn,
-                                   const VolumeFile* anatomicalVolumeFileIn,
+                                   VolumeFile* anatomicalVolumeFileIn,
                                    const BrainModelSurface* fiducialSurfaceIn,
                                    const BrainModelSurface* inflatedSurfaceIn,
                                    const BrainModelSurface* veryInflatedSurfaceIn,
@@ -94,6 +105,11 @@ BrainModelSurfaceBorderLandmarkIdentification::BrainModelSurfaceBorderLandmarkId
      vocabularyFile(vocabularyFileInOut),
      operationSelectionMask(operationSelectionMaskIn)
 {
+   saveIntermediateFilesFlag = true;
+   if (DebugControl::getDebugOn()) {
+      saveIntermediateFilesFlag = true;
+   }
+   
    fiducialSurface = NULL;
    curvatureFiducialMeanColumnNumber = -1;
    curvatureInflatedMeanColumnNumber = -1;
@@ -107,7 +123,7 @@ BrainModelSurfaceBorderLandmarkIdentification::BrainModelSurfaceBorderLandmarkId
    calcarineAnteriorNodeNumber = -1;
    calcarinePosteriorExtremeNodeNumber = -1;
    ccGenuBeginningNodeNumber = -1;
-   ccSpleniumLimitNodeNumber = -1;
+   ccSpleniumEndNodeNumber = -1;
    cesMedialNodeNumber = -1;
    medialWallStartNodeNumber = -1;
    sfInferiorBranchBeginNodeNumber = -1;
@@ -147,7 +163,7 @@ BrainModelSurfaceBorderLandmarkIdentification::~BrainModelSurfaceBorderLandmarkI
    //
    // delete debug files only if debugging off and all landmarks okay
    //
-   if (DebugControl::getDebugOn() == false) {
+   if (saveIntermediateFilesFlag == false) {
       if (allLandmarksSuccessfulFlag) {
          deleteDebugFilesDirectoryAndContents();
       }
@@ -248,9 +264,15 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
    QFile::remove(borderDebugFileName);
    FociProjectionFile fpf;
    fociProjectionDebugFileName = fpf.makeDefaultFileName("DebugFoci");
+   fociProjectionDebugFileName = debugFilesDirectoryName 
+                               + "/"
+                               + fociProjectionDebugFileName;
    QFile::remove(fociProjectionDebugFileName);
    FociColorFile fcf;
    fociColorDebugFileName = fcf.makeDefaultFileName("DebugFoci");
+   fociColorDebugFileName = debugFilesDirectoryName
+                          + "/"
+                          + fociColorDebugFileName;
    QFile::remove(fociColorDebugFileName);
    
    //
@@ -280,10 +302,10 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
    }
    switch (inflatedSurface->getStructure().getType()) {
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT:  
-         leftHemisphereFlag = true;
+         if (!leftHemisphereFlag) throw BrainModelAlgorithmException("Hemisphere must match in inflated surface.");
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-         leftHemisphereFlag = false;
+         if (leftHemisphereFlag) throw BrainModelAlgorithmException("Hemisphere must match in inflated surface.");
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
@@ -300,10 +322,10 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
    }
    switch (veryInflatedSurface->getStructure().getType()) {
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT:  
-         leftHemisphereFlag = true;
+         if (!leftHemisphereFlag) throw BrainModelAlgorithmException("Hemisphere must match in very inflated surface.");
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-         leftHemisphereFlag = false;
+         if (leftHemisphereFlag) throw BrainModelAlgorithmException("Hemisphere must match in very inflated surface.");
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
@@ -320,10 +342,10 @@ BrainModelSurfaceBorderLandmarkIdentification::execute() throw (BrainModelAlgori
    }
    switch (ellipsoidSurface->getStructure().getType()) {
       case Structure::STRUCTURE_TYPE_CORTEX_LEFT:  
-         leftHemisphereFlag = true;
+         if (!leftHemisphereFlag) throw BrainModelAlgorithmException("Hemisphere must match in ellipsoid surface.");
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-         leftHemisphereFlag = false;
+         if (leftHemisphereFlag) throw BrainModelAlgorithmException("Hemisphere must match in ellipsoid surface.");
          break;
       case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
       case Structure::STRUCTURE_TYPE_CEREBELLUM:
@@ -1015,20 +1037,36 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCutFrontal(const int medi
                                                             defaultMiddlePointXYZ);
                                                             
    //
-   // Create an ROI of the orbital sulcus where cut should pass through
+   // Create an ROI of the orbital/olfactory sulcus where cut should pass through
    //
    BrainModelSurfaceROINodeSelection oribitalSulcusROI(brainSet);
-   QString errorMessage = oribitalSulcusROI.selectNodesWithPaint(
+   QString errorMessageORBS = oribitalSulcusROI.selectNodesWithPaint(
                               BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_NORMAL,
                               fiducialSurface,
                               paintFile,
                               paintFileSulcusIdColumnNumber,
                               "SUL.OrbS");
-   if (errorMessage.isEmpty() == false) {
-      throw BrainModelAlgorithmException(errorMessage);
-   }
-   if (oribitalSulcusROI.getNumberOfNodesSelected() >= 0) {
+   BrainModelSurfaceROINodeSelection transversOrbitalSulcusROI(brainSet);
+   QString errorMessageTORBS = transversOrbitalSulcusROI.selectNodesWithPaint(
+                              BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_NORMAL,
+                              fiducialSurface,
+                              paintFile,
+                              paintFileSulcusIdColumnNumber,
+                              "SUL.TOrbS");
+   //if ((errorMessageORBS.isEmpty() == false) &&
+   //    (errorMessageTORBS.isEmpty() == false)) {
+   //   throw BrainModelAlgorithmException(errorMessageORBS + "\n" + errorMessageTORBS);
+   //}
+   if (oribitalSulcusROI.getNumberOfNodesSelected() > 0) {
       middleNodeNumber = oribitalSulcusROI.getNodeWithMaximumYCoordinate(fiducialSurface);
+   }
+   else if (transversOrbitalSulcusROI.getNumberOfNodesSelected() > 0) {
+      middleNodeNumber = transversOrbitalSulcusROI.getNodeWithMaximumYCoordinate(fiducialSurface);
+   }
+   else {
+      std::cout << "INFO: Using approximate location for frontal cut since "
+                << "SUL.OrbS and SUL.TOrbS could not be found."
+                << std::endl;
    }
 
    //
@@ -1047,6 +1085,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCutFrontal(const int medi
    // Create an ROI of the inferior frontal sulcus where cut should end
    //
    BrainModelSurfaceROINodeSelection inferiorFrontalSulcusROI(brainSet);
+   QString errorMessage;
    errorMessage = inferiorFrontalSulcusROI.selectNodesWithPaint(
                               BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_NORMAL,
                               fiducialSurface,
@@ -1056,7 +1095,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCutFrontal(const int medi
    if (errorMessage.isEmpty() == false) {
       throw BrainModelAlgorithmException(errorMessage);
    }
-   if (inferiorFrontalSulcusROI.getNumberOfNodesSelected() >= 0) {
+   if (inferiorFrontalSulcusROI.getNumberOfNodesSelected() > 0) {
       endNodeNumber = inferiorFrontalSulcusROI.getNodeWithMinimumYCoordinate(fiducialSurface);
    }
    
@@ -1510,7 +1549,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCentralSulcus() throw (Br
    nibbleBorderWithinDistance(inflatedSurface,
                               centralSulcusLandmarkName,
                               cesVentralExtremeNodeNumber,
-                              BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Z,
+                              BORDER_NIBBLE_MODE_DISTANCE_Z,
                               19.0);
 
    //
@@ -1524,7 +1563,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCentralSulcus() throw (Br
    nibbleBorderWithinDistance(inflatedSurface,
                               centralSulcusLandmarkName,
                               cesMedialExtremeNodeNumber,
-                              BORDER_NIBBLE_MODE_WITHIN_DISTANCE_X,
+                              BORDER_NIBBLE_MODE_DISTANCE_X,
                               18.0);
 
    //
@@ -1630,6 +1669,625 @@ BrainModelSurfaceBorderLandmarkIdentification::drawBorderMetric(
    }
 }
                             
+/**
+ * draw a border using geodesic method connecting a group of nodes.
+ */
+void 
+BrainModelSurfaceBorderLandmarkIdentification::drawBorderGeodesic(
+                        const BrainModelSurface* borderSurface,
+                        const BrainModelSurfaceROINodeSelection* roiIn,
+                        const QString borderName,
+                        const std::vector<int>& nodeNumbers,
+                        const float samplingDistance) throw (BrainModelAlgorithmException) 
+{
+   Border border(borderName);
+   
+   const int numToDraw = static_cast<int>(nodeNumbers.size()) - 1;
+   for (int i = 0; i < numToDraw; i++) {
+      BrainModelSurfaceROINodeSelection roi(brainSet);
+      if (roiIn != NULL) {
+         roi = *roiIn;
+      }
+      else {
+         roi.selectAllNodes(borderSurface);
+      }
+      
+      //
+      // Force the starting and ending nodes to be in the ROI and connected
+      //
+      const int startNodeNumber = nodeNumbers[i];
+      const int endNodeNumber   = nodeNumbers[i + 1];
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Connecting node " << startNodeNumber
+                   << " to node " << endNodeNumber
+                   << std::endl;
+      }
+      roi.expandSoNodesAreWithinAndConnected(borderSurface,
+                                             startNodeNumber,
+                                             endNodeNumber);
+                                                 
+      BrainModelSurfaceROICreateBorderUsingGeodesic
+         cesDraw(brainSet,
+                 (BrainModelSurface*)borderSurface,
+                 &roi,
+                 borderName,
+                 startNodeNumber,
+                 endNodeNumber,
+                 samplingDistance);
+      cesDraw.execute();
+      Border newSegment = cesDraw.getBorder();
+      if (newSegment.getNumberOfLinks() <= 0) {
+         throw BrainModelAlgorithmException("Geodesic drawing of border named \""
+                                            + borderName
+                                            + "\" segment "
+                                            + QString::number(i)
+                                            + " failed.");
+      }
+
+      //
+      // Project the border and add to border projection file
+      //
+      border.appendBorder(newSegment);
+   }
+   
+   //
+   // Project the border and add to border projection file
+   //
+   BorderFile borderFile;
+   borderFile.addBorder(border);
+   BorderProjectionFile bpf;
+   BorderFileProjector projector(borderSurface, true);
+   projector.projectBorderFile(&borderFile,
+                               &bpf,
+                               NULL);
+   borderProjectionFile->append(bpf);
+
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + borderDebugFileName);
+   try {
+      borderProjectionFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
+   }
+}
+
+/**
+ * draw a border using heuristic geodesic method connecting a group of nodes.
+ */
+void 
+BrainModelSurfaceBorderLandmarkIdentification::drawBorderTargetedGeodesic(
+                        const BrainModelSurface* borderSurface,
+                        const BrainModelSurfaceROINodeSelection* roiIn,
+                        const QString borderName,
+                        const std::vector<int>& nodeNumbers,
+                        const float samplingDistance,
+                        float target[3],
+                        float targetweight) throw (BrainModelAlgorithmException) 
+{
+   Border border(borderName);
+   
+   const int numToDraw = static_cast<int>(nodeNumbers.size()) - 1;
+   for (int i = 0; i < numToDraw; i++) {
+      BrainModelSurfaceROINodeSelection roi(brainSet);
+      if (roiIn != NULL) {
+         roi = *roiIn;
+      }
+      else {
+         roi.selectAllNodes(borderSurface);
+      }
+      
+      //
+      // Force the starting and ending nodes to be in the ROI and connected
+      //
+      int startNodeNumber = nodeNumbers[i];
+      int endNodeNumber   = nodeNumbers[i + 1];
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Connecting node " << startNodeNumber
+                   << " to node " << endNodeNumber
+                   << std::endl;
+      }
+      roi.expandSoNodesAreWithinAndConnected(borderSurface,
+                                             startNodeNumber,
+                                             endNodeNumber);
+                                                 
+      Border newSegment = drawHeuristic(borderSurface, &roi, startNodeNumber, endNodeNumber, target, targetweight);
+      if (newSegment.getNumberOfLinks() <= 0) {
+         throw BrainModelAlgorithmException("Geodesic heuristic drawing of border named \""
+                                            + borderName
+                                            + "\" segment "
+                                            + QString::number(i)
+                                            + " failed.");
+      }
+
+      //
+      // Project the border and add to border projection file
+      //
+      border.appendBorder(newSegment);
+   }
+   
+   int dummyUnused;
+   border.resampleBorderToDensity(samplingDistance,
+                                  2,
+                                  dummyUnused);
+   //
+   // Project the border and add to border projection file
+   //
+   BorderFile borderFile;
+   borderFile.addBorder(border);
+   BorderProjectionFile bpf;
+   BorderFileProjector projector(borderSurface, true);
+   projector.projectBorderFile(&borderFile,
+                               &bpf,
+                               NULL);
+   borderProjectionFile->append(bpf);
+
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + borderDebugFileName);
+   try {
+      borderProjectionFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
+   }
+}
+
+/**
+ * draw a border using heuristic geodesic method connecting a group of nodes.
+ */
+void 
+BrainModelSurfaceBorderLandmarkIdentification::drawBorderMetricGeodesic(
+                        const BrainModelSurface* borderSurface,
+                        const BrainModelSurfaceROINodeSelection* roiIn,
+                        const QString borderName,
+                        const std::vector<int>& nodeNumbers,
+                        const float samplingDistance,
+                        MetricFile* nodeCost,
+                        int metricColumn,
+                        float metricWeight) throw (BrainModelAlgorithmException) 
+{
+   Border border(borderName);
+   
+   const int numToDraw = static_cast<int>(nodeNumbers.size()) - 1;
+   for (int i = 0; i < numToDraw; i++) {
+      BrainModelSurfaceROINodeSelection roi(brainSet);
+      if (roiIn != NULL) {
+         roi = *roiIn;
+      }
+      else {
+         roi.selectAllNodes(borderSurface);
+      }
+      
+      //
+      // Force the starting and ending nodes to be in the ROI and connected
+      //
+      int startNodeNumber = nodeNumbers[i];
+      int endNodeNumber   = nodeNumbers[i + 1];
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Connecting node " << startNodeNumber
+                   << " to node " << endNodeNumber
+                   << std::endl;
+      }
+      roi.expandSoNodesAreWithinAndConnected(borderSurface,
+                                             startNodeNumber,
+                                             endNodeNumber);
+                                                 
+      Border newSegment = drawHeuristic(borderSurface, &roi, startNodeNumber, endNodeNumber, nodeCost, metricColumn, metricWeight);
+      if (newSegment.getNumberOfLinks() <= 0) {
+         throw BrainModelAlgorithmException("Geodesic heuristic drawing of border named \""
+                                            + borderName
+                                            + "\" segment "
+                                            + QString::number(i)
+                                            + " failed.");
+      }
+
+      //
+      // Project the border and add to border projection file
+      //
+      border.appendBorder(newSegment);
+   }
+   
+   int dummyUnused;
+   border.resampleBorderToDensity(samplingDistance,
+                                  2,
+                                  dummyUnused);
+   //
+   // Project the border and add to border projection file
+   //
+   BorderFile borderFile;
+   borderFile.addBorder(border);
+   BorderProjectionFile bpf;
+   BorderFileProjector projector(borderSurface, true);
+   projector.projectBorderFile(&borderFile,
+                               &bpf,
+                               NULL);
+   borderProjectionFile->append(bpf);
+
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + borderDebugFileName);
+   try {
+      borderProjectionFile->writeFile(name);
+   }
+   catch (FileException) {
+      std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
+   }
+}
+
+Border BrainModelSurfaceBorderLandmarkIdentification::drawHeuristic(const BrainModelSurface* borderSurface,
+                                                                     BrainModelSurfaceROINodeSelection* roi,
+                                                                     int startNodeNumber,
+                                                                     int endNodeNumber,
+                                                                     float target[],
+                                                                     float targetweight) throw (BrainModelAlgorithmException)
+{
+   std::list<searchNode*> startQ;
+   std::list<searchNode*>::iterator iter, myend;
+   int numVert = borderSurface->getNumberOfNodes(), i, j;
+   searchNode** closedList = new searchNode*[numVert], *tempn, *tempn2;
+   for (i = 0; i < numVert; ++i)
+   {
+      closedList[i] = NULL;
+   }
+   const TopologyHelper* th = borderSurface->getTopologyFile()->getTopologyHelper(false, true, false);//only need neighbors
+   const CoordinateFile* cf = borderSurface->getCoordinateFile();
+   std::vector<int> neighbors;
+   float startxyz[3], endxyz[3], tempxyz[3], tempxyz2[3], tempf = 0.0f, tempf2, tempf3, targoff;
+   cf->getCoordinate(startNodeNumber, startxyz);
+   cf->getCoordinate(endNodeNumber, endxyz);
+   tempf3 = 0.0f;
+   for (j = 0; j < 3; ++j)
+   {
+      tempf2 = target[j] - startxyz[j];
+      tempf3 += tempf2 * tempf2;
+   }
+   targoff = sqrtf(tempf3);
+   tempf3 = 0.0f;
+   for (j = 0; j < 3; ++j)
+   {
+      tempf2 = target[j] - endxyz[j];
+      tempf3 += tempf2 * tempf2;
+   }
+   targoff += sqrtf(tempf3);
+   targoff /= 2.0f;//used to adjust the target following term to an optimal range, avoiding overflow with heavy weighting
+   for (i = 0; i < 3; ++i)
+   {
+      tempf2 = (startxyz[i] - endxyz[i]);
+      tempf += tempf2 * tempf2;
+   }
+   tempf = sqrtf(tempf);//used to calculate heuristic, if i find one
+   tempn = new searchNode();
+   tempn->cost = 0.0f;
+   tempn->heur = 0.0f;
+   tempn->node = startNodeNumber;
+   tempn->prev = -1;
+   closedList[startNodeNumber] = tempn;
+   startQ.push_front(tempn);
+   bool found = false;
+   iter = startQ.begin();
+   //std::cout << "start: " << startNodeNumber << " end: " << endNodeNumber << endl;
+   //std::cout << "starting main loop" << endl;
+   while (!startQ.empty() && !found)
+   {
+      tempn2 = *(startQ.begin());
+      if (tempn2->node == endNodeNumber)
+      {
+         found = true;
+         break;
+      }
+      if (iter == startQ.begin()) ++iter;
+      startQ.pop_front();
+      th->getNodeNeighbors(tempn2->node, neighbors);
+      cf->getCoordinate(tempn2->node, tempxyz2);
+      for (i = 0; i < (int)neighbors.size(); ++i)
+      {
+         if (!roi->getNodeSelected(neighbors[i])) continue;
+         tempn = new searchNode();
+         tempn->node = neighbors[i];
+         tempn->prev = tempn2->node;
+         cf->getCoordinate(neighbors[i], tempxyz);
+         tempf = 0.0f;
+         for (j = 0; j < 3; ++j)
+         {
+            tempf2 = tempxyz2[j] - tempxyz[j];
+            tempf += tempf2 * tempf2;
+         }
+         tempf = sqrtf(tempf);
+         tempf3 = 0.0f;
+         for (j = 0; j < 3; ++j)
+         {
+            tempf2 = target[j] - tempxyz[j];
+            tempf3 += tempf2 * tempf2;
+         }
+         tempf3 = sqrtf(tempf3);
+         tempn->cost = tempn2->cost + tempf * pow(targetweight, tempf3 - targoff);
+         tempf = 0.0f;
+         for (j = 0; j < 3; ++j)
+         {
+            tempf2 = endxyz[j] - tempxyz[j];
+            tempf += tempf2 * tempf2;
+         }
+         tempf = sqrtf(tempf);
+         tempn->heur = tempn->cost;//so its actually f, not h, but this is faster.  Add a heuristic when you can think of an admissible one.
+         if (closedList[neighbors[i]])
+         {
+            if (closedList[neighbors[i]]->heur > tempn->heur)
+            {
+               closedList[neighbors[i]]->heur = tempn->heur;
+               closedList[neighbors[i]]->cost = tempn->cost;
+               closedList[neighbors[i]]->node = tempn->node;
+               closedList[neighbors[i]]->prev = tempn->prev;
+               delete tempn;
+               tempn = closedList[neighbors[i]];
+               for (myend = startQ.begin(); myend != startQ.end(); ++myend)
+               {
+                  if (*myend == tempn)
+                  {
+                     if (iter == myend)
+                     {
+                        if (iter == startQ.begin()) ++iter; else --iter;
+                     }
+                     startQ.erase(myend);
+                     break;
+                  }
+               }
+            } else {
+               delete tempn;
+               tempn = NULL;
+            }
+         }
+         if (tempn)
+         {
+            if (iter == startQ.end() || (*iter)->heur > tempn->heur)
+            {
+               if (iter != startQ.begin())
+               {
+                  for (--iter; iter != startQ.begin() && (*iter)->heur > tempn->heur; --iter);
+                  if ((*iter)->heur <= tempn->heur) ++iter;
+               }
+            } else {
+               for (++iter; iter != startQ.end() && (*iter)->heur <= tempn->heur; ++iter);
+            }
+            closedList[neighbors[i]] = tempn;
+            startQ.insert(iter, tempn);
+            myend = startQ.end();
+            --myend;
+            for (iter = startQ.begin(); iter != myend;)
+            {
+               if ((*iter)->heur > (*(++iter))->heur)
+               {
+                  cout << ".";
+               }
+            }
+         }
+      }
+   }
+   if (startQ.empty())
+   {
+      throw BrainModelAlgorithmException("drawHeuristic() failed to connect the endpoints with the given ROI.");
+   }
+   //std::cout << "loop done" << endl;
+   std::list<int> startOrder;//build first half of border by backtracking
+   i = tempn2->node;
+   while (i != -1)
+   {
+      //std::cout << i << endl;
+      startOrder.push_front(i);
+      i = closedList[i]->prev;
+   }
+   //cout << startOrder.size() << " nodes in piece" << endl;
+   Border ret;
+   for (std::list<int>::iterator myiter = startOrder.begin(); myiter != startOrder.end(); ++myiter)
+   {
+      cf->getCoordinate(*myiter, tempxyz);
+      ret.addBorderLink(tempxyz);
+   }
+   for (i = 0; i < numVert; ++i)
+   {
+      if (closedList[i]) delete closedList[i];
+   }
+   delete[] closedList;
+   //int junk;
+   //ret.resampleBorderToDensity(samplingDistance, 2, junk);
+   return ret;
+}
+
+Border BrainModelSurfaceBorderLandmarkIdentification::drawHeuristic(const BrainModelSurface* borderSurface,
+                                                                     BrainModelSurfaceROINodeSelection* roi,
+                                                                     int startNodeNumber,
+                                                                     int endNodeNumber,
+                                                                     MetricFile* nodeCost,
+                                                                     int metricColumn,
+                                                                     float metricWeight) throw (BrainModelAlgorithmException)
+{
+   std::list<searchNode*> startQ;
+   std::list<searchNode*>::iterator iter, myend;
+   int numVert = borderSurface->getNumberOfNodes(), i, j;
+   if (numVert > nodeCost->getNumberOfNodes())
+   {
+      throw BrainModelAlgorithmException("Number of nodes in surface exceeds number of nodes in metric.");
+   }
+   if (metricColumn >= nodeCost->getNumberOfColumns())
+   {
+      throw BrainModelAlgorithmException("Metric column number exceeds number of columns in metric.");
+   }
+   searchNode** closedList = new searchNode*[numVert], *tempn, *tempn2;
+   for (i = 0; i < numVert; ++i)
+   {
+      closedList[i] = NULL;
+   }
+   const TopologyHelper* th = borderSurface->getTopologyFile()->getTopologyHelper(false, true, false);//only need neighbors
+   const CoordinateFile* cf = borderSurface->getCoordinateFile();
+   std::vector<int> neighbors;
+   float tempxyz[3], tempxyz2[3], tempf = 0.0f, tempf2;
+   tempn = new searchNode();
+   tempn->cost = 0.0f;
+   tempn->heur = 0.0f;
+   tempn->node = startNodeNumber;
+   tempn->prev = -1;
+   closedList[startNodeNumber] = tempn;
+   startQ.push_front(tempn);
+   bool found = false;
+   iter = startQ.begin();
+   //std::cout << "start: " << startNodeNumber << " end: " << endNodeNumber << endl;
+   //std::cout << "starting main loop" << endl;
+   while (!startQ.empty() && !found)
+   {
+      tempn2 = *(startQ.begin());
+      if (tempn2->node == endNodeNumber)
+      {
+         found = true;
+         break;
+      }
+      if (iter == startQ.begin()) ++iter;
+      startQ.pop_front();
+      th->getNodeNeighbors(tempn2->node, neighbors);
+      cf->getCoordinate(tempn2->node, tempxyz2);
+      for (i = 0; i < (int)neighbors.size(); ++i)
+      {
+         if (!roi->getNodeSelected(neighbors[i])) continue;
+         tempn = new searchNode();
+         tempn->node = neighbors[i];
+         tempn->prev = tempn2->node;
+         cf->getCoordinate(neighbors[i], tempxyz);
+         tempf = 0.0f;
+         for (j = 0; j < 3; ++j)
+         {
+            tempf2 = tempxyz2[j] - tempxyz[j];
+            tempf += tempf2 * tempf2;
+         }
+         tempf = sqrtf(tempf);
+         tempn->cost = tempn2->cost + tempf * pow(metricWeight, nodeCost->getValue(neighbors[i], metricColumn));
+         tempn->heur = tempn->cost;//so its actually f, not h, but this is faster.  No heuristic, so just use uniform cost search.
+         if (closedList[neighbors[i]])
+         {
+            if (closedList[neighbors[i]]->heur > tempn->heur)
+            {
+               closedList[neighbors[i]]->heur = tempn->heur;
+               closedList[neighbors[i]]->cost = tempn->cost;
+               closedList[neighbors[i]]->node = tempn->node;
+               closedList[neighbors[i]]->prev = tempn->prev;
+               delete tempn;
+               tempn = closedList[neighbors[i]];
+               for (myend = startQ.begin(); myend != startQ.end(); ++myend)
+               {
+                  if (*myend == tempn)
+                  {
+                     if (iter == myend)
+                     {
+                        if (iter == startQ.begin()) ++iter; else --iter;
+                     }
+                     startQ.erase(myend);
+                     break;
+                  }
+               }
+            } else {
+               delete tempn;
+               tempn = NULL;
+            }
+         }
+         if (tempn)
+         {
+            if (iter == startQ.end() || (*iter)->heur > tempn->heur)
+            {
+               if (iter != startQ.begin())
+               {
+                  for (--iter; iter != startQ.begin() && (*iter)->heur > tempn->heur; --iter);
+                  if ((*iter)->heur <= tempn->heur) ++iter;
+               }
+            } else {
+               for (++iter; iter != startQ.end() && (*iter)->heur <= tempn->heur; ++iter);
+            }
+            closedList[neighbors[i]] = tempn;
+            startQ.insert(iter, tempn);
+            myend = startQ.end();
+            --myend;
+            for (iter = startQ.begin(); iter != myend;)
+            {
+               if ((*iter)->heur > (*(++iter))->heur)
+               {
+                  cout << ".";
+               }
+            }
+         }
+      }
+   }
+   if (startQ.empty())
+   {
+      throw BrainModelAlgorithmException("drawHeuristic() failed to connect the endpoints with the given ROI.");
+   }
+   //std::cout << "loop done" << endl;
+   std::list<int> startOrder;//build first half of border by backtracking
+   i = tempn2->node;
+   while (i != -1)
+   {
+      //std::cout << i << endl;
+      startOrder.push_front(i);
+      i = closedList[i]->prev;
+   }
+   //cout << startOrder.size() << " nodes in piece" << endl;
+   Border ret;
+   for (std::list<int>::iterator myiter = startOrder.begin(); myiter != startOrder.end(); ++myiter)
+   {
+      cf->getCoordinate(*myiter, tempxyz);
+      ret.addBorderLink(tempxyz);
+   }
+   for (i = 0; i < numVert; ++i)
+   {
+      if (closedList[i]) delete closedList[i];
+   }
+   delete[] closedList;
+   //int junk;
+   //ret.resampleBorderToDensity(samplingDistance, 2, junk);
+   return ret;
+}
+
+/**
+ * draw a border moving along the "most-lateral" nodes 
+ * DOES NOT WORK!!!!
+ *
+void 
+BrainModelSurfaceBorderLandmarkIdentification::drawBorderMostLateral(
+                        const BrainModelSurface* borderSurface,
+                        const BrainModelSurfaceROINodeSelection* roiIn,
+                        const QString borderName,
+                        const std::vector<int>& nodeNumbers,
+                        const float samplingDistance) throw (BrainModelAlgorithmException) 
+{
+   BrainModelSurfaceROICreateBorderUsingMetricShape::MODE mode =
+         BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_POSITIVE;
+         
+   std::vector<QString> segmentNames;
+   const int numToDraw = static_cast<int>(nodeNumbers.size()) - 1;
+   for (int i = 0; i < numToDraw; i++) {
+      const int startNodeNumber = nodeNumbers[i];
+      const int endNodeNumber   = nodeNumbers[i + 1];
+      
+      QString segmentName("MOST_LAT_" + QString::number(i));
+      drawBorderMetric(borderSurface,
+                       mode,
+                       depthSurfaceShapeFile,
+                       depthSurfaceShapeFileColumnNumber,
+                       segmentName,
+                       startNodeNumber,
+                       endNodeNumber,
+                       samplingDistance,
+                       roiIn);
+      segmentNames.push_back(segmentName);
+   }
+   
+   mergeBorders(borderName,
+                segmentNames,
+                true,
+                false,
+                borderSurface,
+                2,
+                1);
+}
+*/
+
 /**
  * draw a border using geodesic method.
  */
@@ -2004,22 +2662,113 @@ BrainModelSurfaceBorderLandmarkIdentification::nibbleBorderWithinDistance(
    float withinZDistance = -1.0;
    float withinLinearDistance = -1.0;
    switch (nibbleMode) {
-      case BORDER_NIBBLE_MODE_WITHIN_DISTANCE_X:
+      case BORDER_NIBBLE_MODE_DISTANCE_X:
          withinXDistance = nibbleDistance;
          break;
-      case BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Y:
+      case BORDER_NIBBLE_MODE_DISTANCE_Y:
          withinYDistance = nibbleDistance;
          break;
-      case BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Z:
+      case BORDER_NIBBLE_MODE_DISTANCE_Z:
          withinZDistance = nibbleDistance;
          break;
-      case BORDER_NIBBLE_MODE_WITHIN_DISTANCE_LINEAR:
+      case BORDER_NIBBLE_MODE_DISTANCE_LINEAR:
          withinLinearDistance = nibbleDistance;
          break;
    }
    
    bp->removeLinksNearPoint(surface->getCoordinateFile(),
                             xyz,
+                            withinXDistance,
+                            withinYDistance,
+                            withinZDistance,
+                            withinLinearDistance);
+}                        
+
+/**
+ * nibble border beyond distance.
+ */
+void 
+BrainModelSurfaceBorderLandmarkIdentification::nibbleBorderBeyondDistance(
+                  const BrainModelSurface* surface,
+                  const QString& borderName,
+                  const float nibbleFromHereXYZ[3],
+                  const BORDER_NIBBLE_MODE_DISTANCE nibbleMode,
+                  const float nibbleDistance) throw (BrainModelAlgorithmException)
+{
+   BorderProjection* bp = borderProjectionFile->getFirstBorderProjectionByName(borderName);
+   if (bp == NULL) {
+      throw BrainModelAlgorithmException("Border named "
+                                         + borderName
+                                         + " not found for border nibbling.");
+   }
+   
+   float withinXDistance = std::numeric_limits<float>::max();
+   float withinYDistance = std::numeric_limits<float>::max();
+   float withinZDistance = std::numeric_limits<float>::max();
+   float withinLinearDistance = std::numeric_limits<float>::max();
+   switch (nibbleMode) {
+      case BORDER_NIBBLE_MODE_DISTANCE_X:
+         withinXDistance = nibbleDistance;
+         break;
+      case BORDER_NIBBLE_MODE_DISTANCE_Y:
+         withinYDistance = nibbleDistance;
+         break;
+      case BORDER_NIBBLE_MODE_DISTANCE_Z:
+         withinZDistance = nibbleDistance;
+         break;
+      case BORDER_NIBBLE_MODE_DISTANCE_LINEAR:
+         withinLinearDistance = nibbleDistance;
+         break;
+   }
+   
+   bp->removeLinksAwayFromPoint(surface->getCoordinateFile(),
+                            nibbleFromHereXYZ,
+                            withinXDistance,
+                            withinYDistance,
+                            withinZDistance,
+                            withinLinearDistance);
+}
+                        
+/**
+ * nibble border within distance.
+ */
+void 
+BrainModelSurfaceBorderLandmarkIdentification::nibbleBorderWithinDistance(
+                                          const BrainModelSurface* surface,
+                                          const QString& borderName,
+                                          const float nibbleFromHereXYZ[3],
+                                          const BORDER_NIBBLE_MODE_DISTANCE nibbleMode,
+                                          const float nibbleDistance)
+                                              throw (BrainModelAlgorithmException)
+{
+   BorderProjection* bp = borderProjectionFile->getFirstBorderProjectionByName(borderName);
+   if (bp == NULL) {
+      throw BrainModelAlgorithmException("Border named "
+                                         + borderName
+                                         + " not found for border nibbling.");
+   }
+   
+   float withinXDistance = -1.0;
+   float withinYDistance = -1.0;
+   float withinZDistance = -1.0;
+   float withinLinearDistance = -1.0;
+   switch (nibbleMode) {
+      case BORDER_NIBBLE_MODE_DISTANCE_X:
+         withinXDistance = nibbleDistance;
+         break;
+      case BORDER_NIBBLE_MODE_DISTANCE_Y:
+         withinYDistance = nibbleDistance;
+         break;
+      case BORDER_NIBBLE_MODE_DISTANCE_Z:
+         withinZDistance = nibbleDistance;
+         break;
+      case BORDER_NIBBLE_MODE_DISTANCE_LINEAR:
+         withinLinearDistance = nibbleDistance;
+         break;
+   }
+   
+   bp->removeLinksNearPoint(surface->getCoordinateFile(),
+                            nibbleFromHereXYZ,
                             withinXDistance,
                             withinYDistance,
                             withinZDistance,
@@ -2041,11 +2790,11 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusColor(
                            3, 1,
                            ColorFile::ColorStorage::SYMBOL_SPHERE);
                            
-   const QString name(debugFilesDirectoryName
-                      + "/"
-                      + fociColorDebugFileName);
+   //const QString name(debugFilesDirectoryName
+   //                   + "/"
+   //                   + fociColorDebugFileName);
    try {
-      fociColorFile->writeFile(name);
+      fociColorFile->writeFile(fociColorDebugFileName);
    }
    catch (FileException&) {
       std::cout << "WARNING: Unable to write landmark debug foci color file." << std::endl;
@@ -2117,11 +2866,11 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusAtNode(
                                            placeAtNodeNumber,
                                            fiducialSurface->getStructure()));
 
-      const QString name(debugFilesDirectoryName
-                         + "/"
-                         + fociProjectionDebugFileName);
+      //const QString name(debugFilesDirectoryName
+      //                   + "/"
+      //                   + fociProjectionDebugFileName);
       try {
-         fociProjectionFile->writeFile(name);
+         fociProjectionFile->writeFile(fociProjectionDebugFileName);
       }
       catch (FileException&) {
          std::cout << "WARNING: Unable to write landmark debug foci projection file." << std::endl;
@@ -2168,11 +2917,11 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusAtXYZ(
    
    fociProjectionFile->addCellProjection(cp);
 
-   const QString name(debugFilesDirectoryName
-                      + "/"
-                      + fociProjectionDebugFileName);
+   //const QString name(debugFilesDirectoryName
+   //                   + "/"
+   //                   + fociProjectionDebugFileName);
    try {
-      fociProjectionFile->writeFile(name);
+      fociProjectionFile->writeFile(fociProjectionDebugFileName);
    }
    catch (FileException&) {
       std::cout << "WARNING: Unable to write landmark debug foci projection file." << std::endl;
@@ -2220,8 +2969,14 @@ BrainModelSurfaceBorderLandmarkIdentification::addFocusAtBorderLink(
 void 
 BrainModelSurfaceBorderLandmarkIdentification::saveRoiToFile(
                    const BrainModelSurfaceROINodeSelection& roi,
-                   const QString& roiFileName)
+                   const QString& roiFileName) throw (BrainModelAlgorithmException)
 {
+      if (roi.getNumberOfNodesSelected() <= 0) {
+         throw BrainModelAlgorithmException("ERROR: ROI created with name \""
+                                            + roiFileName
+                                            + "\" contains no nodes.");
+      }
+      
       const QString name(debugFilesDirectoryName
                          + "/"
                          + roiFileName);
@@ -2257,6 +3012,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    const QString sfGenericColorName("SF");
    const QString sfAnteriorFocusName("SF_Anterior");
    const QString sfAnteriorDeepFocusName("SF_Anterior_Deep");
+   const QString sfAnteriorBelowFocusName("SF_Anterior_Below_Deep");
    const QString sfPosteriorFocusName("SF_Posterior");
    const QString sfPosteriorLandmarkFocusName("SF_Posterior-Landmark"); 
    const QString sfAnteriorLandmarkFocusName("SF_Anterior-Landmark");
@@ -2305,6 +3061,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    //    SFsaddleAnteriorLimit SUL.SF_COG
    fociProjectionFile->deleteCellProjectionsWithName(sfAnteriorFocusName);
    fociProjectionFile->deleteCellProjectionsWithName(sfAnteriorDeepFocusName);
+   fociProjectionFile->deleteCellProjectionsWithName(sfAnteriorBelowFocusName);
    fociProjectionFile->deleteCellProjectionsWithName(sfPosteriorFocusName);
    fociProjectionFile->deleteCellProjectionsWithName(sfPosteriorLandmarkFocusName); 
    fociProjectionFile->deleteCellProjectionsWithName(sfAnteriorLandmarkFocusName);
@@ -2480,11 +3237,24 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
                   sfInferiorBranchBeginNodeNumber);
    
    //
+   // Get bounds of inflated surface
+   // 
+   //
+   float inflatedSurfaceBounds[6];
+   inflatedSurface->getBounds(inflatedSurfaceBounds);
+   float veryPosteriorMinX = inflatedSurfaceBounds[0] + 10.0;
+   float veryPosteriorMaxX = std::numeric_limits<float>::max();
+   if (leftHemisphereFlag) {
+      veryPosteriorMinX = -std::numeric_limits<float>::max();
+      veryPosteriorMaxX = inflatedSurfaceBounds[1] - 10.0;
+   }
+   
+   //
    // Create a very posterior ROI  // JWH 10 April
    //
    float veryPosteriorExtent[6] = {
-      -std::numeric_limits<float>::max(),
-       std::numeric_limits<float>::max(),
+      veryPosteriorMinX, //-std::numeric_limits<float>::max(),
+      veryPosteriorMaxX, // std::numeric_limits<float>::max(),
       -std::numeric_limits<float>::max(),
       -17.0,
       -std::numeric_limits<float>::max(),
@@ -2584,6 +3354,23 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    }
    sfAnteriorROI.limitExtent(fiducialSurface,
                              sfAnteriorROIExtent);
+   int sfAnteriorCounter = 0;
+   while (sfAnteriorROI.getNumberOfNodesSelected() <= 0) {
+      sfAnteriorROI = sfDeepFundalROI;
+      sfAnteriorROIExtent[2] -= 2.0;
+      if (leftHemisphereFlag) {
+         sfAnteriorROIExtent[1] += 2.0;
+      }
+      else {
+         sfAnteriorROIExtent[0] -= 2.0;
+      }
+      sfAnteriorROI.limitExtent(fiducialSurface,
+                                sfAnteriorROIExtent);
+      sfAnteriorCounter++;
+      if (sfAnteriorCounter > 10) {
+         break;
+      }
+   }
    saveRoiToFile(sfAnteriorROI, sfAnteriorRoiFileName);
 
    //
@@ -2640,18 +3427,78 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    }
 
    //
+   // Find a spot forward of and below SF Anterior Deep
+   //
+   const float* deepXYZ = 
+      fiducialSurface->getCoordinateFile()->getCoordinate(sfAnteriorDeepNodeNumber);
+   float deepExtent[6] = {
+      deepXYZ[0] - 15.0,
+      deepXYZ[0] + 15.0,
+      deepXYZ[1],
+      deepXYZ[1] + 10.0,
+      deepXYZ[2] - 12.0,
+      deepXYZ[2] - 6.0
+   };
+   
+   int sfAnteriorDeepBelowNodeNumber = 
+      getNearbyNodeWithShapeValue(fiducialSurface,
+                                  depthSurfaceShapeFile,
+                                  depthSurfaceShapeFileColumnNumber,
+                                  -100000.0,
+                                  -1,
+                                  50.0,
+                                  NULL,
+                                  deepExtent);
+   addFocusAtNode(sfAnteriorBelowFocusName,
+                  sfAnteriorDeepBelowNodeNumber);
+   
+   //
    // Draw a border along the deep fundus
    //
    // caret_command -surface-border-draw-geodesic $INFLATED $TOPO $OUTFOCIPROJ 
    //    SF_Posterior SF_Anterior SUL.SF.deep_fundal.roi 
    //    $OUTBORDERPROJ $OUTBORDERPROJ LANDMARK.SFdorsal 3.0
-   drawBorderGeodesic(inflatedSurface,
+   std::vector<int> sfDorsalNodeNumbers;
+   sfDorsalNodeNumbers.push_back(sfPosteriorNodeNumber);
+   sfDorsalNodeNumbers.push_back(sfAnteriorDeepNodeNumber);
+   sfDorsalNodeNumbers.push_back(sfAnteriorDeepBelowNodeNumber);
+   /*float target[3];
+   float targetweight;*/
+   /*drawBorderGeodesic(inflatedSurface,
                       &sfDeepFundalROI,
                       sfDorsalLandmarkName,
-                      sfPosteriorNodeNumber,
-                      sfAnteriorDeepNodeNumber,  //sfAnteriorNodeNumber,
-                      3.0);
-                      
+                      sfDorsalNodeNumbers,
+                      3.0);*/
+   /*target[0] = -30.0f;
+   target[1] = 35.0f;
+   target[2] = 20.0f;
+   targetweight = 1.18f;
+   if (leftHemisphereFlag)
+   {
+      target[0] *= -1.0f;
+   }
+   drawBorderTargetedGeodesic(fiducialSurface,
+                      &sfDeepFundalROI,
+                      sfDorsalLandmarkName,
+                      sfDorsalNodeNumbers,
+                      3.0,
+                      target,
+                      targetweight);*/
+   drawBorderMetricGeodesic(fiducialSurface,
+                      &sfDeepFundalROI,
+                      sfDorsalLandmarkName,
+                      sfDorsalNodeNumbers,
+                      3.0,
+                      curvatureShapeFile,
+                      curvatureFiducialMeanColumnNumber,//curvatureFiducialSmoothedMeanColumnNumber ?
+                      1.5f);//IMPORTANT: > 1 weight means prefer NEGATIVE values
+   //drawBorderGeodesic(inflatedSurface,
+   //                   &sfDeepFundalROI,
+   //                   sfDorsalLandmarkName,
+   //                   sfPosteriorNodeNumber,
+   //                   sfAnteriorDeepNodeNumber,  //sfAnteriorNodeNumber,
+   //                   3.0);
+
    // 
    //  Set X-Coord for left or right
    // 
@@ -2667,7 +3514,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
       16.0, 12.0, -19.0
    };
    if (leftHemisphereFlag) {
-      sfVentralFrontalNodeXYZ[0] = -16.0;
+      sfVentralFrontalNodeXYZ[0] *= -1.0;
    }
    sfVentralFrontalNodeNumber = 
       fiducialSurface->getCoordinateFile()->getCoordinateIndexClosestToPoint(
@@ -2735,13 +3582,23 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    // caret_command -surface-border-draw-geodesic $INFLATED $TOPO 
    //    $OUTFOCIPROJ SF_Anterior SF_VentralFrontalExtreme SUL.SF.fundal.roi 
    //    $OUTBORDERPROJ $OUTBORDERPROJ LANDMARK.SFant 1.0
-   drawBorderGeodesic(inflatedSurface,
+   /*drawBorderGeodesic(inflatedSurface,
                       &sfFundalROI,
                       sfAntLandmarkName,
-                      sfAnteriorDeepNodeNumber,   // sfAnteriorNodeNumber,
-                      sfVentralFrontalExtremeNodeNumber,
-                      1.0);
-   
+                      sfAnteriorDeepBelowNodeNumber, //sfAnteriorDeepNodeNumber,   // sfAnteriorNodeNumber,
+                      sfVentralFrontalNodeNumber, //sfVentralFrontalExtremeNodeNumber,
+                      1.0);*/
+   std::vector<int> mynodes;
+   mynodes.push_back(sfAnteriorDeepBelowNodeNumber);
+   mynodes.push_back(sfVentralFrontalNodeNumber);//TSC: "extreme" node threw the border off with an anterior low extrema
+   drawBorderMetricGeodesic(fiducialSurface,
+                      &sfFundalROI,
+                      sfAntLandmarkName,
+                      mynodes,
+                      1.0,
+                      curvatureShapeFile,
+                      curvatureFiducialMeanColumnNumber,//curvatureFiducialSmoothedMeanColumnNumber ?
+                      1.8f);//IMPORTANT: > 1 weight means prefer NEGATIVE (or simply smaller) values   
    //
    // Merge the LANDMARK.SFdorsal and LANDMARK.SFant into
    // LANDMARK.SylvianFissure
@@ -2750,16 +3607,32 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    //    LANDMARK.SylvianFissure LANDMARK.SFdorsal LANDMARK.SFant 
    //    -delete-input-border-projections -smooth-junctions $INFLATED $TOPO 4 1
    //
-   //BorderProjection* sylvianFissureBorderProjection =
+   BorderProjection* sylvianFissureBorderProjection =
       mergeBorders(sylvianFissureLandmarkName,
                    sfDorsalLandmarkName,
                    sfAntLandmarkName,
-                   true,
+                   !(DebugControl::getDebugOn()),
                    false,
                    inflatedSurface,
-                   4,
+                   0,//TSC: fix cases where 3d smoothing made holes (unprojection dropping links?), border drawing method is inherently smooth
                    1);
-   
+   if (DebugControl::getDebugOn())
+   {
+      BorderProjection unnibbled = *sylvianFissureBorderProjection;
+      unnibbled.setName("SF_Unnibbled");
+      BorderProjectionFile bpf;
+      bpf.addBorderProjection(unnibbled);
+      borderProjectionFile->append(bpf);
+      const QString name(debugFilesDirectoryName
+                         + "/"
+                         + borderDebugFileName);
+      try {
+         borderProjectionFile->writeFile(name);
+      }
+      catch (FileException&) {
+         std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
+      }
+   }
    //
    // Draw a border along secondary SF
    // Typically starts deep in the Sylvian Fissure, exits SF, and ends
@@ -2791,15 +3664,25 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    // caret_command -surface-border-intersection $INFLATED $TOPO 
    //    $OUTBORDERPROJ $OUTFOCIPROJ $OUTFOCIPROJ 
    //    LANDMARK.SF-secondary LANDMARK.SylvianFissure SF_Intersect_Superior_Inferior 3.0
+   //
+   // The SF starts at the posterior and runs anterior.   However, for this
+   // intersection test, we want the most anterior point of the SF that
+   // intersects.  So, reverse the order of the points in the SF and then
+   // flip them back after the intersection test.
+   //
    float sfInsersectSuperiorInferiorXYZ[3];
+   BorderProjection* sfRev = 
+      borderProjectionFile->getLastBorderProjectionByName(sylvianFissureLandmarkName);
+   sfRev->reverseOrderOfBorderProjectionLinks();
    getBorderIntersection(ellipsoidSurface, //inflatedSurface,
-                         sfSecondaryLandmarkName,
                          sylvianFissureLandmarkName,
+                         sfSecondaryLandmarkName,
                          sfIntersectSuperiorInferiorFocusName,
                          3.0,
                          15.0,
                          1.0,
                          sfInsersectSuperiorInferiorXYZ);
+   sfRev->reverseOrderOfBorderProjectionLinks();
                          
    
    
@@ -2848,8 +3731,20 @@ BrainModelSurfaceBorderLandmarkIdentification::identifySylvianFissure() throw (B
    nibbleBorderWithinDistance(inflatedSurface,
                               sylvianFissureLandmarkName,
                               sfVentralFrontalExtremeNodeNumber,
-                              BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Z,
+                              BORDER_NIBBLE_MODE_DISTANCE_Z,
                               10.0);
+                              
+
+   //
+   // Trim away from SF Anterior Deep which should remove links that extend
+   // too far at the posterior/dorsal end of the sylvina fissure
+   //
+   const float anteriorDistance = 87.0; //92.0;  // 98.0
+   nibbleBorderBeyondDistance(inflatedSurface,
+                              sylvianFissureLandmarkName,
+                              inflatedSurface->getCoordinateFile()->getCoordinate(sfAnteriorDeepNodeNumber),
+                              BORDER_NIBBLE_MODE_DISTANCE_LINEAR,
+                              anteriorDistance);
                               
    //
    // Resample the Sylvian Fissure
@@ -3948,7 +4843,7 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyCalcarineSulcus() throw (
    nibbleBorderWithinDistance(inflatedSurface,
                               calcarineSulcusLandmarkName,
                               calcarinePosteriorExtremeNodeNumber,
-                              BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Y,
+                              BORDER_NIBBLE_MODE_DISTANCE_Y,
                               24.0);
 }
 
@@ -4039,12 +4934,12 @@ BrainModelSurfaceBorderLandmarkIdentification::extendCalcarineSulcusToMedialWall
    }
    
    //
-   // Find nearest node a little postior of medial wall
+   // Find nearest node a little posterior of medial wall
    //
    float linkXYZ[3];
    tempMedialWallBorder->getLinkXYZ(nearestLinkNumber,
                                     linkXYZ);                                    
-   linkXYZ[1] -= 3.0;
+   // JWH 12jan2009, trim after splitting medial int dorsal/ventral linkXYZ[1] -= 3.0;
    const int nodeNumber = 
       inflatedSurface->getCoordinateFile()->getCoordinateIndexClosestToPoint(
                                           linkXYZ[0], linkXYZ[1], linkXYZ[2]);
@@ -4094,7 +4989,8 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyMedialWall() throw (Brain
    //
    // Identify the dorsal and medial sections
    //
-   identifyDorsalMedialWall();
+   identifyDorsalMedialWallNew();
+   //identifyDorsalMedialWallOld();
    identifyVentralMedialWall();  // depends upon dorsal medial wall   
 
    //
@@ -4131,14 +5027,22 @@ void
 BrainModelSurfaceBorderLandmarkIdentification::createMedialWallDorsalAndVentralLandmarks() throw (BrainModelAlgorithmException)
 {
    const QString landmarkMedialWallDorsalName("LANDMARK.MedialWall.DORSAL");
-   const QString landmarkVentralWallDorsalName("LANDMARK.MedialWall.VENTRAL");
+   const QString landmarkMedialWallVentralName("LANDMARK.MedialWall.VENTRAL");
    
    // 
    // Remove existing flatten medial wall
    //
    borderProjectionFile->removeBordersWithName(landmarkMedialWallDorsalName);
-   borderProjectionFile->removeBordersWithName(landmarkVentralWallDorsalName);
+   borderProjectionFile->removeBordersWithName(landmarkMedialWallVentralName);
    
+   //
+   // Create color for medial wall segments and flatten medial wall
+   //
+   borderColorFile->addColor("LANDMARK.MedialWall.DORSAL",
+                             122, 0, 255);
+   borderColorFile->addColor("LANDMARK.MedialWall.VENTRAL",
+                             165, 0, 122);
+
    //
    // The dorsal medial wall starts at the frontal cut
    // and continues to the calcarine cut.  The ventral medial
@@ -4180,7 +5084,7 @@ BrainModelSurfaceBorderLandmarkIdentification::createMedialWallDorsalAndVentralL
                             getFlattenMedialWallBorderName(),
                             flattenCutFrontalName,
                             "",
-                            5.0,
+                            10.0, //5.0,
                             NULL,
                             &medialWallFrontalCutLinkNumber,
                             NULL);
@@ -4192,6 +5096,23 @@ BrainModelSurfaceBorderLandmarkIdentification::createMedialWallDorsalAndVentralL
                                          + " for creating medial wall ventral "
                                            "and dorsal landmarks.");
    }
+   
+   //
+   // Move frontal/medial wall intersection a little bit dorsal
+   //
+   medialWallFrontalCutLinkNumber += 5;
+   if (medialWallFrontalCutLinkNumber >= flattenMedialWallBorder->getNumberOfLinks()) {
+      medialWallFrontalCutLinkNumber = flattenMedialWallBorder->getNumberOfLinks() - 1;
+   }
+   
+   //
+   // Get location of frontal cut intersection with medial wall
+   //
+   float frontalMedialWallCutXYZ[3];
+   flattenMedialWallBorder->getBorderProjectionLink(
+      medialWallFrontalCutLinkNumber)->unprojectLink(
+         inflatedSurface->getCoordinateFile(),
+         frontalMedialWallCutXYZ);
                             
    //
    // Find intersection of calcarine and medial wall
@@ -4214,6 +5135,14 @@ BrainModelSurfaceBorderLandmarkIdentification::createMedialWallDorsalAndVentralL
                                          + " for creating medial wall ventral "
                                            "and dorsal landmarks.");
    }
+   //
+   // Get location of calcarine cut intersection with medial wall
+   //
+   float calcarineMedialWallCutXYZ[3];
+   flattenMedialWallBorder->getBorderProjectionLink(
+      medialWallCalcarineCutLinkNumber)->unprojectLink(
+         inflatedSurface->getCoordinateFile(),
+         calcarineMedialWallCutXYZ);
    
    
    //
@@ -4234,55 +5163,78 @@ BrainModelSurfaceBorderLandmarkIdentification::createMedialWallDorsalAndVentralL
       flattenMedialWallBorder->getSubSetOfBorderProjectionLinks(
                                        medialWallCalcarineCutLinkNumber,
                                        medialWallFrontalCutLinkNumber);
-   ventralBP.setName(landmarkVentralWallDorsalName);
+   ventralBP.setName(landmarkMedialWallVentralName);
    ventralBP.removeLastBorderProjectionLink();
    borderProjectionFile->addBorderProjection(ventralBP);
+   
+   //
+   // Nibble border points around frontal cut and medial wall intersection
+   //
+   const float calcarineNibbleDistance = 16.0 / 2.0;  //(19mm gap)
+   nibbleBorderWithinDistance(inflatedSurface,
+                              landmarkMedialWallDorsalName,
+                              calcarineMedialWallCutXYZ,
+                              BORDER_NIBBLE_MODE_DISTANCE_LINEAR,
+                              calcarineNibbleDistance);
+   nibbleBorderWithinDistance(inflatedSurface,
+                              landmarkMedialWallVentralName,
+                              calcarineMedialWallCutXYZ,
+                              BORDER_NIBBLE_MODE_DISTANCE_LINEAR,
+                              calcarineNibbleDistance);
+                              
+
+   //
+   // Nibble calcarine sulcus equivalent amount 
+   //
+   nibbleBorderWithinDistance(inflatedSurface,
+                              calcarineSulcusLandmarkName,
+                              calcarineMedialWallCutXYZ,
+                              BORDER_NIBBLE_MODE_DISTANCE_LINEAR,
+                              calcarineNibbleDistance);
+                              
+   //
+   // Nibble border points around frontal cut and medial wall intersection
+   //
+   const float frontNibbleDistance = 19.0 / 2.0;  //(16mm gap)
+   nibbleBorderWithinDistance(inflatedSurface,
+                              landmarkMedialWallDorsalName,
+                              frontalMedialWallCutXYZ,
+                              BORDER_NIBBLE_MODE_DISTANCE_LINEAR,
+                              frontNibbleDistance);
+   nibbleBorderWithinDistance(inflatedSurface,
+                              landmarkMedialWallVentralName,
+                              frontalMedialWallCutXYZ,
+                              BORDER_NIBBLE_MODE_DISTANCE_LINEAR,
+                              frontNibbleDistance);
+                              
+   
 }      
       
 /**
  * identify the dorsal medial wall with an alternative method.
  */
 void 
-BrainModelSurfaceBorderLandmarkIdentification::identifyDorsalMedialWall() throw (BrainModelAlgorithmException)
+BrainModelSurfaceBorderLandmarkIdentification::identifyDorsalMedialWallNew() throw (BrainModelAlgorithmException)
 {
-   const QString ccAltColorName("CC");
-   const QString ccAnteriorTopFocusName("CC-anterior");
-   const QString ccDorsalFocusName("CC-dorsal");
-   const QString ccAnteriorFocusName("CC-anterior");
-   const QString ccPosteriorFocusName("CC-posterior");
-   const QString ccMedialWallStartFocusName("CC-medial-wall-start");
-   const QString ccGenuBeginningFocusName("CC-genu-beginning");
    medialWallDorsalSectionName = "MedialWallDorsalSection";
-   const QString landmarkMedialWallStartToGenuBeginningBorderName("LANDMARK.MedWallStartToGenuBeginning");
-   const QString landmarkMedialWallGenuBeginningToAnteriorCCBorderName("LANDMARK.MedWallGenuToAnterior");
-   const QString landmarkMedialWallAnteriorToDorsalCCBorderName("LANDMARK.MedWallAnteriorToDorsal");
-   const QString landmarkMedialWallDorsalToPosteriorCCBorderName("LANDMARK.MedWallAnteriorDorsalToPosterior");
-   const QString corpusCallosumRoiFileName(createFileName("CC-CorpusCallosum",
-                                      SpecFile::getRegionOfInterestFileExtension()));
-   const QString corpusCallosumDorsalRoiFileName(createFileName("CC-CorpusCallosumDorsal",
-                                      SpecFile::getRegionOfInterestFileExtension()));
-   const QString sulciAroundCallosumDorsalRoiFileName(createFileName("CC-SulciAroundCorpusCallosumDorsal",
-                                      SpecFile::getRegionOfInterestFileExtension()));
-   
-   QFile::remove(corpusCallosumRoiFileName);
-   QFile::remove(corpusCallosumDorsalRoiFileName);
-   QFile::remove(sulciAroundCallosumDorsalRoiFileName);
    borderProjectionFile->removeBordersWithName(medialWallDorsalSectionName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallStartToGenuBeginningBorderName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallGenuBeginningToAnteriorCCBorderName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallAnteriorToDorsalCCBorderName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallDorsalToPosteriorCCBorderName);
-   fociProjectionFile->deleteCellProjectionsWithName(ccAnteriorTopFocusName);
-   fociProjectionFile->deleteCellProjectionsWithName(ccDorsalFocusName);
-   fociProjectionFile->deleteCellProjectionsWithName(ccAnteriorFocusName);
-   fociProjectionFile->deleteCellProjectionsWithName(ccPosteriorFocusName);
-   fociProjectionFile->deleteCellProjectionsWithName(ccMedialWallStartFocusName);
-   fociProjectionFile->deleteCellProjectionsWithName(ccGenuBeginningFocusName);
-   
 
-   borderColorFile->addColor(medialWallDorsalSectionName,
-                             50, 255, 50);
-   addFocusColor(ccAltColorName, 0, 255, 0);
+   int numberOfFoci = 7;
+   const int medialWallStartFocusIndex = 0;
+   const int genuFocusIndex = 1;
+   const int spleniumPosteriorFocusIndex = numberOfFoci - 1;
+   const QString ccColorName("XCC");
+   std::vector<QString> ccFociNames;
+   for (int i = 0; i < numberOfFoci; i++) {
+      const QString name(ccColorName + "_" + QString::number(i));
+      ccFociNames.push_back(name);
+      fociProjectionFile->deleteCellProjectionsWithName(name);
+   }
+   const QString medialWallDorsalBorderName("X_MedialWallDorsalSection");
+   borderProjectionFile->removeBordersWithName(medialWallDorsalBorderName);
+   borderColorFile->addColor(medialWallDorsalBorderName,
+                             150, 255, 50);
+   addFocusColor(ccColorName, 150, 255, 0);
 
    //#
    //# Create the corpus callosum volume slice
@@ -4304,262 +5256,690 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyDorsalMedialWall() throw 
    // caret_command -volume-dilate CorpusCallosumSlice_Smearx12_z3+orig.nii.gz 
    //  Human.$SUBJECT.$HEM.CorpusCallosumSlice_SmearXZ_Dilate+orig.nii.gz 2
    //
-   const float grayMatterPeak = -1.0;
-   const float whiteMatterPeak = -1.0;
+   /*float voxMin, voxMax;
+   anatomicalVolumeFile->getMinMaxVoxelValues(voxMin, voxMax);*/
+   int dimExtent[6];
+   float coordExtent[6];
+   int i, j, k;/*, count, total;
+   bool redo;*/
    VolumeFile corpusCallosumVolume;
-   BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(
-                                                             *anatomicalVolumeFile,
-                                                             corpusCallosumVolume,
-                                                             surfaceStructure,
-                                                             grayMatterPeak,
-                                                             whiteMatterPeak);
-   corpusCallosumVolume.smearAxis(VolumeFile::VOLUME_AXIS_X, 6, -1, 1);
-   corpusCallosumVolume.smearAxis(VolumeFile::VOLUME_AXIS_X, 6, 1, 1);
-   corpusCallosumVolume.smearAxis(VolumeFile::VOLUME_AXIS_Z, 3, 1, 1);
-   corpusCallosumVolume.doVolMorphOps(2, 0);
 
    //
-   // Create the corpus callosum ROI
+   // Anatomical volume may be just corpus callosum.  If so, skip
+   // generation of corpus callosum.
    //
-   // caret_command -volume-map-to-surface-roi-file 
-   //  Human.$SUBJECT.$HEM.CorpusCallosumSlice_SmearXZ_Dilate+orig.nii.gz 
-   //  $FIDUCIAL $TOPO Human.$SUBJECT.$HEM.CorpusCallosum.roi
-   NodeRegionOfInterestFile corpusCallosumRoiFile;
-   corpusCallosumRoiFile.setNumberOfNodes(fiducialSurface->getNumberOfNodes());
-   corpusCallosumRoiFile.assignSelectedNodesWithVolumeFile(&corpusCallosumVolume,
-                                             fiducialSurface->getCoordinateFile(),
-                                             fiducialSurface->getTopologyFile());
-   BrainModelSurfaceROINodeSelection corpusCallosumRoi(brainSet);
-   corpusCallosumRoi.getRegionOfInterestFromFile(corpusCallosumRoiFile);
-   saveRoiToFile(corpusCallosumRoi,
-                 corpusCallosumRoiFileName);
+   const QString anatFileName = anatomicalVolumeFile->getFileName();
+   bool anatomyVolumeIsCorpusCallosumFlag =
+      (anatFileName.contains("corpus", Qt::CaseInsensitive) &&
+       anatFileName.contains("callosum", Qt::CaseInsensitive));
 
-   //
-   // Find nodes in the groove of the corpus callosum by starting 
-   // with the the corpus callsoum roi
-   //
-   BrainModelSurfaceROINodeSelection corpusCallosumDorsalRoi(brainSet);
-   float maxCurvatureValue = -0.150;
-   float minSurfaceArea = 600.0; // 650.0;
-   int ccdIterations = 0;
-   while (/*(corpusCallosumDorsalRoi.getNumberOfNodesSelected() < 350) && */
-          (corpusCallosumDorsalRoi.getSurfaceAreaOfROI(fiducialSurface) < minSurfaceArea) &&
-          (ccdIterations < 5)) {
-      corpusCallosumDorsalRoi = corpusCallosumRoi;
-      corpusCallosumDorsalRoi.discardIslands(fiducialSurface);
-      //corpusCallosumDorsalRoi.dilate(fiducialSurface, 3); //6);
-      corpusCallosumDorsalRoi.selectNodesWithMetric(BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_AND,
-                                                    fiducialSurface,
-                                                    curvatureShapeFile,
-                                                    curvatureFiducialSmoothedMeanColumnNumber, //curvatureFiducialMeanColumnNumber,
-                                                    -50000.0,
-                                                    maxCurvatureValue);
-      maxCurvatureValue += 0.05;
-      ccdIterations++;
+   if (anatomyVolumeIsCorpusCallosumFlag) {
+      corpusCallosumVolume = *anatomicalVolumeFile;
+      corpusCallosumVolume.makeSegmentationZeroTwoFiftyFive();
    }
-   saveRoiToFile(corpusCallosumDorsalRoi,
-                  corpusCallosumDorsalRoiFileName);
+   else {
+      /*const StatisticHistogram* hist = anatomicalVolumeFile->getHistogram();
+      int grayPeakBucketNumber, whitePeakBucketNumber,
+          grayMinimumBucketNumber, whiteMaximumBucketNumber,
+          grayWhiteBoundaryBucketNumber, csfPeakBucketNumber;
+      hist->getGrayWhitePeakEstimates(grayPeakBucketNumber, whitePeakBucketNumber,
+                                      grayMinimumBucketNumber, whiteMaximumBucketNumber,
+                                      grayWhiteBoundaryBucketNumber, csfPeakBucketNumber);
+      float threshhold  = (hist->getDataValueForBucket(grayPeakBucketNumber) + hist->getDataValueForBucket(whitePeakBucketNumber)) / 2.0f;
+      delete hist;
+      do
+      {
+         redo = false;
+         try
+         {*/
+            BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(
+                                                                     *anatomicalVolumeFile,
+                                                                      corpusCallosumVolume,
+                                                                      surfaceStructure,
+                                                                      -1.0f,//threshhold * 0.8f,
+                                                                      -1.0f,
+                                                                      true);//threshhold * 1.2f);
+            corpusCallosumVolume.smearAxis(VolumeFile::VOLUME_AXIS_X, 6, -1, 1);
+            corpusCallosumVolume.smearAxis(VolumeFile::VOLUME_AXIS_X, 6, 1, 1);
+            corpusCallosumVolume.makeSegmentationZeroTwoFiftyFive();  // Fix 14L, 16L
 
-   //
-   // Remove islands with fewer than 2 nodes
-   //
-   corpusCallosumDorsalRoi.discardIslands(fiducialSurface, 2);
-   saveRoiToFile(corpusCallosumDorsalRoi,
-                  corpusCallosumDorsalRoiFileName);
-   
-   //
-   // Remove any nearby sulci from the ROI
-   //
-   //corpusCallosumDorsalRoi.logicallyAND(&sulciAroundCorpusCallosumRoi);
-   //saveRoiToFile(corpusCallosumDorsalRoi,
-   //               corpusCallosumDorsalRoiFileName);
-
-   const float allExtent[6] = {
-      -20.0,
-       20.0,
-      -std::numeric_limits<float>::max(),
-       std::numeric_limits<float>::max(),
-      -std::numeric_limits<float>::max(),
-       std::numeric_limits<float>::max()
-   };
-   
-   //
-   // Place the posterior focus (splenium is the poster part of the corpus callosum)
-   //
-   ccPosteriorNodeNumber = 
-      getNearbyNodeWithShapeValue(fiducialSurface,  // inflatedSurface
-                                  curvatureShapeFile,
-                                  curvatureFiducialSmoothedMeanColumnNumber,
-                                  -100000.0,
-                                  corpusCallosumDorsalRoi.getNodeWithMinimumYCoordinate(inflatedSurface),
-                                  5.0,
-                                  NULL,
-                                  allExtent);
-   addFocusAtNode(ccPosteriorFocusName,
-                  ccPosteriorNodeNumber);
-   
-   //
-   // Place the anterior focus (genu is the anterior part of the corpus callosum)
-   //
-   const int ccAnteriorNodeNumber = 
-      getNearbyNodeWithShapeValue(fiducialSurface, //inflatedSurface,
-                                  curvatureShapeFile,
-                                  curvatureFiducialSmoothedMeanColumnNumber,
-                                  -100000.0,
-                                  corpusCallosumDorsalRoi.getNodeWithMaximumYCoordinate(inflatedSurface),
-                                  5.0,
-                                  NULL,
-                                  allExtent);
-   addFocusAtNode(ccAnteriorFocusName,
-                  ccAnteriorNodeNumber);
-   
-   //
-   // Limit extent to Y-center region to get a dorsal focus
-   //
-   const float centerExtent[6] = {
-      -16.0,
-       16.0,
-      -10.0,
-       5.0,
-      -std::numeric_limits<float>::max(),
-       std::numeric_limits<float>::max()
-   };
-   BrainModelSurfaceROINodeSelection dorsalCenterCorpusCallosumRoi(corpusCallosumDorsalRoi);
-   dorsalCenterCorpusCallosumRoi.limitExtent(fiducialSurface, centerExtent);
-   
-   //
-   // Place the dorsal focus
-   //
-   const int ccDorsalNodeNumber = 
-      getNearbyNodeWithShapeValue(fiducialSurface, //inflatedSurface,
-                                  curvatureShapeFile,
-                                  curvatureFiducialSmoothedMeanColumnNumber,
-                                  -100000.0,
-                                  dorsalCenterCorpusCallosumRoi.getNodeWithMaximumZCoordinate(inflatedSurface),
-                                  5.0,
-                                  NULL,
-                                  allExtent);
-   addFocusAtNode(ccDorsalFocusName,
-                  ccDorsalNodeNumber);
-   
-
-
-
-   //
-   // Create a node at anterior of where dorsal medial wall starts
-   //
-   float medialWallStartXYZ[3] = { 7, 4, -10 };
-   if (leftHemisphereFlag) {
-      medialWallStartXYZ[0] = -7;
-   } 
-   medialWallStartNodeNumber =
-       addFocusAtNodeNearestXYZ(fiducialSurface,
-                                ccMedialWallStartFocusName,
-                                medialWallStartXYZ);
-
-
-   //
-   // Create a focus near genu beginning
-   //
-   float ccGenuBeginningXYZ[3] = { 6, 15, -6 };
-   if (leftHemisphereFlag) {
-    ccGenuBeginningXYZ[0] = -6;
+            //
+            // Erode and then dilate to try to remove anterior cerebral artery
+            //
+            const int erodeDilateIterations = 6;
+            for (i = 0; i < erodeDilateIterations; i++) {
+               corpusCallosumVolume.doVolMorphOps(0, 1);
+               corpusCallosumVolume.doVolMorphOps(1, 0);
+            }
+            corpusCallosumVolume.removeIslandsFromSegmentation();  // Fix 14L, 16L
+            //
+            // Get extent of volume
+            // MOVED 25 Jan 2010 to after close of else clause since needed
+            // for both this method and when anatomy is the corpus callosum
+            //corpusCallosumVolume.getNonZeroVoxelExtent(dimExtent,
+            //                                           coordExtent);//doesn't use normal "one-after" array size conventions
+            /*if (dimExtent[0] != -1)
+            {
+               if (fabs(coordExtent[3] - coordExtent[2]) < 50.0f)
+               {
+                  cout << "threshhold " << threshhold << ": y coord extent too small" << endl;
+                  voxMax = threshhold;
+                  redo = true;
+               } else {
+                  i = (dimExtent[0] + dimExtent[1]) / 2;//only need to look at the middle slice
+                  count = 0;
+                  total = (dimExtent[3] - dimExtent[2] + 1) * (dimExtent[5] - dimExtent[4] + 1);
+                  for (j = dimExtent[2]; j <= dimExtent[3]; ++j)
+                  {
+                     for (k = dimExtent[4]; k <= dimExtent[5]; ++k)
+                     {
+                        if (corpusCallosumVolume.getVoxel(i, j, k) > 0.0f)
+                        {
+                           ++count;
+                        }
+                     }
+                  }
+                  cout << "threshhold " << threshhold << ": " << count << " / " << total;
+                  if (count < total * 0.25f)
+                  {
+                     cout << ", too few voxels" << endl;
+                     voxMax = threshhold;
+                     redo = true;
+                  } else {
+                     if (count > total * 0.55f)
+                     {
+                        cout << ", too many voxels" << endl;
+                        voxMin = threshhold;
+                        redo = true;
+                     } else {
+                        cout << ", acceptable" << endl;
+                     }
+                  }
+               }
+            } else {
+               cout << "threshhold " << threshhold << ": no nonzero extent found" << endl;
+               voxMax = threshhold;
+               redo = true;
+            }
+         } catch (BrainModelAlgorithmException e) {
+            cout << "threshhold " << threshhold << ": caught exception, retrying" << endl;
+            voxMax = threshhold;
+            redo = true;
+         }
+         threshhold = (voxMin + voxMax + threshhold) / 3.0f;//its like bisection search, except it moves slower so it doesnt try crazy values
+         if (redo && voxMax != 0.0f && voxMin / voxMax > 0.98f)
+         {
+            cout << "giving up" << endl;
+            redo = false;
+         }
+      } while (redo);*/
    }
-   ccGenuBeginningNodeNumber = 
-    addFocusAtNodeNearestXYZ(fiducialSurface,
-                             ccGenuBeginningFocusName,
-                             ccGenuBeginningXYZ);
-       
-    
+
    //
-   // Create border from medial wall start to genu beginning
+   // Get extent of volume
+   //
+   corpusCallosumVolume.getNonZeroVoxelExtent(dimExtent,
+                                              coordExtent);//doesn't use normal "one-after" array size conventions
+
+   if (saveIntermediateFilesFlag) {
+      try {
+         corpusCallosumVolume.writeFile(debugFilesDirectoryName
+                                     + "/"
+                                     + "CorpusCallosum.nii.gz");
+      }
+      catch (FileException) {
+         std::cout << "WARNING: Unable to write debug corpus callosum volume file." << std::endl;
+      }
+   }
+   
+   //
+   // Get dimensions of volume
+   //
+   int dimensions[3];
+   corpusCallosumVolume.getDimensions(dimensions);
+   
+   //
+   // Get spacing
+   //
+   float spacing[3];
+   corpusCallosumVolume.getSpacing(spacing);
+   
+   //
+   // Determine Coronal slices for foci (locate along the Y-axis starting
+   // at the anterior and moving in a posterior direction
+   //
+   const int anteriorCoronalSliceJ = dimExtent[3];
+   const int posteriorCoronalSliceJ = dimExtent[2];
+   if (anteriorCoronalSliceJ <= posteriorCoronalSliceJ) {
+      throw BrainModelAlgorithmException("Corpus callosum has no Y-axis extent.");
+   }
+   int coronalSliceStepJ = static_cast<int>(
+      (static_cast<float>(anteriorCoronalSliceJ) - 
+         static_cast<float>(posteriorCoronalSliceJ)) 
+      / static_cast<float>(numberOfFoci - 2));
+   std::vector<int> fociCoronalSlicesJ;
+   for (i = 0; i < numberOfFoci; i++) {
+      if (i == genuFocusIndex) {
+         fociCoronalSlicesJ.push_back(anteriorCoronalSliceJ);
+      }
+      else if (i == spleniumPosteriorFocusIndex) {
+         fociCoronalSlicesJ.push_back(posteriorCoronalSliceJ);
+      }
+      else if (i == medialWallStartFocusIndex) {
+         const int dJ = static_cast<int>(7.0 / spacing[1]);
+         fociCoronalSlicesJ.push_back(anteriorCoronalSliceJ - dJ);
+      }
+      else {
+         int sliceJ = anteriorCoronalSliceJ
+                    - static_cast<int>(coronalSliceStepJ * (i - 1));
+         if (i == (numberOfFoci - 2)) {
+            sliceJ -= static_cast<int>((coronalSliceStepJ / 2) / spacing[1]);
+         }
+         fociCoronalSlicesJ.push_back(sliceJ);
+      }
+   }
+   
+   //
+   // Add a focus on the ventral side of the splenium
+   //
+   int spleniumVentralFocusIndex = -1;
+   bool addSpleniumVentralFocusFlag = true;
+   if (addSpleniumVentralFocusFlag) {
+      const QString name(ccColorName + "_SpleniumVentral");
+      ccFociNames.push_back(name);
+      fociProjectionFile->deleteCellProjectionsWithName(name);
+      spleniumVentralFocusIndex = numberOfFoci;
+      numberOfFoci = static_cast<int>(ccFociNames.size());
+      const int dJ = static_cast<int>(3.0 / spacing[1]);
+      fociCoronalSlicesJ.push_back(posteriorCoronalSliceJ + dJ);
+   }
+   
+   //
+   // Place foci along top of corpus callosum
+   //
+   std::vector<int> nodeNumbersForDorsalMedialWallBorder;
+   for (int n = 0; n < numberOfFoci; n++) {
+      //
+      // Coronal slice of focus
+      //
+      const int jSlice = fociCoronalSlicesJ[n];
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Coronal Focus " << n << " Slice: " << jSlice << std::endl;
+      }
+      
+      //
+      // Find first non-zero voxel 
+      //
+      bool foundIt = false;
+      int kStart = dimensions[2] - 1;
+      int kEnd   = 0;
+      int kStep  = -1;
+      if ((n == medialWallStartFocusIndex) ||
+          (n == spleniumVentralFocusIndex)) {
+         kStart = 0;
+         kEnd   = dimensions[2] - 1;
+         kStep  = 1;
+      }
+      for (k = kStart; k != kEnd; k += kStep) {
+      //for (int k = dimensions[2] - 1; k >= 0; k--) {
+         //
+         // move along X-Axis
+         //
+         for (j = 1; j <= dimExtent[1] - dimExtent[0] + 1; j++) {
+            i = (dimExtent[0] + dimExtent[1]) / 2 + (j % 2 ? 1 - j : j) / 2;//search from middle of x extent to avoid bias between hemispheres
+            //yes, its a confusing one-liner, but I couldn't think of a better way to loop from middle outwards without missing any indices
+            //
+            // Non-zero voxel ?
+            //
+            if (corpusCallosumVolume.getVoxel(i, jSlice, k) != 0.0) {
+               //
+               // Allow the focus to move around a little when searching
+               // for the most lateral position nearby the initial position
+               //
+               float moveExtent[6] = {
+                  -20.0,
+                   20.0,
+                   -2.0,
+                    2.0,
+                   -1.0,
+                    3.0
+               };
+               float target[3] = {70.0, -10.0, 5.0};
+               //
+               // Get coordinate for focus and add it.  Offset depending
+               // upon location of focus.
+               //
+               float xyz[3];
+               float maxGeoDistance = 10.0f;
+               if (n == genuFocusIndex) {  // genu (anterior cc)
+                  corpusCallosumVolume.getVoxelCoordinate(i, jSlice, k, xyz);
+                  moveExtent[2] =  -4.0;
+                  moveExtent[3] =   2.0;
+                  moveExtent[4] =  -2.0;
+                  moveExtent[5] =   2.0;
+                  target[0] = 80.0;
+                  target[1] = 10.0;
+                  target[2] = 20.0;
+                  maxGeoDistance = 5.0f;//prevent genu from falling into the singulate
+               }
+               else if (n == spleniumPosteriorFocusIndex) { // (posterior cc)
+                  corpusCallosumVolume.getVoxelCoordinate(i, jSlice - 2, k, xyz);
+                  moveExtent[2] =  -3.0;
+                  moveExtent[3] =   5.0;
+                  moveExtent[4] =  -2.0;
+                  moveExtent[5] =   2.0;
+               }
+               else if (n == spleniumVentralFocusIndex) {  // (posterior but inferior to splenium)
+                  moveExtent[2] =  -4.0;
+                  moveExtent[3] =   0.5;
+                  moveExtent[4] =  -2.5;
+                  moveExtent[5] =   1.0;
+                  corpusCallosumVolume.getVoxelCoordinate(i, jSlice, k - 1, xyz);
+               }
+               else if (n == medialWallStartFocusIndex) {  //(below CC towards anterior)
+                  moveExtent[2] = -3.5f;
+                  moveExtent[3] =  1.0f;
+                  moveExtent[4] = -3.0;
+                  moveExtent[5] =  1.0;
+                  corpusCallosumVolume.getVoxelCoordinate(i, jSlice, k - 2, xyz);
+               }
+               else {   // somewhere dorsal of cc
+                  corpusCallosumVolume.getVoxelCoordinate(i, jSlice, k, xyz);
+               }
+               
+               
+               moveExtent[0] += xyz[0];
+               moveExtent[1] += xyz[0];
+               moveExtent[2] += xyz[1];
+               moveExtent[3] += xyz[1];
+               moveExtent[4] += xyz[2];
+               moveExtent[5] += xyz[2];
+               if (leftHemisphereFlag) target[0] *= -1.0f;
+               
+               /*int nodeNumber = getMostLateralNodeInExtent(fiducialSurface,
+                                                           xyz,
+                                                           moveExtent,
+                                                           maxGeoDistance); */
+               int nodeNumber = getClosestNodeInExtent(fiducialSurface,
+                                                           xyz,
+                                                           moveExtent,
+                                                           maxGeoDistance,
+                                                           target); 
+               if (nodeNumber < 0) {
+                  //
+                  // Enlarge Y & Z
+                  //
+                  float delta = 0.5;
+                  for (int imm = 0; imm < 5; imm++) {
+                     moveExtent[2] -= delta;
+                     moveExtent[3] += delta;
+                     moveExtent[4] -= delta;
+                     moveExtent[5] += delta;
+                     /*nodeNumber = getMostLateralNodeInExtent(fiducialSurface,
+                                                             xyz,
+                                                             moveExtent,
+                                                             maxGeoDistance);*/
+                     nodeNumber = getClosestNodeInExtent(fiducialSurface,
+                                                           xyz,
+                                                           moveExtent,
+                                                           maxGeoDistance,
+                                                           target);
+                     if (nodeNumber >= 0) {
+                        break;
+                     }
+                  }
+               }
+               //cout << n << ": " << nodeNumber << endl;
+               if (nodeNumber >= 0) {
+                  addFocusAtNode(ccFociNames[n], nodeNumber);
+                  
+                  if (n == medialWallStartFocusIndex) {
+                     medialWallStartNodeNumber = nodeNumber;
+                  }
+                  else if (n == spleniumPosteriorFocusIndex) {
+                     ccSpleniumEndNodeNumber = nodeNumber;
+                  }
+                  else if (n == spleniumVentralFocusIndex) {
+                     //
+                     // Make sure the splenium ventral focus is BELOW the
+                     // splenium posterior focus
+                     //
+                     if ((spleniumPosteriorFocusIndex >= 0) &&
+                         (ccSpleniumEndNodeNumber >= 0)) {
+                        const float* spfXYZ = 
+                            fiducialSurface->getCoordinateFile()->getCoordinate(ccSpleniumEndNodeNumber);
+                        const float* svfXYZ = 
+                            fiducialSurface->getCoordinateFile()->getCoordinate(nodeNumber);
+                        if (svfXYZ[2] < spfXYZ[2]) {
+                           ccSpleniumEndNodeNumber = nodeNumber;
+                        }
+                        else {
+                           nodeNumber = -1;
+                        }
+                     }
+                     else {
+                        ccSpleniumEndNodeNumber = nodeNumber;
+                     }
+                  }
+                  
+                  if (nodeNumber >= 0) {
+                     nodeNumbersForDorsalMedialWallBorder.push_back(nodeNumber);
+                  }
+               }
+               else {
+                  throw BrainModelAlgorithmException(
+                     "Dorsal Medial Wall: Unable to locate a node in vicinity "
+                     "of ("
+                     + QString::number(xyz[0], 'f', 3) + ", "
+                     + QString::number(xyz[1], 'f', 3) + ", "
+                     + QString::number(xyz[2], 'f', 3) + ")");
+               }
+               
+               if (DebugControl::getDebugOn()) {
+                  std::cout << "Coronal Focus " << n 
+                            << " name " << ccFociNames[n].toAscii().constData()
+                            << " XYZ: " 
+                            << xyz[0] << ", "
+                            << xyz[1] << ", "
+                            << xyz[2] << " Node: "
+                            << nodeNumber << std::endl;
+               }
+               foundIt = true;
+               break;
+            }
+         }
+         if (foundIt) {
+            break;
+         }
+      }
+   }
+   
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Splenium End Node Number: " << ccSpleniumEndNodeNumber << std::endl;
+   }
+   
+   if (nodeNumbersForDorsalMedialWallBorder.empty()) {
+      throw BrainModelAlgorithmException("Dorsal Medial Wall: "
+            " no nodes were found along dorsal region of corpus callosum");
+   }
+   
+   //
+   // Create an ROI of all nodes
    //
    BrainModelSurfaceROINodeSelection allNodesRoi(brainSet);
    allNodesRoi.selectAllNodes(fiducialSurface);
-   drawBorderGeodesic(veryInflatedSurface,
-                      &allNodesRoi,
-                      landmarkMedialWallStartToGenuBeginningBorderName,
-                      medialWallStartNodeNumber,
-                      ccGenuBeginningNodeNumber,
-                      3.0);
-
-   //
-   // Create border from genu beginning to anterior node
-   //
-   allNodesRoi.selectAllNodes(fiducialSurface);
-   drawBorderGeodesic(veryInflatedSurface,
-                      &allNodesRoi,
-                      landmarkMedialWallGenuBeginningToAnteriorCCBorderName,
-                      ccGenuBeginningNodeNumber,
-                      ccAnteriorNodeNumber,
-                      3.0);
-
-
-   //
-   // Draw border from anterior to dorsal in dorsal CC ROI
-   //
-   drawBorderMetric(fiducialSurface,
-                    BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_NEGATIVE,
-                    curvatureShapeFile,
-                    curvatureFiducialSmoothedMeanColumnNumber,
-                    landmarkMedialWallAnteriorToDorsalCCBorderName,
-                    ccAnteriorNodeNumber,
-                    ccDorsalNodeNumber,
-                    2.0,
-                    &corpusCallosumDorsalRoi);
-
-   //
-   // Draw border from dorsal to posterior in dorsal CC ROI
-   //
-   drawBorderMetric(fiducialSurface,
-                    BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_NEGATIVE,
-                    curvatureShapeFile,
-                    curvatureFiducialSmoothedMeanColumnNumber,
-                    landmarkMedialWallDorsalToPosteriorCCBorderName,
-                    ccDorsalNodeNumber,
-                    ccPosteriorNodeNumber,
-                    2.0,
-                    &corpusCallosumDorsalRoi);
-
-
-   BorderProjection medWallDorsal(medialWallDorsalSectionName);
-   medWallDorsal.append(
-       *borderProjectionFile->getFirstBorderProjectionByName(
-          landmarkMedialWallStartToGenuBeginningBorderName));
-   medWallDorsal.append(
-       *borderProjectionFile->getFirstBorderProjectionByName(
-          landmarkMedialWallGenuBeginningToAnteriorCCBorderName));
-   medWallDorsal.append(
-       *borderProjectionFile->getFirstBorderProjectionByName(
-          landmarkMedialWallAnteriorToDorsalCCBorderName));
-   medWallDorsal.append(
-       *borderProjectionFile->getFirstBorderProjectionByName(
-          landmarkMedialWallDorsalToPosteriorCCBorderName));
-   borderProjectionFile->addBorderProjection(medWallDorsal);
-          
-   //
-   // Remove segments
-   // 
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallStartToGenuBeginningBorderName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallGenuBeginningToAnteriorCCBorderName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallAnteriorToDorsalCCBorderName);
-   borderProjectionFile->removeBordersWithName(landmarkMedialWallDorsalToPosteriorCCBorderName);
    
    //
-   // Remove any loops in the medial wall
+   // Draw a border connecting all of the nodes along the dorsal
+   // region of the corpus callosum
    //
-   removeLoopsFromBorder(veryInflatedSurface,
+   int junki = nodeNumbersForDorsalMedialWallBorder[genuFocusIndex], maxIter = 5;
+   bool first = true, changed;
+   Border border(medialWallDorsalSectionName), newSegment;
+   int numToDraw;
+   BorderProjectionFile bpf;
+   do {
+      changed = false;
+      if (!first)
+      {
+         //cout << "adjusting foci for spike removal" << endl;
+         //borderProjectionFile->removeBorderProjection(borderProjectionFile->getNumberOfBorderProjections() - 1);
+      }//instead, don't add until finished
+      first = false;
+      /*drawBorderTargetedGeodesic(fiducialSurface,
+                         &allNodesRoi,
                          medialWallDorsalSectionName,
-                         'X');
-
-   //
-   // Resample border
-   //
-   resampleBorder(fiducialSurface,
-                  medialWallDorsalSectionName,
-                  2.0);
+                         nodeNumbersForDorsalMedialWallBorder,
+                         2.0f,
+                         target,
+                         targetweight);*/ //do this manually so each segment can have specialized weights and target points
+      numToDraw = static_cast<int>(nodeNumbersForDorsalMedialWallBorder.size()) - 1;
+      border.clearLinks();
+      for (i = 0; i < numToDraw; i++) {
+         float target[3] = {130.0, -10.0, -10.0};//effectively, lateral
+         float targetweight = 1.2f;//the ratio of step cost change for 1 millimeter farther from the target point
+         if (i == genuFocusIndex)
+         {
+            targetweight = 1.03f;//compensate for missing structure between CC and singulate
+            target[0] = 90.0f;//mostly geodesic, but look for a groove thats angled more forward and upward
+            target[1] = -20.0f;
+            target[2] = -30.0f;
+         }
+         if (i == medialWallStartFocusIndex)
+         {
+            targetweight = 1.05f;//use closer to geodesic method, there is not always a ridge to follow
+         }
+         if (leftHemisphereFlag)
+         {
+            target[0] *= -1.0;
+         }
+         newSegment = drawHeuristic(fiducialSurface, &allNodesRoi, nodeNumbersForDorsalMedialWallBorder[i], nodeNumbersForDorsalMedialWallBorder[i + 1], target, targetweight);
+         if (newSegment.getNumberOfLinks() <= 0) {
+            throw BrainModelAlgorithmException("Geodesic heuristic drawing of border named \""
+                                               + medialWallDorsalSectionName
+                                               + "\" segment "
+                                               + QString::number(i)
+                                               + " failed.");
+         }
+   
+         //
+         // Project the border and add to border projection file
+         //
+         border.appendBorder(newSegment);
+      }
+      int dummyUnused;
+      border.resampleBorderToDensity(2.0f,
+                                     2,
+                                     dummyUnused);
+      //
+      // Project the border and add to border projection file
+      //
+      BorderFile borderFile;
+      borderFile.addBorder(border);
+      BorderFileProjector projector(fiducialSurface, true);
+      bpf.clear();
+      projector.projectBorderFile(&borderFile,
+                                  &bpf,
+                                  NULL);
+      if (--maxIter < 1) break;
+      // look for spikes at foci and fix them
+      BorderProjection* myborder = bpf.getBorderProjection(0);
+      int mylinks = myborder->getNumberOfLinks();
+      float fociloc[3], nextloc[3], prevloc[3], vec1[3], vec2[3], mag1 = 0.0f, mag2 = 0.0f;
+      float minDist;
+      int whichLink, whichFocus = -1;
+      for (std::vector<int>::iterator myiter = nodeNumbersForDorsalMedialWallBorder.begin(); myiter != nodeNumbersForDorsalMedialWallBorder.end(); ++myiter)
+      {
+         ++whichFocus;//the iterator keeps me from needing to use the obscenely long nodeNumbersForDorsalMedialWallBorder variable
+         float spikeweight = 0.9f;//in case we want to change it for different foci
+         minDist = -1.0f;
+         whichLink = -1;
+         for (i = 0; i < mylinks; ++i)
+         {//search in the border as geodesic border draw may smooth effects, so vectors between foci don't tell us much
+            myborder->getBorderProjectionLink(i)->unprojectLink(inputFiducialSurface->getCoordinateFile(), fociloc);
+            inputFiducialSurface->getCoordinateFile()->getCoordinate(*myiter, vec1);
+            mag1 = 0.0f;
+            for (j = 0; j < 3; ++j)
+            {
+               mag2 = fociloc[j] - vec1[j];
+               mag1 += mag2 * mag2;
+            }
+            if (minDist < 0.0f || mag1 < minDist)
+            {
+               minDist = mag1;
+               whichLink = i;
+            }
+         }
+         if (whichLink > 0 && whichLink < mylinks - 1)
+         {//dont touch the endpoints, theres no information on the other side to tell us about them
+            myborder->getBorderProjectionLink(whichLink)->unprojectLink(inputFiducialSurface->getCoordinateFile(), fociloc);
+            myborder->getBorderProjectionLink(whichLink - 1)->unprojectLink(inputFiducialSurface->getCoordinateFile(), prevloc);
+            myborder->getBorderProjectionLink(whichLink + 1)->unprojectLink(inputFiducialSurface->getCoordinateFile(), nextloc);
+            mag1 = 0.0f;
+            mag2 = 0.0f;
+            for (k = 0; k < 3; ++k)
+            {
+               vec1[k] = prevloc[k] - fociloc[k];
+               vec2[k] = fociloc[k] - nextloc[k];
+               mag1 += vec1[k] * vec1[k];
+               mag2 += vec2[k] * vec2[k];
+            }
+            //cout << mag1 << ", " << mag2 << endl;
+            mag1 = sqrtf(mag1);
+            mag2 = sqrtf(mag2);
+            if (mag1 > 0.0f && mag2 > 0.0f)
+            {
+               for (k = 0; k < 3; ++k)
+               {
+                  vec1[k] /= mag1;
+                  vec1[k] -= vec2[k] / mag2;
+                  vec1[k] *= spikeweight * sqrtf(73730.0 / inputFiducialSurface->getCoordinateFile()->getNumberOfCoordinates());//adjust sensitivity based on mesh density
+                  vec2[k] = inputFiducialSurface->getCoordinateFile()->getCoordinate(*myiter)[k];
+                  vec1[k] += inputFiducialSurface->getCoordinateFile()->getCoordinate(*myiter)[k];
+               }
+               junki = inputFiducialSurface->getCoordinateFile()->getCoordinateIndexClosestToPoint(vec1);
+               //cout << "(" << vec2[0] << ", " << vec2[1] << ", " << vec2[2] << ") -> ";
+               //cout << "(" << vec1[0] << ", " << vec1[1] << ", " << vec1[2] << ")" << endl;
+               if (junki != *myiter)
+               {
+                  //cout << "new focus index for focus at " << *myiter << ": " << junki << endl;
+                  *myiter = junki;
+                  changed = true;
+               }
+            }
+         } else {
+            //cout << "endpoint at node " << *myiter << " left alone" << endl;
+         }
+      }
+   } while (changed);
+   borderProjectionFile->append(bpf);//NOW append it so we don't need to keep deleting it
+   const QString name(debugFilesDirectoryName
+                      + "/"
+                      + borderDebugFileName);
+   try {
+      borderProjectionFile->writeFile(name);
+   }
+   catch (FileException&) {
+      std::cout << "WARNING: Unable to write landmark debug border projection file." << std::endl;
+   }
 }
-                     
+
+int
+BrainModelSurfaceBorderLandmarkIdentification::getMostLateralNodeInExtent(
+                          const BrainModelSurface* surface,
+                          const float startXYZ[3],
+                          const float extent[6],
+                          const float maxGeodesicDistance) const
+{
+   const CoordinateFile* cf = surface->getCoordinateFile();
+   const int numCoords = cf->getNumberOfCoordinates();
+   const TopologyHelper* th = surface->getTopologyFile()->getTopologyHelper(false, true, false);
+   float lateralX = -10000.0;
+   if (leftHemisphereFlag) {
+      lateralX = 10000.0;
+   }
+   
+   const int rootNodeNumber = cf->getCoordinateIndexClosestToPoint(startXYZ);
+   GeodesicDistanceFile geoDistFile;
+   geoDistFile.setNumberOfNodesAndColumns(numCoords, 1);
+   BrainModelSurfaceGeodesic geodesic(brainSet,
+                                      fiducialSurface,
+                                      NULL,
+                                      -1,
+                                      "",
+                                      &geoDistFile,
+                                      0,
+                                      "dist",
+                                      rootNodeNumber);
+   geodesic.execute();
+   
+   int mostLateralNode = -1;
+   for (int i = 0; i < numCoords; i++) {
+      if (th->getNodeHasNeighbors(i)) {
+         const float geoDist = geoDistFile.getNodeParentDistance(i, 0);
+         if (geoDist < maxGeodesicDistance) {
+            const float* coord = cf->getCoordinate(i);
+            if ((coord[0] >= extent[0]) &&
+                (coord[0] <= extent[1]) &&
+                (coord[1] >= extent[2]) &&
+                (coord[1] <= extent[3]) &&
+                (coord[2] >= extent[4]) &&
+                (coord[2] <= extent[5])) {
+               if (leftHemisphereFlag) {
+                  if (coord[0] < lateralX) {
+                     mostLateralNode = i;
+                     lateralX = coord[0];
+                  }
+               }
+               else {
+                  if (coord[0] > lateralX) {
+                     mostLateralNode = i;
+                     lateralX = coord[0];
+                  }
+               }
+            }
+         }
+      }
+   }
+   
+   return mostLateralNode;
+}
+
+int
+BrainModelSurfaceBorderLandmarkIdentification::getClosestNodeInExtent(
+                          const BrainModelSurface* surface,
+                          const float startXYZ[3],
+                          const float extent[6],
+                          const float maxGeodesicDistance,
+                          const float target[3]) const
+{
+   const CoordinateFile* cf = surface->getCoordinateFile();
+   const int numCoords = cf->getNumberOfCoordinates();
+   const TopologyHelper* th = surface->getTopologyFile()->getTopologyHelper(false, true, false);
+
+   
+   const int rootNodeNumber = cf->getCoordinateIndexClosestToPoint(startXYZ);
+   GeodesicDistanceFile geoDistFile;
+   geoDistFile.setNumberOfNodesAndColumns(numCoords, 1);
+   BrainModelSurfaceGeodesic geodesic(brainSet,
+                                      fiducialSurface,
+                                      NULL,
+                                      -1,
+                                      "",
+                                      &geoDistFile,
+                                      0,
+                                      "dist",
+                                      rootNodeNumber);
+   geodesic.execute();
+   float currGeoDist = -1.0f;
+   int closestNode = -1;
+   float closestDist = -1.0, deltx, delty, deltz, dist;
+   for (int i = 0; i < numCoords; i++) {
+      if (th->getNodeHasNeighbors(i)) {
+         const float geoDist = geoDistFile.getNodeParentDistance(i, 0);
+         if (geoDist < maxGeodesicDistance || (currGeoDist < 0.0f || (currGeoDist >= maxGeodesicDistance && geoDist < currGeoDist))) {
+            const float* coord = cf->getCoordinate(i);
+            if ((coord[0] >= extent[0]) &&
+                (coord[0] <= extent[1]) &&
+                (coord[1] >= extent[2]) &&
+                (coord[1] <= extent[3]) &&
+                (coord[2] >= extent[4]) &&
+                (coord[2] <= extent[5])) {
+               deltx = coord[0] - target[0];
+               delty = coord[1] - target[1];
+               deltz = coord[2] - target[2];
+               dist = deltx * deltx + delty * delty + deltz * deltz;//actually distance squared, but this saves an unneeded sqrt call
+               if ((currGeoDist < 0.0f || currGeoDist >= maxGeodesicDistance) || closestDist < 0.0 || dist < closestDist) {
+                  currGeoDist = geoDist;
+                  closestNode = i;
+                  closestDist = dist;
+               }
+            }
+         }
+      }
+   }
+   return closestNode;
+}
 
 /**
  * identify the ventral medial wall.
@@ -4620,24 +6000,6 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
          "\"SUL.HF\", the hippocampal fissure paint contains no nodes.");
    }
                               
-/*
- * ccSpleniumLimitNodeNumber NOT DEFINED !!!!  JWH 07/11/2008
-   //
-   // Limit Z-Max to the Z of the splenium limit
-   //
-   const float* ccSpleniumLimitXYZ = 
-      fiducialSurface->getCoordinateFile()->getCoordinate(ccSpleniumLimitNodeNumber);
-   const float hfMaxExtent[6] = {
-      -std::numeric_limits<float>::max(),
-      std::numeric_limits<float>::max(),
-      -std::numeric_limits<float>::max(),
-      std::numeric_limits<float>::max(),
-      -std::numeric_limits<float>::max(),
-      ccSpleniumLimitXYZ[2]
-   };
-   hfRoi.limitExtent(fiducialSurface,
-                     hfMaxExtent);
-*/   
    //
    // Save the HF Roi
    //
@@ -4689,13 +6051,27 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
    //
    // Dorsal and ventral nodes of Hippocampal Fissure
    //
-   const int hfDorsalNodeNumber = maxZNode;
+   int hfDorsalNodeNumber = maxZNode;
    addFocusAtNode(hippocampalDorsalFocusName,
                   hfDorsalNodeNumber);
    const int hfVentralNodeNumber = minZNode;
    addFocusAtNode(hippocampalVentralFocusName,
                   hfVentralNodeNumber);
    
+    //
+    // If the spleium end node is ABOVE the dorsal hippocampal fissure
+    // node, then use the splenium end node as the HF dorsal node.
+    //
+    const float* ccSpleniumEndXYZ = 
+       fiducialSurface->getCoordinateFile()->getCoordinate(ccSpleniumEndNodeNumber);
+    const float* hfDorsalXYZ = 
+       fiducialSurface->getCoordinateFile()->getCoordinate(hfDorsalNodeNumber);
+    if (hfDorsalXYZ[2] > ccSpleniumEndXYZ[2]) {
+       hfDorsalNodeNumber = ccSpleniumEndNodeNumber;
+    }
+    const bool hfDorsalNodeValidFlag = 
+       (hfDorsalNodeNumber != ccSpleniumEndNodeNumber);
+          
    {
       //
       // Move 10mm anterior
@@ -4795,24 +6171,63 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
       //
       // Draw a border connecting the splenium limit node to the dorsal HF node
       //
+      std::vector<int> myNodeNumbers;
+      float target[3];
+      float targetweight;
       const QString seg1Name("seg1Name");
-      drawBorderGeodesic(inflatedSurface,
+      /*drawBorderGeodesic(inflatedSurface,
                          &hfRoi,
                          seg1Name,
                          hfDorsalNodeNumber,
                          hippocampalGyrusMidPointBorderNodeNumber,
-                         3.0);
+                         3.0);*/
+      myNodeNumbers.clear();
+      myNodeNumbers.push_back(hfDorsalNodeNumber);
+      myNodeNumbers.push_back(hippocampalGyrusMidPointBorderNodeNumber);
+      target[0] = 55.0f;
+      target[1] = -75.0f;
+      target[2] = -20.0f;
+      targetweight = 1.15f;
+      if (leftHemisphereFlag)
+      {
+         target[0] *= -1.0f;
+      }
+      drawBorderTargetedGeodesic(fiducialSurface,
+                         &hfRoi,
+                         seg1Name,
+                         myNodeNumbers,
+                         3.0,
+                         target,
+                         targetweight);
                          
       //
       // Draw a border connecting the dorsal HF node to the ventral HF node
       //
       const QString seg2Name("seg2Name");
-      drawBorderGeodesic(inflatedSurface,
+      /*drawBorderGeodesic(inflatedSurface,
                          &hfDeepRoi,
                          seg2Name,
                          hippocampalGyrusMidPointBorderNodeNumber,
                          hippocampalGyrusVentralBorderNodeNumber,
-                         3.0);
+                         3.0);*/
+      myNodeNumbers.clear();
+      myNodeNumbers.push_back(hippocampalGyrusMidPointBorderNodeNumber);
+      myNodeNumbers.push_back(hippocampalGyrusVentralBorderNodeNumber);
+      target[0] = 60.0f;
+      target[1] = -40.0f;
+      target[2] = -40.0f;
+      targetweight = 1.15f;
+      if (leftHemisphereFlag)
+      {
+         target[0] *= -1.0f;
+      }
+      drawBorderTargetedGeodesic(fiducialSurface,
+                         &hfDeepRoi,
+                         seg2Name,
+                         myNodeNumbers,
+                         3.0,
+                         target,
+                         targetweight);
                          
       //
       // Draw a border connecting the ventral HF node to node
@@ -4826,51 +6241,91 @@ BrainModelSurfaceBorderLandmarkIdentification::identifyVentralMedialWall() throw
                             seg3Name,
                             hippocampalGyrusVentralBorderNodeNumber,
                             hfAnteriorNodeNumber,
-                            3.0);
+                            3.0);//use geodesic because its on a convex surface, and the foci are very close together
+         /*myNodeNumbers.clear();
+         myNodeNumbers.push_back(hippocampalGyrusVentralBorderNodeNumber);
+         myNodeNumbers.push_back(hfAnteriorNodeNumber);
+         target[0] = 60.0f;//CHANGE THE TARGET, this is from previous section, no idea if it will work well
+         target[1] = -40.0f;
+         target[2] = -40.0f;
+         targetweight = 1.15f;
+         if (leftHemisphereFlag)
+         {
+            target[0] *= -1.0f;
+         }
+         drawBorderTargetedGeodesic(fiducialSurface,
+                            NULL,
+                            seg3Name,
+                            myNodeNumbers,
+                            3.0,
+                            target,
+                            targetweight);*/
       }
       
       //
       // Draw a border connection HF ventral to Medial Wall Start
       //
       const QString seg4Name("seg4Name");
-      drawBorderGeodesic(inflatedSurface,
+      /*drawBorderGeodesic(inflatedSurface,
                          NULL,
                          seg4Name,
                          hfAnteriorNodeNumber,
                          medialWallStartNodeNumber,
-                         3.0);
+                         3.0);*/ //use targeted method to let the border curve inwards
+      myNodeNumbers.clear();
+      myNodeNumbers.push_back(hfAnteriorNodeNumber);
+      myNodeNumbers.push_back(medialWallStartNodeNumber);
+      target[0] = 50.0f;
+      target[1] = -60.0f;
+      target[2] = 50.0f;
+      targetweight = 1.03f;//don't let it run wild
+      if (leftHemisphereFlag)
+      {
+         target[0] *= -1.0f;
+      }
+      drawBorderTargetedGeodesic(fiducialSurface,
+                         NULL,
+                         seg4Name,
+                         myNodeNumbers,
+                         3.0,
+                         target,
+                         targetweight);
 
        {       
          //
          // Draw a border connecting the splenium limit node to the dorsal HF node
          //
           const QString seg0NameAlternate("seg0NameAlternate");
-          try {
-             drawBorderMetric(inflatedSurface,
-                              BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_NEGATIVE,
-                              curvatureShapeFile,
-                              curvatureFiducialSmoothedMeanColumnNumber,
-                              seg0NameAlternate,
-                              ccPosteriorNodeNumber,
-                              hfDorsalNodeNumber,
-                              3.0);
-          }
-          catch (BrainModelAlgorithmException&) {
-            //
-            // If drawing using metric failed, try geodesic
-            //
-            drawBorderGeodesic(inflatedSurface,
-                               NULL,
-                               seg0NameAlternate,
-                               ccPosteriorNodeNumber,
-                               hfDorsalNodeNumber,
-                               3.0);
+          if (hfDorsalNodeValidFlag) {
+             try {
+                drawBorderMetric(inflatedSurface,
+                                 BrainModelSurfaceROICreateBorderUsingMetricShape::MODE_FOLLOW_MOST_NEGATIVE,
+                                 curvatureShapeFile,
+                                 curvatureFiducialSmoothedMeanColumnNumber,
+                                 seg0NameAlternate,
+                                 ccSpleniumEndNodeNumber,
+                                 hfDorsalNodeNumber,
+                                 3.0);
+             }
+             catch (BrainModelAlgorithmException&) {
+               //
+               // If drawing using metric failed, try geodesic
+               //
+               drawBorderGeodesic(inflatedSurface,
+                                  NULL,
+                                  seg0NameAlternate,
+                                  ccSpleniumEndNodeNumber,
+                                  hfDorsalNodeNumber,
+                                  3.0);
+             }
           }
           
           BorderProjection medialWallVentralBorderProjectionTest(medialWallVentralSectionName);
-          medialWallVentralBorderProjectionTest.append(
-             *borderProjectionFile->getFirstBorderProjectionByName(
-                seg0NameAlternate));
+          if (hfDorsalNodeValidFlag) {
+             medialWallVentralBorderProjectionTest.append(
+                *borderProjectionFile->getFirstBorderProjectionByName(
+                   seg0NameAlternate));
+          }
           medialWallVentralBorderProjectionTest.append(
              *borderProjectionFile->getFirstBorderProjectionByName(
                 seg1Name));
@@ -4978,6 +6433,9 @@ BrainModelSurfaceBorderLandmarkIdentification::getNearbyNodeWithShapeValue(
    if (limitToWithinROI != NULL) {
       roi = *limitToWithinROI;
    }
+   else if (startNodeNumber < 0) {
+      roi.selectAllNodes(surface);
+   }
    else {
       roi.selectNodesWithinGeodesicDistance(
          BrainModelSurfaceROINodeSelection::SELECTION_LOGIC_NORMAL,
@@ -4992,9 +6450,11 @@ BrainModelSurfaceBorderLandmarkIdentification::getNearbyNodeWithShapeValue(
    float maxDistanceSquared = maxDistanceIn * maxDistanceIn;
    
    int nodeNumber = startNodeNumber;
-   float testValue = shapeFile->getValue(startNodeNumber,
-                                               shapeColumnNumber);
-                                    
+   float testValue = 0.0f;
+   if (nodeNumber >= 0) {
+      testValue = shapeFile->getValue(startNodeNumber,
+                                      shapeColumnNumber);
+   }                                 
    
    for (int i = 0; i < numNodes; i++) {
       //
@@ -5004,8 +6464,15 @@ BrainModelSurfaceBorderLandmarkIdentification::getNearbyNodeWithShapeValue(
          //
          // Is node within allowable distance from the starting node number
          //
-         if (cf->getDistanceBetweenCoordinatesSquared(i, startNodeNumber)  
-             < maxDistanceSquared) {
+         bool useIt = false;
+         if (startNodeNumber < 0) {
+            useIt = true;
+         }
+         else if (cf->getDistanceBetweenCoordinatesSquared(i, startNodeNumber)  
+                  < maxDistanceSquared) {
+            useIt = true;
+         }
+         if (useIt) {
             //
             // Is value closer ?
             //

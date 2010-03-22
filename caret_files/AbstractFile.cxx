@@ -43,11 +43,13 @@
 #include <QFile>
 #include <QGLWidget>
 #include <QImageReader>
+#include <SystemUtilities.h>
 
 #define _ABSTRACT_MAIN_
 #include "AbstractFile.h"
 #undef _ABSTRACT_MAIN_
 
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "StringUtilities.h"
@@ -102,14 +104,15 @@
 #include "SectionFile.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
+#include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
 #include "TextFile.h"
 #include "TopographyFile.h"
 #include "TopologyFile.h"
 #include "TransformationMatrixFile.h"
+#include "SureFitVectorFile.h"
 #include "VectorFile.h"
 #include "VocabularyFile.h"
 #include "VolumeFile.h"
@@ -396,7 +399,8 @@ AbstractFile::getFileName(const QString& description) const
          }
          if (useDateInFileName) {
             str << "."
-                << QDateTime::currentDateTime().toString("yyyy-MM-dd").toAscii().constData();
+                << DateAndTime::getDateForNaming().toAscii().constData();
+                //<< QDateTime::currentDateTime().toString("yyyy-MM-dd").toAscii().constData();
          }   
          if (defaultFileNameNumberOfNodes > 0) {
             bool showNumNodes = false;
@@ -1334,7 +1338,7 @@ AbstractFile::readFile(const QString& filenameIn) throw(FileException)
    timeToReadFileInSeconds = static_cast<float>(timer.elapsed()) / 1000.0;
    if (DebugControl::getDebugOn() ||
        DebugControl::getFileReadTimingFlag()) {
-      std::cout << "Time to read " << FileUtilities::basename(getFileName()).toAscii().constData() 
+      std::cout << "Time to read " << getFileName().toAscii().constData() 
                 << " ("
                 << fileSize
                 << " MB) was "
@@ -1490,6 +1494,37 @@ AbstractFile::writeHeaderXML(QDomDocument& doc, QDomElement& rootElement)
    rootElement.appendChild(headerElement);
 }
       
+/**
+ * Write header to XML writer.
+ */
+void
+AbstractFile::writeHeaderXMLWriter(XmlGenericWriter& xmlWriter) throw (FileException)
+{
+   if (this->header.begin() == this->header.end()) {
+      return;
+   }
+
+   xmlWriter.writeStartElement(GiftiCommon::tagMetaData);
+   //
+   // Loop through the header elements
+   //
+   std::map<QString, QString>::iterator iter;
+   for (iter = header.begin(); iter != header.end(); iter++) {
+      //
+      // Get the tag and its value
+      //
+      const QString tag(iter->first);
+      const QString value(iter->second);
+
+      xmlWriter.writeStartElement(GiftiCommon::tagMD);
+      xmlWriter.writeElementCData(GiftiCommon::tagName, tag);
+      xmlWriter.writeElementCData(GiftiCommon::tagValue, value);
+      xmlWriter.writeEndElement();
+   }
+
+   xmlWriter.writeEndElement();
+}
+
 /**
  * Get an XML element's first child and return it as a string.
  */
@@ -2285,7 +2320,7 @@ AbstractFile::writeFileContents(QTextStream& stream, QDataStream& dataStream) th
    stream.setRealNumberNotation(QTextStream::FixedNotation);
    stream.setRealNumberPrecision(textFileDigitsRightOfDecimal);
    if (fileHasHeader) {
-      setHeaderTag(headerTagDate, QDateTime::currentDateTime().toString(Qt::TextDate));
+      setHeaderTag(headerTagDate, QDateTime::currentDateTime().toString(Qt::ISODate));
       switch (fileWriteType) {
          case FILE_FORMAT_ASCII:
             setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueAscii());
@@ -2404,7 +2439,15 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
          break;
    }
 
-   writingQFile = new QFile(getFileName());
+   QTime timer;
+   timer.start();
+
+   writingQFile = new QFile(this->filename);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (writingQFile->exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
    QString errMsg;
    if (writingQFile->open(QFile::WriteOnly)) {
       QTextStream stream(writingQFile);
@@ -2451,6 +2494,41 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
       }
 */
    }
+
+   //
+   // See how long it took to read the file
+   //
+   const float timeToWriteFileInSeconds = static_cast<float>(timer.elapsed()) / 1000.0;
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Time to write " << getFileName().toAscii().constData()
+                << "  was "
+                << timeToWriteFileInSeconds
+                << " seconds." << std::endl;
+   }
+}
+
+/**
+ * Update the file's metadata for Caret6.
+ */
+void
+AbstractFile::updateMetaDataForCaret6()
+{
+   this->removeHeaderTag("encoding");
+   this->removeHeaderTag("pubmed_id");
+   this->setHeaderTag("Caret-Version", CaretVersion::getCaretVersionAsString());
+   this->removeHeaderTag("date");
+   this->setHeaderTag("Date", QDateTime::currentDateTime().toString(Qt::ISODate));
+   this->setHeaderTag("UserName", SystemUtilities::getUserName());
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+AbstractFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   throw FileException(filenameIn
+                       + " cannot be written in Caret6 format at this time.");
 }
 
 /**
@@ -2524,184 +2602,187 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    if (imageExt.isEmpty() == false) {
       af = new ImageFile;
    }
-   else if (ext == SpecFile::getAreaColorFileExtension()) {
+   else if (filename.endsWith(SpecFile::getAreaColorFileExtension())) {
       af = new AreaColorFile;
    }
-   else if (ext == SpecFile::getArealEstimationFileExtension()) {
+   else if (filename.endsWith(SpecFile::getArealEstimationFileExtension())) {
       af = new ArealEstimationFile;
    }
-   else if (ext == SpecFile::getAtlasSpaceFileExtension()) {
+   else if (filename.endsWith(SpecFile::getAtlasSpaceFileExtension())) {
       af = new AtlasSpaceFile;
    }
-   else if (ext == SpecFile::getAtlasSurfaceDirectoryFileExtension()) {
+   else if (filename.endsWith(SpecFile::getAtlasSurfaceDirectoryFileExtension())) {
       af = new AtlasSurfaceDirectoryFile;
    }
-   else if (ext == SpecFile::getBorderFileExtension()) {
+   else if (filename.endsWith(SpecFile::getBorderFileExtension())) {
       af = new BorderFile;
    }
-   else if (ext == SpecFile::getBorderColorFileExtension()) {
+   else if (filename.endsWith(SpecFile::getBorderColorFileExtension())) {
       af = new BorderColorFile;
    }
-   else if (ext == SpecFile::getBorderProjectionFileExtension()) {
+   else if (filename.endsWith(SpecFile::getBorderProjectionFileExtension())) {
       af = new BorderProjectionFile;
    }
-   else if (ext == SpecFile::getBrainVoyagerFileExtension()) {
+   else if (filename.endsWith(SpecFile::getBrainVoyagerFileExtension())) {
       af = new BrainVoyagerFile;
    }
-   else if (ext == SpecFile::getCellFileExtension()) {
+   else if (filename.endsWith(SpecFile::getCellFileExtension())) {
       af = new CellFile;
    }
-   else if (ext == SpecFile::getCellColorFileExtension()) {
+   else if (filename.endsWith(SpecFile::getCellColorFileExtension())) {
       af = new CellColorFile;
    }
-   else if (ext == SpecFile::getCellProjectionFileExtension()) {
+   else if (filename.endsWith(SpecFile::getCellProjectionFileExtension())) {
       af = new CellProjectionFile;
    }
-   else if (ext == SpecFile::getCocomacConnectivityFileExtension()) {
+   else if (filename.endsWith(SpecFile::getCocomacConnectivityFileExtension())) {
       af = new CocomacConnectivityFile;
    }
-   else if (ext == SpecFile::getContourFileExtension()) {
+   else if (filename.endsWith(SpecFile::getContourFileExtension())) {
       af = new ContourFile;
    }
-   else if (ext == SpecFile::getContourCellColorFileExtension()) {
+   else if (filename.endsWith(SpecFile::getContourCellColorFileExtension())) {
       af = new ContourCellColorFile;
    }
-   else if (ext == SpecFile::getContourCellFileExtension()) {
+   else if (filename.endsWith(SpecFile::getContourCellFileExtension())) {
       af = new ContourCellFile;
    }
-   else if (ext == SpecFile::getCoordinateFileExtension()) {
+   else if (filename.endsWith(SpecFile::getCoordinateFileExtension())) {
       af = new CoordinateFile;
    }
-   else if (ext == SpecFile::getCutsFileExtension()) {
+   else if (filename.endsWith(SpecFile::getCutsFileExtension())) {
       af = new CutsFile;
    }
-   else if (ext == SpecFile::getDeformationMapFileExtension()) {
+   else if (filename.endsWith(SpecFile::getDeformationMapFileExtension())) {
       af = new DeformationMapFile;
    }
-   else if (ext == SpecFile::getDeformationFieldFileExtension()) {
+   else if (filename.endsWith(SpecFile::getDeformationFieldFileExtension())) {
       af = new DeformationFieldFile;
    }
-   else if (ext == SpecFile::getFreeSurferAsciiCurvatureFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFreeSurferAsciiCurvatureFileExtension())) {
       af = new FreeSurferCurvatureFile;
       af->setFileReadType(AbstractFile::FILE_FORMAT_ASCII);
    }
-   else if (ext == SpecFile::getFreeSurferBinaryCurvatureFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFreeSurferBinaryCurvatureFileExtension())) {
       af = new FreeSurferCurvatureFile;
       af->setFileReadType(AbstractFile::FILE_FORMAT_BINARY);
    }
-   else if (ext == SpecFile::getFreeSurferAsciiFunctionalFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFreeSurferAsciiFunctionalFileExtension())) {
       af = new FreeSurferFunctionalFile;
       af->setFileReadType(AbstractFile::FILE_FORMAT_ASCII);
    }
-   else if (ext == SpecFile::getFreeSurferBinaryFunctionalFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFreeSurferBinaryFunctionalFileExtension())) {
       af = new FreeSurferFunctionalFile;
       af->setFileReadType(AbstractFile::FILE_FORMAT_BINARY);
    }
-   else if (ext == SpecFile::getFreeSurferLabelFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFreeSurferLabelFileExtension())) {
       af = new FreeSurferLabelFile;
    }
-   else if (ext == SpecFile::getFreeSurferAsciiSurfaceFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFreeSurferAsciiSurfaceFileExtension())) {
       af = new FreeSurferSurfaceFile;
       af->setFileReadType(AbstractFile::FILE_FORMAT_ASCII);
    }
-   else if (ext == SpecFile::getFociFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFociFileExtension())) {
       af = new FociFile;
    }
-   else if (ext == SpecFile::getFociColorFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFociColorFileExtension())) {
       af = new FociColorFile;
    }
-   else if (ext == SpecFile::getFociProjectionFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFociProjectionFileExtension())) {
       af = new FociProjectionFile;
    }
-   else if (ext == SpecFile::getFociSearchFileExtension()) {
+   else if (filename.endsWith(SpecFile::getFociSearchFileExtension())) {
       af = new FociSearchFile;
    }
-   else if (ext == SpecFile::getLatLonFileExtension()) {
+   else if (filename.endsWith(SpecFile::getLatLonFileExtension())) {
       af = new LatLonFile;
    }
-   else if (ext == SpecFile::getMetricFileExtension()) {
+   else if (filename.endsWith(SpecFile::getMetricFileExtension())) {
       af = new MetricFile;
    }
-   else if (ext == SpecFile::getRegionOfInterestFileExtension()) {
+   else if (filename.endsWith(SpecFile::getRegionOfInterestFileExtension())) {
       af = new NodeRegionOfInterestFile;
    }
-   else if (ext == SpecFile::getPaintFileExtension()) {
+   else if (filename.endsWith(SpecFile::getPaintFileExtension())) {
       af = new PaintFile;
    }
-   else if (ext == SpecFile::getPaletteFileExtension()) {
+   else if (filename.endsWith(SpecFile::getPaletteFileExtension())) {
       af = new PaletteFile;
    }
-   else if (ext == SpecFile::getParamsFileExtension()) {
+   else if (filename.endsWith(SpecFile::getParamsFileExtension())) {
       af = new ParamsFile;
    }
-   else if (ext == SpecFile::getPreferencesFileExtension()) {
+   else if (filename.endsWith(SpecFile::getPreferencesFileExtension())) {
       af = new PreferencesFile;
    }
-   else if (ext == SpecFile::getProbabilisticAtlasFileExtension()) {
+   else if (filename.endsWith(SpecFile::getProbabilisticAtlasFileExtension())) {
       af = new ProbabilisticAtlasFile;
    }
-   else if (ext == SpecFile::getRgbPaintFileExtension()) {
+   else if (filename.endsWith(SpecFile::getRgbPaintFileExtension())) {
       af = new RgbPaintFile;
    }
-   else if (ext == SpecFile::getSceneFileExtension()) {
+   else if (filename.endsWith(SpecFile::getSceneFileExtension())) {
       af = new SceneFile;
    }
-   else if (ext == SpecFile::getSectionFileExtension()) {
+   else if (filename.endsWith(SpecFile::getSectionFileExtension())) {
       af = new SectionFile;
    }
-   else if (ext == SpecFile::getSpecFileExtension()) {
+   else if (filename.endsWith(SpecFile::getSpecFileExtension())) {
       af = new SpecFile;
    }
-   else if (ext == SpecFile::getSurfaceShapeFileExtension()) {
+   else if (filename.endsWith(SpecFile::getSurfaceShapeFileExtension())) {
       af = new SurfaceShapeFile;
    }
-   else if (ext == SpecFile::getSurfaceVectorFileExtension()) {
-      af = new SurfaceVectorFile;
-   }
-   else if (ext == SpecFile::getTextFileExtension()) {
+   else if (filename.endsWith(SpecFile::getTextFileExtension())) {
       af = new TextFile;
    }
-   else if (ext == SpecFile::getTopographyFileExtension()) {
+   else if (filename.endsWith(SpecFile::getTopographyFileExtension())) {
       af = new TopographyFile;
    }
-   else if (ext == SpecFile::getTopoFileExtension()) {
+   else if (filename.endsWith(SpecFile::getTopoFileExtension())) {
       af = new TopologyFile;
    }
-   else if (ext == SpecFile::getTransformationMatrixFileExtension()) {
+   else if (filename.endsWith(SpecFile::getTransformationMatrixFileExtension())) {
       af = new TransformationMatrixFile;
    }
-   else if (ext == SpecFile::getAnalyzeVolumeFileExtension()) {
+   else if (filename.endsWith(SpecFile::getAnalyzeVolumeFileExtension())) {
       af = new VolumeFile;
    }
-   else if (ext == SpecFile::getAfniVolumeFileExtension()) {
+   else if (filename.endsWith(SpecFile::getAfniVolumeFileExtension())) {
       af = new VolumeFile;
    }
-   else if (ext == SpecFile::getWustlVolumeFileExtension()) {
+   else if (filename.endsWith(SpecFile::getWustlVolumeFileExtension())) {
       af = new VolumeFile;
    }
-   else if (ext == SpecFile::getNiftiVolumeFileExtension()) {
+   else if (filename.endsWith(SpecFile::getNiftiVolumeFileExtension())) {
       af = new VolumeFile;
    }
-   else if (ext == SpecFile::getVtkModelFileExtension()) {
+   else if (filename.endsWith(SpecFile::getNiftiGzipVolumeFileExtension())) {
+      af = new VolumeFile;
+   }
+   else if (filename.endsWith(SpecFile::getVtkModelFileExtension())) {
       af = new VtkModelFile;
    }
-   else if (ext == SpecFile::getTopoFileExtension()) {
+   else if (filename.endsWith(SpecFile::getTopoFileExtension())) {
       af = new TopologyFile;
    }
-   else if (ext == SpecFile::getGeodesicDistanceFileExtension()) {
+   else if (filename.endsWith(SpecFile::getGeodesicDistanceFileExtension())) {
       af = new GeodesicDistanceFile;
    }
-   else if (ext == SpecFile::getWustlRegionFileExtension()) {
+   else if (filename.endsWith(SpecFile::getWustlRegionFileExtension())) {
       af = new WustlRegionFile;
    }
-   else if (ext == SpecFile::getStudyMetaDataFileExtension()) {
+   else if (filename.endsWith(SpecFile::getStudyMetaDataFileExtension())) {
       af = new StudyMetaDataFile;
    }
-   else if (ext == SpecFile::getVocabularyFileExtension()) {
+   else if (filename.endsWith(SpecFile::getStudyCollectionFileExtension())) {
+      af = new StudyCollectionFile;
+   }
+   else if (filename.endsWith(SpecFile::getVocabularyFileExtension())) {
       af = new VocabularyFile;
    }
-   else if (ext == SpecFile::getVectorFileExtension()) {
-      af = new VectorFile;
+   else if (filename.endsWith(SpecFile::getSureFitVectorFileExtension())) {
+      af = new SureFitVectorFile;
    }
    else if (filename.endsWith(SpecFile::getGiftiCoordinateFileExtension())) {
       af = new CoordinateFile;
@@ -2729,6 +2810,9 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    }
    else if (filename.endsWith(SpecFile::getGiftiTopologyFileExtension())) {
       af = new TopologyFile;
+   }
+   else if (filename.endsWith(SpecFile::getGiftiVectorFileExtension())) {
+      af = new VectorFile;
    }
    else if (ext == SpecFile::getGiftiGenericFileExtension()) {
       af = new GiftiDataArrayFile;
@@ -2961,7 +3045,7 @@ AbstractFile::getAllFileTypeNamesAndExtensions(std::vector<QString>& typeNames,
    ext.append(SpecFile::getSurfaceShapeFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
-   ext.append(SpecFile::getSurfaceVectorFileExtension());
+   ext.append(SpecFile::getGiftiVectorFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
    ext.append(SpecFile::getCocomacConnectivityFileExtension());
@@ -3045,7 +3129,7 @@ AbstractFile::getAllFileTypeNamesAndExtensions(std::vector<QString>& typeNames,
    ext.append(".jpg");
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
-   ext.append(SpecFile::getVectorFileExtension());
+   ext.append(SpecFile::getSureFitVectorFileExtension());
    typeAndExtension.push_back(TypeExt(ext, getFileTypeNameFromFileName(ext)));
    ext = "file";
    ext.append(SpecFile::getGiftiCoordinateFileExtension());
@@ -3188,8 +3272,8 @@ AbstractFile::generateDateAndTimeStamp()
    //
    // In form "03 Jan 2007 13:41:25"
    //
-   const QString s(QDateTime::currentDateTime().toString("dd MMM yyyy hh:mm:ss"));
-   
+   //const QString s(QDateTime::currentDateTime().toString("dd MMM yyyy hh:mm:ss"));
+   const QString s(DateAndTime::getDateAndTimeForNaming());
    return s;
 }
 
