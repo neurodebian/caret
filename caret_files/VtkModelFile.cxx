@@ -763,7 +763,7 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
       //polysVTK->Allocate(size, 25);
       for (int j = 0; j < numTriangles; j++) {
          const int* v = getTriangle(j);
-         polysVTK->InsertNextCell(3, (vtkIdType*)v);
+         polysVTK->InsertNextCell(3, static_cast<vtkIdType*>(v));
       }
    }
    const int numPolys = getNumberOfPolygons();
@@ -773,8 +773,8 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
       }
       for (int j = 0; j < numPolys; j++) {
          const VtkModelObject* vmo = getPolygon(j);
-         polysVTK->InsertNextCell(vmo->getNumberOfItems(),
-                                  (vtkIdType*)vmo->getPointIndex(0));
+         polysVTK->InsertNextCell(static_cast<vtkIdType>(vmo->getNumberOfItems()),
+                                  static_cast<vtkIdType*>(vmo->getPointIndex(0)));
       }
    }
    
@@ -789,7 +789,7 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
       for (int j = 0; j < numLines; j++) {
          const VtkModelObject* vmo = getLine(j);
          const int* pts = vmo->getPointIndex(0);
-         linesVTK->InsertNextCell(vmo->getNumberOfItems(), (vtkIdType*)pts);
+         linesVTK->InsertNextCell(vmo->getNumberOfItems(), static_cast<vtkIdType*>(pts));
       }
    }
    
@@ -801,7 +801,7 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
    if (numVerts > 0) {
       vertsVTK = vtkCellArray::New();
       for (int j = 0; j < numVerts; j++) {
-         vertsVTK->InsertNextCell(1, (vtkIdType*)getVertex(j));
+         vertsVTK->InsertNextCell(1, static_cast<vtkIdType*>(getVertex(j)));
       }
    }
    
