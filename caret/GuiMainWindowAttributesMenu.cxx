@@ -42,6 +42,8 @@ GuiMainWindowAttributesMenu::GuiMainWindowAttributesMenu(GuiMainWindow* parent)
    
    createArealEstimationSubMenu(attributesActions);
    
+   addAction(attributesActions->getConnectivityAction());
+
    createLatLonSubMenu(attributesActions);
    
    createMetricSubMenu(attributesActions);

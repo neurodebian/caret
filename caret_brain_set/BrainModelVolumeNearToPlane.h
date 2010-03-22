@@ -29,7 +29,7 @@
 
 #include "BrainModelAlgorithm.h"
 
-class VectorFile;
+class SureFitVectorFile;
 class VolumeFile;
 
 /// class for volume near to planes calculation
@@ -44,7 +44,7 @@ class BrainModelVolumeNearToPlane : public BrainModelAlgorithm {
       
       /// Constructor
       BrainModelVolumeNearToPlane(BrainSet* bs,
-                                  VectorFile* vecFileIn,
+                                  SureFitVectorFile* vecFileIn,
                                   const float sigmaNIn, 
                                   const float sigmaWIn, 
                                   const float offsetIn, 
@@ -104,7 +104,7 @@ class BrainModelVolumeNearToPlane : public BrainModelAlgorithm {
                          const int absFlag);
                          
       ///
-      VectorFile* vecFile;
+      SureFitVectorFile* vecFile;
       
       ///
       float sigmaN;

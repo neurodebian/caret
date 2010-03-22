@@ -293,6 +293,10 @@ class PaletteFile : public AbstractFile {
       
       /// remove a palette
       void removePalette(const int palNum);
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
 };
 
 #endif // __VE_PALETTE_FILE_H__

@@ -241,7 +241,6 @@ GuiSumsDialog::initializeDialog()
    // Load default hosts
    //
    availableDatabaseHostNames.clear();
-   availableDatabaseHostNames.push_back("http://sumsdb.wustl.edu:8081");
    availableDatabaseHostNames.push_back("http://sumsdb.wustl.edu");
    
    //

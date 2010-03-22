@@ -1274,3 +1274,24 @@ FileUtilities::findTextInFile(const QString& fileName,
    return false;
 }
 
+/**
+ * Remove the old extension if it is present.  Add new extension.
+ */
+QString
+FileUtilities::replaceExtension(const QString fileName,
+                                const QString oldExtension,
+                                const QString newExtension)
+{
+   QString newName = fileName;
+
+   int oldPos = newName.lastIndexOf(oldExtension);
+   if (oldPos >= 0) {
+      newName = newName.left(oldPos);
+   }
+
+   if (newName.endsWith(newExtension) == false) {
+      newName.append(newExtension);
+   }
+   
+   return newName;
+}

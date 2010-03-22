@@ -28,7 +28,7 @@
   Program:   Visualization Toolkit
   Module:    $RCSfile: MathUtilities.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/07/10 14:10:05 $
+  Date:      $Date: 2009/04/09 15:47:56 $
   Version:   $Revision: 1.1.1.1 $
 
   Copyright (c) 1993-2002 Ken Martin, Will Schroeder, Bill Lorensen

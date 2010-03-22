@@ -60,7 +60,13 @@ class GiftiLabelTable {
       
       // assign colors to the labels
       void assignColors(const ColorFile& colorFile);
-      
+
+      // get colors from the labels
+      void addColorsToColorFile(ColorFile& colorFile);
+
+      // Create a label from each of the colors in a color file
+      void createLabelsFromColors(const ColorFile& colorFile);
+
       // clear out the labels
       void clear();
       
@@ -92,7 +98,7 @@ class GiftiLabelTable {
       
       // get a labels color file index
       int getColorFileIndex(const int indx) const;
-      
+
       // get label enabled using its index
       bool getLabelEnabled(const int indx) const;
       
@@ -102,17 +108,72 @@ class GiftiLabelTable {
       
       // set all labels enabled
       void setAllLabelsEnabled(const bool b);
-      
+
+      // get teh color components as floats ranging 0.0 to 1.0
+      void getColorFloat(const int indx,
+                         float& red,
+                         float& green,
+                         float& blue,
+                         float& alpha) const;
+
+      // set the color components from floats ranging 0.0 to 1.0
+      void setColorFloat(const int indx,
+                         float red,
+                         float green,
+                         float blue,
+                         float alpha);
+
+      // get teh color components
+      void getColor(const int indx,
+                    unsigned char& red,
+                    unsigned char& green,
+                    unsigned char& blue,
+                    unsigned char& alpha) const;
+
+      // set the color components
+      void setColor(const int indx,
+                    unsigned char red,
+                    unsigned char green,
+                    unsigned char blue,
+                    unsigned char alpha);
+
       // write the label table
       void writeAsXML(QTextStream& stream,
                       const int indentOffset) const;
-                      
+
+      // write as Caret6 XML
+      void writeAsXML(XmlGenericWriter& xmlWriter) const;
+
       /// write the data into a StringTable
       void writeDataIntoStringTable(StringTable& table) const;
       
       /// read the data from a StringTable
       void readDataFromStringTable(const StringTable& table) throw (FileException);
       
+      /// get the default color components
+      static void getDefaultColor(unsigned char& redOut,
+                                  unsigned char& greenOut,
+                                  unsigned char& blueOut,
+                                  unsigned char& alphaOut) {
+         redOut   = 255;
+         greenOut = 255;
+         blueOut  = 255;
+         alphaOut = 255;
+      }
+
+      /// get the default color components as floats
+      static void getDefaultColorFloat(float& redOut,
+                                       float& greenOut,
+                                       float& blueOut,
+                                       float& alphaOut) {
+         unsigned char r, g, b, a;
+         getDefaultColor(r, g, b, a);
+         redOut   = ((float)r / 255.0);
+         greenOut = ((float)g / 255.0);
+         blueOut  = ((float)b / 255.0);
+         alphaOut = ((float)a / 255.0);
+      }
+
    protected:
       /// class used for storing a label and its corresponding color index
       class LabelData {
@@ -122,8 +183,27 @@ class GiftiLabelTable {
                labelName = labelNameIn;
                colorFileIndex = -1;
                labelEnabled = true;
+               GiftiLabelTable::getDefaultColor(red,
+                                                green,
+                                                blue,
+                                                alpha);
             };
             
+            /// constructor
+            LabelData(const QString& labelNameIn,
+                      const unsigned char redIn,
+                      const unsigned char greenIn,
+                      const unsigned char blueIn,
+                      const unsigned char alphaIn = 255) {
+               labelName = labelNameIn;
+               colorFileIndex = -1;
+               labelEnabled = true;
+               red = redIn;
+               green = greenIn;
+               blue = blueIn;
+               alpha = alphaIn;
+            };
+
             /// destructor
             ~LabelData() { }
             
@@ -145,10 +225,67 @@ class GiftiLabelTable {
             /// get the label is enabled
             bool getLabelEnabled() const { return labelEnabled; }
             
+            /// get the color components
+            void getColor(unsigned char& redOut,
+                          unsigned char& greenOut,
+                          unsigned char& blueOut,
+                          unsigned char& alphaOut) const {
+               redOut   = red;
+               greenOut = green;
+               blueOut  = blue;
+               alphaOut = alpha;
+            }
+
+            /// set the color components
+            void setColor(const unsigned char redIn,
+                          const unsigned char greenIn,
+                          const unsigned char blueIn,
+                          const unsigned char alphaIn) {
+               red   = redIn;
+               green = greenIn;
+               blue  = blueIn;
+               alpha = alphaIn;
+            }
+            
+
+            /// get the color components as floats ranging 0.0 to 1.0
+            void getColorFloat(float& redOut,
+                               float& greenOut,
+                               float& blueOut,
+                               float& alphaOut) const {
+               redOut   = ((float)red / 255.0);
+               greenOut = ((float)green / 255.0);
+               blueOut  = ((float)blue / 255.0);
+               alphaOut = ((float)alpha / 255.0);
+            }
+
+            /// set the color components from floats ranging 0.0 to 1.0
+            void setColorFloat(const float redIn,
+                               const float greenIn,
+                               const float blueIn,
+                               const float alphaIn) {
+               red   = (unsigned char)(redIn * 255.0);
+               green = (unsigned char)(greenIn * 255.0);
+               blue  = (unsigned char)(blueIn * 255.0);
+               alpha = (unsigned char)(alphaIn * 255.0);
+            }
+
          protected:
             /// name of label
             QString labelName;
-         
+
+            /// red component
+            unsigned char red;
+
+            /// green component
+            unsigned char green;
+
+            /// blue component
+            unsigned char blue;
+
+            /// alpha component
+            unsigned char alpha;
+
             /// index in color file
             int colorFileIndex;
             

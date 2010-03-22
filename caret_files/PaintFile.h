@@ -143,7 +143,12 @@ class PaintFile : public GiftiNodeDataFile {
                        const int fromColumnNumber,
                        const int newColumnNumber,
                        const QString& newColumnName = "") throw (FileException);
-                       
+
+      // dilate a paint column
+      void dilateColumn(const TopologyFile* tf,
+                        const int columnNumber,
+                        const int iterations) throw (FileException);
+
       // dilate paint ID "paintIndex" if neighbors paint index >= 0 do only those
       int dilatePaintID(const TopologyFile* tf,
                         const CoordinateFile* cf,
@@ -202,6 +207,9 @@ class PaintFile : public GiftiNodeDataFile {
                                           const QString& filename,
                                           AreaColorFile* cf,
                                           const bool importAllInDirectory) throw (FileException);
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
    protected:
       // import a single free surfer label file

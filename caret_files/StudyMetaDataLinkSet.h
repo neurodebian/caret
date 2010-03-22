@@ -34,6 +34,7 @@
 class QDomDocument;
 class QDomElement;
 class QDomNode;
+class XmlGenericWriter;
 
 /// class for accessing and storing a group of StudyMetaDataLink
 class StudyMetaDataLinkSet {
@@ -81,6 +82,9 @@ class StudyMetaDataLinkSet {
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement) const throw (FileException);
    
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
    protected:
       /// the StudyMetaDataLink
       std::vector<StudyMetaDataLink> links;

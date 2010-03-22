@@ -122,8 +122,8 @@ GuiSmoothingDialog::GuiSmoothingDialog(QWidget* parent,
    //
    // linear smoothing radio button
    //
-   linearSmoothingRadioButton = NULL;
-//   linearSmoothingRadioButton = new QRadioButton("Linear Smoothing");
+//   linearSmoothingRadioButton = NULL;
+   linearSmoothingRadioButton = new QRadioButton("Linear Smoothing");
     
    //
    // Group Box and layout for radio buttons
@@ -574,8 +574,8 @@ GuiSmoothingDialog::doSmoothing()
                      "The surface does not appear to be a sphere\n"
                         "but Project to Sphere is selected.  Continue?",
                      (QMessageBox::Yes | QMessageBox::No),
-                     QMessageBox::Cancel)
-                        == QMessageBox::Cancel) {
+                     QMessageBox::No)
+                        == QMessageBox::No) {
                   return true;
                }
             }
@@ -586,8 +586,8 @@ GuiSmoothingDialog::doSmoothing()
                      "The surface appears to be a sphere but\n"
                      "Project to Sphere is not selected.  Continue?",
                      (QMessageBox::Yes | QMessageBox::No),
-                     QMessageBox::Cancel)
-                        == QMessageBox::Cancel) {
+                     QMessageBox::No)
+                        == QMessageBox::No) {
                   return true;
                }
             }
@@ -613,8 +613,8 @@ GuiSmoothingDialog::doSmoothing()
                      "The surface does not appear to be a flat but\n"
                      "Flat Surface Overlap Smoothing is selected.  Continue?",
                      (QMessageBox::Yes | QMessageBox::No),
-                     QMessageBox::Cancel)
-                        == QMessageBox::Cancel) {
+                     QMessageBox::No)
+                        == QMessageBox::No) {
                   return true;
                }
             }
@@ -680,7 +680,7 @@ GuiSmoothingDialog::doSmoothing()
                   //
                   // Do the landmark constrained smoothing
                   //
-                  bms->landmarkConstrainedSmoothing(strength, iterations, landmarkNodes);
+                  bms->landmarkConstrainedSmoothing(strength, iterations, landmarkNodes, projectToSphereEveryX);
                }
                else {
                   QApplication::restoreOverrideCursor();

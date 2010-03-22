@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QLabel>
@@ -32,15 +33,18 @@
 
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
-#include "DisplaySettingsSurfaceVectors.h"
+#include "DisplaySettingsVectors.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelSelectionComboBox.h"
 #include "GuiFilesModified.h"
 #include "GuiMainWindow.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "GuiShapeOrVectorsFromCoordinateSubtractionDialog.h"
+#include "MathUtilities.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "TopologyFile.h"
+#include "TopologyHelper.h"
+#include "VectorFile.h"
 #include "global_variables.h"
 
 /**
@@ -53,14 +57,11 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::GuiShapeOrVectorsFromCoordinat
 {
    mode = modeIn;
    
-   QString labelString;
    switch (mode) {
       case MODE_SHAPE:
-         labelString = "Surface Shape File Column ";
          setWindowTitle("Create Surface Shape From Surface Difference");
          break;
       case MODE_VECTOR:
-         labelString = "Vector File Column ";
          setWindowTitle("Create Vectors From Surface Subtraction");
          break;
    }
@@ -91,61 +92,46 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::GuiShapeOrVectorsFromCoordinat
                                                          0);
    
    //
-   // vector column combo box
-   //
-   QLabel* columnComboBoxLabel = new QLabel(labelString);
-   switch (mode) {
-      case MODE_SHAPE:
-         columnComboBox = new GuiNodeAttributeColumnSelectionComboBox(
-                                                                GUI_NODE_FILE_TYPE_SURFACE_SHAPE,
-                                                                true,
-                                                                false,
-                                                                false);
-         break;
-      case MODE_VECTOR:
-         columnComboBox = new GuiNodeAttributeColumnSelectionComboBox(
-                                                                GUI_NODE_FILE_TYPE_SURFACE_VECTOR,
-                                                                true,
-                                                                false,
-                                                                false);
-         break;
-   }
-   
-   //
-   // Column name
-   //
-   QLabel* columnLabel = new QLabel("Column Name ");
-   columnNameLineEdit = new QLineEdit;
-   QObject::connect(columnComboBox, SIGNAL(itemNameSelected(const QString&)),
-                    columnNameLineEdit, SLOT(setText(const QString&)));
-
-   //
-   // Column comment
-   //
-   QLabel* columnCommentLabel = new QLabel("Column Comment ");
-   columnCommentLineEdit = new QLineEdit;
-   QObject::connect(columnComboBox, SIGNAL(itemNameSelected(const QString&)),
-                    this, SLOT(slotColumnComment()));
-
-   //
    // Grid for items
    //
    QGridLayout* gridLayout = new QGridLayout;
    dialogLayout->addLayout(gridLayout);
-   gridLayout->addWidget(surfaceALabel, 0, 0);   
-   gridLayout->addWidget(surfaceAComboBox, 0, 1);   
-   gridLayout->addWidget(surfaceBLabel, 1, 0);   
-   gridLayout->addWidget(surfaceBComboBox, 1, 1);   
-   gridLayout->addWidget(columnComboBoxLabel, 2, 0);   
-   gridLayout->addWidget(columnComboBox, 2, 1);   
-   gridLayout->addWidget(columnLabel, 3, 0);   
-   gridLayout->addWidget(columnNameLineEdit, 3, 1);   
-   gridLayout->addWidget(columnCommentLabel, 4, 0);   
-   gridLayout->addWidget(columnCommentLineEdit, 4, 1);   
+   gridLayout->addWidget(surfaceALabel, 0, 0);
+   gridLayout->addWidget(surfaceAComboBox, 0, 1);
+   gridLayout->addWidget(surfaceBLabel, 1, 0);
+   gridLayout->addWidget(surfaceBComboBox, 1, 1);
 
-   columnComboBox->setCurrentIndex(GuiNodeAttributeColumnSelectionComboBox::CURRENT_ITEM_NEW);
-   columnNameLineEdit->setText(columnComboBox->currentText());
-
+   //
+   // vector column combo box
+   //
+   switch (mode) {
+      case MODE_SHAPE:
+          {
+             QLabel* columnLabel = new QLabel("Column Name ");
+             columnNameLineEdit = new QLineEdit;
+             QLabel* columnCommentLabel = new QLabel("Column Comment ");
+             columnCommentLineEdit = new QLineEdit;
+             //
+             // Shape difference mode
+             //
+             QLabel* shapeDiffModeLabel = new QLabel("XYZ Difference");
+             this->shapeDiffModeComboBox = new QComboBox;
+             this->shapeDiffModeComboBox->addItem("Absolute Value",
+                        QVariant((int)MetricFile::COORDINATE_DIFFERENCE_MODE_ABSOLUTE));
+             this->shapeDiffModeComboBox->addItem("Signed",
+                        QVariant((int)MetricFile::COORDINATE_DIFFERENCE_MODE_SIGNED));
+             gridLayout->addWidget(columnLabel, 3, 0);
+             gridLayout->addWidget(columnNameLineEdit, 3, 1);
+             gridLayout->addWidget(columnCommentLabel, 4, 0);
+             gridLayout->addWidget(columnCommentLineEdit, 4, 1);
+             gridLayout->addWidget(shapeDiffModeLabel, 5, 0);
+             gridLayout->addWidget(shapeDiffModeComboBox, 5, 1);
+          }
+         break;
+      case MODE_VECTOR:
+         break;
+   }
+   
    //
    // Dialog buttons
    //
@@ -156,6 +142,15 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::GuiShapeOrVectorsFromCoordinat
                     this, SLOT(accept()));
    QObject::connect(buttonBox, SIGNAL(rejected()),
                     this, SLOT(reject()));
+
+   switch (mode) {
+      case MODE_SHAPE:
+         columnNameLineEdit->setText("Difference");
+         columnCommentLineEdit->setText("");
+         break;
+      case MODE_VECTOR:
+         break;
+   }
 }
 
 /**
@@ -165,34 +160,6 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::~GuiShapeOrVectorsFromCoordina
 {
 }
 
-/**
- * update the column comment.
- */
-void 
-GuiShapeOrVectorsFromCoordinateSubtractionDialog::slotColumnComment()
-{
-   SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
-   SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
-   const int col = columnComboBox->currentIndex();
-   switch (mode) {
-      case MODE_SHAPE:
-         if ((col >= 0) && (col < ssf->getNumberOfColumns())) {
-            columnCommentLineEdit->setText(ssf->getColumnComment(col));
-         }
-         else {
-            columnCommentLineEdit->setText("");
-         }
-         break;
-      case MODE_VECTOR:
-         if ((col >= 0) && (col < svf->getNumberOfColumns())) {
-            columnCommentLineEdit->setText(svf->getColumnComment(col));
-         }
-         else {
-            columnCommentLineEdit->setText("");
-         }
-   }
-}
-      
 /**
  * called when OK or Cancel buttons pressed.
  */
@@ -227,21 +194,30 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::done(int r)
       
       showWaitCursor();
       
-      const int column = columnComboBox->currentIndex();
-      const QString columnName = columnNameLineEdit->text();
-      const QString columnComment = columnCommentLineEdit->text();
-      
       switch (mode) {
          case MODE_SHAPE:
             {
+               const QString columnName = columnNameLineEdit->text();
+               const QString columnComment = columnCommentLineEdit->text();
+
+               int diffIndex = this->shapeDiffModeComboBox->currentIndex();
+               const MetricFile::COORDINATE_DIFFERENCE_MODE diffMode =
+                  (MetricFile::COORDINATE_DIFFERENCE_MODE)
+                  this->shapeDiffModeComboBox->itemData(diffIndex).toInt();
                SurfaceShapeFile* ssf = theMainWindow->getBrainSet()->getSurfaceShapeFile();
                try {
-                  ssf->addColumnOfCoordinateDifference(bmsA->getCoordinateFile(),
-                                       bmsB->getCoordinateFile(),
-                                       bmsA->getTopologyFile(),
-                                       column,
-                                       columnName,
-                                       columnComment);
+                  int diffColNum = ssf->getNumberOfColumns();
+                  ssf->addColumns(4);
+                  ssf->addColumnOfCoordinateDifference(diffMode,
+                                                       bmsA->getCoordinateFile(),
+                                                       bmsB->getCoordinateFile(),
+                                                       bmsA->getTopologyFile(),
+                                                       diffColNum,
+                                                       columnName,
+                                                       columnComment,
+                                                       diffColNum + 1,
+                                                       diffColNum + 2,
+                                                       diffColNum + 3);
                }
                catch (FileException& e) {
                   showNormalCursor();
@@ -256,29 +232,37 @@ GuiShapeOrVectorsFromCoordinateSubtractionDialog::done(int r)
             break;
          case MODE_VECTOR:
             {
-               SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
-               try {
-                  svf->addUpdateColumn(bmsA->getCoordinateFile(),
-                                       bmsB->getCoordinateFile(),
-                                       bmsA->getTopologyFile(),
-                                       column,
-                                       columnName,
-                                       columnComment);
+               VectorFile* vf = new VectorFile();
+               int numNodes = bmsA->getNumberOfNodes();
+               const TopologyHelper* th = bmsA->getTopologyFile()->getTopologyHelper(false, true, false);
+               vf->setNumberOfVectors(numNodes);
+               for (int i = 0; i < numNodes; i++) {
+                  float xyz[3] = { 0.0, 0.0, 0.0 };
+                  float vector[3] = { 0.0, 0.0, 0.0 };
+                  float magnitude = 0.0;
+                  if (th->getNodeHasNeighbors(i)) {
+                     const float* xyzA = bmsA->getCoordinateFile()->getCoordinate(i);
+                     const float* xyzB = bmsB->getCoordinateFile()->getCoordinate(i);
+                     xyz[0] = xyzA[0];
+                     xyz[1] = xyzA[1];
+                     xyz[2] = xyzA[2];
+                     vector[0] = xyzB[0] - xyzA[0];
+                     vector[1] = xyzB[1] - xyzA[1];
+                     vector[2] = xyzB[2] - xyzA[2];
+                     magnitude = MathUtilities::vectorLength(vector);
+                     MathUtilities::normalize(vector);
+                  }
+                  vf->setVectorData(i, xyz, vector, magnitude, i);
                }
-               catch (FileException& e) {
-                  showNormalCursor();
-                  QMessageBox::critical(this, "ERROR", e.whatQString());
-                  return;
-               }
-                              
-               DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
-               if (dssv->getDisplayMode() == DisplaySettingsSurfaceVectors::DISPLAY_MODE_NONE) {
-                  dssv->setDisplayMode(DisplaySettingsSurfaceVectors::DISPLAY_MODE_SPARSE);
+               theMainWindow->getBrainSet()->addVectorFile(vf);
+               DisplaySettingsVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsVectors();
+               if (dssv->getDisplayModeSurface() == DisplaySettingsVectors::DISPLAY_MODE_NONE) {
+                  dssv->setDisplayModeSurface(DisplaySettingsVectors::DISPLAY_MODE_SPARSE);
                }
                dssv->update();
 
                GuiFilesModified fm;
-               fm.setSurfaceVectorModified();
+               fm.setVectorModified();
                theMainWindow->fileModificationUpdate(fm);
             }
       }

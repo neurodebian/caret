@@ -94,6 +94,9 @@ CommandSurfaceRegistrationSpherical::getHelpInformation() const
        + indent9 + "and spherical coordinate file.  The spec files may have zero or one\n"
        + indent9 + "cut topology file and flat coordinate file.\n"
        + indent9 + "\n"
+       + indent9 + "Each of the individual or atlas data files MUST be listed\n"
+       + indent9 + "in the respective individual or atlas spec files.\n"
+       + indent9 + "\n"
        + indent9 + "<options>\n"
        + indent9 + "<deformation-map-file-name-containing-registration-parameters>\n"
        + indent9 + "<individual-spec-file-name>\n"
@@ -212,7 +215,7 @@ CommandSurfaceRegistrationSpherical::executeCommand() throw (BrainModelAlgorithm
    defMapFile.setSourceSphericalCoordFileName(indivSphericalCoordFileName);
    defMapFile.setSourceDeformedFlatCoordFileName(indivFlatCoordFileName);
    defMapFile.setTargetSpecFileName(atlasSpecFileName);
-   defMapFile.setTargetBorderFileName(atlasBorderFileName, DeformationMapFile::BORDER_FILE_PROJECTION);
+   defMapFile.setTargetBorderFileName(0, atlasBorderFileName, DeformationMapFile::BORDER_FILE_PROJECTION);
    defMapFile.setTargetClosedTopoFileName(atlasClosedTopoFileName);
    defMapFile.setTargetCutTopoFileName(atlasCutTopologyFileName);
    defMapFile.setTargetFiducialCoordFileName(atlasFiducialCoordFileName);

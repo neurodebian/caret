@@ -167,8 +167,8 @@ class GuiBorderAttributesDialog : public WuQDialog {
       /// border projection file
       BorderProjectionFile borderProjectionFile;
       
-      /// show variance topography and undertainty
-      bool showVarianceTopographyUncertaintyFlag;
+      /// show topography and undertainty
+      bool showTopographyUncertaintyFlag;
       
 };
 

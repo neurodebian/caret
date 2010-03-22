@@ -351,7 +351,7 @@ BrainModelVolumeSureFitSegmentation::freeVolumeInMemory(VolumeFile* &vf)
  * free a vector file in memory.
  */
 void
-BrainModelVolumeSureFitSegmentation::freeVectorInMemory(VectorFile* &vf)
+BrainModelVolumeSureFitSegmentation::freeVectorInMemory(SureFitVectorFile* &vf)
 {
    if (vf != NULL) {
       delete vf;
@@ -1791,11 +1791,14 @@ BrainModelVolumeSureFitSegmentation::generateDefaultScenes() throw (BrainModelAl
    windowSceneClasses.push_back(viewWindowSceneClass);
 
    QString errorMessage;
+   QString warningMessage;
    brainSet->saveScene(brainSet->getSceneFile(),
                        windowSceneClasses,
                        "Lateral/Medial Views of Landmarks",
                        false,
-                       errorMessage);
+                       errorMessage,
+                       warningMessage);
+   errorMessage.append(warningMessage);
    if (errorMessage.isEmpty() == false) {
       throw BrainModelAlgorithmException(errorMessage);
    }
@@ -2886,14 +2889,23 @@ BrainModelVolumeSureFitSegmentation::disconnectHindBrain() throw (BrainModelAlgo
  * estimate white matter peak if invalid.
  */
 void 
-BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(const VolumeFile& anatomyVolumeFileIn,
+BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(VolumeFile& anatomyVolumeFileIn,
                                         VolumeFile& corpusCallosumVolumeFileOut,
                                         const Structure& structure,
                                         const float grayMatterPeakIn,
-                                        const float whiteMatterPeakIn) throw (BrainModelAlgorithmException)
+                                        const float whiteMatterPeakIn,
+                                        const bool looseMask) throw (BrainModelAlgorithmException)
 {
    float grayMatterPeak  = grayMatterPeakIn;
    float whiteMatterPeak = whiteMatterPeakIn;
+   const float acXYZ[3] = { 0.0, 0.0, 0.0 };
+   float voxMin, voxMax;
+   anatomyVolumeFileIn.getMinMaxVoxelValues(voxMin, voxMax);
+   int dimExtent[6];
+   float coordExtent[6];
+   int i, j, k, count, total;
+   int acIJK[3];
+   bool redo;
    if ((grayMatterPeak <= 0) ||
        (whiteMatterPeak <= 0)) {
       const StatisticHistogram* hist = anatomyVolumeFileIn.getHistogram();
@@ -2912,57 +2924,142 @@ BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(const VolumeFil
       delete hist;
    }
    
-   const float whiteMatterThresh = (grayMatterPeak + whiteMatterPeak) * 0.5;
+   float threshhold = (grayMatterPeak + whiteMatterPeak) * 0.5;
+   do
+   {
+      redo = false;
+      corpusCallosumVolumeFileOut = anatomyVolumeFileIn;
+      corpusCallosumVolumeFileOut.thresholdVolume(threshhold);
    
-   corpusCallosumVolumeFileOut = anatomyVolumeFileIn;
-   corpusCallosumVolumeFileOut.thresholdVolume(whiteMatterThresh);
-
-   const float acXYZ[3] = { 0.0, 0.0, 0.0 };
-   int acIJK[3];
-   corpusCallosumVolumeFileOut.convertCoordinatesToVoxelIJK(acXYZ, acIJK);
+      corpusCallosumVolumeFileOut.convertCoordinatesToVoxelIJK(acXYZ, acIJK);
+      
+      int Hem = 0;
+      if (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
+         Hem = 1;
+      }
+      const int Hem1   = Hem;
+      const int Hem2   = 1 - Hem1;
+      const int HemDbl = 2 * Hem1;
+      const int Hem3   = HemDbl - 1;
+      const int xAC_1 = acIJK[0] + Hem3 * 1;
+      const int xAC_1_low  = xAC_1 * Hem2 + acIJK[0] * Hem1;
+      const int xAC_1_high = xAC_1 * Hem1 + acIJK[0] * Hem2;
+      
+      //MaskVol.py WM.thresh.mnc CC.slice xAC_1_low xAC_1_high `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
+      int extent[6];
+      extent[0] = xAC_1_low;
+      extent[1] = xAC_1_high;
+      extent[2] = acIJK[1] - 50;
+      extent[3] = acIJK[1] + 40;
+      extent[4] = acIJK[2];
+      extent[5] = acIJK[2] + 40;
+      //%MaskVolume (ccdata, xdim, ydim, zdim, extent);
+      //%write_minc ("CC.slice.mnc", ccdata, xdim, ydim, zdim);
+      if (looseMask)
+      {/* allow 711-2* origin to not be exactly on the AC */
+         extent[2] -= 10;
+         extent[3] += 10;
+         extent[4] -= 10;
+         extent[5] += 10;
+      }
+      corpusCallosumVolumeFileOut.maskVolume(extent);
+      corpusCallosumVolumeFileOut.stretchVoxelValues();
    
-   int Hem = 0;
-   if (structure.getType() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
-      Hem = 1;
-   }
-   const int Hem1   = Hem;
-   const int Hem2   = 1 - Hem1;
-   const int HemDbl = 2 * Hem1;
-   const int Hem3   = HemDbl - 1;
-   const int xAC_1 = acIJK[0] + Hem3 * 1;
-   const int xAC_1_low  = xAC_1 * Hem2 + acIJK[0] * Hem1;
-	const int xAC_1_high = xAC_1 * Hem1 + acIJK[0] * Hem2;
+                 
+      //FillBiggestObject.py CC.slice.mnc CC.slice.fill.mnc xAC_1_low xAC_1_high  `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
+      //%FindBiggestObjectWithinMask (ccdata, xdim, ydim, zdim, extent[0],extent[1],extent[2],extent[3],extent[4],extent[5], seed);
+      //%vtkFloodFill (seed, ccdata, 255, 255, 0, xdim, ydim, zdim);
+      //%write_minc ("CorpusCallosumSlice.mnc", ccdata, xdim, ydim, zdim);
    
-	//MaskVol.py WM.thresh.mnc CC.slice xAC_1_low xAC_1_high `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
-   int extent[6];
-	extent[0] = xAC_1_low;
-	extent[1] = xAC_1_high;
-	extent[2] = acIJK[1] - 50;
-	extent[3] = acIJK[1] + 40;
-	extent[4] = acIJK[2];
-	extent[5] = acIJK[2] + 40;
-	//%MaskVolume (ccdata, xdim, ydim, zdim, extent);
-	//%write_minc ("CC.slice.mnc", ccdata, xdim, ydim, zdim);
-   corpusCallosumVolumeFileOut.maskVolume(extent);
-   corpusCallosumVolumeFileOut.stretchVoxelValues();
-
-              
-	//FillBiggestObject.py CC.slice.mnc CC.slice.fill.mnc xAC_1_low xAC_1_high  `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
-	//%FindBiggestObjectWithinMask (ccdata, xdim, ydim, zdim, extent[0],extent[1],extent[2],extent[3],extent[4],extent[5], seed);
-	//%vtkFloodFill (seed, ccdata, 255, 255, 0, xdim, ydim, zdim);
-	//%write_minc ("CorpusCallosumSlice.mnc", ccdata, xdim, ydim, zdim);
-
-   VoxelIJK voxelSeed(0, 0, 0);
-   corpusCallosumVolumeFileOut.findBiggestObjectWithinMask(extent, 255, 255, voxelSeed);
-   if (voxelSeed.getI() < 0) {
-      throw BrainModelAlgorithmException(
-         "findBiggestObjectWithinMask() failed to find biggest object when\n"
-         "trying to create intermediate volume \"CorpusCallosumSlice\".");
-   }
-   corpusCallosumVolumeFileOut.floodFillWithVTK(voxelSeed, 255, 255, 0);
-   corpusCallosumVolumeFileOut.setDescriptiveLabel("CorpusCallosumSlice");   
+      VoxelIJK voxelSeed(0, 0, 0);
+      corpusCallosumVolumeFileOut.findBiggestObjectWithinMask(extent, 255, 255, voxelSeed);
+      if (voxelSeed.getI() < 0) {
+         if (grayMatterPeakIn > 0.0f && whiteMatterPeakIn > 0.0f)
+         {
+            throw BrainModelAlgorithmException(
+               "findBiggestObjectWithinMask() failed to find biggest object when\n"
+               "trying to create intermediate volume \"CorpusCallosumSlice\".");
+         } else {
+            //cout << "threshhold " << threshhold << ": findBiggestObjectWithinMask() failed" << endl;
+            voxMax = threshhold;
+            redo = true;
+         }
+      }
+      if (!redo)
+      {
+         corpusCallosumVolumeFileOut.floodFillWithVTK(voxelSeed, 255, 255, 0);
+         corpusCallosumVolumeFileOut.setDescriptiveLabel("CorpusCallosumSlice");
+         //
+         // Get extent of volume
+         //
+         corpusCallosumVolumeFileOut.getNonZeroVoxelExtent(dimExtent,
+                                                    coordExtent);//doesn't use normal "one-after" array size conventions
+         if (dimExtent[0] == -1)
+         {
+            //cout << "threshhold " << threshhold << ": no nonzero extent found" << endl;
+            voxMax = threshhold;
+            redo = true;
+         }
+      }
+      if (!redo && fabs(coordExtent[3] - coordExtent[2]) < 50.0f)
+      {
+         //cout << "threshhold " << threshhold << ": y coord extent too small" << endl;
+         voxMax = threshhold;
+         redo = true;
+      }
+      if (!redo && fabs((coordExtent[3] - coordExtent[2]) * (coordExtent[5] - coordExtent[4])) > 2900.0f)
+      {
+         //cout << "threshhold " << threshhold << ": yz extent too large" << endl;
+         voxMin = threshhold;
+         redo = true;
+      }
+      if (!redo && fabs(coordExtent[5] - coordExtent[4]) > 45.0f)
+      {//can only be tripped when looseMask is true
+         //cout << "threshhold " << threshhold << ": z coord extent too big" << endl;
+         voxMin = threshhold;
+         redo = true;
+      }
+      if (!redo)
+      {
+         i = (dimExtent[0] + dimExtent[1]) / 2;//only need to look at the middle slice
+         count = 0;
+         total = (dimExtent[3] - dimExtent[2] + 1) * (dimExtent[5] - dimExtent[4] + 1);
+         for (j = dimExtent[2]; j <= dimExtent[3]; ++j)
+         {
+            for (k = dimExtent[4]; k <= dimExtent[5]; ++k)
+            {
+               if (corpusCallosumVolumeFileOut.getVoxel(i, j, k) > 0.0f)
+               {
+                  ++count;
+               }
+            }
+         }
+         //cout << "threshhold " << threshhold << ": " << count << " / " << total;
+         if (count < total * 0.25f)
+         {
+            //cout << ", too few voxels" << endl;
+            voxMax = threshhold;
+            redo = true;
+         } else {
+            if (count > total * 0.55f)
+            {
+               //cout << ", too many voxels" << endl;
+               voxMin = threshhold;
+               redo = true;
+            } else {
+               //cout << ", acceptable" << endl;
+            }
+         }
+      }
+      threshhold = (voxMin + voxMax + threshhold) / 3.0f;//its like bisection search, except it moves slower so it doesnt try crazy values
+      if (redo && voxMax != 0.0f && voxMin / voxMax > 0.98f)
+      {//warning: give up check expects voxels to have minimum of 0
+         //cout << "giving up" << endl;
+         redo = false;
+      }
+   } while (grayMatterPeakIn <= 0 && whiteMatterPeakIn <= 0 && redo);
 }
-                                        
+
 /**
  * cut the corpus callossum.
  */
@@ -3265,7 +3362,7 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
 
 	//%Vector vec("", xdim, ydim, zdim);
 	//%Grad (1, "Intensity.grad", voxdataflat, vec.X, vec.Y, vec.Z, vec.Mag, xdim, ydim, zdim);
-   VectorFile vec(xDim, yDim, zDim);
+   SureFitVectorFile vec(xDim, yDim, zDim);
    BrainModelVolumeGradient* bmvg = new BrainModelVolumeGradient(brainSet,
                                                                  1,
                                                                  true,
@@ -3277,7 +3374,7 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
    delete bmvg;
    bmvg = NULL;
    voxdataflat.stretchVoxelValues();
-   gradIntensityVecFile = new VectorFile(vec);
+   gradIntensityVecFile = new SureFitVectorFile(vec);
    writeDebugVector(vec, "Intensity.grad");
    
 	//2
@@ -3323,10 +3420,10 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
 	//%write_minc ("Grad.ThinWMlevel.mnc", voxdataflat, xdim, ydim, zdim);
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, voxdataflat);
 	//%vec.WriteRaw ("Grad.ThinWMlevel.vec");
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                         &voxdataflat);
    writeDebugVector(vec, "Grad.GWlevel");
-   gradGWlevelVecFile = new VectorFile(vec);
+   gradGWlevelVecFile = new SureFitVectorFile(vec);
    const float thinWMGradPeak = gwDiff / 4.0;
    const float thinWMGradLow  = thinWMGradPeak / 2.0;
    const float thinWMGradHigh = thinWMGradPeak * 2.0;
@@ -3334,10 +3431,10 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
    voxdataflat.classifyIntensities(thinWMGradPeak, thinWMGradLow, thinWMGradHigh, gwGradSignum);
    voxdataflat.stretchVoxelValues();
    writeDebugVolume(voxdataflat, "Grad.ThinWMlevel");
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                         &voxdataflat);
    writeDebugVector(vec, "Grad.ThinWMlevel");
-   gradThinWMlevelVecFile = new VectorFile(vec);
+   gradThinWMlevelVecFile = new SureFitVectorFile(vec);
    
 	//5
 	//%float PiaGradpeak=CGMpeak*2/3;
@@ -3412,7 +3509,7 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
 	//10
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, voxdataflat);
 	//%vec.WriteRaw ("GmgradVec_InITmag.vec");
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                         &voxdataflat);
    writeDebugVector(vec, "GmgradVec_InITmag");
 
@@ -3426,9 +3523,9 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
 	//%	vec.X, vec.Y, vec.Z, vec.Mag, gwvec.X, gwvec.Y, gwvec.Z, gwvec.Mag, maskdata);
 	//Note: Unlike grad, output isn't returned in either vec -- to file only.
 	//%gwvec.Delete();
-   VectorFile gradInTotal(xDim, yDim, zDim);
-   VectorFile::combineVectorFiles(false, 
-                                  VectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,
+   SureFitVectorFile gradInTotal(xDim, yDim, zDim);
+   SureFitVectorFile::combineVectorFiles(false, 
+                                  SureFitVectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,
                                   &vec,
                                   gradGWlevelVecFile,
                                   NULL,
@@ -3673,10 +3770,10 @@ BrainModelVolumeSureFitSegmentation::generateInnerBoundary() throw (BrainModelAl
 	//%vec.WriteRaw ("In.Total_ThinWM.vec");
 	//%vec.Delete();
    vec = *gradIntensityVecFile;
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                                   &voxdataflat);
    writeDebugVector(vec, "In.Total_ThinWM");
-   gradInTotalThinWMVecFile = new VectorFile(vec);
+   gradInTotalThinWMVecFile = new SureFitVectorFile(vec);
 
 	//17
 	//%BlurFil (voxdataflat, xdim, ydim, zdim);
@@ -3753,11 +3850,11 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//%Vector vec("Intensity.grad.vec", xdim, ydim, zdim);
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, voxdataflat);
 	//%vec.WriteRaw ("Grad.PiaLevel.vec");
-   VectorFile vec = *gradIntensityVecFile;
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   SureFitVectorFile vec = *gradIntensityVecFile;
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                                   &voxdataflat);
    writeDebugVector(vec, "Grad.PiaLevel");
-   gradPiaLevelVec = new VectorFile(vec);
+   gradPiaLevelVec = new SureFitVectorFile(vec);
    
 	//4
 	//%unsigned char* soliddata=new unsigned char [num_voxels];
@@ -3813,7 +3910,7 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, outitdata);
 	//%vec.WriteRaw ("InvertGMgradVec_OutITmag.vec");
 	//%delete [] outitdata;	delete [] soliddata;
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                                   &outitdata);
    writeDebugVector(vec, "InvertGMgradVec_OutITmag");
 
@@ -3831,16 +3928,16 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//%for ( i=0 ; i<num_voxels ; i++ ) voxdataflat[i]=(unsigned char)vec.Mag[i];
 	//%write_minc ("Out.GradPialLevel_GMgrad_OutITmag.mnc", voxdataflat, xdim, ydim, zdim);
    voxdataflat.setAllVoxels(0.0);
-   VectorFile piaVec = *gradPiaLevelVec;
-   VectorFile gradPialLevelOutITMag(xDim, yDim, zDim);
-   VectorFile::combineVectorFiles(false,
-                                  VectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,
+   SureFitVectorFile piaVec = *gradPiaLevelVec;
+   SureFitVectorFile gradPialLevelOutITMag(xDim, yDim, zDim);
+   SureFitVectorFile::combineVectorFiles(false,
+                                  SureFitVectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,
                                   &vec,
                                   &piaVec,
                                   &voxdataflat,
                                   &gradPialLevelOutITMag);
    writeDebugVector(gradPialLevelOutITMag, "Out.GradPialLevel_GMgrad_OutITmag");
-   outGradPialLevelGMGradOutITMagVecFile = new VectorFile(gradPialLevelOutITMag);
+   outGradPialLevelGMGradOutITMagVecFile = new SureFitVectorFile(gradPialLevelOutITMag);
    gradPialLevelOutITMag.copyMagnitudeToVolume(&voxdataflat);
    writeDebugVolume(voxdataflat, "Out.GradPialLevel_GMgrad_OutITmag");
 
@@ -3852,7 +3949,7 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, voxdataflat);
 	//%vec.WriteRaw ("Out.GradPialLevel_GMgrad_OutITmag.vec");
    vec = *gradIntensityVecFile;
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                                   &voxdataflat);
    writeDebugVector(vec, "Out.GradPialLevel_GMgrad_OutITmag");
                                   
@@ -3998,7 +4095,7 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
    }
    writeDebugVolume(voxdataflat, "Out.Near2In.sqrt_notThinWM.HCmask");
    vec = *gradIntensityVecFile;
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                                   &voxdataflat);
    writeDebugVector(vec, "Out.Near2In");
            
@@ -4014,10 +4111,10 @@ BrainModelVolumeSureFitSegmentation::generateOuterBoundary() throw (BrainModelAl
 	//Note: Unlike grad, output isn't returned in either vec -- to file only.
 	//%ogpvec.Delete();
    voxdataflat.setAllVoxels(0.0);
-   VectorFile ogpvec = *outGradPialLevelGMGradOutITMagVecFile;
-   VectorFile outTotalVec(xDim, yDim, zDim);
-   VectorFile::combineVectorFiles(false,
-                                  VectorFile::COMBINE_OPERATION_2_VEC_NORMAL,
+   SureFitVectorFile ogpvec = *outGradPialLevelGMGradOutITMagVecFile;
+   SureFitVectorFile outTotalVec(xDim, yDim, zDim);
+   SureFitVectorFile::combineVectorFiles(false,
+                                  SureFitVectorFile::COMBINE_OPERATION_2_VEC_NORMAL,
                                   &ogpvec,
                                   &vec,
                                   &voxdataflat,
@@ -4226,7 +4323,7 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
 	//%for ( i=0 ; i<num_voxels ; i++ ) voxdataflat[i]=(unsigned char)vec.Mag[i];
 	//%write_minc ("InTotal.grad.mnc", voxdataflat, xdim, ydim, zdim);
    voxdataflat = *inTotalVolume;
-   VectorFile vec(xDim, yDim, zDim);
+   SureFitVectorFile vec(xDim, yDim, zDim);
    BrainModelVolumeGradient* bmvg = new BrainModelVolumeGradient(
                                            brainSet,
                                            1,
@@ -4239,7 +4336,7 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
    delete bmvg;
    bmvg = NULL;
    writeDebugVector(vec, "InTotal.grad");
-   VectorFile inTotalGradVector = vec;
+   SureFitVectorFile inTotalGradVector = vec;
    vec.copyMagnitudeToVolume(&voxdataflat);
    writeDebugVolume(voxdataflat, "InTotal.grad");
 
@@ -4282,10 +4379,10 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
 	//%for ( i=0 ; i<num_voxels ; i++ ) voxdataflat[i]=(unsigned char)vec.Mag[i];
 	//%write_minc ("OutInOppositeGrad.mnc", voxdataflat, xdim, ydim, zdim);
    maskdata.setAllVoxels(0.0);
-   VectorFile invec = inTotalGradVector;
-   VectorFile outInOppositeGradVector(xDim, yDim, zDim);
-   VectorFile::combineVectorFiles(false,
-                                  VectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,
+   SureFitVectorFile invec = inTotalGradVector;
+   SureFitVectorFile outInOppositeGradVector(xDim, yDim, zDim);
+   SureFitVectorFile::combineVectorFiles(false,
+                                  SureFitVectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,
                                   &vec,
                                   &invec,
                                   &voxdataflat,
@@ -4301,7 +4398,7 @@ BrainModelVolumeSureFitSegmentation::generateSegmentation() throw (BrainModelAlg
 	//%CombineVectorVolume ("replacemag", xdim, ydim, zdim, vec.X, vec.Y, vec.Z, vec.Mag, voxdataflat);
 	//%vec.WriteRaw ("OutInOppositeGrad_In.vec");
    vec = *gradIntensityVecFile;
-   vec.combineWithVolumeOperation(VectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
+   vec.combineWithVolumeOperation(SureFitVectorFile::COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
                                   &voxdataflat);
    writeDebugVector(vec, "OutInOppositeGrad_In");
    
@@ -4740,7 +4837,7 @@ BrainModelVolumeSureFitSegmentation::fillVentricles() throw (BrainModelAlgorithm
  * write the vector file for debugging.
  */
 void 
-BrainModelVolumeSureFitSegmentation::writeDebugVector(VectorFile& vf, 
+BrainModelVolumeSureFitSegmentation::writeDebugVector(SureFitVectorFile& vf, 
                               const QString& nameIn) throw (BrainModelAlgorithmException)
 {
    if (DebugControl::getDebugOn()) {
@@ -4752,7 +4849,7 @@ BrainModelVolumeSureFitSegmentation::writeDebugVector(VectorFile& vf,
             name.append("/");
          }
          name.append(nameIn);
-         name.append(SpecFile::getVectorFileExtension());
+         name.append(SpecFile::getSureFitVectorFileExtension());
          vf.writeFile(name);
          std::cout << "Write Debug Vector File: " << name.toAscii().constData() << std::endl;
       }

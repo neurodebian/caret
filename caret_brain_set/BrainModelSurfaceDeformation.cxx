@@ -40,6 +40,7 @@
 #include "BrainModelSurfaceDeformDataFile.h"
 #include "BrainModelSurfacePointProjector.h"
 #include "BrainSet.h"
+#include "DebugControl.h"
 #include "DeformationFieldFile.h"
 #include "DeformationMapFile.h"
 #include "FileUtilities.h"
@@ -65,6 +66,8 @@ BrainModelSurfaceDeformation::BrainModelSurfaceDeformation(BrainSet* brainSetIn,
    deformSourceSphericalCoordFiles = true;
    deformSourceFlatCoordFiles = true;
    //deformSourceFlatLobarCoordFiles = true;
+   defaultViewValid = false;
+   deformDataFilesFlag = true;
 }
 
 /**
@@ -79,6 +82,46 @@ BrainModelSurfaceDeformation::~BrainModelSurfaceDeformation()
    if (targetBrainSet != NULL) {
       delete targetBrainSet;
       targetBrainSet = NULL;
+   }
+}
+
+/**
+ * set the surface that has viewing transformations that should be used.
+ */
+void BrainModelSurfaceDeformation::setsurfaceWithViewingTransformations(BrainModelSurface* bms) {
+   this->defaultViewValid = false;
+   if (bms != NULL) {
+      this->defaultViewValid = true;
+      bms->getTranslation(0, this->defaultViewTranslation);
+      bms->getScaling(0, this->defaultViewScaling);
+      bms->getRotationMatrix(0, this->defaultViewRotation);
+   }
+}
+
+/**
+ * update the viewing transformation for surface.
+ */
+void
+BrainModelSurfaceDeformation::updateViewingTransformation(BrainModelSurface* bms)
+{
+   if (defaultViewValid) {
+      bms->setTranslation(0, this->defaultViewTranslation);
+      bms->setScaling(0, this->defaultViewScaling);
+      bms->setRotationMatrix(0, this->defaultViewRotation);
+   }
+}
+
+/**
+ * update the viewing transformation for surfaces in brain set.
+ */
+void
+BrainModelSurfaceDeformation::updateViewingTransformation(BrainSet* bs)
+{
+   for (int i = 0; i < bs->getNumberOfBrainModels(); i++) {
+      BrainModelSurface* bms = bs->getBrainModelSurface(i);
+      if (bms != NULL) {
+         this->updateViewingTransformation(bms);
+      }
    }
 }
 
@@ -162,6 +205,8 @@ BrainModelSurfaceDeformation::readSourceBrainSet() throw (BrainModelAlgorithmExc
          }
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          switch (borderType) {
             case DeformationMapFile::BORDER_FILE_UNKNOWN:
                throw BrainModelAlgorithmException("Source border file is of unknown type.");
@@ -208,6 +253,8 @@ BrainModelSurfaceDeformation::readSourceBrainSet() throw (BrainModelAlgorithmExc
          }
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          sourceSurface = 
             sourceBrainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
             sourceBorderFile = 
@@ -224,6 +271,9 @@ BrainModelSurfaceDeformation::readSourceBrainSet() throw (BrainModelAlgorithmExc
    }
    if (sourceBorderFile == NULL) {
       throw BrainModelAlgorithmException("Unable to find source border file.");
+   }
+   else if (sourceBorderFile->getNumberOfBorders() <= 0) {
+      throw BrainModelAlgorithmException("Source border file (" + borderName + ") contains no borders, was not found, or is not in the spec file.");
    }
 }
 
@@ -287,7 +337,7 @@ BrainModelSurfaceDeformation::checkSphericalBorder(const BrainModelSurface* bms,
  * Read in the target spec file and create a BrainSet for it.
  */
 void
-BrainModelSurfaceDeformation::readTargetBrainSet() throw (BrainModelAlgorithmException)
+BrainModelSurfaceDeformation::readTargetBrainSet(int stageIndex) throw (BrainModelAlgorithmException)
 {
    //
    // Get the target spec file name.
@@ -305,7 +355,7 @@ BrainModelSurfaceDeformation::readTargetBrainSet() throw (BrainModelAlgorithmExc
    SpecFile sf;
    QString borderName;
    DeformationMapFile::BORDER_FILE_TYPE borderType;
-   deformationMapFile->getTargetBorderFileName(borderName, borderType);
+   deformationMapFile->getTargetBorderFileName(stageIndex, borderName, borderType);
    try {
       sf.readFile(specFileName);
    }
@@ -363,6 +413,8 @@ BrainModelSurfaceDeformation::readTargetBrainSet() throw (BrainModelAlgorithmExc
          }
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          switch (borderType) {
             case DeformationMapFile::BORDER_FILE_UNKNOWN:
                throw BrainModelAlgorithmException("Target border file is of unknown type.");
@@ -409,6 +461,8 @@ BrainModelSurfaceDeformation::readTargetBrainSet() throw (BrainModelAlgorithmExc
          }
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          targetSurface = 
             targetBrainSet->getBrainModelSurfaceOfType(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
             targetBorderFile = 
@@ -425,6 +479,9 @@ BrainModelSurfaceDeformation::readTargetBrainSet() throw (BrainModelAlgorithmExc
    }
    if (targetBorderFile == NULL) {
       throw BrainModelAlgorithmException("Unable to find target border file.");
+   }
+   else if (targetBorderFile->getNumberOfBorders() <= 0) {
+      throw BrainModelAlgorithmException("Target border file (" + borderName + ") contains no borders, was not found, or is not in the spec file.");
    }
 }
 
@@ -494,7 +551,9 @@ BrainModelSurfaceDeformation::projectBorderFile(BrainSet* theBrainSet,
  * Resample border files as needed.
  */
 void
-BrainModelSurfaceDeformation::resampleBorderFiles() throw (BrainModelAlgorithmException)
+BrainModelSurfaceDeformation::resampleBorderFiles(const int stageNumber,
+                                                  const int cycleNumber,
+                                                  float sphericalRadius) throw (BrainModelAlgorithmException)
 {
    //
    // Make sure source and target border files have same number of borders
@@ -597,13 +656,16 @@ BrainModelSurfaceDeformation::resampleBorderFiles() throw (BrainModelAlgorithmEx
    //
    // If source and target hemispheres are different, flip X coord of source border file
    //
-   if (sourceBrainSet->getStructure() != targetBrainSet->getStructure()) {
-      if (sourceBorderFlippedForDifferentHemispheres == false) {
-         sourceBorderFlippedForDifferentHemispheres = true;
-         TransformationMatrix tm;
-         tm.scale(-1.0, 1.0, 1.0);
-         sourceBorderFile->applyTransformationMatrix(tm);
-      }
+   if (stageNumber <= 1) {
+       if (sourceBrainSet->getStructure() != targetBrainSet->getStructure()) {
+          if (sourceBorderFlippedForDifferentHemispheres == false) {
+             sourceBorderFlippedForDifferentHemispheres = true;
+             TransformationMatrix tm;
+             tm.scale(-1.0, 1.0, 1.0);
+             sourceBorderFile->applyTransformationMatrix(tm);
+             std::cout << "Src/Tgt Different Hemispheres" << std::endl;
+          }
+       }
    }
 
    //
@@ -617,18 +679,42 @@ BrainModelSurfaceDeformation::resampleBorderFiles() throw (BrainModelAlgorithmEx
                                         "FLAT");
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          targetBorderFile->setHeaderTag(AbstractFile::headerTagConfigurationID,
                                         "SPHERICAL");
          sourceBorderFile->setHeaderTag(AbstractFile::headerTagConfigurationID,
                                         "SPHERICAL");
          break;
    }
-                                  
+
+   //
+   // Apply spherical radius
+   //
+   if (sphericalRadius > 0.0) {
+      sourceBorderFile->setSphericalBorderRadius(sphericalRadius);
+      targetBorderFile->setSphericalBorderRadius(sphericalRadius);
+   }
+
    //
    // Save the resampled source and target border files
    //
-   sourceBorderResampledName = "source_after_resample.border";
-   targetBorderResampledName = "target_after_resample.border";
+   sourceBorderResampledName = "source_after_resample_";
+   if (stageNumber >= 0) {
+      sourceBorderResampledName += ("stage_" + QString::number(stageNumber));
+   }
+   if (cycleNumber >= 0) {
+      sourceBorderResampledName += ("_cycle_" + QString::number(cycleNumber));
+   }
+   sourceBorderResampledName += ".border";
+   targetBorderResampledName = "target_after_resample_";
+   if (stageNumber >= 0) {
+      targetBorderResampledName += ("stage_" + QString::number(stageNumber));
+   }
+   if (cycleNumber >= 0) {
+      targetBorderResampledName += ("_cycle_" + QString::number(cycleNumber));
+   }
+   targetBorderResampledName += ".border";
    sourceBorderFile->writeFile(sourceBorderResampledName);
    targetBorderFile->writeFile(targetBorderResampledName);
    intermediateFiles.push_back(sourceBorderResampledName);
@@ -648,14 +734,21 @@ BrainModelSurfaceDeformation::createOutputSpecAndDeformationFileNames()
          deformationMapFile->getDeformedFileNamePrefix(),
          deformationMapFile->getNumberOfNodes(),
          false);
-   
-   sourceToTargetDeformationMapFileName = 
-      BrainModelSurfaceDeformDataFile::createDeformedFileName(
-         deformationMapFile->getSourceSpecFileName(),
-         deformationMapFile->getTargetSpecFileName(),
-         deformationMapFile->getDeformedFileNamePrefix(),
-         deformationMapFile->getNumberOfNodes(),
-         true);
+
+   if (sourceToTargetDeformationMapFileName.isEmpty()) {
+      sourceToTargetDeformationMapFileName =
+              BrainModelSurfaceDeformDataFile::createDeformedSpecFileName(
+                 deformationMapFile->getDeformedFileNamePrefix(),
+                 deformationMapFile->getSourceSpecFileName(),
+                 deformationMapFile->getTargetSpecFileName());
+       //sourceToTargetDeformationMapFileName =
+       //   BrainModelSurfaceDeformDataFile::createDeformedFileName(
+       //      deformationMapFile->getSourceSpecFileName(),
+       //      deformationMapFile->getTargetSpecFileName(),
+       //      deformationMapFile->getDeformedFileNamePrefix(),
+       //      deformationMapFile->getNumberOfNodes(),
+       //      true);
+   }
    
    targetToSourceSpecFileName = 
       BrainModelSurfaceDeformDataFile::createDeformedFileName(
@@ -665,16 +758,34 @@ BrainModelSurfaceDeformation::createOutputSpecAndDeformationFileNames()
          deformationMapFile->getNumberOfNodes(),
          false);
 
-   
-   targetToSourceDeformationMapFileName = 
-      BrainModelSurfaceDeformDataFile::createDeformedFileName(
-         deformationMapFile->getTargetSpecFileName(),
-         deformationMapFile->getSourceSpecFileName(),
-         deformationMapFile->getDeformedFileNamePrefix(),
-         deformationMapFile->getNumberOfNodes(),
-         true);
+   if (targetToSourceDeformationMapFileName.isEmpty()) {
+      targetToSourceDeformationMapFileName =
+              BrainModelSurfaceDeformDataFile::createDeformedSpecFileName(
+                 deformationMapFile->getDeformedFileNamePrefix(),
+                 deformationMapFile->getTargetSpecFileName(),
+                 deformationMapFile->getSourceSpecFileName());
 
+       //targetToSourceDeformationMapFileName =
+       //   BrainModelSurfaceDeformDataFile::createDeformedFileName(
+       //      deformationMapFile->getTargetSpecFileName(),
+       //      deformationMapFile->getSourceSpecFileName(),
+       //      deformationMapFile->getDeformedFileNamePrefix(),
+       //      deformationMapFile->getNumberOfNodes(),
+       //      true);
+   }
 }      
+
+/**
+ * set the deforomation map file names (overrides defaults).
+ */
+void
+BrainModelSurfaceDeformation::setDeformationMapFileNames(
+                              const QString& indivToAtlasDefMapFileName,
+                              const QString& atlasToIndivDefMapFileName)
+{
+   sourceToTargetDeformationMapFileName = indivToAtlasDefMapFileName;
+   targetToSourceDeformationMapFileName = atlasToIndivDefMapFileName;
+}
 
 /**
  * Create the deformation that maps target surface nodes into the deformed source surface.
@@ -689,9 +800,14 @@ BrainModelSurfaceDeformation::createNodeDeformation(const BrainModelSurface* the
    //
    BrainModelSurfacePointProjector::SURFACE_TYPE_HINT surfaceTypeHint = 
       BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_FLAT;
-   if (deformationMapFile->getFlatOrSphereSelection() == 
-       DeformationMapFile::DEFORMATION_TYPE_SPHERE) {
-      surfaceTypeHint = BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_SPHERE;
+   switch (deformationMapFile->getFlatOrSphereSelection()) {
+      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         surfaceTypeHint = BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_SPHERE;
+         break;
    }
    BrainModelSurfacePointProjector bspp(theSourceSurfaceDeformed,
                                         surfaceTypeHint,
@@ -702,10 +818,15 @@ BrainModelSurfaceDeformation::createNodeDeformation(const BrainModelSurface* the
    //
    float deformedRadius = 1.0;
    bool sphericalDeformationFlag = false;
-   if (deformationMapFile->getFlatOrSphereSelection() == 
-       DeformationMapFile::DEFORMATION_TYPE_SPHERE) {
-      sphericalDeformationFlag = true;
-      deformedRadius = theSourceSurfaceDeformed->getSphericalSurfaceRadius();
+   switch (deformationMapFile->getFlatOrSphereSelection()) {
+      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         sphericalDeformationFlag = true;
+         deformedRadius = theSourceSurfaceDeformed->getSphericalSurfaceRadius();
+         break;
    }
    
    //
@@ -1011,8 +1132,10 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
    const bool linkBorderColorFiles = (sf.flatBorderFile.files.size() > 0) ||
                                      (sf.sphericalBorderFile.files.size() > 0) ||
                                      (sf.borderProjectionFile.files.size() > 0);
-   const bool linkCellColorFiles = (sf.cellFile.files.size() > 0);
-   const bool linkFociColorFiles = (sf.fociFile.files.size() > 0);
+   const bool linkCellColorFiles = ((sf.cellFile.files.size() > 0) ||
+                                    (sf.cellProjectionFile.files.size() > 0));
+   const bool linkFociColorFiles = ((sf.fociFile.files.size() > 0) ||
+                                    (sf.fociProjectionFile.files.size() > 0));
    
    //
    // link the needed color files
@@ -1032,6 +1155,8 @@ BrainModelSurfaceDeformation::deformDataFiles(BrainSet* sourceBrain,
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          doCoordFiles = true;
          break;
    }
@@ -1186,12 +1311,12 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
       //
       // Read the target data files in
       //
-      readTargetBrainSet();
+      readTargetBrainSet(0);
       
       //
       // Resample border files as needed so that they match.
       //
-      resampleBorderFiles();
+      resampleBorderFiles(-1, -1, -1.0);
       
       //
       // Create the spec and deformation map file names 
@@ -1231,14 +1356,6 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
       //
       deformationMapFile->appendSoftwareVersionToFileComment("Deformed with");
       
-   /*
-      if (deformationMapFile->getFlatOrSphereSelection() ==
-          DeformationMapFile::DEFORMATION_TYPE_SPHERE) {
-         throw BrainModelAlgorithmException("Remainder of deformation skipped until "
-                    "deformed spherical coord file is produced.");
-      }
-   */
-      
       //
       // set the inverse deformation flag for source to target
       //
@@ -1249,12 +1366,17 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
       //
       createNodeDeformation(deformedSourceSurface, targetSurface, deformationMapFile);
       
-      if (deformationMapFile->getFlatOrSphereSelection() ==
-          DeformationMapFile::DEFORMATION_TYPE_SPHERE) {
-         //
-         // Create the deformation field
-         //
-         createIndivAtlasDeformationFieldFile(sourceSurface, deformedSourceSurface);
+      switch (deformationMapFile->getFlatOrSphereSelection()) {
+         case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+            break;
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            //
+            // Create the deformation field
+            //
+            createIndivAtlasDeformationFieldFile(sourceSurface, deformedSourceSurface);
+            break;
       }
       
       //
@@ -1294,140 +1416,154 @@ BrainModelSurfaceDeformation::execute() throw (BrainModelAlgorithmException)
       QDir::setCurrent(originalDirectory);
       
       //
-      // Update progress
+      // Should data files be deformed?
       //
-      updateProgressDialog("Deformating Individual Files to Atlas.",
-                               PROGRESS_DEFORMING_SOURCE_TO_TARGET);
-      
-      //
-      // Deform the source data files to the target
-      //
-      deformDataFiles(sourceBrainSet,
-                      targetBrainSet, 
-                      deformationMapFile->getSourceSpecFileName(),
-                      deformationMapFile,
-                      true,
-                      deformSourceFiducialCoordFiles,
-                      deformSourceInflatedCoordFiles,
-                      deformSourceVeryInflatedCoordFiles,
-                      deformSourceSphericalCoordFiles,
-                      deformSourceFlatCoordFiles,
-                      sourceToTargetDeformDataFileErrors);
-      
-      //
-      // Update progress
-      //
-      updateProgressDialog("Deforming Atlas Files to Individual.",
-                               PROGRESS_DEFORMING_TARGET_TO_SOURCE);
-      
-      //
-      // if also deforming target to source
-      //  
-      if (deformationMapFile->getDeformBothWays()) {
-         //
-         // set the inverse deformation flag for target to source
-         //
-         deformationMapFile->setInverseDeformationFlag(true);
+      if (deformDataFilesFlag) {
+          //
+          // Update progress
+          //
+          updateProgressDialog("Deforming Individual Files to Atlas.",
+                                   PROGRESS_DEFORMING_SOURCE_TO_TARGET);
 
-         //
-         // Create the deformed spec file for the target data deformed to the source
-         //
-         deformationMapFile->setOutputSpecFileName(targetToSourceSpecFileName);
-         
-         //
-         // Create the node deformation part of the deformation map
-         //
-         createNodeDeformation(targetSurface, deformedSourceSurface, deformationMapFile);
-         
-         if (deformationMapFile->getFlatOrSphereSelection() ==
-             DeformationMapFile::DEFORMATION_TYPE_SPHERE) {
-            //
-            // Create the deformation field
-            //
-            createAtlasIndivDeformationFieldFile(targetSurface, sourceSurface, deformedSourceSurface);
-         }
-         
-         //
-         // Copy and set the name of the target to source spec file
-         //
-         SpecFile deformedToSourceSpecFile;
-         QDir::setCurrent(sourceDirectory);
-         try {
-            deformedToSourceSpecFile.readFile(deformationMapFile->getSourceSpecFileName());
-         }
-         catch (FileException& /*e*/) {
-            throw BrainModelAlgorithmException(
-                        "Error reading source spec file for creating deformed version.");
-         }
-         try {
-            deformedToSourceSpecFile.writeFile(targetToSourceSpecFileName);
-         }
-         catch (FileException& /*e*/) {
-            throw BrainModelAlgorithmException(
-                        "Error writing source spec file for creating deformed version.");
-         }
-         sourceBrainSet->setSpecFileName(targetToSourceSpecFileName);
-         QDir::setCurrent(originalDirectory);
-         
-         //
-         // Add the deformed source coordinate file to the spec file
-         //
-         switch(deformationMapFile->getFlatOrSphereSelection()) {
-            case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-               deformedToSourceSpecFile.addToSpecFile(
-                  SpecFile::getFlatCoordFileTag(),
-                  deformationMapFile->getSourceDeformedFlatCoordFileName(),
-                  "",
-                  true);
-               break;
-            case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-               deformedToSourceSpecFile.addToSpecFile(
-                  SpecFile::getSphericalCoordFileTag(),
-                  deformationMapFile->getSourceDeformedSphericalCoordFileName(),
-                  "",
-                  true);
-               break;
-         }
-         
-         //
-         // Swap source and target in deformation map file since now doing target to source
-         //
-         deformationMapFile->swapSourceAndTargetFiles();
-         
-         //
-         // Write the deformation map file
-         //
-         QDir::setCurrent(sourceDirectory);
-         deformationMapFile->writeFile(targetToSourceDeformationMapFileName);
-         sourceBrainSet->setDeformationMapFileName(targetToSourceDeformationMapFileName, true);
-         QDir::setCurrent(originalDirectory);
-         
-         //
-         // Add to recent spec files
-         //
-         PreferencesFile* pf = brainSet->getPreferencesFile();
-         pf->addToRecentSpecFiles(targetToSourceSpecFileName, true);
-      
-         //
-         // Deform the target data files to the source
-         //
-         deformDataFiles(targetBrainSet,
-                         sourceBrainSet, 
-                         deformationMapFile->getSourceSpecFileName(),  // have source since 
-                         deformationMapFile,                     // swapSourceAndTarget was called
-                         false,
-                         deformSourceFiducialCoordFiles,
-                         deformSourceInflatedCoordFiles,
-                         deformSourceVeryInflatedCoordFiles,
-                         deformSourceSphericalCoordFiles,
-                         deformSourceFlatCoordFiles,
-                         targetToSourceDeformDataFileErrors);
+          //
+          // Deform the source data files to the target
+          //
+          deformDataFiles(sourceBrainSet,
+                          targetBrainSet,
+                          deformationMapFile->getSourceSpecFileName(),
+                          deformationMapFile,
+                          true,
+                          deformSourceFiducialCoordFiles,
+                          deformSourceInflatedCoordFiles,
+                          deformSourceVeryInflatedCoordFiles,
+                          deformSourceSphericalCoordFiles,
+                          deformSourceFlatCoordFiles,
+                          sourceToTargetDeformDataFileErrors);
+
+          //
+          // Update progress
+          //
+          updateProgressDialog("Deforming Atlas Files to Individual.",
+                                   PROGRESS_DEFORMING_TARGET_TO_SOURCE);
+
+          //
+          // if also deforming target to source
+          //
+          if (deformationMapFile->getDeformBothWays()) {
+             //
+             // set the inverse deformation flag for target to source
+             //
+             deformationMapFile->setInverseDeformationFlag(true);
+
+             //
+             // Create the deformed spec file for the target data deformed to the source
+             //
+             deformationMapFile->setOutputSpecFileName(targetToSourceSpecFileName);
+
+             //
+             // Create the node deformation part of the deformation map
+             //
+             createNodeDeformation(targetSurface, deformedSourceSurface, deformationMapFile);
+
+             switch (deformationMapFile->getFlatOrSphereSelection()) {
+                case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+                   break;
+                case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+                case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+                case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+                   //
+                   // Create the deformation field
+                   //
+                   createAtlasIndivDeformationFieldFile(targetSurface, sourceSurface, deformedSourceSurface);
+                   break;
+             }
+
+             //
+             // Copy and set the name of the target to source spec file
+             //
+             SpecFile deformedToSourceSpecFile;
+             QDir::setCurrent(sourceDirectory);
+             try {
+                deformedToSourceSpecFile.readFile(deformationMapFile->getSourceSpecFileName());
+             }
+             catch (FileException& /*e*/) {
+                throw BrainModelAlgorithmException(
+                            "Error reading source spec file for creating deformed version.");
+             }
+             try {
+                deformedToSourceSpecFile.writeFile(targetToSourceSpecFileName);
+             }
+             catch (FileException& /*e*/) {
+                throw BrainModelAlgorithmException(
+                            "Error writing source spec file for creating deformed version.");
+             }
+             sourceBrainSet->setSpecFileName(targetToSourceSpecFileName);
+             QDir::setCurrent(originalDirectory);
+
+             //
+             // Add the deformed source coordinate file to the spec file
+             //
+             switch(deformationMapFile->getFlatOrSphereSelection()) {
+                case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+                   deformedToSourceSpecFile.addToSpecFile(
+                      SpecFile::getFlatCoordFileTag(),
+                      deformationMapFile->getSourceDeformedFlatCoordFileName(),
+                      "",
+                      true);
+                   break;
+                case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+                case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+                case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+                   deformedToSourceSpecFile.addToSpecFile(
+                      SpecFile::getSphericalCoordFileTag(),
+                      deformationMapFile->getSourceDeformedSphericalCoordFileName(),
+                      "",
+                      true);
+                   break;
+             }
+
+             //
+             // Swap source and target in deformation map file since now doing target to source
+             //
+             deformationMapFile->swapSourceAndTargetFiles();
+
+             //
+             // Write the deformation map file
+             //
+             QDir::setCurrent(sourceDirectory);
+             deformationMapFile->writeFile(targetToSourceDeformationMapFileName);
+             sourceBrainSet->setDeformationMapFileName(targetToSourceDeformationMapFileName, true);
+             QDir::setCurrent(originalDirectory);
+
+             //
+             // Add to recent spec files
+             //
+             PreferencesFile* pf = brainSet->getPreferencesFile();
+             pf->addToRecentSpecFiles(targetToSourceSpecFileName, true);
+
+             //
+             // Deform the target data files to the source
+             //
+             deformDataFiles(targetBrainSet,
+                             sourceBrainSet,
+                             deformationMapFile->getSourceSpecFileName(),  // have source since
+                             deformationMapFile,                     // swapSourceAndTarget was called
+                             false,
+                             deformSourceFiducialCoordFiles,
+                             deformSourceInflatedCoordFiles,
+                             deformSourceVeryInflatedCoordFiles,
+                             deformSourceSphericalCoordFiles,
+                             deformSourceFlatCoordFiles,
+                             targetToSourceDeformDataFileErrors);
+          }
       }
-      
+
       //
       // Delete the intermediate files
       //
-      std::cout << "Current directory: " << QDir::currentPath().toAscii().constData() << std::endl;
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Current directory: " << QDir::currentPath().toAscii().constData() << std::endl;
+      }
       QDir::setCurrent(originalPath);
       if (deformationMapFile->getDeleteIntermediateFiles()) {
          for (int i = 0; i < static_cast<int>(intermediateFiles.size()); i++) {

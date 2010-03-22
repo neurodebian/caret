@@ -423,7 +423,7 @@ FreeSurferSurfaceFile::readFileData(QFile& file, QTextStream& stream,
                int numPoints, numTiles;
                dataStream >> numPoints;
                dataStream >> numTiles;
-               
+
                if (DebugControl::getDebugOn()) {
                   std::cout << "Vertices/Faces/comment: "
                             << numPoints << " "
@@ -492,6 +492,11 @@ FreeSurferSurfaceFile::readFileData(QFile& file, QTextStream& stream,
                   std::cout << "FreeSurface patch point count: " << numPoints << std::endl;
                }
                
+               if ((numPoints < 0) || (numPoints > 10000000)) {
+                  throw FileException(filename, "Vertex count=" + QString::number(numPoints) + " invalid.\n"
+                                                  "File is not in big endian order or format has changed.");
+               }
+
                //
                // Allocate memory
                //

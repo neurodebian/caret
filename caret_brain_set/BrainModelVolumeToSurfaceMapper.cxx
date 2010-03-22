@@ -27,13 +27,13 @@
 #include <cmath>
 #include <sstream>
 
-#include <QDateTime>
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfacePointLocator.h"
 #include "BrainModelVolumeToSurfaceMapper.h"
 #include "BrainSet.h"
 #include "CaretVersion.h"
+#include "DateAndTime.h"
 #include "FileUtilities.h"
 #include "GaussianComputation.h"
 #include "MathUtilities.h"
@@ -396,12 +396,12 @@ BrainModelVolumeToSurfaceMapper::execute() throw (BrainModelAlgorithmException)
       
       if (niftiTR != 0.0) {
          comment.append("slice_duration: " + QString::number(niftiTR) + "\n");
-         md->set("slice_duration", niftiTR);
+         md->set("TimeStep", niftiTR);
       }
       
       comment.append("\n");
       comment.append("Date Mapped: ");
-      comment.append(QDateTime::currentDateTime().toString(Qt::TextDate));
+      comment.append(DateAndTime::getDateAndTimeAsString());
       comment.append("\n");
       dataFile->setColumnComment(dataFileColumnNumber, comment);
       

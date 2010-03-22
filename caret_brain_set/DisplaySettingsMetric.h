@@ -32,7 +32,9 @@
 
 #include "DisplaySettingsNodeAttributeFile.h"
 
+class BrainModelSurface;
 class BrainSet;
+class VolumeFile;
 
 /// DisplaySettingsMetric is a class that maintains parameters for controlling
 /// the display of metric data files.
@@ -49,6 +51,8 @@ class DisplaySettingsMetric : public DisplaySettingsNodeAttributeFile {
       enum METRIC_OVERLAY_SCALE {
          /// auto scale metric column min/max
          METRIC_OVERLAY_SCALE_AUTO,
+         /// auto scale metric column percentage min/max
+         METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE,
          /// auto scale using a specified metric column min/max
          METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN,
          /// auto scale using selection functional volume min/max
@@ -187,6 +191,38 @@ class DisplaySettingsMetric : public DisplaySettingsNodeAttributeFile {
                                            float& posMaxValue,
                                            const bool volumeFlag = false) const;
 
+      /// get the auto scale percentage negative minimum
+      float getAutoScalePercentageNegativeMinimum() const
+         { return autoScalePercentageNegativeMinimum; }
+
+      /// set the auto scale percentage negative minimum
+      void setAutoScalePercentageNegativeMinimum(const float nm)
+         { autoScalePercentageNegativeMinimum = nm; }
+
+      /// get the auto scale percentage negative maximum
+      float getAutoScalePercentageNegativeMaximum() const
+         { return autoScalePercentageNegativeMaximum; }
+
+      /// set the auto scale percentage negative maximum
+      void setAutoScalePercentageNegativeMaximum(const float nm)
+         { autoScalePercentageNegativeMaximum = nm; }
+
+      /// get the auto scale percentage positive minimum
+      float getAutoScalePercentagePositiveMinimum() const
+         { return autoScalePercentagePositiveMinimum; }
+
+      /// set the auto scale percentage positive minimum
+      void setAutoScalePercentagePositiveMinimum(const float pm)
+         { autoScalePercentagePositiveMinimum = pm; }
+
+      /// get the auto scale percentage positive maximum
+      float getAutoScalePercentagePositiveMaximum() const
+         { return autoScalePercentagePositiveMaximum; }
+
+      /// set the auto scale percentage positive maximum
+      void setAutoScalePercentagePositiveMaximum(const float pm)
+         { autoScalePercentagePositiveMaximum = pm; }
+
    private:
       /// metric thresholding type
       METRIC_THRESHOLDING_TYPE thresholdType;
@@ -241,6 +277,18 @@ class DisplaySettingsMetric : public DisplaySettingsNodeAttributeFile {
       
       /// column number for the overlay scale specified column
       int overlayScaleSpecifiedColumnNumber;
+
+      /// auto scale percentage negative minimum
+      float autoScalePercentageNegativeMinimum;
+
+      /// auto scale percentage negative maximum
+      float autoScalePercentageNegativeMaximum;
+
+      /// auto scale percentage positive minimum
+      float autoScalePercentagePositiveMinimum;
+
+      /// auto scale percentage positive maximum
+      float autoScalePercentagePositiveMaximum;
  };
 
 #endif

@@ -170,6 +170,15 @@ GiftiDataArray::copyHelperGiftiDataArray(const GiftiDataArray& nda)
    minValueInt = nda.minValueInt;
    maxValueInt = nda.maxValueInt;
    minMaxIntValuesValid = nda.minMaxIntValuesValid;
+   minMaxPercentageValuesValid = nda.minMaxPercentageValuesValid;
+   negMaxPct = nda.negMaxPct;
+   negMinPct = nda.negMinPct;
+   posMinPct = nda.posMinPct;
+   posMaxPct = nda.posMaxPct;
+   negMaxPctValue = nda.negMaxPctValue;
+   negMinPctValue = nda.negMinPctValue;
+   posMinPctValue = nda.posMinPctValue;
+   posMaxPctValue = nda.posMaxPctValue;
    matrices = nda.matrices;
    setModified();
 }
@@ -381,6 +390,7 @@ GiftiDataArray::clear()
    externalFileName = "";
    externalFileOffset = 0;
    minMaxFloatValuesValid = false;
+   minMaxPercentageValuesValid = false;
    
    // do not clear
    // parentGiftiDataFile;
@@ -899,15 +909,19 @@ GiftiDataArray::readFromText(QString& text,
                   // Set the number of bytes that must be read
                   //
                   int numberOfBytes = 0;
+                  char* pointerToForReadingData = NULL;
                   switch (dataType) {
                      case DATA_TYPE_FLOAT32:
                         numberOfBytes = numElements * sizeof(float);
+                        pointerToForReadingData = (char*)dataPointerFloat;
                         break;
                      case DATA_TYPE_INT32:
                         numberOfBytes = numElements * sizeof(int32_t);
+                        pointerToForReadingData = (char*)dataPointerInt;
                         break;
                      case DATA_TYPE_UINT8:
                         numberOfBytes = numElements * sizeof(uint8_t);
+                        pointerToForReadingData = (char*)dataPointerUByte;
                         break;
                   }
                
@@ -915,7 +929,7 @@ GiftiDataArray::readFromText(QString& text,
                   // Read the data
                   //
                   QDataStream stream(&file);
-                  const int numBytesRead = stream.readRawData((char*)dataPointerUByte, 
+                  const int numBytesRead = stream.readRawData((char*)pointerToForReadingData,
                                                               numberOfBytes);
                   if (numBytesRead != numberOfBytes) {
                      throw FileException("Tried to read "
@@ -1067,6 +1081,9 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
    if (intentName.isEmpty()) {
       throw FileException("", "Invalid (isEmpty) XML Intent.");
    }
+   if (intentName == "NIFTI_INTENT_UNKNOWN") {
+      intentName = "NIFTI_INTENT_NONE";
+   }
    const QString dataTypeName(getDataTypeName(dataType));
    if (dataTypeName.isEmpty()) {
       throw FileException("", "Invalid (isEmpty) XML DataArray type.");
@@ -1094,7 +1111,7 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
    // External file not supported
    //
    const QString externalFileName = "";
-   const QString externalFileOffset = "";
+   const QString externalFileOffset = "0";
    
    //
    // Write the opening tag
@@ -1473,7 +1490,103 @@ GiftiDataArray::getMinMaxValues(float& minValue, float& maxValue) const
    minValue = minValueFloat;
    maxValue = maxValueFloat;
 }
-      
+
+/**
+ * Get data column min/max for the specified percentages.
+ */
+void
+GiftiDataArray::getMinMaxValuesFromPercentages(const float negMaxPctIn,
+                                               const float negMinPctIn,
+                                               const float posMinPctIn,
+                                               const float posMaxPctIn,
+                                               float& negMaxPctValueOut,
+                                               float& negMinPctValueOut,
+                                               float& posMinPctValueOut,
+                                               float& posMaxPctValueOut)
+{
+   if ((negMaxPctIn != negMaxPct) ||
+       (negMinPctIn != negMinPct) ||
+       (posMinPctIn != posMinPct) ||
+       (posMaxPctIn != posMaxPct)) {
+      minMaxPercentageValuesValid = false;
+   }
+   if (minMaxPercentageValuesValid == false) {
+      negMaxPct = negMaxPctIn;
+      negMinPct = negMinPctIn;
+      posMinPct = posMinPctIn;
+      posMaxPct = posMaxPctIn;
+
+      negMaxPctValue = 0.0;
+      negMinPctValue = 0.0;
+      posMinPctValue = 0.0;
+      posMaxPctValue = 0.0;
+
+      const int num = getTotalNumberOfElements();
+      if (num > 0) {
+         std::vector<float> negatives, positives;
+         negatives.reserve(num);
+         positives.reserve(num);
+         for (int i = 0; i < num; i++) {
+            if (dataPointerFloat[i] > 0.0) {
+               positives.push_back(dataPointerFloat[i]);
+            }
+            else if (dataPointerFloat[i] < 0.0) {
+               negatives.push_back(dataPointerFloat[i]);
+            }
+         }
+
+         int numPos = static_cast<int>(positives.size());
+         if (numPos > 0) {
+            std::sort(positives.begin(), positives.end());
+
+            if (numPos == 1) {
+               posMinPctValue = positives[0];
+               posMaxPctValue = positives[0];
+            }
+            else {
+               int minIndex = numPos * (posMinPct / 100.0);
+               if (minIndex < 0) minIndex = 0;
+               if (minIndex >= numPos) minIndex = numPos - 1;
+               posMinPctValue = positives[minIndex];
+
+               int maxIndex = numPos * (posMaxPct / 100.0);
+               if (maxIndex < 0) maxIndex = 0;
+               if (maxIndex >= numPos) maxIndex = numPos - 1;
+               posMaxPctValue = positives[maxIndex];
+            }
+         }
+
+         int numNeg = static_cast<int>(negatives.size());
+         if (numNeg > 0) {
+            std::sort(negatives.begin(), negatives.end());
+
+            if (numNeg == 1) {
+               negMinPctValue = negatives[0];
+               negMaxPctValue = negatives[0];
+            }
+            else {
+               int maxIndex = numNeg * ((100.0 - negMaxPct) / 100.0);
+               if (maxIndex < 0) maxIndex = 0;
+               if (maxIndex >= numNeg) maxIndex = numNeg - 1;
+               negMaxPctValue = negatives[maxIndex];
+
+               int minIndex = numNeg * ((100.0 - negMinPct) / 100.0);
+               if (minIndex < 0) minIndex = 0;
+               if (minIndex >= numNeg) minIndex = numNeg - 1;
+               negMinPctValue = negatives[minIndex];
+            }
+         }
+      }
+
+      minMaxPercentageValuesValid = true;
+   }
+
+   negMaxPctValueOut = negMaxPctValue;
+   negMinPctValueOut = negMinPctValue;
+   posMaxPctValueOut = posMaxPctValue;
+   posMinPctValueOut = posMinPctValue;
+}
+
 /**
  * set all elements of array to zero.
  */
@@ -1736,6 +1849,12 @@ GiftiDataArray::updateMetaDataAfterReading()
          }
       }
    }
+
+   QString commentText;
+   if (metaData.get("Description", commentText)) {
+      metaData.remove("Description");
+      metaData.set("comment", commentText);
+   }
 }
 
 /**
@@ -1760,7 +1879,8 @@ GiftiDataArray::updateMetaDataBeforeWriting()
          else if (caretGeomType == "Inflated") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeInflated;
          }
-         else if (caretGeomType == "Very_Inflated") {
+         else if ((caretGeomType == "Very_Inflated") ||
+                  (caretGeomType == "VeryInflated")) {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeVeryInflated;
          }
          else if (caretGeomType == "Spherical") {
@@ -1829,6 +1949,8 @@ GiftiDataArray::updateMetaDataBeforeWriting()
             }
          }
       }
+
+      metaData.remove("coordframe_id");
    }
    else if (intentName == GiftiCommon::intentTopologyTriangles) {
       //
@@ -1856,6 +1978,8 @@ GiftiDataArray::updateMetaDataBeforeWriting()
             metaData.remove(AbstractFile::headerTagPerimeterID);
          }
       }
+
+      metaData.remove("perimeter_id");
    }
    
    QString uuidValue;
@@ -1864,6 +1988,12 @@ GiftiDataArray::updateMetaDataBeforeWriting()
                    QUuid::createUuid().toString());
    }
    
+   QString commentText;
+   if (metaData.get("comment", commentText)) {
+      metaData.remove("comment");
+      metaData.set("Description", commentText);
+   }
+
    //
    // Remove these obsolete or unneeded caret header items
    //

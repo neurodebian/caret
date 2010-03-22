@@ -230,7 +230,7 @@ DisplaySettings::showSceneNodeAttribute(const SceneFile::SceneClass& sc,
          int endSurface   = brainSet->getNumberOfBrainModels();
          if (surfaceName != SceneFile::SceneInfo::getDefaultSurfacesName()) {
             endSurface = 0;
-            const BrainModelSurface* bms = brainSet->getBrainModelSurfaceWithFileName(surfaceName);
+            const BrainModelSurface* bms = brainSet->getBrainModelSurfaceWithCoordinateFileName(surfaceName);
             if (bms != NULL) {
                startSurface = brainSet->getBrainModelIndex(bms);
                if (startSurface >= 0) {
@@ -303,7 +303,7 @@ DisplaySettings::showSceneNodeAttribute(const SceneFile::SceneClass& sc,
          int endSurface   = brainSet->getNumberOfBrainModels();
          if (surfaceName != SceneFile::SceneInfo::getDefaultSurfacesName()) {
             endSurface = 0;
-            const BrainModelSurface* bms = brainSet->getBrainModelSurfaceWithFileName(surfaceName);
+            const BrainModelSurface* bms = brainSet->getBrainModelSurfaceWithCoordinateFileName(surfaceName);
             if (bms != NULL) {
                startSurface = brainSet->getBrainModelIndex(bms);
                if (startSurface >= 0) {

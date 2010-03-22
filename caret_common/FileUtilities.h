@@ -157,6 +157,11 @@ class FileUtilities {
                                  const QString& text,
                                  const bool caseSensitiveFlag);
 
+      // Remove the old extension if it is present.  Add new extension.
+      static QString replaceExtension(const QString fileName,
+                                      const QString oldExtension,
+                                      const QString newExtension);
+
 };
 
 #endif // __FILE_UTILITIES_H__

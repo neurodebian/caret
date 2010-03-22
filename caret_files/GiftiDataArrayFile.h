@@ -226,7 +226,10 @@ class GiftiDataArrayFile : public AbstractFile {
       
       // process NIFTI_INTENT_NODE_INDEX arrays
       void procesNiftiIntentNodeIndexArrays() throw (FileException);
-      
+
+      // validate the data arrays (optional for subclasses)
+      virtual void validateDataArrays() throw (FileException);
+
       /// the data arrays
       std::vector<GiftiDataArray*> dataArrays;
       

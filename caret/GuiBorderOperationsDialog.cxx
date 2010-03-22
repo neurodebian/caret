@@ -2306,6 +2306,9 @@ BordersPageCreateLandmarks::createPage()
    anatomicalVolumeComboBox = new GuiVolumeFileSelectionComboBox(
                                         VolumeFile::VOLUME_TYPE_ANATOMY);
    anatomicalVolumeComboBox->setMaximumWidth(maxWidth);
+   anatomicalVolumeComboBox->setToolTip(
+           "If the anatomical volume contains ONLY the corpus callosum\n"
+           "the name MUST contain both the words \"corpus\" and \"callosum\"");
     
    //
    // fiducial surface

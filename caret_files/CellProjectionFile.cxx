@@ -429,7 +429,7 @@ CellProjection::unprojectInsideTriangle(const CoordinateFile& cf,
    const float* v2 = cf.getCoordinate(closestTileVertices[1]);
    const float* v3 = cf.getCoordinate(closestTileVertices[2]);
 
-   const TopologyHelper* th = tf.getTopologyHelper(false, true, false);
+   const TopologyHelper* th = tf.getTopologyHelper(true, true, true);
    if ((th->getNodeHasNeighbors(closestTileVertices[0]) == false) ||
        (th->getNodeHasNeighbors(closestTileVertices[1]) == false) ||
        (th->getNodeHasNeighbors(closestTileVertices[2]) == false)) {
@@ -459,6 +459,45 @@ CellProjection::unprojectInsideTriangle(const CoordinateFile& cf,
    float tileNormal[3];
    MathUtilities::computeNormal((float*)v3, (float*)v2, (float*)v1, tileNormal);
    
+   //
+   // Are all of the node the same (focus projects to a single node, not a tile)
+   //
+   if ((closestTileVertices[0] == closestTileVertices[1]) &&
+       (closestTileVertices[1] == closestTileVertices[2])) {
+      //
+      // Compute node's normal by averaging its tiles' normals
+      //
+      float normalSum[3] = { 0.0, 0.0, 0.0 };
+
+      int node = closestTileVertices[0];
+      int numNeighbors = 0;
+      const int* neighbors = th->getNodeNeighbors(node, numNeighbors);
+
+      for (int i = 0; i < numNeighbors; i++) {
+         int neigh1 = neighbors[i];
+         int nextNeighborIndex = i + 1;
+         if (nextNeighborIndex >= numNeighbors) {
+            nextNeighborIndex = 0;
+         }
+         int nextNeighbor = neighbors[nextNeighborIndex];
+         const float* c1 = cf.getCoordinate(node);
+         const float* c2 = cf.getCoordinate(neigh1);
+         const float* c3 = cf.getCoordinate(nextNeighbor);
+         float neighborNormal[3];
+         MathUtilities::computeNormal((float*)c1, (float*)c2, (float*)c3, neighborNormal);
+         normalSum[0] += neighborNormal[0];
+         normalSum[1] += neighborNormal[1];
+         normalSum[2] += neighborNormal[2];
+      }
+
+      if (numNeighbors > 0) {
+         tileNormal[0] = normalSum[0] / (float)numNeighbors;
+         tileNormal[1] = normalSum[1] / (float)numNeighbors;
+         tileNormal[2] = normalSum[2] / (float)numNeighbors;
+         MathUtilities::normalize(tileNormal);
+      }
+   }
+
    for (int j = 0; j < 3; j++) {
       if (pasteOntoSurfaceFlag) {
          xyzOut[j] = projection[j];
@@ -2778,6 +2817,44 @@ CellProjectionFile::getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& s
 }
 
 /**
+ * update cell name with linked study name.
+ */
+void 
+CellProjectionFile::updateCellNameWithStudyNameForMatchingPubMedIDs(const StudyMetaDataFile* smdf)
+{
+   const int numCells = getNumberOfCellProjections();
+   for (int i = 0; i < numCells; i++) {
+      CellProjection* cp = getCellProjection(i);
+      //
+      // Get the links
+      //
+      StudyMetaDataLinkSet smdls = cp->getStudyMetaDataLinkSet();
+      //
+      // Loop through the cell's links
+      //
+      for (int m = 0; m < smdls.getNumberOfStudyMetaDataLinks(); m++) {
+         //
+         // Get a link
+         //
+         StudyMetaDataLink smdl = smdls.getStudyMetaDataLink(m);
+         
+         //
+         // Get cell PubMed ID and see if there is a study with the same PubMedID
+         //
+         const QString cellPubMedID = smdl.getPubMedID();
+         int studyNum = smdf->getStudyIndexFromPubMedID(cellPubMedID);
+         if (studyNum >= 0) {
+            const StudyMetaData* smd = smdf->getStudyMetaData(studyNum);
+            if (smd != NULL) {
+               cp->setName(smd->getName());
+               break;
+            }
+         }
+      }
+   }
+}
+      
+/**
  * update cell PubMed ID if cell name matches study name.
  */
 void 
@@ -2903,7 +2980,7 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
    const int studyMetaTableSubHeaderCol = numCols++;
    const int studyMetaFigureCol = numCols++;
    const int studyMetaFigurePanelCol = numCols++;
-   const int studyMetaPageNumberCol = numCols++;
+   //const int studyMetaPageNumberCol = numCols++;
    
    // new stuff
    const int signedDistCol = numCols++;
@@ -2948,7 +3025,7 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
    ct->setColumnTitle(studyMetaTableSubHeaderCol, "Study Table Subheader");
    ct->setColumnTitle(studyMetaFigureCol, "Study Figure Number");
    ct->setColumnTitle(studyMetaFigurePanelCol, "Study Figure Panel");
-   ct->setColumnTitle(studyMetaPageNumberCol, "Study Page Number");
+   //ct->setColumnTitle(studyMetaPageNumberCol, "Study Page Number");
    
    ct->setColumnTitle(signedDistCol, "Signed Dist");
    ct->setColumnTitle(projTypeCol, "Proj Type");
@@ -3036,7 +3113,7 @@ CellProjectionFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile
       ct->setElement(i, studyMetaTableSubHeaderCol, smdl.getTableSubHeaderNumber());
       ct->setElement(i, studyMetaFigureCol, smdl.getFigureNumber());
       ct->setElement(i, studyMetaFigurePanelCol, smdl.getFigurePanelNumberOrLetter());
-      ct->setElement(i, studyMetaPageNumberCol, smdl.getPageNumber());
+      //ct->setElement(i, studyMetaPageNumberCol, smdl.getPageNumber());
    }
 
    StringTable* headerTable = new StringTable(0, 0);
@@ -3085,7 +3162,7 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
    int studyMetaTableSubHeaderCol = -1;
    int studyMetaFigureCol = -1;
    int studyMetaFigurePanelCol = -1;
-   int studyMetaPageNumberCol = -1;
+   //int studyMetaPageNumberCol = -1;
    
    int signedDistCol = -1;
    int projTypeCol   = -1;
@@ -3213,9 +3290,9 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
       else if (columnTitle == "study figure panel") {
          studyMetaFigurePanelCol = i;
       }
-      else if (columnTitle == "study page number") {
-         studyMetaPageNumberCol = i;
-      }
+      //else if (columnTitle == "study page number") {
+      //   studyMetaPageNumberCol = i;
+      //}
    }
    
    for (int i = 0; i < ct->getNumberOfRows(); i++) {
@@ -3354,9 +3431,9 @@ CellProjectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedVa
       if (studyMetaFigurePanelCol >= 0) {
          smdl.setFigurePanelNumberOrLetter(ct->getElement(i, studyMetaFigurePanelCol));
       } 
-      if (studyMetaPageNumberCol >= 0) {
-         smdl.setPageNumber(ct->getElement(i, studyMetaPageNumberCol));
-      } 
+      //if (studyMetaPageNumberCol >= 0) {
+      //   smdl.setPageNumber(ct->getElement(i, studyMetaPageNumberCol));
+      //} 
       
       cd.setXYZ(xyz);
       cd.setSectionNumber(section);

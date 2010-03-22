@@ -67,7 +67,7 @@
 #include "SpecFile.h"
 #include "SurfaceFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "TopologyFile.h"
 #include "VolumeFile.h"
 #include "global_variables.h"
@@ -125,6 +125,7 @@ GuiDataFileOpenDialog::GuiDataFileOpenDialog(QWidget* parent,
       filterNames << FileFilters::getGiftiSurfaceFileFilter();
       filterNames << FileFilters::getGiftiTimeSeriesFileFilter();
       filterNames << FileFilters::getGiftiTopologyFileFilter();
+      filterNames << FileFilters::getGiftiVectorFileFilter();
    }
    filterNames << FileFilters::getImageOpenFileFilter();
    filterNames << FileFilters::getLatitudeLongitudeFileFilter();
@@ -139,7 +140,6 @@ GuiDataFileOpenDialog::GuiDataFileOpenDialog(QWidget* parent,
    filterNames << FileFilters::getStudyCollectionFileFilter();
    filterNames << FileFilters::getStudyMetaDataFileFilter();
    filterNames << FileFilters::getSurfaceShapeOrMetricAsShapeFileFilter();
-   filterNames << FileFilters::getSurfaceVectorFileFilter();
    filterNames << FileFilters::getTopographyFileFilter();
    filterNames << FileFilters::getTopologyGenericFileFilter();
    filterNames << FileFilters::getTransformationMatrixFileFilter();
@@ -710,6 +710,9 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
    else if (filterName == FileFilters::getGiftiTopologyFileFilter()) {
       error = openDataFile(this, GENERIC_TOPOLOGY, fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
+   else if (filterName == FileFilters::getGiftiVectorFileFilter()) {
+      error = openDataFile(this, SpecFile::getVectorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
+   }
    else if (filterName == FileFilters::getImageOpenFileFilter()) {
       error = openDataFile(this, SpecFile::getImageFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
@@ -744,9 +747,6 @@ GuiDataFileOpenDialog::readFile(const QString& fileName,
    else if ((filterName == FileFilters::getSurfaceShapeFileFilter()) ||
             (filterName == FileFilters::getSurfaceShapeOrMetricAsShapeFileFilter())) {
       error = openDataFile(this, SpecFile::getSurfaceShapeFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
-   }
-   else if (filterName == FileFilters::getSurfaceVectorFileFilter()) {
-      error = openDataFile(this, SpecFile::getSurfaceVectorFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
    }
    else if (filterName == FileFilters::getTopographyFileFilter()) {
       error = openDataFile(this, SpecFile::getTopographyFileTag(), fileName, appendToCurrentFileFlag, addToSpecFileFlag, msg, warning);
@@ -1517,12 +1517,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
       }
-      else if (specFileTag.indexOf(SpecFile::getUnknownBorderFileMatchTag()) >= 0) {
-         theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_UNKNOWN, append, update);
-         fm.setBorderModified();
-         bordersLoaded = true;
-         borderColorWarning = needBorderColors;
-      }
       else if (specFileTag == SpecFile::getVolumeBorderFileTag()) {
          theMainWindow->getBrainSet()->readVolumeBorderFile(name, append, update);
          fm.setBorderModified();
@@ -1582,6 +1576,12 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          fm.setBorderModified();
          borderColorWarning = needBorderColors;
          bordersLoaded = true;
+      }
+      else if (specFileTag.indexOf(SpecFile::getUnknownBorderFileMatchTag()) >= 0) {
+         theMainWindow->getBrainSet()->readBorderFile(name, BrainModelSurface::SURFACE_TYPE_UNKNOWN, append, update);
+         fm.setBorderModified();
+         bordersLoaded = true;
+         borderColorWarning = needBorderColors;
       }
       else if (specFileTag == SpecFile::getBorderColorFileTag()) {
          theMainWindow->getBrainSet()->readBorderColorFile(name, append, update);
@@ -2011,27 +2011,9 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
             fm.setSurfaceShapeModified();
          }
       }
-      else if (specFileTag == SpecFile::getSurfaceVectorFileTag()) {
-         SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
-         SurfaceVectorFile newFile;
-         newFile.readFileMetaDataOnly(name);
-         QApplication::restoreOverrideCursor();
-         GuiLoadNodeAttributeFileColumnSelectionDialog fcsd(theMainWindow,
-                                                      &newFile,
-                                                      svf);
-         const int result = fcsd.exec(); 
-         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-         if (result == QDialog::Accepted) {
-            if (fcsd.getEraseAllExistingColumns()) {
-               theMainWindow->getBrainSet()->clearSurfaceVectorFile();
-            }
-            theMainWindow->getBrainSet()->readSurfaceVectorFile(name, 
-                                 fcsd.getDestinationColumns(), 
-                                 fcsd.getNewFileColumnNames(),
-                                 fcsd.getAppendFileCommentSelection(),
-                                 update);
-            fm.setSurfaceVectorModified();
-         }
+      else if (specFileTag == SpecFile::getVectorFileTag()) {
+         theMainWindow->getBrainSet()->readVectorFile(name, append, update);
+         fm.setVectorModified();
       }
       else if (specFileTag == SpecFile::getTopographyFileTag()) {
          theMainWindow->getBrainSet()->readTopographyFile(name, append, update);

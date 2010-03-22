@@ -225,7 +225,7 @@ BrainSetMultiThreadedSpecFileReader::readDataFiles(const int numberOfThreads,
    addDataFiles(specFile.imageFile);
    addDataFiles(specFile.vtkModelFile);
    addDataFiles(specFile.paletteFile);
-   addDataFiles(specFile.surfaceVectorFile);
+   addDataFiles(specFile.vectorFile);
    addDataFiles(specFile.borderColorFile);
    addDataFiles(specFile.rawBorderFile);
    addDataFiles(specFile.fiducialBorderFile);

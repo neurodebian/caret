@@ -32,6 +32,7 @@
 
 class GuiBrainModelSelectionComboBox;
 class GuiNodeAttributeColumnSelectionComboBox;
+class QComboBox;
 class QLineEdit;
 
 /// dialog for creating vectors by subracting coordinate files
@@ -54,10 +55,6 @@ class GuiShapeOrVectorsFromCoordinateSubtractionDialog : public WuQDialog {
       // destructor
       ~GuiShapeOrVectorsFromCoordinateSubtractionDialog();
          
-   protected slots:
-      // update the column comment
-      void slotColumnComment();
-      
    protected:
       // called when OK or Cancel buttons pressed
       void done(int r);
@@ -68,15 +65,15 @@ class GuiShapeOrVectorsFromCoordinateSubtractionDialog : public WuQDialog {
       // surface "B" combo box
       GuiBrainModelSelectionComboBox* surfaceBComboBox;
       
-      // vector file column selection
-      GuiNodeAttributeColumnSelectionComboBox* columnComboBox;
-      
       // the vector column name
       QLineEdit* columnNameLineEdit;
       
       // the vector column comment
       QLineEdit* columnCommentLineEdit;
       
+      // shape difference mode combo box
+      QComboBox* shapeDiffModeComboBox;
+
       // mode of the dialog
       MODE mode;
 };
