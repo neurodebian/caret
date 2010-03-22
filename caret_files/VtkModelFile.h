@@ -31,6 +31,8 @@
 #include "AbstractFile.h"
 #include "CoordinateFile.h"
 
+#include "vtkCellArray.h" // bayle added mb
+
 class BorderColorFile;
 class BorderFile;
 class CellColorFile;
@@ -46,7 +48,7 @@ class VtkModelFile : public AbstractFile {
       class VtkModelObject {
          public:
             /// Constructor
-            VtkModelObject(const int* ptsIn, const int numPtsIn) {
+            VtkModelObject(const vtkIdType* ptsIn, const vtkIdType numPtsIn) {
                for (int i = 0; i < numPtsIn; i++) {
                   pts.push_back(ptsIn[i]);
                }
