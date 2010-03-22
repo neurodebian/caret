@@ -125,8 +125,8 @@ SpecFile::SpecFile()
    areaColorFile.initialize("Area Color File", getAreaColorFileTag(), Entry::FILE_TYPE_SURFACE);
    rgbPaintFile.initialize("RGB Paint File", getRgbPaintFileTag(), Entry::FILE_TYPE_SURFACE);
    
-   surfaceVectorFile.initialize("Surface Vector File", getSurfaceVectorFileTag(), Entry::FILE_TYPE_SURFACE);
-   
+   vectorFile.initialize("Vector File", getVectorFileTag(), Entry::FILE_TYPE_OTHER);
+
    rawBorderFile.initialize("Border File - Raw", getRawBorderFileTag(), Entry::FILE_TYPE_SURFACE);
    fiducialBorderFile.initialize("Border File - Fiducial", getFiducialBorderFileTag(), Entry::FILE_TYPE_SURFACE);
    inflatedBorderFile.initialize("Border File - Inflated", getInflatedBorderFileTag(), Entry::FILE_TYPE_SURFACE);
@@ -286,7 +286,7 @@ SpecFile::updateAllEntries()
    allEntries.push_back(&areaColorFile);
    allEntries.push_back(&rgbPaintFile);
    
-   allEntries.push_back(&surfaceVectorFile);
+   allEntries.push_back(&vectorFile);
    
    allEntries.push_back(&rawBorderFile);
    allEntries.push_back(&fiducialBorderFile);
@@ -452,7 +452,7 @@ SpecFile::copyHelperSpecFile(const SpecFile& sf)
    areaColorFile = sf.areaColorFile;
    rgbPaintFile = sf.rgbPaintFile;
    
-   surfaceVectorFile = sf.surfaceVectorFile;
+   vectorFile = sf.vectorFile;
    
    rawBorderFile = sf.rawBorderFile;
    fiducialBorderFile = sf.fiducialBorderFile;
@@ -1236,7 +1236,7 @@ SpecFile::addUnknownTypeOfFileToSpecFile(const QString& fileName)
       BorderFile bf;
       bf.readFileMetaDataOnly(fileName);
       const QString typeTag = bf.getHeaderTag(AbstractFile::headerTagConfigurationID);
-      tag = CoordinateFile::convertConfigurationIDToSpecFileTag(typeTag);
+      tag = BorderFile::convertConfigurationIDToSpecFileTag(typeTag);
    }
    else if (fileName.endsWith(getBorderColorFileExtension())) {  
       tag = getBorderColorFileTag(); 
@@ -1393,11 +1393,8 @@ SpecFile::addUnknownTypeOfFileToSpecFile(const QString& fileName)
    else if (fileName.endsWith(getSceneFileExtension())) {  
       tag = getSceneFileTag(); 
    }
-   else if (fileName.endsWith(getVectorFileExtension())) {  
+   else if (fileName.endsWith(getSureFitVectorFileExtension())) {
       tag = noTagForFile; 
-   }
-   else if (fileName.endsWith(getSurfaceVectorFileExtension())) {  
-      tag = getSurfaceVectorFileTag(); 
    }
    else if (fileName.endsWith(getWustlRegionFileExtension())) {  
       tag = getWustlRegionFileTag(); 
@@ -1457,6 +1454,9 @@ SpecFile::addUnknownTypeOfFileToSpecFile(const QString& fileName)
       }
       catch (FileException&) {
       }
+   }
+   else if (fileName.endsWith(getGiftiVectorFileExtension())) {
+      tag = getVectorFileTag();
    }
    else if (fileName.endsWith(getCommaSeparatedValueFileExtension())) {  
       tag = noTagForFile; 
@@ -2307,7 +2307,194 @@ SpecFile::getAllEntries(std::vector<Entry>& allEntriesOut)
       allEntriesOut.push_back(*(allEntries[i]));
    }
    std::sort(allEntriesOut.begin(), allEntriesOut.end());
-}            
+}
+
+/**
+ * Get the number of entries.
+ */
+int
+SpecFile::getNumberOfEntries() const
+{
+   return this->allEntries.size();
+}
+
+/**
+ * Get the entry at the specified index.
+ */
+SpecFile::Entry*
+SpecFile::getEntry(int indx)
+{
+   return this->allEntries[indx];
+}
+
+/**
+ * Convert to caret6 spec file tag, returns empty string if tag invalid for Caret6.
+ */
+QString
+SpecFile::convertToCaret6SpecFileTag(const QString& tagCaret5)
+{
+   static bool firstTimeFlag = true;
+   static std::map<QString,QString> tags;
+
+   if (firstTimeFlag) {
+      firstTimeFlag = false;
+
+      tags["area_color_file"]           = "AREA_COLOR";
+      tags["border_color_file"]         = "BORDER_COLOR";
+      tags["borderproj_file"]           = "BORDER_PROJECTION";
+      tags["coord_file"]                = "COORDINATE_GENERIC";
+      tags["FIDUCIALcoord_file"]        = "COORDINATE_ANATOMICAL";
+      tags["ELLIPSOIDcoord_file"]       = "COORDINATE_ELLIPSOID";
+      tags["FLATcoord_file"]            = "COORDINATE_FLAT";
+      tags["LOBAR_FLATcoord_file"]      = "COORDINATE_FLAT";
+      tags["HULLcoord_file"]            = "COORDINATE_HULL";
+      tags["INFLATEDcoord_file"]        = "COORDINATE_INFLATED";
+      tags["VERY_INFLATEDcoord_file"]   = "COORDINATE_VERY_INFLATED";
+      tags["RAWcoord_file"]             = "COORDINATE_RECONSTRUCTION";
+      tags["COMPRESSED_MEDIAL_WALLcoord_file"] = "COORDINATE_SEMI_SPHERE";
+      tags["SPHERICALcoord_file"]       = "COORDINATE_SPHERE";
+      tags["fociproj_file"]             = "FOCI_PROJECTION";
+      tags["foci_color_file"]           = "FOCI_COLOR";
+      tags["foci_search_file"]          = "FOCI_SEARCH";
+      tags["gar_file"]                  = "GAR_GENERIC";
+      tags["image_file"]                = "IMAGE";
+      tags["label_file"]                = "LABEL";
+      tags["metric_file"]               = "METRIC";
+      tags["paint_file"]                = "LABEL";
+      tags["study_collection_file"]     = "STUDY_COLLECTION";
+      tags["study_metadata_file"]       = "STUDY_METADATA";
+      tags["surface_file"]              = "SURFACE_GENERIC";
+      tags["FIDUCIALsurface_file"]      = "SURFACE_ANATOMICAL";
+      tags["ELLIPSOIDsurface_file"]     = "SURFACE_ELLIPSOID";
+      tags["FLATsurface_file"]          = "SURFACE_FLAT";
+      tags["LOBAR_FLATsurface_file"]    = "SURFACE_FLAT";
+      tags["HULLsurface_file"]          = "SURFACE_HULL";
+      tags["INFLATEDsurface_file"]      = "SURFACE_INFLATED";
+      tags["VERY_INFLATEDsurface_file"] = "SURFACE_VERY_INFLATED";
+      tags["RAWsurface_file"]           = "SURFACE_RECONSTRUCTION";
+      tags["COMPRESSED_MEDIAL_WALLsurface_file"] = "SURFACE_SEMI_SPHERE";
+      tags["SPHERICALsurface_file"]     = "SURFACE_SPHERE";
+      tags["surface_shape_file"]        = "SHAPE";
+      tags["topo_file"]                 = "TOPOLOGY_GENERIC";
+      tags["CLOSEDtopo_file"]           = "TOPOLOGY_CLOSED";
+      tags["CUTtopo_file"]              = "TOPOLOGY_CUT";
+      tags["LOBAR_CUTtopo_file"]        = "TOPOLOGY_CUT";
+      tags["OPENtopo_file"]             = "TOPOLOGY_OPEN";
+      tags["vector_file"]               = "VECTOR";
+      tags["vocabulary_file"]           = "VOCABULARY";
+      tags["volume_file"]               = "VOLUME_GENERIC";
+      tags["volume_anatomy_file"]       = "VOLUME_ANATOMY";
+      tags["volume_functional_file"]    = "VOLUME_FUNCTIONAL";
+      tags["volume_label_file"]         = "VOLUME_LABEL";
+      tags["volume_paint_file"]         = "VOLUME_LABEL";
+      tags["volume_prob_atlas_file"]    = "VOLUME_PROB_ATLAS";
+      tags["volume_rgb_file"]           = "VOLUME_RGB";
+      tags["volume_segmentation_file"]  = "VOLUME_SEGMENTATION";
+      tags["volume_vector_file"]        = "VOLUME_VECTOR";
+   }
+
+   QString newTag;
+
+   for (std::map<QString,QString>::iterator iter = tags.begin();
+        iter != tags.end();
+        iter++) {
+      if (iter->first == tagCaret5) {
+         newTag = iter->second;
+         break;
+      }
+   }
+        
+   return newTag;
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+SpecFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   if (allEntries.size() <= 0) {
+      throw FileException("Contains no foci");
+   }
+
+   QFile file(filenameIn);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (file.exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/SpecFileSchema.xsd");
+   attributes.addAttribute("CaretFileType", "Specification");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   for (unsigned int i = 0; i < allEntries.size(); i++) {
+      Entry* entry = allEntries[i];
+      if (entry->getNumberOfFiles() > 0) {
+         XmlGenericWriterAttributes attributes;
+         QString specFileTag = SpecFile::convertToCaret6SpecFileTag(entry->getSpecFileTag());
+         if (specFileTag.isEmpty() == false) {
+            QString structureName = structure.getTypeAsString();
+            if (specFileTag.startsWith("COORDINATE") ||
+                specFileTag.startsWith("LABEL") ||
+                specFileTag.startsWith("METRIC") ||
+                specFileTag.startsWith("SHAPE") ||
+                specFileTag.startsWith("SURFACE") ||
+                specFileTag.startsWith("TOPOLOGY")) {
+               if (structureName == "cerebellum") {
+                  structureName = "Cerebellum";
+               }
+               else if (structureName == "left") {
+                  structureName = "CortexLeft";
+               }
+               else if (structureName == "right") {
+                  structureName = "CortexRight";
+               }
+            }
+            else {
+               structureName = "";
+            }
+
+            attributes.addAttribute("DataFileType",
+                                    specFileTag);
+            attributes.addAttribute("Structure", structureName);
+            for (int j = 0; j < entry->getNumberOfFiles(); j++) {
+               QString outName = entry->getFileName(j);
+               if (outName.isEmpty() == false) {
+                  xmlWriter.writeElementCData("DataFile", attributes, outName);
+               }
+            }
+         }
+         else {
+            std::cout << "WARNING, Unsupported specification file tag: "
+                      << entry->getSpecFileTag().toAscii().constData()
+                      << std::endl;
+         }
+      }
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+
+   file.close();
+
+   return filenameIn;
+}
 
 //!!***********************************************************************************
 //!!***********************************************************************************
@@ -2788,7 +2975,7 @@ SpecFile::Entry::writeFiles(QTextStream& stream,
       }
    }
 }
-                            
+
 //!!***********************************************************************************
 //!!***********************************************************************************
 //!!***********************************************************************************

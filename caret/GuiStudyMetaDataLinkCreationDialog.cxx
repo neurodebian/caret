@@ -226,19 +226,22 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    //
    // Link page number
    //
+/*
    QLabel* pageNumberLabel = new QLabel("Page Number");
    linkPageNumberLineEdit = new QLineEdit;
    QHBoxLayout* linkPageLayout = new QHBoxLayout;
    linkPageLayout->addWidget(pageNumberLabel);
    linkPageLayout->addWidget(linkPageNumberLineEdit);
    linkPageLayout->addStretch();
-   
+*/   
    //
    // Widget group for page link
    //
+/*
    pageNumberWidgetGroup = new WuQWidgetGroup(this);
    pageNumberWidgetGroup->addWidget(pageNumberLabel);
    pageNumberWidgetGroup->addWidget(linkPageNumberLineEdit);
+*/
 
    //
    // Group box and layout for items
@@ -246,7 +249,7 @@ GuiStudyMetaDataLinkCreationDialog::createStudyLinkWidget()
    QGroupBox* gb = new QGroupBox("Link Type");
    QVBoxLayout* l = new QVBoxLayout(gb);
    l->addLayout(gl);
-   l->addLayout(linkPageLayout);
+   //l->addLayout(linkPageLayout);
    
    return gb;
 }
@@ -513,7 +516,7 @@ GuiStudyMetaDataLinkCreationDialog::updateLinkSelectionControls()
          }
       }
       
-      linkPageNumberLineEdit->setText(smdl->getPageNumber());
+      //linkPageNumberLineEdit->setText(smdl->getPageNumber());
    }
 }
             
@@ -566,7 +569,7 @@ GuiStudyMetaDataLinkCreationDialog::loadStudyMetaDataLink(const bool scrollToStu
    linkPageReferenceSubHeaderSelectionComboBox->clear();
    linkTableSelectionComboBox->clear();
    linkTableSubHeaderSelectionComboBox->clear();
-   linkPageNumberLineEdit->setText("");
+   //linkPageNumberLineEdit->setText("");
    
    //
    // Get the selected study meta data link
@@ -621,6 +624,7 @@ GuiStudyMetaDataLinkCreationDialog::loadStudyMetaDataLink(const bool scrollToStu
             linkTableSelectionComboBox->addItem(table->getNumber(),
                                                 table->getNumber());
          }
+         slotLinkTableSelectionComboBox(0);
       }
    }
    
@@ -748,7 +752,7 @@ GuiStudyMetaDataLinkCreationDialog::enableLinkSelections()
                                              linkToPageReferenceRadioButton->isEnabled());
    linkTableWidgetsGroup->setEnabled(linkToTableRadioButton->isChecked() &&
                                      linkToTableRadioButton->isEnabled());
-   pageNumberWidgetGroup->setEnabled(linkToStudyOnlyRadioButton->isEnabled());
+   //pageNumberWidgetGroup->setEnabled(linkToStudyOnlyRadioButton->isEnabled());
    
    slotEnableDisableOkButton();
 }
@@ -1032,7 +1036,7 @@ GuiStudyMetaDataLinkCreationDialog::saveCurrentStudy()
          //
          // set page link
          //
-         smdl->setPageNumber(linkPageNumberLineEdit->text());
+         //smdl->setPageNumber(linkPageNumberLineEdit->text());
       }
    }
 }

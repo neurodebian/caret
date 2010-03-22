@@ -94,7 +94,7 @@ CommandVersion::executeCommand() throw (BrainModelAlgorithmException,
    std::cout << "VTK Version: "
              << vtkVersion::GetVTKVersion()
              << std::endl;
-   std::cout << "Data Compiled: "
+   std::cout << "Date Compiled: "
              << __DATE__
              << std::endl;
 }

@@ -34,6 +34,7 @@
 class QDomDocument;
 class QDomElement;
 class QDomNode;
+class XmlGenericWriter;
 
 //========================================================================================
 //
@@ -101,10 +102,10 @@ class StudyMetaDataLink {
       void setPageReferenceSubHeaderNumber(const QString& tshn);
       
       /// get the page number (negative if invalid)
-      QString getPageNumber() const { return pageNumber; }
+      //QString getPageNumber() const { return pageNumber; }
       
       /// set the page number (negative if invalid)
-      void setPageNumber(const QString& pn);
+      //void setPageNumber(const QString& pn);
       
       /// get the entire link in an "coded" text form
       QString getLinkAsCodedText() const;
@@ -118,7 +119,10 @@ class StudyMetaDataLink {
       // called to write to an XML structure
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement) const throw (FileException);
-   
+
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
       /// set element from text (used by SAX XML parser)
       void setElementFromText(const QString& elementName,
                               const QString& textValue);
@@ -143,7 +147,7 @@ class StudyMetaDataLink {
       QString panelNumberOrLetter;
       
       /// the page number (blank if invalid)
-      QString pageNumber;
+      //QString pageNumber;
       
       /// page reference page number (blank if invalid)
       QString pageReferencePageNumber;
@@ -176,7 +180,7 @@ class StudyMetaDataLink {
       static const QString tagPanelNumberOrLetter;
       
       /// tag for reading and writing study metadata
-      static const QString tagPageNumber;
+      //static const QString tagPageNumber;
       
       /// tag for reading and writing study metadata
       static const QString tagPageReferencePageNumber;
@@ -197,7 +201,7 @@ class StudyMetaDataLink {
       const QString StudyMetaDataLink::tagTableSubHeaderNumber = "tableSubHeaderNumber";
       const QString StudyMetaDataLink::tagFigureNumber = "figureNumber";
       const QString StudyMetaDataLink::tagPanelNumberOrLetter = "panelNumberOrLetter";
-      const QString StudyMetaDataLink::tagPageNumber = "pageNumber";
+      //const QString StudyMetaDataLink::tagPageNumber = "pageNumber";
       const QString StudyMetaDataLink::tagPageReferencePageNumber = "pageReferencePageNumber";
       const QString StudyMetaDataLink::tagPageReferenceSubHeaderNumber = "pageReferenceSubHeaderNumber";
 #endif // __STUDY_META_DATA_LINK_MAIN__

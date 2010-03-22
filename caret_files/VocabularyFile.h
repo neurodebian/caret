@@ -32,6 +32,7 @@
 #include "StudyMetaDataLinkSet.h"
 
 class QDomNode;
+class XmlGenericWriter;
 
 /// class for storing vocabulary information
 class VocabularyFile : public AbstractFile {
@@ -146,6 +147,9 @@ class VocabularyFile : public AbstractFile {
             void writeXML(QDomDocument& xmlDoc,
                           QDomElement&  parentElement) const;
                           
+            // called to write XML
+            void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
             /// VocabularyFile entry with which this is association
             VocabularyFile* vocabularyFile;
             
@@ -270,6 +274,9 @@ class VocabularyFile : public AbstractFile {
       /// get PubMedID's of all linked studies
       void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const;
       
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
       // Read the contents of the file (header has already been read)
       void readFileData(QFile& file,

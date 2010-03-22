@@ -60,9 +60,15 @@ DebugControl::setDebugOn(const bool onOff)
 void 
 DebugControl::setDebugFlagsFromEnvironmentVariables()
 {
-   setDebugOn(std::getenv("CARET_DEBUG") != NULL);
-   setTestFlag1(std::getenv("CARET_TEST1") != NULL);
-   setTestFlag2(std::getenv("CARET_TEST2") != NULL);
+   if (std::getenv("CARET_DEBUG") != NULL) {
+      setDebugOn(true);
+   }
+   if (std::getenv("CARET_TEST1") != NULL) {
+      setTestFlag1(true);
+   }
+   if (std::getenv("CARET_TEST2") != NULL) {
+      setTestFlag2(true);
+   }
 }
       
 /**

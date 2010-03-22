@@ -179,6 +179,10 @@ CommandSurfaceApplyTransformationMatrix::executeCommand() throw (BrainModelAlgor
             TransformationMatrixFile tmf;
             tmf.readFile(matrixFileName);
             TransformationMatrix* matrix = tmf.getTransformationMatrixWithName(matrixName);
+            if (matrix == NULL)
+            {
+               throw CommandException("matrix file does not contain a matrix with that name.");
+            }
             surface->applyTransformationMatrix(*matrix);
          }
          break;

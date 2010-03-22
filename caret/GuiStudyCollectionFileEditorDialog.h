@@ -90,6 +90,9 @@ class GuiStudyCollectionFileEditorDialog : public WuQDialog {
       /// called when collection focus list ID changed
       void slotCollectionFociListIDLineEditChanged(const QString& text);
       
+      /// called when collection focus color list ID changed
+      void slotCollectionFociColorListIDLineEditChanged(const QString& text);
+      
       /// called when collection topic changed
       void slotCollectionTopicLineEditChanged(const QString& text);
       
@@ -159,6 +162,9 @@ class GuiStudyCollectionFileEditorDialog : public WuQDialog {
       
       /// collection focus ID
       QLineEdit* collectionFociListIDLineEdit;
+      
+      /// collection focus color list ID
+      QLineEdit* collectionFociColorListIDLineEdit;
       
       /// collection topic
       QLineEdit* collectionTopicLineEdit;

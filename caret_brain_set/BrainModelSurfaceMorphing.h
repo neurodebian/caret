@@ -176,7 +176,7 @@ class BrainModelSurfaceMorphing : public BrainModelAlgorithmMultiThreaded {
                                 const int threadNumberIn);      
                                            
       /// morph for one iteration
-      void run();
+      void run(int iteration);
       
       /// Compute the angular force on a node by its neighbor.
       void computeAngularForce(const float* coords,
@@ -221,6 +221,9 @@ class BrainModelSurfaceMorphing : public BrainModelAlgorithmMultiThreaded {
       
       /// set the input and output coords
       void setInputAndOutputCoords(float* inCoords, float* outCoords);
+      
+      /// check for not a number (true if any data are NaN)
+      bool checkNaN(float* data, int numberOfData) const;
       
       /// the reference surface
       BrainModelSurface* referenceSurface;

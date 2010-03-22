@@ -93,6 +93,20 @@ BrainModelContours::readContourFile(const QString& filename,
       }
       else {
          contours.readFile(filename);
+         
+         //
+         // Use scaling saved in contour file if valid
+         //
+         float scale[3];
+         contours.getMainWindowScaling(scale);
+         if ((scale[0] > 0.0) &&
+             (scale[1] > 0.0) &&
+             (scale[2] > 0.0)) {
+            setScaling(0, scale);
+         }
+         else {
+            setScaling(0, 1.0, 1.0, 1.0);
+         }
       }
    }
    catch (FileException& e) {
@@ -312,7 +326,7 @@ BrainModelContours::applyTransformationsToAllContours()
    tm.translate(translation[0][0], translation[0][1], translation[0][2]);
    TransformationMatrix rot;
    rot.setMatrix(rotationMatrix[0]);
-   tm.multiply(rot);
+   tm.preMultiply(rot);
    tm.scale(scaling[0][0], scaling[0][1], 1.0f);
    contours.applyTransformationMatrix(contours.getMinimumSection(),
                                       contours.getMaximumSection(),
@@ -351,6 +365,28 @@ BrainModelContours::resetViewingTransform(const int viewNumber)
    translation[viewNumber][1] = 0.0;
    translation[viewNumber][2] = 0.0;
    setRotationMatrix(viewNumber, m);
+}
+
+/**
+ * set the model's scaling.
+ */
+void
+BrainModelContours::setScaling(const int viewNumber, const float scaleIn[3])
+{
+   BrainModel::setScaling(viewNumber, scaleIn);
+   if (viewNumber == 0) {
+      contours.setMainWindowScaling(scaleIn);
+   }
+}
+
+/**
+ * set the model's scaling.
+ */
+void
+BrainModelContours::setScaling(const int viewNumber, const float sx, const float sy, const float sz)
+{
+   float s[3] = { sx, sy, sz };
+   setScaling(viewNumber, s);
 }
 
 

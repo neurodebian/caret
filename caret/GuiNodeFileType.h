@@ -26,8 +26,6 @@ enum GUI_NODE_FILE_TYPE {
    GUI_NODE_FILE_TYPE_SECTION,
    /// surface shape
    GUI_NODE_FILE_TYPE_SURFACE_SHAPE,
-   /// surface vector
-   GUI_NODE_FILE_TYPE_SURFACE_VECTOR,
    /// topography file
    GUI_NODE_FILE_TYPE_TOPOGRAPHY
 };

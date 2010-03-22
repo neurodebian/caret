@@ -28,12 +28,12 @@
 #include <limits>
 #include <sstream>
 
-#include <QDateTime>
 #include <QFile>
 #include <QTextStream>
 
 #include "BrainModelSurfaceMetricInterHemClusters.h"
 #include "BrainSet.h"
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "MetricFile.h"
@@ -601,7 +601,8 @@ BrainModelSurfaceMetricInterHemClusters::executeClusterSearch() throw (BrainMode
    //
    // Show area and thresholds
    //
-   reportStream << "Date/Time:           " << QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
+   reportStream << "Date/Time:           " << DateAndTime::getDateAndTimeAsString() << "\n";
+                       //QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
    reportStream << "Shape File Left A:   " << shapeFileLeftAName << "\n";
    reportStream << "Shape File Left B:   " << shapeFileLeftBName << "\n";
    reportStream << "Shape File Left A:   " << shapeFileRightAName << "\n";

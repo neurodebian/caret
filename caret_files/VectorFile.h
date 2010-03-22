@@ -1,6 +1,5 @@
-
-#ifndef __CARET_VECTOR_FILE_H__
-#define __CARET_VECTOR_FILE_H__
+#ifndef __VECTOR_FILE_H__
+#define	__VECTOR_FILE_H__
 
 /*LICENSE_START*/
 /*
@@ -14,7 +13,7 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ * 
  *  CARET is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -27,141 +26,177 @@
  */
 /*LICENSE_END*/
 
+#include "GiftiDataArrayFile.h"
 
-#include "AbstractFile.h"
-#include "FileException.h"
-
+class TransformationMatrix;
 class VolumeFile;
 
 /// class for storing vectors
-class VectorFile : public AbstractFile {
+class VectorFile : public GiftiDataArrayFile {
    public:
-      /// Combine with volume operations
-      enum COMBINE_VOLUME_OPERATION {
-         COMBINE_VOLUME_REPLACE_MAGNITUDE_WITH_VOLUME,
-         COMBINE_VOLUME_MULTIPLY_MAGNITUDE_WITH_VOLUME
-      };
-      
-      /// combine operations
-      enum COMBINE_OPERATION {
-         COMBINE_OPERATION_DOT_SQRT_RECT_MINUS,  // was 1
-         COMBINE_OPERATION_2_VEC_NORMAL,  // was 2
-         COMBINE_OPERATION_2_VEC  // was 3
-      };
-      
-      /// Constructor
-      VectorFile(const int xdim, const int ydim, const int zdim);
-      
-      /// Constructor
+      // constructor
       VectorFile();
-      
-      /// Destructor
+
+      // copy constructor
+      VectorFile(const VectorFile& nndf);
+
+      // create vectors from FSL volume files contains x/y/z/magnitude
+      static VectorFile* createVectorFileFromFSLVectorVolumes(
+                   const VolumeFile& xVectorVolume,
+                   const VolumeFile& yVectorVolume,
+                   const VolumeFile& zVectorVolume,
+                   const VolumeFile& magnitudeVolume,
+                   const VolumeFile& destinationSpaceVolume,
+                   const TransformationMatrix& fslMatrix,
+                   TransformationMatrix& inputToOutputSpaceTransformationMatrixOut,
+                   const float defaultColorRGB[3] = NULL) throw (FileException);
+
+      // assignment operator
+      VectorFile& operator=(const VectorFile& nndf);
+
+      // destructor
       ~VectorFile();
-      
-      /// clear the file
-      void clear();
-      
-      /// Initialize the file to specified size with all zero values.
-      void initialize(const int xdim, const int ydim, const int zdim);
-      
-      /// returns true if the file is isEmpty (contains no data)
-      bool empty() const;
 
-      /// get the dimensions
-      void getDimensions(int dim[3]) const;
-      
-      /// get the dimensions
-      void getDimensions(int& dimX, int& dimY, int& dimZ) const;
-      
-      /// get a vector
-      void getVector(const int i, const int j, const int k, float vector[3]) const;
-      
-      /// get magnitude
-      float getMagnitude(const int i, const int j, const int k) const;
-      
-      /// get a vector
-      void getVectorWithFlatIndex(const int indx, float& xOut, float& yOut, float& zOut) const;
-      
-      /// get a vector
-      void getVectorWithFlatIndex(const int indx, float xyzOut[3]) const;
-      
-      /// get a magnitude
-      float getMagnitudeWithFlatIndex(const int indx) const { return magnitude[indx]; }
-      
-      /// set a vector
-      void setVectorWithFlatIndex(const int indx, const float xIn, 
-                     const float yIn, const float zIn);
-      
-      /// set a vector
-      void setVectorWithFlatIndex(const int indx, float xyzIn[3]);
-      
-      /// set a magnitude
-      void setMagnitudeWithFlatIndex(const int indx, const float mag) { magnitude[indx] = mag; }
-      
-      /// get a pointer to the X data
-      float* getWithFlatIndexValueX(const int indx);
-      
-      /// get a pointer to the Y data
-      float* getWithFlatIndexValueY(const int indx);
-      
-      /// get a pointer to the Z data
-      float* getWithFlatIndexValueZ(const int indx);
-      
-      /// combine a volume with this file's magnitude
-      void combineWithVolumeOperation(const COMBINE_VOLUME_OPERATION operation,
-                            const VolumeFile* vf) throw (FileException);
-           
-      /// copy magnitude to a volume's voxels (assumes volume properly allocated)
-      void copyMagnitudeToVolume(VolumeFile* vf) const throw (FileException);
-      
-      /// Combine vector files
-      static void combineVectorFiles (const bool maskingFlag, 
-                               const COMBINE_OPERATION operation,
-                               VectorFile* vec1,
-                               const VectorFile* vec2,
-                               const VolumeFile* maskVolume,
-                               VectorFile* out) throw (FileException);
-      
-      /// multiply x,y,z by magnitude
-      void multiplyXYZByMagnitude();
-      
+      // append a data array file to this one
+      virtual void append(const VectorFile& naf) throw (FileException);
+
+      // Clear the node data file.
+      virtual void clear();
+
+      // add a vector (color and radius are optional)
+      void addVector(const float xyzOriginIn[3],
+                     const float xyzComponentsIn[3],
+                     const float magnitudeIn,
+                     const int nodeNumberIn = -1,
+                     const float rgbaColorsIn[4] = NULL,
+                     const float radiusIn = 1.0);
+
+      // get number of vector
+      int getNumberOfVectors() const;
+
+      // get the vector's data
+      void getVectorData(const int vectorIndex,
+                         float xyzOriginOut[3],
+                         float xyzComponentsOut[3],
+                         float& magnitudeOut,
+                         int& nodeNumberOut,
+                         float rgbaColorsOut[4],
+                         float& radiusOut) const;
+
+      // set the number of vectors (clears any existing data)
+      void setNumberOfVectors(int numberOfVectors);
+
+      // get the vector's origin
+      void getVectorOrigin(const int vectorIndex,
+                           float xyzOriginOut[3]) const;
+
+      // set the vector's origin
+      void setVectorOrigin(const int vectorIndex,
+                           const float xyzOriginIn[3]);
+
+      // get the unit vector's XYZ components
+      void getVectorUnitComponents(const int vectorIndex,
+                               float xyzVectorOut[3]) const;
+
+      // set the unit vector's XYZ components
+      void setVectorUnitComponents(const int vectorIndex,
+                               const float xyzVectorIn[3]);
+
+      // get the vector's magnitude
+      float getVectorMagnitude(const int vectorIndex) const;
+
+      // set the vector's magnitude
+      void setVectorMagnitude(const int vectorIndex,
+                              const float magnitudeIn);
+
+      // get the vectors radius
+      float getVectorRadius(const int vectorIndex) const;
+
+      // set the vector's radius
+      void setVectorRadius(const int vectorIndex,
+                           const float radiusIn);
+
+      // get the vector's rgba colors
+      void getVectorColorRGBA(const int vectorIndex,
+                              float rgbaOut[4]) const;
+
+      // set the vector's rgba colors
+      void setVectorColorRGBA(const int vectorIndex,
+                              const float rgbaIn[4]);
+
+      // get the vector's node number
+      int getVectorNodeNumber(const int vectorIndex) const;
+
+      // set the vector's node number
+      void setVectorNodeNumber(const int vectorIndex,
+                               const int nodeNumberIn);
+
+      // set the vector's data 
+      void setVectorData(const int vectorIndex,
+                         const float xyzOriginIn[3],
+                         const float xyzComponentsIn[3],
+                         const float magnitudeIn,
+                         const int nodeNumberIn = -1,
+                         const float rgbaColorsIn[4] = NULL,
+                         const float radiusIn = 1.0);
+
+      // get PubMedID's of all linked studies
+      void getPubMedIDsOfAllLinkedStudyMetaData(std::vector<QString>& studyPMIDs) const;
+
+      // Apply transformation matrix to vector file.
+      void applyTransformationMatrix(const TransformationMatrix& tmIn);
+
+      /// get the default color
+      static void getDefaultColorRGBA(float rgba[4]);
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
-      /// read the file's data (header has already been read)
-      void readFileData(QFile& file,
-                        QTextStream& stream,
-                        QDataStream& binStream,
-                                  QDomElement& /* rootElement */) throw (FileException);
+      /// indices of vector data
+      enum DATA_INDEX {
+         INDEX_NODE_NUMBER  = 0,
+         INDEX_X_COORDINATE = 1,
+         INDEX_Y_COORDINATE = 2,
+         INDEX_Z_COORDINATE = 3,
+         INDEX_X_COMPONENT  = 4,
+         INDEX_Y_COMPONENT  = 5,
+         INDEX_Z_COMPONENT  = 6,
+         INDEX_MAGNITUDE    = 7,
+         INDEX_RADIUS       = 8,
+         INDEX_COLOR_RED    = 9,
+         INDEX_COLOR_GREEN  = 10,
+         INDEX_COLOR_BLUE   = 11,
+         INDEX_COLOR_ALPHA  = 12,
+         NUMBER_OF_ARRAYS   = 13
+      };
 
-      /// Write the file's data (header has already been written)
-      void writeFileData(QTextStream& stream,
-                         QDataStream& binStream,
-                                 QDomDocument& /* xmlDoc */,
-                                  QDomElement& /* rootElement */) throw (FileException);
+      // get the data array description
+      static QString getDataArrayDescription(const DATA_INDEX dataIndex);
 
-      /// get data index
-      int getDataIndex(const int ijk[3]) const;
-      
-      /// get flat data 
-      int getDataIndex(const int i, const int j, const int k) const;
-      
-      /// dimensions of vector file
-      int dimensions[3];
-      
-      /// x-vector component
-      std::vector<float> x;
-      
-      /// y-vector component
-      std::vector<float> y;
-      
-      /// z-vector component
-      std::vector<float> z;
-      
-      /// magnitude 
-      std::vector<float> magnitude;
-      
-      /// number of elements
-      int numElements;
+      // copy helper
+      void copyHelperVectorFile(const VectorFile& nndf);
+
+      /// set a data array value
+      void setDataValue(const int arrayIndex,
+                        const int vectorIndex,
+                        const float value);
+
+      /// get a data array value
+      float getDataValue(const int arrayIndex,
+                         const int vectorIndex) const;
+
+      // validate the data arrays (optional for subclasses)
+      virtual void validateDataArrays() throw (FileException);
+
+      /// the default color
+      static const float defaultColor[4];
+
 };
 
-#endif // __CARET_VECTOR_FILE_H__
+#ifdef __VECTOR_FILE_MAIN__
+   const float VectorFile::defaultColor[4] = { 1.0, 0.5, 0.5, 1.0 };
+#endif // __VECTOR_FILE_MAIN__
+
+#endif	/* __VECTOR_FILE_H__ */
 

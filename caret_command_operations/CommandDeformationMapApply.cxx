@@ -70,7 +70,8 @@ CommandDeformationMapApply::getScriptBuilderParameters(ScriptBuilderParameters& 
    names.push_back("FOCI");
    names.push_back("FOCI_PROJECTION");
    names.push_back("LAT_LON");
-   names.push_back("METRIC");
+   names.push_back("METRIC_AVERAGE_TILE");
+   names.push_back("METRIC_NEAREST_NODE");
    names.push_back("PAINT");
    names.push_back("PROB_ATLAS");
    names.push_back("RGB_PAINT");
@@ -79,7 +80,7 @@ CommandDeformationMapApply::getScriptBuilderParameters(ScriptBuilderParameters& 
    
    paramsOut.clear();
    paramsOut.addFile("Deformation Map File Name", 
-                     FileFilters::getCoordinateGenericFileFilter());
+                     FileFilters::getDeformationMapFileFilter());
    paramsOut.addListOfItems("Data File Type", names, names);
    paramsOut.addFile("Input Data File Name", 
                      FileFilters::getAnyFileFilter());
@@ -124,12 +125,21 @@ CommandDeformationMapApply::getHelpInformation() const
        + indent9 + "   FOCI \n"
        + indent9 + "   FOCI_PROJECTION \n"
        + indent9 + "   LAT_LON \n"
-       + indent9 + "   METRIC \n"
+       + indent9 + "   METRIC_AVERAGE_TILE \n"
+       + indent9 + "   METRIC_NEAREST_NODE \n"
        + indent9 + "   PAINT \n"
        + indent9 + "   PROB_ATLAS \n"
        + indent9 + "   RGB_PAINT \n"
        + indent9 + "   SURFACE_SHAPE \n"
        + indent9 + "   TOPOGRAPHY \n"
+       + indent9 + "\n"
+       + indent9 + "NOTE:\n"
+       + indent9 + "   METRIC_AVERAGE_TILE  assigns target surface node average\n"
+       + indent9 + "      of nodes from the nearest tile in source surface.\n"
+       + indent9 + "   METRIC_NEAREST_NODE  assigns target surface node metric\n"
+       + indent9 + "      value from nearest source node.  Use this mode when\n"
+       + indent9 + "      it is important that the metric values are NOT \n"
+       + indent9 + "      modified.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -176,6 +186,8 @@ CommandDeformationMapApply::executeCommand() throw (BrainModelAlgorithmException
    // Get file type
    //
    BrainModelSurfaceDeformDataFile::DATA_FILE_TYPE dft;
+   DeformationMapFile::METRIC_DEFORM_TYPE metricDeformType =
+                  DeformationMapFile::METRIC_DEFORM_NEAREST_NODE;
    if (fileType == "AREAL_ESTIMATION") {
       dft = BrainModelSurfaceDeformDataFile::DATA_FILE_AREAL_ESTIMATION;
    }
@@ -209,8 +221,13 @@ CommandDeformationMapApply::executeCommand() throw (BrainModelAlgorithmException
    else if (fileType == "LAT_LON") {
       dft = BrainModelSurfaceDeformDataFile::DATA_FILE_LAT_LON;
    }
-   else if (fileType == "METRIC") {
+   else if (fileType == "METRIC_AVERAGE_TILE") {
       dft = BrainModelSurfaceDeformDataFile::DATA_FILE_METRIC;
+      metricDeformType = DeformationMapFile::METRIC_DEFORM_AVERAGE_TILE_NODES;
+   }
+   else if (fileType == "METRIC_NEAREST_NODE") {
+      dft = BrainModelSurfaceDeformDataFile::DATA_FILE_METRIC;
+      metricDeformType = DeformationMapFile::METRIC_DEFORM_NEAREST_NODE;
    }
    else if (fileType == "PAINT") {
       dft = BrainModelSurfaceDeformDataFile::DATA_FILE_PAINT;
@@ -299,8 +316,7 @@ CommandDeformationMapApply::executeCommand() throw (BrainModelAlgorithmException
    //
    // set metric deformation
    //
-      deformationMapFile.setMetricDeformationType(DeformationMapFile::METRIC_DEFORM_NEAREST_NODE);
-   //   deformationMapFile.setMetricDeformationType(DeformationMapFile::METRIC_DEFORM_AVERAGE_TILE_NODES);
+   deformationMapFile.setMetricDeformationType(metricDeformType);
 
    //
    // Deform the data file
@@ -475,6 +491,8 @@ CommandDeformationMapApply::readBrainSetsForDeformation(BrainSet& sourceBrainSet
             surfaceType = BrainModelSurface::SURFACE_TYPE_FLAT;
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             coordFileName = 
                deformationMapFile.getSourceDeformedSphericalCoordFileName();
             surfaceType = BrainModelSurface::SURFACE_TYPE_SPHERICAL;
@@ -561,6 +579,8 @@ CommandDeformationMapApply::readBrainSetsForDeformation(BrainSet& sourceBrainSet
             surfaceType = BrainModelSurface::SURFACE_TYPE_FLAT;
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             coordFileName = 
                deformationMapFile.getSourceDeformedSphericalCoordFileName();
             surfaceType = BrainModelSurface::SURFACE_TYPE_SPHERICAL;

@@ -50,17 +50,6 @@ class DisplaySettingsSurface : public DisplaySettings {
           DRAW_MODE_NONE
       };
        
-      /// partial view types
-      enum PARTIAL_VIEW_TYPE {
-         PARTIAL_VIEW_ALL,
-         PARTIAL_VIEW_POSITIVE_X,
-         PARTIAL_VIEW_NEGATIVE_X,
-         PARTIAL_VIEW_POSITIVE_Y,
-         PARTIAL_VIEW_NEGATIVE_Y,
-         PARTIAL_VIEW_POSITIVE_Z,
-         PARTIAL_VIEW_NEGATIVE_Z
-      };
-      
       /// the viewing projection
       enum VIEWING_PROJECTION {
          VIEWING_PROJECTION_ORTHOGRAPHIC,
@@ -76,6 +65,23 @@ class DisplaySettingsSurface : public DisplaySettings {
          IDENTIFY_NODE_COLOR_WHITE
       };
       
+      /// clipping plane axis
+      enum CLIPPING_PLANE_AXIS {
+         CLIPPING_PLANE_AXIS_X_NEGATIVE = 0,
+         CLIPPING_PLANE_AXIS_X_POSITIVE = 1,
+         CLIPPING_PLANE_AXIS_Y_NEGATIVE = 2,
+         CLIPPING_PLANE_AXIS_Y_POSITIVE = 3,
+         CLIPPING_PLANE_AXIS_Z_NEGATIVE = 4,
+         CLIPPING_PLANE_AXIS_Z_POSITIVE = 5,
+         CLIPPING_PLANE_AXIS_NUMBER_OF = 6
+      };
+
+      /// clipping plane application
+      enum CLIPPING_PLANE_APPLICATION {
+         CLIPPING_PLANE_APPLICATION_MAIN_WINDOW_ONLY,
+         CLIPPING_PLANE_APPLICATION_FIDUCIAL_SURFACES_ONLY,
+         CLIPPING_PLANE_APPLICATION_ALL_SURFACES,
+      };
 
       /// get the drawing mode
       DRAW_MODE getDrawMode() const { return drawMode; }
@@ -149,12 +155,6 @@ class DisplaySettingsSurface : public DisplaySettings {
       /// set the display length of the force vector
       void setForceVectorDisplayLength(const float length) { forceVectorDisplayLength = length; }
       
-      /// set the partial view
-      void setPartialView(const PARTIAL_VIEW_TYPE pvt) { partialView = pvt; }
-      
-      /// get the partial view
-      PARTIAL_VIEW_TYPE getPartialView() const { return partialView; };
-      
       /// Get show surface axes info
       void getSurfaceAxesInfo(bool& showAxes,
                               bool& showLetters,
@@ -180,7 +180,27 @@ class DisplaySettingsSurface : public DisplaySettings {
       
       /// set the opacity
       void setOpacity(const float opacityIn) { opacity = opacityIn; };
-      
+
+      /// get a clipping plane coordinate
+      float getClippingPlaneCoordinate(const CLIPPING_PLANE_AXIS planeAxis) const;
+
+      /// set a clipping plane coordinate
+      void setClippingPlaneCoordinate(const CLIPPING_PLANE_AXIS planeAxis,
+                                      const float coordinateValue);
+
+      /// get clipping plane enabled
+      bool getClippingPlaneEnabled(const CLIPPING_PLANE_AXIS planeAxis) const;
+
+      /// set a clipping plane coordinate
+      void setClippingPlaneEnabled(const CLIPPING_PLANE_AXIS planeAxis,
+                                   const bool enabled);
+
+      /// get the clipping plane application
+      CLIPPING_PLANE_APPLICATION getClippingPlaneApplication() const { return clippingPlaneApplication; }
+
+      /// set the clipping plane application
+      void setClippingPlaneApplication(const CLIPPING_PLANE_APPLICATION cpa) { clippingPlaneApplication = cpa; }
+
       /// Reinitialize all display settings
       void reset();
       
@@ -225,9 +245,6 @@ class DisplaySettingsSurface : public DisplaySettings {
       /// show morphing linear forces
       bool showMorphingLinearForces;
     
-      /// the partial view
-      PARTIAL_VIEW_TYPE partialView;
-      
       /// the viewing projection
       VIEWING_PROJECTION viewingProjection;
       
@@ -251,6 +268,15 @@ class DisplaySettingsSurface : public DisplaySettings {
       
       /// surface opacity
       float opacity;
+
+      /// clipping plane coordinate along each axis (negative and positive)
+      float clippingPlaneCoordinate[CLIPPING_PLANE_AXIS_NUMBER_OF];
+
+      /// clipping plane enabled for each axis (negative and positive)
+      bool clippingPlaneEnabled[CLIPPING_PLANE_AXIS_NUMBER_OF];
+
+      /// how the clipping planes are applied
+      CLIPPING_PLANE_APPLICATION clippingPlaneApplication;
 };
 
 #endif // __VE_DISPLAY_SETTINGS_SURFACE_H__

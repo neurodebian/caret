@@ -82,7 +82,7 @@ CommandSurfaceGenerateInflated::getHelpInformation() const
        + indent9 + "[-generate-cmw] \n"
        + indent9 + "[-output-spec    output-spec-file-name]\n"
        + indent9 + "[-output-inflated-file-name  output-inflated-coordinate-file-name]\n"
-       + indent9 + "[-output-very-inflated-name  output-very-inflated-coordinate-file-name]\n"
+       + indent9 + "[-output-very-inflated-file-name  output-very-inflated-coordinate-file-name]\n"
        + indent9 + "[-output-ellipsoid-file-name output-ellipsoid-coordinate-file-name]\n"
        + indent9 + "[-output-sphere-file-name    output-spherical-coordinate-file-name]\n"
        + indent9 + "[-output-cmw-file-name       output-cmw-coordinate-file-name]\n"
@@ -92,6 +92,10 @@ CommandSurfaceGenerateInflated::getHelpInformation() const
        + indent9 + "fiducial surface should be free of topological defects.\n"
        + indent9 + "Run the command \"-surface-topology-report\" to examine\n"
        + indent9 + "a surface's topology.\n"
+       + indent9 + "\n"
+       + indent9 + "NOTE: At this time, generation of the compressed medial \n"
+       + indent9 + "wall surface from the command line is not supported due\n"
+       + indent9 + "to the algorithm's use of OpenGL for rotations.\n"
        + indent9 + "\n"
        + indent9 + "If the file name for a surface is not specified, the name\n"
        + indent9 + "of the output file will be automatically generated.\n"
@@ -284,7 +288,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       writeCoordUpdateSpec(surface,
                            compMedWallCoordinateFileName,
                            outputSpecFileName,
-                           SpecFile::getSphericalCoordFileTag());
+                           SpecFile::getCompressedCoordFileTag());
    }
 }
 

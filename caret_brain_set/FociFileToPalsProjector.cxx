@@ -117,7 +117,7 @@ FociFileToPalsProjector::execute() throw (BrainModelAlgorithmException)
          MapFmriAtlasSpecFileInfo::getAtlases(brainSet, atlasList);
                                               
          if (atlasList.empty()) {
-            throw FileException("Unable to find PALS atlases");
+            throw BrainModelAlgorithmException("Unable to find PALS atlases.  Is caret installed properly?");
          }
          
          for (unsigned int i = 0; i < atlasList.size(); i++) {

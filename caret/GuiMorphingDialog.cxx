@@ -28,7 +28,6 @@
 
 #include <QApplication>
 #include <QCheckBox>
-#include <QDateTime>
 #include <QDir>
 #include <QGridLayout>
 #include <QGroupBox>

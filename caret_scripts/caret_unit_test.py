@@ -13,8 +13,8 @@ import time
 #
 cleanupOutputFilesFlag = False
 correctImageDirectory = "correct_images"
-progName = "/Users/john/caret5_osx/caret_source/caret_command/caret_command"
-#progName = "/usr/local/caret/bin/caret_command"
+progName = "/Users/john/caret5_development/caret5_cpp/caret_source/caret_command/caret_command"
+progName = "/usr/local/caret/bin_macosx/caret_command"
 problemCount = 0
 problemMessage = ""
 

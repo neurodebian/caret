@@ -149,6 +149,11 @@ class SpecFile : public AbstractFile {
             /// get name of file
             QString getFileName(const int indx) const { return files[indx].filename; }
             
+            /// set name of file
+            void setFileName(const int indx, const QString& name) {
+               files[indx].filename = name;
+            }
+
             /// get name of data file (used by volumes with separate header and data files)
             QString getDataFileName(const int indx) const { return files[indx].dataFileName; }
             
@@ -161,6 +166,11 @@ class SpecFile : public AbstractFile {
             /// get structure with which file is associated
             const Structure getStructure(const int indx) const { return files[indx].structure; }
             
+            /// set the structure
+            void setStructure(const int indx, const Structure& s) {
+               files[indx].structure = s;
+            }
+
             // Returns true if all of myFiles are in otherFiles.  
             bool isSubset(const SpecFile& otherSpecFile,
                           QString& errorMessage) const;
@@ -260,7 +270,13 @@ class SpecFile : public AbstractFile {
       
       // see if only scene files are selected
       bool onlySceneFilesSelected() const;
-      
+
+      // get the number of entries
+      int getNumberOfEntries() const;
+
+      // get the entry at the specified index
+      Entry* getEntry(int indx);
+
       // get all entries
       void getAllEntries(std::vector<Entry>& allEntriesOut);
             
@@ -402,6 +418,12 @@ class SpecFile : public AbstractFile {
                                        std::vector<SpecFile::SPEC_FILE_BOOL>& selectionStatus,
                                        const QString fileName);
                                        
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
+      // convert to caret6 spec file tag, returns empty string if tag invalid for Caret6
+      static QString convertToCaret6SpecFileTag(const QString& tagCaret5);
+
       // IMPORTANT if new extensions added, update the method
       //    addUnknownTypeOfFileToSpecFile()
       static QString getTopoFileExtension() { return ".topo"; }
@@ -459,8 +481,7 @@ class SpecFile : public AbstractFile {
       static QString getNiftiVolumeFileExtension() { return ".nii"; }
       static QString getNiftiGzipVolumeFileExtension() { return ".nii.gz"; }
       static QString getSceneFileExtension() { return ".scene"; }
-      static QString getVectorFileExtension() { return ".vec"; }
-      static QString getSurfaceVectorFileExtension() { return ".svec"; }
+      static QString getSureFitVectorFileExtension() { return ".vec"; }
       static QString getWustlRegionFileExtension() { return ".wustl_txt"; }
       static QString getLimitsFileExtension() { return ".limits"; }
       static QString getMDPlotFileExtension() { return ".mdo"; }
@@ -474,6 +495,7 @@ class SpecFile : public AbstractFile {
       static QString getGiftiTensorFileExtension() { return ".tensor.gii"; }
       static QString getGiftiTimeSeriesFileExtension() { return ".time.gii"; }
       static QString getGiftiTopologyFileExtension() { return ".topo.gii"; }
+      static QString getGiftiVectorFileExtension() { return ".vector.gii"; }
       static QString getCommaSeparatedValueFileExtension() { return ".csv"; }
       static QString getVocabularyFileExtension() { return ".vocabulary"; }
       static QString getStudyCollectionFileExtension() { return ".study_collection"; }
@@ -546,14 +568,14 @@ class SpecFile : public AbstractFile {
       
       Entry imageFile;
       
-      Entry       transformationMatrixFile;
+      Entry transformationMatrixFile;
       
       Entry paintFile;
       Entry areaColorFile;
       Entry rgbPaintFile;
       
-      Entry surfaceVectorFile;
-      
+      Entry vectorFile;
+
       Entry rawBorderFile;
       Entry fiducialBorderFile;
       Entry inflatedBorderFile;
@@ -675,7 +697,7 @@ class SpecFile : public AbstractFile {
       static QString getPaintFileTag() { return "paint_file"; }
       static QString getAreaColorFileTag() { return "area_color_file"; }
       static QString getRgbPaintFileTag() { return "RGBpaint_file"; }
-      static QString getSurfaceVectorFileTag() { return "surface_vector_file"; }
+      static QString getVectorFileTag() { return "vector_file"; }
       
       static QString getRawBorderFileTag()        { return "RAWborder_file"; }
       static QString getFiducialBorderFileTag()   { return "FIDUCIALborder_file"; }
@@ -808,11 +830,11 @@ class SpecFile : public AbstractFile {
       // update the allEntries vector
       void updateAllEntries();
       
-      static QString SpecFile::getXmlFileTagName1() { return "file1"; }
+      static QString getXmlFileTagName1() { return "file1"; }
          
-      static QString SpecFile::getXmlFileTagName2() { return "file2"; }
+      static QString getXmlFileTagName2() { return "file2"; }
        
-      static QString SpecFile::getXmlFileTagStructure() { return "structure"; }
+      static QString getXmlFileTagStructure() { return "structure"; }
 
       /// only write selected files flag
       bool writeOnlySelectedFiles;

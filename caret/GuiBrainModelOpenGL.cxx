@@ -42,11 +42,13 @@
 
 #include <QApplication>
 #include <QCursor>
+#include <QDir>
 #include <QFont>
 #include <QFontMetrics>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QMutex>
+#include <QRegExp>
 
 #include "vtkMath.h"
 
@@ -63,6 +65,7 @@
 #include "BrainModelSurfaceNodeColoring.h"
 #include "BrainModelVolume.h"
 #include "BrainSet.h"
+#include "BrainSetAutoLoaderManager.h"
 #include "CellFile.h"
 #include "CommunicatorClientAFNI.h"
 #include "CommunicatorClientFIV.h"
@@ -1245,7 +1248,7 @@ GuiBrainModelOpenGL::keyTranslationAxes(GuiBrainModelOpenGLKeyEvent& ke)
          float tx, ty, tz;
          tm->getTranslation(tx, ty, tz);
          tm->translate(-tx, -ty, -tz);
-         tm->multiply(t3);
+         tm->preMultiply(t3);
          tm->translate(tx, ty, tz);
                
          theMainWindow->updateTransformationMatrixEditor(tm);
@@ -3289,53 +3292,63 @@ GuiBrainModelOpenGL::mouseSurfaceAndVolumeView(const GuiBrainModelOpenGLMouseEve
    switch(me.event) {
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
          //
+         // Perform auto loading
+         //
+         {
+            BrainSet* bs = theMainWindow->getBrainSet(getModelViewNumber());
+            BrainSetAutoLoaderManager* autoLoader = bs->getAutoLoaderManager();
+            if (autoLoader->getAnyAutoLoaderSelected()) {
+               selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_NODE, false);
+               if (selectedNode.getItemIndex1() >= 0) {
+                  QString errorMessage =
+                     autoLoader->processAutoLoading(selectedNode.getItemIndex1());
+                  GuiFilesModified fm;
+                  fm.setMetricModified();
+                  fm.setVolumeModified();
+                  theMainWindow->fileModificationUpdate(fm);
+                  if (errorMessage.isEmpty() == false) {
+                     QMessageBox::critical(this, "ERROR", errorMessage);
+                  }
+               }
+               else {
+                  selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_VOXEL_UNDERLAY, false);
+                  if (selectedVoxelUnderlay.getItemIndex1() >= 0) {
+                     int ijk[3] = {
+                           selectedVoxelUnderlay.getItemIndex1(),
+                           selectedVoxelUnderlay.getItemIndex2(),
+                           selectedVoxelUnderlay.getItemIndex3()
+                     };
+                     float xyz[3];
+                     BrainModelVolume* bmv = bs->getBrainModelVolume();
+                     if (bmv != NULL) {
+                        VolumeFile* vf = bmv->getUnderlayVolumeFile();
+                        if (vf != NULL) {
+                           vf->getVoxelCoordinate(ijk, xyz);
+                           QString errorMessage =
+                              autoLoader->processAutoLoading(xyz);
+                           GuiFilesModified fm;
+                           fm.setMetricModified();
+                           theMainWindow->fileModificationUpdate(fm);
+                           if (errorMessage.isEmpty() == false) {
+                              QMessageBox::critical(this, "ERROR", errorMessage);
+                           }
+                        }
+                     }
+                  }
+               }
+               GuiFilesModified fm;
+               fm.setMetricModified();
+               fm.setVolumeModified();
+               theMainWindow->fileModificationUpdate(fm);
+
+            }
+         }
+
+         //
          // Perform an ID operation
          //
          selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_ALL, true);
          
-         //
-         // Do identification
-         //
-         //BrainModelIdentification* bmid = theMainWindow->getBrainSet(getModelViewNumber())->getBrainModelIdentification();
-         //std::cout << "ID Surface & Volume: " << std::endl
-         //          << bmid->getIdentificationText(GuiBrainModelOpenGL::getOpenGLDrawing(), 
-         //                                                   false,
-         //                                                   false).toAscii().constData() << std::endl;
-
-         //
-         // See if a node has been selected and if there is a fiducial surface
-         //
-         /*
-         {
-            BrainModelSurface* bms = theMainWindow->getBrainSet(getModelViewNumber())->getActiveFiducialSurface();
-            const int nodeNumber = selectedNode.getItemIndex1();
-            if ((bms != NULL) && (nodeNumber >= 0)) {
-               //
-               // Get the nodes position
-               //
-               CoordinateFile* cf = bms->getCoordinateFile();
-               float xyz[3];
-               cf->getCoordinate(nodeNumber, xyz);
-               
-               //
-               // See if there is a volume loaded
-               //
-               BrainModelVolume* bmv = theMainWindow->getBrainSet(getModelViewNumber())->getBrainModelVolume(-1);
-               if (bmv != NULL) {
-                  VolumeFile* vf = bmv->getUnderlayVolumeFile();
-                  if (vf != NULL) {
-                     int ijk[3];
-                     float pcoords[3];
-                     if (vf->convertCoordinatesToVoxelIJK(xyz, ijk, pcoords)) {
-                        GuiIdentifyDialog* id = theMainWindow->getIdentifyDialog(true);
-                        id->displayVoxel(vf, ijk[0], ijk[1], ijk[2], NULL, getModelViewNumber());
-                     }
-                  }
-               }
-            }
-         }
-         */
-
          //
          // If transformation axis selected, switch to transform axes mouse mode
          //
@@ -3353,7 +3366,7 @@ GuiBrainModelOpenGL::mouseSurfaceAndVolumeView(const GuiBrainModelOpenGLMouseEve
          //
          // Update all GL so that green/blue ID  node symbols show up in all windows
          //   
-         updateAllGL(NULL);
+         GuiBrainModelOpenGL::updateAllGL();
          break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_PRESS:
          break;
@@ -3435,7 +3448,8 @@ void
 GuiBrainModelOpenGL::mouseSurfaceView(const GuiBrainModelOpenGLMouseEvent& me)
 {
    BrainModelSurface* bms = getDisplayedBrainModelSurface();
-   DisplaySettingsSurface* dss = theMainWindow->getBrainSet(getModelViewNumber())->getDisplaySettingsSurface();
+   BrainSet* bs = theMainWindow->getBrainSet(getModelViewNumber());
+   DisplaySettingsSurface* dss = bs->getDisplaySettingsSurface();
    
    //
    // The Caret Main Window BrainModelSurface is used when yoking.  It is NULL
@@ -3471,73 +3485,32 @@ GuiBrainModelOpenGL::mouseSurfaceView(const GuiBrainModelOpenGLMouseEvent& me)
             
    switch(me.event) {
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
+       {
+         BrainSetAutoLoaderManager* autoLoader = bs->getAutoLoaderManager();
+         if (autoLoader->getAnyAutoLoaderSelected()) {
+            selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_NODE, false);
+            if (selectedNode.getItemIndex1() >= 0) {
+               QString errorMessage =
+                  autoLoader->processAutoLoading(selectedNode.getItemIndex1());
+               GuiFilesModified fm;
+               fm.setMetricModified();
+               fm.setVolumeModified();
+               theMainWindow->fileModificationUpdate(fm);
+               if (errorMessage.isEmpty() == false) {
+                  QMessageBox::critical(this, "ERROR", errorMessage);
+               }
+            }
+            GuiFilesModified fm;
+            fm.setMetricModified();
+            fm.setVolumeModified();
+            theMainWindow->fileModificationUpdate(fm);
+         }
+
          //
          // Perform an ID operation
          //
          selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_ALL, true);
          
-         //
-         // Do identification
-         //
-         //BrainModelIdentification* bmid = theMainWindow->getBrainSet(getModelViewNumber())->getBrainModelIdentification();
-         //std::cout << "ID Surface: " << std::endl
-         //          << bmid->getIdentificationText(GuiBrainModelOpenGL::getOpenGLDrawing(), 
-         //                                                   false,
-         //                                                   false).toAscii().constData() << std::endl;
-                                                            
-         //
-         // See if a node has been selected and if there is a fiducial surface
-         //
-         /*
-         {
-            BrainModelSurface* bms = theMainWindow->getBrainSet(getModelViewNumber())->getActiveFiducialSurface();
-            const int nodeNumber = selectedNode.getItemIndex1();
-            if ((bms != NULL) && (nodeNumber >= 0)) {
-               //
-               // Get the nodes position
-               //
-               CoordinateFile* cf = bms->getCoordinateFile();
-               float xyz[3];
-               cf->getCoordinate(nodeNumber, xyz);
-               
-               //
-               // See if there is a volume loaded
-               //
-               BrainModelVolume* bmv = theMainWindow->getBrainSet(getModelViewNumber())->getBrainModelVolume(-1);
-               if (bmv != NULL) {
-                  VolumeFile* vf = bmv->getUnderlayVolumeFile();
-                  if (vf != NULL) {
-                     int ijk[3];
-                     float pcoords[3];
-                     if (vf->convertCoordinatesToVoxelIJK(xyz, ijk, pcoords)) {
-                        GuiIdentifyDialog* id = theMainWindow->getIdentifyDialog(true);
-                        id->displayVoxel(vf, ijk[0], ijk[1], ijk[2], NULL, getModelViewNumber());
-                     }
-                  }
-               }
-            }
-         }
-         */
-         
-         //
-         // If transformation axis selected, switch to transform axes mouse mode
-         //
-/*
-         if (selectedTransformationAxes.getItemIndex1() >= 0) {
-            GuiBrainModelOpenGL* mainOpenGL = theMainWindow->getBrainModelOpenGL();
-            if (mainOpenGL->getMouseMode() != MOUSE_MODE_TRANSFORMATION_MATRIX_AXES) {
-               mainOpenGL->setMouseMode(MOUSE_MODE_TRANSFORMATION_MATRIX_AXES);
-               TransformationMatrixFile* tmf = theMainWindow->getBrainSet(getModelViewNumber())->getTransformationMatrixFile();
-               const int indx = selectedTransformationAxes.getItemIndex1();
-               if ((indx >= 0) && (indx < tmf->getNumberOfMatrices())) {
-                  tmf->setSelectedTransformationAxesIndex(indx);
-               }
-            }
-            else {
-               mainOpenGL->setMouseMode(MOUSE_MODE_VIEW);
-            }
-         }
-*/
          //
          // Adjust transformation axes only in main window
          //
@@ -3556,12 +3529,13 @@ GuiBrainModelOpenGL::mouseSurfaceView(const GuiBrainModelOpenGLMouseEvent& me)
                }
             }
          }
-         
+
          //
          // Update all GL so that green/blue ID  node symbols show up in all windows
          //   
          updateAllGL(NULL);
-         break;
+       }
+       break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_PRESS:
          break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_RELEASE:
@@ -5898,6 +5872,39 @@ GuiBrainModelOpenGL::mouseVolumeView(const GuiBrainModelOpenGLMouseEvent& me)
 
    switch(me.event) {
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
+         {
+            BrainSet* bs = theMainWindow->getBrainSet(getModelViewNumber());
+            BrainSetAutoLoaderManager* autoLoader = bs->getAutoLoaderManager();
+            if (autoLoader->getAnyAutoLoaderSelected()) {
+               selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_VOXEL_UNDERLAY, false);
+               if (selectedVoxelUnderlay.getItemIndex1() >= 0) {
+                  int ijk[3] = {
+                        selectedVoxelUnderlay.getItemIndex1(),
+                        selectedVoxelUnderlay.getItemIndex2(),
+                        selectedVoxelUnderlay.getItemIndex3()
+                  };
+                  float xyz[3];
+                  VolumeFile* vf = bmv->getUnderlayVolumeFile();
+                  if (vf != NULL) {
+                     vf->getVoxelCoordinate(ijk, xyz);
+                     QString errorMessage =
+                        autoLoader->processAutoLoading(xyz);
+                     GuiFilesModified fm;
+                     fm.setMetricModified();
+                     fm.setVolumeModified();
+                     theMainWindow->fileModificationUpdate(fm);
+                     if (errorMessage.isEmpty() == false) {
+                        QMessageBox::critical(this, "ERROR", errorMessage);
+                     }
+                  }
+               }
+               GuiFilesModified fm;
+               fm.setMetricModified();
+               fm.setVolumeModified();
+               theMainWindow->fileModificationUpdate(fm);
+            }
+         }
+
          //
          // Perform an ID operation
          //
@@ -5909,18 +5916,8 @@ GuiBrainModelOpenGL::mouseVolumeView(const GuiBrainModelOpenGLMouseEvent& me)
          if (selectedNode.getItemIndex1() > 0) {
             getBrainSet()->setDisplayCrossForNode(selectedNode.getItemIndex1(),
                                                   getDisplayedBrainModelSurface());
-            GuiBrainModelOpenGL::updateAllGL();
          }
          
-         //
-         // Do identification
-         //
-         //BrainModelIdentification* bmid = theMainWindow->getBrainSet(getModelViewNumber())->getBrainModelIdentification();
-         //std::cout << "ID Volume: " << std::endl
-         //          << bmid->getIdentificationText(GuiBrainModelOpenGL::getOpenGLDrawing(), 
-         //                                                   false,
-         //                                                   false).toAscii().constData() << std::endl;
-
          //
          // See if any voxels were selected
          //
@@ -5972,59 +5969,6 @@ GuiBrainModelOpenGL::mouseVolumeView(const GuiBrainModelOpenGLMouseEvent& me)
                      case VolumeFile::VOLUME_AXIS_OBLIQUE_Z:
                      case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
                         bmv->setSelectedObliqueSliceOffsets(viewingWindowIndex, sliceOffsets);
-/*
-                        {
-                           int obliqueSlices[3];
-                           bmv->getSelectedObliqueSlices(obliqueSlices);
-
-                           DisplaySettingsVolume* dsv = theMainWindow->getBrainSet(getModelViewNumber())->getDisplaySettingsVolume();
-                           const TransformationMatrix* obtm = dsv->getObliqueSlicesTransformationMatrix();
-                           if (obtm != NULL) {
-                              TransformationMatrix tm = *obtm;
-                              float tx, ty, tz;
-                              tm.getTranslation(tx, ty, tz);
-                              tm.setTranslation(0.0, 0.0, 0.0);
-                              tm.transpose();
-                              const float pos[3] = { 0, 0, 0 }; //tx, ty, tz };
-                              int ijk[3];
-                              vf->convertCoordinatesToVoxelIJK(pos, ijk);
-                              float offset[3];
-                              offset[0] = slices[0] - ijk[0];
-                              offset[1] = slices[1] - ijk[1];
-                              offset[2] = slices[2] - ijk[2];
-
-                              tm.translate(tx, ty, tz);
-                              tm.inverseMultiplyPoint(offset);
-                           
-                              const int intOffset[3] = {
-                                 static_cast<int>(offset[0]),
-                                 static_cast<int>(offset[1]),
-                                 static_cast<int>(offset[2])
-                              };
-
-                              bmv->setSelectedObliqueSliceOffsets(viewingWindowIndex, intOffset);
-                           }
-                           else {
-                              float offset[3] = {
-                                 slices[0] - obliqueSlices[0],
-                                 slices[1] - obliqueSlices[1],
-                                 slices[2] - obliqueSlices[2]
-                              };
-                           
-                              TransformationMatrix tm;
-                              vtkTransform* rotationMatrix = bmv->getObliqueRotationMatrix();
-                              tm.setMatrix(rotationMatrix);
-                              tm.inverseMultiplyPoint(offset);
-                              const int intOffset[3] = {
-                                 static_cast<int>(offset[0]),
-                                 static_cast<int>(offset[1]),
-                                 static_cast<int>(offset[2])
-                              };
-
-                              bmv->setSelectedObliqueSliceOffsets(viewingWindowIndex, intOffset);
-                           }
-                        }
-*/
                         selectOrthogonalSlices = false;
                         break;
                      case VolumeFile::VOLUME_AXIS_UNKNOWN:
@@ -6092,38 +6036,7 @@ GuiBrainModelOpenGL::mouseVolumeView(const GuiBrainModelOpenGLMouseEvent& me)
                            }
                         }
                      }
-                  }
-                  
-                  //
-                  // Convert voxel to coordinate
-                  //
-                  //const float x = selectedVoxelUnderlay.getItemIndex1() * spacing[0] + origin[0];
-                  //const float y = selectedVoxelUnderlay.getItemIndex2() * spacing[1] + origin[1];
-                  //const float z = selectedVoxelUnderlay.getItemIndex3() * spacing[2] + origin[2];
-                  
-                  //
-                  // Find fiducial coordinate file
-                  //
-                  /*
-                  BrainModelSurface* bms = theMainWindow->getBrainSet(getModelViewNumber())->getActiveFiducialSurface();
-                  if (bms != NULL) {
-                     //
-                     // Find nearest node
-                     //
-                     const CoordinateFile* cf = bms->getCoordinateFile();
-                     const int node = cf->getCoordinateIndexClosestToPoint(x, y, z);
-                     
-                     //
-                     // Highlight nearest node
-                     //
-                     if (node > 0) {
-                        GuiIdentifyDialog* id = theMainWindow->getIdentifyDialog(true);
-                        id->displayNode(NULL, getModelViewNumber(),
-                                        node, BrainSetNodeAttribute::HIGHLIGHT_NODE_LOCAL,
-                                        true, false);
-                     }
-                  }
-                  */
+                  }                 
                }
             }
          }
@@ -6146,7 +6059,7 @@ GuiBrainModelOpenGL::mouseVolumeView(const GuiBrainModelOpenGLMouseEvent& me)
          // Update toolbar all GL so that green/blue ID  node symbols show up in all windows
          //   
          GuiToolBar::updateAllToolBars(false);
-         updateAllGL(NULL);
+         GuiBrainModelOpenGL::updateAllGL();
          break;
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_PRESS:
          break;
@@ -7775,7 +7688,7 @@ GuiBrainModelOpenGL::mouseTranslationAxes(const GuiBrainModelOpenGLMouseEvent& m
                float tx, ty, tz;
                tm->getTranslation(tx, ty, tz);
                tm->translate(-tx, -ty, -tz);
-               tm->multiply(t3);
+               tm->preMultiply(t3);
                tm->translate(tx, ty, tz);
 
                theMainWindow->updateTransformationMatrixEditor(tm);

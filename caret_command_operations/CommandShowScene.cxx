@@ -236,10 +236,11 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
    //
    // Setup the scene
    //
-   QString sceneErrorMessage;
+   QString sceneErrorMessage, sceneWarningMessage;
    brainSet.showScene(scene,
                       false,
-                      sceneErrorMessage);
+                      sceneErrorMessage,
+                      sceneWarningMessage);
       
        
    //
@@ -368,9 +369,16 @@ CommandShowScene::executeCommand() throw (BrainModelAlgorithmException,
       CommandImageView::displayQImage(*outputImageFile.getImage());
    }
    
+   if (sceneWarningMessage.isEmpty() == false) {
+      std::cout << getShortDescription().toAscii().constData()
+                << " WARNING: "
+                << sceneWarningMessage.toAscii().constData()
+                << std::endl;
+   }
    if (sceneErrorMessage.isEmpty() == false) {
       throw CommandException(sceneErrorMessage);
    }   
+   
 }
 
       
