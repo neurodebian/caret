@@ -45,7 +45,6 @@
 #include "DisplaySettingsRgbPaint.h"
 #include "DisplaySettingsSection.h"
 #include "DisplaySettingsSurfaceShape.h"
-#include "DisplaySettingsSurfaceVectors.h"
 #include "DisplaySettingsTopography.h"
 #include "GeodesicDistanceFile.h"
 #include "GuiFilesModified.h"
@@ -60,7 +59,6 @@
 #include "RgbPaintFile.h"
 #include "SectionFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
 #include "TopographyFile.h"
 #include "global_variables.h"
 
@@ -305,19 +303,6 @@ GuiNodeAttributeFileClearResetDialog::slotApplyButton()
          }
          bs->getDisplaySettingsSurfaceShape()->update();
          fm.setSurfaceShapeModified();
-         break;
-      case GUI_NODE_FILE_TYPE_SURFACE_VECTOR:
-         if (clearFileRadioButton->isChecked()) {
-            bs->clearSurfaceVectorFile();
-         }
-         else if (clearColumnRadioButton->isChecked()) {
-            bs->getSurfaceVectorFile()->resetColumn(clearColumnComboBox->currentIndex());
-         }
-         else if (removeColumnRadioButton->isChecked()) {
-            bs->getSurfaceVectorFile()->removeColumn(removeColumnComboBox->currentIndex());
-         }
-         bs->getDisplaySettingsSurfaceVectors()->update();
-         fm.setSurfaceVectorModified();
          break;
       case GUI_NODE_FILE_TYPE_TOPOGRAPHY:
          if (clearFileRadioButton->isChecked()) {

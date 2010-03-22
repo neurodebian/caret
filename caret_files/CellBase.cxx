@@ -36,6 +36,7 @@
 #include "CellBase.h"
 #undef __CELL_BASE_MAIN__
 #include "StringUtilities.h"
+#include "StudyMetaDataFile.h"
 
 /**
  * constructor.
@@ -407,9 +408,9 @@ CellBase::copyCellBaseData(const CellBase& cb, const bool copyXYZ)
       xyz[1] = cb.xyz[1];
       xyz[2] = cb.xyz[2];
    }
-   searchXYZ[0]  = searchXYZ[0];
-   searchXYZ[1]  = searchXYZ[1];
-   searchXYZ[2]  = searchXYZ[2];
+   searchXYZ[0]  = cb.searchXYZ[0];
+   searchXYZ[1]  = cb.searchXYZ[1];
+   searchXYZ[2]  = cb.searchXYZ[2];
    sectionNumber = cb.sectionNumber;
    name          = cb.name;
    studyNumber   = cb.studyNumber;
@@ -419,6 +420,7 @@ CellBase::copyCellBaseData(const CellBase& cb, const bool copyXYZ)
    size          = cb.size;
    statistic     = cb.statistic;
    comment       = cb.comment;
+   className     = cb.className;
    displayFlag   = cb.displayFlag;
    colorIndex    = cb.colorIndex;
    structure     = cb.structure;
@@ -439,6 +441,151 @@ CellBase::setCellStructure(const Structure::STRUCTURE_TYPE cst)
 { 
    structure.setType(cst);
    setModified(); 
+}
+      
+/**
+ * validate the study metadata link (returns error message).
+ */
+QStringList 
+CellBase::validateStudyMetaDataLink(StudyMetaDataFile* smdf) const
+{
+   QStringList msg;
+   
+   if (studyMetaDataLinkSet.getNumberOfStudyMetaDataLinks() > 0) {
+      StudyMetaDataLink smdl = studyMetaDataLinkSet.getStudyMetaDataLink(0);
+      const QString pubMedID = smdl.getPubMedID();
+      if (pubMedID.isEmpty()) {
+         msg += "has link with an empty PubMed ID";
+      }
+      else {
+         const int nameIndx = smdf->getStudyIndexFromName(name);
+         const int studyIndex = smdf->getStudyIndexFromPubMedID(pubMedID);
+         if ((nameIndx >= 0) && (studyIndex >= 0) && (nameIndx != studyIndex)) {
+            msg += " name links to study " + QString::number(nameIndx + 1) 
+                   + " but PubMedID links to " + QString::number(studyIndex + 1);
+         }
+         else if (nameIndx < 0) {
+            msg += " does not link to a study with matching name.";
+         }
+         if (studyIndex < 0) {
+            msg += " has link with PubMedID=" + pubMedID + " not in Study Metadata File.";
+         }
+         else {
+            const QString studyNumberText(QString::number(studyIndex+1));
+            
+            StudyMetaData* smd = smdf->getStudyMetaData(studyIndex);
+            if (getName() != smd->getName()) {
+               msg += " has non-matching study name " + smd->getName();
+            }
+            const QString tableNumber = smdl.getTableNumber();
+            const QString tableSubHeader = smdl.getTableSubHeaderNumber();
+            const QString figureNumber = smdl.getFigureNumber();
+            const QString figurePanel = smdl.getFigurePanelNumberOrLetter();
+            const QString pageRefNumber = smdl.getPageReferencePageNumber();
+            const QString pageRefSubHeader = smdl.getPageReferenceSubHeaderNumber();
+            
+            bool haveFigurePageOrTableLinkForClass = false;
+            
+            if (tableNumber.isEmpty() == false) {
+               StudyMetaData::Table* table = smd->getTableByTableNumber(tableNumber);
+               if (table == NULL) {
+                  msg += "has link to study " + studyNumberText 
+                         + " but invalid table " + tableNumber;
+               }
+               else {
+                  if (tableSubHeader.isEmpty() == false) {
+                     StudyMetaData::SubHeader* subHeader =
+                        table->getSubHeaderBySubHeaderNumber(tableSubHeader);
+                     if (subHeader != NULL) {
+                        if (subHeader->getShortName() != className) {
+                           msg += "has '" + className + "' as Class entry, but corresponding table subheader study entry is '"
+                                  + subHeader->getShortName() + "'";
+                        }
+                        if (subHeader->getShortName().isEmpty() == false) {
+                           haveFigurePageOrTableLinkForClass = true;
+                        }
+                     }
+                     else {
+                        msg += "has link to study " + studyNumberText 
+                               + " but invalid table "
+                               + tableNumber + " but invalid subheader "
+                               + tableSubHeader;
+                     }
+                  }
+               }
+            }
+            
+            if (figureNumber.isEmpty() == false) {
+               StudyMetaData::Figure* figure = smd->getFigureByFigureNumber(figureNumber);
+               if (figure == NULL) {
+                  msg += "has link to study " + studyNumberText 
+                         + " but invalid figure " + figureNumber;
+               }
+               else {
+                  if (figurePanel.isEmpty() == false) {
+                     StudyMetaData::Figure::Panel* panel =
+                        figure->getPanelByPanelNumberOrLetter(figurePanel);
+                     if (panel != NULL) {
+                        if (panel->getTaskDescription() != className) {
+                           msg += "has '" + className + "' as Class entry, but corresponding figure panel study entry is '"
+                                  + panel->getTaskDescription() + "'";
+                        }
+                        if (panel->getTaskDescription().isEmpty() == false) {
+                           haveFigurePageOrTableLinkForClass = true;
+                        }
+                     }
+                     else {
+                        msg += "has link to study " + studyNumberText
+                               + ", figure "
+                               + figureNumber + " but invalid panel "
+                               + figurePanel;
+                     }
+                  }
+               }
+            }
+            
+            if (pageRefNumber.isEmpty() == false) {
+               StudyMetaData::PageReference* pageRef =
+                     smd->getPageReferenceByPageNumber(pageRefNumber);
+               if (pageRef == NULL) {
+                  msg += "has link to study " + studyNumberText
+                         + " but invalid page ref " + pageRefNumber;
+               }
+               else {
+                  if (pageRefSubHeader.isEmpty() == false) {
+                     StudyMetaData::SubHeader* subHeader =
+                        pageRef->getSubHeaderBySubHeaderNumber(pageRefSubHeader);
+                     if (subHeader != NULL) {
+                        if (subHeader->getShortName() != className) {
+                           msg += "has '" + className + "' as Class entry, but corresponding page reference subheader study entry is '"
+                                  + subHeader->getShortName() + "'";
+                        }
+                        if (subHeader->getShortName().isEmpty() == false) {
+                           haveFigurePageOrTableLinkForClass = true;
+                        }
+                     }
+                     else {
+                        msg += "has link to study " + studyNumberText
+                               + ", Page Ref "
+                               + pageRefNumber + " but invalid subheader "
+                               + pageRefSubHeader;
+                     }
+                  }
+               }
+            }
+            
+            if (haveFigurePageOrTableLinkForClass == false) {
+               if (className.isEmpty()) {
+                  msg += "has no Class entry and there is no designated table/fig/page subheader";
+               }
+            }
+         }
+      }
+   }
+   else {
+      msg += "has no study metadata links.";
+   }
+   return msg;
 }
       
 /**

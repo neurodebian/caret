@@ -209,6 +209,15 @@ class BorderProjection {
                                 const float zDistance,
                                 const float straightLineDistance);
                                                         
+      /// remove links from border greater than specified distances of point
+      /// if a specified distance is zero or less it is ignored
+      void removeLinksAwayFromPoint(const CoordinateFile* unprojectCoordFile,
+                                    const float pointXYZ[3],
+                                    const float xDistance,
+                                    const float yDistance,
+                                    const float zDistance,
+                                    const float straightLineDistance);
+                                                        
       /// remove links in border before/after link nearest to point
       void removeLinksBeforeAfterLinkNearestPoint(const CoordinateFile* cf,
                                                   const float pointXYZ[3],
@@ -357,6 +366,10 @@ class BorderProjectionFile : public AbstractFile {
       virtual bool compareFileForUnitTesting(const AbstractFile* af,
                                              const float tolerance,
                                              QString& messageOut) const;
+      
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    private:
    
       /// this file's border projections

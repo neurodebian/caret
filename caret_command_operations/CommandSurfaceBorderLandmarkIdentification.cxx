@@ -138,6 +138,12 @@ CommandSurfaceBorderLandmarkIdentification::getHelpInformation() const
        + indent9 + "   Superior Temporal Gyrus\n"
        + indent9 + "   Sylvian Fissure\n"
        + indent9 + "\n"
+       + indent9 + "The anatomical volume is used to generate the corpus\n"
+       + indent9 + "callosum.  If desired, you may provide an anatomical \n"
+       + indent9 + "volume that contains ONLY the corpus callosum.  If so,\n"
+       + indent9 + "the anatomical volume's filename MUST contain the\n"
+       + indent9 + "case insensitive words \"corpus\" and \"callosum\".\n"
+       + indent9 + "\n"
        + indent9 + "Supported stereotaxic spaces are: \n");
       for (unsigned int i = 0; i < spaces.size(); i++) {
          helpInfo += (indent9 + "   " + spaces[i].getName() + "\n");
@@ -158,6 +164,9 @@ CommandSurfaceBorderLandmarkIdentification::executeCommand() throw (BrainModelAl
                                      ProgramParametersException,
                                      StatisticException)
 {
+   bool doLandmarksFlag = true;
+   bool doFlattenFlag   = true;
+   
    const QString stereotaxicSpaceName = 
       parameters->getNextParameterAsString("Stereotaxic Space Name");
    const QString anatomicalVolumeFileName = 
@@ -204,9 +213,20 @@ CommandSurfaceBorderLandmarkIdentification::executeCommand() throw (BrainModelAl
    //   parameters->getNextParameterAsString("Output Foci Color File Name");
       
    //
-   // Make sure that are no more parameters
+   // Optional parameters
    //
-   checkForExcessiveParameters();
+   while (parameters->getParametersAvailable()) {
+      const QString paramName = parameters->getNextParameterAsString("Optional Param");
+      if (paramName == "-no-landmarks") {
+         doLandmarksFlag = false;
+      }
+      else if (paramName == "-no-flatten") {
+         doFlattenFlag = false;
+      }
+      else {
+         throw CommandException("Unrecognized parameter: " + paramName);
+      }
+   }
 
    //
    // Check name of stereotaxic space
@@ -349,6 +369,16 @@ CommandSurfaceBorderLandmarkIdentification::executeCommand() throw (BrainModelAl
    BorderProjectionFile borderProjectionFile;
    brainSet.getBorderSet()->copyBordersToBorderProjectionFile(borderProjectionFile);
    
+   int operation = 0;
+   if (doLandmarksFlag) {
+      operation |= 
+         BrainModelSurfaceBorderLandmarkIdentification::OPERATION_ID_REGISTRATION_LANDMARKS;
+   }
+   if (doFlattenFlag) {
+      operation |= 
+         BrainModelSurfaceBorderLandmarkIdentification::OPERATION_ID_FLATTENING_LANDMARKS;
+   }
+   
    //
    // Identify the sulci
    //
@@ -366,7 +396,8 @@ CommandSurfaceBorderLandmarkIdentification::executeCommand() throw (BrainModelAl
                                             brainSet.getAreaColorFile(),
                                             &borderProjectionFile,
                                             brainSet.getBorderColorFile(),
-                                            brainSet.getVocabularyFile());
+                                            brainSet.getVocabularyFile(),
+                                            operation);
    errorMessage = "";
    try {
       bmslg.execute();

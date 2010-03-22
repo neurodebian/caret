@@ -235,6 +235,7 @@ StudyCollectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedV
    int pmidCol = -1;
    int searchIDCol = -1;
    int fociListIDCol = -1;
+   int fociColorListIDCol = -1;
    int sclIDCol = -1;
    int topicCol = -1;
    int categoryIDCol = -1;
@@ -261,6 +262,9 @@ StudyCollectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedV
       }
       else if (columnTitle == "focilist_id") {
          fociListIDCol = i;
+      }
+      else if (columnTitle == "focicolorlist_id") {
+         fociColorListIDCol = i;
       }
       else if (columnTitle == "scl_id") {
          sclIDCol = i;
@@ -299,6 +303,9 @@ StudyCollectionFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedV
       }
       if (fociListIDCol >= 0) {
          sc->setFociListID(st->getElement(i, fociListIDCol));
+      }
+      if (fociColorListIDCol >= 0) {
+         sc->setFociColorListID(st->getElement(i, fociColorListIDCol));
       }
       if (sclIDCol >= 0) {
          sc->setStudyCollectionID(st->getElement(i, sclIDCol));
@@ -449,7 +456,62 @@ StudyCollectionFile::writeXML(QDomDocument& xmlDoc,
       studyCollections[i]->writeXML(xmlDoc, parentElement);
    }
 }
-                    
+
+/**
+ * write the file's memory in caret6 format to the specified name
+ */
+QString
+StudyCollectionFile::writeFileInCaret6Format(const QString& filenameIn,
+                                             Structure structure,
+                                             const ColorFile* colorFileIn,
+                                             const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   int numCollections = this->getNumberOfStudyCollections();
+   if (numCollections <= 0) {
+      throw FileException("Contains no study collections.");
+   }
+
+   QFile file(filenameIn);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (file.exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("CaretFileType", "StudyCollection");
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/StudyCollectionFileSchema.xsd");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   for (int i = 0; i < numCollections; i++) {
+      const StudyCollection* sc = this->getStudyCollection(i);
+      sc->writeXML(xmlWriter, i);
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+
+   file.close();
+
+   return filenameIn;
+
+}
+
+
 /**
  * Write the file's data (header has already been written).
  */
@@ -532,6 +594,7 @@ StudyCollection::copyHelper(const StudyCollection& sc)
    pmid = sc.pmid;
    searchID = sc.searchID;
    fociListID = sc.fociListID;
+   fociColorListID = sc.fociColorListID;
    sclID = sc.sclID;
    topic = sc.topic;
    categoryID = sc.categoryID;
@@ -577,6 +640,7 @@ StudyCollection::clear()
    topic = "";
    categoryID = "";
    fociListID = "";
+   fociColorListID = "";
    sclID = "";
    
    const unsigned int num = studyPMIDs.size();
@@ -760,6 +824,18 @@ StudyCollection::setFociListID(const QString& s)
 }
       
 /**
+ * set foci color list ID.
+ */
+void 
+StudyCollection::setFociColorListID(const QString& s)
+{
+   if (fociColorListID != s) {
+      fociColorListID = s;
+      setModified();
+   }
+}
+      
+/**
  * set study collection ID.
  */
 void 
@@ -828,6 +904,9 @@ StudyCollection::readXML(QDomNode& nodeIn) throw (FileException)
          }
          else if (elem.tagName() == "fociListID") {
             fociListID = AbstractFile::getXmlElementFirstChildAsString(elem);
+         }
+         else if (elem.tagName() == "fociColorListID") {
+            fociColorListID = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == "sclID") {
             sclID = AbstractFile::getXmlElementFirstChildAsString(elem);
@@ -906,6 +985,10 @@ StudyCollection::writeXML(QDomDocument& xmlDoc,
                                     fociListID);
    AbstractFile::addXmlCdataElement(xmlDoc,
                                     studyCollectionElement,
+                                    "fociColorListID",
+                                    fociColorListID);
+   AbstractFile::addXmlCdataElement(xmlDoc,
+                                    studyCollectionElement,
                                     "sclID",
                                     sclID);
    AbstractFile::addXmlCdataElement(xmlDoc, 
@@ -932,4 +1015,36 @@ StudyCollection::writeXML(QDomDocument& xmlDoc,
       studyPMIDs[i]->writeXML(xmlDoc,
                               studyElement);
    }
+}
+
+/**
+ * Called to write XML
+ */
+void
+StudyCollection::writeXML(XmlGenericWriter& xmlWriter, int indx) const throw (FileException)
+{
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("Index", QString::number(indx));
+   xmlWriter.writeStartElement("StudyCollection", attributes);
+
+   xmlWriter.writeElementCData("studyCollectionName", studyCollectionName);
+   xmlWriter.writeElementCData("studyCollectionCreator", studyCollectionCreator);
+   xmlWriter.writeElementCData("studyType", studyType);
+   xmlWriter.writeElementCData("comment", comment);
+   xmlWriter.writeElementCData("studyName", studyName);
+   xmlWriter.writeElementCData("pmid", pmid);
+   xmlWriter.writeElementCData("fociListID", fociListID);
+   xmlWriter.writeElementCData("fociColorListID", fociColorListID);
+   xmlWriter.writeElementCData("sclID", sclID);
+   xmlWriter.writeElementCData("searchID", searchID);
+   xmlWriter.writeElementCData("topic", topic);
+   xmlWriter.writeElementCData("categoryID", categoryID);
+
+   const int num = getNumberOfStudyPMIDs();
+   for (int i = 0; i < num; i++) {
+      const StudyNamePubMedID* spmid = this->getStudyPMID(i);
+      spmid->writeXML(xmlWriter);
+   }
+
+   xmlWriter.writeEndElement();
 }

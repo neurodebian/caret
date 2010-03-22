@@ -1095,3 +1095,30 @@ CoordinateFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
    else return SpecFile::getUnknownCoordFileMatchTag();
 }
       
+/**
+ * Update the file's metadata for Caret6.
+ */
+void
+CoordinateFile::updateMetaDataForCaret6()
+{
+   AbstractFile::updateMetaDataForCaret6();
+
+   this->removeHeaderTag("topo_file");
+}
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+CoordinateFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   QString name = filenameIn;
+   if (useCaret6ExtensionFlag) {
+      name = FileUtilities::replaceExtension(filenameIn, ".coord",
+                                             SpecFile::getGiftiCoordinateFileExtension());
+   }
+   this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+   this->writeFile(name);
+
+   return name;
+}
+

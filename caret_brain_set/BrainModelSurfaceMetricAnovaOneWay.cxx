@@ -30,6 +30,7 @@
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceMetricAnovaOneWay.h"
+#include "DateAndTime.h"
 #include "FileUtilities.h"
 #include "MetricFile.h"
 #include "StatisticAnovaOneWay.h"
@@ -381,7 +382,7 @@ BrainModelSurfaceMetricAnovaOneWay::executeClusterSearch() throw (BrainModelAlgo
       //
       // Show area and thresholds
       //
-      reportStream << "Date/Time:           " << QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
+      reportStream << "Date/Time:           " << DateAndTime::getDateAndTimeAsString() << "\n";
       for (int m = 0; m < numInputFiles; m++) {
       reportStream << "Shape File :         " << inputMetricFileNames[m] << "\n";
       }

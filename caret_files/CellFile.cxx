@@ -763,7 +763,7 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
    const int studyMetaTableSubHeaderCol = numCols++;
    const int studyMetaFigureCol = numCols++;
    const int studyMetaFigurePanelCol = numCols++;
-   const int studyMetaPageNumberCol = numCols++;
+   //const int studyMetaPageNumberCol = numCols++;
    const int studyMetaPageReferenceNumberCol = numCols++;
    const int studyMetaPageReferenceSubheaderCol = numCols++;
    
@@ -796,7 +796,7 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
    ct->setColumnTitle(studyMetaTableSubHeaderCol, "Study Table Subheader");
    ct->setColumnTitle(studyMetaFigureCol, "Study Figure Number");
    ct->setColumnTitle(studyMetaFigurePanelCol, "Study Figure Panel");
-   ct->setColumnTitle(studyMetaPageNumberCol, "Study Page Number");
+   //ct->setColumnTitle(studyMetaPageNumberCol, "Study Page Number");
    ct->setColumnTitle(studyMetaPageReferenceNumberCol, "Study Page Reference Number");
    ct->setColumnTitle(studyMetaPageReferenceSubheaderCol, "Study Page Reference Subheader");
    
@@ -811,7 +811,19 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
       ct->setElement(i, nameCol, cd->getName());
       ct->setElement(i, studyNumberCol, cd->getStudyNumber());
       ct->setElement(i, geographyCol, cd->getGeography());
-      ct->setElement(i, areaCol, cd->getArea());
+      //
+      // Some area entries are like "9/6", which, unfortunately, Excel
+      // converts to 9-Sep but placing a space at the beginning prevents
+      // this
+      //
+      QString area = cd->getArea();
+      if (area.isEmpty() == false) {
+         if ((area[0] >= '0') &&
+             (area[0] <= '9')) {
+            area = ' ' + area;
+         }
+      }
+      ct->setElement(i, areaCol, area);
       ct->setElement(i, sizeCol, cd->getSize());
       ct->setElement(i, statisticCol, cd->getStatistic());
       ct->setElement(i, commentCol, cd->getComment());
@@ -843,7 +855,7 @@ CellFile::writeDataIntoCommaSeparatedValueFile(CommaSeparatedValueFile& csv) thr
       ct->setElement(i, studyMetaTableSubHeaderCol, smdl.getTableSubHeaderNumber());
       ct->setElement(i, studyMetaFigureCol, smdl.getFigureNumber());
       ct->setElement(i, studyMetaFigurePanelCol, smdl.getFigurePanelNumberOrLetter());
-      ct->setElement(i, studyMetaPageNumberCol, smdl.getPageNumber());
+      //ct->setElement(i, studyMetaPageNumberCol, smdl.getPageNumber());
       ct->setElement(i, studyMetaPageReferenceNumberCol, smdl.getPageReferencePageNumber());
       ct->setElement(i, studyMetaPageReferenceSubheaderCol, smdl.getPageReferenceSubHeaderNumber());
    }
@@ -910,7 +922,8 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
    int studyMetaTableSubHeaderCol = -1;
    int studyMetaFigureCol = -1;
    int studyMetaFigurePanelCol = -1;
-   int studyMetaPageNumberCol = -1;
+   //int studyMetaPageNumberCol = -1;
+   int oldPageNumberCol = -1;
    int studyMetaPageReferenceNumberCol = -1;
    int studyMetaPageReferenceSubheaderCol = -1;
    
@@ -974,7 +987,8 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
          studyMetaFigurePanelCol = i;
       }
       else if (columnTitle == "study page number") {
-         studyMetaPageNumberCol = i;
+         //studyMetaPageNumberCol = i;
+         oldPageNumberCol = i;
       }
       else if (columnTitle == "study page reference number") {
          studyMetaPageReferenceNumberCol = i;
@@ -1106,11 +1120,17 @@ CellFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFile& c
       if (studyMetaFigurePanelCol >= 0) {
          smdl.setFigurePanelNumberOrLetter(ct->getElement(i, studyMetaFigurePanelCol));
       } 
-      if (studyMetaPageNumberCol >= 0) {
-         smdl.setPageNumber(ct->getElement(i, studyMetaPageNumberCol));
-      } 
+      //if (studyMetaPageNumberCol >= 0) {
+      //   smdl.setPageNumber(ct->getElement(i, studyMetaPageNumberCol));
+      //} 
       if (studyMetaPageReferenceNumberCol >= 0) {
-         smdl.setPageReferencePageNumber(ct->getElement(i, studyMetaPageReferenceNumberCol));
+         QString pageNumber = ct->getElement(i, studyMetaPageReferenceNumberCol).trimmed();
+         if (pageNumber.isEmpty()) {
+            if (oldPageNumberCol >= 0) {
+               pageNumber = ct->getElement(i, oldPageNumberCol);
+            }
+         }
+         smdl.setPageReferencePageNumber(pageNumber);
       }
       if (studyMetaPageReferenceSubheaderCol >= 0) {
          smdl.setPageReferenceSubHeaderNumber(ct->getElement(i, studyMetaPageReferenceSubheaderCol));

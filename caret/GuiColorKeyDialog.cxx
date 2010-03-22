@@ -1246,7 +1246,7 @@ GuiColorKeyDialog::displayStudyMatchingFociColor(const QString& colorName)
                smdl->setTableNumber("");
                smdl->setFigureNumber("");
                smdl->setPageReferencePageNumber("");
-               smdl->setPageNumber("");
+               //smdl->setPageNumber("");
             }
             BrainModelIdentification* bmi = bs->getBrainModelIdentification();
             const QString studyMessage = bmi->getIdentificationTextForStudies(true,

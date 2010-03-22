@@ -27,7 +27,7 @@
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 /**
@@ -58,9 +58,9 @@ CommandVolumeVectorCombine::getScriptBuilderParameters(ScriptBuilderParameters& 
    values.push_back("2_VEC");   descriptions.push_back("2_VEC");
    
    paramsOut.clear();
-   paramsOut.addFile("Input Vector File 1 Name", FileFilters::getVectorFileFilter());
-   paramsOut.addFile("Input Vector File 2 Name", FileFilters::getVectorFileFilter());
-   paramsOut.addFile("Output Vector File Name", FileFilters::getVectorFileFilter());
+   paramsOut.addFile("Input Vector File 1 Name", FileFilters::getSureFitVectorFileFilter());
+   paramsOut.addFile("Input Vector File 2 Name", FileFilters::getSureFitVectorFileFilter());
+   paramsOut.addFile("Output Vector File Name", FileFilters::getSureFitVectorFileFilter());
    paramsOut.addFile("Mask Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addListOfItems("Operation", values, descriptions);
    paramsOut.addBoolean("Mask Flag");
@@ -116,15 +116,15 @@ CommandVolumeVectorCombine::executeCommand() throw (BrainModelAlgorithmException
       parameters->getNextParameterAsBoolean("Mask Flag");
    checkForExcessiveParameters();
       
-   VectorFile::COMBINE_OPERATION operation;
+   SureFitVectorFile::COMBINE_OPERATION operation;
    if (operationString == "DOT_SQRT_RECT_MINUS") {
-      operation = VectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS;
+      operation = SureFitVectorFile::COMBINE_OPERATION_DOT_SQRT_RECT_MINUS;
    }
    else if (operationString == "2_VEC_NORMAL") {
-      operation = VectorFile::COMBINE_OPERATION_2_VEC_NORMAL;
+      operation = SureFitVectorFile::COMBINE_OPERATION_2_VEC_NORMAL;
    }
    else if (operationString == "2_VEC") {
-      operation = VectorFile::COMBINE_OPERATION_2_VEC;
+      operation = SureFitVectorFile::COMBINE_OPERATION_2_VEC;
    }
    else {
       throw CommandException("Invalid operation \"" + operationString + "\"");
@@ -133,9 +133,9 @@ CommandVolumeVectorCombine::executeCommand() throw (BrainModelAlgorithmException
    //
    // Read the input files
    //
-   VectorFile vector1;
+   SureFitVectorFile vector1;
    vector1.readFile(inputVectorFile1Name);
-   VectorFile vector2;
+   SureFitVectorFile vector2;
    vector2.readFile(inputVectorFile2Name);
    VolumeFile maskVolume;
    maskVolume.readFile(maskVolumeFileName);
@@ -143,12 +143,12 @@ CommandVolumeVectorCombine::executeCommand() throw (BrainModelAlgorithmException
    //
    // Create the output vector file
    //
-   VectorFile outputVector = vector1;
+   SureFitVectorFile outputVector = vector1;
    
    //
    // combine vectors
    //
-   VectorFile::combineVectorFiles(maskFlag,
+   SureFitVectorFile::combineVectorFiles(maskFlag,
                                      operation,
                                      &vector1,
                                      &vector2,

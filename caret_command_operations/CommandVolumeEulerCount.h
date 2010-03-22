@@ -45,6 +45,9 @@ class CommandVolumeEulerCount : public CommandBase {
       virtual void getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const;
       
    protected:
+      // obsolete message
+      QString obsoleteMessage() const;
+
       // execute the command
       void executeCommand() throw (BrainModelAlgorithmException,
                                    CommandException,

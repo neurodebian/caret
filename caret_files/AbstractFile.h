@@ -38,7 +38,10 @@
 
 #include "FileException.h"
 #include "StudyMetaDataLinkSet.h"
+#include "Structure.h"
+#include "XmlGenericWriter.h"
 
+class ColorFile;
 class CommaSeparatedValueFile;
 class QDomDocument;
 class QDomElement;
@@ -252,7 +255,13 @@ class AbstractFile {
       
       /// Write the current file's memory to a byte array
       virtual void writeFileToArray(QByteArray& ba) throw (FileException);
-      
+
+      /// Update the file's metadata for Caret6
+      virtual void updateMetaDataForCaret6();
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
       /// Read any subclass of AbstractFile
       static AbstractFile* readAnySubClassDataFile(const QString& filenameIn,
                                                    const bool readMetaDataOnly,
@@ -465,6 +474,16 @@ class AbstractFile {
       /// get permission assigned to files as they are written
       static QFile::Permissions getFileWritePermissions() { return fileWritePermissions; }
       
+      /// set overwriting of existing files allowed
+      static void setOverwriteExistingFilesAllowed(bool allowIt) {
+          allowExistingFileOverwriteFlag = allowIt;
+      }
+
+      /// get overwriting of existing files allowed
+      static bool getOverwriteExistingFilesAllowed() {
+         return allowExistingFileOverwriteFlag;
+      }
+
    protected:    
       /// Constructor  
       AbstractFile(const QString& descriptiveName,
@@ -517,7 +536,10 @@ class AbstractFile {
       
       /// write header data to an XML file
       void writeHeaderXML(QDomDocument& doc, QDomElement& rootElement);
-      
+
+      /// write header to XML writer
+      void writeHeaderXMLWriter(XmlGenericWriter& xmlWriter) throw (FileException);
+
       /// Read the contents of the file (header has already been read)
       virtual void readFileData(QFile& file, 
                                 QTextStream& stream,
@@ -690,6 +712,9 @@ class AbstractFile {
       /// permission assigned to files as they are written
       static QFile::Permissions fileWritePermissions;
       
+      /// allow the overwriting of existing files
+      static bool allowExistingFileOverwriteFlag;
+
    protected:
       /// time to read the file in seconds
       float timeToReadFileInSeconds;
@@ -750,7 +775,7 @@ class AbstractFile {
    const QString AbstractFile::headerTagComment          = "comment";
    const QString AbstractFile::headerTagConfigurationID = "configuration_id";
    const QString AbstractFile::headerTagCoordFrameID    = "coordframe_id";
-   const QString AbstractFile::headerTagDate             = "date";
+   const QString AbstractFile::headerTagDate             = "Date";
    const QString AbstractFile::headerTagEncoding         = "encoding";
    const QString AbstractFile::headerTagOrientation      = "orientation";
    const QString AbstractFile::headerTagPerimeterID      = "perimeter_id";
@@ -774,6 +799,7 @@ class AbstractFile {
    int AbstractFile::uniqueFileNameCounter = 0;
    
    QFile::Permissions AbstractFile::fileWritePermissions(0);
+   bool AbstractFile::allowExistingFileOverwriteFlag = true;
 #endif //  _ABSTRACT_MAIN_
 
 

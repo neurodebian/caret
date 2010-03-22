@@ -244,6 +244,29 @@ StringUtilities::token(const QString& s,
 }
 
 /**
+ * split "s" into "bool tokens" splitting with any characters in "separators".
+ */
+void
+StringUtilities::token(const QString& s,
+                       const QString& separators,
+                       std::vector<bool>& tokenBools)
+{
+   std::vector<int> intBools;
+   StringUtilities::token(s, separators, intBools);
+
+   tokenBools.clear();
+   const int num = static_cast<int>(intBools.size());
+   for (int i = 0; i < num; i++) {
+      if (intBools[i] != 0) {
+         tokenBools.push_back(1);
+      }
+      else {
+         tokenBools.push_back(0);
+      }
+   }
+}
+
+/**
  * like strtok() function.
  * Split string "s" at any of the characters in "separators" and place each
  * piece in tokens.
@@ -343,6 +366,25 @@ StringUtilities::combine(const std::vector<float>& tokenFloats,
    return s;
 }
 
+/*
+ * Combine all floats in "tokens" with "separator" between each pair
+ */
+QString
+StringUtilities::combine(const float* tokenFloats,
+                         const int numFloats,
+                         const QString& separator)
+{
+   QString s;
+
+   for (int i = 0; i < numFloats; i++) {
+      if (i > 0) {
+         s.append(separator);
+      }
+      s.append(fromNumber(tokenFloats[i]));
+   }
+   return s;
+}
+
 /**
  * Combine all doubles in "tokens" with "separator" between each pair
  */
@@ -377,6 +419,46 @@ StringUtilities::combine(const std::vector<int>& tokenInts,
       s.append(fromNumber(tokenInts[i]));
    }
    return s;
+}
+
+/**
+ * Combine all ints in "tokens" with "separator" between each pair
+ */
+QString
+StringUtilities::combine(const int* tokenInts,
+                         const int numInts,
+                         const QString& separator)
+{
+   QString s;
+
+   for (int i = 0; i < numInts; i++) {
+      if (i > 0) {
+         s.append(separator);
+      }
+      s.append(fromNumber(tokenInts[i]));
+   }
+   return s;
+}
+
+/**
+ * combine "token bools" into a string delinated by "separators".
+ */
+QString
+StringUtilities::combine(const std::vector<bool>& tokenBools,
+                       const QString& separator)
+{
+   std::vector<int> ints;
+   const int num = static_cast<int>(tokenBools.size());
+   for (int i = 0; i < num; i++) {
+      if (tokenBools[i]) {
+         ints.push_back(1);
+      }
+      else {
+         ints.push_back(0);
+      }
+   }
+
+   return StringUtilities::combine(ints, separator);
 }
 
 /**
@@ -821,18 +903,29 @@ StringUtilities::toNumber(const QString& s, float& f)
 }
 
 /**
- * Convert a float to a string.
+ * Convert a float to a string.  Remove extra zeros right of decimal place.
  */
 QString
 StringUtilities::fromNumber(const float f)
 {
-   std::ostringstream str;
-   str.setf(std::ios::fixed);
-   str.precision(digitsRightOfDecimal);
+   QString s = QString::number(f, 'f', StringUtilities::digitsRightOfDecimal);
 
-   str << f;
-   
-   return str.str().c_str();
+   int decimal = s.indexOf(".");
+   int num = s.length() - 1;
+
+   if (decimal >= 0) {
+      decimal++;
+      for (int i = num; i > decimal; i--) {
+         if (s[i] == '0') {
+            s[i] = ' ';
+         }
+         else {
+            break;
+         }
+      }
+      s = s.trimmed();
+   }
+   return s;
 }
 
 /**

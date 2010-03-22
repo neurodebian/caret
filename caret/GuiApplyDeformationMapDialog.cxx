@@ -1242,6 +1242,8 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
                surfaceType = BrainModelSurface::SURFACE_TYPE_FLAT;
                break;
             case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+            case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+            case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
                coordFileName = 
                   deformationMapFile.getSourceDeformedSphericalCoordFileName();
                surfaceType = BrainModelSurface::SURFACE_TYPE_SPHERICAL;
@@ -1347,6 +1349,8 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
                surfaceType = BrainModelSurface::SURFACE_TYPE_FLAT;
                break;
             case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+            case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+            case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
                coordFileName = 
                   deformationMapFile.getSourceDeformedSphericalCoordFileName();
                surfaceType = BrainModelSurface::SURFACE_TYPE_SPHERICAL;

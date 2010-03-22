@@ -1,6 +1,5 @@
 
 #include <QApplication>
-#include <QDateTime>
 #include <QLayout>
 #include <QPushButton>
 #include <QMessageBox>

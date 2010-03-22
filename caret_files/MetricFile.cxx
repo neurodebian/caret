@@ -36,6 +36,7 @@
 #undef  _METRIC_MAIN_
 
 #include "CoordinateFile.h"
+#include "DebugControl.h"
 #include "DeformationMapFile.h"
 #include "StatisticDataGroup.h"
 #include "StatisticFalseDiscoveryRate.h"
@@ -461,6 +462,47 @@ MetricFile::getDataColumnMinMax(const int columnNumber,
 }
 
 /**
+ * Get data column min/max for the specified percentages.
+ */
+void
+MetricFile::getMinMaxValuesFromPercentages(const int columnNumber,
+                                           const float negMaxPct,
+                                           const float negMinPct,
+                                           const float posMinPct,
+                                           const float posMaxPct,
+                                           float& negMaxValueOut,
+                                           float& negMinValueOut,
+                                           float& posMinValueOut,
+                                           float& posMaxValueOut)
+{
+   negMaxValueOut = 0.0;
+   negMinValueOut = 0.0;
+   posMinValueOut = 0.0;
+   posMaxValueOut = 0.0;
+
+   if ((columnNumber >= 0) &&
+       (columnNumber < getNumberOfDataArrays())) {
+      dataArrays[columnNumber]->getMinMaxValuesFromPercentages(negMaxPct,
+                                                               negMinPct,
+                                                               posMinPct,
+                                                               posMaxPct,
+                                                               negMaxValueOut,
+                                                               negMinValueOut,
+                                                               posMinValueOut,
+                                                               posMaxValueOut);
+   }
+   
+   if (DebugControl::getDebugOn()) {
+      std::cout << "NegMax/NegMin/PosMin/PosMax "
+                << negMaxValueOut << "/"
+                << negMinValueOut << "/"
+                << posMinValueOut << "/"
+                << posMaxValueOut
+                << std::endl;
+   }
+}
+
+/**
  * get thresholding for a column.
  */
 void 
@@ -663,6 +705,7 @@ MetricFile::setValue(const int nodeNumber, const int columnNumber,
    float* data = dataArrays[columnNumber]->getDataPointerFloat();
    data[nodeNumber] = metric;
    dataArrays[columnNumber]->clearMinMaxFloatValuesValid();
+   dataArrays[columnNumber]->clearMaxMaxPercentageValuesValid();
    setModified(); 
 }
 
@@ -676,6 +719,7 @@ MetricFile::setAllColumnValuesForNode(const int nodeNumber, const float* metrics
       float* data = dataArrays[i]->getDataPointerFloat();
       data[nodeNumber] = metrics[i];
       dataArrays[i]->clearMinMaxFloatValuesValid();
+      dataArrays[i]->clearMaxMaxPercentageValuesValid();
    }
    setModified();
 }
@@ -3258,7 +3302,7 @@ MetricFile::computeStatisticalTMap(const MetricFile* m1,
    //
    // Used for pooled variance computation
    //
-   const float pooledOneOverSqrtN1N2 = std::sqrt((1.0 / m1NumberOfColumns) +
+   float pooledOneOverSqrtN1N2 = std::sqrt((1.0 / m1NumberOfColumns) +
                                                  (1.0 / m2NumberOfColumns));
                                                    
    //
@@ -4527,7 +4571,8 @@ MetricFile::concatenateColumnsFromFiles(const QString& outputFileName,
  * NOTE: x/y/z diff columns must already exist, they will not be created
  */
 void 
-MetricFile::addColumnOfCoordinateDifference(const CoordinateFile* c1,
+MetricFile::addColumnOfCoordinateDifference(const COORDINATE_DIFFERENCE_MODE diffMode,
+                                            const CoordinateFile* c1,
                                             const CoordinateFile* c2,
                                             const TopologyFile* topologyFile,
                                             const int columnIn,
@@ -4624,14 +4669,25 @@ MetricFile::addColumnOfCoordinateDifference(const CoordinateFile* c1,
       if ((xDiffColumn >= 0) || (yDiffColumn >= 0) || (zDiffColumn >= 0)) {
          float diff[3];
          MathUtilities::subtractVectors(c1->getCoordinate(i), c2->getCoordinate(i), diff);
+
+         switch (diffMode) {
+            case COORDINATE_DIFFERENCE_MODE_ABSOLUTE:
+               diff[0] = std::fabs(diff[0]);
+               diff[1] = std::fabs(diff[1]);
+               diff[2] = std::fabs(diff[2]);
+               break;
+            case COORDINATE_DIFFERENCE_MODE_SIGNED:
+               break;
+         }
+
          if (xDiffColumn >= 0) {
-            setValue(i, xDiffColumn, std::fabs(diff[0]));
+            setValue(i, xDiffColumn, diff[0]);
          }
          if (yDiffColumn >= 0) {
-            setValue(i, yDiffColumn, std::fabs(diff[1]));
+            setValue(i, yDiffColumn, diff[1]);
          }
          if (zDiffColumn >= 0) {
-            setValue(i, zDiffColumn, std::fabs(diff[2]));
+            setValue(i, zDiffColumn, diff[2]);
          }
       }
    }
@@ -4770,7 +4826,8 @@ MetricFile::addColumnOfCoordinateDifferenceTMap(const CoordinateFile* c1,
       //
       // Just use plain coordinate differences method to get distance, and dx, dy, dz
       //
-      addColumnOfCoordinateDifference(c1,
+      addColumnOfCoordinateDifference(COORDINATE_DIFFERENCE_MODE_ABSOLUTE,
+                                      c1,
                                       c2,
                                       topologyFile,
                                       lastCol,
@@ -4784,6 +4841,23 @@ MetricFile::addColumnOfCoordinateDifferenceTMap(const CoordinateFile* c1,
    setModified();
 }
                                            
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+MetricFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   QString name = filenameIn;
+   if (useCaret6ExtensionFlag) {
+      name = FileUtilities::replaceExtension(filenameIn, ".metric",
+                                   SpecFile::getGiftiFunctionalFileExtension());
+   }
+   this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+   this->writeFile(name);
+
+   return name;
+}
+
 //
 //------------------------------------------------------------------------------------------
 //

@@ -73,6 +73,10 @@ class SurfaceShapeFile : public MetricFile {
       void importFreeSurferCurvatureFile(const int numNodes,
                                          const QString& filename,
                                          const FILE_FORMAT fileFormat = AbstractFile::FILE_FORMAT_ASCII) throw (FileException);
+      
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
 };
 
 #endif // __VE_SURFACE_SHAPE_FILE_H__

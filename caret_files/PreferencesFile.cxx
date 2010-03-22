@@ -282,7 +282,12 @@ PreferencesFile::addToRecentSpecFiles(const QString& specFileName,
          try {
             writeFile(getFileName());
          }
-         catch(FileException& /*e*/) {
+         catch(FileException& e) {
+            std::cerr << "Error writing preferences file ("
+                      << getFileName().toAscii().constData()
+                      << "): "
+                      << e.whatQString().toAscii().constData()
+                      << "\n";
          }
       }
    }
@@ -622,9 +627,9 @@ PreferencesFile::setAnatomyVolumeBrightness(const int b)
 int 
 PreferencesFile::getMaximumNumberOfThreads() const 
 {
-   if (DebugControl::getDebugOn()) { 
-      return maximumNumberOfThreads;
-   }
+   //if (DebugControl::getDebugOn()) { 
+   //   return maximumNumberOfThreads;
+   //}
    return 1;
 }
 

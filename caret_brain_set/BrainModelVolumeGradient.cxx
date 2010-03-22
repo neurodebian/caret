@@ -35,7 +35,7 @@
 
 #include "BrainModelVolumeGradient.h"
 #include "DebugControl.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 
@@ -140,7 +140,7 @@ BrainModelVolumeGradient::BrainModelVolumeGradient(BrainSet* bs,
                                                    const bool maskingFlagIn, 
                                                    VolumeFile* volumeFileIn,
                                                    VolumeFile* wholeMaskVolumeIn,
-                                                   VectorFile* gradFileIn)
+                                                   SureFitVectorFile* gradFileIn)
    : BrainModelAlgorithm(bs)
 {
    lambda = lambdaIn;

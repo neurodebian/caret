@@ -37,7 +37,6 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QComboBox>
-#include <QDateTime>
 #include <QDesktopWidget>
 #include <QDir>
 #include <QInputDialog>
@@ -102,6 +101,7 @@
 #include "GuiContourSetScaleDialog.h"
 #include "GuiDataFileMathDialog.h"
 #include "GuiDrawBorderDialog.h"
+#include "GuiConnectivityDialog.h"
 #include "GuiFilesModified.h"
 #include "GuiFlattenFullHemisphereDialog.h"
 #include "GuiImageEditorWindow.h"
@@ -175,7 +175,7 @@
 #include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "SystemUtilities.h"
 #include "TopographyFile.h"
 #include "VocabularyFile.h"
@@ -365,6 +365,7 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    flatMorphingDialog      = NULL;
    flattenFullHemisphereDialog = NULL;
    fociAttributeAssignmentDialog = NULL;
+   connectivityDialog    = NULL;
    helpViewerDialog        = NULL;
    imageEditorWindow       = NULL;
    identifyDialog          = NULL;
@@ -1836,10 +1837,12 @@ GuiMainWindow::checkForModifiedFiles(BrainSet* bs,
    checkFileModified("Study Collection File", bs->getStudyCollectionFile(), msg);
    checkFileModified("Study Metadata File", bs->getStudyMetaDataFile(), msg);
    checkFileModified("Surface Shape File", bs->getSurfaceShapeFile(), msg);
-   checkFileModified("Surface Vector File", bs->getSurfaceVectorFile(), msg);
    checkFileModified("Topography File", bs->getTopographyFile(), msg);
    checkFileModified("Vocabulary File", bs->getVocabularyFile(), msg);
    checkFileModified("Transformation Matrix File", bs->getTransformationMatrixFile(), msg);
+   for (int i = 0; i < bs->getNumberOfVectorFiles(); i++) {
+      checkFileModified("Vector File", bs->getVectorFile(i), msg);
+   }
    for (int i = 0; i < bs->getNumberOfVtkModelFiles(); i++) {
       checkFileModified("VTK Model File", bs->getVtkModelFile(i), msg);
    }
@@ -2861,7 +2864,7 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    bool updateScene = false;
    bool updateSections = false;
    bool updateSurfaceShape = false;
-   bool updateSurfaceVector = false;
+   bool updateVector = false;
    bool updateStatusBar = false;
    bool updateStudyCollection = false;
    bool updateStudyMetaData = false;
@@ -3016,8 +3019,8 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       updateNodeColoring = true;
       updateSurfaceShape = true;
    }
-   if (fm.surfaceVector) {
-      updateSurfaceVector = true;
+   if (fm.vector) {
+      updateVector = true;
    }
    if (fm.topography) {
       updateNodeColoring = true;
@@ -3054,7 +3057,8 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
       updateStudyMetaData = true;
    }
    if (fm.volume) {
-      updateToolBar = true;     
+      updateToolBar = true;
+      updateVector = true;
       updateVolume = true; 
    }
    
@@ -3379,8 +3383,8 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
             // "updateOverlayUnderlayItems()" called below calls this
             //displayControlDialog->updateShapeItems();
          }
-         if (updateSurfaceVector) {
-            displayControlDialog->updateSurfaceVectorItems();
+         if (updateVector) {
+            displayControlDialog->updateVectorItems();
          }
          if (updateTopography) {
             // "updateOverlayUnderlayItems()" called below calls this
@@ -3398,8 +3402,11 @@ GuiMainWindow::fileModificationUpdate(const GuiFilesModified& fm)
    if (idDialog != NULL) {
       idDialog->updateDialog();
    }
-}
 
+   if (connectivityDialog != NULL) {
+      connectivityDialog->updateDialog();
+   }
+}
 
 /**
  * display a web page in the user's web browser.
@@ -3473,7 +3480,9 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
    //
    // Update the brain set
    //
-   getBrainSet()->showScene(scene, checkSpecFlag, errorMessage);
+   QString warningMessage;
+   getBrainSet()->showScene(scene, checkSpecFlag, errorMessage, warningMessage);
+   errorMessage += warningMessage;
    
    removeAllImageViewingWindows();
    //removeAllModelViewingWindows();
@@ -3501,6 +3510,8 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
    int mainWindowSceneY = 10;
    int mainWindowX = 10;
    int mainWindowY = 10;
+   int mainWindowSizeX = 400;
+   int mainWindowSizeY = 400;
    for (int i = 0; i < BrainModel::NUMBER_OF_BRAIN_MODEL_VIEW_WINDOWS; i++) {
       QString msg;
       int geometry[4];
@@ -3552,6 +3563,8 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
             mainWindowY = y();
             mainWindowSceneX = geometry[0];
             mainWindowSceneY = geometry[1];
+            mainWindowSizeX  = geometry[2];
+            mainWindowSizeY  = geometry[3];
          }
          else {
             //
@@ -3575,7 +3588,18 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
             if (geometry[0] < 0) {
                geometry[0] = static_cast<int>(mainWindowSceneX + 20.0);
                geometry[1] = static_cast<int>(mainWindowSceneY + 20.0);
-               
+               if (i == 1) {
+                  geometry[0] = mainWindowSceneX + mainWindowSizeX;
+                  geometry[1] = mainWindowSceneY;
+               }
+               else if (i == 2) {
+                  geometry[0] = mainWindowSceneX;
+                  geometry[1] = mainWindowSceneY + mainWindowSizeY;
+               }
+               else if (i == 3) {
+                  geometry[0] = mainWindowSceneX + mainWindowSizeX;
+                  geometry[1] = mainWindowSceneY + mainWindowSizeY;
+               }
                if (openGL != NULL) {
                   const int deltaSizeX = glWidgetWidthHeight[0] - openGL->width();
                   const int deltaSizeY = glWidgetWidthHeight[1] - openGL->height();
@@ -3688,6 +3712,11 @@ GuiMainWindow::showScene(const SceneFile::Scene* scene,
       updateSectionControlDialog();
       
    }
+
+   if (connectivityDialog != NULL) {
+      connectivityDialog->updateDialog();
+   }
+   
    GuiBrainModelOpenGL::updateAllGL(NULL); 
 }
 
@@ -4268,5 +4297,18 @@ GuiMainWindow::slotRedrawWindowsUsingBrainSet(BrainSet* bs)
          }
       }
    }
+}
+
+/**
+ * Display the connectivity dialog.
+ */
+void
+GuiMainWindow::displayConnectivityDialog()
+{
+   if (connectivityDialog == NULL) {
+      connectivityDialog = new GuiConnectivityDialog(this);
+   }
+   connectivityDialog->show();
+   connectivityDialog->activateWindow();
 }
 

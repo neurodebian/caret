@@ -103,9 +103,10 @@ class BrainModelSurfaceNodeColoring {
             int r;
             int g;
             int b;
+            int a;
             
             NodeColor()  { reset(); }
-            void reset() { r = g = b = -1; }
+            void reset() { r = g = b = -1; a = 1.0; }
             inline bool isValid() const { return ((r >= 0) || (g >= 0) || (b >= 0)); }
       };
 

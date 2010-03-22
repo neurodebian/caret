@@ -76,6 +76,11 @@ class StringUtilities {
                   const QString& separators,
                   std::vector<int>& tokenInts);
       
+      // split "s" into "bool tokens" splitting with any characters in "separators"
+      static void token(const QString& s,
+                  const QString& separators,
+                  std::vector<bool>& tokenBools);
+
       // split "s" into tokens breaking at whitespace but maintaining string in double quotes
       static void tokenStringsWithQuotes(const QString& s,
                                          QStringList& stringsOut);
@@ -93,6 +98,11 @@ class StringUtilities {
       static QString combine(const std::vector<float>& tokenFloats,
                         const QString& separator);
                         
+      // combine "token floats" into a string delinated by "separators"
+      static QString combine(const float* tokenFloats,
+                             const int numFloats,
+                             const QString& separator);
+
       // combine "token doubles" into a string delinated by "separators"
       static QString combine(const std::vector<double>& tokenDoubles,
                         const QString& separator);
@@ -101,6 +111,15 @@ class StringUtilities {
       static QString combine(const std::vector<int>& tokenInts,
                         const QString& separator);
                         
+      // combine "token ints" into a string delinated by "separators"
+      static QString combine(const int* tokenInts,
+                             const int numInts,
+                             const QString& separator);
+
+      // combine "token bools" into a string delinated by "separators"
+      static QString combine(const std::vector<bool>& tokenBools,
+                             const QString& separator);
+
       // determine if the string "s1" ends with the string "s2"
       static bool endsWith(const QString& s1, const QString& s2);
    

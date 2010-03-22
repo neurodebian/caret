@@ -7,14 +7,14 @@ macx {
    #
    # Uncomment for Debug
    #
-   #CONFIG      -= release
-   #CONFIG      += warn_on debug
+   CONFIG      -= release
+   CONFIG      += warn_on debug
    
    #
    # Uncomment for Release
    #
-   CONFIG	+= release
-   CONFIG	-= debug
+   #CONFIG	+= release
+   #CONFIG	-= debug
 
    #
    # Suppress "has different visibility" and ALL warnings
@@ -307,10 +307,14 @@ macx {
    # Build objects for Universal binaries
    #
    #CONFIG += ppc x86
+   #QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
+   #   -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+   #QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated \
+   #   -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
-      -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+      -isysroot /Developer/SDKs/MacOSX10.5.sdk
    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated \
-      -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+      -isysroot /Developer/SDKs/MacOSX10.5.sdk
 
    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 
@@ -318,19 +322,19 @@ macx {
    # Link  for OSX 10.4
    #
    #QMAKE_LFLAGS_DEBUG += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk
-   QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk
+   QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk
 
    #QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 
    # Link for Intel
-   QMAKE_LFLAGS_DEBUG += -arch i386
-   QMAKE_LFLAGS_RELEASE += -arch i386
+   #QMAKE_LFLAGS_DEBUG += -arch i386
+   #QMAKE_LFLAGS_RELEASE += -arch i386
 
    #
    # Add Link PPC for universal binaries
    #
-   QMAKE_LFLAGS_DEBUG += -arch ppc 
-   QMAKE_LFLAGS_RELEASE += -arch ppc  
+   #QMAKE_LFLAGS_DEBUG += -arch ppc 
+   #QMAKE_LFLAGS_RELEASE += -arch ppc  
 
    #
    # Universal binaries

@@ -100,7 +100,7 @@ CommandSurfaceCellProjection::getHelpInformation() const
        + indent9 + "Project the " + s + " to the surface and save into the " + s + "\n"
        + indent9 + "projection file.\n"
        + indent9 + "\n"
-       + indent9 + "\"-onto-surface-flag\" is used to project the " + s + " so that\n"
+       + indent9 + "\"-project-onto-surface\" is used to project the " + s + " so that\n"
        + indent9 + "they are a specified distance above the surface.\n"
        + indent9 + "\n");
       
@@ -138,6 +138,7 @@ CommandSurfaceCellProjection::executeCommand() throw (BrainModelAlgorithmExcepti
       const QString paramName =
          parameters->getNextParameterAsString(s + " Projection Parameter");
       if (paramName == "-project-onto-surface") {
+         projectToSurfaceFlag = true;
          surfaceAboveDistance = 
             parameters->getNextParameterAsFloat(s + " Projection Parameter: Above surface distance");
       }

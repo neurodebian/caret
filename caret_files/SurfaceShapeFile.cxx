@@ -194,3 +194,19 @@ SurfaceShapeFile::importFreeSurferCurvatureFile(const int numNodes,
    appendToFileComment(FileUtilities::basename(filename));
 }
 
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+SurfaceShapeFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   QString name = filenameIn;
+   if (useCaret6ExtensionFlag) {
+      name = FileUtilities::replaceExtension(filenameIn, ".surface_shape",
+                                     SpecFile::getGiftiShapeFileExtension());
+   }
+   this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+   this->writeFile(name);
+
+   return name;
+}

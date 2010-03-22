@@ -176,7 +176,81 @@ GiftiLabelTable::setLabel(const int indx,
    if (indx >= getNumberOfLabels()) {
       labels.resize(indx + 1, LabelData(""));
    }
-   labels[indx] = labelName;
+   labels[indx].setLabelName(labelName);
+}
+
+
+/**
+ * Get the color components as floats ranging 0.0 to 1.0
+ */
+void
+GiftiLabelTable::getColorFloat(const int indx,
+                   float& red,
+                   float& green,
+                   float& blue,
+                   float& alpha) const
+{
+   if ((indx >= 0) && (indx < static_cast<int>(labels.size()))) {
+      labels[indx].getColorFloat(red, green, blue, alpha);
+   }
+}
+
+/**
+ * Set the color components from floats ranging 0.0 to 1.0 .
+ */
+void
+GiftiLabelTable::setColorFloat(const int indx,
+                   float red,
+                   float green,
+                   float blue,
+                   float alpha)
+{
+   //
+   // Add space if needed
+   //
+   if (indx >= getNumberOfLabels()) {
+      labels.resize(indx + 1, LabelData(""));
+   }
+   labels[indx].setColorFloat(red, green, blue, alpha);
+}
+
+/**
+ * Get teh color components.
+ */
+void
+GiftiLabelTable::getColor(const int indx,
+              unsigned char& red,
+              unsigned char& green,
+              unsigned char& blue,
+              unsigned char& alpha) const
+{
+   if ((indx >= 0) && (indx < static_cast<int>(labels.size()))) {
+      labels[indx].getColor(red, green, blue, alpha);
+   }
+}
+/**
+ * Set the color components.
+ */
+void
+GiftiLabelTable::setColor(const int indx,
+              unsigned char red,
+              unsigned char green,
+              unsigned char blue,
+              unsigned char alpha)
+{
+   //
+   // Add space if needed
+   //
+   if (indx >= getNumberOfLabels()) {
+      labels.resize(indx + 1, LabelData(""));
+   }
+
+   float r = ((float)red)   / 255.0;
+   float g = ((float)green) / 255.0;
+   float b = ((float)blue)  / 255.0;
+   float a = ((float)alpha) / 255.0;
+
+   labels[indx].setColorFloat(r, g, b, a);
 }
 
 /**
@@ -265,18 +339,87 @@ GiftiLabelTable::copyHelperGiftiLabelTable(const GiftiLabelTable& nlt)
 }      
 
 /**
+ * Get colors from the labels.
+ */
+void
+GiftiLabelTable::addColorsToColorFile(ColorFile& colorFile)
+{
+   unsigned char defRed, defGreen, defBlue, defAlpha;
+   GiftiLabelTable::getDefaultColor(defRed, defGreen, defBlue, defAlpha);
+
+   const int numLabels = getNumberOfLabels();
+   for (int i = 0; i < numLabels; i++) {
+      unsigned char r, g, b, a;
+      labels[i].getColor(r, g, b, a);
+      QString labelName = labels[i].getLabelName();
+
+      bool haveColorInColorFile = colorFile.getColorExists(labelName);
+      if (haveColorInColorFile == false) {
+         //
+         // Add color since it does not exist in color file
+         //
+         colorFile.addColor(labelName, r, g, b, a);
+      }
+      else {
+         //
+         // Color is in color file so override only if
+         // label color is not the default color
+         //
+         if ((r != defRed) ||
+             (g != defGreen) ||
+             (b != defBlue) ||
+             (a != defAlpha)) {
+            colorFile.addColor(labelName, r, g, b, a);
+         }
+      }
+   }
+
+}
+
+/**
+ * Create a label from each of the colors in a color file.
+ */
+void
+GiftiLabelTable::createLabelsFromColors(const ColorFile& colorFile)
+{
+   int numColors = colorFile.getNumberOfColors();
+   for (int i = 0; i < numColors; i++) {
+      const ColorFile::ColorStorage* cs = colorFile.getColor(i);
+      QString name = cs->getName();
+      unsigned char r, g, b, a;
+      cs->getRgba(r, g, b, a);
+
+      this->labels.push_back(LabelData(name, r, g, b, a));
+   }
+}
+
+/**
  * assign colors to the labels.
  */
 void 
 GiftiLabelTable::assignColors(const ColorFile& colorFile)
 {
-   unsigned char r, g, b;
+   unsigned char r, g, b, a;
+   GiftiLabelTable::getDefaultColor(r, g, b, a);
    bool exactMatch = false;
    const int numLabels = getNumberOfLabels();
    for (int i = 0; i < numLabels; i++) {
-      labels[i].setColorFileIndex(colorFile.getColorByName(labels[i].getLabelName(),
-                                                           exactMatch,
-                                                           r, g, b));
+      QString labelName = labels[i].getLabelName();
+      int indx = colorFile.getColorByName(labelName,
+                                          exactMatch,
+                                          r, g, b, a);
+      labels[i].setColorFileIndex(indx);
+      labels[i].setColor(r, g, b, a);
+   }
+   
+   //
+   // Use alpha of zero for ???
+   //
+   int unknownIndex = this->addLabel("???");
+   if (unknownIndex >= 0) {
+      float r, g, b, a;
+      this->getColorFloat(unknownIndex, r, g, b, a);
+      this->setColorFloat(unknownIndex, r, r, b, 0.0);
    }
 }      
 
@@ -300,9 +443,15 @@ GiftiLabelTable::writeAsXML(QTextStream& stream,
       
       const int numLabels = getNumberOfLabels();
       for (int i = 0; i < numLabels; i++) {
+         float red, green, blue, alpha;
+         labels[i].getColorFloat(red, green, blue, alpha);
          GiftiCommon::writeIndentationXML(stream, indent);
          stream << "<" << GiftiCommon::tagLabel << " "
-                << GiftiCommon::attIndex << "=\"" << i << "\""
+                << GiftiCommon::attIndex << "=\"" << i << "\" "
+                << GiftiCommon::attRed << "=\"" << QString::number(red, 'f', 3) << "\" "
+                << GiftiCommon::attGreen << "=\"" << QString::number(green, 'f', 3) << "\" "
+                << GiftiCommon::attBlue << "=\"" << QString::number(blue, 'f', 3) << "\" "
+                << GiftiCommon::attAlpha << "=\"" << QString::number(alpha, 'f', 3) << "\""
                 << ">";
          stream << "<![CDATA["
                 << labels[i].getLabelName()
@@ -314,6 +463,34 @@ GiftiLabelTable::writeAsXML(QTextStream& stream,
       GiftiCommon::writeIndentationXML(stream, indent);
       stream << "</" << GiftiCommon::tagLabelTable << ">" << "\n";
    }
+}
+
+/**
+ * Write as Caret6 XML.
+ */
+void
+GiftiLabelTable::writeAsXML(XmlGenericWriter& xmlWriter) const
+{
+   xmlWriter.writeStartElement(GiftiCommon::tagLabelTable);
+
+   const int numLabels = getNumberOfLabels();
+   for (int i = 0; i < numLabels; i++) {
+      float red, green, blue, alpha;
+      labels[i].getColorFloat(red, green, blue, alpha);
+
+      XmlGenericWriterAttributes attributes;
+      attributes.addAttribute(GiftiCommon::attIndex, i);
+      attributes.addAttribute(GiftiCommon::attRed, red);
+      attributes.addAttribute(GiftiCommon::attGreen, green);
+      attributes.addAttribute(GiftiCommon::attBlue, blue);
+      attributes.addAttribute(GiftiCommon::attAlpha, alpha);
+      xmlWriter.writeElementCData(GiftiCommon::tagLabel,
+                                  attributes,
+                                  labels[i].getLabelName());
+   }
+
+   xmlWriter.writeEndElement();
+
 }
 
 /**

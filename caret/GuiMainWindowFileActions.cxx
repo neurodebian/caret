@@ -30,7 +30,6 @@
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
-#include <QDateTime>
 #include <QDir>
 #include "WuQFileDialog.h"
 #include <QImage>

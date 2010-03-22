@@ -7,7 +7,7 @@ import re
 import os
 import sys
 
-caretCommand = "/Users/john/caret5_osx/caret_source/caret_command/caret_command"
+caretCommand = "/Users/john/caret5_development/caret5_cpp/caret_source/caret_command/caret_command"
 
 ##-----------------------------------------------------------------------------
 #

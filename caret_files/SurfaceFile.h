@@ -83,6 +83,13 @@ class SurfaceFile : public GiftiDataArrayFile {
       // convert configuration ID to spec file tag
       static QString convertConfigurationIDToSpecFileTag(const QString& configID);
 
+      /// Update the file's metadata for Caret6
+      virtual void updateMetaDataForCaret6();
+
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
       // the copy helper used by copy constructor and assignement operator
       void copyHelperSurface(const SurfaceFile& sf);

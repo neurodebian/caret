@@ -55,6 +55,7 @@ CommandMetricSmoothing::getScriptBuilderParameters(ScriptBuilderParameters& para
 {
    std::vector<QString> values, descriptions;
    values.push_back("AN");      descriptions.push_back("Average Neighbors");
+   values.push_back("DILATE");  descriptions.push_back("Dilation");
    values.push_back("FWHM");   descriptions.push_back("Full Width Half Maximum");
    values.push_back("GAUSS");   descriptions.push_back("Gaussian");
    values.push_back("WAN");     descriptions.push_back("Weighted Average Neighbors");
@@ -100,10 +101,11 @@ CommandMetricSmoothing::getHelpInformation() const
        + indent9 + "Smooth metric data.\n"
        + indent9 + "\n"
        + indent9 + "\"smoothing-algorithm\" is one of:\n"
-       + indent9 + "   AN     Average Neighbors\n"
-       + indent9 + "   FWHM   Full-Width Half-Maximum\n"
-       + indent9 + "   GAUSS  Gaussian\n"
-       + indent9 + "   WAN    Weighted Average Neighbors\n"
+       + indent9 + "   AN      Average Neighbors\n"
+       + indent9 + "   DILATE  Dilation\n"
+       + indent9 + "   FWHM    Full-Width Half-Maximum\n"
+       + indent9 + "   GAUSS   Gaussian\n"
+       + indent9 + "   WAN     Weighted Average Neighbors\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -172,6 +174,9 @@ CommandMetricSmoothing::executeCommand() throw (BrainModelAlgorithmException,
    BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM smoothingAlgorithm;
    if (algorithmName == "AN") {
       smoothingAlgorithm = BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS;
+   }
+   else if (algorithmName == "DILATE") {
+      smoothingAlgorithm = BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_DILATE;
    }
    else if (algorithmName == "FWHM") {
       smoothingAlgorithm = BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM;

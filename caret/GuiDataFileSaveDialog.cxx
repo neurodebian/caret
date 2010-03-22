@@ -74,6 +74,7 @@
 #include "GuiSurfaceTypeComboBox.h"
 #include "GuiTopologyFileComboBox.h"
 #include "GuiTopologyTypeComboBox.h"
+#include "GuiVectorFileComboBox.h"
 #include "GuiVolumeFileSelectionComboBox.h"
 #include "GuiVolumeSelectionControl.h"
 #include "GuiVolumeVoxelDataTypeComboBox.h"
@@ -90,7 +91,7 @@
 #include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "TopographyFile.h"
 #include "TopologyFile.h"
 #include "QtMultipleInputDialog.h"
@@ -129,6 +130,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    fociOptionsGroupBox = createFociOptionsSection();
    imageOptionsGroupBox = createImageOptionsSection();
    topologyOptionsGroupBox = createTopologyOptionsSection();
+   vectorOptionsGroupBox = createVectorOptionsSection();
    volumeAnatomyOptionsGroupBox = createVolumeAnatomyOptionsSection();
    volumeFunctionalOptionsGroupBox = createVolumeFunctionalOptionsSection();
    volumePaintOptionsGroupBox = createVolumePaintOptionsSection();
@@ -155,6 +157,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    fileOptionsWidgetGroup->addWidget(fociOptionsGroupBox);
    fileOptionsWidgetGroup->addWidget(imageOptionsGroupBox);
    fileOptionsWidgetGroup->addWidget(topologyOptionsGroupBox);
+   fileOptionsWidgetGroup->addWidget(vectorOptionsGroupBox);
    fileOptionsWidgetGroup->addWidget(volumeAnatomyOptionsGroupBox);
    fileOptionsWidgetGroup->addWidget(volumeFunctionalOptionsGroupBox);
    fileOptionsWidgetGroup->addWidget(volumePaintOptionsGroupBox);
@@ -209,6 +212,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    dialogLayout->addWidget(fociOptionsGroupBox);
    dialogLayout->addWidget(imageOptionsGroupBox);
    dialogLayout->addWidget(topologyOptionsGroupBox);
+   dialogLayout->addWidget(vectorOptionsGroupBox);
    dialogLayout->addWidget(volumeAnatomyOptionsGroupBox);
    dialogLayout->addWidget(volumeFunctionalOptionsGroupBox);
    dialogLayout->addWidget(volumePaintOptionsGroupBox);
@@ -258,6 +262,7 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
       filterNames << FileFilters::getGiftiShapeFileFilter();
       filterNames << FileFilters::getGiftiSurfaceFileFilter();
       filterNames << FileFilters::getGiftiTopologyFileFilter();
+      filterNames << FileFilters::getGiftiVectorFileFilter();
    }
    filterNames << FileFilters::getImageSaveFileFilter();
    filterNames << FileFilters::getLatitudeLongitudeFileFilter();
@@ -272,7 +277,6 @@ GuiDataFileSaveDialog::GuiDataFileSaveDialog(QWidget* parent)
    filterNames << FileFilters::getStudyCollectionFileFilter();
    filterNames << FileFilters::getStudyMetaDataFileFilter();
    filterNames << FileFilters::getSurfaceShapeFileFilter();
-   filterNames << FileFilters::getSurfaceVectorFileFilter();
    filterNames << FileFilters::getTopographyFileFilter();
    filterNames << FileFilters::getTopologyGenericFileFilter();
    filterNames << FileFilters::getTransformationMatrixFileFilter();
@@ -757,8 +761,10 @@ GuiDataFileSaveDialog::selectFile(AbstractFile* af)
    else if (dynamic_cast<StudyMetaDataFile*>(af) != NULL) {
       fileFilterName = FileFilters::getStudyMetaDataFileFilter();
    }
-   else if (dynamic_cast<SurfaceVectorFile*>(af) != NULL) {
-      fileFilterName = FileFilters::getSurfaceVectorFileFilter();
+   else if (dynamic_cast<VectorFile*>(af) != NULL) {
+      fileFilterName = FileFilters::getGiftiVectorFileFilter();
+      VectorFile* vf = dynamic_cast<VectorFile*>(af);
+      vectorFileSelectionComboBox->setSelectedVectorFile(vf);
    }
    else if (dynamic_cast<TopographyFile*>(af) != NULL) {
       fileFilterName = FileFilters::getTopographyFileFilter();
@@ -941,7 +947,31 @@ GuiDataFileSaveDialog::createTopologyOptionsSection()
 
    return groupBox;
 }
-      
+
+/**
+ * Create the vector options section.
+ */
+QGroupBox*
+GuiDataFileSaveDialog::createVectorOptionsSection()
+{
+   //
+   // Vector File Selection
+   //
+   QLabel* vectorSelectionLabel = new QLabel("Vector File");
+   vectorFileSelectionComboBox = new GuiVectorFileComboBox;
+   QObject::connect(vectorFileSelectionComboBox, SIGNAL(currentIndexChanged(int)),
+                    this, SLOT(slotLoadParametersForFileType()));
+
+   QGroupBox* groupBox = new QGroupBox("Vector Options");
+   QGridLayout* gridLayout = new QGridLayout(groupBox);
+   gridLayout->addWidget(vectorSelectionLabel, 0, 0, Qt::AlignLeft);
+   gridLayout->addWidget(vectorFileSelectionComboBox, 0, 1, Qt::AlignLeft);
+   gridLayout->setColumnStretch(0, 0);
+   gridLayout->setColumnStretch(1, 100);
+
+   return groupBox;
+}
+
 /**
  * create the volume anatomy options section.
  */
@@ -1899,8 +1929,9 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
    else if (filterName == FileFilters::getSurfaceShapeFileFilter()) {
       af = brainSet->getSurfaceShapeFile();
    }
-   else if (filterName == FileFilters::getSurfaceVectorFileFilter()) {
-      af = brainSet->getSurfaceVectorFile();
+   else if (filterName == FileFilters::getGiftiVectorFileFilter()) {
+      vectorOptionsGroupBox->show();
+      af = vectorFileSelectionComboBox->getSelectedVectorFile();
    }
    else if (filterName == FileFilters::getTopographyFileFilter()) {
       af = brainSet->getTopographyFile();
@@ -2628,6 +2659,7 @@ GuiDataFileSaveDialog::done(int r)
             updateMetadataAndName(pf,
                                   fileName,
                                   SpecFile::getGiftiLabelFileExtension());
+            pf->assignColors(*brainSet->getAreaColorFile());
             pf->setFileWriteType(fileFormat);
             brainSet->writePaintFile(fileName);
          }
@@ -2792,12 +2824,14 @@ GuiDataFileSaveDialog::done(int r)
                                   SpecFile::getSurfaceShapeFileExtension());
             brainSet->writeSurfaceShapeFile(fileName);
          }
-         else if (filterName == FileFilters::getSurfaceVectorFileFilter()) {
-            SurfaceVectorFile* svf = brainSet->getSurfaceVectorFile();
-            updateMetadataAndName(svf,
-                                  fileName,
-                                  SpecFile::getSurfaceVectorFileExtension());
-            brainSet->writeSurfaceVectorFile(fileName);
+         else if (filterName == FileFilters::getGiftiVectorFileFilter()) {
+            VectorFile* vf = vectorFileSelectionComboBox->getSelectedVectorFile();
+            if (vf != NULL) {
+               updateMetadataAndName(vf,
+                                     fileName,
+                                     SpecFile::getGiftiVectorFileExtension());
+               brainSet->writeVectorFile(vf, fileName);
+            }
          }
          else if (filterName == FileFilters::getTopographyFileFilter()) {
             TopographyFile* tf = brainSet->getTopographyFile();
@@ -3214,7 +3248,7 @@ GuiDataFileSaveDialog::done(int r)
                                                  bms->getCoordinateFile());
             }
             else {
-               throw FileException("No Metric column is selected.");
+               throw FileException("No Paint column is selected.");
             }
          }
          else if (filterName == FileFilters::getMincVolumeFileFilter()) {

@@ -18,6 +18,8 @@ HEADERS += CommandBase.h \
            CommandCaretHelpCreateHtmlIndexFile.h \
            CommandColorFileAddColor.h \
            CommandDataFileCompare.h \
+           CommandConvertDataFileToCaret6.h \
+           CommandConvertSpecFileToCaret6.h \
            CommandColorFileCreateMissingColors.h \
            CommandDeformationMapApply.h \
            CommandDeformationMapCreate.h \
@@ -75,6 +77,7 @@ HEADERS += CommandBase.h \
            CommandPaintAssignNodes.h \
            CommandPaintAssignNodesRelativeToLine.h \
            CommandPaintComposite.h \
+           CommandPaintDilation.h \
            CommandPaintFileCreate.h \
            CommandPreferencesFileSettings.h \
            CommandSceneCreate.h \
@@ -87,6 +90,7 @@ HEADERS += CommandBase.h \
            CommandShowSurface.h \
            CommandShowVolume.h \
            CommandSpecFileAdd.h \
+           CommandSpecFileChangeResolution.h \
            CommandSpecFileClean.h \
            CommandSpecFileCopy.h \
            CommandSpecFileCreate.h \
@@ -96,6 +100,7 @@ HEADERS += CommandBase.h \
            CommandStatisticalUnitTesting.h \
            CommandStereotaxicSpaces.h \
            CommandStudyMetaDataFileDuplicates.h \
+           CommandStudyMetaDataFileValidate.h \
            CommandSurfaceAffineRegression.h \
            CommandSurfaceAlignToStandardOrientation.h \
            CommandSurfaceApplyTransformationMatrix.h \
@@ -109,12 +114,16 @@ HEADERS += CommandBase.h \
            CommandSurfaceBorderDrawMetric.h \
            CommandSurfaceBorderIntersection.h \
            CommandSurfaceBorderLandmarkIdentification.h \
+           CommandSurfaceBorderLengths.h \
            CommandSurfaceBorderLinkToFocus.h \
            CommandSurfaceBorderMerge.h \
            CommandSurfaceBorderNibbler.h \
            CommandSurfaceBorderProjection.h \
            CommandSurfaceBorderResample.h \
            CommandSurfaceBorderReverse.h \
+           CommandSurfaceBorderSetVariability.h \
+           CommandSurfaceBorderToMetric.h \
+           CommandSurfaceBorderToPaint.h \
            CommandSurfaceBorderUnprojection.h \
            CommandSurfaceBorderVariability.h \
            CommandSurfaceCellCreate.h \
@@ -130,6 +139,8 @@ HEADERS += CommandBase.h \
            CommandSurfaceFociDelete.h \
            CommandSurfaceFociProjection.h \
            CommandSurfaceFociProjectionPals.h \
+           CommandSurfaceFociReassignStudyNames.h \
+           CommandSurfaceFociStudyValidate.h \
            CommandSurfaceFociUnprojection.h \
            CommandSurfaceInflate.h \
            CommandSurfaceInformation.h \
@@ -142,6 +153,7 @@ HEADERS += CommandBase.h \
            CommandSurfaceRegistrationSphericalSpecOnly.h \
            CommandSurfaceRoiCoordReport.h \
            CommandSurfaceRoiFoldingMeasures.h \
+           CommandSurfaceRoiNodeAreas.h \
            CommandSurfaceRoiShapeMeasures.h \
            CommandSurfaceRoiStatisticalReport.h \
            CommandSurfaceSmoothing.h \
@@ -149,6 +161,7 @@ HEADERS += CommandBase.h \
            CommandSurfaceSulcalIdentificationProbabilistic.h \
            CommandSurfaceSulcalDepth.h \
            CommandSurfaceIdentifySulci.h \
+           CommandSurfaceToCArrays.h \
            CommandSurfaceToCerebralHull.h \
            CommandSurfaceToSegmentationVolume.h \
            CommandSurfaceToVolume.h \
@@ -187,6 +200,7 @@ HEADERS += CommandBase.h \
            CommandVolumeHistogram.h \
            CommandVolumeImportRawFile.h \
            CommandVolumeInformation.h \
+           CommandVolumeInformationNifti.h \
            CommandVolumeMakePlane.h \
            CommandVolumeMakeRectangle.h \
            CommandVolumeMakeShell.h \
@@ -222,6 +236,7 @@ HEADERS += CommandBase.h \
            CommandVolumeThreshold.h \
            CommandVolumeThresholdDual.h \
            CommandVolumeThresholdInverse.h \
+           CommandVolumeFslToVector.h \
            CommandVolumeTopologyCorrector.h \
            CommandVolumeTopologyGraph.h \
            CommandVolumeTopologyReport.h \
@@ -234,6 +249,8 @@ SOURCES += CommandBase.cxx \
            CommandCaretHelpCreateHtmlIndexFile.cxx \
            CommandColorFileAddColor.cxx \
            CommandColorFileCreateMissingColors.cxx \
+           CommandConvertDataFileToCaret6.cxx \
+           CommandConvertSpecFileToCaret6.cxx \
            CommandDataFileCompare.cxx \
            CommandDeformationMapApply.cxx \
            CommandDeformationMapCreate.cxx \
@@ -291,6 +308,7 @@ SOURCES += CommandBase.cxx \
            CommandPaintAssignNodes.cxx \
            CommandPaintAssignNodesRelativeToLine.cxx \
            CommandPaintComposite.cxx \
+           CommandPaintDilation.cxx \
            CommandPaintFileCreate.cxx \
            CommandPreferencesFileSettings.cxx \
            CommandSceneCreate.cxx \
@@ -303,6 +321,7 @@ SOURCES += CommandBase.cxx \
            CommandShowSurface.cxx \
            CommandShowVolume.cxx \
            CommandSpecFileAdd.cxx \
+           CommandSpecFileChangeResolution.cxx \
            CommandSpecFileClean.cxx \
            CommandSpecFileCopy.cxx \
            CommandSpecFileCreate.cxx \
@@ -312,6 +331,7 @@ SOURCES += CommandBase.cxx \
            CommandStatisticalUnitTesting.cxx \
            CommandStereotaxicSpaces.cxx \
            CommandStudyMetaDataFileDuplicates.cxx \
+           CommandStudyMetaDataFileValidate.cxx \
            CommandSurfaceAffineRegression.cxx \
            CommandSurfaceAlignToStandardOrientation.cxx \
            CommandSurfaceApplyTransformationMatrix.cxx \
@@ -325,12 +345,16 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceBorderDrawMetric.cxx \
            CommandSurfaceBorderIntersection.cxx \
            CommandSurfaceBorderLandmarkIdentification.cxx \
+           CommandSurfaceBorderLengths.cxx \
            CommandSurfaceBorderLinkToFocus.cxx \
            CommandSurfaceBorderMerge.cxx \
            CommandSurfaceBorderNibbler.cxx \
            CommandSurfaceBorderProjection.cxx \
            CommandSurfaceBorderResample.cxx \
            CommandSurfaceBorderReverse.cxx \
+           CommandSurfaceBorderSetVariability.cxx \
+           CommandSurfaceBorderToMetric.cxx \
+           CommandSurfaceBorderToPaint.cxx \
            CommandSurfaceBorderUnprojection.cxx \
            CommandSurfaceBorderVariability.cxx \
            CommandSurfaceCellCreate.cxx \
@@ -346,6 +370,8 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceFociDelete.cxx \
            CommandSurfaceFociProjection.cxx \
            CommandSurfaceFociProjectionPals.cxx \
+           CommandSurfaceFociReassignStudyNames.cxx \
+           CommandSurfaceFociStudyValidate.cxx \
            CommandSurfaceFociUnprojection.cxx \
            CommandSurfaceGenerateInflated.cxx \
            CommandSurfaceIdentifySulci.cxx \
@@ -359,12 +385,14 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceRegistrationSphericalSpecOnly.cxx \
            CommandSurfaceRoiCoordReport.cxx \
            CommandSurfaceRoiFoldingMeasures.cxx \
+           CommandSurfaceRoiNodeAreas.cxx \
            CommandSurfaceRoiShapeMeasures.cxx \
            CommandSurfaceRoiStatisticalReport.cxx \
            CommandSurfaceSmoothing.cxx \
            CommandSurfaceSphericalMultiResMorphing.cxx \
            CommandSurfaceSulcalDepth.cxx \
            CommandSurfaceSulcalIdentificationProbabilistic.cxx \
+           CommandSurfaceToCArrays.cxx \
            CommandSurfaceToCerebralHull.cxx \
            CommandSurfaceToSegmentationVolume.cxx \
            CommandSurfaceToVolume.cxx \
@@ -403,6 +431,7 @@ SOURCES += CommandBase.cxx \
            CommandVolumeHistogram.cxx \
            CommandVolumeImportRawFile.cxx \
            CommandVolumeInformation.cxx \
+           CommandVolumeInformationNifti.cxx \
            CommandVolumeMakePlane.cxx \
            CommandVolumeMakeRectangle.cxx \
            CommandVolumeMakeShell.cxx \
@@ -438,6 +467,7 @@ SOURCES += CommandBase.cxx \
            CommandVolumeThreshold.cxx \
            CommandVolumeThresholdDual.cxx \
            CommandVolumeThresholdInverse.cxx \
+           CommandVolumeFslToVector.cxx \
            CommandVolumeTopologyCorrector.cxx \
            CommandVolumeTopologyGraph.cxx \
            CommandVolumeTopologyReport.cxx \

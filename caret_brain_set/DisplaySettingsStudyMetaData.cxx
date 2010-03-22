@@ -651,7 +651,7 @@ DisplaySettingsStudyMetaData::updateStudyMetaDataTableSubHeaderSelectionFlags() 
          const int numSubHeaders = table->getNumberOfSubHeaders();
          for (int k = 0; k < numSubHeaders; k++) {
             StudyMetaData::SubHeader* sh = table->getSubHeader(k);
-            bool selFlag = true;
+            bool selFlag = false; //true;
             const int indx = getSubHeaderIndexByName(sh->getShortName());
             if (indx >= 0) {
                selFlag = getSubHeaderNameSelected(indx);

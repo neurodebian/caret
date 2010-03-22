@@ -357,3 +357,16 @@ StudyNamePubMedID::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
+/**
+ * Called to write XML.
+ */
+void
+StudyNamePubMedID::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyNamePubMedID");
+   xmlWriter.writeElementCData("name", name);
+   xmlWriter.writeElementCData("pubMedID", pubMedID);
+   xmlWriter.writeElementCData("mslID", mslID);
+   xmlWriter.writeEndElement();
+}
+

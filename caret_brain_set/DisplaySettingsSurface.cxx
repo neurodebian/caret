@@ -50,7 +50,6 @@ DisplaySettingsSurface::DisplaySettingsSurface(BrainSet* bs)
    showMorphingTotalForces   = false;
    showMorphingAngularForces = false;
    showMorphingLinearForces  = false;
-   partialView = PARTIAL_VIEW_ALL;
 
    viewingProjection = VIEWING_PROJECTION_ORTHOGRAPHIC;
 
@@ -63,6 +62,17 @@ DisplaySettingsSurface::DisplaySettingsSurface(BrainSet* bs)
    surfaceAxesOffset[1] = 0.0;
    surfaceAxesOffset[2] = 0.0;
    
+   for (int i = 0; i < CLIPPING_PLANE_AXIS_NUMBER_OF; i++) {
+      this->clippingPlaneEnabled[i] = false;
+   }
+   this->clippingPlaneCoordinate[0] = -100.0;
+   this->clippingPlaneCoordinate[1] =  100.0;
+   this->clippingPlaneCoordinate[2] = -100.0;
+   this->clippingPlaneCoordinate[3] =  100.0;
+   this->clippingPlaneCoordinate[4] = -100.0;
+   this->clippingPlaneCoordinate[5] =  100.0;
+   this->clippingPlaneApplication = CLIPPING_PLANE_APPLICATION_MAIN_WINDOW_ONLY;
+
    reset();
 }
 
@@ -252,11 +262,6 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
             else if (infoName == "showMorphingLinearForces") {
                si->getValue(showMorphingLinearForces);
             }
-            else if (infoName == "partialView") {
-               int val;
-               si->getValue(val);
-               partialView = static_cast<PARTIAL_VIEW_TYPE>(val);
-            }
             else if (infoName == "sectionToHighlight") {
                int sectionToHighlight;
                bool sectionHighlightEveryX;
@@ -302,6 +307,29 @@ DisplaySettingsSurface::showScene(const SceneFile::Scene& scene, QString& /*erro
             }
             else if (infoName == "identifyNodeColor") {
                identifyNodeColor = static_cast<IDENTIFY_NODE_COLOR>(si->getValueAsInt());
+            }
+            else if (infoName == "clippingPlaneApplication") {
+               clippingPlaneApplication = static_cast<CLIPPING_PLANE_APPLICATION>(si->getValueAsInt());
+            }
+            else if (infoName == "clippingPlaneEnabled") {
+               const QString val = si->getValueAsString();
+               std::vector<bool> tokens;
+               StringUtilities::token(val, " ", tokens);
+               if (tokens.size() >= CLIPPING_PLANE_AXIS_NUMBER_OF) {
+                  for (int i = 0; i < CLIPPING_PLANE_AXIS_NUMBER_OF; i++) {
+                     clippingPlaneEnabled[i] = tokens[i];
+                  }
+               }
+            }
+            else if (infoName == "clippingPlaneCoordinate") {
+               const QString val = si->getValueAsString();
+               std::vector<float> tokens;
+               StringUtilities::token(val, " ", tokens);
+               if (tokens.size() >= CLIPPING_PLANE_AXIS_NUMBER_OF) {
+                  for (int i = 0; i < CLIPPING_PLANE_AXIS_NUMBER_OF; i++) {
+                     clippingPlaneCoordinate[i] = tokens[i];
+                  }
+               }
             }
          }
       }
@@ -386,8 +414,6 @@ DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
                                         showMorphingAngularForces));
    sc.addSceneInfo(SceneFile::SceneInfo("showMorphingLinearForces",
                                         showMorphingLinearForces));
-   sc.addSceneInfo(SceneFile::SceneInfo("partialView",
-                                        partialView));
    sc.addSceneInfo(SceneFile::SceneInfo("viewingProjection",
                                         viewingProjection));
    sc.addSceneInfo(SceneFile::SceneInfo("showSurfaceAxes",
@@ -400,12 +426,65 @@ DisplaySettingsSurface::saveScene(SceneFile::Scene& scene, const bool onlyIfSele
                                         surfaceAxesLength));
    sc.addSceneInfo(SceneFile::SceneInfo("identifyNodeColor",
                                         identifyNodeColor));
+
    std::vector<float> offsets;
    offsets.push_back(surfaceAxesOffset[0]);
    offsets.push_back(surfaceAxesOffset[1]);
    offsets.push_back(surfaceAxesOffset[2]);
    sc.addSceneInfo(SceneFile::SceneInfo("surfaceAxesOffset",
                                         StringUtilities::combine(offsets, " ")));
+
+   std::vector<bool> planeEnabled;
+   std::vector<float> planeCoord;
+   for (int i = 0; i < CLIPPING_PLANE_AXIS_NUMBER_OF; i++) {
+      planeEnabled.push_back(clippingPlaneEnabled[i]);
+      planeCoord.push_back(clippingPlaneCoordinate[i]);
+   }
+   sc.addSceneInfo(SceneFile::SceneInfo("clippingPlaneEnabled",
+                                        StringUtilities::combine(planeEnabled, " ")));
+   sc.addSceneInfo(SceneFile::SceneInfo("clippingPlaneCoordinate",
+                                        StringUtilities::combine(planeCoord, " ")));
+   sc.addSceneInfo(SceneFile::SceneInfo("clippingPlaneApplication",
+                                        static_cast<int>(clippingPlaneApplication)));
+
    scene.addSceneClass(sc);
+
 }
                        
+/**
+ * get a clipping plane coordinate.
+ */
+float
+DisplaySettingsSurface::getClippingPlaneCoordinate(const CLIPPING_PLANE_AXIS planeAxis) const
+{
+   return this->clippingPlaneCoordinate[planeAxis];
+}
+
+/**
+ * set a clipping plane coordinate.
+ */
+void
+DisplaySettingsSurface::setClippingPlaneCoordinate(const CLIPPING_PLANE_AXIS planeAxis,
+                              const float coordinateValue)
+{
+   this->clippingPlaneCoordinate[planeAxis] = coordinateValue;
+}
+
+/**
+ * get clipping plane enabled.
+ */
+bool
+DisplaySettingsSurface::getClippingPlaneEnabled(const CLIPPING_PLANE_AXIS planeAxis) const
+{
+   return this->clippingPlaneEnabled[planeAxis];
+}
+
+/**
+ * set a clipping plane coordinate.
+ */
+void
+DisplaySettingsSurface::setClippingPlaneEnabled(const CLIPPING_PLANE_AXIS planeAxis,
+                           const bool enabled)
+{
+   this->clippingPlaneEnabled[planeAxis] = enabled;
+}

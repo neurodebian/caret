@@ -996,6 +996,7 @@ GuiRecordingDialog::addImageToJpeg(const QImage& image)
    //
    QImageWriter writer(outputName);
    writer.setFormat("JPG");
+   writer.setQuality(100);
    if (writer.write(image) == false) {
       QMessageBox::critical(this,
                             "ERROR",

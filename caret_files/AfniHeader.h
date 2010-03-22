@@ -33,6 +33,7 @@
 
 #include "FileException.h"
 
+class ColorFile;
 class VolumeFile;
 class nifti_1_header;
 
@@ -118,6 +119,7 @@ class AfniAttribute {
       static const QString NAME_IDCODE_STRING;
       static const QString NAME_LABEL_1;
       static const QString NAME_LABEL_2;
+      static const QString NAME_LABEL_TABLE;
       static const QString NAME_LUT_NAMES;
       static const QString NAME_ORIENT_SPECIFIC;
       static const QString NAME_ORIGIN;
@@ -164,7 +166,8 @@ class AfniHeader {
       void readFromNiftiExtension(const QString& niftiExtension) throw (FileException);
       
       /// setup the AfniHeader from volume file(s)
-      void setupFromVolumeFiles(const std::vector<VolumeFile*>& volumes) throw (FileException);
+      void setupFromVolumeFiles(const std::vector<VolumeFile*>& volumes,
+                                const ColorFile* colorFile) throw (FileException);
       
       /// write the AFNI attributes to a NIFTI volume extension
       void writeToNiftiExtension(QString& niftiExtension,
@@ -196,6 +199,7 @@ class AfniHeader {
    const QString AfniAttribute::NAME_IDCODE_STRING      = "IDCODE_STRING";
    const QString AfniAttribute::NAME_LABEL_1            = "LABEL_1";
    const QString AfniAttribute::NAME_LABEL_2            = "LABEL_2";
+   const QString AfniAttribute::NAME_LABEL_TABLE        = "GIFTI_LABEL_TABLE";
    const QString AfniAttribute::NAME_LUT_NAMES          = "LUT_NAMES";
    const QString AfniAttribute::NAME_ORIENT_SPECIFIC    = "ORIENT_SPECIFIC";
    const QString AfniAttribute::NAME_ORIGIN             = "ORIGIN";

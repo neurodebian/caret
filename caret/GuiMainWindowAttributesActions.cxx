@@ -60,7 +60,7 @@
 #include "RgbPaintFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "VocabularyFile.h"
 #include "WuQDataEntryDialog.h"
 #include "global_variables.h"
@@ -264,7 +264,7 @@ GuiMainWindowAttributesActions::GuiMainWindowAttributesActions(GuiMainWindow* pa
                     this, SLOT(slotCoordsToVectors()));
 
    normalsToVectorsAction = new QAction(parent);
-   normalsToVectorsAction->setText("Create Vectors From Surface Normals...");
+   normalsToVectorsAction->setText("Create Vectors From Surface Normals");
    QObject::connect(normalsToVectorsAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotNormalsToVectors()));
                     
@@ -293,6 +293,12 @@ GuiMainWindowAttributesActions::GuiMainWindowAttributesActions(GuiMainWindow* pa
    vocabularyMoveStudyInfoToStudyMetaDataAction->setText("Move Vocabulary Study Info to Study Metadata File");
    QObject::connect(vocabularyMoveStudyInfoToStudyMetaDataAction, SIGNAL(triggered(bool)),
                     this, SLOT(slotVocabularyMoveStudyInfoToStudyMetaData()));
+
+   connectivityAction = new QAction(parent);
+   connectivityAction->setText("Connectivity...");
+   //connectivityAction->setShortcut(Qt::CTRL+Qt::Key_L);
+   QObject::connect(connectivityAction, SIGNAL(triggered(bool)),
+                    parent, SLOT(displayConnectivityDialog()));
 }
 
 /**
@@ -1247,19 +1253,12 @@ GuiMainWindowAttributesActions::slotNormalsToVectors()
 {
    BrainModelSurface* bms = theMainWindow->getBrainModelSurface();
    if (bms != NULL) {
-      GuiChooseNodeAttributeColumnDialog acd(theMainWindow,
-                                             GUI_NODE_FILE_TYPE_SURFACE_VECTOR,
-                                             QString(""),
-                                             true,
-                                             false);
-      if (acd.exec() == GuiChooseNodeAttributeColumnDialog::Accepted) {
-         bms->copyNormalsToSurfaceVectorFile(theMainWindow->getBrainSet()->getSurfaceVectorFile(),
-                                             acd.getSelectedColumnNumber(),
-                                             acd.getColumnName());
-         GuiFilesModified fm;
-         fm.setSurfaceVectorModified();
-         theMainWindow->fileModificationUpdate(fm);
-      }
+      VectorFile* vf = new VectorFile();
+      bms->copyNormalsToVectorFile(vf);
+      theMainWindow->getBrainSet()->addVectorFile(vf);
+      GuiFilesModified fm;
+      fm.setVectorModified();
+      theMainWindow->fileModificationUpdate(fm);
    }
 }
 

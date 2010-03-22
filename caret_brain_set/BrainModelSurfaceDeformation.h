@@ -102,11 +102,36 @@ class BrainModelSurfaceDeformation : public BrainModelAlgorithm {
                            const bool deformSourceFlatCoordFilesIn,
                            QString& deformErrorsMessage) 
                      throw (BrainModelAlgorithmException);
-      
+
+      /// set the surface that has viewing transformations that should be used
+      void setsurfaceWithViewingTransformations(BrainModelSurface* bms);
+
+      /// set the deforomation map file names (overrides defaults)
+      void setDeformationMapFileNames(const QString& indivToAtlasDefMapFileName,
+                                      const QString& atlasToIndivDefMapFileName);
+
+      /// get the source brain set
+      BrainSet* getSourceBrainSet() { return this->sourceBrainSet; }
+
+      /// get the target brain set
+      BrainSet* getTargetBrainSet() { return this->targetBrainSet; }
+
+      /// get should data files be deformed
+      bool getDeformDataFilesStatus() { return deformDataFilesFlag; }
+
+      /// set data files be deformed
+      void setDeformDataFilesStatus(bool status) { deformDataFilesFlag = status; }
+
    protected:
       /// Execute the subclass' deformation
       virtual void executeDeformation() throw (BrainModelAlgorithmException) = 0;
-      
+
+      /// update the viewing transformation for surface
+      void updateViewingTransformation(BrainModelSurface* bms);
+
+      /// update the viewing transformation for surfaces in brain set
+      void updateViewingTransformation(BrainSet* bs);
+
       /// Create the deformation that maps target surface nodes into the deformed source surface.
       void createNodeDeformation(const BrainModelSurface* theSourceSurfaceDeformed,
                                  const BrainModelSurface* theTargetSurface,
@@ -131,7 +156,9 @@ class BrainModelSurfaceDeformation : public BrainModelAlgorithm {
       void createOutputSpecAndDeformationFileNames();
       
       /// resample the border files
-      void resampleBorderFiles() throw (BrainModelAlgorithmException);
+      void resampleBorderFiles(const int stageNumber,
+                               const int cycleNumber,
+                               float sphericalRadius) throw (BrainModelAlgorithmException);
       
       /// project the border file for the brain set to create other types of border files
       void projectBorderFile(BrainSet* theBrainSet,
@@ -142,7 +169,7 @@ class BrainModelSurfaceDeformation : public BrainModelAlgorithm {
       void readSourceBrainSet() throw (BrainModelAlgorithmException);
 
       /// read the target brain set
-      void readTargetBrainSet() throw (BrainModelAlgorithmException);
+      void readTargetBrainSet(int stageIndex) throw (BrainModelAlgorithmException);
 
       /// the deformation map file (do not delete)
       DeformationMapFile* deformationMapFile;
@@ -236,6 +263,21 @@ class BrainModelSurfaceDeformation : public BrainModelAlgorithm {
       
       /// target to source deform data file errors message
       QString targetToSourceDeformDataFileErrors;
+
+      /// translation for default view
+      float defaultViewTranslation[3];
+
+      /// scaling for default view
+      float defaultViewScaling[3];
+
+      /// rotation for default view
+      float defaultViewRotation[16];
+
+      /// default view valid
+      bool defaultViewValid;
+
+      /// should data files be deformed
+      bool deformDataFilesFlag;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_DEFORMATION_H__

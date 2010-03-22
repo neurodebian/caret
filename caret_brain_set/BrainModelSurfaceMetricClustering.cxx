@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 #include <QDateTime>
 
@@ -481,6 +482,29 @@ BrainModelSurfaceMetricClustering::Cluster::setCenterOfGravity(const float cog[3
    centerOfGravity[2] = cog[2];
 }            
 
+/**
+ * get the maximum Y-Value.
+ */
+float 
+BrainModelSurfaceMetricClustering::Cluster::getMaximumY(const BrainModelSurface* bms) const
+{
+   float maxY = 0.0;
+   
+   const int numClusterNodes = getNumberOfNodesInCluster();
+   if (numClusterNodes > 0) {
+      const CoordinateFile* cf = bms->getCoordinateFile();
+   
+      maxY = -std::numeric_limits<float>::max();
+   
+      for (int i = 0; i < numClusterNodes; i++) {
+         const float* xyz = cf->getCoordinate(nodeIndices[i]);
+         maxY = std::max(maxY, xyz[1]);
+      }
+   }
+   
+   return maxY;
+}
+            
 /**
  * get the center of gravity using the surface (does not overwrite cluster's cog).
  */

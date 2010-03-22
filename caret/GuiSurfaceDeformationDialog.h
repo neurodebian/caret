@@ -29,6 +29,9 @@
 
 #include <sstream>
 
+#include <QLineEdit>
+#include <QPushButton>
+
 #include "WuQDialog.h"
 
 #include "DeformationMapFile.h"
@@ -37,13 +40,13 @@ class QButtonGroup;
 class QCheckBox;
 class QComboBox;
 class QGridLayout;
-class QLineEdit;
 class QRadioButton;
 class QSpinBox;
 class QTabWidget;
 
 class QDoubleSpinBox;
 class SpecFile;
+class WuQWidgetGroup;
 
 /// class for keeping track of deformation data files
 class DeformationDataFiles {
@@ -79,7 +82,7 @@ class DeformationDataFiles {
      std::vector<DATA_FILE_TYPES> borderFileTypes;
      
      /// selected border file
-     int borderFileSelected;
+     int borderFileSelected[DeformationMapFile::MAX_SPHERICAL_STAGES];
      
      /// file names
      std::vector<QString> closedTopoFileNames;
@@ -128,6 +131,49 @@ class DeformationDataFiles {
      
 };
 
+/// class for an entry line
+class FileEntryLine {
+   public:
+      /// constructor
+      FileEntryLine(QPushButton* pushButtonIn,
+                    QLineEdit* lineEditIn,
+                    QPushButton* extraPushButtonIn = NULL) {
+         this->pushButton = pushButtonIn;
+         this->lineEdit = lineEditIn;
+         this->extraButton = extraPushButtonIn;
+      }
+
+      /// destructor
+      ~FileEntryLine() { }
+
+      /// set the widgets visible
+      void setVisible(bool visible) {
+         this->pushButton->setVisible(visible);
+         this->lineEdit->setVisible(visible);
+         if (this->extraButton != NULL) {
+            this->extraButton->setVisible(visible);
+         }
+      }
+
+      /// set the widgets enabled
+      void setEnabled(bool enable) {
+         this->pushButton->setEnabled(enable);
+         this->lineEdit->setEnabled(enable);
+         if (this->extraButton != NULL) {
+            this->extraButton->setEnabled(enable);
+         }
+      }
+
+      /// the push button
+      QPushButton* pushButton;
+
+      /// the line edit
+      QLineEdit* lineEdit;
+
+      /// the extra button
+      QPushButton* extraButton;
+
+};
 /// Dialog for deforming one surface to another
 class GuiSurfaceDeformationDialog : public WuQDialog {
    Q_OBJECT
@@ -141,12 +187,6 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       ~GuiSurfaceDeformationDialog();
       
    private slots:
-      /// Called when batch button is pressed
-      void slotBatchButton();
-      
-      /// Called when user press OK or Cancel buttons
-      void done(int r);
-
       /// Called when an atlas file selection is made
       void atlasFileSelection(int itemNum);
       
@@ -156,15 +196,21 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       /// called when load deformation map file push button is pressed
       void loadDeformationMapFilePushButton();
       
+      /// called when save deformation map file push button is pressed
+      void saveDeformationMapFilePushButton();
+
       /// called when number of spherical cycles is changed
-      void slotSphereNumberOfCyclesComboBox(int item);
-      
-      /// called before sphere edit cycle is changed
-      void slotSphereEditCycleComboBoxOldValue();
+      void slotSphereNumberOfCyclesSpinBox(int item);
       
       /// called when sphere edit cycle is changed
-      void slotSphereEditCycleComboBoxNewValue();
+      void slotSphereEditCycleSpinBox(int value);
       
+      /// called when number of spherical stages is changed
+      void slotSphereNumberOfStagesSpinBox(int item);
+
+      /// called when sphere edit stage is changed
+      void slotSphereEditStageSpinBox(int value);
+
       /// called when Use Standard Parameters button pressed
       void slotStandardParametersPushButton();
       
@@ -172,8 +218,38 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       void slotBordersEditIndividual();
       
       /// called to edit atlas borders
-      void slotBordersEditAtlas();
+      void slotBordersEditAtlas(int index);
       
+      /// called to update deformation map file names
+      void slotUpdateDeformationMapFileNames();
+
+      /// called when a spherical algorithm is selected
+      void slotSphericalAlgorithmSelection();
+
+      /// called when apply button pressed
+      void slotApplyButton();
+
+      /// called to read the deformation parameters from the dialog
+      void slotDeformationParameterChanged();
+
+      /// called to read the flat parameters from the dialog
+      void slotFlatParameterChanged();
+
+      /// called when a smoothing parameter is altered
+      void slotSmoothingParameterChanged();
+
+      /// called when a morphing parameter is changed
+      void slotMorphingParameterChanged();
+
+      /// called when a landmark vector parameter is changed
+      void slotLandmarkVectorParameterChanged();
+
+      /// called if sphere resolution is changed
+      void slotSphereResolutionChanged();
+
+      /// called when a correct for spherical distortion changed
+      void slotCorrectSphericalDistortionChanged();
+
    private:
       /// file selection types
       enum SELECTION_TYPE {
@@ -184,12 +260,31 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       /// Unique ID's for file types
       enum FILE_TYPES {
          FILE_TYPE_SPEC,
-         FILE_TYPE_BORDER,
          FILE_TYPE_TOPO_CLOSED,
          FILE_TYPE_TOPO_CUT,
          FILE_TYPE_COORD_FIDUCIAL,
          FILE_TYPE_COORD_FLAT,
-         FILE_TYPE_COORD_SPHERICAL
+         FILE_TYPE_COORD_SPHERICAL,
+         FILE_TYPE_BORDER_1,
+         FILE_TYPE_BORDER_2,
+         FILE_TYPE_BORDER_3,
+         FILE_TYPE_BORDER_4,
+         FILE_TYPE_BORDER_5,
+         FILE_TYPE_BORDER_6,
+         FILE_TYPE_BORDER_7,
+         FILE_TYPE_BORDER_8,
+         FILE_TYPE_BORDER_9,
+         FILE_TYPE_BORDER_10,
+         FILE_TYPE_BORDER_11,
+         FILE_TYPE_BORDER_12,
+         FILE_TYPE_BORDER_13,
+         FILE_TYPE_BORDER_14,
+         FILE_TYPE_BORDER_15,
+         FILE_TYPE_BORDER_16,
+         FILE_TYPE_BORDER_17,
+         FILE_TYPE_BORDER_18,
+         FILE_TYPE_BORDER_19,
+         FILE_TYPE_BORDER_20
       };
       
       /// Add to the command.
@@ -220,8 +315,23 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       /// create the spherical parameters section
       QWidget* createSphericalParameters();
 
+      /// create the spherical algorithm section
+      QWidget* createSphericalAlgorithmSection();
+
+      /// create the landmark vector options
+      QWidget* createLandmarkVectorOptionsSection();
+
       /// create the flat parameters section
       QWidget* createFlatParameters();
+
+      /// create the morphing parameters section
+      QWidget* createMorphingParametersSection();
+
+      /// create the smoothing parameters section
+      QWidget* createSmoothingParametersSection();
+
+      /// create the Spherical parameters section
+      QWidget* createSphericalParametersSection();
 
       /// display the atlas data files
       void displayAtlasFiles();
@@ -239,7 +349,7 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       void readSpecFile(const SELECTION_TYPE st);
       
       /// create the pushbutton and the line edit
-      QLineEdit* createFileEntryLine(const QString& buttonLabel,
+      FileEntryLine* createFileEntryLine(const QString& buttonLabel,
                                      const FILE_TYPES fileType,
                                      QGridLayout* parentGridLayout,
                                      QButtonGroup* buttonGroup,
@@ -248,17 +358,53 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       /// load the flat/spherical parameters from a deformation map file
       void loadParametersIntoDialog();
 
-      /// read the flat/spherical parameters from the dialog
-      void readParametersFromDialog();
-      
       /// edit a border file
       void editBorderFile(const QString& specFileName,
                           const QString& borderFileName,
                           const DeformationDataFiles::DATA_FILE_TYPES fileType);
-                          
-      /// type of deformation
-      DeformationMapFile::DEFORMATION_TYPE deformationType;
-      
+
+      /// setup connections for automatic update of deformation map file names
+      void setConnectionsForAutoDefMapFileNameUpdates();
+
+      /// update atlas border selections
+      void updateAtlasBorderSelections();
+
+      /// update the smoothing parameters
+      void updateSmoothingParameters();
+
+      /// update the landmark vector parameters
+      void updateLandmarkVectorParameters();
+
+      /// update the morphing parameters
+      void updateMorphingParameters();
+
+      /// update the sphere edit cycle spin box
+      void updateSphereEditCycleSpinBox();
+
+      /// update the sphere number of cycles spin box
+      void updateSphereNumberOfCyclesSpinBox();
+
+      /// update the sphere edit stage spin box
+      void updateSphereEditStageSpinBox();
+
+      /// update the spherical number of stages spin box
+      void updateSphereNumberOfStagesSpinBox();
+
+      /// update the spherical resolution combo box
+      void updateSphericalResolutionComboBox();
+
+      /// update correct spherical distortion correction
+      void updateCorrectSphericalDistortion();
+
+      /// update the flat parameters */
+      void updateFlatParameters();
+
+      /// update the deformation parameters
+      void updateDeformationParametersPage();
+
+      /// update algorithm selection
+      void updateAlgorithmSelection();
+
       /// atlas data files for deformation
       DeformationDataFiles atlasDeformationFiles;
       
@@ -293,8 +439,10 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       QLineEdit* atlasSpecLineEdit;
       
       /// atlas file line edit
-      QLineEdit* atlasBorderLineEdit;
-      
+      QLineEdit* atlasBorderLineEdit[DeformationMapFile::MAX_SPHERICAL_STAGES];
+
+      FileEntryLine* atlasBorderFileEntryLine[DeformationMapFile::MAX_SPHERICAL_STAGES]
+              ;
       /// atlas file line edit
       QLineEdit* atlasClosedTopoLineEdit;
       
@@ -352,11 +500,11 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       /// flat sub sampling tiles spin box
       QSpinBox* flatSubSamplingTilesSpinBox;
       
-      /// flat beta line edit
-      QLineEdit* flatBetaLineEdit;
+      /// flat beta double spin box
+      QDoubleSpinBox* flatBetaDoubleSpinBox;
       
-      /// flat variance multiplier line edit
-      QLineEdit* flatVarMultDoubleSpinBox;
+      /// flat variance multiplier double spin box
+      QDoubleSpinBox* flatVarMultDoubleSpinBox;
       
       /// flat iterations spin box
       QSpinBox* flatIterationsSpinBox;
@@ -396,12 +544,21 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       
       /// morphing smooth iterations spin box
       QSpinBox* morphingSmoothIterationsSpinBox;
+
+      /// widget group for sphere stages
+      WuQWidgetGroup* sphereStagesWidgetGroup;
+
+      /// sphere number of stages spin box
+      QSpinBox* sphereNumberOfStagesSpinBox;
+
+      /// sphere edige stages spin box
+      QSpinBox* sphereEditStageSpinBox;
+
+      /// sphere number of cycles spin box
+      QSpinBox* sphereNumberOfCyclesSpinBox;
       
-      /// sphere number of cycles combo box
-      QComboBox* sphereNumberOfCyclesComboBox;
-      
-      /// sphere edit cycles combo box
-      QComboBox* sphereEditCycleComboBox;
+      /// sphere edit cycles spin box
+      QSpinBox* sphereEditCycleSpinBox;
       
       /// sphere resolution combo box
       QComboBox* sphereResolutionComboBox;
@@ -444,6 +601,45 @@ class GuiSurfaceDeformationDialog : public WuQDialog {
       
       /// smooth deformed coord files
       QCheckBox* smoothCoordsOneIterationCheckBox;
+
+      /// indiv-to-atlas deformation map file name line edit
+      QLineEdit* indivToAtlasDeformMapFileNameLineEdit;
+
+      /// atlas-to-indiv deformation map file name line edit
+      QLineEdit* atlasToIndivDeformMapFileNameLineEdit;
+
+      /// landmark-constrained spherical algorithm radio button
+      QRadioButton* sphericalLandmarkConstrainedRadioButton;
+
+      /// landmark-vector spherical algorithm radio button
+      QRadioButton* sphericalLandmarkVectorRadioButton;
+
+      /// landmark-vector single stage algorithm radio button
+      QRadioButton* sphericalLandmarkVectorSingleStageRadioButton;
+
+      /// landmark-vector smoothing iterations
+      QSpinBox* vectorSmoothingIterationsSpinBox;
+
+      /// landmark-vector displacement factor double spin box
+      QDoubleSpinBox* vectorDisplacementFactorDoubleSpinBox;
+
+      /// landmark-vector endpoint factor double spin box
+      QDoubleSpinBox* vectorEndpointFactorDoubleSpinBox;
+
+      /// pause for crossover confirmation check box
+      QCheckBox* pauseForCrossoversConfirmationCheckBox;
+      
+      /// landmark vector options widget
+      QWidget* landmarkVectorOptionsWidget;
+
+      /// widget group for smoothing parameters
+      WuQWidgetGroup* smoothingParametersWidgetGroup;
+
+      /// widget group for landmark vector parameters
+      WuQWidgetGroup* landmarkVectorParametersWidgetGroup;
+
+      /// widget group for morphing parameters
+      WuQWidgetGroup* morphingParametersWidgetGroup;
 };
 
 #endif // __GUI_SURFACE_DEFORMATION_DIALOG_H__

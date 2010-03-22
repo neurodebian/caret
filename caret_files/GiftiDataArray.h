@@ -314,6 +314,18 @@ class GiftiDataArray {
       // set min max values invalid
       inline void clearMinMaxFloatValuesValid() { minMaxFloatValuesValid = false; }
       
+      /// get data column min/max for the specified percentages
+      void getMinMaxValuesFromPercentages(const float negMaxPct,
+                                          const float negMinPct,
+                                          const float posMinPct,
+                                          const float posMaxPct,
+                                          float& negMaxValueOut,
+                                          float& negMinValueOut,
+                                          float& posMinValueOut,
+                                          float& posMaxValueOut);
+
+      inline void clearMaxMaxPercentageValuesValid() { minMaxPercentageValuesValid = false; }
+
       // remap integer values that are indices to a table
       void remapIntValues(const std::vector<int>& remappingTable);
       
@@ -445,6 +457,18 @@ class GiftiDataArray {
       /// min/max int values valid (child class must set this false when an array value is changed)
       mutable bool minMaxIntValuesValid;
       
+      mutable float negMaxPct;
+      mutable float negMinPct;
+      mutable float posMinPct;
+      mutable float posMaxPct;
+      mutable float negMaxPctValue;
+      mutable float negMinPctValue;
+      mutable float posMinPctValue;
+      mutable float posMaxPctValue;      
+      
+      /// min/max percentage values valid
+      mutable bool minMaxPercentageValuesValid;
+
       // ***** BE SURE TO UPDATE copyHelper() if elements are added ******
       
    /// allow NodeDataFile access to protected elements
