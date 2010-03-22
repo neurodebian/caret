@@ -105,7 +105,7 @@ VtkModelFile::VtkModelFile(const BorderFile* bf, const BorderColorFile* colors)
       const Border* border = bf->getBorder(i);
       const int numLinks = border->getNumberOfLinks();
       if (numLinks > 0) {
-         std::vector<int> pts;
+         std::vector<vtkIdType> pts;
          for (int j = 0; j < numLinks; j++) {
            unsigned char rgbaColor[4] = { 170, 170, 170, 255 };
            const int colorIndex = border->getBorderColorIndex();
@@ -763,7 +763,7 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
       //polysVTK->Allocate(size, 25);
       for (int j = 0; j < numTriangles; j++) {
          const int* v = getTriangle(j);
-         polysVTK->InsertNextCell((vtkIdType)3, (vtkIdType*)v);
+         polysVTK->InsertNextCell(3, (vtkIdType*)v);
       }
    }
    const int numPolys = getNumberOfPolygons();
@@ -789,7 +789,7 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
       for (int j = 0; j < numLines; j++) {
          const VtkModelObject* vmo = getLine(j);
          const int* pts = vmo->getPointIndex(0);
-         linesVTK->InsertNextCell((vtkIdType)vmo->getNumberOfItems(), (vtkIdType*)pts);
+         linesVTK->InsertNextCell(vmo->getNumberOfItems(), (vtkIdType*)pts);
       }
    }
    
@@ -801,7 +801,7 @@ VtkModelFile::writeFile(const QString& fileNameIn) throw (FileException)
    if (numVerts > 0) {
       vertsVTK = vtkCellArray::New();
       for (int j = 0; j < numVerts; j++) {
-         vertsVTK->InsertNextCell((vtkIdType)1, (vtkIdType*)getVertex(j));
+         vertsVTK->InsertNextCell(1, (vtkIdType*)getVertex(j));
       }
    }
    

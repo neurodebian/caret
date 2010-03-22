@@ -143,7 +143,7 @@ BrainModelContourToSurfaceConverter::execute() throw (BrainModelAlgorithmExcepti
          continue;
       }
             
-      int* verts = new int[numPoints];
+      vtkIdType* verts = new vtkIdType[numPoints];
 
       if (lastSectionNumberValid) {
          if (sectionNumber != lastSectionNumber) {
@@ -166,7 +166,9 @@ BrainModelContourToSurfaceConverter::execute() throw (BrainModelAlgorithmExcepti
                    << ", VTK-section=" << vtkSectionNumber << std::endl;
       }
       
-      int pointCount = 0;
+      // this used to be an int.. is this still good now that it is a
+      // vtkIdType?
+      vtkIdType pointCount = 0;
       for (int j = 0; j < numPoints; j++) {
          float x, y;
          cc->getPointXY(j, x, y);
