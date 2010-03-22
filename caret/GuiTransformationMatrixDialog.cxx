@@ -74,6 +74,7 @@
 #include "QtMultipleInputDialog.h"
 #include "QtRadioButtonSelectionDialog.h"
 #include "TransformationMatrixFile.h"
+#include "VectorFile.h"
 #include "VolumeFile.h"
 #include "VtkModelFile.h"
 #include "WuQDataEntryDialog.h"
@@ -275,7 +276,7 @@ GuiTransformationMatrixDialog::createMatrixSection()
       for (int j = 0; j < 4; j++) {
          matrixElementLineEdits[i][j] = new QLineEdit;
          matrixElementLineEdits[i][j]->setFixedWidth(minWidth);
-         QObject::connect(matrixElementLineEdits[i][j], SIGNAL(returnPressed()),
+         QObject::connect(matrixElementLineEdits[i][j], SIGNAL(editingFinished()),
                           this, SLOT(slotMatrixComponentChanged()));
          matrixElementGrid->addWidget(matrixElementLineEdits[i][j], i, j);
       }
@@ -480,10 +481,10 @@ GuiTransformationMatrixDialog::createOperationsSection()
    //
    // multiply push button
    //
-   QPushButton* multiplyPushButton = new QPushButton("Multiply...");
+   QPushButton* multiplyPushButton = new QPushButton("Multiply (Post)...");
    multiplyPushButton->setAutoDefault(false);
    multiplyPushButton->setToolTip(
-                 "Multiply the matrix by another matrix.");
+                 "Post Multiply the matrix by another matrix.");
    QObject::connect(multiplyPushButton, SIGNAL(clicked()),
                     this, SLOT(slotOperationMultiply()));
     
@@ -913,7 +914,7 @@ GuiTransformationMatrixDialog::slotOperationMultiply()
          matrixNames.push_back(tm->getMatrixName());
       }
       QtRadioButtonSelectionDialog rbsd(this,
-                                        "Multiply by Matrix",
+                                        "Post Multiply by Matrix",
                                         "",
                                         matrixNames,
                                         -1);
@@ -921,7 +922,7 @@ GuiTransformationMatrixDialog::slotOperationMultiply()
          const int matrixNumber = rbsd.getSelectedItemIndex();
          if (matrixNumber >= 0) {
             TransformationMatrix tm = *(matrixFile->getTransformationMatrix(matrixNumber));
-            currentMatrix->multiply(tm);
+            currentMatrix->postMultiply(tm);
             transferMatrixIntoDialog();
             updateMainWindowViewingMatrix();
             if (currentMatrix->getShowAxes()) {
@@ -1003,7 +1004,7 @@ GuiTransformationMatrixDialog::updateMatrixDisplay(const TransformationMatrix* t
          rot.setMatrix(bm->getRotationTransformMatrix(0));
          rot.transpose();
       }
-      currentMatrix->multiply(rot);
+      currentMatrix->preMultiply(rot);
       float scale[3];
       bm->getScaling(0, scale);
       currentMatrix->scale(scale);
@@ -1640,14 +1641,14 @@ GuiTransformationMatrixDialog::slotMatrixNew()
                      rot.identity();
                   }
                   rot.scale(scale);
-                  currentMatrix->multiply(rot);
+                  currentMatrix->preMultiply(rot);
                }
                else {
                   rot.setMatrix(bm->getRotationTransformMatrix(0));
                   rot.transpose();
                   currentMatrix->identity();
                   if (rbd.getSelectedItemIndex() != viewMatrixTranslateIndex) {
-                     currentMatrix->multiply(rot);
+                     currentMatrix->preMultiply(rot);
                   }
                   currentMatrix->translate(trans);
                }
@@ -2055,7 +2056,14 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
          fociCheckBox = ded.addCheckBox("Main Window Foci", false);
       }
    }
-   
+
+   QCheckBox* vectorsCheckBox = NULL;
+   if (fiducialFlag) {
+      if (theMainWindow->getBrainSet()->getNumberOfVectorFiles() > 0) {
+         vectorsCheckBox = ded.addCheckBox("Main Window Vectors", false);
+      }
+   }
+
    if (ded.exec() == QDialog::Accepted) {
     
       bool ok = false;
@@ -2195,7 +2203,18 @@ GuiTransformationMatrixDialog::slotMatrixApplyMainWindow()
             ff->appendToFileComment(operationComment);
          }
       }
-      
+
+      if (vectorsCheckBox != NULL) {
+         if (vectorsCheckBox->isChecked()) {
+            for (int m = 0; m < theMainWindow->getBrainSet()->getNumberOfVectorFiles(); m++) {
+               VectorFile* vf = theMainWindow->getBrainSet()->getVectorFile(m);
+               vf->applyTransformationMatrix(*currentMatrix);
+               vf->appendToFileComment(operationComment);
+            }
+         }
+      }
+
+      theMainWindow->getBrainSet()->clearAllDisplayLists();
       GuiBrainModelOpenGL::updateAllGL();
          
       QApplication::restoreOverrideCursor();

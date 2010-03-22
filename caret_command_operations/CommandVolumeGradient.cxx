@@ -29,7 +29,7 @@
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 /**
@@ -57,7 +57,7 @@ CommandVolumeGradient::getScriptBuilderParameters(ScriptBuilderParameters& param
    paramsOut.clear();
    paramsOut.addFile("Input Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addFile("Mask Volume File Name", FileFilters::getVolumeGenericFileFilter());
-   paramsOut.addFile("Output Gradient Vector File", FileFilters::getVectorFileFilter());
+   paramsOut.addFile("Output Gradient Vector File", FileFilters::getSureFitVectorFileFilter());
    paramsOut.addInt("Lambda");
    paramsOut.addBoolean("Grad Flag");
    paramsOut.addBoolean("Mask Flag");
@@ -121,7 +121,7 @@ CommandVolumeGradient::executeCommand() throw (BrainModelAlgorithmException,
    //
    int xDim, yDim, zDim;
    vf.getDimensions(xDim, yDim, zDim);
-   VectorFile gradFile(xDim, yDim, zDim);
+   SureFitVectorFile gradFile(xDim, yDim, zDim);
    
    //
    // determine gradient

@@ -70,7 +70,7 @@ CommandPreferencesFileSettings::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "Set items in the preferences file.  The preferences file\n"
        + indent9 + "is located in the user's home directory and is named\n"
-       + indent9 + "   " + BrainSet::getPreferencesFileName() + "\n"
+       + indent9 + "   " + BrainSet::getPreferencesFile()->getFileName() + "\n"
        + indent9 + "\n"
        + indent9 + "\"debug-value\" must be one of \"true\" or \"false\".\n"
        + indent9 + "\n");

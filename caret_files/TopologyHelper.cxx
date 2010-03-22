@@ -510,7 +510,7 @@ TopologyHelper::getNodeNeighborsToDepth(const int rootNode,
    std::set<int> nodesMarked;
    nodesMarked.insert(rootNode);
    
-   for (int dp = 0; dp <= depth; dp++) {
+   for (int dp = 0; dp < depth; dp++) {
       std::set<int> newNodes;
       
       for (std::set<int>::iterator it = nodesMarked.begin();

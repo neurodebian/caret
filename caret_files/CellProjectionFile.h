@@ -265,6 +265,7 @@ class CellProjection : public CellBase {
    friend class CellProjectionFile;
    friend class CellProjectionUnprojector;
    friend class FociFileToPalsProjector;
+   friend class FociProjectionFile;
 };
 
 #ifdef __CELL_PROJECTION_MAIN__
@@ -590,6 +591,9 @@ class CellProjectionFile : public AbstractFile {
       
       /// update cell PubMed ID if cell name matches study name
       void updatePubMedIDIfCellNameMatchesStudyName(const StudyMetaDataFile* smdf);
+      
+      /// update cell name with linked study name
+      void updateCellNameWithStudyNameForMatchingPubMedIDs(const StudyMetaDataFile* smdf);
       
       /// update cell class if linked to table subheader
       void updateCellClassWithLinkedStudyTableSubheaderShortNames(const StudyMetaDataFile* smdf);

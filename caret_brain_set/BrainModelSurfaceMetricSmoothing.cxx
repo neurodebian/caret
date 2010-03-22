@@ -25,6 +25,7 @@
 /*LICENSE_END*/
 
 #include <limits>
+#include <set>
 #include <QDateTime>
 
 #include "BrainModelSurface.h"
@@ -166,13 +167,15 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
    int fullWidthHalfMaximumNumberOfIterations = 0;
    
    //
-   // smooth the data for the specified number of iterations
+   // Prepate for smoothing
    //
    for (int iter = 0; iter < iterations; iter++) {
    
       bool stopSmoothingFlag = false;
       switch (algorithm) {
          case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+            break;
+         case SMOOTH_ALGORITHM_DILATE:
             break;
          case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
             {
@@ -245,7 +248,7 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
          
             float neighborSum = 0.0;
             bool setOutputValueFlag = true;
-            
+            bool dilateModeFlag = false;
             switch (algorithm) {
                case SMOOTH_ALGORITHM_NONE:
                   break;
@@ -261,6 +264,36 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                         neighborSum += inputValues[neighInfo.neighbors[j]];
                      }
                      neighborSum = neighborSum / static_cast<float>(neighInfo.numNeighbors);
+                  };
+                  break;
+               case SMOOTH_ALGORITHM_DILATE:
+                  {
+                     if (inputValues[i] != 0.0) {
+                        //
+                        // Do not process nodes with non-zero values
+                        //
+                        setOutputValueFlag = false;
+                     }
+                     else {
+                         //
+                         // Average of non-zero neighbors
+                         //
+                         int numNonZeroNeighbors = 0;
+                         for (int j = 0; j < neighInfo.numNeighbors; j++) {
+                            //
+                            // Note: outputColumn has output from last iteration of smoothing
+                            //
+                            float neighborValue = inputValues[neighInfo.neighbors[j]];
+                            if (neighborValue != 0.0) {
+                               neighborSum += neighborValue;
+                               numNonZeroNeighbors++;
+                            }
+                         }
+                         if (numNonZeroNeighbors > 0) {
+                            neighborSum = neighborSum / static_cast<float>(numNonZeroNeighbors);
+                            dilateModeFlag = true;
+                         }
+                     }
                   };
                   break;
                case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
@@ -299,6 +332,27 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                                                       inputValues[neigh]));
                      }
                      
+                     if (DebugControl::getDebugOn()) {
+                       if (iter == 0) {
+                           if (DebugControl::getDebugNodeNumber() == i) {
+                              std::set<int> sortedNeighbors;
+                              for (int j = 0; j < neighInfo.numNeighbors; j++) {
+                                 sortedNeighbors.insert(neighInfo.neighbors[j]);
+                              }
+
+                              std::cout << "Neighbors ("
+                                        << neighInfo.numNeighbors
+                                        << ") of "
+                                        << i << ": ";
+                              for (std::set<int>::iterator it = sortedNeighbors.begin();
+                                   it != sortedNeighbors.end();
+                                   it++) {
+                                 std::cout << *it << " ";
+                              }
+                              std::cout << std::endl;
+                           }
+                        }
+                     }
                      //
                      // Evaluate the gaussian for the node and its neighbors
                      //
@@ -351,8 +405,21 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
             // Apply smoothing to the node
             //
             if (setOutputValueFlag) {
-               outputValues[i] = (inputValues[i] * oneMinusStrength)
-                               + (neighborSum * strength);
+               if (DebugControl::getDebugOn()) {
+                  if (DebugControl::getDebugNodeNumber() == i) {
+                     std::cout << "Smoothing node " << i
+                               << " iteration " << iter
+                               << " node neighbor sum " << neighborSum
+                               << std::endl;
+                  }
+               }
+               if (dilateModeFlag) {
+                  outputValues[i] = neighborSum;
+               }
+               else {
+                  outputValues[i] = (inputValues[i] * oneMinusStrength)
+                                  + (neighborSum * strength);
+               }
             }
          }
       }
@@ -381,6 +448,9 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
          break;
       case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
          smoothComment.append("Average Neighbors Smoothing: \n");
+         break;
+      case SMOOTH_ALGORITHM_DILATE:
+         smoothComment.append("Dilation");
          break;
       case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
          smoothComment.append("Full Width Half Maximum Algorithm: \n"
@@ -449,6 +519,7 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
    float maxDistanceCutoff = std::numeric_limits<float>::max();
    switch (algorithm) {
       case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+      case SMOOTH_ALGORITHM_DILATE:
       case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
       case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
          cf = fiducialSurface->getCoordinateFile();
@@ -473,6 +544,7 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
       
       switch (algorithm) {
          case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+         case SMOOTH_ALGORITHM_DILATE:
          case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
          case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
             {

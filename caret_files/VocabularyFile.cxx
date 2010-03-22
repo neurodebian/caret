@@ -34,6 +34,7 @@
 #include "SpecFile.h"
 #include "StringTable.h"
 #include "VocabularyFile.h"
+#include "XmlGenericWriter.h"
 
 /**
  * constructor.
@@ -899,6 +900,23 @@ VocabularyFile::VocabularyEntry::writeXML(QDomDocument& xmlDoc,
 }
 
 /**
+ * called to write XML.
+ */
+void
+VocabularyFile::VocabularyEntry::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("VocabularyEntry");
+   xmlWriter.writeElementCData("abbreviation", abbreviation);
+   xmlWriter.writeElementCData("fullName", fullName);
+   xmlWriter.writeElementCData("className", className);
+   xmlWriter.writeElementCData("vocabularyID", vocabularyID);
+   xmlWriter.writeElementCData("description", description);
+   xmlWriter.writeElementCData("ontologySource", ontologySource);
+   xmlWriter.writeElementCData("termID", termID);
+   studyMetaDataLinkSet.writeXML(xmlWriter);
+   xmlWriter.writeEndElement();
+}
+/**
  * write the data into a StringTable.
  */
 void 
@@ -1058,6 +1076,51 @@ VocabularyFile::VocabularyEntry::readDataFromStringTable(std::vector<VocabularyE
    }
 }
             
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+VocabularyFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   int numVocab = this->getNumberOfVocabularyEntries();
+   if (numVocab <= 0) {
+      throw FileException("Contains no vocabulary");
+   }
+
+   QFile file(filenameIn);
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/VocabularyFileSchema.xsd");
+   attributes.addAttribute("CaretFileType", "Vocabulary");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   for (int i = 0; i < numVocab; i++) {
+      const VocabularyEntry* v = getVocabularyEntry(i);
+      v->writeXML(xmlWriter);
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+
+   file.close();
+
+   return filenameIn;
+}
+
 /**
  * get full description of all fields for display to user.
  */

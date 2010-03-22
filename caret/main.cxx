@@ -42,16 +42,15 @@
 #include <vector>
 
 #include <QApplication>
-#include <QDateTime>
 #include <QDesktopWidget>
 #include <QDir>
 #include <QGLWidget>
 #include <QImageIOPlugin>
+#include <QLocale>
 #include <QMessageBox>
 #include <QPluginLoader>
 #include <QStringList>
 #include <QStyleFactory>
-#include <QDateTime>
 
 #include "BrainSet.h"
 #include "CaretVersion.h"
@@ -397,8 +396,7 @@ initializeFileDialog()
    typeMap[SpecFile::getNiftiVolumeFileExtension()] = "NIFTI";
    typeMap[SpecFile::getNiftiGzipVolumeFileExtension()] = "NIFTI - Compressed";
    typeMap[SpecFile::getSceneFileExtension()] = "Scene";
-   typeMap[SpecFile::getVectorFileExtension()] = "Vector";
-   typeMap[SpecFile::getSurfaceVectorFileExtension()] = "Surface Vector";
+   typeMap[SpecFile::getSureFitVectorFileExtension()] = "SureFit Vector";
    typeMap[SpecFile::getWustlRegionFileExtension()] = "WUSTL Region";
    typeMap[SpecFile::getLimitsFileExtension()] = "Limits";
    typeMap[SpecFile::getMDPlotFileExtension()] = "MD Plot";
@@ -410,6 +408,7 @@ initializeFileDialog()
    typeMap[SpecFile::getGiftiSurfaceFileExtension()] = "GIFTI Surface";
    typeMap[SpecFile::getGiftiTensorFileExtension()] = "GIFTI Tensor";
    typeMap[SpecFile::getGiftiTopologyFileExtension()] = "GIFTI Topology";
+   typeMap[SpecFile::getGiftiVectorFileExtension()] = "GIFTI Vector";
    typeMap[SpecFile::getGiftiGenericFileExtension()] = "GIFTI Generic";
    typeMap[SpecFile::getCommaSeparatedValueFileExtension()] = "Comma Separated Value";
    typeMap[SpecFile::getVocabularyFileExtension()] = "Vocabulary";
@@ -450,7 +449,9 @@ void newHandler()
        << "This means that Caret is unable to get memory that it needs.\n"
        << "Possible causes:\n"
        << "   (1) Your computer lacks sufficient RAM.\n"
-       << "   (2) Swap space is too small (you might increase it)."
+       << "   (2) Swap space is too small (you might increase it).\n"
+       << "   (3) Your computer may be using an non-English character \n"
+       << "       set.  Try switching to the English character set.\n"
        << "\n";
    std::cout << str.str().c_str() << std::endl;
    
@@ -509,6 +510,10 @@ main(int argc, char* argv[])
 #endif
 */
 
+   //std::cout << "Home Directory: ";
+   //std::cout << QDir::homePath().toAscii().constData()
+   //          << std::endl;
+   
    QString allArgs;
    for (int i = 1; i < argc; i++) {
       allArgs.append(argv[i]);
@@ -522,11 +527,17 @@ main(int argc, char* argv[])
    Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
    Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
 
+   //
+   // Set the locale to prevent crashes due to non-english date formats
+   //
+   QLocale::setDefault(QLocale::c());
+
 #ifdef Q_OS_MACX
    GuiMacOSXApplication app(argc, argv);
 #else   
    QApplication app(argc, argv);
 #endif
+
    
    /// shows all events  app.installEventFilter(new CatchEvents);
    

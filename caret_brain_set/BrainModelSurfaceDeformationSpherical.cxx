@@ -121,7 +121,7 @@ BrainModelSurfaceDeformationSpherical::loadRegularSphere() throw (BrainModelAlgo
    specFileName.append("/");
    specFileName.append("data_files/REGISTER.SPHERE");
    specFileName.append("/");  
-   switch(deformationMapFile->getSphereResolution()) {
+   switch(deformationMapFile->getSphereResolution(0)) {
       case 20:
          specFileName.append("sphere.v5.0.spec");
          break;
@@ -147,7 +147,7 @@ BrainModelSurfaceDeformationSpherical::loadRegularSphere() throw (BrainModelAlgo
          {
             std::ostringstream str;
             str << "Invalid sphere resolution: "
-               << deformationMapFile->getSphereResolution();
+                << deformationMapFile->getSphereResolution(0);
             throw BrainModelAlgorithmException(str.str().c_str());
          }
          break;
@@ -188,6 +188,7 @@ BrainModelSurfaceDeformationSpherical::loadRegularSphere() throw (BrainModelAlgo
    }
    targetDeformationSphere->convertToSphereWithRadius(deformationSphereRadius);
    targetDeformationSphere->updateForDefaultScaling();
+   updateViewingTransformation(brainSet);
    brainSet->drawBrainModel(targetDeformationSphere);
 }
 
@@ -366,6 +367,7 @@ BrainModelSurfaceDeformationSpherical::tessellateTargetBordersIntoDeformationSph
    //
    // Update the displayed surface
    //
+   this->updateViewingTransformation(brainSet);
    brainSet->drawBrainModel(targetDeformationSphere);
 }
 
@@ -378,7 +380,7 @@ BrainModelSurfaceDeformationSpherical::landmarkConstrainedSmoothTarget()
    //
    // Perform the landmark constrained smoothing
    //
-   targetDeformationSphere->landmarkConstrainedSmoothing(0.5, 20, landmarkNodeFlags);
+   targetDeformationSphere->landmarkConstrainedSmoothing(0.5, 20, landmarkNodeFlags, 0);
    
    //
    // Push the nodes back onto the sphere
@@ -399,6 +401,7 @@ BrainModelSurfaceDeformationSpherical::landmarkConstrainedSmoothTarget()
    // Update scaling and display surface
    //
    targetDeformationSphere->updateForDefaultScaling();
+   updateViewingTransformation(brainSet);
    brainSet->drawBrainModel(targetDeformationSphere);
 }
 
@@ -452,7 +455,7 @@ BrainModelSurfaceDeformationSpherical::determineFiducialSphereDistortion()
  * Update the fiducial sphere distortion.
  */
 void
-BrainModelSurfaceDeformationSpherical::updateSphereFiducialDistortion(const int cycle)
+BrainModelSurfaceDeformationSpherical::updateSphereFiducialDistortion(const int /*cycle*/)
 {
    //
    // Create a point projector for projecting the source deformation sphere
@@ -500,8 +503,6 @@ BrainModelSurfaceDeformationSpherical::updateSphereFiducialDistortion(const int 
    //
    std::ostringstream str;
    str << debugTargetFileNamePrefix.toAscii().constData()
-       << "_cycle_"
-       << cycle
        << SpecFile::getSurfaceShapeFileExtension().toAscii().constData();
    fiducialSphereDistortion.writeFile(str.str().c_str());
    brainSet->addToSpecFile(SpecFile::getSurfaceShapeFileTag(), str.str().c_str());
@@ -519,7 +520,8 @@ BrainModelSurfaceDeformationSpherical::replaceTargetLandmarksWithSourceLandmarks
    //
    unsmoothedSourceDeformationSphere = new BrainModelSurface(*targetDeformationSphere);
    brainSet->addBrainModel(unsmoothedSourceDeformationSphere);
-      
+   updateViewingTransformation(brainSet);
+   
    //
    // Replace target landmark nodes in deformation sphere with source landmark coordinates
    //
@@ -551,6 +553,7 @@ BrainModelSurfaceDeformationSpherical::replaceTargetLandmarksWithSourceLandmarks
    intermediateFiles.push_back(coordFileName);
 
    unsmoothedSourceDeformationSphere->updateForDefaultScaling();
+   this->updateViewingTransformation(brainSet);
    brainSet->drawBrainModel(unsmoothedSourceDeformationSphere);
 }
 
@@ -565,13 +568,15 @@ BrainModelSurfaceDeformationSpherical::landmarkNeighborConstrainedSmoothSource(c
    //
    smoothedSourceDeformationSphere = new BrainModelSurface(*unsmoothedSourceDeformationSphere);
    brainSet->addBrainModel(smoothedSourceDeformationSphere);
-   
+   updateViewingTransformation(brainSet);
+
    //
    // Get smoothing parameters for this cycle
    //
    float strength;
    int numCycles, numIterations, neighborIterations, numFinalIterations;
-   deformationMapFile->getSmoothingParameters(cycleNumber - 1,
+   deformationMapFile->getSmoothingParameters(0,
+                                              cycleNumber - 1,
                                               strength,
                                               numCycles,
                                               numIterations,
@@ -579,7 +584,7 @@ BrainModelSurfaceDeformationSpherical::landmarkNeighborConstrainedSmoothSource(c
                                               numFinalIterations);
    
    smoothedSourceDeformationSphere->updateForDefaultScaling();
-      
+
    //
    // perform number of smoothing cycles
    //
@@ -587,6 +592,7 @@ BrainModelSurfaceDeformationSpherical::landmarkNeighborConstrainedSmoothSource(c
       //
       // Perform the landmark constrained smoothing
       //
+      updateViewingTransformation(smoothedSourceDeformationSphere);
       smoothedSourceDeformationSphere->landmarkNeighborConstrainedSmoothing(strength,
                                                                             numIterations,
                                                                             landmarkNodeFlags,
@@ -612,6 +618,7 @@ BrainModelSurfaceDeformationSpherical::landmarkNeighborConstrainedSmoothSource(c
    //
    smoothedSourceDeformationSphere->convertToSphereWithRadius(deformationSphereRadius);
    smoothedSourceDeformationSphere->updateForDefaultScaling();
+   updateViewingTransformation(smoothedSourceDeformationSphere);
 
    //
    // Save the coordinate file
@@ -624,6 +631,7 @@ BrainModelSurfaceDeformationSpherical::landmarkNeighborConstrainedSmoothSource(c
    intermediateFiles.push_back(coordFileName);
 
    smoothedSourceDeformationSphere->updateForDefaultScaling();
+   updateViewingTransformation(brainSet);
    brainSet->drawBrainModel(smoothedSourceDeformationSphere);
 }
 
@@ -639,7 +647,8 @@ BrainModelSurfaceDeformationSpherical::landmarkMorphContrainedSource(const int c
    //
    float strength;
    int numCycles, numIterations, neighborIterations, numFinalIterations;
-   deformationMapFile->getSmoothingParameters(cycleNumber - 1,
+   deformationMapFile->getSmoothingParameters(0,
+                                              cycleNumber - 1,
                                               strength,
                                               numCycles,
                                               numIterations,
@@ -650,7 +659,8 @@ BrainModelSurfaceDeformationSpherical::landmarkMorphContrainedSource(const int c
    //
    float linearForce, angularForce, stepSize, landmarkStepSize;
    int numMorphCycles, iterations, smoothIterations;
-   deformationMapFile->getMorphingParameters(cycleNumber - 1,
+   deformationMapFile->getMorphingParameters(0,
+                                             cycleNumber - 1,
                                              numMorphCycles,
                                              linearForce,
                                              angularForce,
@@ -670,7 +680,7 @@ BrainModelSurfaceDeformationSpherical::landmarkMorphContrainedSource(const int c
       //
       morphedSourceDeformationSphere = new BrainModelSurface(*smoothedSourceDeformationSphere);
       brainSet->addBrainModel(morphedSourceDeformationSphere);
-
+      updateViewingTransformation(brainSet);
       
       //
       // NON-landmark nodes are morphed
@@ -743,6 +753,7 @@ BrainModelSurfaceDeformationSpherical::landmarkMorphContrainedSource(const int c
          // Draw the surface
          //
          morphedSourceDeformationSphere->updateForDefaultScaling();
+         updateViewingTransformation(brainSet);
          brainSet->drawBrainModel(morphedSourceDeformationSphere);
          
       }      
@@ -761,6 +772,7 @@ BrainModelSurfaceDeformationSpherical::landmarkMorphContrainedSource(const int c
       // Draw the surface
       //
       morphedSourceDeformationSphere->updateForDefaultScaling();
+      this->updateViewingTransformation(brainSet);
       brainSet->drawBrainModel(morphedSourceDeformationSphere);
    }
    else {
@@ -780,6 +792,7 @@ BrainModelSurfaceDeformationSpherical::createDeformedCoordinateFile(const int cy
       //
       deformedSourceSurface = new BrainModelSurface(*sourceSurface);
       sourceBrainSet->addBrainModel(deformedSourceSurface);
+      updateViewingTransformation(sourceBrainSet);
 
       //
       // Make sure source surface is same radius as deformation sphere
@@ -863,7 +876,7 @@ BrainModelSurfaceDeformationSpherical::createDeformedCoordinateFile(const int cy
       //
       QDir::setCurrent(sourceDirectory);
       QString defCoordName(deformationMapFile->getDeformedFileNamePrefix());
-      if (cycle == deformationMapFile->getSphericalNumberOfCycles()) {
+      if (cycle == deformationMapFile->getSphericalNumberOfCycles(0)) {
          QString dn(FileUtilities::dirname(sourceCoords->getFileName()));
          
          if ((dn != ".") && (dn.length() > 0)) {
@@ -1046,6 +1059,8 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       if (DebugControl::getDebugOn()) {
          std::cout << " " << std::endl;
       }
+      updateProgressDialog("Determining Spherical Distortion");
+
       determineSphericalDistortion(sourceFiducialSurface,
                                  sourceSurface,
                                  sourceTileDistortion);
@@ -1061,7 +1076,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
    //
    // Perform the requested number of cycles
    //
-   for (int cycle = 1; cycle <= deformationMapFile->getSphericalNumberOfCycles(); cycle++) {
+   for (int cycle = 1; cycle <= deformationMapFile->getSphericalNumberOfCycles(0); cycle++) {
       //
       // Debug file name prefixes
       //
@@ -1080,7 +1095,10 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       if (DebugControl::getDebugOn()) {
          std::cout << "Cycle " << cycle << " resampling borders." << std::endl;
       }
-      resampleBorderFiles();
+      updateProgressDialog("Cycle "
+                           + QString::number(cycle)
+                           + " resampling borders.");
+      resampleBorderFiles(-1, cycle, deformationSphereRadius);
       
       //
       // Set the radius of the source/target border file to the radius of the target surface
@@ -1106,6 +1124,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       if (DebugControl::getDebugOn()) {
          std::cout << "Cycle " << cycle << " tessellating borders into target." << std::endl;
       }
+      updateProgressDialog("Tessellating Borders into Target");
       tessellateTargetBordersIntoDeformationSphere();
    
       //
@@ -1114,7 +1133,8 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       unsmoothedTargetDeformationSphere = targetDeformationSphere;
       targetDeformationSphere = new BrainModelSurface(*unsmoothedTargetDeformationSphere);
       brainSet->addBrainModel(targetDeformationSphere);
-      
+      updateViewingTransformation(brainSet);
+
       //
       // Mark the landmark nodes
       //
@@ -1131,6 +1151,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       if (DebugControl::getDebugOn()) {
          std::cout << "Cycle " << cycle << " landmark constrained smoothing of target." << std::endl;
       }
+      updateProgressDialog("Landmark Constrianed Smoothing of Target");
       landmarkConstrainedSmoothTarget();
       
       //
@@ -1155,6 +1176,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       //
       // Replace the target landmarks in the deformation sphere with the source landmarks
       //
+      updateProgressDialog("Replacing Target Landmarks with Source Landmarks");
       replaceTargetLandmarksWithSourceLandmarks();
       
       //
@@ -1163,6 +1185,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       if (DebugControl::getDebugOn()) {
          std::cout << "Cycle " << cycle << " landmark neighbor constrained smoothing." << std::endl;
       }
+      updateProgressDialog("Landmark Neighbor Constrained Smoothing of Source");
       landmarkNeighborConstrainedSmoothSource(cycle);
       
       //
@@ -1171,6 +1194,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       if (DebugControl::getDebugOn()) {
          std::cout << "Cycle " << cycle << " landmark constrained morphing." << std::endl;
       }
+      updateProgressDialog("Landmark Morphing Constrained Source");
       landmarkMorphContrainedSource(cycle);
       
       //
@@ -1188,6 +1212,7 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       //
       // Check for crossovers
       //
+      updateProgressDialog("Checking for Crossovers");
       int numNodeCrossovers, numTileCrossovers;
       morphedSourceDeformationSphere->crossoverCheck(numTileCrossovers, 
                                                      numNodeCrossovers,
@@ -1197,14 +1222,21 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       //
       // If the last cycle alert user if there are crossovers
       //
-      if (cycle == deformationMapFile->getSphericalNumberOfCycles()) {
-         if (numNodeCrossovers > 0) {
+      if (cycle == deformationMapFile->getSphericalNumberOfCycles(0)) {
+         bool anyCrossoversFlag = false;
+         for (unsigned int i = 0; i < crossoverCount.size(); i++) {
+            if (crossoverCount[i] > 0) {
+               anyCrossoversFlag = true;
+               break;
+            }
+         }
+         if (anyCrossoversFlag > 0) {
             QWidget* parent = brainSet->getProgressDialogParent();
             if (parent != NULL) {
                QString msg;
                for (int i = (crossoverCount.size() - 1); i >= 0; i--) {
                   std::ostringstream str;
-                  str << "Cycle " << i << " had " << crossoverCount[i] << " crossovers.\n";
+                  str << "Cycle " << (i + 1) << " had " << crossoverCount[i] << " crossovers.\n";
                   msg.append(str.str().c_str());
                }
                msg.append("\nContinue Deformation ?");
@@ -1222,15 +1254,17 @@ BrainModelSurfaceDeformationSpherical::executeDeformation() throw (BrainModelAlg
       // Project the user's sphere from the original source deformation sphere to
       // the target deformation sphere
       //
+      updateProgressDialog("Creating Deformed Coordinate File");
       createDeformedCoordinateFile(cycle);
       
       //
       // If this is not the last cycle
       //
-      if (cycle < deformationMapFile->getSphericalNumberOfCycles()) {
+      if (cycle < deformationMapFile->getSphericalNumberOfCycles(0)) {
          //
          // Update the source borders for the next cycle
          //
+         updateProgressDialog("Updating Borders for Next Cycle");
          updateSourceBordersForNextCycle();
          
          //

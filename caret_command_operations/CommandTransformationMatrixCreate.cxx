@@ -78,7 +78,8 @@ CommandTransformationMatrixCreate::getHelpInformation() const
        + indent9 + "[-delete-all-matrices-from-file]\n"
        + indent9 + "[-identity]\n"
        + indent9 + "[-inverse]\n"
-       + indent9 + "[-multiply  matrix-name]\n"
+       + indent9 + "[-pre-multiply  matrix-name]\n"
+       + indent9 + "[-post-multiply  matrix-name]\n"
        + indent9 + "[-rotate X  Y  Z]\n"
        + indent9 + "[-scale  X  Y  Z]\n"
        + indent9 + "[-translate  X  Y  Z]\n"
@@ -155,16 +156,27 @@ CommandTransformationMatrixCreate::executeCommand() throw (BrainModelAlgorithmEx
       else if (paramName == "-inverse") {
          matrix.inverse();
       }
-      else if (paramName == "-multiply") {
+      else if (paramName == "-pre-multiply") {
          const QString multiplyMatrixName(parameters->getNextParameterAsString("Multiply Matrix Name"));
          const TransformationMatrix* tm = tmf.getTransformationMatrixWithName(multiplyMatrixName);
          if (tm == NULL) {
             throw CommandException("Unable to find matrix "
                                    "with name \""
                                    + multiplyMatrixName
-                                   + "\" for multiplication");
+                                   + "\" for pre-multiplication");
          }
-         matrix.multiply(*tm);
+         matrix.preMultiply(*tm);
+      }
+      else if (paramName == "-post-multiply") {
+         const QString multiplyMatrixName(parameters->getNextParameterAsString("Multiply Matrix Name"));
+         const TransformationMatrix* tm = tmf.getTransformationMatrixWithName(multiplyMatrixName);
+         if (tm == NULL) {
+            throw CommandException("Unable to find matrix "
+                                   "with name \""
+                                   + multiplyMatrixName
+                                   + "\" for post-multiplication");
+         }
+         matrix.postMultiply(*tm);
       }
       else if (paramName == "-rotate") {
          const float x = parameters->getNextParameterAsFloat("Rotation X");

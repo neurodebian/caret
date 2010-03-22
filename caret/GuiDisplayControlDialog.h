@@ -31,6 +31,7 @@
 
 #include <QSize>
 
+#include "BrainSet.h"
 #include "DisplaySettingsVolume.h"
 
 #include "WuQDialog.h"
@@ -57,10 +58,12 @@ class QToolButton;
 class QVBoxLayout;
 
 class GuiBrainModelSelectionComboBox;
+class GuiBrainModelSurfaceSelectionComboBox;
 class GuiDisplayControlSurfaceOverlayWidget;
 class GuiFociSearchWidget;
 class GuiNodeAttributeColumnSelectionComboBox;
 class GuiTransformationMatrixSelectionControl;
+class GuiVolumeFileSelectionComboBox;
 class FociSearchFile;
 class QDoubleSpinBox;
 class QtTextEditDialog;
@@ -298,16 +301,16 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// update the shape settings color mapping combo box
       void updateShapeSettingsColorMappingComboBox();
+
+      /// update vector items in dialog
+      void updateVectorItems();
       
-      /// update surface vector items in dialog
-      void updateSurfaceVectorItems();
-      
-      /// update surface vector selection page
-      void updateSurfaceVectorSelectionPage();
-      
-      /// update surface vector settings page
-      void updateSurfaceVectorSettingsPage();
-      
+      /// update vector settings page
+      void updateVectorSettingsPage();
+
+      /// update vector selection page
+      void updateVectorSelectionPage();
+
       /// update all topography items in dialog
       void updateTopographyItems();
       
@@ -736,7 +739,7 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// read the metric misc page
       void readMetricMiscellaneousPage();
-      
+
       /// read the metric selection page
       void readMetricSelectionPage();
       
@@ -787,16 +790,13 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// called when a type of topography is selected
       void topographyTypeSelection(int typeSelected);
-      
-      /// read the surface vector selection page
-      void readSurfaceVectorSelectionPage();
-      
-      /// read the surface vector settings page
-      void readSurfaceVectorSettingsPage();
-      
-      /// called when surface vector comment button pressed
-      void slotSurfaceVectorCommentPushButton(int item);
-      
+
+      /// read the vector settings page
+      void readVectorSettingsPage();
+
+      /// read the vector selection page
+      void readVectorSelectionPage();
+
       /// read the probabilistic atlas surface main page
       void readProbAtlasSurfaceMainPage();
       
@@ -886,6 +886,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// called when paint name all off button is pressed
       void slotPaintNamesAllOffPushButton();
+
+      /// read surface clipping page
+      void readSurfaceClippingPage();
       
    private:
       /// volume animate direction
@@ -994,12 +997,12 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// create and update the geodesic page
       void createAndUpdateGeodesicPage();
-      
-      /// create the surface vector selection page
-      void createSurfaceVectorSelectionPage();
 
-      /// create the surface vector settings page
-      void createSurfaceVectorSettingsPage();
+      /// create the vector selection page
+      void createVectorSelectionPage();
+
+      /// create the vector settings page
+      void createVectorSettingsPage();
 
       /// create the lat/lon page
       void createLatLonPage();
@@ -1157,9 +1160,18 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// Create and update the areal estimation page.
       void createAndUpdateArealEstimationPage();
 
+      /// Create the surface clipping page
+      void createSurfaceClippingPage();
+
+      /// update the surface clipping page
+      void updateSurfaceClippingPage();
+
       /// Update the surface model combo box
       void updateSurfaceModelComboBoxes();
 
+      // display left-to-left right-to-right message
+      void displayOverlayLeftToLeftRightToRightMessage();
+      
       /// enumerated types for pages
       enum PAGE_NAME {
          PAGE_NAME_AREAL_ESTIMATION,
@@ -1207,10 +1219,11 @@ class GuiDisplayControlDialog : public WuQDialog {
          PAGE_NAME_SHAPE_SELECTION,
          PAGE_NAME_SHAPE_SETTINGS,
          PAGE_NAME_SURFACE_AND_VOLUME,
+         PAGE_NAME_SURFACE_CLIPPING,
          PAGE_NAME_SURFACE_MISC,
-         PAGE_NAME_SURFACE_VECTOR_SELECTION,
-         PAGE_NAME_SURFACE_VECTOR_SETTINGS,
          PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW,
+         PAGE_NAME_VECTOR_SELECTION,
+         PAGE_NAME_VECTOR_SETTINGS,
          PAGE_NAME_TOPOGRAPHY,
          PAGE_NAME_VOLUME_SELECTION,
          PAGE_NAME_VOLUME_SETTINGS,
@@ -1555,6 +1568,9 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// metric misc page
       QWidget* pageMetricMiscellaneous;
       
+      /// updating metric misc page
+      bool updatingMetricMiscPageFlag;
+
       /// metric selection page
       QWidget* pageMetricSelection;
       
@@ -1675,12 +1691,26 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// metric color mapping negative min
       QDoubleSpinBox* metricColorNegativeMinDoubleSpinBox;
       
+      /// metric color mapping percentage positive max
+      QDoubleSpinBox* metricColorPercentagePositiveMaxDoubleSpinBox;
+
+      /// metric color mapping percentage  positive min
+      QDoubleSpinBox* metricColorPercentagePositiveMinDoubleSpinBox;
+
+      /// metric color mapping percentage  negative max
+      QDoubleSpinBox* metricColorPercentageNegativeMaxDoubleSpinBox;
+
+      /// metric color mapping percentage  negative min
+      QDoubleSpinBox* metricColorPercentageNegativeMinDoubleSpinBox;
       /// metric specified column scaling selection control
       GuiNodeAttributeColumnSelectionComboBox* metricFileAutoScaleSpecifiedColumnSelectionComboBox;
-      
+
       /// metric color mapping metric file auto scale radio button
       QRadioButton* metricFileAutoScaleRadioButton;
       
+      /// metric color mapping metric file auto scale percentage radio button
+      QRadioButton* metricFileAutoScalePercentageRadioButton;
+
       /// metric color mapping metric file specified column radio button
       QRadioButton* metricFileAutoScaleSpecifiedColumnRadioButton;
       
@@ -1698,7 +1728,7 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// metric palette display color bar
       QCheckBox* metricDisplayColorBarCheckBox;
-      
+
       /// border main page
       QWidget* pageBorderMain;
       
@@ -2139,9 +2169,6 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// surface axes offset
       QDoubleSpinBox* miscAxesOffsetDoubleSpinBox[3];
-      
-      /// partial view combo box
-      QComboBox* miscPartialViewComboBox;
       
       /// projection combo box
       QComboBox* miscProjectionComboBox;
@@ -2842,40 +2869,100 @@ class GuiDisplayControlDialog : public WuQDialog {
       
       /// lat lon name line edits
       std::vector<QLineEdit*> latLonNameLineEdits;
+
+      /// surface clipping page
+      QWidget* pageSurfaceClipping;
+
+      /// surface clipping page widget group
+      WuQWidgetGroup* surfaceClippingPageWidgetGroup;
+
+      /// surface clipping apply clipping combo box
+      QComboBox* surfaceClippingApplyComboBox;
+
+      /// enable surface clipping check boxes
+      QCheckBox* surfaceClippingEnabledCheckBox[6];
+
+      /// surface clipping coordinate double spin box
+      QDoubleSpinBox* surfaceClippingCoordSpinBox[6];
+
+      /// vector selection page
+      QWidget* pageVectorSelection;
+
+      /// layout for vector selection page
+      QVBoxLayout* pageVectorSelectionLayout;
+
+      /// checkboxes for selecting vector files for display
+      std::vector<QCheckBox*> vectorSelectionCheckBoxes;
+
+      /// vector settings page
+      QWidget* pageVectorSettings;
+
+      /// vector settings page widget group
+      WuQWidgetGroup* vectorSettingsPageWidgetGroup;
+
+      /// vector selection page widget group
+      WuQWidgetGroup* vectorSelectionPageWidgetGroup;
+
+      /// vector type mode combo box
+      QComboBox* vectorTypeModeComboBox;
+
+      /// vector surface symbol combo box
+      QComboBox* vectorSurfaceSymbolComboBox;
+
+      /// vector draw with magnitude check box
+      QCheckBox* vectorDrawWithMagnitudeCheckBox;
+
+      /// vector surface display mode combo box
+      QComboBox* vectorDisplayModeSurfaceComboBox;
       
-      /// surface vector selection page
-      QWidget* pageSurfaceVectorSelection;
+      /// vector volume display mode combo box
+      QComboBox* vectorDisplayModeVolumeComboBox;
+
+      /// vector sparse distance spin box
+      QSpinBox* vectorSparseDistanceSpinBox;
       
-      /// surface vector settings page
-      QWidget* pageSurfaceVectorSettings;
+      /// vector length multiplier float spin box
+      QDoubleSpinBox* vectorLengthMultiplierDoubleSpinBox;
       
-      /// surface vector radio buttons
-      std::vector<QRadioButton*> surfaceVectorRadioButtons;
-      
-      /// surface vector line edits
-      std::vector<QLineEdit*> surfaceVectorLineEdits;
-      
-      /// surface vector comment view/edit pushbuttons
-      std::vector<QToolButton*> surfaceVectorCommentPushButtons;
-      
-      /// surface vector comment pushbuttons group
-      QButtonGroup* surfaceVectorCommentButtonGroup;
-      
-      /// surface vector columns grid
-      QGridLayout* surfaceVectorColumnsGridLayout;
-      
-      /// surface vector column button group
-      QButtonGroup* surfaceVectorButtonGroup;
-      
-      /// surface vector display mode combo box
-      QComboBox* surfaceVectorDisplayModeComboBox;
-      
-      /// surface vector sparse distance spin box
-      QSpinBox* surfaceVectorSparseDistanceSpinBox;
-      
-      /// surface vector length multiplier float spin box
-      QDoubleSpinBox* surfaceVectorLengthMultiplierDoubleSpinBox;
-      
+      /// vector surface line width float spin box
+      QDoubleSpinBox* vectorSurfaceLineWidthSpinBox;
+
+      /// vector volume slice above limit float spin box
+      QDoubleSpinBox* vectorVolumeSliceAboveLimitSpinBox;
+
+      /// vector volume slice below limit float spin box
+      QDoubleSpinBox* vectorVolumeSliceBelowLimitSpinBox;
+
+      /// vector magnitude threshold float spin box
+      QDoubleSpinBox* vectorMagnitudeThresholdSpinBox;
+
+      /// vector segmentation mask volume file group box
+      QGroupBox* vectorSegmentationGroupBox;
+
+      /// vector segmentation mask volume file combo box
+      GuiVolumeFileSelectionComboBox* vectorSegmentationMaskVolumeComboBox;
+
+      /// vector functional mask volume file group box
+      QGroupBox* vectorFunctionalVolumeMaskGroupBox;
+
+      /// vector functional mask volume file combo box
+      GuiVolumeFileSelectionComboBox* vectorFunctionalMaskVolumeComboBox;
+
+      /// vector functional mask volume negative threshold value
+      QDoubleSpinBox* vectorFunctionalMaskVolumeNegThreshSpinBox;
+
+      /// vector functional mask volume positive threshold value
+      QDoubleSpinBox* vectorFunctionalMaskVolumePosThreshSpinBox;
+
+      /// vector color mode combo box
+      QComboBox* vectorColorModeComboBox;
+
+      /// vector display orientation combo box
+      QComboBox* vectorDisplayOrientationComboBox;
+
+      /// vector display orientation angle spin box
+      QDoubleSpinBox* vectorDisplayOrientationAngleSpinBox;
+
       /// geodesic main page
       QWidget* pageGeodesicMain;
       
@@ -3017,8 +3104,8 @@ class GuiDisplayControlDialog : public WuQDialog {
       /// surface and volume data valid
       bool validSurfaceAndVolumeData;
       
-      /// surface vector data valid
-      bool validSurfaceVectorData;
+      /// vector data valid
+      bool validVectorData;
       
       /// topography data valid
       bool validTopographyData;

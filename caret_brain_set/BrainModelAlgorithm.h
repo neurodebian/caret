@@ -68,12 +68,13 @@ class BrainModelAlgorithm : public QObject {
       void createProgressDialog(const QString& title,
                                 const int totalNumberOfSteps,
                                 const QString& dialogName);
-                                
+      
       /// Update the progress dialog.  Throws exception if cancel button pressed by user.
       void updateProgressDialog(const QString& text,
                                 const int progressNumber = -1,
                                 const int totalNumberOfSteps = -1) throw (BrainModelAlgorithmException);
-       
+
+
       /// Remove and delete the progress dialog.
       void removeProgressDialog();
 

@@ -40,7 +40,6 @@
 #include <QApplication>
 #include <QProgressDialog>
 #include <QString>
-#include <QDateTime>
 
 #include "vtkCellArray.h"
 #include "vtkDecimatePro.h"
@@ -74,10 +73,11 @@
 #include "StringUtilities.h"
 #include "SurfaceFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "SystemUtilities.h"
 #include "TopologyFile.h"
 #include "TopologyHelper.h"
 #include "TransformationMatrixFile.h"
+#include "VectorFile.h"
 
 /**
  * The constructor.
@@ -802,6 +802,108 @@ BrainModelSurface::readSurfaceFile(const QString& fileName) throw(FileException)
 }      
 
 /**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+BrainModelSurface::writeSurfaceInCaret6Format(const QString& filenameIn,
+                                             const QString& prependToFileNameExtension,
+                                            Structure structure,
+                                            const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   this->setStructure(structure);
+
+   //
+   // Determine number of coordinates and triangles
+   //
+   coordinates.updateMetaDataForCaret6();
+   const int numCoords = coordinates.getNumberOfCoordinates();
+   int numTriangles = 0;
+   if (topology != NULL) {
+      topology->updateMetaDataForCaret6();
+      numTriangles = topology->getNumberOfTiles();
+   }
+
+   //
+   // Create the surface file
+   //
+   SurfaceFile sf(numCoords, numTriangles);
+
+   //
+   // Copy the coordinates and normals
+   //
+   for (int i = 0; i < numCoords; i++) {
+      sf.setCoordinate(i, coordinates.getCoordinate(i));
+   }
+
+   //
+   // Copy the triangles
+   //
+   for (int i = 0; i < numTriangles; i++) {
+      sf.setTriangle(i, topology->getTile(i));
+   }
+
+   //
+   // set the metadata
+   //
+   GiftiMetaData* coordMetaData = sf.getCoordinateMetaData();
+   if (coordMetaData != NULL) {
+      coordMetaData->copyMetaDataFromCaretFile(&coordinates);
+   }
+   GiftiMetaData* topoMetaData = sf.getTopologyMetaData();
+   if (topoMetaData != NULL) {
+      topoMetaData->copyMetaDataFromCaretFile(topology);
+   }
+
+   sf.removeHeaderTag("date");
+   sf.removeHeaderTag("encoding");
+   sf.setHeaderTag("Date", QDateTime::currentDateTime().toString(Qt::ISODate));
+   sf.setHeaderTag("UserName", SystemUtilities::getUserName());
+
+   //
+   // Set the coordinate type and topology type
+   //
+   sf.setCoordinateType(getSurfaceTypeName());
+   if (topology != NULL) {
+      sf.setTopologyType(topology->getTopologyTypeName());
+   }
+
+   QString fileName = FileUtilities::basename(filenameIn);
+   if (fileName.endsWith(".coord")) {
+      fileName = FileUtilities::replaceExtension(fileName, ".coord",
+                                   prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension());
+   }
+   else if (fileName.endsWith(".surf.gii")) {
+      fileName = FileUtilities::replaceExtension(fileName, ".surf.gii",
+                                   prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension());
+   }
+   else if (fileName.endsWith(".coord.gii")) {
+      fileName = FileUtilities::replaceExtension(fileName, ".coord.gii",
+                                   prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension());
+   }
+   else {
+      fileName = fileName + prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension();
+   }
+
+   //
+   // Write the file
+   //
+   try {
+      sf.setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+      sf.writeFile(fileName);
+   }
+   catch (FileException& e) {
+      throw e;
+   }
+
+   //
+   // clear modified status for coordinates and topology
+   //
+   coordinates.clearModified();
+
+   return fileName;
+}
+
+/**
  * write the surface file.
  */
 void 
@@ -1388,30 +1490,19 @@ BrainModelSurface::convertNormalsToRgbPaint(RgbPaintFile* rpf)
  * copy normals to surface vector file.
  */
 void 
-BrainModelSurface::copyNormalsToSurfaceVectorFile(SurfaceVectorFile* svf,
-                                                  const int columnNumberIn,
-                                                  const QString& columnName) const
+BrainModelSurface::copyNormalsToVectorFile(VectorFile* vf) const
 {
    const int numNodes = getNumberOfNodes();
    
    //
    // Add column to surface vector file (if needed)
    //
-   int columnNumber = columnNumberIn;
-   if ((svf->getNumberOfNodes() <= 0) ||
-       (svf->getNumberOfColumns() <= 0)) {
-      svf->setNumberOfNodesAndColumns(numNodes, 1);
-      columnNumber = 0;
+   if (vf->getNumberOfVectors() != this->getNumberOfNodes()) {
+      vf->setNumberOfVectors(numNodes);
    }
-   if ((columnNumber < 0) ||
-       (columnNumber >= svf->getNumberOfColumns())) {
-      svf->addColumns(1);
-      columnNumber = svf->getNumberOfColumns() - 1;
-   }
-   
-   svf->setColumnName(columnNumber, columnName);
    for (int i = 0; i < numNodes; i++) {
-      svf->setVector(i, columnNumber, &normals[i * 3]);
+      const float* xyz = this->coordinates.getCoordinate(i);
+      vf->setVectorData(i, xyz, &normals[i*3], 1.0, i);
    }
 }
                                     
@@ -3416,7 +3507,7 @@ BrainModelSurface::applyViewToCoordinates(const BrainModel::STANDARD_VIEWS surfa
  * Apply current view to surface
  */
 void 
-BrainModelSurface::applyCurrentView(const int surfaceViewNumber,
+BrainModelSurface::OLDapplyCurrentView(const int surfaceViewNumber,
                                     const bool applyTranslation,
                                     const bool applyRotation,
                                     const bool applyScaling)
@@ -3516,6 +3607,57 @@ BrainModelSurface::applyCurrentView(const int surfaceViewNumber,
    coordinates.clearDisplayList();
 }
 
+/**
+ * Apply current view to surface
+ */
+void
+BrainModelSurface::applyCurrentView(const int surfaceViewNumber,
+                                    const bool applyTranslation,
+                                    const bool applyRotation,
+                                    const bool applyScaling)
+{
+   TransformationMatrix tm;
+   if (applyRotation) {
+     float m[16];
+     getRotationMatrix(surfaceViewNumber, m);
+     TransformationMatrix rotMatrix;
+     rotMatrix.setMatrix(m);
+     tm.preMultiply(rotMatrix);
+   }
+
+   if (applyScaling) {
+     float s[3];
+     getScaling(surfaceViewNumber, s);
+     tm.scale(s);
+   }
+
+   if (applyTranslation) {
+     float t[3];
+     getTranslation(surfaceViewNumber, t);
+     tm.translate(t);
+   }
+
+   applyTransformationMatrix(tm);
+
+   if (applyRotation) {
+     setToStandardView(surfaceViewNumber, VIEW_DORSAL);
+   }
+   if (applyTranslation) {
+     float t[3];
+     t[0] = 0.0;
+     t[1] = 0.0;
+     t[2] = 0.0;
+     setTranslation(surfaceViewNumber, t);
+   }
+   if (applyScaling) {
+     float s[3];
+     s[0] = 1.0;
+     s[1] = 1.0;
+     s[2] = 1.0;
+     setScaling(surfaceViewNumber, s);
+     setDefaultScaling(1.0);
+   }
+}
 /**
  * Get the bounds of the connected surface.
  */
@@ -4526,7 +4668,8 @@ class NodeInfo {
 void 
 BrainModelSurface::landmarkConstrainedSmoothing(const float strength, 
                                                 const int iterations, 
-                                                const std::vector<bool>& landmarkNodeFlag)
+                                                const std::vector<bool>& landmarkNodeFlag,
+                                                const int projectToSphereEveryXIterations)
 {  
    PreferencesFile* pf = brainSet->getPreferencesFile();
    const int numThreads = pf->getMaximumNumberOfThreads();
@@ -4540,7 +4683,7 @@ BrainModelSurface::landmarkConstrainedSmoothing(const float strength,
                                               0,
                                               NULL,
                                               &landmarkNodeFlag,
-                                              0,
+                                              projectToSphereEveryXIterations,
                                               numThreads);
       try {
          smoothObject.execute();
@@ -4749,27 +4892,27 @@ BrainModelSurface::landmarkNeighborConstrainedSmoothing(const float strength,
 {  
    PreferencesFile* pf = brainSet->getPreferencesFile();
    int numThreads = pf->getMaximumNumberOfThreads();
-   numThreads = 0;
-   if (numThreads > 0) {
-      BrainModelSurfaceSmoothing smoothObject(brainSet,
-                                              this,
-                                              BrainModelSurfaceSmoothing::SMOOTHING_TYPE_LANDMARK_NEIGHBOR_CONSTRAINED,
-                                              strength,
-                                              iterations,
-                                              0,
-                                              smoothNeighborsEveryX,
-                                              NULL,
-                                              &landmarkNodeFlag,
-                                              projectToSphereEveryXIterations,
-                                              numThreads);
-      try {
-         smoothObject.execute();
-      }
-      catch (BrainModelAlgorithmException&) {
-      }
-      
-      return;
-   }
+//   numThreads = 0;
+//   if (numThreads > 0) {
+//      BrainModelSurfaceSmoothing smoothObject(brainSet,
+//                                              this,
+//                                              BrainModelSurfaceSmoothing::SMOOTHING_TYPE_LANDMARK_NEIGHBOR_CONSTRAINED,
+//                                              strength,
+//                                              iterations,
+//                                              0,
+//                                              smoothNeighborsEveryX,
+//                                              NULL,
+//                                              &landmarkNodeFlag,
+//                                              projectToSphereEveryXIterations,
+//                                              numThreads);
+//      try {
+//         smoothObject.execute();
+//      }
+//      catch (BrainModelAlgorithmException&) {
+//      }
+//
+//      return;
+//   }
 
    const float sphereRadius = getSphericalSurfaceRadius();
    
@@ -4952,6 +5095,17 @@ BrainModelSurface::landmarkNeighborConstrainedSmoothing(const float strength,
       }
       
       //
+      // If the surface should be projected to a sphere
+      //
+      if (projectToSphereEveryXIterations > 0) {
+         if ((iter % projectToSphereEveryXIterations) == 0) {
+            for (int j = 0; j < numNodes; j++) {
+               MathUtilities::setVectorLength(nodeInfo[j].xyz, sphereRadius);
+            }
+         }
+      }
+
+      //
       // Set the coordinates
       //
       for (int i = 0; i < numNodes; i++) {
@@ -4961,11 +5115,11 @@ BrainModelSurface::landmarkNeighborConstrainedSmoothing(const float strength,
       //
       // If the surface should be projected to a sphere
       //
-      if (projectToSphereEveryXIterations > 0) {
-         if ((iter % projectToSphereEveryXIterations) == 0) {
-            convertToSphereWithRadius(sphereRadius);
-         }
-      }
+      //if (projectToSphereEveryXIterations > 0) {
+      //   if ((iter % projectToSphereEveryXIterations) == 0) {
+      //      convertToSphereWithRadius(sphereRadius);
+      //   }
+      //}
       
       //
       // Update the displayed brain model
@@ -7379,10 +7533,10 @@ BrainModelSurface::simplifySurface(const int maxPolygons) const
       if (DebugControl::getDebugOn()) {
          std::cout << "Reduction is " << reduction * 100.0 << "%" << std::endl;
       }
-      const double errorVal = 1.0;
+      const double errorVal = VTK_DOUBLE_MAX; //1.0;
       decimater->SetInput(inputPolyData);
       decimater->SetTargetReduction(reduction);
-      decimater->PreserveTopologyOn();
+      decimater->PreserveTopologyOff(); //On();
       decimater->SetFeatureAngle(30);
       decimater->SplittingOff();
       decimater->PreSplitMeshOff();
@@ -7442,3 +7596,90 @@ BrainModelSurface::getNodeClosestToPoint(const float pointXYZ[3]) const
    
    return nearestNodeNumber;
 }      
+
+/**
+ * Create a string of c-language arrays containing vertices, normals, triangles.
+ */
+QString
+BrainModelSurface::convertToCLanguageArrays() const
+{
+   //
+   // Get the number of vertices and triangles
+   //
+   const CoordinateFile* cf = this->getCoordinateFile();
+   const int numVertices = cf->getNumberOfCoordinates();
+   const TopologyFile* tf = this->getTopologyFile();
+   const int numTriangles = tf->getNumberOfTiles();
+   if ((numVertices <= 0) ||
+       (numTriangles <= 0)) {
+      return "";
+   }
+
+   //
+   // Estimate storage to avoid excessive memory reallocations
+   //
+   const int charactersPerVertex = 8;
+   const int charactersPerTriangle = 4;
+   const int estimatedStorage = charactersPerVertex * 2 * numVertices
+                              + charactersPerTriangle * numTriangles;
+   QString s;
+   s.reserve(estimatedStorage);
+
+   //
+   // Wrap a text stream around the string
+   //
+   QTextStream stream(&s, QIODevice::WriteOnly);
+
+   //
+   // Add number of vertices and triangles to string
+   //
+   stream << "const int numVertices = " << numVertices << ";\n";
+   stream << "const int numTriangles = " << numTriangles << ";\n";
+   stream << "\n";
+
+   //
+   // Write the vertices
+   //
+   stream << "float vertices[] = {\n";
+   for (int i = 0; i < numVertices; i++) {
+      const float* xyz = cf->getCoordinate(i);
+      stream << "   " << xyz[0] << ", " << xyz[1] << ", " << xyz[2];
+      if ((i + 1) < numVertices) {
+         stream << ",";
+      }
+      stream << "\n";
+   }
+   stream << "};\n\n";
+
+   //
+   // Write the normals
+   //
+   stream << "float normals[] = {\n";
+   for (int i = 0; i < numVertices; i++) {
+      const float* xyz = this->getNormal(i);
+      stream << "   " << xyz[0] << ", " << xyz[1] << ", " << xyz[2];
+      if ((i + 1) < numVertices) {
+         stream << ",";
+      }
+      stream << "\n";
+   }
+   stream << "};\n\n";
+
+   //
+   // Write the triangles
+   //
+   stream << "int triangles[] = {\n";
+   for (int i = 0; i < numTriangles; i++) {
+      const int* tile = tf->getTile(i);
+      stream << "   " << tile[0] << ", " << tile[1] << ", " << tile[2];
+      if ((i + 1) < numTriangles) {
+         stream << ",";
+      }
+      stream << "\n";
+   }
+   stream << "};\n\n";
+
+   return s;
+}
+
+

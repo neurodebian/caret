@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include <QDir>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -704,6 +705,86 @@ PaintFile::copyColumns(const PaintFile* fromPaintFile,
 }
 
 /**
+ * Dilate a paint column.
+ */
+void
+PaintFile::dilateColumn(const TopologyFile* tf,
+                        const int columnNumber,
+                        const int iterations) throw (FileException)
+{
+   //
+   // Validate column numbers
+   //
+   if (tf == NULL) {
+      throw FileException("PaintFile::dilateColumn() topology is invalid.");
+   }
+   if ((columnNumber < 0) ||
+       (columnNumber >= getNumberOfColumns())) {
+      throw FileException("PaintFile::dilateColumn() columnNumber is invalid.");
+   }
+
+   //
+   // Get unassigned paint index
+   //
+   const int unassignedPaintIndex = addPaintName("???");
+
+   //
+   // Get topology helper for neighbor information
+   //
+   const TopologyHelper* th = tf->getTopologyHelper(false, true, false);
+
+   //
+   // temporary and used to during dilation
+   //
+   const int numNodes = getNumberOfNodes();
+   int* outputPaints = new int[numNodes];
+
+   //
+   // Do for specified number of iterations
+   //
+   for (int iter = 0; iter < iterations; iter++) {
+      //
+      // Copy current paints
+      //
+      for (int i = 0; i < numNodes; i++) {
+         outputPaints[i] = getPaint(i, columnNumber);
+      }
+
+      //
+      // Check each node
+      //
+      for (int i = 0; i < numNodes; i++) {
+         //
+         // Dilate into neighboring nodes
+         //
+         const int paintIndex = getPaint(i, columnNumber);
+         if (paintIndex != unassignedPaintIndex) {
+            int numNeighbors;
+            const int* neighbors = th->getNodeNeighbors(i, numNeighbors);
+            for (int j = 0; j < numNeighbors; j++) {
+               const int neighborNodeNum = neighbors[j];
+               if (outputPaints[neighborNodeNum] == unassignedPaintIndex) {
+                  outputPaints[neighborNodeNum] = paintIndex;
+               }
+            }
+         }
+      }
+
+      //
+      // Set current paints
+      //
+      for (int i = 0; i < numNodes; i++) {
+         setPaint(i, columnNumber, outputPaints[i]);
+      }
+   }
+
+   //
+   // Free memory
+   //
+   delete[] outputPaints;
+}
+
+/**
  * dilate paint ID "paintIndex" if neighbors paint index >= 0 do only those.
  */
 int 
@@ -722,7 +803,7 @@ PaintFile::dilatePaintID(const TopologyFile* tf,
    //
    if ((columnNumber < 0) ||
        (columnNumber >= getNumberOfColumns())) {
-      throw FileException("PaintFile::dilatePaintID() fromColumnNumber is invalid.");
+      throw FileException("PaintFile::dilatePaintID() columnNumber is invalid.");
    }
    if (iterations <= 0) {
       return numDilated;
@@ -1374,7 +1455,11 @@ PaintFile::exportFreeSurferAsciiLabelFile(const int columnNumber,
             if (exportedPaints.find(value) == exportedPaints.end()) {
                exportedPaints.insert(value);
                const QString paintName(getPaintNameFromIndex(value));
-               QString filename(filenamePrefix);
+               QString filename("");
+               if (filenamePrefix.isEmpty() == false) {
+                  filename.append(filenamePrefix);
+                  filename.append(QDir::separator());
+               }
                filename.append(paintName);
                //filename.append(".label");
                
@@ -1552,3 +1637,24 @@ PaintFile::importSingleFreeSurferLabelFile(const int columnNumber,
       setPaint(nodeNumber, columnNumber, paintIndex);
    }
 }
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+PaintFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   QString name = filenameIn;
+   if (useCaret6ExtensionFlag) {
+      name = FileUtilities::replaceExtension(filenameIn, ".paint",
+                                     SpecFile::getGiftiLabelFileExtension());
+   }
+   if (colorFileIn != NULL) {
+      this->assignColors(*colorFileIn);
+   }
+   this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+   this->writeFile(name);
+
+   return name;
+}
+

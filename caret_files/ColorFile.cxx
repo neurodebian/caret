@@ -38,6 +38,8 @@
 #include "ColorFile.h"
 #include "CommaSeparatedValueFile.h"
 #include "ContourCellColorFile.h"
+#include "GiftiDataArrayFile.h"
+#include "GiftiLabelTable.h"
 #include "FociColorFile.h"
 #include "NameIndexSort.h"
 #include "StringTable.h"
@@ -203,7 +205,7 @@ ColorFile::addColor(const QString& name,
                     const QString& colorIdIn)
 {
    if ((colors.size() == 0) && (name != "???")) {
-      colors.push_back(ColorStorage("???", 170, 170, 170, 255, 2.0, 1.0, ColorStorage::SYMBOL_OPENGL_POINT));
+      colors.push_back(ColorStorage("???", 170, 170, 170, 0, 2.0, 1.0, ColorStorage::SYMBOL_OPENGL_POINT));
    }
    
    //
@@ -1026,6 +1028,31 @@ ColorFile::writeFileData(QTextStream& stream, QDataStream&,
    }
 }
 
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+ColorFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   int numColors = this->getNumberOfColors();
+
+   GiftiDataArrayFile gdaf;
+   GiftiLabelTable* labelTable = gdaf.getLabelTable();
+
+   for (int i = 0; i < numColors; i++) {
+      const ColorStorage* color = getColor(i);
+      unsigned char red, green, blue, alpha;
+      color->getRgba(red, green, blue, alpha);
+
+      labelTable->setLabel(i, color->getName());
+      labelTable->setColor(i, red, green, blue, alpha);
+   }
+
+   gdaf.writeFile(filenameIn);
+
+   return filenameIn;
+}
+
 //--------------------------------------------------------------------------------------------
 
 /**
@@ -1481,3 +1508,4 @@ ColorFile::ColorStorage::writeXML(QDomDocument& xmlDoc,
    //
    parentElement.appendChild(colorDataElement);
 }
+

@@ -38,6 +38,9 @@ class FociProjectionFile : public CellProjectionFile {
       /// Destructor
       ~FociProjectionFile();
       
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
 };
 

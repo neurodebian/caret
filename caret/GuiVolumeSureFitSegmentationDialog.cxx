@@ -29,7 +29,6 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
-#include <QDateTime>
 #include <QDir>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -979,7 +978,7 @@ GuiVolumeSureFitSegmentationDialog::createSegmentationSelectionsPage()
    generateDepthCurvatureGeographyCheckBox->setChecked(true);
    
    generateLandmarkBordersCheckBox = new QCheckBox("Create Flatten and Registration Landmark Borders");
-   generateLandmarkBordersCheckBox->setChecked(true);
+   generateLandmarkBordersCheckBox->setChecked(false);
    
    autoSaveFilesCheckBox = new QCheckBox("Auto Save Generated Data Files");
    autoSaveFilesCheckBox->setChecked(true);

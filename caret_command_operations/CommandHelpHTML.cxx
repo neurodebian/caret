@@ -23,10 +23,9 @@
  */
 /*LICENSE_END*/
 
-#include <QDateTime>
-
 #include "CaretVersion.h"
 #include "CommandHelpHTML.h"
+#include "DateAndTime.h"
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
@@ -115,7 +114,7 @@ CommandHelpHTML::executeCommand() throw (BrainModelAlgorithmException,
                        + CaretVersion::getCaretVersionAsString()
                        + "</h2>");
    htmlFile.appendLine("<h2>Date Printed "
-                       + QDateTime::currentDateTime().toString("MMM d, yyyy")
+                       + DateAndTime::getDateAndTimeAsString()
                        + "</h2>");
    htmlFile.appendLine("<p></p>");
    htmlFile.appendLine("<p></p>");

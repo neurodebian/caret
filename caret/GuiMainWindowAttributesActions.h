@@ -156,7 +156,10 @@ class GuiMainWindowAttributesActions : public QObject {
 
       /// get the vocabulary study info to study metadata file action
       QAction* getVocabularyMoveStudyInfoToStudyMetaDataAction() { return vocabularyMoveStudyInfoToStudyMetaDataAction; }
-      
+
+      /// connectivity action
+      QAction* getConnectivityAction() { return connectivityAction; }
+
    public slots:
       /// update the actions (typically called when menu is about to show)
       void updateActions();
@@ -369,6 +372,9 @@ class GuiMainWindowAttributesActions : public QObject {
       
       /// vocabulary study info to study metadata action
       QAction* vocabularyMoveStudyInfoToStudyMetaDataAction;
+
+      /// connectivity action
+      QAction* connectivityAction;
 };
 
 #endif  // __GUI_MAIN_WINDOW_ATTRIBUTES_ACTIONS_H__

@@ -30,6 +30,7 @@
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
 #include "VolumeFile.h"
+#include "CommandVolumeTopologyReport.h"
 
 /**
  * constructor.
@@ -54,6 +55,7 @@ void
 CommandVolumeEulerCount::getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const
 {
    paramsOut.clear();
+   /*
    paramsOut.addFile("Input Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addInt("Min X", 1, 0, 100000);
    paramsOut.addInt("Max X", 1, 0, 100000);
@@ -61,6 +63,24 @@ CommandVolumeEulerCount::getScriptBuilderParameters(ScriptBuilderParameters& par
    paramsOut.addInt("Max Y", 1, 0, 100000);
    paramsOut.addInt("Min Z", 1, 0, 100000);
    paramsOut.addInt("Max Z", 1, 0, 100000);
+    */
+}
+
+/**
+ * obsolete message.
+ */
+QString
+CommandVolumeEulerCount::obsoleteMessage() const {
+
+   CommandVolumeTopologyReport vtr;
+
+   QString msg = "This command ("
+               + this->getOperationSwitch()
+               + ") has been replaced by \""
+               + vtr.getOperationSwitch()
+               + "\".";
+
+   return msg;
 }
 
 /**
@@ -69,6 +89,8 @@ CommandVolumeEulerCount::getScriptBuilderParameters(ScriptBuilderParameters& par
 QString 
 CommandVolumeEulerCount::getHelpInformation() const
 {
+   return obsoleteMessage();
+/*
    QString helpInfo =
       (indent3 + getShortDescription() + "\n"
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
@@ -84,6 +106,7 @@ CommandVolumeEulerCount::getHelpInformation() const
        + indent9 + "\n");
       
    return helpInfo;
+*/
 }
 
 /**
@@ -96,6 +119,8 @@ CommandVolumeEulerCount::executeCommand() throw (BrainModelAlgorithmException,
                                      ProgramParametersException,
                                      StatisticException)
 {
+   throw CommandException(obsoleteMessage());
+/*
    //
    // Get the parameters
    //
@@ -141,6 +166,7 @@ CommandVolumeEulerCount::executeCommand() throw (BrainModelAlgorithmException,
    std::cout << "Num Cavities " << NumCavities << std::endl;
    std::cout << "Num Handles  " << NumHandles << std::endl;
    std::cout << "Euler Count  " << eulerCount << std::endl;
+ */
 }
 
       

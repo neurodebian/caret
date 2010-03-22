@@ -30,6 +30,7 @@
 
 #include "CaretVersion.h"
 #include "CommandHelpPDF.h"
+#include "DateAndTime.h"
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
@@ -351,7 +352,7 @@ CommandHelpPDF::createTitlePage(QPainter& painter,
    QStringList titlePageText;
    titlePageText << "Caret Command Manual";
    titlePageText << ("Version " + CaretVersion::getCaretVersionAsString());
-   titlePageText << ("Date Printed " + QDateTime::currentDateTime().toString("MMMM d, yyyy"));
+   titlePageText << ("Date Printed " + DateAndTime::getDateAndTimeAsString());
    titlePageText << "   ";
    titlePageText << "John Harwell, Heather A. Drury, Donna Dierker,";
    titlePageText << "and David C. Van Essen";

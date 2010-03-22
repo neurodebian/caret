@@ -174,6 +174,9 @@ class GuiStudyMetaDataFileEditorDialog : public WuQDialog {
       /// add table push button
       QPushButton* tableAddPushButton;
       
+      /// fetch from PubMed Button
+      QPushButton* studyPubMedIDFetchPushButton;
+      
       /// add page reference push button
       QPushButton* pageReferenceAddPushButton;
       

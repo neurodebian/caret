@@ -264,9 +264,12 @@ class TransformationMatrix {
 //      // Multiply by the matrix in the specified file
 //      int multiply(const string& matrixFilename);
       
-      /// Multiply by the TransformationMatrix
-      void multiply(const TransformationMatrix& tmf);
+      /// Pre Multiply by the TransformationMatrix
+      void preMultiply(const TransformationMatrix& tmf);
       
+      /// Pre Multiply by the TransformationMatrix
+      void postMultiply(const TransformationMatrix& tmf);
+
       /// Apply the transformation matrix to a point
       void multiplyPoint(double p[3]) const;
 

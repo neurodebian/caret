@@ -23,6 +23,7 @@
  */
 /*LICENSE_END*/
 
+#include "FileUtilities.h"
 #include "GiftiCommon.h"
 #include "GiftiDataArray.h"
 #include "SpecFile.h"
@@ -447,3 +448,95 @@ SurfaceFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
    else return SpecFile::getUnknownSurfaceFileMatchTag();
 }
     
+/**
+ * Update the file's metadata for Caret6.
+ */
+void
+SurfaceFile::updateMetaDataForCaret6()
+{
+   AbstractFile::updateMetaDataForCaret6();
+
+
+   //this->removeHeaderTag("topo_file");
+
+   /*
+   switch (this->getTopologyType()) {
+      case TOPOLOGY_TYPE_CLOSED:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Closed");
+         break;
+      case TOPOLOGY_TYPE_OPEN:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Open");
+         break;
+      case TOPOLOGY_TYPE_CUT:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Cut");
+         break;
+      case TOPOLOGY_TYPE_LOBAR_CUT:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Cut");
+         break;
+      case TOPOLOGY_TYPE_UNKNOWN:
+      case TOPOLOGY_TYPE_UNSPECIFIED:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Closed");
+         break;
+   }
+
+   this->removeHeaderTag("perimeter_id");
+   */
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+SurfaceFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   /*
+   GiftiDataArray* coordsArray = getDataArrayWithIntent(GiftiCommon::intentCoordinates);
+   if (coordsArray != NULL) {
+      GiftiMetaData* coordMetaData = coordsArray->getMetaData();
+      Structure myStructure;
+      QString myStructureName;
+      if (coordMetaData->get(AbstractFile::headerTagStructure, myStructureName)) {
+         myStructure.setTypeFromString(myStructureName);
+      };
+      if (structure != Structure::STRUCTURE_TYPE_INVALID) {
+         myStructure = structure;
+      }
+
+      myStructureName = "Unknown";
+      switch (myStructure.getType()) {
+         case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
+            myStructureName = "CortexLeft";
+            break;
+         case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
+            myStructureName = "CortexRight";
+            break;
+         case Structure::STRUCTURE_TYPE_CEREBELLUM:
+            myStructureName = "Cerebellum";
+            break;
+      }
+      coordMetaData->set("AnatomicalStructurePrimary", myStructureName);
+      coordMetaData->set("AnatomicalStructureSecondary", "MidLayer");
+      coordMetaData->remove("Caret-Version");
+      coordMetaData->remove("Date");
+      coordMetaData->remove("UserName");
+   }
+   GiftiDataArray* topoArray = getDataArrayWithIntent(GiftiCommon::intentTopologyTriangles);
+   if (topoArray != NULL) {
+   }
+   */
+
+   QString name = filenameIn;
+   if (useCaret6ExtensionFlag) {
+      name = FileUtilities::replaceExtension(filenameIn, ".surface",
+                                             SpecFile::getGiftiSurfaceFileExtension());
+   }
+   this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+   this->writeFile(name);
+
+   return name;
+}

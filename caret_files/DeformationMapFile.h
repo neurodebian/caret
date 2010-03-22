@@ -49,7 +49,9 @@ class DeformationMapFile  : public AbstractFile{
       /// type of deformation
       enum DEFORMATION_TYPE {
          DEFORMATION_TYPE_FLAT,
-         DEFORMATION_TYPE_SPHERE
+         DEFORMATION_TYPE_SPHERE,
+         DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR,
+         DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR
       };
       
       /// border resampling type
@@ -75,23 +77,30 @@ class DeformationMapFile  : public AbstractFile{
       };
       
       enum {
-         MAX_SPHERICAL_CYCLES = 10
+         MAX_SPHERICAL_CYCLES = 50
       };
-      
+
+      enum {
+         MAX_SPHERICAL_STAGES = 20
+      };
+
    private:
      
-      static const QString deformMapFileVersion;
+      static const QString deformMapFileVersionTag;
       
       static const QString deformedFileNamePrefixTag;
       static const QString deformedColumnNamePrefixTag;
       static const QString sphereResolutionTag;
       static const QString borderResampleTag;
+      static const QString sphericalNumberOfStagesTag;
       static const QString sphericalNumberOfCyclesTag;
       static const QString smoothingParamtersTag;
       static const QString morphingParametersTag;
       static const QString flatParametersTag;
       static const QString sphereFiducialSphereRatioTag;
       static const QString smoothDeformedSurfaceTag;
+      static const QString landmarkVectorParametersTag;
+      static const QString landmarkVectorStageParametersTag;
       
       static const QString sourceDirectoryTag;
       static const QString sourceSpecTag;
@@ -118,13 +127,19 @@ class DeformationMapFile  : public AbstractFile{
       
       static const QString flatOrSphereSelectionTag;
       static const QString DeformationFlatValue;
-      static const QString DeformationSphereValue;      
+      static const QString DeformationSphereValue;
+      static const QString DeformationSphereSingleStageVectorValue;
+      static const QString DeformationSphereMultiStageVectorValue;
       static const QString outputSpecFileTag;
-      
+
+      static const QString pauseForCrossoversConfirmationTag;
+
       static const QString inverseDeformationFlagTag;
       
       static const QString startOfDataTag;
-      
+
+      static const int DEFAULT_DEFORMATION_MAP_VERSION;
+
       /// read deformation files data
       void readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,
                                   QDomElement& /* rootElement */) throw (FileException);
@@ -140,6 +155,13 @@ class DeformationMapFile  : public AbstractFile{
                                 const QString& tag,
                                 const QString& valueIn);
                                          
+      /// Write a tag/value pair and make it relative to a directory
+      void writeFileTagRelative(QTextStream& stream,
+                                const QString& directory,
+                                const QString& tag,
+                                const QString valueIn[],
+                                const int index);
+
       /// deformation data for each node
       std::vector<DeformMapNodeData> deformData;
       
@@ -192,10 +214,10 @@ class DeformationMapFile  : public AbstractFile{
       QString targetSpecFileName;
       
       /// name of target border file
-      QString targetBorderFileName;
+      QString targetBorderFileName[MAX_SPHERICAL_CYCLES];
       
       /// type of target border file
-      BORDER_FILE_TYPE targetBorderFileType;
+      BORDER_FILE_TYPE targetBorderFileType[MAX_SPHERICAL_CYCLES];
 
       /// name of target closed topo file
       QString targetClosedTopoFileName;
@@ -225,7 +247,7 @@ class DeformationMapFile  : public AbstractFile{
       QString deformedColumnNamePrefix;
       
       /// index to sphere file's for different resolution spheres
-      int sphereResolution;
+      int sphereResolution[MAX_SPHERICAL_STAGES];
       
       /// border resampling type
       BORDER_RESAMPLING_TYPE borderResampleType;
@@ -234,43 +256,46 @@ class DeformationMapFile  : public AbstractFile{
       float borderResampleValue;
       
       /// number of spherical cycles
-      int   sphericalNumberOfCycles;
+      int sphericalNumberOfCycles[MAX_SPHERICAL_STAGES];
       
+      /// nmber of spherical stages
+      int sphericalNumberOfStages;
+
       /// smoothing strength at each cycle
-      float smoothingStrength[MAX_SPHERICAL_CYCLES];
+      float smoothingStrength[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// number of smoothing cycles
-      int   smoothingCycles[MAX_SPHERICAL_CYCLES];
+      int   smoothingCycles[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// number of smoothing iterations at each cycle
-      int   smoothingIterations[MAX_SPHERICAL_CYCLES];
+      int   smoothingIterations[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// number of neighbor smoothing iterations at each cycle
-      int   smoothingNeighborIterations[MAX_SPHERICAL_CYCLES];
+      int   smoothingNeighborIterations[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// number of final smoothing iterations at each cycle
-      int   smoothingFinalIterations[MAX_SPHERICAL_CYCLES];
+      int   smoothingFinalIterations[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// number of morphing cycles
-      int   morphingCycles[MAX_SPHERICAL_CYCLES];
+      int   morphingCycles[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// morphing linear force at each cycle
-      float morphingLinearForce[MAX_SPHERICAL_CYCLES];
+      float morphingLinearForce[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// morphing angular force at each cycle
-      float morphingAngularForce[MAX_SPHERICAL_CYCLES];
+      float morphingAngularForce[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// morphing step size at each cycle
-      float morphingStepSize[MAX_SPHERICAL_CYCLES];
+      float morphingStepSize[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// morphing landmark step size at each cycle
-      float morphingLandmarkStepSize[MAX_SPHERICAL_CYCLES];
+      float morphingLandmarkStepSize[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// morphing iterations at each cycle
-      int   morphingIterations[MAX_SPHERICAL_CYCLES];
+      int   morphingIterations[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// morphing smoothing iterations at each cycle
-      int   morphingSmoothIterations[MAX_SPHERICAL_CYCLES];
+      int   morphingSmoothIterations[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
       
       /// flat deformation sub sampling tiles
       int   flatSubSamplingTiles;
@@ -308,6 +333,17 @@ class DeformationMapFile  : public AbstractFile{
       /// smoothe deformed surfaces flag
       bool smoothDeformedSurfacesFlag;
       
+      /// landmark vector smoothing iterations
+      int landmarkVectorSmoothingIteratons[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
+
+      /// landmark vector displacement factor
+      float landmarkVectorDisplacementFactor[MAX_SPHERICAL_STAGES][MAX_SPHERICAL_CYCLES];
+
+      /// landmark vector endpoint factor
+      float landmarkVectorEndpointFactor[MAX_SPHERICAL_STAGES];
+
+      bool pauseForCrossoversConfirmation;
+
    public:
    
       
@@ -453,10 +489,11 @@ class DeformationMapFile  : public AbstractFile{
       }
 
       /// get the target border file name
-      void getTargetBorderFileName(QString& name,
+      void getTargetBorderFileName(const int index,
+                                   QString& name,
                                    BORDER_FILE_TYPE& fileType) const {
-         name = targetBorderFileName;
-         fileType = targetBorderFileType;
+         name = targetBorderFileName[index];
+         fileType = targetBorderFileType[index];
       }  
 
       /// get the target closed topo file name
@@ -596,10 +633,11 @@ class DeformationMapFile  : public AbstractFile{
       }
 
       /// set the target border file name      
-      void setTargetBorderFileName(const QString& name,
+      void setTargetBorderFileName(const int index,
+                                   const QString& name,
                                    const BORDER_FILE_TYPE fileType) {
-         targetBorderFileName = name;
-         targetBorderFileType = fileType;
+         targetBorderFileName[index] = name;
+         targetBorderFileType[index] = fileType;
          setModified();
       }
 
@@ -646,15 +684,20 @@ class DeformationMapFile  : public AbstractFile{
       }
       
       /// get the sphere resolution index
-      int getSphereResolution() const {
-         return sphereResolution;
+      int getSphereResolution(const int stageNumber) const {
+         return sphereResolution[stageNumber];
       }
       
       /// get the spherical number of cycles
-      int getSphericalNumberOfCycles() const {
-         return sphericalNumberOfCycles;
+      int getSphericalNumberOfCycles(const int stageNumber) const {
+         return sphericalNumberOfCycles[stageNumber];
       }
-      
+
+      /// get the spherical number of stages
+      int getSphericalNumberOfStages() const {
+         return sphericalNumberOfStages;
+      }
+
       /// get the border resampling parameters
       void getBorderResampling(BORDER_RESAMPLING_TYPE&   resampleTypeOut, 
                                float& resampleValueOut) const {
@@ -663,21 +706,23 @@ class DeformationMapFile  : public AbstractFile{
       }
       
       /// get the smoothing parameters specific cycle
-      void getSmoothingParameters(const int cycleNumber,
+      void getSmoothingParameters(const int stageNumber,
+                                  const int cycleNumber,
                                   float& strengthOut, 
                                   int& cyclesOut,
                                   int& iterationsOut,
                                   int& neighborIterationsOut,
                                   int& finalIterationsOut) const {
-         strengthOut           = smoothingStrength[cycleNumber];
-         cyclesOut             = smoothingCycles[cycleNumber];
-         iterationsOut         = smoothingIterations[cycleNumber];
-         neighborIterationsOut = smoothingNeighborIterations[cycleNumber];
-         finalIterationsOut    = smoothingFinalIterations[cycleNumber];
+         strengthOut           = smoothingStrength[stageNumber][cycleNumber];
+         cyclesOut             = smoothingCycles[stageNumber][cycleNumber];
+         iterationsOut         = smoothingIterations[stageNumber][cycleNumber];
+         neighborIterationsOut = smoothingNeighborIterations[stageNumber][cycleNumber];
+         finalIterationsOut    = smoothingFinalIterations[stageNumber][cycleNumber];
       }
       
       /// get the morphing parameters for a specific cycle
-      void getMorphingParameters(const int cycleNumber,
+      void getMorphingParameters(const int stageNumber,
+                                 const int cycleNumber,
                                  int& cyclesOut,
                                  float& linearForceOut,
                                  float& angularForceOut,
@@ -685,13 +730,13 @@ class DeformationMapFile  : public AbstractFile{
                                  float& landmarkStepSizeOut,
                                  int&   iterationsOut,
                                  int&   smoothIterationsOut) const {
-         cyclesOut       = morphingCycles[cycleNumber];
-         linearForceOut  = morphingLinearForce[cycleNumber];
-         angularForceOut = morphingAngularForce[cycleNumber];
-         stepSizeOut     = morphingStepSize[cycleNumber];
-         landmarkStepSizeOut = morphingLandmarkStepSize[cycleNumber];
-         iterationsOut   = morphingIterations[cycleNumber];
-         smoothIterationsOut = morphingSmoothIterations[cycleNumber];
+         cyclesOut       = morphingCycles[stageNumber][cycleNumber];
+         linearForceOut  = morphingLinearForce[stageNumber][cycleNumber];
+         angularForceOut = morphingAngularForce[stageNumber][cycleNumber];
+         stepSizeOut     = morphingStepSize[stageNumber][cycleNumber];
+         landmarkStepSizeOut = morphingLandmarkStepSize[stageNumber][cycleNumber];
+         iterationsOut   = morphingIterations[stageNumber][cycleNumber];
+         smoothIterationsOut = morphingSmoothIterations[stageNumber][cycleNumber];
       }
       
       /// get the flat deformation parameters
@@ -706,15 +751,20 @@ class DeformationMapFile  : public AbstractFile{
       }
       
       /// set the sphere resolution
-      void setSphereResolution(const int sphereResolutionIn) {
-         sphereResolution = sphereResolutionIn;
+      void setSphereResolution(const int stageNumber, const int sphereResolutionIn) {
+         sphereResolution[stageNumber] = sphereResolutionIn;
       }
       
       /// set the spherical number of cycles
-      void setSphericalNumberOfCycles(const int sphericalNumberOfCyclesIn) {
-         sphericalNumberOfCycles = sphericalNumberOfCyclesIn;
+      void setSphericalNumberOfCycles(const int stageNumber, const int sphericalNumberOfCyclesIn) {
+         sphericalNumberOfCycles[stageNumber] = sphericalNumberOfCyclesIn;
       }
-      
+
+      /// set the spherical number of stages
+      void setSphericalNumberOfStages(const int sphericalNumberOfStagesIn) {
+         sphericalNumberOfStages = sphericalNumberOfStagesIn;
+      }
+
       /// set the border resampling parameters
       void setBorderResampling(const BORDER_RESAMPLING_TYPE resampleTypeIn, 
                                const float resampleValueIn) {
@@ -724,22 +774,24 @@ class DeformationMapFile  : public AbstractFile{
       }
       
       /// set the smoothing parameters for a specific cycle
-      void setSmoothingParameters(const int cycleNumber, 
+      void setSmoothingParameters(const int stageNumber,
+                                  const int cycleNumber,
                                   const float strengthIn, 
                                   const int cyclesIn,
                                   const int iterationsIn,
                                   const int neighborIterationsIn,
                                   const int finalIterationsIn) {
-         smoothingStrength[cycleNumber]           = strengthIn;
-         smoothingCycles[cycleNumber]             = cyclesIn;
-         smoothingIterations[cycleNumber]         = iterationsIn;
-         smoothingNeighborIterations[cycleNumber] = neighborIterationsIn;
-         smoothingFinalIterations[cycleNumber]    = finalIterationsIn;
+         smoothingStrength[stageNumber][cycleNumber]           = strengthIn;
+         smoothingCycles[stageNumber][cycleNumber]             = cyclesIn;
+         smoothingIterations[stageNumber][cycleNumber]         = iterationsIn;
+         smoothingNeighborIterations[stageNumber][cycleNumber] = neighborIterationsIn;
+         smoothingFinalIterations[stageNumber][cycleNumber]    = finalIterationsIn;
          setModified();
       }
       
       /// set the morphing parameters for a specific cycle
-      void setMorphingParameters(const int cycleNumber,
+      void setMorphingParameters(const int stageNumber,
+                                 const int cycleNumber,
                                  const int cyclesIn,
                                  const float linearForceIn,
                                  const float angularForceIn,
@@ -747,16 +799,46 @@ class DeformationMapFile  : public AbstractFile{
                                  const float landmarkStepSizeIn,
                                  const int   iterationsIn,
                                  const int   smoothIterationsIn) {
-         morphingCycles[cycleNumber]           = cyclesIn;
-         morphingLinearForce[cycleNumber]      = linearForceIn;
-         morphingAngularForce[cycleNumber]     = angularForceIn;
-         morphingStepSize[cycleNumber]         = stepSizeIn;
-         morphingLandmarkStepSize[cycleNumber] = landmarkStepSizeIn;
-         morphingIterations[cycleNumber]       = iterationsIn;
-         morphingSmoothIterations[cycleNumber] = smoothIterationsIn;
+         morphingCycles[stageNumber][cycleNumber]           = cyclesIn;
+         morphingLinearForce[stageNumber][cycleNumber]      = linearForceIn;
+         morphingAngularForce[stageNumber][cycleNumber]     = angularForceIn;
+         morphingStepSize[stageNumber][cycleNumber]         = stepSizeIn;
+         morphingLandmarkStepSize[stageNumber][cycleNumber] = landmarkStepSizeIn;
+         morphingIterations[stageNumber][cycleNumber]       = iterationsIn;
+         morphingSmoothIterations[stageNumber][cycleNumber] = smoothIterationsIn;
          setModified();
       }
-      
+
+      /// get the landmark vector parameters
+      void getLandmarkVectorParameters(const int stageNumber,
+                                       const int cycleNumber,
+                                       int& vectorSmoothingIterations,
+                                       float& vectorDisplacementFactor) const {
+         vectorSmoothingIterations = landmarkVectorSmoothingIteratons[stageNumber][cycleNumber];
+         vectorDisplacementFactor = this->landmarkVectorDisplacementFactor[stageNumber][cycleNumber];
+      }
+
+      /// get the landmark vector stage parameters
+      void getLandmarkVectorStageParameters(const int stageNumber,
+                                            float& vectorEndpointFactor) {
+         vectorEndpointFactor = this->landmarkVectorEndpointFactor[stageNumber];
+      }
+
+      /// set the landmark vector parameters
+      void setLandmarkVectorParameters(const int stageNumber,
+                                       const int cycleNumber,
+                                       const int vectorSmoothingIterations,
+                                       const float vectorDisplacementFactor) {
+         landmarkVectorSmoothingIteratons[stageNumber][cycleNumber] = vectorSmoothingIterations;
+         landmarkVectorDisplacementFactor[stageNumber][cycleNumber] = vectorDisplacementFactor;
+      }
+
+      /// set the landmark stage parameters
+      void setLandmarkVectorStageParameters(const int stageNumber,
+                                            const float vectorEndpointFactor) {
+         landmarkVectorEndpointFactor[stageNumber] = vectorEndpointFactor;
+      }
+
       /// set the flat morphing parameters
       void setFlatParameters(const int subSamplingTilesIn,
                              const float betaIn,
@@ -802,25 +884,34 @@ class DeformationMapFile  : public AbstractFile{
       
       /// switch the source files with the target files
       void swapSourceAndTargetFiles();
+
+      /// See if algorithm should get confirmation when there are crossovers
+      bool getPauseForCrossoversConfirmation() { return pauseForCrossoversConfirmation; }
+
+      /// Set if algorithm should get confirmation when there are crossovers
+      void setPauseForCrossoversConfirmation(const bool pauseIt) { pauseForCrossoversConfirmation = pauseIt; }
 };
 
 
 #endif // __DEFORMATION_MAP_FILE__CLASS_H__
 
 #ifdef DEFORMATION_MAP_FILE_DEFINE
-const QString DeformationMapFile::deformMapFileVersion = "deform-map-file-version";
+const QString DeformationMapFile::deformMapFileVersionTag = "deform-map-file-version";
 
 const QString DeformationMapFile::deformedFileNamePrefixTag = "deformed-file-name-prefix";
 const QString DeformationMapFile::deformedColumnNamePrefixTag = "deformed-column-name-prefix";
 const QString DeformationMapFile::sphereResolutionTag = "sphere-resolution";
 const QString DeformationMapFile::borderResampleTag = "border-resampling";
 const QString DeformationMapFile::sphericalNumberOfCyclesTag = "spherical-number-of-cycles";
+const QString DeformationMapFile::sphericalNumberOfStagesTag = "spherical-number-of-stages";
 const QString DeformationMapFile::smoothingParamtersTag = "smoothing-parameters";
 const QString DeformationMapFile::morphingParametersTag = "morphing-parameters";
 const QString DeformationMapFile::flatParametersTag = "flat-parameters";
 const QString DeformationMapFile::sphereFiducialSphereRatioTag = "sphere-fiducial-sphere-ratio";
 const QString DeformationMapFile::smoothDeformedSurfaceTag = "smooth-deformed-surface-flag";
-      
+const QString DeformationMapFile::landmarkVectorParametersTag = "landmark-vector-parameters";
+const QString DeformationMapFile::landmarkVectorStageParametersTag = "landmark-vector-stage-parameters";
+
 const QString DeformationMapFile::sourceDirectoryTag = "source-directory";
 const QString DeformationMapFile::sourceSpecTag = "source-spec";
 const QString DeformationMapFile::sourceBorderTag = "source-landmark-border";
@@ -852,10 +943,16 @@ const QString DeformationMapFile::targetFlatCoordTag = "target-flat-coord";
 const QString DeformationMapFile::flatOrSphereSelectionTag = "flat-or-sphere";
 const QString DeformationMapFile::DeformationFlatValue = "DEFORM_FLAT";
 const QString DeformationMapFile::DeformationSphereValue = "DEFORM_SPHERE";
+const QString DeformationMapFile::DeformationSphereMultiStageVectorValue = "DEFORM_SPHERE_VECTOR";
+const QString DeformationMapFile::DeformationSphereSingleStageVectorValue = "DEFORM_SPHERE_VECTOR_SINGLE_STAGE";
 
 const QString DeformationMapFile::outputSpecFileTag = "output-spec-file";
 
 const QString DeformationMapFile::startOfDataTag = "DATA-START";
 
+const QString DeformationMapFile::pauseForCrossoversConfirmationTag = "crossover-pause";
+
 const QString DeformationMapFile::inverseDeformationFlagTag = "inverse-deformation";
+
+const int DeformationMapFile::DEFAULT_DEFORMATION_MAP_VERSION = 3;
 #endif  // DEFORMATION_MAP_FILE_DEFINE

@@ -809,9 +809,9 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
    //
    // show study page number info check box
    //
-   showStudyPageNumberInfoCheckBox = new QCheckBox("Page Number");
-   QObject::connect(showStudyPageNumberInfoCheckBox, SIGNAL(toggled(bool)),
-                    this, SLOT(slotShowStudyPageNumberInfoCheckBox(bool)));
+   //showStudyPageNumberInfoCheckBox = new QCheckBox("Page Number");
+   //QObject::connect(showStudyPageNumberInfoCheckBox, SIGNAL(toggled(bool)),
+   //                 this, SLOT(slotShowStudyPageNumberInfoCheckBox(bool)));
 
    //
    // Show study info group box
@@ -846,8 +846,8 @@ GuiIdentifyMainWindow::createDisplayFilterWidget()
    studyInfoGroupLayout->addWidget(showStudySubHeaderInfoGroupBox);
    studyInfoGroupLayout->addWidget(new QLabel(" "));
    studyInfoGroupLayout->addWidget(showStudyPageReferenceInfoGroupBox);
-   studyInfoGroupLayout->addWidget(new QLabel(" "));
-   studyInfoGroupLayout->addWidget(showStudyPageNumberInfoCheckBox);
+   //studyInfoGroupLayout->addWidget(new QLabel(" "));
+   //studyInfoGroupLayout->addWidget(showStudyPageNumberInfoCheckBox);
    
    //
    // Meta-Analysis 
@@ -1014,7 +1014,7 @@ GuiIdentifyMainWindow::updateFilteringSelections()
    showStudyPageReferenceVoxelSizeInfoCheckBox->setChecked(bmi->getDisplayStudyPageReferenceVoxelSizeInformation());
    showStudyPageReferenceStatisticInfoCheckBox->setChecked(bmi->getDisplayStudyPageReferenceStatisticInformation());
    showStudyPageReferenceStatisticDescriptionInfoCheckBox->setChecked(bmi->getDisplayStudyPageReferenceStatisticDescriptionInformation());
-   showStudyPageNumberInfoCheckBox->setChecked(bmi->getDisplayStudyPageNumberInformation());
+   //showStudyPageNumberInfoCheckBox->setChecked(bmi->getDisplayStudyPageNumberInformation());
    
    significantDigitsSpinBox->setValue(bmi->getSignificantDigits());
 }
@@ -1902,12 +1902,14 @@ GuiIdentifyMainWindow::slotShowStudyPageReferenceStatisticDescriptionInfoCheckBo
 /**
  * show study page number info check box.
  */
+/*
 void 
 GuiIdentifyMainWindow::slotShowStudyPageNumberInfoCheckBox(bool val)
 {
    BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
    bmi->setDisplayStudyPageNumberInformation(val);
 }
+*/
 
 /**
  * update the filtering toggle buttons.
@@ -2049,14 +2051,14 @@ GuiIdentifyDialog::showScene(const SceneFile::Scene& scene,
    
    if (idDialogFound) {
       //
-      // Get the highlighted nodes
+      // Get the highlighted nodes but only nodes highlighted by the user
       //
       std::vector<int> highlightedNodes;
       std::vector<BrainSetNodeAttribute::HIGHLIGHT_NODE_TYPE> highlightedType;
       const int numNodes = theMainWindow->getBrainSet()->getNumberOfNodes();
       for (int i = 0; i < numNodes; i++) {
          BrainSetNodeAttribute* bna = theMainWindow->getBrainSet()->getNodeAttributes(i);
-         if (bna->getHighlighting() != BrainSetNodeAttribute::HIGHLIGHT_NODE_NONE) {
+         if (bna->getHighlighting() == BrainSetNodeAttribute::HIGHLIGHT_NODE_LOCAL) {
             highlightedNodes.push_back(i);
             highlightedType.push_back(bna->getHighlighting());
          }
@@ -2071,7 +2073,8 @@ GuiIdentifyDialog::showScene(const SceneFile::Scene& scene,
       //JWH 01/16/2007 theMainWindow->getBrainSet()->clearNodeHighlightSymbols();
       BrainModelIdentification* bmi = theMainWindow->getBrainSet()->getBrainModelIdentification();
       QString idString;
-      for (unsigned int i = 0; i < highlightedNodes.size(); i++) {
+      int numHighlightedNodes = static_cast<int>(highlightedNodes.size());
+      for (int i = 0; i < numHighlightedNodes; i++) {
          idString += bmi->getIdentificationTextForNode(theMainWindow->getBrainSet(),
                                                        highlightedNodes[i],
                                                        true,

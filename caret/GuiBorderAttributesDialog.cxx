@@ -52,7 +52,7 @@ GuiBorderAttributesDialog::GuiBorderAttributesDialog(QWidget* parent)
    : WuQDialog(parent)
 {
    setModal(true);
-   showVarianceTopographyUncertaintyFlag = true;
+   showTopographyUncertaintyFlag = true;
    
    borderFileType = BORDER_FILE_TYPE_BORDER_SET;
 
@@ -80,11 +80,11 @@ GuiBorderAttributesDialog::GuiBorderAttributesDialog(QWidget* parent)
 GuiBorderAttributesDialog::GuiBorderAttributesDialog(QWidget* parent,
                                                      const QString fileNameIn,
                                                      const BORDER_FILE_TYPE borderFileTypeIn,
-                                                     const bool showVarianceTopographyUncertaintyFlagIn)
+                                                     const bool showTopographyUncertaintyFlagIn)
    : WuQDialog(parent)
 {
    setModal(true);
-   showVarianceTopographyUncertaintyFlag = showVarianceTopographyUncertaintyFlagIn;
+   showTopographyUncertaintyFlag = showTopographyUncertaintyFlagIn;
    borderFileType = borderFileTypeIn;
    fileName = fileNameIn;
    
@@ -202,8 +202,8 @@ GuiBorderAttributesDialog::createDialog()
    gridLayout->addWidget(new QLabel("File\nIndex"), rowNumber, INDEX_COLUMN, Qt::AlignLeft);
    gridLayout->addWidget(new QLabel("Number Of\nLinks"), rowNumber, LINKS_COLUMN, Qt::AlignLeft);   
    gridLayout->addWidget(new QLabel("Sampling"), rowNumber, SAMPLING_COLUMN, Qt::AlignLeft);
-   if (showVarianceTopographyUncertaintyFlag) {
-      gridLayout->addWidget(new QLabel("Variance"), rowNumber, VARIANCE_COLUMN, Qt::AlignLeft);
+   gridLayout->addWidget(new QLabel("Variance"), rowNumber, VARIANCE_COLUMN, Qt::AlignLeft);
+   if (showTopographyUncertaintyFlag) {
       gridLayout->addWidget(new QLabel("Topography"), rowNumber, TOPOGRAPHY_COLUMN, Qt::AlignLeft);
       gridLayout->addWidget(new QLabel("Uncertainty"), rowNumber, UNCERTAINTY_COLUMN, Qt::AlignLeft);
    }
@@ -214,8 +214,8 @@ GuiBorderAttributesDialog::createDialog()
    gridLayout->setColumnStretch(INDEX_COLUMN, 0);
    gridLayout->setColumnStretch(LINKS_COLUMN, 0);
    gridLayout->setColumnStretch(SAMPLING_COLUMN, 0);
-   if (showVarianceTopographyUncertaintyFlag) {
-      gridLayout->setColumnStretch(VARIANCE_COLUMN, 0);
+   gridLayout->setColumnStretch(VARIANCE_COLUMN, 0);
+   if (showTopographyUncertaintyFlag) {
       gridLayout->setColumnStretch(TOPOGRAPHY_COLUMN, 0);
       gridLayout->setColumnStretch(UNCERTAINTY_COLUMN, 0);
    }
@@ -263,16 +263,16 @@ GuiBorderAttributesDialog::createDialog()
       gridLayout->addWidget(samplingLE, rowNumber, SAMPLING_COLUMN, Qt::AlignLeft);
       samplingLineEdits.push_back(samplingLE);
       
-      if (showVarianceTopographyUncertaintyFlag) {
-         //
-         // Variance line edit
-         //
-         QLineEdit* varianceLE = new QLineEdit;
-         varianceLE->setMaximumWidth(lineEditNumberWidth);
-         varianceLE->setText(QString::number(attributes[i].variance, 'f', 2));
-         gridLayout->addWidget(varianceLE, rowNumber, VARIANCE_COLUMN, Qt::AlignLeft);
-         varianceLineEdits.push_back(varianceLE);
-         
+      //
+      // Variance line edit
+      //
+      QLineEdit* varianceLE = new QLineEdit;
+      varianceLE->setMaximumWidth(lineEditNumberWidth);
+      varianceLE->setText(QString::number(attributes[i].variance, 'f', 2));
+      gridLayout->addWidget(varianceLE, rowNumber, VARIANCE_COLUMN, Qt::AlignLeft);
+      varianceLineEdits.push_back(varianceLE);
+
+      if (showTopographyUncertaintyFlag) {
          //
          // Topography line edit
          //
@@ -374,8 +374,8 @@ GuiBorderAttributesDialog::processBorderFile()
          
          name = nameLineEdits[i]->text();
          samplingDensity = samplingLineEdits[i]->text().toFloat();
-         if (showVarianceTopographyUncertaintyFlag) {
-            variance = varianceLineEdits[i]->text().toFloat();
+         variance = varianceLineEdits[i]->text().toFloat();
+         if (showTopographyUncertaintyFlag) {
             topography = topographyLineEdits[i]->text().toFloat();
             arealUncertainty = uncertaintyLineEdits[i]->text().toFloat();
          }
@@ -440,8 +440,8 @@ GuiBorderAttributesDialog::processBorderProjectionFile()
          
          name = nameLineEdits[i]->text();
          samplingDensity = samplingLineEdits[i]->text().toFloat();
-         if (showVarianceTopographyUncertaintyFlag) {
-            variance = varianceLineEdits[i]->text().toFloat();
+         variance = varianceLineEdits[i]->text().toFloat();
+         if (showTopographyUncertaintyFlag) {
             topography = topographyLineEdits[i]->text().toFloat();
             arealUncertainty = uncertaintyLineEdits[i]->text().toFloat();
          }
@@ -494,8 +494,8 @@ GuiBorderAttributesDialog::processBrainModelBorderSetBorders()
          BrainModelBorder* b = bmbs->getBorder(borderIndex);
          b->setName(nameLineEdits[i]->text());
          b->setSamplingDensity(samplingLineEdits[i]->text().toFloat());
-         if (showVarianceTopographyUncertaintyFlag) {
-            b->setVariance(varianceLineEdits[i]->text().toFloat());
+         b->setVariance(varianceLineEdits[i]->text().toFloat());
+         if (showTopographyUncertaintyFlag) {
             b->setTopography(topographyLineEdits[i]->text().toFloat());
             b->setArealUncertainty(uncertaintyLineEdits[i]->text().toFloat());
          }
