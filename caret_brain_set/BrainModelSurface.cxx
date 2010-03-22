@@ -1169,14 +1169,9 @@ BrainModelSurface::convertToVtkPolyData() const
          int size = cells->EstimateSize(numTiles, 3);
          cells->Allocate(size, 25);
          for (int j = 0; j < numTiles; j++) {
-            // this is ridiculus, I know
-            vtkIdType v_vtk[3];
             int v[3];
             topology->getTile(j, v[0], v[1], v[2]);
-            v_vtk[0] = v[0];
-            v_vtk[1] = v[1];
-            v_vtk[2] = v[2];
-            cells->InsertNextCell(3, v_vtk);
+            cells->InsertNextCell(3, v);
          }
          
          vtkPolyData* polyData = vtkPolyData::New();
@@ -1325,8 +1320,8 @@ BrainModelSurface::copyTopologyFromVTK(vtkPolyData* polyData)
       vtkCellArray* cells = polyData->GetPolys();
       if (cells->GetNumberOfCells() == numTiles) {
          int cellID = 0;
-         vtkIdType npts;
-         vtkIdType* pts;
+         int npts;
+         int* pts;
          for (cells->InitTraversal(); cells->GetNextCell(npts, pts); cellID++) {
             if (npts == 3) {
                int verts[3];
