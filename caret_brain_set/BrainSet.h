@@ -66,6 +66,7 @@ class BrainModelSurfaceROINodeSelection;
 class BrainModelVolumeVoxelColoring;
 class BrainModelVolume;
 class BrainModelVolumeRegionOfInterest;
+class BrainSetAutoLoaderManager;
 class CellColorFile;
 class CellFile;
 class CellProjectionFile;
@@ -96,7 +97,7 @@ class DisplaySettingsScene;
 class DisplaySettingsRgbPaint;
 class DisplaySettingsStudyMetaData;
 class DisplaySettingsSurfaceShape;
-class DisplaySettingsSurfaceVectors;
+class DisplaySettingsVectors;
 class DisplaySettingsTopography;
 class DisplaySettingsVolume;
 class DisplaySettingsWustlRegion;
@@ -122,8 +123,8 @@ class SectionFile;
 class StudyCollectionFile;
 class StudyMetaDataFile;
 class SurfaceShapeFile;
-class SurfaceVectorFile;
 class TopographyFile;
+class VectorFile;
 class VocabularyFile;
 class VtkModelFile;
 class WustlRegionFile;
@@ -312,8 +313,8 @@ class BrainSet : public QObject {
       /// get a brain model surface (const method)
       const BrainModelSurface* getBrainModelSurface(const int modelIndex) const;
             
-      /// get a brain model surface with the specified file name (NULL if not found)
-      BrainModelSurface* getBrainModelSurfaceWithFileName(const QString& fileName);
+      /// get a brain model surface with the specified coordinate file name (NULL if not found)
+      BrainModelSurface* getBrainModelSurfaceWithCoordinateFileName(const QString& fileName);
       
       /// get the index of the first brain model surface (returns -1 if not found)
       int getFirstBrainModelSurfaceIndex() const;
@@ -423,7 +424,10 @@ class BrainSet : public QObject {
       
       /// guess subject, species, and structure if not specified
       void guessSubjectSpeciesStructureFromCoordTopoFileNames();
-      
+
+      /// get the brain set auto loader manager
+      BrainSetAutoLoaderManager* getAutoLoaderManager() { return brainSetAutoLoaderManager; }
+
       /// add a document file
       void addDocumentFile(const QString& documentFileName);
       
@@ -491,10 +495,28 @@ class BrainSet : public QObject {
       
       /// get the surface shape file
       SurfaceShapeFile* getSurfaceShapeFile() { return surfaceShapeFile; }
+
+      /// get the number of vector files
+      int getNumberOfVectorFiles() const{ return vectorFiles.size(); }
+
+      /// get the vector file
+      VectorFile* getVectorFile(const int indx) { return vectorFiles[indx]; }
       
-      /// get the surface vector file
-      SurfaceVectorFile* getSurfaceVectorFile() { return surfaceVectorFile; }
-      
+      /// get the vector file (const method)
+      const VectorFile* getVectorFile(const int indx) const { return vectorFiles[indx]; }
+
+      /// add a vector file
+      void addVectorFile(VectorFile* vf);
+
+      /// remove a vector file
+      void removeVectorFile(const int indx);
+
+      /// remove a vector file
+      void removeVectorFile(VectorFile* vf);
+
+      /// get vector file's index
+      int getVectorFileIndex(VectorFile* vf);
+
       /// get the number of topology files
       int getNumberOfTopologyFiles() const { return topologyFiles.size(); }
 
@@ -632,9 +654,9 @@ class BrainSet : public QObject {
          return displaySettingsStudyMetaData;
       }
       
-      /// get the surface vector display settings
-      DisplaySettingsSurfaceVectors* getDisplaySettingsSurfaceVectors() {
-         return displaySettingsSurfaceVectors;
+      /// get the surface display settings
+      DisplaySettingsVectors* getDisplaySettingsVectors() {
+         return displaySettingsVectors;
       };
       
       /// get the topography file display settings
@@ -700,7 +722,7 @@ class BrainSet : public QObject {
       QString getSpecFileName() const { return specFileName; }
       
       /// set the spec file name
-      void setSpecFileName(const QString& name);
+      void setSpecFileName(const QString& name, const bool readOldSpecFileFlag = true);
 
       /// get the time the spec file was loaded
       QDateTime getSpecFileTimeOfLoading() const { return specFileTimeOfLoading; }
@@ -806,10 +828,7 @@ class BrainSet : public QObject {
       SceneFile* getSceneFile() { return sceneFile; };
       
       /// get the preferences file
-      static PreferencesFile* getPreferencesFile() { return &preferencesFile; }
-      
-      /// get the preferences file name
-      static QString getPreferencesFileName() { return preferencesFileName; }
+      static PreferencesFile* getPreferencesFile();
       
       /// get the number of volume functional files
       int getNumberOfVolumeFunctionalFiles() const { return volumeFunctionalFiles.size(); }
@@ -820,6 +839,9 @@ class BrainSet : public QObject {
       /// get the volume functional file (const method)
       const VolumeFile* getVolumeFunctionalFile(const int index) const;
       
+      /// get the functional volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumeFunctionalFileWithName(const QString& name);
+
       /// get the volume functional files
       void getVolumeFunctionalFiles(std::vector<VolumeFile*>& files) { files = volumeFunctionalFiles; }
       
@@ -832,6 +854,9 @@ class BrainSet : public QObject {
       /// get the volume paint file (const method)
       const VolumeFile* getVolumePaintFile(const int index) const;
       
+      /// get the paint volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumePaintFileWithName(const QString& name);
+
       /// get the volume paint files
       void getVolumePaintFiles(std::vector<VolumeFile*>& files) { files = volumePaintFiles; }
       
@@ -841,6 +866,9 @@ class BrainSet : public QObject {
       /// get the volume prob atlas file (const method)
       const VolumeFile* getVolumeProbAtlasFile(const int index) const;
       
+      /// get the prob atlas volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumeProbAtlasFileWithName(const QString& name);
+
       /// get the volume prob atlas files
       void getVolumeProbAtlasFiles(std::vector<VolumeFile*>& files) { files = volumeProbAtlasFiles; }
       
@@ -859,6 +887,9 @@ class BrainSet : public QObject {
       /// get the volume rgb file (const method)
       const VolumeFile* getVolumeRgbFile(const int index) const;
       
+      /// get the RGB volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumeRgbFileWithName(const QString& name);
+
       /// get the volume rgb files
       void getVolumeRgbFiles(std::vector<VolumeFile*>& files) { files = volumeRgbFiles; }
       
@@ -871,6 +902,9 @@ class BrainSet : public QObject {
       /// get the volume segmentation file (const method)
       const VolumeFile* getVolumeSegmentationFile(const int index) const;
       
+      /// get the segmentation volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumeSegmentationFileWithName(const QString& name);
+
       /// get the volume segmentation files
       void getVolumeSegmentationFiles(std::vector<VolumeFile*>& files) { files = volumeSegmentationFiles; }
       
@@ -883,6 +917,9 @@ class BrainSet : public QObject {
       /// get the volume anatomy file (const method)
       const VolumeFile* getVolumeAnatomyFile(const int index) const;
       
+      /// get the anatomy volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumeAnatomyFileWithName(const QString& name);
+
       /// get the volume anatomy files
       void getVolumeAnatomyFiles(std::vector<VolumeFile*>& files) { files = volumeAnatomyFiles; }
       
@@ -895,6 +932,9 @@ class BrainSet : public QObject {
       /// get the volume vector file (const method)
       const VolumeFile* getVolumeVectorFile(const int index) const;
       
+      /// get the vector volume file with the specified name (NULL if not found)
+      VolumeFile* getVolumeVectorFileWithName(const QString& name);
+
       /// get the volume vector files
       void getVolumeVectorFiles(std::vector<VolumeFile*>& files) { files = volumeVectorFiles; }
       
@@ -1357,19 +1397,13 @@ class BrainSet : public QObject {
       /// write the SurfaceShape data file
       void writeSurfaceShapeFile(const QString& name) throw (FileException);
       
-      /// read the surface vector data file file (only selected columns)
-      void readSurfaceVectorFile(const QString& name, 
-                                const std::vector<int>& columnDestination,
-                                const std::vector<QString>& fileBeingReadColumnNames,
-                                const AbstractFile::FILE_COMMENT_MODE fcm,
+      
+      /// read the vector data file file
+      void readVectorFile(const QString& name, const bool append,
                                 const bool updateSpec) throw (FileException);
       
-      /// read the surface vector data file file
-      void readSurfaceVectorFile(const QString& name, const bool append,
-                                const bool updateSpec) throw (FileException);
-      
-      /// write the SurfaceVector data file
-      void writeSurfaceVectorFile(const QString& name) throw (FileException);
+      /// write the Vector data file
+      void writeVectorFile(VectorFile* vf, const QString& name) throw (FileException);
       
       /// read the topography data file file
       void readTopographyFile(const QString& name, const bool append,
@@ -1640,11 +1674,13 @@ class BrainSet : public QObject {
       /// apply a scene (set display settings)
       void showScene(const SceneFile::Scene* ss, 
                      const bool checkSpecFlag,
-                     QString& errorMessage);
+                     QString& errorMessage,
+                     QString& warningMessage);
       
       /// apply a scene (set display settings)
       void showScene(const int sceneIndex, 
-                     QString& errorMessage);
+                     QString& errorMessage,
+                     QString& warningMessage);
 
       /// Get the model for a window from a scene.
       BrainModel* showSceneGetBrainModel(const int sceneIndex,
@@ -1666,21 +1702,24 @@ class BrainSet : public QObject {
       void saveScene(SceneFile* sf,
                      const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                      const QString& sceneName, const bool onlyIfSelectedFlag,
-                     QString& errorMessageOut);
+                     QString& errorMessageOut,
+                     QString& warningMessageOut);
       
       /// insert after scene (read display settings)
       void insertScene(SceneFile* sf,
                        const int insertAfterIndex,
                        const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                        const QString& sceneName, const bool onlyIfSelectedFlag,
-                       QString& errorMessageOut);
+                       QString& errorMessageOut,
+                       QString& warningMessageOut);
       
       /// replace a scene (read display settings)
       void replaceScene(SceneFile* sf,
                         const int sceneIndex,
                         const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                         const QString& sceneName, const bool onlyIfSelectedFlag,
-                        QString& errorMessageOut);
+                        QString& errorMessageOut,
+                        QString& warningMessageOut);
       
       /// Save the model for a window from a scene
       void saveSceneForBrainModelWindow(const int viewingWindowNumber,
@@ -1716,7 +1755,14 @@ class BrainSet : public QObject {
       
       /// sort the brain models (raw, fiducial, ..., volume, surf&vol, contours)
       void sortBrainModels();
-      
+
+      /// remove coordinate and topoology files from spec file
+      void removeCoordAndTopoFromSpecFile();
+
+      /// Get the volume file name with the specified name (NULL if not found)
+      VolumeFile* getVolumeFileWithName(const std::vector<VolumeFile*>& files,
+                                        const QString& fileName);
+
    public slots:
       /// clear the file
       void clearAreaColorFile();
@@ -1797,7 +1843,7 @@ class BrainSet : public QObject {
       void clearSurfaceShapeFile();
 
       /// clear the file
-      void clearSurfaceVectorFile();
+      void clearVectorFiles();
       
       /// clear the file
       void clearTopographyFile();
@@ -1906,6 +1952,9 @@ class BrainSet : public QObject {
       
       /// the identification object
       BrainModelIdentification* brainModelIdentification;
+
+      /// the auto loader manager
+      BrainSetAutoLoaderManager* brainSetAutoLoaderManager;
       
       /// region of interest node selection object
       BrainModelSurfaceROINodeSelection* brainModelSurfaceRegionOfInterestNodeSelection;
@@ -1988,8 +2037,8 @@ class BrainSet : public QObject {
       /// Surface Shape file
       SurfaceShapeFile* surfaceShapeFile;
       
-      /// Surface vector file
-      SurfaceVectorFile* surfaceVectorFile;
+      /// vector file
+      std::vector<VectorFile*> vectorFiles;
       
       /// Topography File
       TopographyFile* topographyFile;
@@ -2047,13 +2096,7 @@ class BrainSet : public QObject {
       
       /// hemisphere
       Structure structure;
-      
-      /// preferences file
-      static PreferencesFile preferencesFile;
-      
-      /// preferences file's name
-      static QString preferencesFileName;
-      
+            
       /// initialize static stuff flag
       static bool staticStuffInitialized;
       
@@ -2114,8 +2157,8 @@ class BrainSet : public QObject {
       /// Surface shape display settings
       DisplaySettingsSurfaceShape* displaySettingsSurfaceShape;
       
-      /// Surface vector display settings
-      DisplaySettingsSurfaceVectors* displaySettingsSurfaceVectors;
+      /// vector display settings
+      DisplaySettingsVectors* displaySettingsVectors;
       
       /// Topography display settings
       DisplaySettingsTopography* displaySettingsTopography;
@@ -2309,8 +2352,8 @@ class BrainSet : public QObject {
       /// mutex for reading surface shape file
       QMutex mutexSurfaceShapeFile;
       
-      /// mutex for reading surface vector file
-      QMutex mutexSurfaceVectorFile;
+      /// mutex for reading vector file
+      QMutex mutexVectorFile;
       
       /// mutex for reading topography file
       QMutex mutexTopographyFile;
@@ -2326,7 +2369,10 @@ class BrainSet : public QObject {
       
       /// mutex for reading vtk models
       QMutex mutexVtkModelFile;
-      
+
+      /// the preferences file (DO NOT USE THIS DIRECTLY, use getPreferencesFile())
+      static PreferencesFile* preferencesFile;
+
       /// update displayed model indices
       void updateDisplayedModelIndices();
       
@@ -2334,7 +2380,8 @@ class BrainSet : public QObject {
       void saveReplaceSceneHelper(SceneFile::Scene& scene,
                                   const std::vector<SceneFile::SceneClass>& mainWindowSceneClasses,
                                   const bool onlyIfSelectedFlag,
-                                  QString& errorMessageOut);
+                                  QString& errorMessageOut,
+                                  QString& warningMessageOut);
                                   
       /// check node attribute columns for columns with same name
       void checkNodeAttributeFilesForDuplicateColumnNames(QString& errorMessageOut);
@@ -2402,9 +2449,8 @@ class BrainSet : public QObject {
 
 // initialize static members
 #ifdef __BRAIN_SET_MAIN__
-PreferencesFile BrainSet::preferencesFile;
 bool BrainSet::staticStuffInitialized = false;
-QString BrainSet::preferencesFileName = "";
+PreferencesFile* BrainSet::preferencesFile = NULL;
 #endif // __BRAIN_SET_MAIN__
 
 #endif // __BRAIN_SET_H__

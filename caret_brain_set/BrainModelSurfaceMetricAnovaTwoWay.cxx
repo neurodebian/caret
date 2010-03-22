@@ -26,10 +26,10 @@
 #include <limits>
 #include <sstream>
 
-#include <QDateTime>
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceMetricAnovaTwoWay.h"
+#include "DateAndTime.h"
 #include "FileUtilities.h"
 #include "MetricFile.h"
 #include "StatisticAnovaTwoWay.h"
@@ -428,7 +428,8 @@ BrainModelSurfaceMetricAnovaTwoWay::executeClusterSearch() throw (BrainModelAlgo
       //
       // Show area and thresholds
       //
-      reportStream << "Date/Time:           " << QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
+      reportStream << "Date/Time:           " << DateAndTime::getDateAndTimeAsString() << "\n";
+                 //QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
       for (int m = 0; m < numInputFiles; m++) {
       reportStream << "Shape File :         " << inputMetricFileNames[m] << "\n";
       }

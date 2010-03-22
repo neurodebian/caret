@@ -773,12 +773,14 @@ BrainModelSurfaceNodeColoring::assignPaintColoring(const int overlayNumber)
          const int colorFileIndex = labelTable->getColorFileIndex(p);
          if (colorFileIndex >= 0) {
             if (colorFileIndex != questionColorIndex) {
-               unsigned char r = 0, g = 0, b = 0;
+               unsigned char r = 0, g = 0, b = 0, a = 0;
                cf->getColorByIndex(colorFileIndex,
-                                    r, g, b);
-               nodeColors[i].r = r;
-               nodeColors[i].g = g;
-               nodeColors[i].b = b;
+                                    r, g, b, a);
+               if (a > 0) {
+                  nodeColors[i].r = r;
+                  nodeColors[i].g = g;
+                  nodeColors[i].b = b;
+               }
             }
          }
          else {
@@ -1546,6 +1548,17 @@ BrainModelSurfaceNodeColoring::assignMetricColoring(const int overlayNumber)
       case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO:
          mf->getDataColumnMinMax(dsm->getSelectedDisplayColumn(modelNumber, overlayNumber), //dsm->getFirstSelectedColumnForBrainModel(modelNumber),
                                  negMaxMetric, posMaxMetric);
+         break;
+      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE:
+         mf->getMinMaxValuesFromPercentages(dsm->getSelectedDisplayColumn(modelNumber, overlayNumber),
+                                            dsm->getAutoScalePercentageNegativeMaximum(),
+                                            dsm->getAutoScalePercentageNegativeMinimum(),
+                                            dsm->getAutoScalePercentagePositiveMinimum(),
+                                            dsm->getAutoScalePercentagePositiveMaximum(),
+                                            negMaxMetric,
+                                            negMinMetric,
+                                            posMinMetric,
+                                            posMaxMetric);
          break;
       case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
          mf->getDataColumnMinMax(dsm->getOverlayScaleSpecifiedColumnNumber(),
@@ -2760,7 +2773,7 @@ BrainModelSurfaceNodeColoring::showScene(const SceneFile::Scene& scene,
                int endSurface   = brainSet->getNumberOfBrainModels();
                if (surfaceName != SceneFile::SceneInfo::getDefaultSurfacesName()) {
                   endSurface = 0;
-                  const BrainModelSurface* bms = brainSet->getBrainModelSurfaceWithFileName(surfaceName);
+                  const BrainModelSurface* bms = brainSet->getBrainModelSurfaceWithCoordinateFileName(surfaceName);
                   if (bms != NULL) {
                      startSurface = brainSet->getBrainModelIndex(bms);
                      if (startSurface >= 0) {

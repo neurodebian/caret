@@ -1833,3 +1833,56 @@ TopologyFile::writeLegacyFileData(QTextStream& stream, QDataStream& binStream)
    }
    
 }
+
+/**
+ * Update the file's metadata for Caret6.
+ */
+void
+TopologyFile::updateMetaDataForCaret6()
+{
+   AbstractFile::updateMetaDataForCaret6();
+
+   switch (this->getTopologyType()) {
+      case TOPOLOGY_TYPE_CLOSED:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Closed");
+         break;
+      case TOPOLOGY_TYPE_OPEN:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Open");
+         break;
+      case TOPOLOGY_TYPE_CUT:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Cut");
+         break;
+      case TOPOLOGY_TYPE_LOBAR_CUT:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Cut");
+         break;
+      case TOPOLOGY_TYPE_UNKNOWN:
+      case TOPOLOGY_TYPE_UNSPECIFIED:
+         this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+                            "Closed");
+         break;
+   }
+
+   this->removeHeaderTag("perimeter_id");
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+TopologyFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   QString name = filenameIn;
+   if (useCaret6ExtensionFlag) {
+      name = FileUtilities::replaceExtension(filenameIn, ".topo",
+                                     SpecFile::getGiftiTopologyFileExtension());
+   }
+   this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+   this->writeFile(name);
+
+   return name;
+}
+

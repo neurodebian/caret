@@ -101,7 +101,7 @@
 #include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "TopographyFile.h"
 #include "VocabularyFile.h"
 #include "WuQFileDialog.h"
@@ -631,11 +631,6 @@ GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
                            bs->getStudyMetaDataFile(),
                            SpecFile::getStudyMetaDataFileTag(),
                            specFile.studyMetaDataFile);
-   surfaceVectorGroup = listFiles(filesLayout, 
-                           "Surface Vector Files", 
-                           bs->getSurfaceVectorFile(),
-                           SpecFile::getSurfaceVectorFileTag(),
-                           specFile.surfaceVectorFile);
    topographyGroup = listFiles(filesLayout, 
                            "Topography Files", 
                            bs->getTopographyFile(),
@@ -651,6 +646,13 @@ GuiSpecFileDialogMainWindow::GuiSpecFileDialogMainWindow(QWidget* parent,
                            NULL,
                            SpecFile::getTransformationDataFileTag(), 
                            specFile.transformationDataFile);
+   vectorGroup = listFiles(filesLayout,
+                           "Vector Files",
+                           NULL,
+                           SpecFile::getVectorFileTag(),
+                           specFile.vectorFile,
+                           true,
+                           false);
    vocabularyGroup = listFiles(filesLayout, 
                                "Vocabulary Files", 
                                bs->getVocabularyFile(),
@@ -1096,7 +1098,7 @@ GuiSpecFileDialogMainWindow::disableToolBarButtons()
        (shapeGroup == NULL) &&
        (studyCollectionGroup == NULL) &&
        (studyMetaDataGroup == NULL) &&
-       (surfaceVectorGroup == NULL) &&
+       (vectorGroup == NULL) &&
        (topographyGroup == NULL) &&
        (transMatrixGroup == NULL) &&
        (transDataGroup == NULL) &&
@@ -1349,8 +1351,8 @@ GuiSpecFileDialogMainWindow::setToolBarButtons()
    if (studyMetaDataGroup != NULL) {
       studyMetaDataGroup->setHidden(!showMisc && !showFoci);
    }
-   if (surfaceVectorGroup != NULL) {
-      surfaceVectorGroup->setHidden(!showMisc);
+   if (vectorGroup != NULL) {
+      vectorGroup->setHidden(!showMisc);
    }
    if (topographyGroup != NULL) {
       topographyGroup->setHidden(!showMisc);
@@ -1955,7 +1957,7 @@ GuiSpecFileDialogMainWindow::slotCommentPushButton()
       specFile.setFileComment(ted.getText());
    }
 }
-      
+
 /**
  * List topology files for selection by user.
  */
@@ -2910,8 +2912,7 @@ GuiSpecFileDialogMainWindow::fastOpenButtonSlot(int buttonNumber)
       else if ((s.specFileTag == SpecFile::getArealEstimationFileTag()) ||
                (s.specFileTag == SpecFile::getPaintFileTag()) ||
                (s.specFileTag == SpecFile::getMetricFileTag()) ||
-               (s.specFileTag == SpecFile::getSurfaceShapeFileTag()) ||
-               (s.specFileTag == SpecFile::getSurfaceVectorFileTag())) {
+               (s.specFileTag == SpecFile::getSurfaceShapeFileTag())) {
          askFlag = false;
       }
       else if (s.specFileTag == SpecFile::getAtlasFileTag()) {

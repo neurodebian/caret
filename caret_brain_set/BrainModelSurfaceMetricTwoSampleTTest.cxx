@@ -28,7 +28,6 @@
 #include <limits>
 #include <sstream>
 
-#include <QDateTime>
 #include <QFile>
 #include <QTextStream>
 
@@ -36,6 +35,7 @@
 #include "BrainModelSurfaceMetricTwoSampleTTest.h"
 #include "BrainSet.h"
 #include "CoordinateFile.h"
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "PaintFile.h"
@@ -456,7 +456,8 @@ BrainModelSurfaceMetricTwoSampleTTest::executeClusterSearch() throw (BrainModelA
    // Show area and thresholds
    //
    reportStream << "Type of T-Test:      " << title << "\n";
-   reportStream << "Date/Time:           " << QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
+   reportStream << "Date/Time:           " << DateAndTime::getDateAndTimeAsString() << "\n";
+                       //QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
    reportStream << "Shape File A:        " << shapeFileAName << "\n";
    reportStream << "Shape File B:        " << shapeFileBName << "\n";
    reportStream << "Fiducial Coord File: " << fiducialCoordFileName << "\n";

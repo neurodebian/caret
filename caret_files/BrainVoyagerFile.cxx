@@ -29,9 +29,9 @@
 #include <iostream>
 #include <sstream>
 
-#include <QDateTime>
 #include <QFile>
 #include <QGlobalStatic>
+#include <QTime>
 
 #include "BrainVoyagerFile.h"
 #include "ByteSwapping.h"

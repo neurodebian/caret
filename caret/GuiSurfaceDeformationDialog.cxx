@@ -40,13 +40,18 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScrollArea>
 #include <QSpinBox>
 #include <QTabWidget>
 
 #include "GuiBrainModelOpenGL.h"
+#include "BrainModelSurfaceDeformDataFile.h"
 #include "BrainModelSurfaceDeformationFlat.h"
+#include "BrainModelSurfaceDeformationMultiStageSphericalVector.h"
 #include "BrainModelSurfaceDeformationSpherical.h"
+#include "BrainModelSurfaceDeformationSphericalVector.h"
 #include "BrainSet.h"
+#include "DebugControl.h"
 #include "DisplaySettingsSurface.h"
 #include "FileUtilities.h"
 #include "GuiBatchCommandDialog.h"
@@ -60,7 +65,9 @@
 #include "QtUtilities.h"
 #include "SpecFile.h"
 #include "StringUtilities.h"
+#include "WuQWidgetGroup.h"
 #include "global_variables.h"
+#include "GuiStudyMetaDataFileEditorDialog.h"
 
 static const QString continuationAndNewLine = " \\\n";
 
@@ -72,16 +79,25 @@ GuiSurfaceDeformationDialog::GuiSurfaceDeformationDialog(
                               const DeformationMapFile::DEFORMATION_TYPE deformationTypeIn)
    : WuQDialog(parent)
 {
-   setModal(true);
-   deformationType = deformationTypeIn;
-   
-   switch (deformationType) {
+   dmf.setFlatOrSphereSelection(deformationTypeIn);
+   switch (dmf.getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          setWindowTitle("Flat Surface Deformation");
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
          setWindowTitle("Spherical Surface Deformation");
          break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         setWindowTitle("Spherical Surface Deformation");
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         setWindowTitle("Spherical Surface Deformation");
+         break;
+   }
+
+   deformBothWaysCheckBox = NULL;
+   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+      atlasBorderFileEntryLine[i] = NULL;
    }
    
    //
@@ -109,38 +125,30 @@ GuiSurfaceDeformationDialog::GuiSurfaceDeformationDialog(
    dialogLayout->addLayout(buttonsLayout);
    
    //
-   // OK button
+   // Apply button
    //
-   QPushButton* okButton = new QPushButton("OK");
-   buttonsLayout->addWidget(okButton);
-   QObject::connect(okButton, SIGNAL(clicked()),
-                    this, SLOT(accept()));
+   QPushButton* applyButton = new QPushButton("Apply");
+   buttonsLayout->addWidget(applyButton);
+   QObject::connect(applyButton, SIGNAL(clicked()),
+                    this, SLOT(slotApplyButton()));
    
-   QPushButton* batchButton = NULL;
-/*
-   if (deformationType == DeformationMapFile::DEFORMATION_TYPE_SPHERE) {
-      batchButton = new QPushButton("Batch...", this);
-      buttonsLayout->addWidget(batchButton);
-      QObject::connect(batchButton, SIGNAL(clicked()),
-                       this, SLOT(slotBatchButton()));
-   }
-*/
-
    //
    // Cancel button 
    //
-   QPushButton* cancelButton = new QPushButton("Cancel");
-   buttonsLayout->addWidget(cancelButton);
-   QObject::connect(cancelButton, SIGNAL(clicked()),
-                    this, SLOT(reject()));
+   QPushButton* closeButton = new QPushButton("Close");
+   buttonsLayout->addWidget(closeButton);
+   QObject::connect(closeButton, SIGNAL(clicked()),
+                    this, SLOT(close()));
    
-   QtUtilities::makeButtonsSameSize(okButton, batchButton, cancelButton);
+   QtUtilities::makeButtonsSameSize(applyButton, closeButton);
    
    //
    // Load the parameters into the dialog
    //
    loadParametersIntoDialog();
-   
+
+   setConnectionsForAutoDefMapFileNameUpdates();
+   updateAtlasBorderSelections();
 }
 
 /**
@@ -162,159 +170,6 @@ GuiSurfaceDeformationDialog::addToCommand(std::ostringstream& commandStr,
 }
 
 /**
- * Called when batch button is pressed.
- */
-void 
-GuiSurfaceDeformationDialog::slotBatchButton()
-{
-   std::vector<QString> errorMessages;
-   loadDeformationMapFile(errorMessages);
-   
-   if (errorMessages.empty()) {
-      
-      std::vector<QString> borderTypeName;
-      borderTypeName.push_back("UNKNOWN");
-      borderTypeName.push_back("FLAT");
-      borderTypeName.push_back("FLAT_LOBAR");
-      borderTypeName.push_back("SPHERICAL");
-      borderTypeName.push_back("PROJECTION");
-      
-      //
-      // Create the command
-      //
-      std::ostringstream commandStr;
-      commandStr
-         << theMainWindow->getBrainSet()->getCaretHomeDirectory().toAscii().constData() << "/bin/caret_sphere_deform";
-         
-      //addToCommand(commandStr, "-indiv-dir", dmf.getSourceDirectory());
-      addToCommand(commandStr, "-indiv-spec", dmf.getSourceSpecFileName());
-      QString borderName;
-      DeformationMapFile::BORDER_FILE_TYPE bft;
-      dmf.getSourceBorderFileName(borderName, bft);
-      addToCommand(commandStr, "-indiv-border", borderTypeName[bft], borderName);
-      addToCommand(commandStr, "-indiv-closed", dmf.getSourceClosedTopoFileName());
-      addToCommand(commandStr, "-indiv-cut", dmf.getSourceCutTopoFileName());
-      addToCommand(commandStr, "-indiv-fiducial", dmf.getSourceFiducialCoordFileName());
-      addToCommand(commandStr, "-indiv-sphere", dmf.getSourceSphericalCoordFileName());
-      addToCommand(commandStr, "-indiv-flat", dmf.getSourceFlatCoordFileName());
-      
-      //addToCommand(commandStr, "-atlas-dir", dmf.getTargetDirectory());
-      addToCommand(commandStr, "-atlas-spec", dmf.getTargetSpecFileName());
-      dmf.getTargetBorderFileName(borderName, bft);
-      addToCommand(commandStr, "-atlas-border", borderTypeName[bft], borderName);
-      addToCommand(commandStr, "-atlas-closed", dmf.getTargetClosedTopoFileName());
-      addToCommand(commandStr, "-atlas-cut", dmf.getTargetCutTopoFileName());
-      addToCommand(commandStr, "-atlas-fiducial", dmf.getTargetFiducialCoordFileName());
-      addToCommand(commandStr, "-atlas-sphere", dmf.getTargetSphericalCoordFileName());
-      addToCommand(commandStr, "-atlas-flat", dmf.getTargetFlatCoordFileName());
-      
-      addToCommand(commandStr, "-sphere-res", StringUtilities::fromNumber(dmf.getSphereResolution()));
-
-      const int numCycles = dmf.getSphericalNumberOfCycles();
-      addToCommand(commandStr, "-cycles", StringUtilities::fromNumber(numCycles));
-      for (int i = 0; i < numCycles; i++) {
-         float strength;
-         int cycles, iterations, neighborIterations, finalIterations;
-         dmf.getSmoothingParameters(i, strength,
-                                    cycles, iterations, neighborIterations, finalIterations);
-         commandStr << continuationAndNewLine.toAscii().constData()
-                    << "   -smooth "
-                    << i << " "
-                    << strength << " "
-                    << cycles << " "
-                    << iterations << " "
-                    << neighborIterations << " "
-                    << finalIterations;
-         
-         float linearForce, angularForce, stepSize, landmarkStepSize;
-         int smoothIterations;
-         dmf.getMorphingParameters(i, cycles, linearForce, angularForce, stepSize,
-                                   landmarkStepSize, iterations, smoothIterations);
-         commandStr << continuationAndNewLine.toAscii().constData()
-                    << "   -morph "
-                    << i << " "
-                    << cycles << " "
-                    << linearForce << " "
-                    << angularForce << " "
-                    << stepSize << " "
-                    << landmarkStepSize << " "
-                    << iterations << " "
-                    << smoothIterations;
-      }
-      
-      bool ratioOn = false;
-      float ratio;
-      dmf.getSphereFiducialRatio(ratioOn, ratio);
-      if (ratioOn) {
-         commandStr << continuationAndNewLine.toAscii().constData()
-                    << "   -sphere-dist-correct " << ratio;
-      }
-      
-      DeformationMapFile::BORDER_RESAMPLING_TYPE bst;
-      float resampValue;
-      QString resampStr[3] = { "NONE", "FILE", "VALUE" };
-      dmf.getBorderResampling(bst, resampValue);
-      if (bst == DeformationMapFile::BORDER_RESAMPLING_VALUE) {
-         resampStr[2] = StringUtilities::fromNumber(resampValue);
-      }
-      addToCommand(commandStr, "-resample", resampStr[bst]);
-      
-      QString metricStr[2] = { "NODE", "AVG" };
-      addToCommand(commandStr, "-metric-deform", metricStr[dmf.getMetricDeformationType()]);
-      
-      if (dmf.getDeformBothWays()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -both";
-      }
-      
-      addToCommand(commandStr, "-prefix", dmf.getDeformedFileNamePrefix());
-      addToCommand(commandStr, "-column-prefix", dmf.getDeformedColumnNamePrefix());
-      
-      if (dmf.getDeleteIntermediateFiles()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -del-temp";
-      }  
-      
-      if (deformIndivFiducialCoordCheckBox->isChecked()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -dcfid";
-      }
-      if (deformIndivInflatedCoordCheckBox->isChecked()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -dcinf";
-      }
-      if (deformIndivVeryInflatedCoordCheckBox->isChecked()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -dcvi";
-      }
-      if (deformIndivSphericalCoordCheckBox->isChecked()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -dcsph";
-      }
-      if (deformIndivFlatCoordCheckBox->isChecked()) {
-         commandStr << continuationAndNewLine.toAscii().constData() << "   -dcflat";
-      }
-      
-      commandStr << "\n";
-      
-/*
-      addToCommand(commandStr, "", dmf.());
-      addToCommand(commandStr, "", dmf.());
-      addToCommand(commandStr, "", dmf.());
-      addToCommand(commandStr, "", dmf.());
-*/
-      QString commandFileName("spherical_deform");
-         
-      GuiBatchCommandDialog bcd(this,
-                                QDir::currentPath(),
-                                commandStr.str().c_str(),
-                                commandFileName);
-      if (bcd.exec() == QDialog::Rejected) {
-         return;
-      }
-
-      //
-      // Allow the dialog to close.
-      //
-      reject();
-   }
-}
-      
-/**
  * destructor
  */
 GuiSurfaceDeformationDialog::~GuiSurfaceDeformationDialog()
@@ -331,7 +186,10 @@ GuiSurfaceDeformationDialog::createAtlasWidget()
    //  Grid to hold pushbuttons and line edits
    //
    atlasWidgetTop = new QWidget;
-   dialogTabWidget->addTab(atlasWidgetTop, "Atlas");
+   QScrollArea* scrollArea = new QScrollArea();
+   scrollArea->setWidget(atlasWidgetTop);
+   scrollArea->setWidgetResizable(true);
+   dialogTabWidget->addTab(scrollArea, "Atlas");
    
    //
    // Put everything in a QGrid
@@ -349,34 +207,138 @@ GuiSurfaceDeformationDialog::createAtlasWidget()
    //
    // Edit borders button
    //
-   QPushButton* editBordersPushButton = new QPushButton("Edit...");
-   editBordersPushButton->setAutoDefault(false);
-   QObject::connect(editBordersPushButton, SIGNAL(clicked()),
-                    this, SLOT(slotBordersEditAtlas()));
+   QButtonGroup* editButtonGroup = new QButtonGroup(this);
+   QObject::connect(editButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(slotBordersEditAtlas(int)));
+   QPushButton* editBordersPushButton[DeformationMapFile::MAX_SPHERICAL_STAGES];
+   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+      editBordersPushButton[i] = new QPushButton("Edit...");
+      editBordersPushButton[i]->setAutoDefault(false);
+      editButtonGroup->addButton(editBordersPushButton[i], i);
+   }
    
    //
    // Create the pushbuttons and line edits
    //
    atlasSpecLineEdit           = createFileEntryLine("Spec File...", FILE_TYPE_SPEC, 
-                                                     atlasWidgetLayout, atlasButtonGroup);
-   atlasBorderLineEdit         = createFileEntryLine("Border File...", FILE_TYPE_BORDER, 
-                                                     atlasWidgetLayout, atlasButtonGroup,
-                                                     editBordersPushButton);
+                                                     atlasWidgetLayout, atlasButtonGroup)->lineEdit;;
    atlasClosedTopoLineEdit     = createFileEntryLine("Closed Topo File...", FILE_TYPE_TOPO_CLOSED, 
-                                                     atlasWidgetLayout, atlasButtonGroup);
+                                                     atlasWidgetLayout, atlasButtonGroup)->lineEdit;;
    atlasCutTopoLineEdit        = createFileEntryLine("Cut Topo File...", FILE_TYPE_TOPO_CUT, 
-                                                     atlasWidgetLayout, atlasButtonGroup);
+                                                     atlasWidgetLayout, atlasButtonGroup)->lineEdit;;
    atlasFiducialCoordLineEdit  = createFileEntryLine("Fiducial Coord File...", FILE_TYPE_COORD_FIDUCIAL, 
-                                                     atlasWidgetLayout, atlasButtonGroup);
+                                                     atlasWidgetLayout, atlasButtonGroup)->lineEdit;;
    atlasSphericalCoordLineEdit = createFileEntryLine("Spherical Coord File...", FILE_TYPE_COORD_SPHERICAL, 
-                                                     atlasWidgetLayout, atlasButtonGroup);
+                                                     atlasWidgetLayout, atlasButtonGroup)->lineEdit;;
    atlasFlatCoordLineEdit      = createFileEntryLine("Flat Coord...", FILE_TYPE_COORD_FLAT, 
-                                                     atlasWidgetLayout, atlasButtonGroup);
-   
+                                                     atlasWidgetLayout, atlasButtonGroup)->lineEdit;;
+
+   atlasBorderFileEntryLine[0] = createFileEntryLine("Border File Stage 1...", FILE_TYPE_BORDER_1,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[0]);
+   atlasBorderFileEntryLine[1] = createFileEntryLine("Border File Stage 2...", FILE_TYPE_BORDER_2,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[1]);
+   atlasBorderFileEntryLine[2] = createFileEntryLine("Border File Stage 3...", FILE_TYPE_BORDER_3,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[2]);
+   atlasBorderFileEntryLine[3] = createFileEntryLine("Border File Stage 4...", FILE_TYPE_BORDER_4,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[3]);
+   atlasBorderFileEntryLine[4] = createFileEntryLine("Border File Stage 5...", FILE_TYPE_BORDER_5,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[4]);
+   atlasBorderFileEntryLine[5] = createFileEntryLine("Border File Stage 6...", FILE_TYPE_BORDER_6,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[5]);
+   atlasBorderFileEntryLine[6] = createFileEntryLine("Border File Stage 7...", FILE_TYPE_BORDER_7,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[6]);
+   atlasBorderFileEntryLine[7] = createFileEntryLine("Border File Stage 8...", FILE_TYPE_BORDER_8,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[7]);
+   atlasBorderFileEntryLine[8] = createFileEntryLine("Border File Stage 9...", FILE_TYPE_BORDER_9,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[8]);
+   atlasBorderFileEntryLine[9] = createFileEntryLine("Border File Stage 10...", FILE_TYPE_BORDER_10,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[9]);
+   atlasBorderFileEntryLine[10] = createFileEntryLine("Border File Stage 11...", FILE_TYPE_BORDER_11,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[10]);
+   atlasBorderFileEntryLine[11] = createFileEntryLine("Border File Stage 12...", FILE_TYPE_BORDER_12,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[11]);
+   atlasBorderFileEntryLine[12] = createFileEntryLine("Border File Stage 13...", FILE_TYPE_BORDER_13,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[12]);
+   atlasBorderFileEntryLine[13] = createFileEntryLine("Border File Stage 14...", FILE_TYPE_BORDER_14,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[13]);
+   atlasBorderFileEntryLine[14] = createFileEntryLine("Border File Stage 15...", FILE_TYPE_BORDER_15,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[14]);
+   atlasBorderFileEntryLine[15] = createFileEntryLine("Border File Stage 16...", FILE_TYPE_BORDER_16,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[15]);
+   atlasBorderFileEntryLine[16] = createFileEntryLine("Border File Stage 17...", FILE_TYPE_BORDER_17,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[16]);
+   atlasBorderFileEntryLine[17] = createFileEntryLine("Border File Stage 18...", FILE_TYPE_BORDER_18,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[17]);
+   atlasBorderFileEntryLine[18] = createFileEntryLine("Border File Stage 19...", FILE_TYPE_BORDER_19,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[18]);
+   atlasBorderFileEntryLine[19] = createFileEntryLine("Border File Stage 20...", FILE_TYPE_BORDER_20,
+                                                     atlasWidgetLayout, atlasButtonGroup,
+                                                     editBordersPushButton[19]);
+   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+      atlasBorderLineEdit[i] = atlasBorderFileEntryLine[i]->lineEdit;
+   }
+
    //atlasWidgetTop->setFixedSize(atlasWidgetTop->sizeHint());
    const int numRows = atlasWidgetLayout->rowCount();
    atlasWidgetLayout->addWidget(new QWidget, numRows, 0);
    atlasWidgetLayout->setRowStretch(numRows, 1000);
+}
+
+/**
+ * update atlas border selections.
+ */
+void
+GuiSurfaceDeformationDialog::updateAtlasBorderSelections()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Atlas Border Selections"
+                << std::endl;
+   }
+   if (this->atlasBorderFileEntryLine[0] == NULL) {
+      return;
+   }
+
+   //
+   // Default spherical algorithm
+   //
+   switch (dmf.getFlatOrSphereSelection()) {
+      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         for (int i = 1; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+            this->atlasBorderFileEntryLine[i]->setVisible(false);
+         }
+         this->atlasBorderFileEntryLine[0]->pushButton->setText("Border File...");
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         this->atlasBorderFileEntryLine[0]->pushButton->setText("Border File Stage 1...");
+         for (int i = 1; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+            this->atlasBorderFileEntryLine[i]->setVisible(true);
+            bool enableFlag = (i < this->sphereNumberOfStagesSpinBox->value());
+            this->atlasBorderFileEntryLine[i]->setEnabled(enableFlag);
+         }
+         break;
+   }
 }
 
 /**
@@ -417,20 +379,20 @@ GuiSurfaceDeformationDialog::createIndividualWidget()
    // Create the pushbuttons and line edits
    //
    indivSpecLineEdit           = createFileEntryLine("Spec File...", FILE_TYPE_SPEC, 
-                                                     individualGridLayout, indivButtonGroup);
-   indivBorderLineEdit         = createFileEntryLine("Border File...", FILE_TYPE_BORDER, 
-                                                     individualGridLayout, indivButtonGroup,
-                                                     editBordersPushButton);
+                                                     individualGridLayout, indivButtonGroup)->lineEdit;
    indivClosedTopoLineEdit     = createFileEntryLine("Closed Topo File...", FILE_TYPE_TOPO_CLOSED, 
-                                                     individualGridLayout, indivButtonGroup);
+                                                     individualGridLayout, indivButtonGroup)->lineEdit;
    indivCutTopoLineEdit        = createFileEntryLine("Cut Topo File...", FILE_TYPE_TOPO_CUT, 
-                                                     individualGridLayout, indivButtonGroup);
+                                                     individualGridLayout, indivButtonGroup)->lineEdit;
    indivFiducialCoordLineEdit  = createFileEntryLine("Fiducial Coord File...", FILE_TYPE_COORD_FIDUCIAL, 
-                                                     individualGridLayout, indivButtonGroup);
+                                                     individualGridLayout, indivButtonGroup)->lineEdit;
    indivSphericalCoordLineEdit = createFileEntryLine("Spherical Coord File...", FILE_TYPE_COORD_SPHERICAL, 
-                                                     individualGridLayout, indivButtonGroup);
+                                                     individualGridLayout, indivButtonGroup)->lineEdit;
    indivFlatCoordLineEdit      = createFileEntryLine("Flat Coord...", FILE_TYPE_COORD_FLAT, 
-                                                     individualGridLayout, indivButtonGroup);
+                                                     individualGridLayout, indivButtonGroup)->lineEdit;
+   indivBorderLineEdit         = createFileEntryLine("Border File...", FILE_TYPE_BORDER_1,
+                                                     individualGridLayout, indivButtonGroup,
+                                                     editBordersPushButton)->lineEdit;
    
    //individualWidget->setFixedSize(individualWidget->sizeHint());
    
@@ -493,12 +455,14 @@ GuiSurfaceDeformationDialog::createIndividualWidget()
    //
    // Only allow coord deformations if spherical deformation
    //
-   switch (deformationType) {
+   switch (dmf.getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          indivCoordDeformGroupBox->setHidden(true);
          indivCoordDeformGroupBox->setEnabled(false);
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          indivCoordDeformGroupBox->setHidden(false);
          indivCoordDeformGroupBox->setEnabled(true);
          break;
@@ -513,13 +477,13 @@ GuiSurfaceDeformationDialog::createIndividualWidget()
 void 
 GuiSurfaceDeformationDialog::slotBordersEditIndividual()
 {
-   if (indivDeformationFiles.borderFileSelected < 0) {
+   if (indivDeformationFiles.borderFileSelected[0] < 0) {
       QMessageBox::critical(this, "ERROR", "There are no individual border files.");
       return;
    }
    editBorderFile(indivSpecFileName,
-                  indivDeformationFiles.borderFileNames[indivDeformationFiles.borderFileSelected],
-                  indivDeformationFiles.borderFileTypes[indivDeformationFiles.borderFileSelected]);
+                  indivDeformationFiles.borderFileNames[indivDeformationFiles.borderFileSelected[0]],
+                  indivDeformationFiles.borderFileTypes[indivDeformationFiles.borderFileSelected[0]]);
 }
 
 /**
@@ -601,15 +565,15 @@ GuiSurfaceDeformationDialog::editBorderFile(const QString& specFileName,
  * called to edit atlas borders.
  */
 void 
-GuiSurfaceDeformationDialog::slotBordersEditAtlas()
+GuiSurfaceDeformationDialog::slotBordersEditAtlas(int index)
 {
-   if (atlasDeformationFiles.borderFileSelected < 0) {
+   if (atlasDeformationFiles.borderFileSelected[index] < 0) {
       QMessageBox::critical(this, "ERROR", "There are no atlas border files.");
       return;
    }
    editBorderFile(atlasSpecFileName,
-                  atlasDeformationFiles.borderFileNames[atlasDeformationFiles.borderFileSelected],
-                  atlasDeformationFiles.borderFileTypes[atlasDeformationFiles.borderFileSelected]);
+                  atlasDeformationFiles.borderFileNames[atlasDeformationFiles.borderFileSelected[index]],
+                  atlasDeformationFiles.borderFileTypes[atlasDeformationFiles.borderFileSelected[index]]);
 }
 
 /**
@@ -620,13 +584,17 @@ GuiSurfaceDeformationDialog::createParametersWidget()
 {
    QString tabTitle("ERROR");
    QWidget* sphereFlatParmsWidget = NULL;
-   switch (deformationType) {
+   bool showParamsButtonsFlag = false;
+   switch (dmf.getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          //
          // Create the spherical parameters
          //
          tabTitle = "Spherical Parameters";
          sphereFlatParmsWidget = createSphericalParameters();
+         showParamsButtonsFlag = true;
          break;
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          //
@@ -649,15 +617,25 @@ GuiSurfaceDeformationDialog::createParametersWidget()
    //
    // Create a pushbutton to load parameters from a DeformationMapFile
    //
-   QPushButton* loadDefMapFilePushButton = new QPushButton("Read Params From Deformation Map File...");
+   QPushButton* loadDefMapFilePushButton = new QPushButton("Read Parameter From Def Map File...");
    loadDefMapFilePushButton->setAutoDefault(false);
    loadDefMapFilePushButton->setFixedSize(loadDefMapFilePushButton->sizeHint());
    QObject::connect(loadDefMapFilePushButton, SIGNAL(clicked()),
                     this, SLOT(loadDeformationMapFilePushButton()));
-                    
+
+   //
+   // Save parameters to a file
+   //
+   QPushButton* saveDefMapFilePushButton = new QPushButton("Save Parameters to Def Map File...");
+   saveDefMapFilePushButton->setAutoDefault(false);
+   saveDefMapFilePushButton->setFixedSize(saveDefMapFilePushButton->sizeHint());
+   QObject::connect(saveDefMapFilePushButton, SIGNAL(clicked()),
+                    this, SLOT(saveDeformationMapFilePushButton()));
+
    QGroupBox* setParamsGroupBox = new QGroupBox("Set Parameters");
    QHBoxLayout* setParamsLayout = new QHBoxLayout(setParamsGroupBox);
    setParamsLayout->addWidget(standardParametersPushButton);
+   setParamsLayout->addWidget(saveDefMapFilePushButton);
    setParamsLayout->addWidget(loadDefMapFilePushButton);
 
    parametersWidget = new QWidget;
@@ -668,7 +646,9 @@ GuiSurfaceDeformationDialog::createParametersWidget()
    parametersLayout->addWidget(setParamsGroupBox);
    dialogTabWidget->addTab(parametersWidget, tabTitle);
 
-
+   if (showParamsButtonsFlag == false) {
+      setParamsGroupBox->setVisible(false);
+   }
 }
 
 /**
@@ -692,17 +672,23 @@ GuiSurfaceDeformationDialog::createDeformationWidget()
    //
    deformBothWaysCheckBox = new QCheckBox("Deform Indiv to Atlas and Atlas to Individual");
    deformBothWaysCheckBox->setChecked(true);
+   QObject::connect(deformBothWaysCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotDeformationParameterChanged()));
                                              
    //
    // Delete intermediate files check box
    //
    deleteIntermediateFilesCheckBox = new QCheckBox("Delete Intermediate Files");
+   QObject::connect(deleteIntermediateFilesCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotDeformationParameterChanged()));
    
    //
    // label and line edit for deformed file prefix
    //
    QLabel* deformedFileLabel = new QLabel("Deformed File Name Prefix ");
    deformedFilePrefixLineEdit = new QLineEdit;
+   QObject::connect(deformedFilePrefixLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotDeformationParameterChanged()));
    QHBoxLayout* deformedFileLayout = new QHBoxLayout;
    deformedFileLayout->addWidget(deformedFileLabel);
    deformedFileLayout->addWidget(deformedFilePrefixLineEdit);
@@ -712,6 +698,8 @@ GuiSurfaceDeformationDialog::createDeformationWidget()
    //
    QLabel* deformedColumnLabel = new QLabel("Deformed Column Name Prefix ");
    deformedColumnPrefixLineEdit = new QLineEdit;
+   QObject::connect(deformedColumnPrefixLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotDeformationParameterChanged()));
    QHBoxLayout* deformedColumnLayout = new QHBoxLayout;
    deformedColumnLayout->addWidget(deformedColumnLabel);
    deformedColumnLayout->addWidget(deformedColumnPrefixLineEdit);
@@ -731,6 +719,8 @@ GuiSurfaceDeformationDialog::createDeformationWidget()
    //   
    smoothCoordsOneIterationCheckBox = new QCheckBox("Smooth One Iteration (Except Flat)");
    smoothCoordsOneIterationCheckBox->setChecked(true);
+   QObject::connect(smoothCoordsOneIterationCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotDeformationParameterChanged()));
    
    //
    // Coordinate file options
@@ -738,7 +728,27 @@ GuiSurfaceDeformationDialog::createDeformationWidget()
    QGroupBox* coordGroupBox = new QGroupBox("Coordinate Data File Deformation Options");
    QVBoxLayout* coordGroupLayout = new QVBoxLayout(coordGroupBox);
    coordGroupLayout->addWidget(smoothCoordsOneIterationCheckBox);
-   
+
+   //
+   // Deformation map file names
+   //
+   QLabel* indivToAtlasDeformMapFileNameLabel = new QLabel("Indiv to Atlas");
+   indivToAtlasDeformMapFileNameLineEdit = new QLineEdit;
+   QObject::connect(indivToAtlasDeformMapFileNameLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotDeformationParameterChanged()));
+   QLabel* atlasToIndivDeformMapFileNameLabel = new QLabel("Atlas to Indiv");
+   atlasToIndivDeformMapFileNameLineEdit = new QLineEdit;
+   QObject::connect(atlasToIndivDeformMapFileNameLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotDeformationParameterChanged()));
+   QGroupBox* defMapNameGroupBox = new QGroupBox("Deformation Map File Names");
+   QGridLayout* defMapNameLayout = new QGridLayout(defMapNameGroupBox);
+   defMapNameLayout->addWidget(indivToAtlasDeformMapFileNameLabel, 0, 0);
+   defMapNameLayout->addWidget(indivToAtlasDeformMapFileNameLineEdit, 0, 1);
+   defMapNameLayout->addWidget(atlasToIndivDeformMapFileNameLabel, 1, 0);
+   defMapNameLayout->addWidget(atlasToIndivDeformMapFileNameLineEdit, 1, 1);
+   defMapNameLayout->setColumnStretch(0, 0);
+   defMapNameLayout->setColumnStretch(1, 100);
+
    //
    // Put border/metric items side by side
    //
@@ -755,7 +765,47 @@ GuiSurfaceDeformationDialog::createDeformationWidget()
    deformationWidgetLayout->addLayout(borderMetricLayout);
    deformationWidgetLayout->addWidget(controlGroupBox);
    deformationWidgetLayout->addWidget(coordGroupBox);
+   deformationWidgetLayout->addWidget(defMapNameGroupBox);
    deformationWidgetLayout->addStretch();
+}
+
+/**
+ * setup connections for automatic update of deformation map file names.
+ */
+void
+GuiSurfaceDeformationDialog::setConnectionsForAutoDefMapFileNameUpdates()
+{
+   QObject::connect(this->deformedFilePrefixLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotUpdateDeformationMapFileNames()));
+   QObject::connect(this->indivSpecLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotUpdateDeformationMapFileNames()));
+   QObject::connect(this->atlasSpecLineEdit, SIGNAL(textChanged(const QString&)),
+                    this, SLOT(slotUpdateDeformationMapFileNames()));
+}
+
+/**
+ * called to update deformation map file names.
+ */
+void
+GuiSurfaceDeformationDialog::slotUpdateDeformationMapFileNames()
+{
+   QString indivToAtlasSpecFileName =
+           BrainModelSurfaceDeformDataFile::createDeformedSpecFileName(
+              this->deformedFilePrefixLineEdit->text(),
+              this->indivSpecLineEdit->text(),
+              this->atlasSpecLineEdit->text());
+   this->indivToAtlasDeformMapFileNameLineEdit->blockSignals(true);
+   this->indivToAtlasDeformMapFileNameLineEdit->setText(indivToAtlasSpecFileName);
+   this->indivToAtlasDeformMapFileNameLineEdit->blockSignals(false);
+
+   QString atlasToIndivSpecFileName =
+           BrainModelSurfaceDeformDataFile::createDeformedSpecFileName(
+              this->deformedFilePrefixLineEdit->text(),
+              this->atlasSpecLineEdit->text(),
+              this->indivSpecLineEdit->text());
+   this->atlasToIndivDeformMapFileNameLineEdit->blockSignals(true);
+   this->atlasToIndivDeformMapFileNameLineEdit->setText(atlasToIndivSpecFileName);
+   this->atlasToIndivDeformMapFileNameLineEdit->blockSignals(false);
 }
 
 
@@ -785,6 +835,8 @@ GuiSurfaceDeformationDialog::createBorderResampling()
    borderResamplingDoubleSpinBox->setSingleStep(1.0);
    borderResamplingDoubleSpinBox->setDecimals(3);
    borderResamplingDoubleSpinBox->setFixedWidth(100);
+   QObject::connect(borderResamplingDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotDeformationParameterChanged()));
    
    //
    // Put stuff in a vertical group box
@@ -803,6 +855,8 @@ GuiSurfaceDeformationDialog::createBorderResampling()
    borderButtonGroup->addButton(borderResamplingNoneRadioButton, 0);
    borderButtonGroup->addButton(borderResamplingFromFileRadioButton, 1);
    borderButtonGroup->addButton(borderResamplingToValueRadioButton, 2);
+   QObject::connect(borderButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(slotDeformationParameterChanged()));
 
    return borderGroup;
 }
@@ -824,222 +878,320 @@ GuiSurfaceDeformationDialog::createMetricDeformation()
    QButtonGroup* metricButtonGroup = new QButtonGroup(this);
    metricButtonGroup->addButton(metricNearestNodeRadioButton);
    metricButtonGroup->addButton(metricAverageTileNodesRadioButton);
+   QObject::connect(metricButtonGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(slotDeformationParameterChanged()));
    
    return metricGroupBox;
 }
 
 /**
- *
+ * create the landmark vector options.
  */
 QWidget*
-GuiSurfaceDeformationDialog::createSphericalParameters()
+GuiSurfaceDeformationDialog::createLandmarkVectorOptionsSection()
+{
+   QLabel* vectorSmoothingLabel = new QLabel("Vector Smoothing Iterations");
+   vectorSmoothingIterationsSpinBox = new QSpinBox;
+   vectorSmoothingIterationsSpinBox->setMinimum(0);
+   vectorSmoothingIterationsSpinBox->setMaximum(100000);
+   vectorSmoothingIterationsSpinBox->setSingleStep(1);
+   vectorSmoothingIterationsSpinBox->setValue(10);
+   QObject::connect(vectorSmoothingIterationsSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotLandmarkVectorParameterChanged()));
+
+   QLabel* vectorDisplacementFactorLabel = new QLabel("Displacement Factor");
+   vectorDisplacementFactorDoubleSpinBox = new QDoubleSpinBox;
+   vectorDisplacementFactorDoubleSpinBox->setMinimum(0.0);
+   vectorDisplacementFactorDoubleSpinBox->setMaximum(100000.0);
+   vectorDisplacementFactorDoubleSpinBox->setSingleStep(0.1);
+   vectorDisplacementFactorDoubleSpinBox->setDecimals(2);
+   vectorDisplacementFactorDoubleSpinBox->setValue(1.0);
+   QObject::connect(vectorDisplacementFactorDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotLandmarkVectorParameterChanged()));
+
+   QLabel* vectorEndpointFactorLabel = new QLabel("Endpoint Factor");
+   vectorEndpointFactorDoubleSpinBox = new QDoubleSpinBox;
+   vectorEndpointFactorDoubleSpinBox->setMinimum(0.0);
+   vectorEndpointFactorDoubleSpinBox->setMaximum(1000000.0);
+   vectorEndpointFactorDoubleSpinBox->setSingleStep(0.1);
+   vectorEndpointFactorDoubleSpinBox->setDecimals(2);
+   vectorEndpointFactorDoubleSpinBox->setValue(1.0);
+   QObject::connect(vectorEndpointFactorDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotLandmarkVectorParameterChanged()));
+
+   pauseForCrossoversConfirmationCheckBox = new QCheckBox("Pause for Crossovers Confirmation");
+   QObject::connect(pauseForCrossoversConfirmationCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotLandmarkVectorParameterChanged()));
+
+   QGroupBox* vectorGroupBox = new QGroupBox("Landmark Vector Options");
+   QGridLayout* vectorGridLayout = new QGridLayout(vectorGroupBox);
+   vectorGridLayout->addWidget(vectorSmoothingLabel, 0, 0);
+   vectorGridLayout->addWidget(vectorSmoothingIterationsSpinBox, 0, 1);
+   vectorGridLayout->addWidget(vectorDisplacementFactorLabel, 1, 0);
+   vectorGridLayout->addWidget(vectorDisplacementFactorDoubleSpinBox, 1, 1);
+   vectorGridLayout->addWidget(vectorEndpointFactorLabel, 2, 0);
+   vectorGridLayout->addWidget(vectorEndpointFactorDoubleSpinBox, 2, 1);
+   vectorGridLayout->addWidget(pauseForCrossoversConfirmationCheckBox, 3, 0, 1, 2);
+   vectorGroupBox->setMaximumHeight(vectorGroupBox->sizeHint().height());
+
+   landmarkVectorParametersWidgetGroup = new WuQWidgetGroup(this);
+   landmarkVectorParametersWidgetGroup->addWidget(vectorSmoothingIterationsSpinBox);
+   landmarkVectorParametersWidgetGroup->addWidget(vectorDisplacementFactorDoubleSpinBox);
+   landmarkVectorParametersWidgetGroup->addWidget(vectorEndpointFactorDoubleSpinBox);
+   landmarkVectorParametersWidgetGroup->addWidget(pauseForCrossoversConfirmationCheckBox);
+
+   return vectorGroupBox;
+}
+
+/**
+ * called when a landmark vector parameter is changed.
+ */
+void
+GuiSurfaceDeformationDialog::slotLandmarkVectorParameterChanged()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Landmark Vector Parameter"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    const int cycleIndex = sphereEditCycleSpinBox->value() - 1;
+
+    dmf.setLandmarkVectorParameters(stageIndex,
+                                    cycleIndex,
+                                    this->vectorSmoothingIterationsSpinBox->value(),
+                                    this->vectorDisplacementFactorDoubleSpinBox->value());
+    dmf.setLandmarkVectorStageParameters(stageIndex,
+                                         this->vectorEndpointFactorDoubleSpinBox->value());
+    dmf.setPauseForCrossoversConfirmation(this->pauseForCrossoversConfirmationCheckBox->isChecked());
+}
+
+/**
+ * update the landmark vector parameters.
+ */
+void
+GuiSurfaceDeformationDialog::updateLandmarkVectorParameters()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Landmark Vector Parameters"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    const int cycleIndex = sphereEditCycleSpinBox->value() - 1;
+
+    landmarkVectorParametersWidgetGroup->blockSignals(true);
+    int vectorSmoothingIterations = 0;
+    float vectorDisplacementFactor = 1.0;
+    dmf.getLandmarkVectorParameters(stageIndex, cycleIndex,
+                                    vectorSmoothingIterations,
+                                    vectorDisplacementFactor);
+    this->vectorSmoothingIterationsSpinBox->setValue(vectorSmoothingIterations);
+    this->vectorDisplacementFactorDoubleSpinBox->setValue(vectorDisplacementFactor);
+    float endpointFactor = 1.0;
+    dmf.getLandmarkVectorStageParameters(stageIndex, endpointFactor);
+    this->vectorEndpointFactorDoubleSpinBox->setValue(endpointFactor);
+    this->pauseForCrossoversConfirmationCheckBox->setChecked(dmf.getPauseForCrossoversConfirmation());
+    landmarkVectorParametersWidgetGroup->blockSignals(false);
+}
+
+/**
+ * called when a spherical algorithm is selected.
+ */
+void
+GuiSurfaceDeformationDialog::slotSphericalAlgorithmSelection()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Spherical Algorithm"
+                << std::endl;
+   }
+   if (this->sphericalLandmarkConstrainedRadioButton->isChecked()) {
+      dmf.setFlatOrSphereSelection(DeformationMapFile::DEFORMATION_TYPE_SPHERE);
+      this->sphereNumberOfStagesSpinBox->setValue(1);
+   }
+   else if (this->sphericalLandmarkVectorRadioButton->isChecked()) {
+      dmf.setFlatOrSphereSelection(DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR);
+   }
+   else if (this->sphericalLandmarkVectorSingleStageRadioButton->isChecked()) {
+      dmf.setFlatOrSphereSelection(DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR);
+      this->sphereNumberOfStagesSpinBox->setValue(1);
+   }
+   updateAlgorithmSelection();
+}
+
+/**
+ * update algorithm selection.
+ */
+void
+GuiSurfaceDeformationDialog::updateAlgorithmSelection()
+{
+   bool enableVectorOptionsFlag = false;
+   this->sphericalLandmarkConstrainedRadioButton->blockSignals(true);
+   this->sphericalLandmarkVectorRadioButton->blockSignals(true);
+   this->sphericalLandmarkVectorSingleStageRadioButton->blockSignals(true);
+   switch (dmf.getFlatOrSphereSelection()) {
+      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         this->sphericalLandmarkConstrainedRadioButton->setChecked(true);
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         this->sphericalLandmarkVectorSingleStageRadioButton->setChecked(true);
+         enableVectorOptionsFlag = true;
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         this->sphericalLandmarkVectorRadioButton->setChecked(true);
+         enableVectorOptionsFlag = true;
+         break;
+   }
+   this->sphericalLandmarkConstrainedRadioButton->blockSignals(false);
+   this->sphericalLandmarkVectorRadioButton->blockSignals(false);
+   this->sphericalLandmarkVectorSingleStageRadioButton->blockSignals(false);
+
+   landmarkVectorOptionsWidget->setEnabled(enableVectorOptionsFlag);
+   sphereStagesWidgetGroup->setEnabled(enableVectorOptionsFlag);
+
+   updateAtlasBorderSelections();
+}
+
+/**
+ * create the spherical algorithm section.
+ */
+QWidget*
+GuiSurfaceDeformationDialog::createSphericalAlgorithmSection()
 {
    //
-   // Sphere resolution combo box and label and HBox
+   // Create the algorithm selection radio buttons
    //
-   QLabel* sphereResolutionLabel = new QLabel("Sphere Resolution");
-   sphereResolutionComboBox = new QComboBox;
-   sphereResolutionComboBox->setFixedSize(sphereResolutionComboBox->sizeHint());
-   sphereResolutionComboBox->addItem("   20 Nodes");
-   sphereResolutionComboBox->addItem("   74 Nodes");
-   sphereResolutionComboBox->addItem("  290 Nodes");
-   sphereResolutionComboBox->addItem(" 1154 Nodes");
-   sphereResolutionComboBox->addItem(" 4610 Nodes");
-   sphereResolutionComboBox->addItem("18434 Nodes");
-   sphereResolutionComboBox->addItem("73730 Nodes");
-   
-   //
-   // Number of Cycles combo box and label
-   //
-   QLabel* numberOfCyclesLabel = new QLabel("Number of Cycles");
-   sphereNumberOfCyclesComboBox = new QComboBox;
-   sphereNumberOfCyclesComboBox->setFixedSize(sphereNumberOfCyclesComboBox->sizeHint());
-   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_CYCLES; i++) {
-      sphereNumberOfCyclesComboBox->addItem(QString::number(i+1));
-   }
-   QObject::connect(sphereNumberOfCyclesComboBox, SIGNAL(activated(int)),
-                    this, SLOT(slotSphereNumberOfCyclesComboBox(int)));
-                    
-   //
-   // Edit Cycles combo box and label
-   //
-   QLabel* editCycleLabel = new QLabel("Edit Cycle");
-   sphereEditCycleComboBox = new QComboBox;
-   sphereEditCycleComboBox->setFixedSize(sphereEditCycleComboBox->sizeHint());
-   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_CYCLES; i++) {
-      sphereEditCycleComboBox->addItem(QString::number(i+1));
-   }
-   QObject::connect(sphereEditCycleComboBox, SIGNAL(highlighted(int)),
-                    this, SLOT(slotSphereEditCycleComboBoxOldValue()));
-   QObject::connect(sphereEditCycleComboBox, SIGNAL(activated(int)),
-                    this, SLOT(slotSphereEditCycleComboBoxNewValue()));
+   sphericalLandmarkConstrainedRadioButton =
+           new QRadioButton("Landmark Pinned Relaxation");
+   sphericalLandmarkVectorRadioButton =
+           new QRadioButton("Landmark Vector Difference");
+   sphericalLandmarkVectorSingleStageRadioButton =
+           new QRadioButton("Landmark Vector Difference Single Stage");
 
    //
-   // Fiducial/sphere ratios
+   // NO SINGLE STAGE VECTOR DEFORMATION
    //
-   sphereDistortionCorrectionCheckBox = new QCheckBox("Correct For Spherical Distortion\n"
-                                                      "Relative to Fiducial");
-   sphereDistortionDoubleSpinBox = new QDoubleSpinBox;
-   sphereDistortionDoubleSpinBox->setMinimum(0.0);
-   sphereDistortionDoubleSpinBox->setMaximum(1.0);
-   sphereDistortionDoubleSpinBox->setSingleStep(0.5);
-   sphereDistortionDoubleSpinBox->setDecimals(3);
-                                            
-   //
-   // Group for spherical parameters
-   //   
-   QGroupBox* sphericalParamsGroupBox = new QGroupBox("Spherical Parameters");
-   QGridLayout* sphericalParamsGroupLayout = new QGridLayout(sphericalParamsGroupBox);
-   sphericalParamsGroupLayout->addWidget(sphereResolutionLabel, 0, 0);
-   sphericalParamsGroupLayout->addWidget(sphereResolutionComboBox, 0, 1);
-   sphericalParamsGroupLayout->addWidget(numberOfCyclesLabel, 1, 0);
-   sphericalParamsGroupLayout->addWidget(sphereNumberOfCyclesComboBox, 1, 1);
-   sphericalParamsGroupLayout->addWidget(editCycleLabel, 2, 0);
-   sphericalParamsGroupLayout->addWidget(sphereEditCycleComboBox, 2, 1);
-   sphericalParamsGroupLayout->addWidget(sphereDistortionCorrectionCheckBox, 3, 0);
-   sphericalParamsGroupLayout->addWidget(sphereDistortionDoubleSpinBox, 3, 1);
+   sphericalLandmarkVectorSingleStageRadioButton->setHidden(true);
 
    //
-   //  label and strength spin box
+   // Button group to make buttons mutually exclusive
    //
-   QLabel* strengthLabel = new QLabel("Strength");
-   smoothingStrengthDoubleSpinBox = new QDoubleSpinBox;
-   smoothingStrengthDoubleSpinBox->setMinimum(0.0);
-   smoothingStrengthDoubleSpinBox->setMaximum(1.0);
-   smoothingStrengthDoubleSpinBox->setSingleStep(0.05);
-   smoothingStrengthDoubleSpinBox->setDecimals(3);
-   smoothingStrengthDoubleSpinBox->setFixedWidth(120);
-   
-   //
-   //  label and cycles spin box
-   //
-   QLabel* cyclesLabel = new QLabel("Cycles");
-   smoothingCyclesSpinBox = new QSpinBox;
-   smoothingCyclesSpinBox->setMinimum(0);
-   smoothingCyclesSpinBox->setMaximum(50000);
-   smoothingCyclesSpinBox->setSingleStep(10);
-   smoothingCyclesSpinBox->setFixedWidth(120);
-   
-   //
-   //  label and iterations per cycle spin box
-   //
-   QLabel* iterationsLabel = new QLabel("Iterations/Cycle");
-   smoothingIterationsSpinBox = new QSpinBox;
-   smoothingIterationsSpinBox->setMinimum(0);
-   smoothingIterationsSpinBox->setMaximum(50000);
-   smoothingIterationsSpinBox->setSingleStep(5);
-   smoothingIterationsSpinBox->setFixedWidth(120);
-   
-   //
-   //  label and smooth neighbors spin box
-   //
-   QLabel* smoothNeighborsLabel = new QLabel("Smooth Neighbors Every X");
-   smoothingNeighborsSpinBox = new QSpinBox;
-   smoothingNeighborsSpinBox->setMinimum(0);
-   smoothingNeighborsSpinBox->setMaximum(50000);
-   smoothingNeighborsSpinBox->setSingleStep(1);
-   smoothingNeighborsSpinBox->setFixedWidth(120);
-   
-   //
-   //  label and final smoothing iterations
-   //
-   QLabel* finalSmoothLabel = new QLabel("Final Smoothing Iterations");
-   smoothingFinalSpinBox = new QSpinBox;
-   smoothingFinalSpinBox->setMinimum(0);
-   smoothingFinalSpinBox->setMaximum(50000);
-   smoothingFinalSpinBox->setSingleStep(1);
-   smoothingFinalSpinBox->setFixedWidth(120);
-   
-   //
-   // Group box and layout for smoothing parameters
-   //
-   QGroupBox* smoothingParamsGroupBox = new QGroupBox("Smoothing Parameters");
-   QGridLayout* smoothingParamsLayout = new QGridLayout(smoothingParamsGroupBox);
-   smoothingParamsLayout->addWidget(strengthLabel, 0, 0);
-   smoothingParamsLayout->addWidget(smoothingStrengthDoubleSpinBox, 0, 1);
-   smoothingParamsLayout->addWidget(cyclesLabel, 1, 0);
-   smoothingParamsLayout->addWidget(smoothingCyclesSpinBox, 1, 1);
-   smoothingParamsLayout->addWidget(iterationsLabel, 2, 0);
-   smoothingParamsLayout->addWidget(smoothingIterationsSpinBox, 2, 1);
-   smoothingParamsLayout->addWidget(smoothNeighborsLabel, 3, 0);
-   smoothingParamsLayout->addWidget(smoothingNeighborsSpinBox, 3, 1);
-   smoothingParamsLayout->addWidget(finalSmoothLabel, 4, 0);
-   smoothingParamsLayout->addWidget(smoothingFinalSpinBox, 4, 1);
+   QButtonGroup* buttGroup = new QButtonGroup(this);
+   buttGroup->addButton(sphericalLandmarkConstrainedRadioButton);
+   buttGroup->addButton(sphericalLandmarkVectorRadioButton);
+   buttGroup->addButton(sphericalLandmarkVectorSingleStageRadioButton);
+   QObject::connect(buttGroup, SIGNAL(buttonClicked(int)),
+                    this, SLOT(slotSphericalAlgorithmSelection()));
 
+   //
+   // Group box and layout
+   //
+   QGroupBox* algorithmGroupBox = new QGroupBox("Spherical Algorithm");
+   QVBoxLayout* layout = new QVBoxLayout(algorithmGroupBox);
+   layout->addWidget(sphericalLandmarkConstrainedRadioButton);
+   layout->addWidget(sphericalLandmarkVectorRadioButton);
+   layout->addWidget(sphericalLandmarkVectorSingleStageRadioButton);
+   algorithmGroupBox->setMaximumHeight(algorithmGroupBox->sizeHint().height());
+   return algorithmGroupBox;
+}
+
+/**
+ * create the morphing parameters section.
+ */
+QWidget*
+GuiSurfaceDeformationDialog::createMorphingParametersSection()
+{
    //
    //  label and spin box
    //
    QLabel* morphCyclesLabel = new QLabel("Cycles");
    morphingCyclesSpinBox = new QSpinBox;
+   QObject::connect(morphingCyclesSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingCyclesSpinBox->setMinimum(0);
    morphingCyclesSpinBox->setMaximum(5000);
    morphingCyclesSpinBox->setSingleStep(1);
    morphingCyclesSpinBox->setFixedWidth(120);
-   
+
    //
    //  label and spin box
    //
    QLabel* morphingLinearForceLabel = new QLabel("Linear Force");
    morphingLinearForceDoubleSpinBox = new QDoubleSpinBox;
+   QObject::connect(morphingLinearForceDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingLinearForceDoubleSpinBox->setMinimum(0.0);
    morphingLinearForceDoubleSpinBox->setMaximum(1.0);
    morphingLinearForceDoubleSpinBox->setSingleStep(0.05);
    morphingLinearForceDoubleSpinBox->setDecimals(3);
    morphingLinearForceDoubleSpinBox->setFixedWidth(120);
-   
+
    //
    //  label and spin box
    //
    QLabel* morphingAngularForceLabel = new QLabel("Angular Force");
    morphingAngularForceDoubleSpinBox = new QDoubleSpinBox;
+   QObject::connect(morphingAngularForceDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingAngularForceDoubleSpinBox->setMinimum(0.0);
    morphingAngularForceDoubleSpinBox->setMaximum(1.0);
    morphingAngularForceDoubleSpinBox->setSingleStep(0.05);
    morphingAngularForceDoubleSpinBox->setDecimals(3);
    morphingAngularForceDoubleSpinBox->setFixedWidth(120);
-   
+
    //
    //  label and spin box
    //
    QLabel* morphingStepSizeLabel = new QLabel("Step Size");
    morphingStepSizeDoubleSpinBox = new QDoubleSpinBox;
+   QObject::connect(morphingStepSizeDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingStepSizeDoubleSpinBox->setMinimum(0.0);
    morphingStepSizeDoubleSpinBox->setMaximum(1.0);
    morphingStepSizeDoubleSpinBox->setSingleStep(0.05);
    morphingStepSizeDoubleSpinBox->setDecimals(3);
    morphingStepSizeDoubleSpinBox->setFixedWidth(120);
-   
+
    //
    //  label and spin box
    //
    QLabel* morphingLandmarkLabel = new QLabel("Landmark Step Size");
    morphingLandmarkStepSizeDoubleSpinBox = new QDoubleSpinBox;
+   QObject::connect(morphingLandmarkStepSizeDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingLandmarkStepSizeDoubleSpinBox->setMinimum(0.0);
    morphingLandmarkStepSizeDoubleSpinBox->setMaximum(1.0);
    morphingLandmarkStepSizeDoubleSpinBox->setSingleStep(0.05);
    morphingLandmarkStepSizeDoubleSpinBox->setDecimals(3);
    morphingLandmarkStepSizeDoubleSpinBox->setFixedWidth(120);
-   
+
    //
    //  label and spin box
    //
    QLabel* morphingIterationsLabel = new QLabel("Iterations");
    morphingIterationsSpinBox = new QSpinBox;
+   QObject::connect(morphingIterationsSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingIterationsSpinBox->setMinimum(0);
    morphingIterationsSpinBox->setMaximum(5000);
    morphingIterationsSpinBox->setSingleStep(10);
    morphingIterationsSpinBox->setFixedWidth(120);
-   
+
    //
    //  label and spin box
    //
    QLabel* morphingSmoothLabel = new QLabel("Smooth Iterations");
    morphingSmoothIterationsSpinBox = new QSpinBox;
+   QObject::connect(morphingSmoothIterationsSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotMorphingParameterChanged()));
    morphingSmoothIterationsSpinBox->setMinimum(0);
    morphingSmoothIterationsSpinBox->setMaximum(5000);
    morphingSmoothIterationsSpinBox->setSingleStep(1);
    morphingSmoothIterationsSpinBox->setFixedWidth(120);
-   
+
    //
    // Group box for morphing parameters
    //
@@ -1059,17 +1211,487 @@ GuiSurfaceDeformationDialog::createSphericalParameters()
    morphGroupLayout->addWidget(morphingIterationsSpinBox, 5, 1);
    morphGroupLayout->addWidget(morphingSmoothLabel, 6, 0);
    morphGroupLayout->addWidget(morphingSmoothIterationsSpinBox, 6, 1);
-   morphGroupLayout->setRowStretch(7, 100);
+   //morphGroupLayout->setRowStretch(7, 100);
+   morphGroupBox->setMaximumHeight(morphGroupBox->sizeHint().height());
+
+   morphingParametersWidgetGroup = new WuQWidgetGroup(this);
+   morphingParametersWidgetGroup->addWidget(morphingCyclesSpinBox);
+   morphingParametersWidgetGroup->addWidget(morphingLinearForceDoubleSpinBox);
+   morphingParametersWidgetGroup->addWidget(morphingAngularForceDoubleSpinBox);
+   morphingParametersWidgetGroup->addWidget(morphingStepSizeDoubleSpinBox);
+   morphingParametersWidgetGroup->addWidget(morphingLandmarkStepSizeDoubleSpinBox);
+   morphingParametersWidgetGroup->addWidget(morphingIterationsSpinBox);
+   morphingParametersWidgetGroup->addWidget(morphingSmoothIterationsSpinBox);
+
+   return morphGroupBox;
+}
+
+/**
+ * called when a morphing parameter is changed.
+ */
+void
+GuiSurfaceDeformationDialog::slotMorphingParameterChanged()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Morphing Parameters"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    const int cycleIndex = sphereEditCycleSpinBox->value() - 1;
+
+    //
+    // Get the morphing parameters
+    //
+    dmf.setMorphingParameters(stageIndex,
+                              cycleIndex,
+                              morphingCyclesSpinBox->value(),
+                              morphingLinearForceDoubleSpinBox->value(),
+                              morphingAngularForceDoubleSpinBox->value(),
+                              morphingStepSizeDoubleSpinBox->value(),
+                              morphingLandmarkStepSizeDoubleSpinBox->value(),
+                              morphingIterationsSpinBox->value(),
+                              morphingSmoothIterationsSpinBox->value());
+}
+
+/**
+ * update the morphing parameters.
+ */
+void
+GuiSurfaceDeformationDialog::updateMorphingParameters()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Morphing Parameters"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    const int cycleIndex = sphereEditCycleSpinBox->value() - 1;
+
+    morphingParametersWidgetGroup->blockSignals(true);
+    float linearForce, angularForce, stepSize, landmarkStepSize;
+    int cycles, iterations, smoothIterations;
+    dmf.getMorphingParameters(stageIndex, cycleIndex,
+                              cycles, linearForce, angularForce, stepSize,
+                              landmarkStepSize, iterations, smoothIterations);
+    morphingCyclesSpinBox->setValue(cycles);
+    morphingLinearForceDoubleSpinBox->setValue(linearForce);
+    morphingAngularForceDoubleSpinBox->setValue(angularForce);
+    morphingStepSizeDoubleSpinBox->setValue(stepSize);
+    morphingLandmarkStepSizeDoubleSpinBox->setValue(landmarkStepSize);
+    morphingIterationsSpinBox->setValue(iterations);
+    morphingSmoothIterationsSpinBox->setValue(smoothIterations);
+    morphingParametersWidgetGroup->blockSignals(false);
+}
+
+/**
+ * create the smoothing parameters section.
+ */
+QWidget*
+GuiSurfaceDeformationDialog::createSmoothingParametersSection()
+{
+   //
+   //  label and strength spin box
+   //
+   QLabel* strengthLabel = new QLabel("Strength");
+   smoothingStrengthDoubleSpinBox = new QDoubleSpinBox;
+   QObject::connect(smoothingStrengthDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotSmoothingParameterChanged()));
+   smoothingStrengthDoubleSpinBox->setMinimum(0.0);
+   smoothingStrengthDoubleSpinBox->setMaximum(1.0);
+   smoothingStrengthDoubleSpinBox->setSingleStep(0.05);
+   smoothingStrengthDoubleSpinBox->setDecimals(3);
+   smoothingStrengthDoubleSpinBox->setFixedWidth(120);
+
+   //
+   //  label and cycles spin box
+   //
+   QLabel* cyclesLabel = new QLabel("Cycles");
+   smoothingCyclesSpinBox = new QSpinBox;
+   QObject::connect(smoothingCyclesSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSmoothingParameterChanged()));
+   smoothingCyclesSpinBox->setMinimum(0);
+   smoothingCyclesSpinBox->setMaximum(50000);
+   smoothingCyclesSpinBox->setSingleStep(10);
+   smoothingCyclesSpinBox->setFixedWidth(120);
+
+   //
+   //  label and iterations per cycle spin box
+   //
+   QLabel* iterationsLabel = new QLabel("Iterations/Cycle");
+   smoothingIterationsSpinBox = new QSpinBox;
+   QObject::connect(smoothingIterationsSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSmoothingParameterChanged()));
+   smoothingIterationsSpinBox->setMinimum(0);
+   smoothingIterationsSpinBox->setMaximum(50000);
+   smoothingIterationsSpinBox->setSingleStep(5);
+   smoothingIterationsSpinBox->setFixedWidth(120);
+
+   //
+   //  label and smooth neighbors spin box
+   //
+   QLabel* smoothNeighborsLabel = new QLabel("Smooth Neighbors Every X");
+   smoothingNeighborsSpinBox = new QSpinBox;
+   QObject::connect(smoothingNeighborsSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSmoothingParameterChanged()));
+   smoothingNeighborsSpinBox->setMinimum(0);
+   smoothingNeighborsSpinBox->setMaximum(50000);
+   smoothingNeighborsSpinBox->setSingleStep(1);
+   smoothingNeighborsSpinBox->setFixedWidth(120);
+
+   //
+   //  label and final smoothing iterations
+   //
+   QLabel* finalSmoothLabel = new QLabel("Final Smoothing Iterations");
+   smoothingFinalSpinBox = new QSpinBox;
+   QObject::connect(smoothingFinalSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSmoothingParameterChanged()));
+   smoothingFinalSpinBox->setMinimum(0);
+   smoothingFinalSpinBox->setMaximum(50000);
+   smoothingFinalSpinBox->setSingleStep(1);
+   smoothingFinalSpinBox->setFixedWidth(120);
+
+   //
+   // Group box and layout for smoothing parameters
+   //
+   QGroupBox* smoothingParamsGroupBox = new QGroupBox("Smoothing Parameters");
+   QGridLayout* smoothingParamsLayout = new QGridLayout(smoothingParamsGroupBox);
+   smoothingParamsLayout->addWidget(strengthLabel, 0, 0);
+   smoothingParamsLayout->addWidget(smoothingStrengthDoubleSpinBox, 0, 1);
+   smoothingParamsLayout->addWidget(cyclesLabel, 1, 0);
+   smoothingParamsLayout->addWidget(smoothingCyclesSpinBox, 1, 1);
+   smoothingParamsLayout->addWidget(iterationsLabel, 2, 0);
+   smoothingParamsLayout->addWidget(smoothingIterationsSpinBox, 2, 1);
+   smoothingParamsLayout->addWidget(smoothNeighborsLabel, 3, 0);
+   smoothingParamsLayout->addWidget(smoothingNeighborsSpinBox, 3, 1);
+   smoothingParamsLayout->addWidget(finalSmoothLabel, 4, 0);
+   smoothingParamsLayout->addWidget(smoothingFinalSpinBox, 4, 1);
+   smoothingParamsGroupBox->setMaximumHeight(smoothingParamsGroupBox->sizeHint().height());
+
+   smoothingParametersWidgetGroup = new WuQWidgetGroup(this);
+   smoothingParametersWidgetGroup->addWidget(smoothingStrengthDoubleSpinBox);
+   smoothingParametersWidgetGroup->addWidget(smoothingCyclesSpinBox);
+   smoothingParametersWidgetGroup->addWidget(smoothingIterationsSpinBox);
+   smoothingParametersWidgetGroup->addWidget(smoothingNeighborsSpinBox);
+   smoothingParametersWidgetGroup->addWidget(smoothingFinalSpinBox);
+
+   return smoothingParamsGroupBox;
+}
+
+/**
+ * called when a smoothing parameter is altered.
+ */
+void
+GuiSurfaceDeformationDialog::slotSmoothingParameterChanged()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Smoothing Parameter"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    const int cycleIndex = sphereEditCycleSpinBox->value() - 1;
+
+    //
+    // Get the smoothing parameters
+    //
+    dmf.setSmoothingParameters(stageIndex,
+                               cycleIndex,
+                               smoothingStrengthDoubleSpinBox->value(),
+                               smoothingCyclesSpinBox->value(),
+                               smoothingIterationsSpinBox->value(),
+                               smoothingNeighborsSpinBox->value(),
+                               smoothingFinalSpinBox->value());
+}
+
+/**
+ * update the smoothing parameters.
+ */
+void
+GuiSurfaceDeformationDialog::updateSmoothingParameters()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Smoothing Parameters"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    const int cycleIndex = sphereEditCycleSpinBox->value() - 1;
+
+    smoothingParametersWidgetGroup->blockSignals(true);
+    float strength;
+    int cycles, iterations, neighbors, finals;
+    dmf.getSmoothingParameters(stageIndex, cycleIndex,
+                               strength, cycles, iterations, neighbors, finals);
+    smoothingStrengthDoubleSpinBox->setValue(strength);
+    smoothingCyclesSpinBox->setValue(cycles);
+    smoothingIterationsSpinBox->setValue(iterations);
+    smoothingNeighborsSpinBox->setValue(neighbors);
+    smoothingFinalSpinBox->setValue(finals);
+    smoothingParametersWidgetGroup->blockSignals(false);
+}
+
+/**
+ * update the spherical resolution combo box.
+ */
+void
+GuiSurfaceDeformationDialog::updateSphericalResolutionComboBox()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Spherical Resolution"
+                << std::endl;
+   }
+    const int stageIndex = sphereEditStageSpinBox->value() - 1;
+    this->sphereResolutionComboBox->blockSignals(true);
+    const int numNodesInSphere = dmf.getSphereResolution(stageIndex);
+    switch(numNodesInSphere) {
+       case 20:
+          sphereResolutionComboBox->setCurrentIndex(0);
+          break;
+       case 74:
+          sphereResolutionComboBox->setCurrentIndex(1);
+          break;
+       case 290:
+          sphereResolutionComboBox->setCurrentIndex(2);
+          break;
+       case 1154:
+          sphereResolutionComboBox->setCurrentIndex(3);
+          break;
+       case 4610:
+          sphereResolutionComboBox->setCurrentIndex(4);
+          break;
+       case 18434:
+          sphereResolutionComboBox->setCurrentIndex(5);
+          break;
+       case 73730:
+          sphereResolutionComboBox->setCurrentIndex(6);
+          break;
+       default:
+          sphereResolutionComboBox->setCurrentIndex(4);
+          break;
+    }
+    this->sphereResolutionComboBox->blockSignals(false);
+}
+
+/**
+ * called if sphere resolution is changed.
+ */
+void
+GuiSurfaceDeformationDialog::slotSphereResolutionChanged()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Sphere Resolution"
+                << std::endl;
+   }
+    int editStageNumber = sphereEditStageSpinBox->value() - 1;
+
+    switch(sphereResolutionComboBox->currentIndex()) {
+       case 0:
+          dmf.setSphereResolution(editStageNumber, 20);
+          break;
+       case 1:
+          dmf.setSphereResolution(editStageNumber, 74);
+          break;
+       case 2:
+          dmf.setSphereResolution(editStageNumber, 290);
+          break;
+       case 3:
+          dmf.setSphereResolution(editStageNumber, 1154);
+          break;
+       case 4:
+          dmf.setSphereResolution(editStageNumber, 4610);
+          break;
+       case 5:
+          dmf.setSphereResolution(editStageNumber, 18434);
+          break;
+       case 6:
+          dmf.setSphereResolution(editStageNumber, 73730);
+          break;
+       default:
+          dmf.setSphereResolution(editStageNumber, 4610);
+          break;
+    }
+}
+
+/**
+ * create the Spherical parameters section.
+ */
+QWidget*
+GuiSurfaceDeformationDialog::createSphericalParametersSection()
+{
+   //
+   // Number of stages spin box and label
+   //
+   QLabel* sphereNumberOfStagesLabel = new QLabel("Number of Stages");
+   sphereNumberOfStagesSpinBox = new QSpinBox;
+   sphereNumberOfStagesSpinBox->setMinimum(1);
+   sphereNumberOfStagesSpinBox->setMaximum(DeformationMapFile::MAX_SPHERICAL_STAGES);
+   sphereNumberOfStagesSpinBox->setSingleStep(1);
+   QObject::connect(sphereNumberOfStagesSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSphereNumberOfStagesSpinBox(int)));
+
+   //
+   // Edit Stages spin box and label
+   //
+   QLabel* sphereEditStagesLabel = new QLabel("Edit Stage");
+   sphereEditStageSpinBox = new QSpinBox;
+   sphereEditStageSpinBox->setFixedSize(sphereEditStageSpinBox->sizeHint());
+   sphereEditStageSpinBox->setMinimum(1);
+   sphereEditStageSpinBox->setMaximum(DeformationMapFile::MAX_SPHERICAL_CYCLES);
+   QObject::connect(sphereEditStageSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSphereEditStageSpinBox(int)));
+
+   sphereStagesWidgetGroup = new WuQWidgetGroup(this);
+   sphereStagesWidgetGroup->addWidget(sphereNumberOfStagesLabel);
+   sphereStagesWidgetGroup->addWidget(sphereNumberOfStagesSpinBox);
+   sphereStagesWidgetGroup->addWidget(sphereEditStagesLabel);
+   sphereStagesWidgetGroup->addWidget(sphereEditStageSpinBox);
+
+   //
+   // Sphere resolution combo box and label and HBox
+   //
+   QLabel* sphereResolutionLabel = new QLabel("Sphere Resolution");
+   sphereResolutionComboBox = new QComboBox;
+   QObject::connect(sphereResolutionComboBox, SIGNAL(activated(int)),
+                    this, SLOT(slotSphereResolutionChanged()));
+   sphereResolutionComboBox->setFixedSize(sphereResolutionComboBox->sizeHint());
+   sphereResolutionComboBox->addItem("   20 Nodes");
+   sphereResolutionComboBox->addItem("   74 Nodes");
+   sphereResolutionComboBox->addItem("  290 Nodes");
+   sphereResolutionComboBox->addItem(" 1154 Nodes");
+   sphereResolutionComboBox->addItem(" 4610 Nodes");
+   sphereResolutionComboBox->addItem("18434 Nodes");
+   sphereResolutionComboBox->addItem("73730 Nodes");
+
+   //
+   // Number of Cycles spin box and label
+   //
+   QLabel* numberOfCyclesLabel = new QLabel("Number of Cycles");
+   sphereNumberOfCyclesSpinBox = new QSpinBox;
+   sphereNumberOfCyclesSpinBox->setMinimum(1);
+   sphereNumberOfCyclesSpinBox->setMaximum(DeformationMapFile::MAX_SPHERICAL_CYCLES);
+   sphereNumberOfCyclesSpinBox->setSingleStep(1);
+   QObject::connect(sphereNumberOfCyclesSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSphereNumberOfCyclesSpinBox(int)));
+
+   //
+   // Edit Cycles spin box and label
+   //
+   QLabel* editCycleLabel = new QLabel("Edit Cycle");
+   sphereEditCycleSpinBox = new QSpinBox;
+   sphereEditCycleSpinBox->setFixedSize(sphereEditCycleSpinBox->sizeHint());
+   sphereEditCycleSpinBox->setMinimum(1);
+   sphereEditCycleSpinBox->setMaximum(DeformationMapFile::MAX_SPHERICAL_CYCLES);
+   QObject::connect(sphereEditCycleSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotSphereEditCycleSpinBox(int)));
+
+   //
+   // Fiducial/sphere ratios
+   //
+   sphereDistortionCorrectionCheckBox = new QCheckBox("Correct For Spherical Distortion\n"
+                                                      "Relative to Fiducial");
+   QObject::connect(sphereDistortionCorrectionCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(slotCorrectSphericalDistortionChanged()));
+   sphereDistortionDoubleSpinBox = new QDoubleSpinBox;
+   QObject::connect(sphereDistortionDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotCorrectSphericalDistortionChanged()));
+   sphereDistortionDoubleSpinBox->setMinimum(0.0);
+   sphereDistortionDoubleSpinBox->setMaximum(1.0);
+   sphereDistortionDoubleSpinBox->setSingleStep(0.5);
+   sphereDistortionDoubleSpinBox->setDecimals(3);
+
+   //
+   // Group for spherical parameters
+   //
+   QGroupBox* sphericalParamsGroupBox = new QGroupBox("Spherical Parameters");
+   QGridLayout* sphericalParamsGroupLayout = new QGridLayout(sphericalParamsGroupBox);
+   sphericalParamsGroupLayout->addWidget(sphereNumberOfStagesLabel, 0, 0);
+   sphericalParamsGroupLayout->addWidget(sphereNumberOfStagesSpinBox, 0, 1);
+   sphericalParamsGroupLayout->addWidget(sphereEditStagesLabel, 1, 0);
+   sphericalParamsGroupLayout->addWidget(sphereEditStageSpinBox, 1, 1);
+   sphericalParamsGroupLayout->addWidget(sphereResolutionLabel, 2, 0);
+   sphericalParamsGroupLayout->addWidget(sphereResolutionComboBox, 2, 1);
+   sphericalParamsGroupLayout->addWidget(numberOfCyclesLabel, 3, 0);
+   sphericalParamsGroupLayout->addWidget(sphereNumberOfCyclesSpinBox, 3, 1);
+   sphericalParamsGroupLayout->addWidget(editCycleLabel, 4, 0);
+   sphericalParamsGroupLayout->addWidget(sphereEditCycleSpinBox, 4, 1);
+   sphericalParamsGroupLayout->addWidget(sphereDistortionCorrectionCheckBox, 5, 0);
+   sphericalParamsGroupLayout->addWidget(sphereDistortionDoubleSpinBox, 5, 1);
+   sphericalParamsGroupBox->setMaximumHeight(sphericalParamsGroupBox->sizeHint().height());
+
+   return sphericalParamsGroupBox;
+}
+
+/**
+ * update correct spherical distortion correction.
+ */
+void
+GuiSurfaceDeformationDialog::updateCorrectSphericalDistortion()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Spherical Distortion Correction"
+                << std::endl;
+   }
+   bool enabled = false;
+   float ratio = 1.0;
+   dmf.getSphereFiducialRatio(enabled, ratio);
+
+   sphereDistortionCorrectionCheckBox->blockSignals(true);
+   sphereDistortionCorrectionCheckBox->setChecked(enabled);
+   sphereDistortionCorrectionCheckBox->blockSignals(false);
+
+   sphereDistortionDoubleSpinBox->blockSignals(true);
+   sphereDistortionDoubleSpinBox->setValue(ratio);
+   sphereDistortionDoubleSpinBox->blockSignals(false);
+}
+
+/**
+ * called when a correct for spherical distortion changed.
+ */
+void
+GuiSurfaceDeformationDialog::slotCorrectSphericalDistortionChanged()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Spherical Distortion"
+                << std::endl;
+   }
+    dmf.setSphereFiducialRatio(sphereDistortionCorrectionCheckBox->isChecked(),
+                               sphereDistortionDoubleSpinBox->value());
+}
+
+/**
+ * Create the spherical parameters section.
+ */
+QWidget*
+GuiSurfaceDeformationDialog::createSphericalParameters()
+{
+
+
+   landmarkVectorOptionsWidget = createLandmarkVectorOptionsSection();
+   QWidget* sphericalAlgorithmWidget = createSphericalAlgorithmSection();
 
    QVBoxLayout* leftColumnLayout = new QVBoxLayout;
-   leftColumnLayout->addWidget(sphericalParamsGroupBox);
-   leftColumnLayout->addWidget(smoothingParamsGroupBox);
-   
+   leftColumnLayout->addWidget(sphericalAlgorithmWidget);
+   leftColumnLayout->addWidget(createSphericalParametersSection());
+   leftColumnLayout->addWidget(createSmoothingParametersSection());
+   //leftColumnLayout->addStretch();
+
+   QVBoxLayout* rightColumnLayout = new QVBoxLayout;
+   rightColumnLayout->addWidget(landmarkVectorOptionsWidget);
+   rightColumnLayout->addWidget(createMorphingParametersSection());
+   //rightColumnLayout->addStretch();
+
    QWidget* sphereParamsPageWidget = new QWidget;
    QHBoxLayout* sphereParamsPageLayout = new QHBoxLayout(sphereParamsPageWidget);
    sphereParamsPageLayout->addLayout(leftColumnLayout);
-   sphereParamsPageLayout->addWidget(morphGroupBox);
+   sphereParamsPageLayout->addLayout(rightColumnLayout);
    
+   slotSphericalAlgorithmSelection();
+
    return sphereParamsPageWidget;
 }
 
@@ -1088,20 +1710,26 @@ GuiSurfaceDeformationDialog::createFlatParameters()
    flatSubSamplingTilesSpinBox->setMaximum(50000);
    flatSubSamplingTilesSpinBox->setSingleStep(10);
    flatSubSamplingTilesSpinBox->setFixedWidth(150);
+   QObject::connect(flatSubSamplingTilesSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotFlatParameterChanged()));
     
    //
    // label and line edit
    //
    QLabel* flatBetaLabel = new QLabel("Beta");
-   flatBetaLineEdit = new QLineEdit;
-   flatBetaLineEdit->setFixedWidth(150);
+   flatBetaDoubleSpinBox = new QDoubleSpinBox;
+   flatBetaDoubleSpinBox->setFixedWidth(150);
+   QObject::connect(flatBetaDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotFlatParameterChanged()));
     
    //
    // label and line edit
    //
    QLabel* flatVarMultLabel = new QLabel("Variance Multiplier");
-   flatVarMultDoubleSpinBox = new QLineEdit;
+   flatVarMultDoubleSpinBox = new QDoubleSpinBox;
    flatVarMultDoubleSpinBox->setFixedWidth(150);
+   QObject::connect(flatVarMultDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(slotFlatParameterChanged()));
     
    //
    // label and line edit
@@ -1112,25 +1740,28 @@ GuiSurfaceDeformationDialog::createFlatParameters()
    flatIterationsSpinBox->setMaximum(50000);
    flatIterationsSpinBox->setSingleStep(5);
    flatIterationsSpinBox->setFixedWidth(150);
+   QObject::connect(flatIterationsSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(slotFlatParameterChanged()));
    
    QGroupBox* flatParamsGroupBox = new QGroupBox("Parameters");
    QGridLayout* flatParamsLayout = new QGridLayout(flatParamsGroupBox);
    flatParamsLayout->addWidget(flatSubSamplingLabel, 0, 0);
    flatParamsLayout->addWidget(flatSubSamplingTilesSpinBox, 0, 1);
    flatParamsLayout->addWidget(flatBetaLabel, 1, 0);
-   flatParamsLayout->addWidget(flatBetaLineEdit, 1, 1);
+   flatParamsLayout->addWidget(flatBetaDoubleSpinBox, 1, 1);
    flatParamsLayout->addWidget(flatVarMultLabel, 2, 0);
    flatParamsLayout->addWidget(flatVarMultDoubleSpinBox, 2, 1);
    flatParamsLayout->addWidget(flatIterationsLabel, 3, 0);
    flatParamsLayout->addWidget(flatIterationsSpinBox, 3, 1);
-   
+   flatParamsGroupBox->setMaximumSize(flatParamsGroupBox->sizeHint());
+
    return flatParamsGroupBox;
 }
 
 /**
  * Create a file entry line (pushbutton and line edit).
  */
-QLineEdit*
+FileEntryLine*
 GuiSurfaceDeformationDialog::createFileEntryLine(const QString& buttonLabel,
                                                  const FILE_TYPES fileType,
                                                  QGridLayout* parentGridLayout,
@@ -1162,7 +1793,8 @@ GuiSurfaceDeformationDialog::createFileEntryLine(const QString& buttonLabel,
       parentGridLayout->addWidget(le, rowNum, 1, 1, 2);
    }
 
-   return le;
+   FileEntryLine* fel = new FileEntryLine(pb, le, extraButton);
+   return fel;
 }
 
 /**
@@ -1175,12 +1807,6 @@ GuiSurfaceDeformationDialog::atlasFileSelection(int itemNum)
    switch(ft) {
       case FILE_TYPE_SPEC:
          readSpecFile(SELECTION_TYPE_ATLAS);
-         break;
-      case FILE_TYPE_BORDER:
-         displayFileSelection("Select Border File",
-                              atlasDeformationFiles.borderFileNames,
-                              atlasDeformationFiles.borderFileTypes,
-                              atlasDeformationFiles.borderFileSelected);
          break;
       case FILE_TYPE_TOPO_CLOSED:
          displayFileSelection("Select Closed Topo File",
@@ -1211,6 +1837,126 @@ GuiSurfaceDeformationDialog::atlasFileSelection(int itemNum)
                               atlasDeformationFiles.sphericalCoordFileNames,
                               atlasDeformationFiles.sphericalCoordFileTypes,
                               atlasDeformationFiles.sphericalCoordFileSelected);
+         break;
+      case FILE_TYPE_BORDER_1:
+         displayFileSelection("Select Border File Stage 1",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[0]);
+         break;
+      case FILE_TYPE_BORDER_2:
+         displayFileSelection("Select Border File Stage 2",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[1]);
+         break;
+      case FILE_TYPE_BORDER_3:
+         displayFileSelection("Select Border File Stage 3",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[2]);
+         break;
+      case FILE_TYPE_BORDER_4:
+         displayFileSelection("Select Border File Stage 4",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[3]);
+         break;
+      case FILE_TYPE_BORDER_5:
+         displayFileSelection("Select Border File Stage 5",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[4]);
+         break;
+      case FILE_TYPE_BORDER_6:
+         displayFileSelection("Select Border File Stage 6",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[5]);
+         break;
+      case FILE_TYPE_BORDER_7:
+         displayFileSelection("Select Border File Stage 7",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[6]);
+         break;
+      case FILE_TYPE_BORDER_8:
+         displayFileSelection("Select Border File Stage 8",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[7]);
+         break;
+      case FILE_TYPE_BORDER_9:
+         displayFileSelection("Select Border File Stage 9",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[8]);
+         break;
+      case FILE_TYPE_BORDER_10:
+         displayFileSelection("Select Border File Stage 10",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[9]);
+         break;
+      case FILE_TYPE_BORDER_11:
+         displayFileSelection("Select Border File Stage 11",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[10]);
+         break;
+      case FILE_TYPE_BORDER_12:
+         displayFileSelection("Select Border File Stage 12",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[11]);
+         break;
+      case FILE_TYPE_BORDER_13:
+         displayFileSelection("Select Border File Stage 13",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[12]);
+         break;
+      case FILE_TYPE_BORDER_14:
+         displayFileSelection("Select Border File Stage 14",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[13]);
+         break;
+      case FILE_TYPE_BORDER_15:
+         displayFileSelection("Select Border File Stage 15",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[14]);
+         break;
+      case FILE_TYPE_BORDER_16:
+         displayFileSelection("Select Border File Stage 16",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[15]);
+         break;
+      case FILE_TYPE_BORDER_17:
+         displayFileSelection("Select Border File Stage 17",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[16]);
+         break;
+      case FILE_TYPE_BORDER_18:
+         displayFileSelection("Select Border File Stage 18",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[17]);
+         break;
+      case FILE_TYPE_BORDER_19:
+         displayFileSelection("Select Border File Stage 19",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[18]);
+         break;
+      case FILE_TYPE_BORDER_20:
+         displayFileSelection("Select Border File Stage 20",
+                              atlasDeformationFiles.borderFileNames,
+                              atlasDeformationFiles.borderFileTypes,
+                              atlasDeformationFiles.borderFileSelected[19]);
          break;
    }
    displayAtlasFiles();
@@ -1285,11 +2031,30 @@ GuiSurfaceDeformationDialog::indivFileSelection(int itemNum)
       case FILE_TYPE_SPEC:
          readSpecFile(SELECTION_TYPE_INDIV);
          break;
-      case FILE_TYPE_BORDER:
+      case FILE_TYPE_BORDER_1:
+      case FILE_TYPE_BORDER_2:
+      case FILE_TYPE_BORDER_3:
+      case FILE_TYPE_BORDER_4:
+      case FILE_TYPE_BORDER_5:
+      case FILE_TYPE_BORDER_6:
+      case FILE_TYPE_BORDER_7:
+      case FILE_TYPE_BORDER_8:
+      case FILE_TYPE_BORDER_9:
+      case FILE_TYPE_BORDER_10:
+      case FILE_TYPE_BORDER_11:
+      case FILE_TYPE_BORDER_12:
+      case FILE_TYPE_BORDER_13:
+      case FILE_TYPE_BORDER_14:
+      case FILE_TYPE_BORDER_15:
+      case FILE_TYPE_BORDER_16:
+      case FILE_TYPE_BORDER_17:
+      case FILE_TYPE_BORDER_18:
+      case FILE_TYPE_BORDER_19:
+      case FILE_TYPE_BORDER_20:
          displayFileSelection("Select Border File",
                               indivDeformationFiles.borderFileNames,
                               indivDeformationFiles.borderFileTypes,
-                              indivDeformationFiles.borderFileSelected);
+                              indivDeformationFiles.borderFileSelected[0]);
          break;
       case FILE_TYPE_TOPO_CLOSED:
          displayFileSelection("Select Closed Topo File",
@@ -1357,11 +2122,13 @@ GuiSurfaceDeformationDialog::readSpecFile(const SELECTION_TYPE st)
       }
       
       bool flatDeformFlag = false;
-      switch(deformationType) {
+      switch(dmf.getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
             flatDeformFlag = true;
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             flatDeformFlag = false;
             break;
       }
@@ -1394,14 +2161,12 @@ GuiSurfaceDeformationDialog::loadDeformationMapFile(std::vector<QString>& errorM
 {
    errorMessages.clear();
    
-   readParametersFromDialog();
-
    //
    // Set the source border file type
    //
    DeformationMapFile::BORDER_FILE_TYPE bft = DeformationMapFile::BORDER_FILE_UNKNOWN;
    if (indivDeformationFiles.borderFileSelected >= 0) {
-      switch(indivDeformationFiles.borderFileTypes[indivDeformationFiles.borderFileSelected]) {
+      switch(indivDeformationFiles.borderFileTypes[indivDeformationFiles.borderFileSelected[0]]) {
          case DeformationDataFiles::DATA_FILE_BORDER_FLAT:
             bft = DeformationMapFile::BORDER_FILE_FLAT;
             break;
@@ -1455,13 +2220,15 @@ GuiSurfaceDeformationDialog::loadDeformationMapFile(std::vector<QString>& errorM
    if (dmf.getSourceFiducialCoordFileName().isEmpty()) {
       errorMessages.push_back("Required individual fiducial coord file is missing.");
    }      
-   switch(deformationType) {
+   switch(dmf.getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          if (dmf.getSourceFlatCoordFileName().isEmpty()) {
             errorMessages.push_back("Required individual flat coord file is missing.");
          }
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          if (dmf.getSourceSphericalCoordFileName().isEmpty()) {
             errorMessages.push_back("Required individual source spherical coord file is missing.");
          }
@@ -1472,8 +2239,8 @@ GuiSurfaceDeformationDialog::loadDeformationMapFile(std::vector<QString>& errorM
    // Set the target border file type
    // 
    bft = DeformationMapFile::BORDER_FILE_UNKNOWN;
-   if (atlasDeformationFiles.borderFileSelected >= 0) {
-      switch(atlasDeformationFiles.borderFileTypes[atlasDeformationFiles.borderFileSelected]) {
+   if (atlasDeformationFiles.borderFileSelected[0] >= 0) {
+      switch(atlasDeformationFiles.borderFileTypes[atlasDeformationFiles.borderFileSelected[0]]) {
          case DeformationDataFiles::DATA_FILE_BORDER_FLAT:
             bft = DeformationMapFile::BORDER_FILE_FLAT;
             break;
@@ -1501,8 +2268,18 @@ GuiSurfaceDeformationDialog::loadDeformationMapFile(std::vector<QString>& errorM
    // Set the target file names
    //
    dmf.setTargetSpecFileName(atlasSpecLineEdit->text());
-   const QString targetBorderName(atlasBorderLineEdit->text());
-   dmf.setTargetBorderFileName(targetBorderName, bft);
+   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+      const QString targetBorderName(atlasBorderLineEdit[i]->text());
+      dmf.setTargetBorderFileName(i, targetBorderName, bft);
+      if (i < dmf.getSphericalNumberOfStages()) {
+         if (targetBorderName.isEmpty()) {
+            errorMessages.push_back(
+               "Required atlas border file "
+               + QString::number(i + 1)
+               + " is missing.");
+         }
+      }
+   }
    dmf.setTargetClosedTopoFileName(atlasClosedTopoLineEdit->text());
    dmf.setTargetCutTopoFileName(atlasCutTopoLineEdit->text());
    dmf.setTargetFiducialCoordFileName(atlasFiducialCoordLineEdit->text());
@@ -1515,9 +2292,6 @@ GuiSurfaceDeformationDialog::loadDeformationMapFile(std::vector<QString>& errorM
    if (dmf.getTargetSpecFileName().isEmpty()) {
       errorMessages.push_back("Required atlas spec file is missing.");
    }
-   if (targetBorderName.isEmpty()) {
-      errorMessages.push_back("Required atlas border file is missing.");
-   }
    if (dmf.getTargetClosedTopoFileName().isEmpty()) {
       errorMessages.push_back("Required atlas closed topo file is missing.");
    }
@@ -1527,124 +2301,216 @@ GuiSurfaceDeformationDialog::loadDeformationMapFile(std::vector<QString>& errorM
    if (dmf.getTargetFiducialCoordFileName().isEmpty()) {
       errorMessages.push_back("Required atlas fiducial coord file is missing.");
    }      
-   switch(deformationType) {
+   switch(dmf.getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
          if (dmf.getTargetFlatCoordFileName().isEmpty()) {
             errorMessages.push_back("Required atlas flat coord file is missing.");
          }
          break;
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          if (dmf.getTargetSphericalCoordFileName().isEmpty()) {
             errorMessages.push_back("Required individual atlas spherical coord file is missing.");
          }
          break;
    }
-   
-   //
-   // Set flat or sphere
-   //
-   dmf.setFlatOrSphereSelection(deformationType);
-   
-   dmf.setSmoothDeformedSurfacesFlag(smoothCoordsOneIterationCheckBox->isChecked());
 }
 
 /**
- * Called when user press OK or Cancel buttons
+ * called when apply button pressed.
  */
-void 
-GuiSurfaceDeformationDialog::done(int r)
+void
+GuiSurfaceDeformationDialog::slotApplyButton()
 {
-   if (r == QDialog::Accepted) {
-      
-      std::vector<QString> errorMessages;
-      
-      //
-      // Copy parameters to the deformation map file.
-      //
-      loadDeformationMapFile(errorMessages);
-      
-      //
-      // Are any required files missing ?
-      //
-      if (errorMessages.size() > 0) {
-         const QString msg = StringUtilities::combine(errorMessages, "\n");
-         QMessageBox::critical(this, "Files Missing", msg);
-         return;
-      }
-      
-      QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-      
-      DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
-      
-      BrainModelSurfaceDeformation* bma = NULL;
-      try {
-         switch(deformationType) {
-            case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-               bma = new BrainModelSurfaceDeformationFlat(theMainWindow->getBrainSet(), &dmf);
-               break;
-            case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+  std::vector<QString> errorMessages;
+
+  //
+  // Copy parameters to the deformation map file.
+  //
+  loadDeformationMapFile(errorMessages);
+
+  //
+  // Are any required files missing ?
+  //
+  if (errorMessages.size() > 0) {
+     const QString msg = StringUtilities::combine(errorMessages, "\n");
+     QMessageBox::critical(this, "Files Missing", msg);
+     return;
+  }
+  switch(dmf.getFlatOrSphereSelection()) {
+     case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+        break;
+     case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+     case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+     case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+        if ((this->sphericalLandmarkConstrainedRadioButton->isChecked() == false) &&
+            (this->sphericalLandmarkVectorRadioButton->isChecked() == false) &&
+            (this->sphericalLandmarkVectorSingleStageRadioButton->isChecked() == false)) {
+           QApplication::processEvents();
+           QMessageBox::critical(this, "Algorithm Selection",
+                 "You must choose the spherical algorithm (landmark "
+                 "constrained or landmark vector difference) on the "
+                 "Spherical Parameters page.");
+           return;
+        }
+        break;
+  }
+
+  QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+
+  DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
+  QString completeMessage("The deformation has completed.");
+
+  try {
+     switch(dmf.getFlatOrSphereSelection()) {
+        case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+           {
+              BrainModelSurfaceDeformationFlat
+                 bmsdf(theMainWindow->getBrainSet(), &dmf);
+              bmsdf.setDeformationMapFileNames(
+                   this->indivToAtlasDeformMapFileNameLineEdit->text(),
+                   this->atlasToIndivDeformMapFileNameLineEdit->text());
+              bmsdf.execute();
+
+              //
+              // Check for deformation errors
+              //
+              const QString s2tMsg(bmsdf.getSourceToTargetDeformDataFileErrors());
+              if (s2tMsg.isEmpty() == false) {
+                 completeMessage.append("\nErrors were detected deforming the following data files from\n "
+                            "the individual to the atlas:\n");
+                 completeMessage.append(s2tMsg);
+              }
+              const QString t2sMsg(bmsdf.getTargetToSourceDeformDataFileErrors());
+              if (t2sMsg.isEmpty() == false) {
+                 completeMessage.append("\nErrors were detected deforming the following data files from\n "
+                            "the atlas to the individual:\n");
+                 completeMessage.append(t2sMsg);
+              }
+           }
+           break;
+        case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+           {
                dss->setDrawMode(DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL);
-               BrainModelSurfaceDeformationSpherical* bmsds = 
-                              new BrainModelSurfaceDeformationSpherical(theMainWindow->getBrainSet(), &dmf);
+               BrainModelSurfaceDeformationSpherical
+                   bmsds(theMainWindow->getBrainSet(), &dmf);
+               bmsds.setDeformationMapFileNames(
+                       this->indivToAtlasDeformMapFileNameLineEdit->text(),
+                       this->atlasToIndivDeformMapFileNameLineEdit->text());
                //
                // Enable coord file deformation for sphere
                //
-               bmsds->setDeformSourceFiducialCoordFiles(deformIndivFiducialCoordCheckBox->isChecked());
-               bmsds->setDeformSourceInflatedCoordFiles(deformIndivInflatedCoordCheckBox->isChecked());
-               bmsds->setDeformSourceVeryInflatedCoordFiles(deformIndivVeryInflatedCoordCheckBox->isChecked());
-               bmsds->setDeformSourceSphericalCoordFiles(deformIndivSphericalCoordCheckBox->isChecked());
-               bmsds->setDeformSourceFlatCoordFiles(deformIndivFlatCoordCheckBox->isChecked());
-               bma = bmsds;
-               break;
-         }
-         
-         //
-         // Close the Dialog
-         //
-         QDialog::done(r);
-         
-         if (bma != NULL) {
-            bma->execute();
-         }
-      }
-      catch (BrainModelAlgorithmException& e) {
-         QApplication::restoreOverrideCursor();
-         QMessageBox::critical(this, "Deformation Error", e.whatQString());
-         return;
-      }
+               bmsds.setDeformSourceFiducialCoordFiles(deformIndivFiducialCoordCheckBox->isChecked());
+               bmsds.setDeformSourceInflatedCoordFiles(deformIndivInflatedCoordCheckBox->isChecked());
+               bmsds.setDeformSourceVeryInflatedCoordFiles(deformIndivVeryInflatedCoordCheckBox->isChecked());
+               bmsds.setDeformSourceSphericalCoordFiles(deformIndivSphericalCoordCheckBox->isChecked());
+               bmsds.setDeformSourceFlatCoordFiles(deformIndivFlatCoordCheckBox->isChecked());
 
-      //
-      // Check for deformation errors
-      //
-      QString msg("The deformation has completed.");
-      const QString s2tMsg(bma->getSourceToTargetDeformDataFileErrors());
-      if (s2tMsg.isEmpty() == false) {
-         msg.append("\nErrors were detected deforming the following data files from\n "
-                    "the individual to the atlas:\n");
-         msg.append(s2tMsg);
-      }
-      const QString t2sMsg(bma->getTargetToSourceDeformDataFileErrors());
-      if (t2sMsg.isEmpty() == false) {
-         msg.append("\nErrors were detected deforming the following data files from\n "
-                    "the atlas to the individual:\n");
-         msg.append(t2sMsg);
-      }
-      //
-      // Let the user know that the deformation has completed
-      //   
-      QApplication::restoreOverrideCursor();   
-      QMessageBox::information(this, "Deformation Completed", msg);
-                                 
-      //
-      // Free memory
-      //
-      if (bma != NULL) {
-         delete bma;
-      }
-   }  // QDialog::Accepted
-   else {
-      QDialog::done(r);
-   }
+               //
+               // Main Window Surface is used for Viewing Transformations
+               //
+               bmsds.setsurfaceWithViewingTransformations(theMainWindow->getBrainModelSurface());
+               bmsds.execute();
+
+              //
+              // Check for deformation errors
+              //
+              const QString s2tMsg(bmsds.getSourceToTargetDeformDataFileErrors());
+              if (s2tMsg.isEmpty() == false) {
+                 completeMessage.append("\nErrors were detected deforming the following data files from\n "
+                            "the individual to the atlas:\n");
+                 completeMessage.append(s2tMsg);
+              }
+              const QString t2sMsg(bmsds.getTargetToSourceDeformDataFileErrors());
+              if (t2sMsg.isEmpty() == false) {
+                 completeMessage.append("\nErrors were detected deforming the following data files from\n "
+                            "the atlas to the individual:\n");
+                 completeMessage.append(t2sMsg);
+              }
+           }
+           break;
+        case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+           {
+               dss->setDrawMode(DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL);
+               BrainModelSurfaceDeformationMultiStageSphericalVector
+                  bmsdsv(theMainWindow->getBrainSet(), &dmf);
+               bmsdsv.setDeformationMapFileNames(
+                       this->indivToAtlasDeformMapFileNameLineEdit->text(),
+                       this->atlasToIndivDeformMapFileNameLineEdit->text());
+               //
+               // Enable coord file deformation for sphere
+               //
+               bmsdsv.setDeformSourceFiducialCoordFiles(deformIndivFiducialCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceInflatedCoordFiles(deformIndivInflatedCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceVeryInflatedCoordFiles(deformIndivVeryInflatedCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceSphericalCoordFiles(deformIndivSphericalCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceFlatCoordFiles(deformIndivFlatCoordCheckBox->isChecked());
+
+               //
+               // Main Window Surface is used for Viewing Transformations
+               //
+               bmsdsv.setsurfaceWithViewingTransformations(theMainWindow->getBrainModelSurface());
+               bmsdsv.execute();
+
+              //
+              // Check for deformation errors
+              //
+              const QString s2tMsg(bmsdsv.getSourceToTargetDeformDataFileErrors());
+              if (s2tMsg.isEmpty() == false) {
+                 completeMessage.append("\nErrors were detected deforming the following data files from\n "
+                            "the individual to the atlas:\n");
+                 completeMessage.append(s2tMsg);
+              }
+           }
+           break;
+        case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+           {
+               dss->setDrawMode(DisplaySettingsSurface::DRAW_MODE_LINK_HIDDEN_LINE_REMOVAL);
+               BrainModelSurfaceDeformationSphericalVector
+                  bmsdsv(theMainWindow->getBrainSet(), &dmf);
+               bmsdsv.setDeformationMapFileNames(
+                       this->indivToAtlasDeformMapFileNameLineEdit->text(),
+                       this->atlasToIndivDeformMapFileNameLineEdit->text());
+               //
+               // Enable coord file deformation for sphere
+               //
+               bmsdsv.setDeformSourceFiducialCoordFiles(deformIndivFiducialCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceInflatedCoordFiles(deformIndivInflatedCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceVeryInflatedCoordFiles(deformIndivVeryInflatedCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceSphericalCoordFiles(deformIndivSphericalCoordCheckBox->isChecked());
+               bmsdsv.setDeformSourceFlatCoordFiles(deformIndivFlatCoordCheckBox->isChecked());
+
+               //
+               // Main Window Surface is used for Viewing Transformations
+               //
+               bmsdsv.setsurfaceWithViewingTransformations(theMainWindow->getBrainModelSurface());
+               bmsdsv.execute();
+
+              //
+              // Check for deformation errors
+              //
+              const QString s2tMsg(bmsdsv.getSourceToTargetDeformDataFileErrors());
+              if (s2tMsg.isEmpty() == false) {
+                 completeMessage.append("\nErrors were detected deforming the following data files from\n "
+                            "the individual to the atlas:\n");
+                 completeMessage.append(s2tMsg);
+              }
+           }
+           break;
+     }
+  }
+  catch (BrainModelAlgorithmException& e) {
+     QApplication::restoreOverrideCursor();
+     QMessageBox::critical(this, "Deformation Error", e.whatQString());
+     return;
+  }
+
+  //
+  // Let the user know that the deformation has completed
+  //
+  QApplication::restoreOverrideCursor();
+  QMessageBox::information(this, "Deformation Completed", completeMessage);
 }
 
 /**
@@ -1656,11 +2522,15 @@ GuiSurfaceDeformationDialog::displayAtlasFiles()
    atlasSpecLineEdit->setText(atlasSpecFileName);
    
    if (atlasDeformationFiles.borderFileNames.size() > 0) {
-      atlasBorderLineEdit->setText(
-         atlasDeformationFiles.borderFileNames[atlasDeformationFiles.borderFileSelected]);
+      for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+         atlasBorderLineEdit[i]->setText(
+            atlasDeformationFiles.borderFileNames[atlasDeformationFiles.borderFileSelected[i]]);
+      }
    }
    else {
-      atlasBorderLineEdit->setText("");
+      for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+         atlasBorderLineEdit[i]->setText("");
+      }
    }
    
    if (atlasDeformationFiles.closedTopoFileNames.size() > 0) {
@@ -1715,7 +2585,7 @@ GuiSurfaceDeformationDialog::displayIndivFiles()
    
    if (indivDeformationFiles.borderFileNames.size() > 0) {
       indivBorderLineEdit->setText(
-         indivDeformationFiles.borderFileNames[indivDeformationFiles.borderFileSelected]);
+         indivDeformationFiles.borderFileNames[indivDeformationFiles.borderFileSelected[0]]);
    }
    else {
       indivBorderLineEdit->setText("");
@@ -1770,8 +2640,10 @@ void
 GuiSurfaceDeformationDialog::slotStandardParametersPushButton()  
 {
    QString subDirName;
-   switch (deformationType) {
+   switch (dmf.getFlatOrSphereSelection()) {
       case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
          subDirName = "/data_files/spherical_registration";
          break;
       case DeformationMapFile::DEFORMATION_TYPE_FLAT:
@@ -1841,6 +2713,40 @@ GuiSurfaceDeformationDialog::slotStandardParametersPushButton()
 }
 
 /**
+ * called when save deformation map file push button is pressed.
+ */
+void
+GuiSurfaceDeformationDialog::saveDeformationMapFilePushButton()
+{
+   //
+   // Create a spec file dialog to select the spec file.
+   //
+   WuQFileDialog saveDefMap(this);
+   saveDefMap.setModal(true);
+   saveDefMap.setWindowTitle("Choose Deformation Map File");
+   saveDefMap.setFileMode(WuQFileDialog::AnyFile);
+   saveDefMap.setAcceptMode(WuQFileDialog::AcceptSave);
+   saveDefMap.setHistory(theMainWindow->getBrainSet()->getPreferencesFile()->getRecentDataFileDirectories());
+   saveDefMap.setDirectory(QDir::currentPath());
+  QString filterString("DeformationMapFile (*");
+   filterString.append(SpecFile::getDeformationMapFileExtension());
+   filterString.append(")");
+   saveDefMap.setFilters(QStringList(filterString));
+   if (saveDefMap.exec() == QDialog::Accepted) {
+      try {
+         if (saveDefMap.selectedFiles().count() > 0) {
+            dmf.writeFile(saveDefMap.selectedFiles().at(0));
+         }
+      }
+      catch (FileException& e) {
+         QMessageBox::critical(this, "Save Error", e.whatQString());
+         return;
+      }
+   }
+}
+
+
+/**
  * Called to load a deformation map file.
  */
 void
@@ -1853,8 +2759,9 @@ GuiSurfaceDeformationDialog::loadDeformationMapFilePushButton()
    openDefMap.setModal(true);
    openDefMap.setWindowTitle("Choose Deformation Map File");
    openDefMap.setFileMode(WuQFileDialog::ExistingFile);
-   openDefMap.setDirectory(QDir::currentPath());
    openDefMap.setAcceptMode(WuQFileDialog::AcceptOpen);
+   openDefMap.setHistory(theMainWindow->getBrainSet()->getPreferencesFile()->getRecentDataFileDirectories());
+   openDefMap.setDirectory(QDir::currentPath());
    QString filterString("DeformationMapFile (*");
    filterString.append(SpecFile::getDeformationMapFileExtension());
    filterString.append(")");
@@ -1875,97 +2782,66 @@ GuiSurfaceDeformationDialog::loadDeformationMapFilePushButton()
 }
 
 /**
- * Read the parameters from the dialog into the deformation map file.
+ * called to read the flat parameters from the dialog.
  */
 void
-GuiSurfaceDeformationDialog::readParametersFromDialog()
+GuiSurfaceDeformationDialog::slotFlatParameterChanged()
 {
-   switch(deformationType) {
-      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-         {
-            dmf.setFlatParameters(flatSubSamplingTilesSpinBox->value(),
-                                  flatBetaLineEdit->text().toFloat(),
-                                  flatVarMultDoubleSpinBox->text().toFloat(),
-                                  flatIterationsSpinBox->value());
-         }
-         break;
-      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-         {
-            //
-            // Get the sphere resolution
-            //
-            switch(sphereResolutionComboBox->currentIndex()) {
-               case 0:
-                  dmf.setSphereResolution(20);
-                  break;
-               case 1:
-                  dmf.setSphereResolution(74);
-                  break;
-               case 2:
-                  dmf.setSphereResolution(290);
-                  break;
-               case 3:
-                  dmf.setSphereResolution(1154);
-                  break;
-               case 4:
-                  dmf.setSphereResolution(4610);
-                  break;
-               case 5:
-                  dmf.setSphereResolution(18434);
-                  break;
-               case 6:
-                  dmf.setSphereResolution(73730);
-                  break;
-               default:
-                  dmf.setSphereResolution(4610);
-                  break;
-            }
-            
-            //
-            // Set the number of cycles
-            //
-            dmf.setSphericalNumberOfCycles(sphereNumberOfCyclesComboBox->currentIndex() + 1);
-            
-            //
-            // Get the current cycle being edited
-            //
-            const int editCycleNumber = sphereEditCycleComboBox->currentIndex();
-            
-            //
-            // Get the smoothing parameters
-            //
-            dmf.setSmoothingParameters(editCycleNumber,
-                                       smoothingStrengthDoubleSpinBox->value(),
-                                       smoothingCyclesSpinBox->value(),
-                                       smoothingIterationsSpinBox->value(),
-                                       smoothingNeighborsSpinBox->value(),
-                                       smoothingFinalSpinBox->value());
-                                       
-            //
-            // Get the morphing parameters
-            //
-            dmf.setMorphingParameters(editCycleNumber,
-                                      morphingCyclesSpinBox->value(),
-                                      morphingLinearForceDoubleSpinBox->value(),
-                                      morphingAngularForceDoubleSpinBox->value(),
-                                      morphingStepSizeDoubleSpinBox->value(),
-                                      morphingLandmarkStepSizeDoubleSpinBox->value(),
-                                      morphingIterationsSpinBox->value(),
-                                      morphingSmoothIterationsSpinBox->value());
-                                      
-            //
-            // Get the fiducial sphere ratios
-            //
-            dmf.setSphereFiducialRatio(sphereDistortionCorrectionCheckBox->isChecked(),
-                                       sphereDistortionDoubleSpinBox->value());
-         }
-         break;
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Flat Parameter"
+                << std::endl;
    }
-   
+    dmf.setFlatParameters(flatSubSamplingTilesSpinBox->value(),
+                          flatBetaDoubleSpinBox->value(),
+                          flatVarMultDoubleSpinBox->value(),
+                          flatIterationsSpinBox->value());
+}
+
+/**
+ * update the flat parameters
+ */
+void
+GuiSurfaceDeformationDialog::updateFlatParameters()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Flat Parameters"
+                << std::endl;
+   }
+
+    int subSamplingTiles, numIters;
+    float beta, varMult;
+    dmf.getFlatParameters(subSamplingTiles, beta, varMult, numIters);
+    flatSubSamplingTilesSpinBox->blockSignals(true);
+    flatSubSamplingTilesSpinBox->setValue(subSamplingTiles);
+    flatSubSamplingTilesSpinBox->blockSignals(false);
+    flatBetaDoubleSpinBox->blockSignals(true);
+    flatBetaDoubleSpinBox->setValue(beta);
+    flatBetaDoubleSpinBox->blockSignals(false);
+    flatVarMultDoubleSpinBox->blockSignals(true);
+    flatVarMultDoubleSpinBox->setValue(varMult);
+    flatVarMultDoubleSpinBox->blockSignals(false);
+    flatIterationsSpinBox->blockSignals(true);
+    flatIterationsSpinBox->setValue(numIters);
+    flatIterationsSpinBox->blockSignals(false);
+}
+
+/**
+ * called to read the deformation parameters from the dialog.
+ */
+void
+GuiSurfaceDeformationDialog::slotDeformationParameterChanged()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Deformation Parameter"
+                << std::endl;
+   }
    //
    // set border resampling
    //
-   DeformationMapFile::BORDER_RESAMPLING_TYPE borderResample 
+   DeformationMapFile::BORDER_RESAMPLING_TYPE borderResample
       = DeformationMapFile::BORDER_RESAMPLING_NONE;
    if (borderResamplingNoneRadioButton->isChecked()) {
       borderResample = DeformationMapFile::BORDER_RESAMPLING_NONE;
@@ -1977,7 +2853,7 @@ GuiSurfaceDeformationDialog::readParametersFromDialog()
       borderResample = DeformationMapFile::BORDER_RESAMPLING_VALUE;
    }
    dmf.setBorderResampling(borderResample, borderResamplingDoubleSpinBox->value());
-   
+
    //
    // set metric deformation
    //
@@ -1987,7 +2863,7 @@ GuiSurfaceDeformationDialog::readParametersFromDialog()
    else if (metricAverageTileNodesRadioButton->isChecked()) {
       dmf.setMetricDeformationType(DeformationMapFile::METRIC_DEFORM_AVERAGE_TILE_NODES);
    }
-   
+
    //
    // set deformation stuff
    //
@@ -1995,123 +2871,30 @@ GuiSurfaceDeformationDialog::readParametersFromDialog()
    dmf.setDeformedColumnNamePrefix(deformedColumnPrefixLineEdit->text());
    dmf.setDeformBothWays(deformBothWaysCheckBox->isChecked());
    dmf.setDeleteIntermediateFiles(deleteIntermediateFilesCheckBox->isChecked());
+
+   dmf.setSmoothDeformedSurfacesFlag(smoothCoordsOneIterationCheckBox->isChecked());
 }
 
 /**
- * Load the parameters from a deformation map file.
+ * update the deformation parameters.
  */
 void
-GuiSurfaceDeformationDialog::loadParametersIntoDialog()
+GuiSurfaceDeformationDialog::updateDeformationParametersPage()
 {
-   switch(deformationType) {
-      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-         {
-            int subSamplingTiles, numIters;
-            float beta, varMult;
-            dmf.getFlatParameters(subSamplingTiles, beta, varMult, numIters);
-            flatSubSamplingTilesSpinBox->setValue(subSamplingTiles);
-            flatBetaLineEdit->setText(QString::number(beta, 'f', 6));
-            flatVarMultDoubleSpinBox->setText(QString::number(varMult, 'f', 6));
-            flatIterationsSpinBox->setValue(numIters);
-         }
-         break;
-      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-         {
-            //
-            // Load the sphere resolution
-            //
-            const int numNodesInSphere = dmf.getSphereResolution();
-            switch(numNodesInSphere) {
-               case 20:
-                  sphereResolutionComboBox->setCurrentIndex(0);
-                  break;
-               case 74:
-                  sphereResolutionComboBox->setCurrentIndex(1);
-                  break;
-               case 290:
-                  sphereResolutionComboBox->setCurrentIndex(2);
-                  break;
-               case 1154:
-                  sphereResolutionComboBox->setCurrentIndex(3);
-                  break;
-               case 4610:
-                  sphereResolutionComboBox->setCurrentIndex(4);
-                  break;
-               case 18434:
-                  sphereResolutionComboBox->setCurrentIndex(5);
-                  break;
-               case 73730:
-                  sphereResolutionComboBox->setCurrentIndex(6);
-                  break;
-               default:
-                  sphereResolutionComboBox->setCurrentIndex(4);
-                  break;
-            }
-            
-            //
-            // Get the spherical number of cycles
-            //
-            sphereNumberOfCyclesComboBox->setCurrentIndex(dmf.getSphericalNumberOfCycles() - 1);
-
-            //
-            // Update edit cycle combo box
-            //
-            if (sphereEditCycleComboBox->currentIndex() > dmf.getSphericalNumberOfCycles()) {
-               sphereEditCycleComboBox->setCurrentIndex(dmf.getSphericalNumberOfCycles());
-            }
-            
-            //
-            // Get current cycle being edited
-            //
-            const int currentCycle = sphereEditCycleComboBox->currentIndex();
-            
-            //
-            // Load smoothing parameters
-            //
-            float strength;
-            int cycles, iterations, neighbors, finals;
-            dmf.getSmoothingParameters(currentCycle,
-                                       strength, cycles, iterations, neighbors, finals);
-            smoothingStrengthDoubleSpinBox->setValue(strength);
-            smoothingCyclesSpinBox->setValue(cycles);
-            smoothingIterationsSpinBox->setValue(iterations);
-            smoothingNeighborsSpinBox->setValue(neighbors);
-            smoothingFinalSpinBox->setValue(finals);
-            
-            //
-            // load morphing parameters
-            //
-            float linearForce, angularForce, stepSize, landmarkStepSize;
-            int smoothIterations;
-            dmf.getMorphingParameters(currentCycle,
-                                      cycles, linearForce, angularForce, stepSize,
-                                      landmarkStepSize, iterations, smoothIterations);
-            morphingCyclesSpinBox->setValue(cycles);
-            morphingLinearForceDoubleSpinBox->setValue(linearForce);
-            morphingAngularForceDoubleSpinBox->setValue(angularForce);
-            morphingStepSizeDoubleSpinBox->setValue(stepSize);
-            morphingLandmarkStepSizeDoubleSpinBox->setValue(landmarkStepSize);
-            morphingIterationsSpinBox->setValue(iterations);
-            morphingSmoothIterationsSpinBox->setValue(smoothIterations);
-            
-            //
-            // fiducial sphere ratios
-            //
-            float ratio;
-            bool ratioValid;
-            dmf.getSphereFiducialRatio(ratioValid, ratio);
-            sphereDistortionCorrectionCheckBox->setChecked(ratioValid);
-            sphereDistortionDoubleSpinBox->setValue(ratio);
-         }
-         break;
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Deformation Parameters"
+                << std::endl;
    }
-   
    //
    // set border resampling
    //
    DeformationMapFile::BORDER_RESAMPLING_TYPE borderResample;
    float resampleValue;
    dmf.getBorderResampling(borderResample, resampleValue);
+   borderResamplingNoneRadioButton->blockSignals(true);
+   borderResamplingFromFileRadioButton->blockSignals(true);
+   borderResamplingToValueRadioButton->blockSignals(false);
    switch(borderResample) {
       case DeformationMapFile::BORDER_RESAMPLING_NONE:
          borderResamplingNoneRadioButton->setChecked(true);
@@ -2123,11 +2906,19 @@ GuiSurfaceDeformationDialog::loadParametersIntoDialog()
          borderResamplingToValueRadioButton->setChecked(true);
          break;
    }
+   borderResamplingNoneRadioButton->blockSignals(false);
+   borderResamplingFromFileRadioButton->blockSignals(false);
+   borderResamplingToValueRadioButton->blockSignals(false);
+
+   borderResamplingDoubleSpinBox->blockSignals(true);
    borderResamplingDoubleSpinBox->setValue(resampleValue);
-   
+   borderResamplingDoubleSpinBox->blockSignals(false);
+
    //
    // set metric deformation
    //
+   metricNearestNodeRadioButton->blockSignals(true);
+   metricAverageTileNodesRadioButton->blockSignals(true);
    switch(dmf.getMetricDeformationType()) {
       case DeformationMapFile::METRIC_DEFORM_NEAREST_NODE:
          metricNearestNodeRadioButton->setChecked(true);
@@ -2136,42 +2927,206 @@ GuiSurfaceDeformationDialog::loadParametersIntoDialog()
          metricAverageTileNodesRadioButton->setChecked(true);
          break;
    }
-   
+   metricNearestNodeRadioButton->blockSignals(false);
+   metricAverageTileNodesRadioButton->blockSignals(false);
+
    //
    // set deformation stuff
    //
+   deformedFilePrefixLineEdit->blockSignals(true);
    deformedFilePrefixLineEdit->setText(dmf.getDeformedFileNamePrefix());
+   deformedFilePrefixLineEdit->blockSignals(false);
+   deformedColumnPrefixLineEdit->blockSignals(true);
    deformedColumnPrefixLineEdit->setText(dmf.getDeformedColumnNamePrefix());
+   deformedColumnPrefixLineEdit->blockSignals(false);
+   deformBothWaysCheckBox->blockSignals(true);
    deformBothWaysCheckBox->setChecked(dmf.getDeformBothWays());
+   deformBothWaysCheckBox->blockSignals(false);
+   deleteIntermediateFilesCheckBox->blockSignals(true);
    deleteIntermediateFilesCheckBox->setChecked(dmf.getDeleteIntermediateFiles());
-   
+   deleteIntermediateFilesCheckBox->blockSignals(false);
+   smoothCoordsOneIterationCheckBox->blockSignals(true);
    smoothCoordsOneIterationCheckBox->setChecked(dmf.getSmoothDeformedSurfacesFlag());
+   smoothCoordsOneIterationCheckBox->blockSignals(false);
 }
 
-/// called when number of spherical cycles is changed
-void 
-GuiSurfaceDeformationDialog::slotSphereNumberOfCyclesComboBox(int item)
+
+/**
+ * Load the parameters from a deformation map file.
+ */
+void
+GuiSurfaceDeformationDialog::loadParametersIntoDialog()
 {
-   readParametersFromDialog();
-   
-   if (item < sphereEditCycleComboBox->currentIndex()) {
-      sphereEditCycleComboBox->setCurrentIndex(item);
+   switch(dmf.getFlatOrSphereSelection()) {
+      case DeformationMapFile::DEFORMATION_TYPE_FLAT:
+         updateFlatParameters();
+         break;
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+      case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         updateAlgorithmSelection();
+         sphereNumberOfStagesSpinBox->blockSignals(true);
+         sphereNumberOfStagesSpinBox->setValue(dmf.getSphericalNumberOfStages());
+         sphereNumberOfStagesSpinBox->blockSignals(false);
+         sphereEditStageSpinBox->blockSignals(true);
+         sphereEditStageSpinBox->setValue(1);
+         sphereEditStageSpinBox->blockSignals(false);
+         slotSphereNumberOfStagesSpinBox(sphereNumberOfStagesSpinBox->value());
+         updateCorrectSphericalDistortion();
+         slotSphericalAlgorithmSelection();
+         updateAtlasBorderSelections();
+         slotUpdateDeformationMapFileNames();
+         break;
    }
-   loadParametersIntoDialog();
+
+   updateDeformationParametersPage();
 }
 
-/// called before sphere edit cycle is changed
-void 
-GuiSurfaceDeformationDialog::slotSphereEditCycleComboBoxOldValue()
+/**
+ * update the spherical number of stages spin box.
+ */
+void
+GuiSurfaceDeformationDialog::updateSphereNumberOfStagesSpinBox()
 {
-   readParametersFromDialog();
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Number of Stages"
+                << std::endl;
+   }
+   sphereNumberOfStagesSpinBox->blockSignals(true);
+   sphereNumberOfStagesSpinBox->setValue(dmf.getSphericalNumberOfStages());
+   updateSphereEditStageSpinBox();
+   sphereNumberOfStagesSpinBox->blockSignals(false);
+   updateAtlasBorderSelections();
 }
-      
-/// called when sphere edit cycle is changed
-void 
-GuiSurfaceDeformationDialog::slotSphereEditCycleComboBoxNewValue()
+
+/**
+ * called when number of spherical stages is changed.
+ */
+void
+GuiSurfaceDeformationDialog::slotSphereNumberOfStagesSpinBox(int item)
 {
-   loadParametersIntoDialog();
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Number of Stages"
+                << std::endl;
+   }
+   dmf.setSphericalNumberOfStages(item);
+   updateSphereEditStageSpinBox();
+   this->updateSphericalResolutionComboBox();
+   this->updateLandmarkVectorParameters();
+   this->updateMorphingParameters();
+   this->updateSmoothingParameters();
+   this->updateAtlasBorderSelections();
+}
+
+/**
+ * update the sphere edit stage spin box.
+ */
+void
+GuiSurfaceDeformationDialog::updateSphereEditStageSpinBox()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Edit Stage"
+                << std::endl;
+   }
+   sphereEditStageSpinBox->blockSignals(true);
+   sphereEditStageSpinBox->setMaximum(
+           dmf.getSphericalNumberOfStages());
+   sphereEditStageSpinBox->blockSignals(false);
+   updateSphereNumberOfCyclesSpinBox();
+}
+
+/**
+ * called when sphere edit stage is changed.
+ */
+void
+GuiSurfaceDeformationDialog::slotSphereEditStageSpinBox(int /*value*/)
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Edit Stage"
+                << std::endl;
+   }
+   updateSphereNumberOfCyclesSpinBox();
+   this->updateSphericalResolutionComboBox();
+   this->updateLandmarkVectorParameters();
+   this->updateMorphingParameters();
+   this->updateSmoothingParameters();
+}
+
+/**
+ * update the sphere number of cycles spin box.
+ */
+void
+GuiSurfaceDeformationDialog::updateSphereNumberOfCyclesSpinBox()
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Sphere Number of Cycles"
+                << std::endl;
+   }
+   sphereNumberOfCyclesSpinBox->blockSignals(true);
+   int stageIndex = sphereEditStageSpinBox->value() - 1;
+   sphereNumberOfCyclesSpinBox->setValue(
+         dmf.getSphericalNumberOfCycles(stageIndex));
+   sphereNumberOfCyclesSpinBox->blockSignals(false);
+   updateSphereEditCycleSpinBox();
+}
+
+/**
+ * called when number of spherical cycles is changed.
+ */
+void 
+GuiSurfaceDeformationDialog::slotSphereNumberOfCyclesSpinBox(int item)
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Number of Cycles"
+                << std::endl;
+   }
+   const int stageIndex = sphereEditStageSpinBox->value() - 1;
+   dmf.setSphericalNumberOfCycles(stageIndex, item);
+   updateSphereEditCycleSpinBox();
+   this->updateLandmarkVectorParameters();
+   this->updateMorphingParameters();
+   this->updateSmoothingParameters();
+}
+
+/**
+ * update the edit cycle spin box.  This in turn updates the landmark
+ * vector, morphing, and smoothing parameters for the current stage
+ * and cycle.
+ */
+void
+GuiSurfaceDeformationDialog::updateSphereEditCycleSpinBox() {
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Update: "
+                << "Edit Cycle"
+                << std::endl;
+   }
+   this->sphereEditCycleSpinBox->blockSignals(true);
+   const int stageIndex = sphereEditStageSpinBox->value() - 1;
+   this->sphereEditCycleSpinBox->setMaximum(
+           dmf.getSphericalNumberOfCycles(stageIndex));
+   this->sphereEditCycleSpinBox->blockSignals(false);
+}
+
+/**
+ * called when sphere edit cycle is changed.
+ */
+void 
+GuiSurfaceDeformationDialog::slotSphereEditCycleSpinBox(int /*value*/)
+{
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Deformation Dialog Read: "
+                << "Sphere Edit Cycle"
+                << std::endl;
+   }
+   this->updateLandmarkVectorParameters();
+   this->updateMorphingParameters();
+   this->updateSmoothingParameters();
 }
       
 
@@ -2182,7 +3137,9 @@ GuiSurfaceDeformationDialog::slotSphereEditCycleComboBoxNewValue()
  */
 DeformationDataFiles::DeformationDataFiles()
 {
-   borderFileSelected         = -1;
+   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+      borderFileSelected[i] = -1;
+   }
    closedTopoFileSelected     = -1;
    cutTopoFileSelected        = -1;
    fiducialCoordFileSelected  = -1;
@@ -2208,13 +3165,17 @@ DeformationDataFiles::loadSpecFile(const SpecFile& sf, const bool flatDeformFlag
    //
    borderFileNames.clear();
    borderFileTypes.clear();
-   borderFileSelected = -1;
+   for (int i = 0; i < DeformationMapFile::MAX_SPHERICAL_STAGES; i++) {
+      borderFileSelected[i] = -1;
+   }
    for (int i = 0; i < sf.sphericalBorderFile.getNumberOfFiles(); i++) {
       borderFileNames.push_back(sf.sphericalBorderFile.files[i].filename);
       borderFileTypes.push_back(DATA_FILE_BORDER_SPHERICAL);
       if (flatDeformFlag == false) {
-         if (borderFileSelected < 0) {
-            borderFileSelected = static_cast<int>(borderFileNames.size()) - 1;
+         for (int j = 0; j < DeformationMapFile::MAX_SPHERICAL_STAGES; j++) {
+            if (borderFileSelected[j] < 0) {
+               borderFileSelected[j] = static_cast<int>(borderFileNames.size()) - 1;
+            }
          }
       }
    }
@@ -2222,8 +3183,10 @@ DeformationDataFiles::loadSpecFile(const SpecFile& sf, const bool flatDeformFlag
       borderFileNames.push_back(sf.flatBorderFile.files[i].filename);
       borderFileTypes.push_back(DATA_FILE_BORDER_FLAT);
       if (flatDeformFlag) {
-         if (borderFileSelected < 0) {
-            borderFileSelected = static_cast<int>(borderFileNames.size()) - 1;
+         for (int j = 0; j < DeformationMapFile::MAX_SPHERICAL_STAGES; j++) {
+            if (borderFileSelected[j] < 0) {
+               borderFileSelected[j] = static_cast<int>(borderFileNames.size()) - 1;
+            }
          }
       }
    }
@@ -2231,8 +3194,10 @@ DeformationDataFiles::loadSpecFile(const SpecFile& sf, const bool flatDeformFlag
       borderFileNames.push_back(sf.lobarFlatBorderFile.files[i].filename);
       borderFileTypes.push_back(DATA_FILE_BORDER_FLAT_LOBAR);
       if (flatDeformFlag) {
-         if (borderFileSelected < 0) {
-            borderFileSelected = static_cast<int>(borderFileNames.size()) - 1;
+         for (int j = 0; j < DeformationMapFile::MAX_SPHERICAL_STAGES; j++) {
+            if (borderFileSelected[j] < 0) {
+               borderFileSelected[j] = static_cast<int>(borderFileNames.size()) - 1;
+            }
          }
       }
    }
@@ -2241,8 +3206,10 @@ DeformationDataFiles::loadSpecFile(const SpecFile& sf, const bool flatDeformFlag
       borderFileTypes.push_back(DATA_FILE_BORDER_PROJECTION);
    }
    if (borderFileNames.size() > 0) {
-      if (borderFileSelected < 0) {
-         borderFileSelected = 0;
+      for (int j = 0; j < DeformationMapFile::MAX_SPHERICAL_STAGES; j++) {
+         if (borderFileSelected[j] < 0) {
+            borderFileSelected[j] = 0;
+         }
       }
    }
    

@@ -1,4 +1,3 @@
-#include <QDateTime>
 #include <QDir>
 
 #include "ArealEstimationFile.h"   
@@ -12,6 +11,7 @@
 #include "CellProjectionFile.h"
 #include "CellProjectionUnprojector.h"
 #include "CoordinateFile.h"
+#include "DateAndTime.h"
 #include "DeformationMapFile.h"
 #include "FociFile.h"
 #include "FociProjectionFile.h"
@@ -29,6 +29,130 @@
 /*
 #include "SpecFile.h"
 */
+
+/**
+ * create a deformed spec file name
+ */
+QString
+BrainModelSurfaceDeformDataFile::createDeformedSpecFileName(
+                                        const QString& deformedFileNamePrefix,
+                                        const QString& srcSpecFileName,
+                                        const QString& tgtSpecFileName)
+{
+   QString outputName;
+
+   QString srcDirectory, srcSpecies, srcCasename, srcAnatomy, srcHemisphere,
+           srcDescription, srcDescriptionNoType, srcTheDate, srcNumNodes,
+           srcExtension;
+
+   //
+   // Parse the source spec file name
+   //
+   bool srcSpecFileNameValid = false;
+   if (srcSpecFileName.isEmpty() == false) {
+      srcSpecFileNameValid =
+       FileUtilities::parseCaretDataFileName(srcSpecFileName,
+                                             srcDirectory,
+                                             srcSpecies,
+                                             srcCasename,
+                                             srcAnatomy,
+                                             srcHemisphere,
+                                             srcDescription,
+                                             srcDescriptionNoType,
+                                             srcTheDate,
+                                             srcNumNodes,
+                                             srcExtension);
+   }
+
+   QString tgtDirectory, tgtSpecies, tgtCasename, tgtAnatomy, tgtHemisphere,
+           tgtDescription, tgtDescriptionNoType, tgtTheDate, tgtNumNodes,
+           tgtExtension;
+
+   //
+   // Parse the target spec file name
+   //
+   bool tgtSpecFileNameValid = false;
+   if (tgtSpecFileName.isEmpty() == false) {
+      tgtSpecFileNameValid =
+       FileUtilities::parseCaretDataFileName(tgtSpecFileName,
+                                             tgtDirectory,
+                                             tgtSpecies,
+                                             tgtCasename,
+                                             tgtAnatomy,
+                                             tgtHemisphere,
+                                             tgtDescription,
+                                             tgtDescriptionNoType,
+                                             tgtTheDate,
+                                             tgtNumNodes,
+                                             tgtExtension);
+   }
+
+   //
+   // If both files are parsed successfully
+   //
+   if (srcSpecFileNameValid && tgtSpecFileNameValid) {
+      //
+      // Assemble the spec file name
+      //
+      std::vector<QString> nameComponents;
+      nameComponents.push_back(deformedFileNamePrefix);
+      nameComponents.push_back(srcSpecies);
+      nameComponents.push_back(srcCasename);
+      nameComponents.push_back(srcAnatomy);
+      nameComponents.push_back(srcHemisphere);
+      nameComponents.push_back(srcDescription);
+      nameComponents.push_back(tgtNumNodes);
+      nameComponents.push_back(SpecFile::getDeformationMapFileExtension());
+
+      outputName = "";
+      if (tgtDirectory.isEmpty() == false) {
+         //outputName.append(tgtDirectory);
+         //outputName.append("/");
+      }
+      for (unsigned int i = 0; i < nameComponents.size(); i++) {
+         QString s = nameComponents[i];
+         if (s.isEmpty() == false) {
+            if (s.startsWith(".") == false) {
+               if (outputName.isEmpty() == false) {
+                  if (i == 1) {
+                     if (outputName.endsWith("_") == false) {
+                        outputName.append(".");
+                     }
+                  }
+                  else {
+                     outputName.append(".");
+                  }
+               }
+            }
+            outputName.append(s);
+         }
+      }
+   }
+   else {
+      //
+      // just prepend destination directory and deformed file prefix
+      //
+      outputName = "";
+      //outputName = FileUtilities::dirname(tgtSpecFileName);
+      //if (outputName.isEmpty() == false) {
+      //   outputName.append("/");
+      //}
+      outputName.append(deformedFileNamePrefix);
+      if (srcSpecFileName.isEmpty() == false) {
+         QString specName = FileUtilities::basename(srcSpecFileName);
+         if (specName.endsWith(SpecFile::getSpecFileExtension())) {
+         outputName.append(specName.left(specName.length() -
+                                    SpecFile::getSpecFileExtension().length()));
+         }
+         else {
+            outputName.append(srcSpecFileName);
+         }
+      }
+      outputName.append(SpecFile::getDeformationMapFileExtension());
+   }
+
+   return outputName;
+}
 
 /**
  * Create the deformation map file name.
@@ -96,7 +220,8 @@ BrainModelSurfaceDeformDataFile::createDeformedFileName(const QString& deforming
       //
       QString dateString;
       if (deformationMapFileNameFlag) {
-         dateString = QDateTime::currentDateTime().toString("yyyy_MM_dd_hh_mm");
+         //dateString = QDateTime::currentDateTime().toString("yyyy_MM_dd_hh_mm");
+         dateString = DateAndTime::getDateAndTimeForNaming();
          extension = SpecFile::getDeformationMapFileExtension();
       }
       else {
@@ -262,9 +387,9 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
    //
    // Find the source surface's
    //
-   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceFlatCoordFileName());
-   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceSphericalCoordFileName());
    //if (sourceSurface == NULL) {
    //   throw BrainModelAlgorithmException("Unable to find source surface for deforming border file.");
@@ -359,12 +484,14 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
             unprojectSourceSurfaceName = dmf->getSourceDeformedFlatCoordFileName();
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName
+            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getSourceDeformedFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             unprojectSourceSurfaceName = dmf->getSourceDeformedSphericalCoordFileName();
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
@@ -376,6 +503,8 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
             unprojectSourceSurface = sourceFlatSurface;
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             unprojectSourceSurfaceName = dmf->getSourceSphericalCoordFileName();
             unprojectSourceSurface = sourceSphericalSurface;
             break;
@@ -413,12 +542,14 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
             targetProjectSurfaceName = dmf->getSourceDeformedFlatCoordFileName();
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getSourceDeformedFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             targetProjectSurfaceName = dmf->getSourceDeformedSphericalCoordFileName();
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
@@ -430,12 +561,14 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
             targetProjectSurfaceName = dmf->getTargetFlatCoordFileName();
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getTargetFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             targetProjectSurfaceName = dmf->getTargetSphericalCoordFileName();
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getTargetSphericalCoordFileName());
             break;
       }
@@ -496,7 +629,7 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
             //
             // Unproject onto the flat surface
             //
-            BrainModelSurface* bms = targetBrainSet->getBrainModelSurfaceWithFileName(
+            BrainModelSurface* bms = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                      dmf->getTargetFlatCoordFileName());
             if (bms == NULL) {
                QString msg("Unable to find target flat coord file: ");
@@ -518,7 +651,7 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
             //
             // Unproject onto the spherical surface
             //
-            BrainModelSurface* bms = targetBrainSet->getBrainModelSurfaceWithFileName(
+            BrainModelSurface* bms = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                      dmf->getTargetSphericalCoordFileName());
             if (bms == NULL) {
                QString msg("Unable to find target spherical coord file: ");
@@ -1074,15 +1207,15 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    //
    // Find the source surface's
    //
-   BrainModelSurface* sourceFiducialSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceFiducialSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceFiducialCoordFileName());
    if (sourceFiducialSurface == NULL) {
       QDir::setCurrent(savedDirectory);
       throw BrainModelAlgorithmException("Unable to find source fiducial surface for cell deformation.");
    }
-   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceFlatCoordFileName());
-   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceSphericalCoordFileName());
    
    //
@@ -1122,11 +1255,13 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    if (dmf->getInverseDeformationFlag() == false) {
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName
+            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getSourceDeformedFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
@@ -1137,6 +1272,8 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
             unprojectSourceSurface = sourceFlatSurface;
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             unprojectSourceSurface = sourceSphericalSurface;
             break;
       }
@@ -1170,11 +1307,13 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
       //
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getSourceDeformedFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
@@ -1185,11 +1324,13 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
       //
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getTargetFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getTargetSphericalCoordFileName());
             break;
       }
@@ -1201,7 +1342,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    //
    // Get the  target fiducial surface
    //
-   const BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+   const BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                              dmf->getTargetFiducialCoordFileName());
    if (targetFiducialSurface == NULL) {
       throw BrainModelAlgorithmException("Unable to find target fiducial coord file.");
@@ -1381,15 +1522,15 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    //
    // Find the source surface's
    //
-   BrainModelSurface* sourceFiducialSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceFiducialSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceFiducialCoordFileName());
    if (sourceFiducialSurface == NULL) {
       QDir::setCurrent(savedDirectory);
       throw BrainModelAlgorithmException("Unable to find source fiducial surface for cell deformation.");
    }
-   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceFlatCoordFileName());
-   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceSphericalCoordFileName());
    
    //
@@ -1419,11 +1560,13 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    if (dmf->getInverseDeformationFlag() == false) {
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName
+            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getSourceDeformedFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
@@ -1434,6 +1577,8 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
             unprojectSourceSurface = sourceFlatSurface;
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
             unprojectSourceSurface = sourceSphericalSurface;
             break;
       }
@@ -1467,11 +1612,13 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
       //
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getSourceDeformedFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
@@ -1482,11 +1629,13 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
       //
       switch (dmf->getFlatOrSphereSelection()) {
          case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName
                                                 (dmf->getTargetFlatCoordFileName());
             break;
          case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         case DeformationMapFile::DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                 dmf->getTargetSphericalCoordFileName());
             break;
       }
@@ -1498,7 +1647,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    //
    // Get the  target fiducial surface
    //
-   const BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
+   const BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                              dmf->getTargetFiducialCoordFileName());
    if (targetFiducialSurface == NULL) {
       throw BrainModelAlgorithmException("Unable to find target fiducial coord file.");
@@ -1635,227 +1784,6 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    delete sourceCellFile;
    delete sourceCellProjectionFile;
 }
-
-/**************
-void
-BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
-                                                      BrainSet* targetBrainSet,
-                                                      const DeformationMapFile* dmf,
-                                                      const QString& dataFileName,
-                                                      const bool fociFileFlag)
-                                                  throw (BrainModelAlgorithmException)
-{
-   //
-   // Save current directory
-   //
-   const QString savedDirectory(QDir::currentPath());
-   
-   //
-   // Set to source directory
-   //
-   QDir::setCurrent(FileUtilities::dirname(dmf->getSourceSpecFileName()));
-   
-   //
-   // Find the source surface's
-   //
-   BrainModelSurface* sourceFiducialSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
-                                                dmf->getSourceFiducialCoordFileName());
-   if (sourceFiducialSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find source fiducial surface for cell deformation.");
-   }
-   BrainModelSurface* sourceFlatSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
-                                                dmf->getSourceFlatCoordFileName());
-   BrainModelSurface* sourceSphericalSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
-                                                dmf->getSourceSphericalCoordFileName());
-   
-   //
-   // Read in the cell file
-   //
-   CellFile sourceCellFile;
-   try {
-      sourceCellFile.readFile(dataFileName);
-   }
-   catch (FileException& e) {
-      throw BrainModelAlgorithmException(e.whatQString());
-   }
-   std::cout << "Source cells: " << sourceCellFile.getNumberOfCells()
-             << std::endl;
-             
-   //
-   // Project the cell file using the fiducial surface
-   //
-   CellProjectionFile sourceCellsProjected;
-   CellFileProjector cfp(sourceFiducialSurface);
-   cfp.projectCellFile(&sourceCellFile,
-                       &sourceCellsProjected,
-                       0,
-                       CellFileProjector::PROJECTION_SURFACE_FIDUCIAL_FLIP_TO_MATCH,
-                       NULL);
-   std::cout << "Source cells projected: " << sourceCellsProjected.getNumberOfCellProjections()
-             << std::endl;
-             
-   //
-   // Find the deformed source surface which will exist if this was an indvidual to atlas deformation
-   //
-   BrainModelSurface* unprojectSourceSurface = NULL;
-   if (dmf->getInverseDeformationFlag() == false) {
-      switch (dmf->getFlatOrSphereSelection()) {
-         case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName
-                                                (dmf->getSourceDeformedFlatCoordFileName());
-            break;
-         case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            unprojectSourceSurface = sourceBrainSet->getBrainModelSurfaceWithFileName(
-                                                dmf->getSourceDeformedSphericalCoordFileName());
-            break;
-      }
-   }
-   else {
-      switch (dmf->getFlatOrSphereSelection()) {
-         case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            unprojectSourceSurface = sourceFlatSurface;
-            break;
-         case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            unprojectSourceSurface = sourceSphericalSurface;
-            break;
-      }
-   }
-   if (unprojectSourceSurface == NULL) {
-      throw BrainModelAlgorithmException("Missing source surface for cell file deformation unprojection.");
-   }
-
-   //
-   // Unproject source cell projection file onto the flat or spherical source surface
-   //
-   sourceCellFile.clear();
-   CellProjectionUnprojector scpu;
-   scpu.unprojectCellProjections(sourceCellsProjected,
-                                 unprojectSourceSurface,
-                                 sourceCellFile,
-                                 0);
-   std::cout << "Source cells unprojected: " << sourceCellFile.getNumberOfCells()
-             << std::endl;
-
-   //
-   // Target's cell projection file
-   //
-   CellProjectionFile targetCellProjectionFile;
-   
-   //
-   // if Atlas to Individual deformation
-   //
-   BrainModelSurface* targetProjectSurface = NULL;
-   if (dmf->getInverseDeformationFlag()) {
-      //
-      // Use the deformed surface for projection
-      //
-      switch (dmf->getFlatOrSphereSelection()) {
-         case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
-                                                (dmf->getSourceDeformedFlatCoordFileName());
-            break;
-         case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
-                                                dmf->getSourceDeformedSphericalCoordFileName());
-            break;
-      }
-   }
-   else {
-      //
-      // Use the non-deformed surface for projection
-      //
-      switch (dmf->getFlatOrSphereSelection()) {
-         case DeformationMapFile::DEFORMATION_TYPE_FLAT:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName
-                                                (dmf->getTargetFlatCoordFileName());
-            break;
-         case DeformationMapFile::DEFORMATION_TYPE_SPHERE:
-            targetProjectSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
-                                                dmf->getTargetSphericalCoordFileName());
-            break;
-      }
-   }
-   if (targetProjectSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find target's deformed surface.");
-   }
-   
-   //
-   // Project the cells onto the target surface
-   //
-   CellFileProjector tcfp(targetProjectSurface);
-   tcfp.projectCellFile(&sourceCellFile, 
-                        &targetCellProjectionFile,
-                        0,
-                        CellFileProjector::PROJECTION_SURFACE_NOT_FIDUCIAL,
-                        NULL);
-   std::cout << "Target cells projected: " << targetCellProjectionFile.getNumberOfCellProjections()
-             << std::endl;
-   
-   //
-   // Set to the target directory
-   //
-   const QString outputSpecFileName(dmf->getOutputSpecFileName());
-   QDir::setCurrent(FileUtilities::dirname(outputSpecFileName));
-   
-   
-   //
-   // Create the deformed file name
-   //
-   const QString outputFileName =
-      FileUtilities::basename(
-         createDeformedFileName(dataFileName, 
-                                outputSpecFileName,
-                                dmf->getDeformedFileNamePrefix(),
-                                dmf->getNumberOfNodes(),
-                                false));
-
-   //
-   // Unproject cells onto target fiducial surface
-   //
-   BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithFileName(
-                                             dmf->getTargetFiducialCoordFileName());
-   if (targetFiducialSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find target fiducial coord file.");
-   }
-   CellProjectionUnprojector tcpu;
-   CellFile targetCellFile;
-   tcpu.unprojectCellProjections(targetCellProjectionFile,
-                                 targetFiducialSurface,
-                                 targetCellFile,
-                                 0);
-   std::cout << "Target cells: " << targetCellFile.getNumberOfCells()
-             << std::endl;
-     
-   //
-   // Write the target cell files
-   //
-   targetCellFile.writeFile(outputFileName);
-   
-   //
-   // Update the target spec file
-   //
-   SpecFile sf;
-   try {
-      sf.readFile(outputSpecFileName);
-      if (fociFileFlag) {
-         sf.addToSpecFile(SpecFile::fociFileTag, outputFileName);
-      }
-      else {
-         sf.addToSpecFile(SpecFile::cellFileTag, outputFileName);
-      }
-      sf.writeFile(outputSpecFileName);
-   }
-   catch(FileException& e) {
-      QDir::setCurrent(savedDirectory);
-      throw BrainModelAlgorithmException(e.whatQString());
-   }
-   
-   //
-   // Reset to the original directory
-   //
-   QDir::setCurrent(savedDirectory);
-}
-**************/
 
 /**
  * Link color files to target from source.
@@ -2359,7 +2287,7 @@ BrainModelSurfaceDeformDataFile::deformCoordinateFile(const DeformationMapFile* 
       
       outputFile.setCoordinate(i, xyz);
    }
-   
+
    //
    // Copy some of the input file's coordinate metadata
    // IF TAGS ADDED ALSO ADD THEM AFTER SMOOTHING LATER IN THIS METHOD
@@ -2433,6 +2361,21 @@ BrainModelSurfaceDeformDataFile::deformCoordinateFile(const DeformationMapFile* 
          BrainModelSurface* bms = bs.getBrainModelSurface(0);
          if (bms != NULL) {
             bms->arealSmoothing(1.0, 1, 0);
+
+            int numNodeCrossovers = 0;
+            int numTileCrossovers = 0;
+            bms->crossoverCheck(numTileCrossovers,
+                                numNodeCrossovers,
+                                bms->getSurfaceType());
+            if (numNodeCrossovers > 0) {
+               std::cout << "WARNING: coordinate file "
+                         << outputFileNameInOut.toAscii().constData()
+                         << " has "
+                         << numNodeCrossovers
+                         << " crossovers after deformation."
+                         << std::endl;
+            }
+            
             CoordinateFile* cf = bms->getCoordinateFile();
             
             //

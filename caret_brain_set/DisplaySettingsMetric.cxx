@@ -80,6 +80,10 @@ DisplaySettingsMetric::reset()
    userPositiveThreshold = 0.0;
    thresholdType = METRIC_THRESHOLDING_TYPE_USER_VALUES;
    overlayScaleSpecifiedColumnNumber = 0;
+   autoScalePercentageNegativeMinimum = 2.0;
+   autoScalePercentageNegativeMaximum = 98.0;
+   autoScalePercentagePositiveMinimum = 2.0;
+   autoScalePercentagePositiveMaximum = 98.0;
 }
 
 /**
@@ -147,6 +151,19 @@ DisplaySettingsMetric::getMetricsForColoringAndPalette(int& displayColumnOut,
             if (maxValue > 0.0) {
                posMaxValue = maxValue;
             }
+         }
+         break;
+      case METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE:
+         if (displayColumnOut >= 0) {
+            mf->getMinMaxValuesFromPercentages(displayColumnOut,
+                                               autoScalePercentageNegativeMaximum,
+                                               autoScalePercentageNegativeMinimum,
+                                               autoScalePercentagePositiveMinimum,
+                                               autoScalePercentagePositiveMaximum,
+                                               negMaxValue,
+                                               negMinValue,
+                                               posMinValue,
+                                               posMaxValue);
          }
          break;
       case METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
@@ -303,6 +320,7 @@ static const QString metricViewID("metric-view-column");
 static const QString metricThreshID("metric-thresh-column");
 
 static const QString metricOverlayScaleAutoPriorityColumn("overlay-scale-priority-column");
+static const QString metricOverlayScaleAutoPercentageColumn("overlay-scale-percentage-column");
 static const QString metricOverlayScaleAutoSpecifiedColumn("overlay-scale-specified-column");
 static const QString metricOverlayScaleAutoFunctionalVolume("overlay-scale-functional-volume");
 static const QString metricOverlayScaleUser("overlay-scale-user");
@@ -313,6 +331,11 @@ static const QString metricOverlayScaleUser("overlay-scale-user");
 void 
 DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMessage) 
 {
+   autoScalePercentageNegativeMinimum = 2.0;
+   autoScalePercentageNegativeMaximum = 98.0;
+   autoScalePercentagePositiveMinimum = 2.0;
+   autoScalePercentagePositiveMaximum = 98.0;
+
    DisplaySettingsNodeAttributeFile::showScene(scene, errorMessage);
 
    const int numClasses = scene.getNumberOfSceneClasses();
@@ -344,6 +367,9 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
             else if (infoName == "overlayScale") {
                if (si->getValueAsString() == metricOverlayScaleAutoPriorityColumn) {
                   overlayScale = METRIC_OVERLAY_SCALE_AUTO;
+               }
+               else if (si->getValueAsString() == metricOverlayScaleAutoPercentageColumn) {
+                  overlayScale = METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE;
                }
                else if (si->getValueAsString() == metricOverlayScaleAutoSpecifiedColumn) {
                   overlayScale = METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN;
@@ -385,6 +411,18 @@ DisplaySettingsMetric::showScene(const SceneFile::Scene& scene, QString& errorMe
             }
             else if (infoName == "userScaleNegativeMaximum") {
                si->getValue(userScaleNegativeMaximum);
+            }
+            else if (infoName == "autoScalePercentageNegativeMinimum") {
+               si->getValue(autoScalePercentageNegativeMinimum);
+            }
+            else if (infoName == "autoScalePercentageNegativeMaximum") {
+               si->getValue(autoScalePercentageNegativeMaximum);
+            }
+            else if (infoName == "autoScalePercentagePositiveMinimum") {
+               si->getValue(autoScalePercentagePositiveMinimum);
+            }
+            else if (infoName == "autoScalePercentagePositiveMaximum") {
+               si->getValue(autoScalePercentagePositiveMaximum);
             }
             else if (infoName == "interpolateColors") {
                si->getValue(interpolateColors);
@@ -477,6 +515,10 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
          sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
                                               metricOverlayScaleAutoPriorityColumn));
          break;
+      case METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE:
+         sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
+                                              metricOverlayScaleAutoPercentageColumn));
+         break;
       case METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
          sc.addSceneInfo(SceneFile::SceneInfo("overlayScale",
                                               metricOverlayScaleAutoSpecifiedColumn));
@@ -498,6 +540,14 @@ DisplaySettingsMetric::saveScene(SceneFile::Scene& scene, const bool onlyIfSelec
                                         userScaleNegativeMinimum));
    sc.addSceneInfo(SceneFile::SceneInfo("userScaleNegativeMaximum",
                                         userScaleNegativeMaximum));
+   sc.addSceneInfo(SceneFile::SceneInfo("autoScalePercentageNegativeMinimum",
+                                        autoScalePercentageNegativeMinimum));
+   sc.addSceneInfo(SceneFile::SceneInfo("autoScalePercentageNegativeMaximum",
+                                        autoScalePercentageNegativeMaximum));
+   sc.addSceneInfo(SceneFile::SceneInfo("autoScalePercentagePositiveMinimum",
+                                        autoScalePercentagePositiveMinimum));
+   sc.addSceneInfo(SceneFile::SceneInfo("autoScalePercentagePositiveMaximum",
+                                        autoScalePercentagePositiveMaximum));
    sc.addSceneInfo(SceneFile::SceneInfo("interpolateColors",
                                         interpolateColors));
    sc.addSceneInfo(SceneFile::SceneInfo("displayColorBar",

@@ -34,7 +34,6 @@
 #include <iostream>
 #include <sstream>
 
-#include <QDateTime>
 #include <QFileInfo>
 #include <QGroupBox>
 #include <QLayout>
@@ -43,6 +42,7 @@
 #include <QPushButton>
 #include <QTextStream>
 
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "GuiBatchCommandDialog.h"
 #include "QtUtilities.h"
@@ -207,12 +207,12 @@ GuiBatchCommandDialog::done(int r)
          stream.setRealNumberPrecision(6);
 #ifdef Q_OS_WIN32
          stream << "REM   Created at " 
-              << QDateTime::currentDateTime().toString(Qt::TextDate) << "\n"; 
+              << DateAndTime::getDateAndTimeAsString() << "\n";
          stream << "\n";
 #else
          stream << "#!/bin/sh \n";
          stream << "#   Created at " 
-              << QDateTime::currentDateTime().toString(Qt::TextDate) << "\n"; 
+              << DateAndTime::getDateAndTimeAsString() << "\n";
          stream << "\n";
 #endif
          if (directory.isEmpty() == false) {

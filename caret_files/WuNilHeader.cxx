@@ -37,6 +37,7 @@
 #define __WUNIL_HEADER_DEFINE__
 #include "WuNilHeader.h"
 #undef __WUNIL_HEADER_DEFINE__
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "StringUtilities.h"
@@ -98,8 +99,9 @@ WuNilHeader::clear()
    WuNilAttribute m4(WuNilAttribute::NAME_MATRIX_SIZE_4, 0);
    addAttribute(m4);
    
-   WuNilAttribute nd(WuNilAttribute::NAME_DATE, 
-                     QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
+   WuNilAttribute nd(WuNilAttribute::NAME_DATE,
+                     DateAndTime::getDateAndTimeAsString());
+                     //QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
    addAttribute(nd);
    
    //WuNilAttribute nc(WuNilAttribute::NAME_CENTER, "0.0 0.0 0.0");
@@ -247,7 +249,8 @@ WuNilHeader::writeHeader(QTextStream& stream) throw (FileException)
    // Set the date
    //
    WuNilAttribute dat(WuNilAttribute::NAME_DATE,
-                      QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
+                      DateAndTime::getDateAndTimeAsString());
+                      //QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
    addAttribute(dat);
    
    //

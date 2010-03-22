@@ -69,7 +69,7 @@ class GaussianComputation {
       GaussianComputation(const float normBelowCutoffIn = 2.0,
                           const float normAboveCutoffIn = 2.0,
                           const float sigmaNormIn = 2.0,
-                          const float sigmaTangIn = 1.0,
+                          const float sigmaTangIn = 2.0,
                           const float tangentCutoffIn = 3.0);
                
       /// destructor

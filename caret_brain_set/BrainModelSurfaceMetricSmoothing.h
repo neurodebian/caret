@@ -41,6 +41,7 @@ class BrainModelSurfaceMetricSmoothing : public BrainModelAlgorithm {
       /// smoothing algorithms
       enum SMOOTH_ALGORITHM {
          SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS,
+         SMOOTH_ALGORITHM_DILATE,
          SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM,
          SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN,
          SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS,

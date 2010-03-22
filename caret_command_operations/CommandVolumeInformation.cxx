@@ -69,7 +69,9 @@ CommandVolumeInformation::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-volume-file-name>\n"
        + indent9 + "\n"
-       + indent9 + "Print information about the volume.\n"
+       + indent9 + "Print information about the volume.  If possible, the\n"
+       + indent9 + "volume data is transformated into LPI (neurological)"
+       + indent9 + "orientation."
        + indent9 + "\n");
       
    return helpInfo;

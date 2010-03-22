@@ -55,11 +55,14 @@ class CommandSurfaceBorderVariability : public CommandBase {
                                    StatisticException);
 
       /// do the border report
-      void doBorderReport(const BorderFile& bf);
+      void doBorderReport(const BorderFile& bf,
+                          const float threshold,
+                          const bool showRatiosExceededFlag);
 
       /// do the border point report
       void doBorderPointReport(const BorderFile& bf,
-                               const BorderFile& avgBorderFile)
+                               const BorderFile& avgBorderFile,
+                               const float threshold)
                                                 throw (CommandException);
 };
 

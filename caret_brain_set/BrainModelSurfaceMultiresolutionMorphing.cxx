@@ -2109,6 +2109,14 @@ BrainModelSurfaceMultiresolutionMorphing::flatUpsample(BrainSet* fromBrain, Brai
        }
        
        //
+       // Set the view of this standard sphere surface so that it is the
+       // same as the surface being morphed (04/27/2009).
+       //
+       sphereSurface->copyTransformations(this->morphingSurface,
+                                      BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW,
+                                      BrainModel::BRAIN_MODEL_VIEW_MAIN_WINDOW);
+       
+       //
        // Set the sphere to have the same area as the reference surface
        //
        sphereSurface->convertToSphereWithRadius(morphingSurfaceRadius);

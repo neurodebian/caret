@@ -82,7 +82,7 @@ GuiFilesModified::getAllFilesModified() const
       studyCollection &&
       studyMetaData &&
       surfaceShape &&
-      surfaceVector &&
+      vector &&
       topography &&
       topology &&
       transformationMatrix &&
@@ -134,7 +134,7 @@ GuiFilesModified::setStatusForAll(const bool status)
    studyCollection = studyCollection;
    studyMetaData = studyMetaData;
    surfaceShape = status;
-   surfaceVector = status;
+   vector = status;
    topography = status;
    topology = status;
    transformationMatrix = status;

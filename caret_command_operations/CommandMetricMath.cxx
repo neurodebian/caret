@@ -72,6 +72,9 @@ CommandMetricMath::getHelpInformation() const
    QString helpInfo =
       (indent3 + getShortDescription() + "\n"
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
+       + indent9 + "<input-metric-file> \n"
+       + indent9 + "<output-metric-file> \n"
+       + indent9 + "<output-metric-file-column-name-or-number> \n"
        + indent9 + "<mathematical-expression-within-double-qutoes>\n"
        + indent9 + "\n"
        + indent9 + "Perform mathematical operations on a metric file.\n"

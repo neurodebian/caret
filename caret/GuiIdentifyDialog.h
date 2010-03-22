@@ -361,7 +361,7 @@ class GuiIdentifyMainWindow : public QMainWindow {
       void slotShowStudyPageReferenceStatisticDescriptionInfoCheckBox(bool val);
       
       /// show study page number info check box;
-      void slotShowStudyPageNumberInfoCheckBox(bool val);
+      //void slotShowStudyPageNumberInfoCheckBox(bool val);
 
       /// show ID symbols on surface
       void slotShowIDAction(bool val);
@@ -623,7 +623,7 @@ class GuiIdentifyMainWindow : public QMainWindow {
       QCheckBox* showStudyPageReferenceStatisticDescriptionInfoCheckBox;
       
       /// show study page number info check box;
-      QCheckBox* showStudyPageNumberInfoCheckBox;
+      //QCheckBox* showStudyPageNumberInfoCheckBox;
       
 };
 

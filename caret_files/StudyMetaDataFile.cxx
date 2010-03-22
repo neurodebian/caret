@@ -57,6 +57,8 @@
 #include "StudyMetaDataFile.h"
 #include "SystemUtilities.h"
 #include "VocabularyFile.h"
+#include "XmlGenericWriter.h"
+#include "XmlGenericWriterAttributes.h"
 
 static const QString boldStart("<B>");
 static const QString boldEnd("</B>");
@@ -734,6 +736,88 @@ StudyMetaData::writeXML(QDomDocument& xmlDoc,
    // Add to parent
    //
    parentElement.appendChild(studyElement);
+}
+
+/**
+ * called to write XML.
+ */
+void
+StudyMetaData::writeXML(XmlGenericWriter& xmlWriter, int indx) const throw (FileException)
+{
+   //
+   // Update data and time stamp if modified flag is set
+   //
+   if (studyDataModifiedFlag) {
+      dateAndTimeStamps = AbstractFile::generateDateAndTimeStamp()
+                                  + ";"
+                                  + dateAndTimeStamps;
+      studyDataModifiedFlag = false;
+   }
+
+   //
+   // Create the element for this class instance's data
+   //
+   XmlGenericWriterAttributes atts;
+   atts.addAttribute("Index", indx);
+   xmlWriter.writeStartElement("StudyMetaData", atts);
+
+   //
+   // Add the study metadata
+   //
+   xmlWriter.writeElementCData("authors", authors);
+   xmlWriter.writeElementCData("citation", citation);
+   xmlWriter.writeElementCData("comment", comment);
+   xmlWriter.writeElementCData("dateAndTimeStamps", dateAndTimeStamps);
+   xmlWriter.writeElementCData("documentObjectIdentifier", documentObjectIdentifier);
+   xmlWriter.writeElementCData("keywords", keywords);
+   xmlWriter.writeElementCData("mesh", medicalSubjectHeadings);
+   xmlWriter.writeElementCData("name", name);
+   xmlWriter.writeElementCData("partitioningSchemeAbbreviation", partitioningSchemeAbbreviation);
+   xmlWriter.writeElementCData("partitioningSchemeFullName", partitioningSchemeFullName);
+   xmlWriter.writeElementCData("projectID", projectID);
+   xmlWriter.writeElementCData("pubMedID", pubMedID);
+   xmlWriter.writeElementCData("quality", quality);
+   xmlWriter.writeElementCData("species", species);
+   xmlWriter.writeElementCData("stereotaxicSpace", stereotaxicSpace);
+   xmlWriter.writeElementCData("stereotaxicSpaceDetails", stereotaxicSpaceDetails);
+   xmlWriter.writeElementCData("studyDataFormat", studyDataFormat);
+   xmlWriter.writeElementCData("studyDataType", studyDataType);
+   xmlWriter.writeElementCData("title", title);
+   xmlWriter.writeElementCData("mslID", mslID);
+   xmlWriter.writeElementCData("parentID", parentID);
+   xmlWriter.writeElementCData("coreDataCompleted", coreDataCompleted);
+   xmlWriter.writeElementCData("completed", completed);
+   xmlWriter.writeElementCData("publicAccess", publicAccess);
+
+   //
+   // Add tables
+   //
+   for (int i = 0; i < getNumberOfTables(); i++) {
+      tables[i]->writeXML(xmlWriter);
+   }
+
+   //
+   // Add figures
+   //
+   for (int i = 0; i < getNumberOfFigures(); i++) {
+      figures[i]->writeXML(xmlWriter);
+   }
+
+   //
+   // Add page references
+   //
+   for (int i = 0; i < getNumberOfPageReferences(); i++) {
+      pageReferences[i]->writeXML(xmlWriter);
+   }
+
+   //
+   // Add provenances
+   //
+   for (int i = 0; i < getNumberOfProvenances(); i++) {
+      provenances[i]->writeXML(xmlWriter);
+   }
+
+   xmlWriter.writeEndElement();
 }
 
 /**
@@ -1513,6 +1597,20 @@ StudyMetaData::Figure::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
+/**
+ * called to write XML.
+ */
+void
+StudyMetaData::Figure::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyMetaDataFigure");
+   xmlWriter.writeElementCData("legend", legend);
+   xmlWriter.writeElementCData("number", number);
+   for (int i = 0; i < getNumberOfPanels(); i++) {
+      panels[i]->writeXML(xmlWriter);
+   }
+   xmlWriter.writeEndElement();
+}
 //====================================================================================
 //
 // Figure Panel class
@@ -1744,6 +1842,20 @@ StudyMetaData::Figure::Panel::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
+/**
+ * called to write XML.
+ */
+void
+StudyMetaData::Figure::Panel::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyMetaDataFigurePanel");
+   xmlWriter.writeElementCData("description", description);
+   xmlWriter.writeElementCData("panelNumberOrLetter", panelNumberOrLetter);
+   xmlWriter.writeElementCData("taskDescription", taskDescription);
+   xmlWriter.writeElementCData("taskBaseline", taskBaseline);
+   xmlWriter.writeElementCData("testAttributes", testAttributes);
+   xmlWriter.writeEndElement();
+}
 //====================================================================================
 //
 // Table class
@@ -2100,6 +2212,25 @@ StudyMetaData::Table::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
+/**
+ * called to write XML.
+ */
+void
+StudyMetaData::Table::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyMetaDataTable");
+   xmlWriter.writeElementCData("footer", footer);
+   xmlWriter.writeElementCData("header", header);
+   xmlWriter.writeElementCData("number", number);
+   xmlWriter.writeElementCData("sizeUnits", sizeUnits);
+   xmlWriter.writeElementCData("statisticType", statisticType);
+   xmlWriter.writeElementCData("statisticDescription", statisticDescription);
+   xmlWriter.writeElementCData("voxelDimensions", voxelDimensions);
+   for (int i = 0; i < getNumberOfSubHeaders(); i++) {
+      subHeaders[i]->writeXML(xmlWriter);
+   }
+   xmlWriter.writeEndElement();
+}
 //====================================================================================
 //
 // SubHeader class
@@ -2369,6 +2500,21 @@ StudyMetaData::SubHeader::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(element);
 }
 
+/**
+ * called to write XML.
+ */
+void
+StudyMetaData::SubHeader::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyMetaDataSubHeader");
+   xmlWriter.writeElementCData("name", name);
+   xmlWriter.writeElementCData("number", number);
+   xmlWriter.writeElementCData("shortName", shortName);
+   xmlWriter.writeElementCData("taskDescription", taskDescription);
+   xmlWriter.writeElementCData("taskBaseline", taskBaseline);
+   xmlWriter.writeElementCData("testAttributes", testAttributes);
+   xmlWriter.writeEndElement();
+}
 //====================================================================================
 //
 // Page Reference class
@@ -2704,6 +2850,25 @@ StudyMetaData::PageReference::writeXML(QDomDocument& xmlDoc,
 }
 
 /**
+ * called to write XML.
+ */
+void
+StudyMetaData::PageReference::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyMetaDataPageReference");
+   xmlWriter.writeElementCData("pageNumber", pageNumber);
+   xmlWriter.writeElementCData("header", header);
+   xmlWriter.writeElementCData("comment", comment);
+   xmlWriter.writeElementCData("sizeUnits", sizeUnits);
+   xmlWriter.writeElementCData("voxelDimensions", voxelDimensions);
+   xmlWriter.writeElementCData("statisticType", statisticType);
+   xmlWriter.writeElementCData("statisticDescription", statisticDescription);
+   for (int i = 0; i < getNumberOfSubHeaders(); i++) {
+      subHeaders[i]->writeXML(xmlWriter);
+   }
+   xmlWriter.writeEndElement();
+}
+/**
  * set parent.
  */
 void 
@@ -2882,6 +3047,19 @@ StudyMetaData::Provenance::writeXML(QDomDocument& xmlDoc,
    // Add to parent
    //
    parentElement.appendChild(element);
+}
+
+/**
+ * called to write XML.
+ */
+void
+StudyMetaData::Provenance::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement("StudyMetaDataProvenance");
+   xmlWriter.writeElementCData("name", name);
+   xmlWriter.writeElementCData("date", date);
+   xmlWriter.writeElementCData("comment", comment);
+   xmlWriter.writeEndElement();
 }
 
 
@@ -3872,4 +4050,185 @@ StudyMetaDataFile::findDuplicateStudies(const std::vector<QString>& studyFileNam
    }
 }
          
+/**
+ * Validate the study metadata file (missing table numbers, duplicate studies, etc).
+ */
+QStringList 
+StudyMetaDataFile::validStudyMetaDataFile() const
+{
+   QStringList sl;
+   
+   const int num = getNumberOfStudyMetaData();
+   for (int i = 0; i < num; i++) {
+      const QString studyNumberText = 
+               "Study Number " + QString::number(i + 1) + " ";
+      
+      const StudyMetaData* smd = getStudyMetaData(i);
+      
+      //
+      // Check figures
+      //
+      const int numFigures = smd->getNumberOfFigures();
+      for (int j = 0; j < numFigures; j++) {
+         const StudyMetaData::Figure* figure = smd->getFigure(j);
+         if (figure->getNumber().isEmpty()) {
+            sl += studyNumberText + "has figure missing its number";
+         }
+         const int numPanels = figure->getNumberOfPanels();
+         for (int k = 0; k < numPanels; k++) {
+            const StudyMetaData::Figure::Panel* panel = figure->getPanel(k);
+            if (panel->getPanelNumberOrLetter().isEmpty()) {
+               sl += studyNumberText + "has figure panel missing its identifier";
+            }
+         }
+      }
+      
+      //
+      // Check page references
+      //
+      const int numPageRefs = smd->getNumberOfPageReferences();
+      for (int j = 0; j < numPageRefs; j++) {
+         const StudyMetaData::PageReference* pageRef= smd->getPageReference(j);
+         if (pageRef->getPageNumber().isEmpty()) {
+             sl += studyNumberText + "has table missing its page number";
+         }
+         const int numSubHeaders = pageRef->getNumberOfSubHeaders();
+         for (int k = 0; k < numSubHeaders; k++) {
+            const StudyMetaData::SubHeader* sh = pageRef->getSubHeader(k);
+            if (sh->getNumber().isEmpty()) {
+               sl += studyNumberText + "has page-ref subheader missing its number";
+            }
+            if (sh->getShortName().isEmpty()) {
+               sl += studyNumberText + "has page-ref subheader missing its short name";
+            }
+         }         
+      }
+      //
+      // Check tables
+      //
+      const int numTables = smd->getNumberOfTables();
+      for (int j = 0; j < numTables; j++) {
+         const StudyMetaData::Table* table = smd->getTable(j);
+         if (table->getNumber().isEmpty()) {
+             sl += studyNumberText + "has table missing its number";
+         }
+         const int numSubHeaders = table->getNumberOfSubHeaders();
+         for (int k = 0; k < numSubHeaders; k++) {
+            const StudyMetaData::SubHeader* sh = table->getSubHeader(k);
+            if (sh->getNumber().isEmpty()) {
+               sl += studyNumberText + "has table subheader missing its number";
+            }
+            if (sh->getShortName().isEmpty()) {
+               sl += studyNumberText + "has table subheader missing its short name";
+            }
+         }         
+      }
+   }
+
+   //
+   // Look for duplicate studies names or pubmed id's
+   //
+   for (int i = 0; i < (num - 1); i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      const QString studyName = smd->getName();
+      if (studyName.isEmpty()) {
+         sl += "Study " + QString::number(i + 1) + " has no name";
+      }
+      else {
+         bool found = false;
+         QString msg;
+         for (int j = i + 1; j < num; j++) {
+            const StudyMetaData* smd2 = getStudyMetaData(j);
+            if (smd2->getName() == studyName) {
+                if (found == false) {
+                   msg += "Multiple studies with name " + studyName + ":";
+                   msg += " " + QString::number(i + 1);
+                   found = true;
+                }
+                msg += " " + QString::number(j + 1);
+            }
+         }
+         
+         if (msg.isEmpty() == false) {
+            sl += msg;
+         }
+      }
+      
+      const QString pubMedID = smd->getPubMedID();
+      if (pubMedID.isEmpty()) {
+         sl += "Study " + QString::number(i + 1) + " has no PubMed ID";
+      }
+      else {
+         QString msg;
+         bool found = false;
+         for (int j = i + 1; j < num; j++) {
+            const StudyMetaData* smd2 = getStudyMetaData(j);
+            if (smd2->getPubMedID() == pubMedID) {
+                if (found == false) {
+                   msg += "Multiple studies with PubMed ID " + pubMedID + ":";
+                   msg += " " + QString::number(i + 1);
+                   found = true;
+                }
+                msg += " " + QString::number(j + 1);
+            }
+         }
+         
+         if (msg.isEmpty() == false) {
+            sl += msg;
+         }
+      }
+   }
+   
+   return sl;
+}      
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+StudyMetaDataFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   int numStudies = this->getNumberOfStudyMetaData();
+   if (numStudies <= 0) {
+      throw FileException("Contains no studies");
+   }
+   
+   QFile file(filenameIn);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (file.exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("CaretFileType", "StudyMetaData");
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/StudyMetaDataFileSchema.xsd");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   for (int i = 0; i < numStudies; i++) {
+      const StudyMetaData* smd = getStudyMetaData(i);
+      smd->writeXML(xmlWriter, i);
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+
+   file.close();
+
+   return filenameIn;
+}
 

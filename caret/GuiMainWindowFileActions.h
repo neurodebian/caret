@@ -98,7 +98,7 @@ class GuiMainWindowFileActions : public QObject {
       /// capture image of main window action
       QAction* getCaptureMainWindowImageAction() { return captureMainWindowImageAction; }
 
-   public slots:
+public slots:
       /// update the actions (typically called when menu is about to show)
       void updateActions();
 

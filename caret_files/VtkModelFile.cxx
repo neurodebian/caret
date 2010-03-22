@@ -23,8 +23,8 @@
  */
 /*LICENSE_END*/
 
-#include <QDateTime>
 #include <QFileInfo>
+#include <QTime>
 
 #include "vtkCellArray.h"
 #include "vtkFloatArray.h"

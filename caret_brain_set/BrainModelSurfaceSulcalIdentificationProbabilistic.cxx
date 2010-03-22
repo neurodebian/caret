@@ -425,6 +425,13 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::dilateSulcalIdentification(c
    if (sulIndex < 0) {
       throw BrainModelAlgorithmException("ERROR: Unable to find paint name \"SUL\".");
    }
+
+   //
+   // Find calcarine paint
+   //
+   const int casIndex = outputPaintFile->getPaintIndexFromName("SUL.CaS");
+   const float casMaxZ = 13.0;
+   const float casMaxY = -53.0;
    
    //
    // Find index for hippocampal fissure
@@ -455,7 +462,10 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::dilateSulcalIdentification(c
             if (paintIndices[i] == hfIndex) {
                maxExtent[5] = hfMaxZ;
             }
-            
+            if (paintIndices[i] == casIndex) {
+               maxExtent[5] = casMaxZ;
+               maxExtent[3] = casMaxY;
+            }
             const int dilateCount = outputPaintFile->dilatePaintID(
                                                      fiducialSurface->getTopologyFile(),
                                                      fiducialSurface->getCoordinateFile(),
@@ -505,15 +515,20 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
    const QString centralSulcusName("SUL.CeS");
    float centralSulcusCOG[3] = { 0.0, 0.0, 0.0 };
    const QString postCentralSulcusName("SUL.PoCeS");
+   const QString superiorTemporalSulcusName("SUL.STS");
    
    std::vector<QString> allowRelaxedDepthNames;
-   allowRelaxedDepthNames.push_back("SUL.HF");
+   const QString hippocampalFissureName("SUL.HF");
+   allowRelaxedDepthNames.push_back(hippocampalFissureName);
    
    const int numColumns = probabilisticMetricFile->getNumberOfColumns();
    for (int j = 0; j < numColumns; j++) {
    
       BrainModelSurfaceMetricClustering* bmsmc = NULL;
       
+      const bool hippocampalFissureFlag = 
+         (sulcalNamesAndVolumes[j].getSulcusName() == hippocampalFissureName);
+         
       //
       // Some depths may be too deep, so if no clusters found, relax depth
       // and try again
@@ -583,6 +598,29 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
             sum += probabilisticMetricFile->getValue(node, j);
          }
 
+         if (hippocampalFissureFlag) {
+            float cog[3];
+            cluster->getCenterOfGravityForSurface(fiducialSurface, cog);
+            if (DebugControl::getDebugOn()) {
+               std::cout << hippocampalFissureName.toAscii().constData()
+                         << " cluster[" << i << "]" 
+                         << " area="  <<  cluster->getArea()
+                         << " num-nodes=" << cluster->getNumberOfNodesInCluster()
+                         << " sum=" << sum
+                         << " cog=(" << cog[0]
+                         <<    "," << cog[1]
+                         <<    "," << cog[2]
+                         <<    ")"
+                         <<  std::endl;
+            }
+            //
+            // Too far posterior ?
+            //
+            //if (cog[1] < -34.0) {
+            //   continue;
+            //}
+         }
+         
          //
          // Special processing for post-central sulcus
          // bias in favor of clusters about 10mm posterior to CeS
@@ -626,7 +664,7 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
       // Sort the items
       //
       vis.sort();
-      const int numSortedItems = vis.getNumberOfItems();
+      int numSortedItems = vis.getNumberOfItems();
       
       if (DebugControl::getDebugOn()) {
          if (sulcalNamesAndVolumes[j].getSulcusName() == postCentralSulcusName) {
@@ -683,6 +721,36 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
       int stopIndex = numSortedItems - sulcalNamesAndVolumes[j].getMaximumClusters();
       
       //
+      // Special processing for hippocampal fissure
+      //
+      if (hippocampalFissureFlag) {
+         if (numSortedItems > 1) {
+            int indx1, indx2;
+            float value1, value2;
+            vis.getValueAndIndex(numSortedItems - 1, indx1, value1);
+            vis.getValueAndIndex(numSortedItems - 2, indx2, value2);
+            float cog1[3], cog2[3];
+            bmsmc->getCluster(indx1)->getCenterOfGravity(cog1);
+            bmsmc->getCluster(indx2)->getCenterOfGravity(cog2);
+
+            //
+            // If 1st cluster is too far posterior, skip it and 
+            // use the 2nd cluster
+            //
+            const float posteriorLimitHF = -34.0;            
+            if (cog1[1] < posteriorLimitHF) {
+               if (cog2[1] > posteriorLimitHF) {
+                  numSortedItems--;
+                  stopIndex--;
+                  std::cout << "SULCAL ID INFO: " 
+                            << "HF cluster Y=" << cog1[1] << " skipped." 
+                            << std::endl;
+               }
+            }
+         }
+      }
+      
+      //
       // Special processing for post-central sulcus
       //
       if (sulcalNamesAndVolumes[j].getSulcusName() == postCentralSulcusName) {
@@ -702,6 +770,28 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::createInitialSulcalIdentific
             if (dist <= postCentralSulcusSplit) {
                stopIndex = numSortedItems - 2;
                //std::cout << "INFO: using second PoCeS cluster." << std::endl;
+            }
+         }
+      }
+      
+      //
+      // Special processing for superior temporal sulcus
+      //
+      if (sulcalNamesAndVolumes[j].getSulcusName() == superiorTemporalSulcusName) {
+         if (numSortedItems > 1) {
+            int indx1, indx2;
+            float value1, value2;
+            vis.getValueAndIndex(numSortedItems - 1, indx1, value1);
+            vis.getValueAndIndex(numSortedItems - 2, indx2, value2);
+            const float y1 = bmsmc->getCluster(indx1)->getMaximumY(fiducialSurface);
+            const float y2 = bmsmc->getCluster(indx2)->getMaximumY(fiducialSurface);
+            
+            //
+            // If largest cluster is far posterior and the second cluster
+            // is in front of it, use both clusters
+            //
+            if ((y1 < -25.0) && (y2 > y1)) {
+               stopIndex = numSortedItems - 2;
             }
          }
       }
@@ -858,7 +948,7 @@ BrainModelSurfaceSulcalIdentificationProbabilistic::rotateVeryInflatedSurface() 
    else if (veryInflatedSurface->getStructure() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {
       rotation = -35.0;
    }
-   if (brainSet->getStructure() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
+   else if (brainSet->getStructure() == Structure::STRUCTURE_TYPE_CORTEX_LEFT) {
       rotation = 35.0;
    }
    else if (brainSet->getStructure() == Structure::STRUCTURE_TYPE_CORTEX_RIGHT) {

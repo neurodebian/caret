@@ -46,8 +46,8 @@ class MniObjSurfaceFile;
 class PaintFile;
 class RgbPaintFile;
 class SurfaceShapeFile;
-class SurfaceVectorFile;
 class TopologyFile;
+class VectorFile;
 
 /// BrainModelSurface stores geometry and topology for a brain surface
 /**
@@ -121,6 +121,12 @@ class BrainModelSurface : public BrainModel {
                             const bool applyRotation,
                             const bool applyScaling);
       
+      /// OLD Apply current view to surface that uses OpenGL
+      void OLDapplyCurrentView(const int surfaceViewNumber,
+                            const bool applyTranslation,
+                            const bool applyRotation,
+                            const bool applyScaling);
+
       /// smooth the surface by moving nodes along their normals multiplied by curvature.
       void smoothSurfaceUsingCurvature(const float strength,
                                        const int numSteps,
@@ -193,10 +199,8 @@ class BrainModelSurface : public BrainModel {
       /// compute normals
       void computeNormals(const float* coordsIn = NULL);
       
-      /// copy normals to surface vector file
-      void copyNormalsToSurfaceVectorFile(SurfaceVectorFile* svf,
-                                          const int columnNumber,
-                                          const QString& columnName) const;
+      /// copy normals to vector file
+      void copyNormalsToVectorFile(VectorFile* vf) const;
                                           
       /// convert to a sphere with the specified area
       void convertToSphereWithSurfaceArea(const float desiredSphereArea = 0.0);
@@ -313,6 +317,12 @@ class BrainModelSurface : public BrainModel {
       void writeSurfaceFile(const QString& filename,
                             const AbstractFile::FILE_FORMAT fileFormat = AbstractFile::FILE_FORMAT_XML) throw (FileException);
       
+      /// write the file's memory in caret6 format to the specified name
+      QString writeSurfaceInCaret6Format(const QString& filenameIn,
+                                         const QString& prependToFileNameExtension,
+                                         Structure structure,
+                                         const bool useCaret6ExtensionFlag) throw (FileException);
+
       /// get the structure
       Structure getStructure() const { return structure; }
       
@@ -487,8 +497,9 @@ class BrainModelSurface : public BrainModel {
       
       /// landmark constrained areal smoothing
       void landmarkConstrainedSmoothing(const float strength, 
-                                             const int iterations, 
-                                             const std::vector<bool>& landmarkNodeFlag);
+                                        const int iterations, 
+                                        const std::vector<bool>& landmarkNodeFlag,
+                                        const int projectToSphereEveryXIterations);
 
       /// Performed landmark neighbor constrained smoothing.  
       void landmarkNeighborConstrainedSmoothing(const float strength, 
@@ -519,6 +530,9 @@ class BrainModelSurface : public BrainModel {
       /// simplify the surface to a fewer number of polygons
       vtkPolyData* simplifySurface(const int maxPolygons) const;
       
+      /// Create a string of c-language arrays containing vertices, normals, triangles
+      QString convertToCLanguageArrays() const;
+
    protected:
       //
       // NOTE NOTE NOTE NOTE NOTE NOTE NOTE    !!!!!!!!!!!!!!!!!!!!!!!!!!!

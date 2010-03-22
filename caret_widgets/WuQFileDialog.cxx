@@ -75,6 +75,7 @@
 #include <QTreeWidgetItem>
 #include <QToolButton>
 
+#include "DateAndTime.h"
 #define _WU_Q_FILE_DIALOG_MAIN_H_
 #include "WuQFileDialog.h"
 #include "WuQFileDialogIcons.h"
@@ -262,6 +263,7 @@ WuQFileDialog::getOpenFileName(QWidget *parent,
    cfd.setFilters(filter.split(";;", QString::SkipEmptyParts));
    cfd.setFileMode(ExistingFile);
    cfd.setAcceptMode(AcceptOpen);
+   cfd.rereadDir();
    if (cfd.exec() == Accepted) {
       if (cfd.selectedFiles().count() > 0) {
          name = cfd.selectedFiles().at(0);
@@ -296,6 +298,7 @@ WuQFileDialog::getSaveFileName(QWidget *parent,
    if (options & DontConfirmOverwrite) {
       cfd.setConfirmOverwrite(false);
    }
+   cfd.rereadDir();
    if (cfd.exec() == Accepted) {
       if (cfd.selectedFiles().count() > 0) {
          name = cfd.selectedFiles().at(0);
@@ -328,6 +331,7 @@ WuQFileDialog::getExistingDirectory(QWidget *parent,
    else {
       cfd.setFileMode(Directory);
    }
+   cfd.rereadDir();
    if (cfd.exec() == Accepted) {
       name = cfd.directory().absolutePath();
    }
@@ -354,6 +358,7 @@ WuQFileDialog::getOpenFileNames(QWidget *parent,
    cfd.setFilters(filter.split(";;", QString::SkipEmptyParts));
    cfd.setFileMode(ExistingFile);
    cfd.setAcceptMode(AcceptOpen);
+   cfd.rereadDir();
    if (cfd.exec() == Accepted) {
       if (cfd.selectedFiles().count() > 0) {
          names = cfd.selectedFiles();

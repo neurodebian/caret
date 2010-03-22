@@ -27,8 +27,8 @@
 #include <iostream>
 
 #include <QColor>
-#include <QDateTime>
 #include <QImageWriter>
+#include <QTime>
 
 #include "DebugControl.h"
 #include "FileUtilities.h"
