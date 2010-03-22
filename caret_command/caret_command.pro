@@ -116,7 +116,7 @@ unix:!macx {
    # FreeBSD also does not have libdl, but integrates its functions
    # into libc.
    !exists( /etc/rc.conf ) {
-      LIBS += -ldl 
+      LIBS += -ldl
    }       
            
    # for SGI systems
