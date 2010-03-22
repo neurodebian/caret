@@ -155,7 +155,7 @@ DEFINES += HAVE_VTK
       #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
    }
    !win32 {
-#      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
+#      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a
    }
    VTK_LIBS += \
               -L$(VTK_LIB_DIR) \

@@ -111,7 +111,7 @@ main(int argc, char* argv[])
       //
       //Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
       //Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
-      //Q_IMPORT_PLUGIN(qtiff) 
+      //Q_IMPORT_PLUGIN(qtiff)
       
       //
       // Get all of the available commands

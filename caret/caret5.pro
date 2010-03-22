@@ -108,7 +108,7 @@ unix {
 	   ../caret_uniformize/libCaretUniformize.so \
 	   ../caret_statistics/libCaretStatistics.so \
 	   ../caret_common/libCaretCommon.so \
-	   ../caret_widgets/libCaretWidgets.so      
+	   ../caret_widgets/libCaretWidgets.so
 }
 
 unix:!macx {
@@ -138,7 +138,7 @@ unix:!macx {
    # FreeBSD also does not have libdl, but integrates its functions
    # into libc.
    !exists( /etc/rc.conf ) {
-      LIBS += -ldl 
+      LIBS += -ldl
    }       
 
    # for SGI systems
