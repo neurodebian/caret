@@ -48,6 +48,9 @@ static const char *period = ".";
 #ifdef Q_OS_FREEBSD
 static const char *period = ".";
 #endif
+#ifdef Q_OS_GLIBC
+static const char *period = ".";
+#endif
 
 const char*
 Basename(char* path)
