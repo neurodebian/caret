@@ -115,6 +115,12 @@ class StudyCollection {
       /// set foci list ID
       void setFociListID(const QString& s);
       
+      /// get  foci color list ID
+      QString getFociColorListID() const { return fociColorListID; }
+      
+      /// set foci color list ID
+      void setFociColorListID(const QString& s);
+      
       /// get study collection ID
       QString getStudyCollectionID() const { return sclID; }
       
@@ -150,6 +156,9 @@ class StudyCollection {
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement& parentElement);
                     
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter, int indx) const throw (FileException);
+
       /// study collection name
       QString studyCollectionName;
                                  
@@ -179,6 +188,9 @@ class StudyCollection {
       
       /// foci list ID
       QString fociListID;
+      
+      /// foci color list ID
+      QString fociColorListID;
       
       /// study collection ID
       QString sclID;
@@ -240,6 +252,9 @@ class StudyCollectionFile : public AbstractFile {
       // find out if comma separated file conversion supported
       virtual void getCommaSeparatedFileSupport(bool& readFromCSV,
                                                 bool& writeToCSV) const;
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
 
       

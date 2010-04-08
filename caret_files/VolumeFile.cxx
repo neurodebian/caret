@@ -42,6 +42,7 @@
 #define _USE_MATH_DEFINES
 #define NOMINMAX
 #endif
+#include <QTime>
 
 #include <algorithm>
 #include <cmath>
@@ -52,12 +53,8 @@
 #include <sstream>
 #include <stack>
 
-#include <QDateTime> 
 #include <QProcess>
 
-//
-// The VolumeFile.h include must be before NiftiHelper.h
-//
 #define __VOLUME_FILE_MAIN_H__
 #include "VolumeFile.h"
 #undef __VOLUME_FILE_MAIN_H__
@@ -67,7 +64,7 @@
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "MathUtilities.h"
-#include "NiftiHelper.h"
+#include "NiftiFileHeader.h"
 #include "ParamsFile.h"
 #include "SpecFile.h"
 #include "StatisticDataGroup.h"
@@ -76,7 +73,7 @@
 #include "TopologyFile.h"
 #include "TransformationMatrixFile.h"
 #include "SystemUtilities.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeITKImage.h"
 #include "VolumeModification.h"
 
@@ -168,7 +165,7 @@ VolumeFile::operator=(const VolumeFile& vf)
 /**
  * constructor creates volume from a vector file.
  */
-VolumeFile::VolumeFile(const VectorFile& vf)
+VolumeFile::VolumeFile(const SureFitVectorFile& vf)
    : AbstractFile("Volume File", 
                   vf.getDefaultFileNameExtension(),
                   false, 
@@ -293,6 +290,8 @@ VolumeFile::copyVolumeData(const VolumeFile& vf,
    niftiIntentParameter2 = vf.niftiIntentParameter2;
    niftiIntentParameter3 = vf.niftiIntentParameter3;
    niftiTR = vf.niftiTR;
+   niftiSFormTransformationMatrix = vf.niftiSFormTransformationMatrix;
+   niftiQFormTransformationMatrix = vf.niftiQFormTransformationMatrix;
    
    regionNameHighlighted = vf.regionNameHighlighted;
    
@@ -1116,6 +1115,8 @@ VolumeFile::clear()
    niftiIntentParameter2 = 0.0;
    niftiIntentParameter3 = 0.0;
    niftiTR = 0.0;
+   niftiSFormTransformationMatrix.identity();
+   niftiQFormTransformationMatrix.identity();
    
    setVoxelDataType(VOXEL_DATA_TYPE_FLOAT);
    
@@ -6898,7 +6899,22 @@ VolumeFile::shiftAxis(const VOLUME_AXIS axis, const int offset)
    minMaxTwoToNinetyEightPercentVoxelValuesValid = false;
 }
 
-/// Smear voxel data along a specified axis
+/**
+ * Smear voxel data along a specified axis.  During smearing, a voxel is set
+ * to the maximum of its value and the corresponding voxel in an adjacent
+ * slice.
+ *
+ * "mag" Number of iterations of smearing
+ *
+ * "sign"  offset of slice to smear with the current slice
+ *     "-1" uses slice above
+ *      "1" uses slice below
+ *
+ *  "core"  
+ *     "0"  If a voxel's value decreased as a result of smearing, set the
+ *          voxel to zero
+ *     "1"  Output smearing regardless of voxel value changes.
+ */
 void	
 VolumeFile::smearAxis(const VOLUME_AXIS axis, 
                          const int mag, 
@@ -9517,7 +9533,7 @@ VolumeFile::readFile(const QString& fileNameIn,
    //
    bool niftiFlag = false;
    if (StringUtilities::endsWith(fileNameIn, SpecFile::getAnalyzeVolumeFileExtension())) {
-      niftiFlag = NiftiHelper::hdrIsNiftiFile(fileNameIn);
+      niftiFlag = NiftiFileHeader::hdrIsNiftiFile(fileNameIn);
       if (DebugControl::getDebugOn()) {
          std::cout << "HDR file is a NIFTI header file." << std::endl;
       }
@@ -9598,8 +9614,16 @@ VolumeFile::writeFile(const QString& fileNameIn,
                       const VOLUME_TYPE volumeType,
                       const VOXEL_DATA_TYPE writeVoxelDataType,
                       std::vector<VolumeFile*>& volumesToWrite,
-                      const bool zipAfniBrikFile) throw (FileException)
+                      const bool zipAfniBrikFile,
+                      const ColorFile* labelColorsForCaret6) throw (FileException)
 {
+   QFile file(fileNameIn);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (file.exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
+
    if (volumesToWrite.size() == 0) {
       throw FileException(fileNameIn, "No volume data to write.");
    }
@@ -9674,7 +9698,7 @@ VolumeFile::writeFile(const QString& fileNameIn,
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getNiftiVolumeFileExtension()) ||
             StringUtilities::endsWith(fileNameIn, SpecFile::getNiftiGzipVolumeFileExtension())) {
-      writeFileNifti(fileNameIn, writeVoxelDataType, volumesToWrite);
+      writeFileNifti(fileNameIn, writeVoxelDataType, volumesToWrite, labelColorsForCaret6);
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getWustlVolumeFileExtension())) {
       writeFileWuNil(fileNameIn, writeVoxelDataType, volumesToWrite);
@@ -10569,89 +10593,17 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    //
    // The NIFTI header
    //
-   nifti_1_header hdr;
-   
-   //
-   // Read the NIFTI header and close file after reading header
-   //
-   const unsigned long headerSize = sizeof(hdr);
-   const unsigned long numBytesRead = gzread(dataFile, (voidp)&hdr, headerSize);
-   if (numBytesRead != headerSize) {
-      gzclose(dataFile);
-      std::ostringstream str;
-      str << "Tried to read " 
-          << headerSize
-          << " bytes from header.\n"
-          << "Only read "
-          << numBytesRead
-          << ".";
-      throw FileException(volumeRead.filename, str.str().c_str());
-   }
-   
-   //
-   // Make sure it is a NIFTI file
-   //
-   const int version = NIFTI_VERSION(hdr);
-   switch (version) {
-      case 0:
-         gzclose(dataFile);
-         throw FileException(volumeRead.filename, "Is not a NIFTI volume file.");
-         break;
-      case 1:
-         break;
-      default:
-         {
-            gzclose(dataFile);
-            std::ostringstream str;
-            str << "Is an invalid NIFTI version: "
-                << version
-                << ".";
-            throw FileException(volumeRead.filename, str.str().c_str());
-         }
-         break;
-   }
+   NiftiFileHeader niftiFileHeader;
+   niftiFileHeader.readHeader(dataFile, volumeRead.filename);
+   nifti_1_header hdr = niftiFileHeader.getNiftiHeaderStruct();
+   volumeRead.niftiSFormTransformationMatrix = niftiFileHeader.getSFormTransformationMatrix();
+   volumeRead.niftiQFormTransformationMatrix = niftiFileHeader.getQFormTransformationMatrix();
+
    
    //
    // Do bytes need to be swapped ?
    //
-   bool byteSwapFlag = false;
-   if (NIFTI_NEEDS_SWAP(hdr)) {
-      byteSwapFlag = true;
-      
-      ByteSwapping::swapBytes(&hdr.sizeof_hdr, 1);
-      ByteSwapping::swapBytes(&hdr.extents, 1);
-      ByteSwapping::swapBytes(&hdr.session_error, 1);
-      ByteSwapping::swapBytes(hdr.dim, 8);
-      ByteSwapping::swapBytes(&hdr.intent_p1, 1);
-      ByteSwapping::swapBytes(&hdr.intent_p2, 1);
-      ByteSwapping::swapBytes(&hdr.intent_p3, 1);
-      ByteSwapping::swapBytes(&hdr.intent_code, 1);
-      ByteSwapping::swapBytes(&hdr.datatype, 1);
-      ByteSwapping::swapBytes(&hdr.bitpix, 1);
-      ByteSwapping::swapBytes(&hdr.slice_start, 1);
-      ByteSwapping::swapBytes(hdr.pixdim, 8);
-      ByteSwapping::swapBytes(&hdr.vox_offset, 1);
-      ByteSwapping::swapBytes(&hdr.scl_slope, 1);
-      ByteSwapping::swapBytes(&hdr.scl_inter, 1);
-      ByteSwapping::swapBytes(&hdr.slice_end, 1);
-      ByteSwapping::swapBytes(&hdr.cal_max, 1);
-      ByteSwapping::swapBytes(&hdr.cal_min, 1);
-      ByteSwapping::swapBytes(&hdr.slice_duration, 1);
-      ByteSwapping::swapBytes(&hdr.toffset, 1);
-      ByteSwapping::swapBytes(&hdr.glmax, 1);
-      ByteSwapping::swapBytes(&hdr.glmin, 1);
-      ByteSwapping::swapBytes(&hdr.qform_code, 1);
-      ByteSwapping::swapBytes(&hdr.sform_code, 1);
-      ByteSwapping::swapBytes(&hdr.quatern_b, 1);
-      ByteSwapping::swapBytes(&hdr.quatern_c, 1);
-      ByteSwapping::swapBytes(&hdr.quatern_d, 1);
-      ByteSwapping::swapBytes(&hdr.qoffset_x, 1);
-      ByteSwapping::swapBytes(&hdr.qoffset_y, 1);
-      ByteSwapping::swapBytes(&hdr.qoffset_z, 1);
-      ByteSwapping::swapBytes(hdr.srow_x, 4);
-      ByteSwapping::swapBytes(hdr.srow_y, 4);
-      ByteSwapping::swapBytes(hdr.srow_z, 4);
-   }
+   bool byteSwapFlag = niftiFileHeader.doesDataNeedByteSwapping();
    
    //
    // Offset of data
@@ -10798,28 +10750,6 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    }
    comm[79] = '\0';
    volumeRead.setHeaderTag(headerTagComment, comm);
-
-   //
-   // Convert units to MilliMeters
-   //
-   float spacingScale = 1.0;
-   switch (hdr.xyzt_units) {
-      case NIFTI_UNITS_METER:
-         spacingScale = 1000.0;
-         break;
-      case NIFTI_UNITS_MM:
-         spacingScale = 1.0;
-         break;
-      case NIFTI_UNITS_MICRON:
-         spacingScale = 0.001;
-         break;
-   }
-   hdr.qoffset_x *= spacingScale;
-   hdr.qoffset_y *= spacingScale;
-   hdr.qoffset_z *= spacingScale;
-   hdr.pixdim[1] *= spacingScale;
-   hdr.pixdim[2] *= spacingScale;
-   hdr.pixdim[3] *= spacingScale;
    
    //
    // Spacing
@@ -10847,7 +10777,8 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       volumeRead.scaleOffset[i] = hdr.scl_inter;
       volumeRead.scaleSlope[i]  = hdr.scl_slope;
    }
-   
+
+/*
    TransformationMatrix qformTM;
    bool qformTMValid = false;
    ORIENTATION qformOrientation[3] = {
@@ -10855,148 +10786,104 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       ORIENTATION_UNKNOWN,
       ORIENTATION_UNKNOWN
    };
-   
+*/
+
+   //
+   // Convert units to MilliMeters
+   //
+   float spacingScale = 1.0;
+   switch (hdr.xyzt_units) {
+      case NIFTI_UNITS_METER:
+         spacingScale = 1000.0;
+         break;
+      case NIFTI_UNITS_MM:
+         spacingScale = 1.0;
+         break;
+      case NIFTI_UNITS_MICRON:
+         spacingScale = 0.001;
+         break;
+   }
+   hdr.qoffset_x *= spacingScale;
+   hdr.qoffset_y *= spacingScale;
+   hdr.qoffset_z *= spacingScale;
+   hdr.pixdim[1] *= spacingScale;
+   hdr.pixdim[2] *= spacingScale;
+   hdr.pixdim[3] *= spacingScale;
+
    //
    // sform_code take priority over qform_code
    //
    if (hdr.sform_code > 0) {
-      qformTMValid = false;
-      
-      float x[2], y[2], z[2];
-      for (int i = 0; i < 2; i++) {
-         const int j = i;
-         const int k = i;
-         x[i] = hdr.srow_x[0] * i + hdr.srow_x[1] * j + hdr.srow_x[2] * k + hdr.srow_x[3];
-         y[i] = hdr.srow_y[0] * i + hdr.srow_y[1] * j + hdr.srow_y[2] * k + hdr.srow_y[3];
-         z[i] = hdr.srow_z[0] * i + hdr.srow_z[1] * j + hdr.srow_z[2] * k + hdr.srow_z[3];
-      }
       //
-      // Convert units to MilliMeters
+      // Get coordinates of voxels
       //
-      float spacingScale = 1.0;
-      switch (hdr.xyzt_units) {
-         case NIFTI_UNITS_METER:
-            spacingScale = 1000.0;
-            break;
-         case NIFTI_UNITS_MM:
-            spacingScale = 1.0;
-            break;
-         case NIFTI_UNITS_MICRON:
-            spacingScale = 0.001;
-            break;
-      }
-      volumeRead.origin[0] = x[0] * spacingScale;
-      volumeRead.origin[1] = y[0] * spacingScale;
-      volumeRead.origin[2] = z[0] * spacingScale;
-      volumeRead.spacing[0] = (x[1] - x[0]) * spacingScale;
-      volumeRead.spacing[1] = (y[1] - y[0]) * spacingScale;
-      volumeRead.spacing[2] = (z[1] - z[0]) * spacingScale;
-      
- 
-      //
-      // NIFTI origin is in the center of the voxel
-      // so move the origin to the corner of voxel
-      //
-      //volumeRead.origin[0] -= volumeRead.spacing[0] * 0.5;
-      //volumeRead.origin[1] -= volumeRead.spacing[1] * 0.5;
-      //volumeRead.origin[2] -= volumeRead.spacing[2] * 0.5;
-      
-      NiftiHelper::mat44 m;
-      m.m[0][0] = hdr.srow_x[0];
-      m.m[0][1] = hdr.srow_x[1];
-      m.m[0][2] = hdr.srow_x[2];
-      m.m[0][3] = hdr.srow_x[3];
-      m.m[1][0] = hdr.srow_y[0];
-      m.m[1][1] = hdr.srow_y[1];
-      m.m[1][2] = hdr.srow_y[2];
-      m.m[1][3] = hdr.srow_y[3];
-      m.m[2][0] = hdr.srow_z[0];
-      m.m[2][1] = hdr.srow_z[1];
-      m.m[2][2] = hdr.srow_z[2];
-      m.m[2][3] = hdr.srow_z[3];
-      m.m[3][0] = 0.0;
-      m.m[3][1] = 0.0;
-      m.m[3][2] = 0.0;
-      m.m[3][3] = 1.0;
-      NiftiHelper::mat44ToCaretOrientation(m,
-                                           volumeRead.orientation[0],
-                                           volumeRead.orientation[1],
-                                           volumeRead.orientation[2]);
+      int ijk0[3] = { 0, 0, 0 };
+      int ijk1[3] = { 1, 1, 1 };
+      float xyz0[3], xyz1[3];
+      niftiFileHeader.getVoxelCoordinate(ijk0,
+                                         NiftiFileHeader::STEREOTAXIC_TYPE_SFORM,
+                                         xyz0);
+      niftiFileHeader.getVoxelCoordinate(ijk1,
+                                         NiftiFileHeader::STEREOTAXIC_TYPE_SFORM,
+                                         xyz1);
+
+      volumeRead.origin[0] = xyz0[0] * spacingScale;
+      volumeRead.origin[1] = xyz0[1] * spacingScale;
+      volumeRead.origin[2] = xyz0[2] * spacingScale;
+      volumeRead.spacing[0] = (xyz1[0] - xyz0[0]) * spacingScale;
+      volumeRead.spacing[1] = (xyz1[1] - xyz0[1]) * spacingScale;
+      volumeRead.spacing[2] = (xyz1[2] - xyz0[2]) * spacingScale;
+
+      niftiFileHeader.getSFormOrientation(volumeRead.orientation);
    }
    else if (hdr.qform_code > 0) {
-      volumeRead.origin[0] = hdr.qoffset_x;
-      volumeRead.origin[1] = hdr.qoffset_y;
-      volumeRead.origin[2] = hdr.qoffset_z;
-      
-      float qfac = (hdr.pixdim[0] < 0.0) ? -1.0 : 1.0 ;  /* left-handedness? */
-      NiftiHelper::mat44 m = 
-         NiftiHelper::nifti_quatern_to_mat44(hdr.quatern_b, hdr.quatern_c, hdr.quatern_c,
-                                             0.0, 0.0, 0.0,
-                                             1.0, 1.0, 1.0,
-                                             qfac);
-/*  09/19/2008
-         NiftiHelper::nifti_quatern_to_mat44(hdr.quatern_b, hdr.quatern_c, hdr.quatern_c,
-                                             hdr.qoffset_x, hdr.qoffset_y, hdr.qoffset_z,
-                                             hdr.pixdim[1], hdr.pixdim[2], hdr.pixdim[3],
-                                             qfac);
-*/                                             
-/*
-      float x[2], y[2], z[2];
-      for (int i = 0; i < 2; i++) {
-         const int j = i;
-         const int k = i;
-         x[i] = m.m[0][0] * i + m.m[0][1] * j + m.m[0][2] * k + m.m[0][3];
-         y[i] = m.m[1][0] * i + m.m[1][1] * j + m.m[1][2] * k + m.m[1][3];
-         z[i] = m.m[2][0] * i + m.m[2][1] * j + m.m[2][2] * k + m.m[2][3];
-      }
-      volumeRead.origin[0] = x[0];
-      volumeRead.origin[1] = y[0];
-      volumeRead.origin[2] = z[0];
-      volumeRead.spacing[0] = x[1] - x[0];
-      volumeRead.spacing[1] = y[1] - y[0];
-      volumeRead.spacing[2] = z[1] - z[0];
-*/
+      //
+      // Get coordinates of voxels
+      //
+      int ijk0[3] = { 0, 0, 0 };
+      int ijk1[3] = { 1, 1, 1 };
+      float xyz0[3], xyz1[3];
+      niftiFileHeader.getVoxelCoordinate(ijk0,
+                                         NiftiFileHeader::STEREOTAXIC_TYPE_QFORM,
+                                         xyz0);
+      niftiFileHeader.getVoxelCoordinate(ijk1,
+                                         NiftiFileHeader::STEREOTAXIC_TYPE_QFORM,
+                                         xyz1);
 
-      qformTMValid = true;
-      for (int i = 0; i < 4; i++) {
-         for (int j = 0; j < 4; j++) {
-            qformTM.setMatrixElement(i, j, m.m[i][j]);
-         }
-      }
-      for (int j = 0; j < 3; j++) {
-         float f = qformTM.getMatrixElement(j, 3);
-         f = -f;
-         qformTM.setMatrixElement(j, 3, f);
-      }
-      qformTM.transpose();
+      volumeRead.origin[0] = xyz0[0] * spacingScale;
+      volumeRead.origin[1] = xyz0[1] * spacingScale;
+      volumeRead.origin[2] = xyz0[2] * spacingScale;
+      volumeRead.spacing[0] = (xyz1[0] - xyz0[0]) * spacingScale;
+      volumeRead.spacing[1] = (xyz1[1] - xyz0[1]) * spacingScale;
+      volumeRead.spacing[2] = (xyz1[2] - xyz0[2]) * spacingScale;
 
-      
+      niftiFileHeader.getQFormOrientation(volumeRead.orientation);
+   }
+   else {
       //
-      // Force correct sign for spacing
+      // Get coordinates of voxels
       //
-      for (int i = 0; i < 3; i++) {
-         if (volumeRead.origin[i] < 0.0) {
-            volumeRead.spacing[i] = std::fabs(volumeRead.spacing[i]);
-         }
-         else {
-            volumeRead.spacing[i] = -std::fabs(volumeRead.spacing[i]);
-         }
-      }
-      
-      //
-      // Set orientation
-      //
-      volumeRead.orientation[0] = ORIENTATION_LEFT_TO_RIGHT;
-      volumeRead.orientation[1] = ORIENTATION_POSTERIOR_TO_ANTERIOR;
-      volumeRead.orientation[2] = ORIENTATION_INFERIOR_TO_SUPERIOR;
-      
-      NiftiHelper::mat44ToCaretOrientation(m,
-                                           qformOrientation[0],
-                                           qformOrientation[1],
-                                           qformOrientation[2]);
+      int ijk0[3] = { 0, 0, 0 };
+      int ijk1[3] = { 1, 1, 1 };
+      float xyz0[3], xyz1[3];
+      niftiFileHeader.getVoxelCoordinate(ijk0,
+                                         NiftiFileHeader::STEREOTAXIC_TYPE_NONE,
+                                         xyz0);
+      niftiFileHeader.getVoxelCoordinate(ijk1,
+                                         NiftiFileHeader::STEREOTAXIC_TYPE_NONE,
+                                         xyz1);
+
+      volumeRead.origin[0] = xyz0[0] * spacingScale;
+      volumeRead.origin[1] = xyz0[1] * spacingScale;
+      volumeRead.origin[2] = xyz0[2] * spacingScale;
+      volumeRead.spacing[0] = (xyz1[0] - xyz0[0]) * spacingScale;
+      volumeRead.spacing[1] = (xyz1[1] - xyz0[1]) * spacingScale;
+      volumeRead.spacing[2] = (xyz1[2] - xyz0[2]) * spacingScale;
+
+      niftiFileHeader.getQFormOrientation(volumeRead.orientation);
    }
    
-   
+/*
    //
    // The origin and spacing are always ordered L/R, P/A, I/S in NIFTI even if
    // the data is in a different order such as AIL.  So, swap some values to
@@ -11026,7 +10913,7 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       volumeRead.origin[i] = originTemp[orientIndex];
       volumeRead.spacing[i] = spacingTemp[orientIndex];
    }
-   
+*/
    //
    // Check the intent code
    //
@@ -11050,9 +10937,8 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    //
    // Intention string and TR
    //
-   NiftiHelper::getNiftiIntentionInformation(hdr,
-                                             volumeRead.niftiIntentCodeAndParamString,
-                                             volumeRead.niftiIntentName);
+   niftiFileHeader.getNiftiIntentionInformation(volumeRead.niftiIntentCodeAndParamString,
+                                                volumeRead.niftiIntentName);
    volumeRead.niftiIntentCode = hdr.intent_code;
    volumeRead.niftiIntentParameter1 = hdr.intent_p1;
    volumeRead.niftiIntentParameter2 = hdr.intent_p2;
@@ -11325,10 +11211,11 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
             //
             // Apply qform transformation
             //
+/*
             if (qformTMValid) {
                vf->applyTransformationMatrix(qformTM);
             }
-            
+*/
             //
             // return the volume to the user
             //
@@ -11353,6 +11240,793 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    //
    gzclose(dataFile);
 }                          
+
+/*=== 27 July 2009
+ **
+ * read the specified sub-volumes in a volume file.
+ *
+void
+VolumeFile::readFileNifti(const QString& fileNameIn,
+                          const int readSelection,
+                          std::vector<VolumeFile*>& volumesReadOut) throw (FileException)
+{
+
+   //
+   // Open the file
+   //
+   VolumeFile volumeRead;
+   volumeRead.filename = fileNameIn;
+   gzFile dataFile = gzopen(fileNameIn.toAscii().constData(), "rb");
+   if (dataFile == NULL) {
+      throw FileException(fileNameIn, "Unable to open with ZLIB for reading.");
+   }
+
+   //
+   // The NIFTI header
+   //
+   nifti_1_header hdr;
+
+   //
+   // Read the NIFTI header and close file after reading header
+   //
+   const unsigned long headerSize = sizeof(hdr);
+   const unsigned long numBytesRead = gzread(dataFile, (voidp)&hdr, headerSize);
+   if (numBytesRead != headerSize) {
+      gzclose(dataFile);
+      std::ostringstream str;
+      str << "Tried to read "
+          << headerSize
+          << " bytes from header.\n"
+          << "Only read "
+          << numBytesRead
+          << ".";
+      throw FileException(volumeRead.filename, str.str().c_str());
+   }
+
+   //
+   // Make sure it is a NIFTI file
+   //
+   const int version = NIFTI_VERSION(hdr);
+   switch (version) {
+      case 0:
+         gzclose(dataFile);
+         throw FileException(volumeRead.filename, "Is not a NIFTI volume file.");
+         break;
+      case 1:
+         break;
+      default:
+         {
+            gzclose(dataFile);
+            std::ostringstream str;
+            str << "Is an invalid NIFTI version: "
+                << version
+                << ".";
+            throw FileException(volumeRead.filename, str.str().c_str());
+         }
+         break;
+   }
+
+   //
+   // Do bytes need to be swapped ?
+   //
+   bool byteSwapFlag = false;
+   if (NIFTI_NEEDS_SWAP(hdr)) {
+      byteSwapFlag = true;
+
+      ByteSwapping::swapBytes(&hdr.sizeof_hdr, 1);
+      ByteSwapping::swapBytes(&hdr.extents, 1);
+      ByteSwapping::swapBytes(&hdr.session_error, 1);
+      ByteSwapping::swapBytes(hdr.dim, 8);
+      ByteSwapping::swapBytes(&hdr.intent_p1, 1);
+      ByteSwapping::swapBytes(&hdr.intent_p2, 1);
+      ByteSwapping::swapBytes(&hdr.intent_p3, 1);
+      ByteSwapping::swapBytes(&hdr.intent_code, 1);
+      ByteSwapping::swapBytes(&hdr.datatype, 1);
+      ByteSwapping::swapBytes(&hdr.bitpix, 1);
+      ByteSwapping::swapBytes(&hdr.slice_start, 1);
+      ByteSwapping::swapBytes(hdr.pixdim, 8);
+      ByteSwapping::swapBytes(&hdr.vox_offset, 1);
+      ByteSwapping::swapBytes(&hdr.scl_slope, 1);
+      ByteSwapping::swapBytes(&hdr.scl_inter, 1);
+      ByteSwapping::swapBytes(&hdr.slice_end, 1);
+      ByteSwapping::swapBytes(&hdr.cal_max, 1);
+      ByteSwapping::swapBytes(&hdr.cal_min, 1);
+      ByteSwapping::swapBytes(&hdr.slice_duration, 1);
+      ByteSwapping::swapBytes(&hdr.toffset, 1);
+      ByteSwapping::swapBytes(&hdr.glmax, 1);
+      ByteSwapping::swapBytes(&hdr.glmin, 1);
+      ByteSwapping::swapBytes(&hdr.qform_code, 1);
+      ByteSwapping::swapBytes(&hdr.sform_code, 1);
+      ByteSwapping::swapBytes(&hdr.quatern_b, 1);
+      ByteSwapping::swapBytes(&hdr.quatern_c, 1);
+      ByteSwapping::swapBytes(&hdr.quatern_d, 1);
+      ByteSwapping::swapBytes(&hdr.qoffset_x, 1);
+      ByteSwapping::swapBytes(&hdr.qoffset_y, 1);
+      ByteSwapping::swapBytes(&hdr.qoffset_z, 1);
+      ByteSwapping::swapBytes(hdr.srow_x, 4);
+      ByteSwapping::swapBytes(hdr.srow_y, 4);
+      ByteSwapping::swapBytes(hdr.srow_z, 4);
+   }
+
+   //
+   // Offset of data
+   //
+   const long niftiReadDataOffset = static_cast<unsigned long>(hdr.vox_offset);
+
+   //
+   // Get volume dimensions
+   //
+   if (hdr.dim[0] < 3) {
+      gzclose(dataFile);
+      throw FileException(volumeRead.filename, "has less than 3 dimensions.");
+   }
+
+   volumeRead.dimensions[0] = hdr.dim[1];
+   volumeRead.dimensions[1] = hdr.dim[2];
+   volumeRead.dimensions[2] = hdr.dim[3];
+
+   //
+   // Multiple volumes in file ?
+   //
+   int numSubVols = 1;
+   if (hdr.dim[0] > 3) {
+      //
+      // 4 dim volume is time series
+      //
+      if (hdr.dim[0] == 4) {
+         numSubVols = hdr.dim[4];
+      }
+      else if (hdr.dim[0] == 5) {
+         //
+         // IF 5 dimensions and dim[4] = 1, then multiple values (subvolumes) per voxel
+         //
+         if (hdr.dim[4] == 1) {
+            //
+            // We'll consider RGB's to be a single volume
+            //
+            if ((hdr.dim[5] == 3) &&
+                (hdr.datatype == NIFTI_TYPE_RGB24)) {
+               hdr.dim[5] = 1;
+            }
+            if ((hdr.dim[5] == 3) &&
+                (hdr.intent_code == NIFTI_INTENT_VECTOR)) {
+               volumeRead.volumeType = VOLUME_TYPE_VECTOR;
+            }
+            numSubVols = hdr.dim[5];
+         }
+         else if (hdr.dim[4] > 1) {
+            if (hdr.dim[5] > 1) {
+               throw FileException(volumeRead.filename, "Multiple values per timepoint not supported.");
+            }
+            numSubVols = hdr.dim[4];
+         }
+      }
+      else {
+         throw FileException(volumeRead.filename, "Dimensions greater than 5 not supported.");
+      }
+   }
+   volumeRead.initializeSubVolumes(numSubVols);
+
+   //
+   // Set the data type
+   //
+   switch (hdr.datatype) {
+      case NIFTI_TYPE_UINT8:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_CHAR_UNSIGNED;
+         break;
+      case NIFTI_TYPE_INT8:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_CHAR;
+         break;
+      case NIFTI_TYPE_INT16:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_SHORT;
+         break;
+      case NIFTI_TYPE_UINT16:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_SHORT_UNSIGNED;
+         break;
+      case NIFTI_TYPE_INT32:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_INT;
+         break;
+      case NIFTI_TYPE_UINT32:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_INT_UNSIGNED;
+         break;
+      case NIFTI_TYPE_INT64:
+         if (sizeof(long long) == 8) {
+            volumeRead.voxelDataType = VOXEL_DATA_TYPE_LONG;
+         }
+         else {
+            throw FileException("Volume contains 64-bit long long data type which "
+                                "this computer does not support.");
+         }
+         break;
+      case NIFTI_TYPE_UINT64:
+         if (sizeof(unsigned long long) == 8) {
+            volumeRead.voxelDataType = VOXEL_DATA_TYPE_LONG_UNSIGNED;
+         }
+         else {
+            throw FileException("Volume contains 64-bit unsigned long long data type which "
+                                "this computer does not support.");
+         }
+         break;
+      case NIFTI_TYPE_FLOAT32:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_FLOAT;
+         break;
+      case NIFTI_TYPE_FLOAT64:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_DOUBLE;
+         break;
+      case NIFTI_TYPE_FLOAT128:
+         gzclose(dataFile);
+         throw FileException(volumeRead.filename, "FLOAT 128 type not supported.");
+         break;
+      case NIFTI_TYPE_RGB24:
+         volumeRead.voxelDataType = VOXEL_DATA_TYPE_RGB_SLICE_INTERLEAVED;
+         break;
+      case NIFTI_TYPE_COMPLEX64:
+         gzclose(dataFile);
+         throw FileException(volumeRead.filename, "COMPLEX 64 type not supported.");
+         break;
+      case NIFTI_TYPE_COMPLEX128:
+         gzclose(dataFile);
+         throw FileException(volumeRead.filename, "COMPLEX 128 type not supported.");
+         break;
+      case NIFTI_TYPE_COMPLEX256:
+         gzclose(dataFile);
+         throw FileException(volumeRead.filename, "COMPLEX 256 type not supported.");
+         break;
+      default:
+         {
+            gzclose(dataFile);
+            std::ostringstream str;
+            str << "datatype number "
+                << hdr.datatype
+                << " is unknown.";
+            throw FileException(volumeRead.filename, str.str().c_str());
+         }
+         break;
+   }
+
+   //
+   // Comment info
+   //
+   char comm[80];
+   for (int m = 0; m < 79; m++) {
+      comm[m] = hdr.descrip[m];
+   }
+   comm[79] = '\0';
+   volumeRead.setHeaderTag(headerTagComment, comm);
+
+   //
+   // Convert units to MilliMeters
+   //
+   float spacingScale = 1.0;
+   switch (hdr.xyzt_units) {
+      case NIFTI_UNITS_METER:
+         spacingScale = 1000.0;
+         break;
+      case NIFTI_UNITS_MM:
+         spacingScale = 1.0;
+         break;
+      case NIFTI_UNITS_MICRON:
+         spacingScale = 0.001;
+         break;
+   }
+   hdr.qoffset_x *= spacingScale;
+   hdr.qoffset_y *= spacingScale;
+   hdr.qoffset_z *= spacingScale;
+   hdr.pixdim[1] *= spacingScale;
+   hdr.pixdim[2] *= spacingScale;
+   hdr.pixdim[3] *= spacingScale;
+
+   //
+   // Spacing
+   //
+   volumeRead.spacing[0] = hdr.pixdim[1];
+   volumeRead.spacing[1] = hdr.pixdim[2];
+   volumeRead.spacing[2] = hdr.pixdim[3];
+
+
+   //
+   // default origin
+   //
+   volumeRead.origin[0] = 0.0;
+   volumeRead.origin[1] = 0.0;
+   volumeRead.origin[2] = 0.0;
+
+   //
+   // Default orientation
+   //
+   volumeRead.orientation[0] = ORIENTATION_UNKNOWN;
+   volumeRead.orientation[1] = ORIENTATION_UNKNOWN;
+   volumeRead.orientation[2] = ORIENTATION_UNKNOWN;
+
+   for (int i = 0; i < numSubVols; i++) {
+      volumeRead.scaleOffset[i] = hdr.scl_inter;
+      volumeRead.scaleSlope[i]  = hdr.scl_slope;
+   }
+
+   TransformationMatrix qformTM;
+   bool qformTMValid = false;
+   ORIENTATION qformOrientation[3] = {
+      ORIENTATION_UNKNOWN,
+      ORIENTATION_UNKNOWN,
+      ORIENTATION_UNKNOWN
+   };
+
+   //
+   // sform_code take priority over qform_code
+   //
+   if (hdr.sform_code > 0) {
+      qformTMValid = false;
+
+      float x[2], y[2], z[2];
+      for (int i = 0; i < 2; i++) {
+         const int j = i;
+         const int k = i;
+         x[i] = hdr.srow_x[0] * i + hdr.srow_x[1] * j + hdr.srow_x[2] * k + hdr.srow_x[3];
+         y[i] = hdr.srow_y[0] * i + hdr.srow_y[1] * j + hdr.srow_y[2] * k + hdr.srow_y[3];
+         z[i] = hdr.srow_z[0] * i + hdr.srow_z[1] * j + hdr.srow_z[2] * k + hdr.srow_z[3];
+      }
+      //
+      // Convert units to MilliMeters
+      //
+      float spacingScale = 1.0;
+      switch (hdr.xyzt_units) {
+         case NIFTI_UNITS_METER:
+            spacingScale = 1000.0;
+            break;
+         case NIFTI_UNITS_MM:
+            spacingScale = 1.0;
+            break;
+         case NIFTI_UNITS_MICRON:
+            spacingScale = 0.001;
+            break;
+      }
+      volumeRead.origin[0] = x[0] * spacingScale;
+      volumeRead.origin[1] = y[0] * spacingScale;
+      volumeRead.origin[2] = z[0] * spacingScale;
+      volumeRead.spacing[0] = (x[1] - x[0]) * spacingScale;
+      volumeRead.spacing[1] = (y[1] - y[0]) * spacingScale;
+      volumeRead.spacing[2] = (z[1] - z[0]) * spacingScale;
+
+
+      //
+      // NIFTI origin is in the center of the voxel
+      // so move the origin to the corner of voxel
+      //
+      //volumeRead.origin[0] -= volumeRead.spacing[0] * 0.5;
+      //volumeRead.origin[1] -= volumeRead.spacing[1] * 0.5;
+      //volumeRead.origin[2] -= volumeRead.spacing[2] * 0.5;
+
+      NiftiHelper::mat44 m;
+      m.m[0][0] = hdr.srow_x[0];
+      m.m[0][1] = hdr.srow_x[1];
+      m.m[0][2] = hdr.srow_x[2];
+      m.m[0][3] = hdr.srow_x[3];
+      m.m[1][0] = hdr.srow_y[0];
+      m.m[1][1] = hdr.srow_y[1];
+      m.m[1][2] = hdr.srow_y[2];
+      m.m[1][3] = hdr.srow_y[3];
+      m.m[2][0] = hdr.srow_z[0];
+      m.m[2][1] = hdr.srow_z[1];
+      m.m[2][2] = hdr.srow_z[2];
+      m.m[2][3] = hdr.srow_z[3];
+      m.m[3][0] = 0.0;
+      m.m[3][1] = 0.0;
+      m.m[3][2] = 0.0;
+      m.m[3][3] = 1.0;
+      NiftiHelper::mat44ToCaretOrientation(m,
+                                           volumeRead.orientation[0],
+                                           volumeRead.orientation[1],
+                                           volumeRead.orientation[2]);
+   }
+   else if (hdr.qform_code > 0) {
+      volumeRead.origin[0] = hdr.qoffset_x;
+      volumeRead.origin[1] = hdr.qoffset_y;
+      volumeRead.origin[2] = hdr.qoffset_z;
+
+      float qfac = (hdr.pixdim[0] < 0.0) ? -1.0 : 1.0 ;  // left-handedness?
+      NiftiHelper::mat44 m =
+         NiftiHelper::nifti_quatern_to_mat44(hdr.quatern_b, hdr.quatern_c, hdr.quatern_c,
+                                             0.0, 0.0, 0.0,
+                                             1.0, 1.0, 1.0,
+                                             qfac);
+
+      qformTMValid = true;
+      for (int i = 0; i < 4; i++) {
+         for (int j = 0; j < 4; j++) {
+            qformTM.setMatrixElement(i, j, m.m[i][j]);
+         }
+      }
+      for (int j = 0; j < 3; j++) {
+         float f = qformTM.getMatrixElement(j, 3);
+         f = -f;
+         qformTM.setMatrixElement(j, 3, f);
+      }
+      qformTM.transpose();
+
+
+      //
+      // Force correct sign for spacing
+      //
+      for (int i = 0; i < 3; i++) {
+         if (volumeRead.origin[i] < 0.0) {
+            volumeRead.spacing[i] = std::fabs(volumeRead.spacing[i]);
+         }
+         else {
+            volumeRead.spacing[i] = -std::fabs(volumeRead.spacing[i]);
+         }
+      }
+
+      //
+      // Set orientation
+      //
+      volumeRead.orientation[0] = ORIENTATION_LEFT_TO_RIGHT;
+      volumeRead.orientation[1] = ORIENTATION_POSTERIOR_TO_ANTERIOR;
+      volumeRead.orientation[2] = ORIENTATION_INFERIOR_TO_SUPERIOR;
+
+      NiftiHelper::mat44ToCaretOrientation(m,
+                                           qformOrientation[0],
+                                           qformOrientation[1],
+                                           qformOrientation[2]);
+   }
+
+
+   //
+   // The origin and spacing are always ordered L/R, P/A, I/S in NIFTI even if
+   // the data is in a different order such as AIL.  So, swap some values to
+   // that they are correct for Caret.
+   //
+   float originTemp[3] = { volumeRead.origin[0], volumeRead.origin[1], volumeRead.origin[2] };
+   float spacingTemp[3] = { volumeRead.spacing[0], volumeRead.spacing[1], volumeRead.spacing[2] };
+   for (int i = 0; i < 3; i++) {
+      int orientIndex = i;
+      switch (volumeRead.orientation[i]) {
+         case ORIENTATION_UNKNOWN:
+            break;
+         case ORIENTATION_RIGHT_TO_LEFT:
+         case ORIENTATION_LEFT_TO_RIGHT:
+            orientIndex = 0;
+            break;
+         case ORIENTATION_POSTERIOR_TO_ANTERIOR:
+         case ORIENTATION_ANTERIOR_TO_POSTERIOR:
+            orientIndex = 1;
+            break;
+         case ORIENTATION_INFERIOR_TO_SUPERIOR:
+         case ORIENTATION_SUPERIOR_TO_INFERIOR:
+            orientIndex = 2;
+            break;
+      }
+
+      volumeRead.origin[i] = originTemp[orientIndex];
+      volumeRead.spacing[i] = spacingTemp[orientIndex];
+   }
+
+   //
+   // Check the intent code
+   //
+   volumeRead.volumeType = VOLUME_TYPE_UNKNOWN;
+   switch (hdr.intent_code) {
+      case NIFTI_INTENT_LABEL:
+         volumeRead.volumeType = VOLUME_TYPE_PAINT;
+         break;
+      case NIFTI_INTENT_VECTOR:
+         if (hdr.dim[5] == 3) {
+            volumeRead.volumeType = VOLUME_TYPE_VECTOR;
+         }
+         break;
+   }
+
+   //
+   // Storage for study meta data links
+   //
+   std::vector<StudyMetaDataLinkSet> studyMetaDataLinkSets;
+
+   //
+   // Intention string and TR
+   //
+   NiftiHelper::getNiftiIntentionInformation(hdr,
+                                             volumeRead.niftiIntentCodeAndParamString,
+                                             volumeRead.niftiIntentName);
+   volumeRead.niftiIntentCode = hdr.intent_code;
+   volumeRead.niftiIntentParameter1 = hdr.intent_p1;
+   volumeRead.niftiIntentParameter2 = hdr.intent_p2;
+   volumeRead.niftiIntentParameter3 = hdr.intent_p3;
+   volumeRead.niftiTR = hdr.slice_duration;
+
+   //
+   // Read the extender
+   //
+   if (hdr.vox_offset >= 352) {
+      nifti1_extender extender;
+      const unsigned long extLength = sizeof(extender);
+      const unsigned long numBytesRead = gzread(dataFile, (voidp)&extender, extLength);
+      if (extLength == numBytesRead) {
+         if (DebugControl::getDebugOn()) {
+            std::cout << "NIFTI extension[0] " << static_cast<int>(extender.extension[0]) << std::endl;
+         }
+      }
+
+      int extCount = 1;
+      z_off_t pos = gztell(dataFile);
+      while (pos < hdr.vox_offset) {
+         //
+         // Read in the extension size and code
+         //
+         int extensionSize, extensionCode;
+         if ((gzread(dataFile, (voidp)&extensionSize, sizeof(extensionSize)) != 4) ||
+             (gzread(dataFile, (voidp)&extensionCode, sizeof(extensionCode)) != 4)) {
+            std::cout << "WARNING: " << volumeRead.filename.toAscii().constData() << std::endl
+                      << "Problem reading extension " << extCount
+                      << ".  This and all other extensions ignored." << std::endl;
+            break;
+         }
+         else {
+            if (byteSwapFlag) {
+               ByteSwapping::swapBytes(&extensionSize, 1);
+               ByteSwapping::swapBytes(&extensionCode, 1);
+            }
+
+            if (DebugControl::getDebugOn()) {
+               std::cout << "Extension Size: " << extensionSize << std::endl;
+               std::cout << "Extension Code: " << extensionCode << std::endl;
+            }
+
+            //
+            // Check the code
+            //
+            const int evenNum = (extensionCode / 2) * 2;
+            if ((evenNum < 0) || (evenNum > 100)) {
+               std::cout << "WARNING: " << volumeRead.filename.toAscii().constData() << std::endl
+                         << "Invalid extension code " << extensionCode << " for extension "
+                         << extCount
+                         << ".  This and all other extensions ignored." << std::endl;
+               break;
+            }
+
+            //
+            // Check extension size
+            //
+            if ((extensionSize % 16) != 0) {
+               std::cout << "WARNING: NIFTI extension (code " << extensionCode
+                         << ") has size that is not a multiple of 16." << std::endl;
+            }
+
+            //
+            // The 8-byte extension size/code is included in extensionSize
+            //
+            const int dataSize = extensionSize - 8;
+
+            if (dataSize > 0) {
+               char* data = new char[dataSize + 1];
+               if (gzread(dataFile, (voidp)data, dataSize) != dataSize) {
+                  std::cout << "WARNING: " << volumeRead.filename.toAscii().constData() << std::endl
+                            << "Problem reading extension " << extCount
+                            << " data.  This and all other extensions ignored." << std::endl;
+                  break;
+               }
+               data[dataSize] = '\0';
+
+               //
+               // Is this the AFNI extension
+               //
+               if (extensionCode == 4) { // NIFTI_ECODE_AFNI) {
+                  if (DebugControl::getDebugOn()) {
+                     std::cout << "AFNI extension: " << data << std::endl;
+                  }
+
+                  //
+                  // Process the NIFTI extension
+                  //
+                  try {
+                     volumeRead.afniHeader.readFromNiftiExtension(QString(data));
+                  }
+                  catch (FileException& e) {
+                     throw FileException(volumeRead.filename, e.whatQString());
+                  }
+
+                  //
+                  // Get the subvolume names
+                  //
+                  const AfniAttribute* nameAttr = volumeRead.afniHeader.getAttribute(AfniAttribute::NAME_BRICK_LABS);
+                  if (nameAttr != NULL) {
+                     std::vector<QString> names;
+                     StringUtilities::token(nameAttr->getValue(), "~", names);
+                     const unsigned int minNames = std::min(names.size(), volumeRead.subVolumeNames.size());
+                     for (unsigned int i = 0; i < minNames; i++) {
+                        volumeRead.subVolumeNames[i] = names[i];
+                     }
+                  }
+
+                  //
+                  // Get the HISTORY_NOTE and use it as a comment
+                  //
+                  const AfniAttribute* commentAttr = volumeRead.afniHeader.getAttribute(AfniAttribute::NAME_HISTORY_NOTE);
+                  if (commentAttr != NULL) {
+                     volumeRead.setHeaderTag(headerTagComment, commentAttr->getValue());
+                     volumeRead.setFileComment(commentAttr->getValue());
+                  }
+
+                  //
+                  // Get the region names (for paint volume)
+                  //
+                  const AfniAttribute* regionAttr = volumeRead.afniHeader.getAttribute(AfniAttribute::NAME_LUT_NAMES);
+                  if (regionAttr != NULL) {
+                     volumeRead.regionNames.clear();
+                     StringUtilities::token(regionAttr->getValue(), "~", volumeRead.regionNames);
+                  }
+
+                  //
+                  // Get the study metadata links
+                  //
+                  const AfniAttribute* mdAttr = volumeRead.afniHeader.getAttribute(AfniAttribute::NAME_CARET_METADATA_LINK);
+                  if (mdAttr != NULL) {
+                     StudyMetaDataLinkSet smdls;
+                     std::vector<QString> md;
+                     StringUtilities::token(mdAttr->getValue(), "~", md);
+                     for (unsigned int m = 0; m < md.size(); m++) {
+                        smdls.setLinkSetFromCodedText(md[m]);
+                        studyMetaDataLinkSets.push_back(smdls);
+                     }
+                  }
+
+                  //
+                  // Get the PubMed ID
+                  //
+                  const AfniAttribute* pmidAttr = volumeRead.afniHeader.getAttribute(AfniAttribute::NAME_CARET_PUBMED_ID);
+                  if (pmidAttr != NULL) {
+                     volumeRead.setFilePubMedID(pmidAttr->getValue());
+                  }
+               }
+
+               delete[] data;
+            }
+         }
+
+         extCount++;
+         pos = gztell(dataFile);
+      }
+   }
+
+   //
+   // Keep track of data files zipped status
+   //
+   volumeRead.dataFileWasZippedFlag = (volumeRead.filename.right(3) == ".gz");
+
+   //
+   // If only reading header
+   //
+   if (readSelection == -2) {
+      VolumeFile* vf = new VolumeFile;
+      vf->copyVolumeData(volumeRead, false);
+      vf->filename = volumeRead.filename;
+      vf->dataFileName = volumeRead.dataFileName;
+      volumesReadOut.push_back(vf);
+      return;
+   }
+
+   //
+   // Is this a NIFTI hdr/img volume file pair
+   //
+   if ((hdr.magic[0] == 'n') &&
+       (hdr.magic[1] == 'i') &&
+       (hdr.magic[2] == '1')) {
+      gzclose(dataFile);
+      //
+      // Create the volume data file name
+      //
+      volumeRead.dataFileName = FileUtilities::filenameWithoutExtension(volumeRead.filename);
+      volumeRead.dataFileName.append(".img");
+
+      //
+      // Data file might be gzipped
+      //
+      if (QFile::exists(volumeRead.dataFileName) == false) {
+         QString zipName(volumeRead.dataFileName);
+         zipName.append(".gz");
+         if (QFile::exists(zipName)) {
+            volumeRead.dataFileName = zipName;
+         }
+      }
+
+      dataFile = gzopen(volumeRead.dataFileName.toAscii().constData(), "rb");
+      if (dataFile == NULL) {
+         throw FileException(fileNameIn, "Unable to open with ZLIB for reading.");
+      }
+   }
+
+   try {
+      //
+      // loop through and read the volume files
+      //
+      const int numSubs = volumeRead.subVolumeNames.size();
+      for (int i = 0; i < numSubs; i++) {
+         //
+         // Determine if this sub volume should be read
+         //
+         bool readingSingleSubVolume = false;
+         bool readIt = false;
+         if (readSelection == VOLUME_READ_SELECTION_ALL) {
+            readIt = true;
+         }
+         else if (readSelection == i) {
+            readIt = true;
+            readingSingleSubVolume = true;
+         }
+
+         if (readIt) {
+            //
+            // copy everything but voxel data from the first volume
+            //
+            VolumeFile* vf = NULL;
+            vf = new VolumeFile;
+            vf->copyVolumeData(volumeRead, false);
+            vf->filename = volumeRead.filename;
+            vf->dataFileName = volumeRead.dataFileName;
+
+            //
+            // Set the descriptive label
+            //
+            vf->descriptiveLabel = volumeRead.subVolumeNames[i];
+
+            //
+            // If only reading a single sub-volume
+            //
+            if (readingSingleSubVolume) {
+               //
+               // Read just the sub-volume
+               //
+               vf->readVolumeFileDataSubVolume(byteSwapFlag,
+                                               vf->scaleSlope[i],
+                                               vf->scaleOffset[i],
+                                               niftiReadDataOffset,
+                                               i,
+                                               dataFile);
+            }
+            else {
+               //
+               // Read just the sub-volume
+               //
+               vf->readVolumeFileData(byteSwapFlag,
+                                      vf->scaleSlope[i],
+                                      vf->scaleOffset[i],
+                                      dataFile);
+            }
+
+            if (i < static_cast<int>(studyMetaDataLinkSets.size())) {
+               vf->setStudyMetaDataLinkSet(studyMetaDataLinkSets[i]);
+            }
+
+            //
+            // Apply qform transformation
+            //
+            if (qformTMValid) {
+               vf->applyTransformationMatrix(qformTM);
+            }
+
+            //
+            // return the volume to the user
+            //
+            volumesReadOut.push_back(vf);
+
+            //
+            // If only reading a single sub-volume
+            //
+            if (readingSingleSubVolume) {
+               break;
+            }
+         }
+      }
+   }
+   catch (FileException& e) {
+      gzclose(dataFile);
+      throw e;
+   }
+
+   //
+   // Close the file
+   //
+   gzclose(dataFile);
+}
+===*/
 
 /**
  * read the specified sub-volumes in an SPM volume file.
@@ -11923,7 +12597,7 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
    //
    // Setup the AFNI header
    //   
-   firstVolume->afniHeader.setupFromVolumeFiles(volumesToWrite);
+   firstVolume->afniHeader.setupFromVolumeFiles(volumesToWrite, NULL);
    
    //
    // Open file and create a text stream
@@ -12040,7 +12714,8 @@ VolumeFile::writeFileAnalyze(const QString& fileNameIn,
 void 
 VolumeFile::writeFileNifti(const QString& fileNameIn,
                            const VOXEL_DATA_TYPE writeVoxelDataTypeIn,
-                           std::vector<VolumeFile*>& volumesToWrite) throw (FileException)
+                           std::vector<VolumeFile*>& volumesToWrite,
+                           const ColorFile* labelColorsForCaret6) throw (FileException)
 {
    const int numSubVolumes = static_cast<int>(volumesToWrite.size());
    if (numSubVolumes <= 0) {
@@ -12190,7 +12865,7 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // voxel sizes
    //
-   hdr.pixdim[0] = 3;
+   hdr.pixdim[0] = 1; // is actually "qfac" in NIFTI not 3 as in analyze;
    hdr.pixdim[1] = firstVolume->spacing[0];
    hdr.pixdim[2] = firstVolume->spacing[1];
    hdr.pixdim[3] = firstVolume->spacing[2];
@@ -12223,6 +12898,10 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // Set origin info
    //
+   // QFORM is always UNKNOWN
+   // This should be fixed so that QFORM produces the same coordinates as SFORM
+   //
+   hdr.qform_code = NIFTI_XFORM_UNKNOWN;
    if ((firstVolume->orientation[0] == ORIENTATION_LEFT_TO_RIGHT) && 
        (firstVolume->orientation[1] == ORIENTATION_POSTERIOR_TO_ANTERIOR) &&
        (firstVolume->orientation[2] == ORIENTATION_INFERIOR_TO_SUPERIOR)) {
@@ -12235,7 +12914,7 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    }
    hdr.quatern_b = 0.0;
    hdr.quatern_c = 0.0;
-   hdr.quatern_d = 1.0;
+   hdr.quatern_d = 0.0;
    hdr.qoffset_x = firstVolume->origin[0]; // + halfVoxelOffset[0];
    hdr.qoffset_y = firstVolume->origin[1]; // + halfVoxelOffset[1];
    hdr.qoffset_z = firstVolume->origin[2]; // + halfVoxelOffset[2];
@@ -12264,9 +12943,11 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    // Setup the AFNI header placed into a NIFTI extension and then
    // create the extension
    //   
-   firstVolume->afniHeader.setupFromVolumeFiles(volumesToWrite);
+   firstVolume->afniHeader.setupFromVolumeFiles(volumesToWrite,
+                                                labelColorsForCaret6);
    QString afniExtensionString;
-   firstVolume->afniHeader.writeToNiftiExtension(afniExtensionString, &hdr);
+   firstVolume->afniHeader.writeToNiftiExtension(afniExtensionString,
+                                                 &hdr);
    
       
    // Make sure niftiExtension length is a multiple of 16 bytes !!!!!
@@ -13109,14 +13790,14 @@ VolumeFile::readVolumeFileData(const bool byteSwapNeeded,
          }
          break;
       case VOLUME_SPACE_VOXEL_NATIVE:
-         {
-            const float zeros[3] = { 0.0, 0.0, 0.0 };
-            setOrigin(zeros);
-            if (fileReadType != FILE_READ_WRITE_TYPE_SPM_OR_MEDX) {
-               const float ones[3] = { 1.0, 1.0, 1.0 };
-               setSpacing(ones);
-            }
-         }
+         //{
+         //   const float zeros[3] = { 0.0, 0.0, 0.0 };
+         //   setOrigin(zeros);
+         //   if (fileReadType != FILE_READ_WRITE_TYPE_SPM_OR_MEDX) {
+         //      const float ones[3] = { 1.0, 1.0, 1.0 };
+         //      setSpacing(ones);
+         //   }
+         //}
          break;
    }
 
@@ -13890,3 +14571,62 @@ VolumeFile::getDataFileNameForReadError() const
    return name;
 }
       
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+VolumeFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   //
+   // The generic method to read a volume file only reads the first volume
+   // so read again to get all volumes
+   //
+   QString nameToRead = this->getFileName();
+   std::vector<VolumeFile*> volumes;
+   VolumeFile::readFile(nameToRead, VOLUME_READ_SELECTION_ALL, volumes, false);
+   if (volumes.size() > 0) {
+      QString name = filenameIn;
+      if (useCaret6ExtensionFlag) {
+         if (name.endsWith(SpecFile::getNiftiGzipVolumeFileExtension()) == false) {
+            if (name.endsWith(SpecFile::getAfniVolumeFileExtension())) {
+               name = FileUtilities::replaceExtension(filenameIn,
+                                   SpecFile::getAfniVolumeFileExtension(),
+                                   SpecFile::getNiftiGzipVolumeFileExtension());
+            }
+            else if (name.endsWith(SpecFile::getAnalyzeVolumeFileExtension())) {
+               name = FileUtilities::replaceExtension(filenameIn,
+                                   SpecFile::getAnalyzeVolumeFileExtension(),
+                                   SpecFile::getNiftiGzipVolumeFileExtension());
+            }
+            else if (name.endsWith(SpecFile::getNiftiVolumeFileExtension())) {
+               name = FileUtilities::replaceExtension(filenameIn,
+                                   SpecFile::getNiftiVolumeFileExtension(),
+                                   SpecFile::getNiftiGzipVolumeFileExtension());
+            }
+            else if (name.endsWith(SpecFile::getWustlVolumeFileExtension())) {
+               name = FileUtilities::replaceExtension(filenameIn,
+                                   SpecFile::getWustlVolumeFileExtension(),
+                                   SpecFile::getNiftiGzipVolumeFileExtension());
+            }
+            else {
+               name = FileUtilities::replaceExtension(filenameIn,
+                                   "XXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+                                   SpecFile::getNiftiGzipVolumeFileExtension());
+            }
+         }
+      }
+
+      VOLUME_TYPE volumeType = volumes[0]->getVolumeType();
+      VOXEL_DATA_TYPE voxelDataType = volumes[0]->getVoxelDataType();
+      VolumeFile::writeFile(name,
+                            volumeType,
+                            voxelDataType,
+                            volumes,
+                            true,
+                            colorFileIn);
+
+      return name;
+   }
+
+   return "";
+}

@@ -400,12 +400,12 @@ GuiPreferencesDialog::createMiscSection()
    gridLayout->addWidget(mouseSpeedDoubleSpinBox, 1, 1);
    gridLayout->addWidget(numberOfThreadsLabel, 2, 0);
    gridLayout->addWidget(numberOfThreadsSpinBox, 2, 1);
-   gridLayout->addWidget(randomSeedCheckBox, 2, 0);
-   gridLayout->addWidget(randomSeedSpinBox, 2, 1);
-   gridLayout->addWidget(sumsHostLabel, 3, 0);
-   gridLayout->addWidget(sumsHostsLineEdit, 3, 1);
-   gridLayout->addWidget(webBrowserLabel, 4, 0);
-   gridLayout->addWidget(webBrowserLineEdit, 4, 1);
+   gridLayout->addWidget(randomSeedCheckBox, 3, 0);
+   gridLayout->addWidget(randomSeedSpinBox, 3, 1);
+   gridLayout->addWidget(sumsHostLabel, 4, 0);
+   gridLayout->addWidget(sumsHostsLineEdit, 4, 1);
+   gridLayout->addWidget(webBrowserLabel, 5, 0);
+   gridLayout->addWidget(webBrowserLineEdit, 5, 1);
    QHBoxLayout* layout = new QHBoxLayout;
    layout->addLayout(gridLayout);
    layout->addStretch();
@@ -673,7 +673,7 @@ GuiPreferencesDialog::loadPreferences()
       webBrowserLineEdit->setText(pf->getWebBrowser());
    }
    
-   if (numberOfThreadsSpinBox->isVisible()) {
+   if (numberOfThreadsSpinBox != NULL) {
       numberOfThreadsSpinBox->setValue(pf->getMaximumNumberOfThreads());
    }
    

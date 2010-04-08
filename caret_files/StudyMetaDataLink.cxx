@@ -34,6 +34,7 @@
 #include "StudyMetaDataLink.h"
 #undef __STUDY_META_DATA_LINK_MAIN__
 #include "AbstractFile.h"
+#include "XmlGenericWriter.h"
 
 //====================================================================================
 //
@@ -88,7 +89,7 @@ StudyMetaDataLink::copyHelper(const StudyMetaDataLink& smdl)
    tableSubHeaderNumber = smdl.tableSubHeaderNumber;
    figureNumber = smdl.figureNumber;
    panelNumberOrLetter = smdl.panelNumberOrLetter;
-   pageNumber = smdl.pageNumber;
+   //pageNumber = smdl.pageNumber;
    pageReferencePageNumber = smdl.pageReferencePageNumber;
    pageReferenceSubHeaderNumber = smdl.pageReferenceSubHeaderNumber;
 }
@@ -105,7 +106,7 @@ StudyMetaDataLink::operator==(const StudyMetaDataLink& smdl) const
        (tableSubHeaderNumber == smdl.tableSubHeaderNumber) &&
        (figureNumber == smdl.figureNumber) &&
        (panelNumberOrLetter == smdl.panelNumberOrLetter) &&
-       (pageNumber == smdl.pageNumber) &&
+       //(pageNumber == smdl.pageNumber) &&
        (pageReferencePageNumber == smdl.pageReferencePageNumber) &&
        (pageReferenceSubHeaderNumber == smdl.pageReferenceSubHeaderNumber));
    return theSame;
@@ -122,7 +123,7 @@ StudyMetaDataLink::clear()
    tableSubHeaderNumber = "";
    figureNumber = "";
    panelNumberOrLetter = "";
-   pageNumber = "";
+   //pageNumber = "";
    pageReferencePageNumber = "";
    pageReferenceSubHeaderNumber = "";
 }
@@ -214,6 +215,7 @@ StudyMetaDataLink::setPageReferenceSubHeaderNumber(const QString& tshn)
 /**
  * set the page number (negative if invalid).
  */
+/*
 void 
 StudyMetaDataLink::setPageNumber(const QString& pn) 
 { 
@@ -224,7 +226,7 @@ StudyMetaDataLink::setPageNumber(const QString& pn)
       pageNumber = pn; 
    }
 }
-
+*/
 /**
  * set element from text (used by SAX XML parser).
  */
@@ -247,9 +249,9 @@ StudyMetaDataLink::setElementFromText(const QString& elementName,
    else if (elementName == tagPanelNumberOrLetter) {
       setFigurePanelNumberOrLetter(textValue);
    }
-   else if (elementName == tagPageNumber) {
-      setPageNumber(textValue);
-   }
+   //else if (elementName == tagPageNumber) {
+   //   setPageNumber(textValue);
+   //}
    else if (elementName == tagPageReferencePageNumber) {
       setPageReferencePageNumber(textValue);
    }
@@ -282,6 +284,8 @@ StudyMetaDataLink::readXML(QDomNode& nodeIn) throw (FileException)
       throw FileException("", msg);
    }
    
+   QString oldPageNumber; 
+
    QDomNode node = nodeIn.firstChild();
    while (node.isNull() == false) {
       QDomElement elem = node.toElement();
@@ -301,8 +305,11 @@ StudyMetaDataLink::readXML(QDomNode& nodeIn) throw (FileException)
          else if (elem.tagName() == tagPanelNumberOrLetter) {
             setFigurePanelNumberOrLetter(AbstractFile::getXmlElementFirstChildAsString(elem));
          }
-         else if (elem.tagName() == tagPageNumber) {
-            setPageNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
+         //else if (elem.tagName() == tagPageNumber) {
+         //   setPageNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
+         //}
+         else if (elem.tagName() == "pageNumber") {
+            oldPageNumber = AbstractFile::getXmlElementFirstChildAsString(elem);
          }
          else if (elem.tagName() == tagPageReferencePageNumber) {
             setPageReferencePageNumber(AbstractFile::getXmlElementFirstChildAsString(elem));
@@ -317,6 +324,10 @@ StudyMetaDataLink::readXML(QDomNode& nodeIn) throw (FileException)
          }
       }
       node = node.nextSibling();
+   }
+   
+   if (getPageReferencePageNumber().isEmpty()) {
+      setPageReferencePageNumber(oldPageNumber);
    }
 }
 
@@ -340,7 +351,7 @@ StudyMetaDataLink::writeXML(QDomDocument& xmlDoc,
    AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagTableSubHeaderNumber, tableSubHeaderNumber);
    AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagFigureNumber, figureNumber);
    AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPanelNumberOrLetter, panelNumberOrLetter);
-   AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageNumber, pageNumber);
+   //AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageNumber, pageNumber);
    AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageReferencePageNumber, pageReferencePageNumber);
    AbstractFile::addXmlCdataElement(xmlDoc, linkElement, tagPageReferenceSubHeaderNumber, pageReferenceSubHeaderNumber);
    
@@ -348,6 +359,23 @@ StudyMetaDataLink::writeXML(QDomDocument& xmlDoc,
    // Add to parent
    //
    parentElement.appendChild(linkElement);
+}
+
+/**
+ * called to write XML.
+ */
+void
+StudyMetaDataLink::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement(tagStudyMetaDataLink);
+   xmlWriter.writeElementCData(tagPubMedID, pubMedID);
+   xmlWriter.writeElementCData(tagTableNumber, tableNumber);
+   xmlWriter.writeElementCData(tagTableSubHeaderNumber, tableSubHeaderNumber);
+   xmlWriter.writeElementCData(tagFigureNumber, figureNumber);
+   xmlWriter.writeElementCData(tagPanelNumberOrLetter, panelNumberOrLetter);
+   xmlWriter.writeElementCData(tagPageReferencePageNumber, pageReferencePageNumber);
+   xmlWriter.writeElementCData(tagPageReferenceSubHeaderNumber, pageReferenceSubHeaderNumber);
+   xmlWriter.writeEndElement();
 }
 
 /**
@@ -365,7 +393,7 @@ StudyMetaDataLink::getLinkAsCodedText() const
       << ("tableSubHeaderNumber=" + tableSubHeaderNumber)
       << ("figureNumber=" + figureNumber)
       << ("panelNumberOrLetter=" + panelNumberOrLetter)
-      << ("pageNumber=" + pageNumber)
+      //<< ("pageNumber=" + pageNumber)
       << ("pageReferencePageNumber=" + pageReferencePageNumber)
       << ("pageReferenceSubHeaderNumber=" + pageReferenceSubHeaderNumber);
 
@@ -384,6 +412,8 @@ StudyMetaDataLink::setLinkFromCodedText(const QString& txt)
    // Clear this link
    //
    clear();
+
+   QString oldPageNumber; 
    
    //
    // Extract the key/value pairs that are separated by a semi-colon
@@ -391,14 +421,13 @@ StudyMetaDataLink::setLinkFromCodedText(const QString& txt)
    const QStringList sl = txt.split(";", QString::SkipEmptyParts);
    for (int i = 0; i < sl.size(); i++) {
       const QString keyValueString = sl.at(i);
-      
       //
       // Split with "=" into key/value pairs
       //
       const QStringList keyValueList = keyValueString.split("=", QString::SkipEmptyParts);
       if (keyValueList.size() == 2) {
          const QString key = keyValueList.at(0);
-         const QString value = keyValueList.at(1);
+         const QString value = keyValueList.at(1).trimmed();
          
          if (key == "pubMedID") {
             setPubMedID(value);
@@ -416,7 +445,8 @@ StudyMetaDataLink::setLinkFromCodedText(const QString& txt)
             setFigurePanelNumberOrLetter(value);
          }
          else if (key == "pageNumber") {
-            setPageNumber(value);
+            oldPageNumber = value;
+            //ignore as obsolete    setPageNumber(value);
          }
          else if (key == "pageReferencePageNumber") {
             setPageReferencePageNumber(value);
@@ -429,6 +459,9 @@ StudyMetaDataLink::setLinkFromCodedText(const QString& txt)
                       << key.toAscii().constData() << std::endl;
          }
       }
+   }
+   if (getPageReferencePageNumber().isEmpty()) {
+      setPageReferencePageNumber(oldPageNumber);
    }
 }
       

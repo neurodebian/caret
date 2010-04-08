@@ -125,63 +125,71 @@ DeformationMapFile::clear()
    clearAbstractFile();
    
    flatOrSphereSelection       = DEFORMATION_TYPE_SPHERE;
-   sphereResolution            = 4610;   //18434;
    borderResampleType          = BORDER_RESAMPLING_VALUE;
    borderResampleValue         = 10.0;   //15.0;
-   sphericalNumberOfCycles     = 3; //1;
-   for (int i = 0; i < MAX_SPHERICAL_CYCLES; i++) {
-      smoothingStrength[i]           = 1.0;
-      smoothingCycles[i]             = 100;
-      smoothingIterations[i]         = 20;
-      smoothingNeighborIterations[i] = 10;
-      smoothingFinalIterations[i]    = 5;
-      morphingCycles[i]              = 1;
-      morphingLinearForce[i]         = 0.3;
-      morphingAngularForce[i]        = 0.4;
-      morphingStepSize[i]            = 0.5;
-      morphingLandmarkStepSize[i]    = 0.5;
-      morphingIterations[i]          = 80;
-      morphingSmoothIterations[i]    = 5;
-   }   
+   sphericalNumberOfStages     = 1;
+   for (int i = 0; i < MAX_SPHERICAL_STAGES; i++) {
+      sphericalNumberOfCycles[i]     = 3; //1;
+      sphereResolution[i]            = 4610;   //18434;
+       for (int j = 0; j < MAX_SPHERICAL_CYCLES; j++) {
+          smoothingStrength[i][j]           = 1.0;
+          smoothingCycles[i][j]             = 100;
+          smoothingIterations[i][j]         = 20;
+          smoothingNeighborIterations[i][j] = 10;
+          smoothingFinalIterations[i][j]    = 5;
 
-   smoothingStrength[0]           = 1.0;
-   smoothingCycles[0]             = 100;
-   smoothingIterations[0]         = 20;
-   smoothingNeighborIterations[0] = 10;
-   smoothingFinalIterations[0]    = 30;
-   morphingCycles[0]              = 1;
-   morphingLinearForce[0]         = 0.3;
-   morphingAngularForce[0]        = 0.6;
-   morphingStepSize[0]            = 0.5;
-   morphingLandmarkStepSize[0]    = 0.5;
-   morphingIterations[0]          = 300;
-   morphingSmoothIterations[0]    = 20;
+          morphingCycles[i][j]              = 1;
+          morphingLinearForce[i][j]         = 0.3;
+          morphingAngularForce[i][j]        = 0.4;
+          morphingStepSize[i][j]            = 0.5;
+          morphingLandmarkStepSize[i][j]    = 0.5;
+          morphingIterations[i][j]          = 80;
+          morphingSmoothIterations[i][j]    = 5;
 
-   smoothingStrength[1]           = 1.0;
-   smoothingCycles[1]             = 100;
-   smoothingIterations[1]         = 20;
-   smoothingNeighborIterations[1] = 10;
-   smoothingFinalIterations[1]    = 5;
-   morphingCycles[1]              = 1;
-   morphingLinearForce[1]         = 0.3;
-   morphingAngularForce[1]        = 0.6;
-   morphingStepSize[1]            = 0.5;
-   morphingLandmarkStepSize[1]    = 0.5;
-   morphingIterations[1]          = 300;
-   morphingSmoothIterations[1]    = 5;
+          landmarkVectorSmoothingIteratons[i][j] = 10;
+          landmarkVectorDisplacementFactor[i][j] = 1.0;
+          landmarkVectorEndpointFactor[i] = 1.0;
+       }
 
-   smoothingStrength[2]           = 1.0;
-   smoothingCycles[2]             = 50;
-   smoothingIterations[2]         = 20;
-   smoothingNeighborIterations[2] = 10;
-   smoothingFinalIterations[2]    = 1;
-   morphingCycles[2]              = 1;
-   morphingLinearForce[2]         = 0.3;
-   morphingAngularForce[2]        = 0.6;
-   morphingStepSize[2]            = 0.5;
-   morphingLandmarkStepSize[2]    = 0.5;
-   morphingIterations[2]          = 300;
-   morphingSmoothIterations[2]    = 2;
+       smoothingStrength[i][0]           = 1.0;
+       smoothingCycles[i][0]             = 100;
+       smoothingIterations[i][0]         = 20;
+       smoothingNeighborIterations[i][0] = 10;
+       smoothingFinalIterations[i][0]    = 30;
+       morphingCycles[i][0]              = 1;
+       morphingLinearForce[i][0]         = 0.3;
+       morphingAngularForce[i][0]        = 0.6;
+       morphingStepSize[i][0]            = 0.5;
+       morphingLandmarkStepSize[i][0]    = 0.5;
+       morphingIterations[i][0]          = 300;
+       morphingSmoothIterations[i][0]    = 20;
+
+       smoothingStrength[i][1]           = 1.0;
+       smoothingCycles[i][1]             = 100;
+       smoothingIterations[i][1]         = 20;
+       smoothingNeighborIterations[i][1] = 10;
+       smoothingFinalIterations[i][1]    = 5;
+       morphingCycles[i][1]              = 1;
+       morphingLinearForce[i][1]         = 0.3;
+       morphingAngularForce[i][1]        = 0.6;
+       morphingStepSize[i][1]            = 0.5;
+       morphingLandmarkStepSize[i][1]    = 0.5;
+       morphingIterations[i][1]          = 300;
+       morphingSmoothIterations[i][1]    = 5;
+
+       smoothingStrength[i][2]           = 1.0;
+       smoothingCycles[i][2]             = 50;
+       smoothingIterations[i][2]         = 20;
+       smoothingNeighborIterations[i][2] = 10;
+       smoothingFinalIterations[i][2]    = 1;
+       morphingCycles[i][2]              = 1;
+       morphingLinearForce[i][2]         = 0.3;
+       morphingAngularForce[i][2]        = 0.6;
+       morphingStepSize[i][2]            = 0.5;
+       morphingLandmarkStepSize[i][2]    = 0.5;
+       morphingIterations[i][2]          = 300;
+       morphingSmoothIterations[i][2]    = 2;
+   }
 
    fiducialSphereRatio = 0.5;
    fiducialSphereRatioEnabled = true;
@@ -191,7 +199,7 @@ DeformationMapFile::clear()
    flatVarMult = 1.0;
    flatNumIters = 20;
    
-   fileVersion = 2;
+   fileVersion = DeformationMapFile::DEFAULT_DEFORMATION_MAP_VERSION;
    
    deformData.clear();
  
@@ -212,7 +220,9 @@ DeformationMapFile::clear()
    
    setTargetDirectory(noValue);
    setTargetSpecFileName(noValue);
-   setTargetBorderFileName(noValue, BORDER_FILE_UNKNOWN);
+   for (int i = 0; i < MAX_SPHERICAL_STAGES; i++) {
+      setTargetBorderFileName(i, noValue, BORDER_FILE_UNKNOWN);
+   }
    setTargetClosedTopoFileName(noValue);
    setTargetCutTopoFileName(noValue);
    setTargetFiducialCoordFileName(noValue);
@@ -228,6 +238,8 @@ DeformationMapFile::clear()
    deformedFileNamePrefix = "deformed_";
    deformedColumnNamePrefix = "deformed_";
    smoothDeformedSurfacesFlag = true;
+
+   pauseForCrossoversConfirmation = false;
 }
 
 /**
@@ -326,7 +338,9 @@ void
 DeformationMapFile::makeTargetFilesRelativeToPath(const QString& path)
 {
    makeFileRelative(path, targetSpecFileName);
-   makeFileRelative(path, targetBorderFileName);
+   for (int i = 0; i < MAX_SPHERICAL_STAGES; i++) {
+      makeFileRelative(path, targetBorderFileName[i]);
+   }
    makeFileRelative(path, targetClosedTopoFileName);
    makeFileRelative(path, targetCutTopoFileName);
    makeFileRelative(path, targetFiducialCoordFileName);
@@ -354,8 +368,8 @@ DeformationMapFile::swapSourceAndTargetFiles()
 {
    std::swap(sourceDirectoryName,          targetDirectoryName);
    std::swap(sourceSpecFileName,           targetSpecFileName);
-   std::swap(sourceBorderFileName,         targetBorderFileName);
-   std::swap(sourceBorderFileType,         targetBorderFileType);
+   std::swap(sourceBorderFileName,         targetBorderFileName[0]);
+   std::swap(sourceBorderFileType,         targetBorderFileType[0]);
    std::swap(sourceClosedTopoFileName,     targetClosedTopoFileName);
    std::swap(sourceCutTopoFileName,        targetCutTopoFileName);
    std::swap(sourceFiducialCoordFileName,  targetFiducialCoordFileName);
@@ -387,8 +401,13 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
       if (tag == startOfDataTag) {
          readingFiles = false;
       }
-      else if (tag == deformMapFileVersion) {
+      else if (tag == deformMapFileVersionTag) {
          fileVersion = QString(tagValue).toInt();
+         if (fileVersion > DEFAULT_DEFORMATION_MAP_VERSION) {
+            throw FileException(
+               "The deformation map file is from a newer version of Caret.  "
+               "You need to update your Caret software.");
+         }
       }
       else if (tag == deformedFileNamePrefixTag) {
          setDeformedFileNamePrefix(tagValue);
@@ -442,7 +461,16 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
          setTargetSpecFileName(tagValue);
       }
       else if (tag == targetBorderTag) {
-         setTargetBorderFileName(tagValue, BORDER_FILE_UNKNOWN);
+         if (fileVersion >= 3) {
+            int index = 0;
+            QString name;
+            QTextStream stream(&tagValue, QIODevice::ReadOnly);
+            stream >> index >> name;
+            setTargetBorderFileName(index, name, BORDER_FILE_UNKNOWN);
+         }
+         else {
+            setTargetBorderFileName(0, tagValue, BORDER_FILE_UNKNOWN);
+         }
       }
       else if (tag == targetClosedTopoTag) {
          setTargetClosedTopoFileName(tagValue);
@@ -463,7 +491,16 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
          setOutputSpecFileName(tagValue);
       }
       else if (tag == sphereResolutionTag) {
-         sphereResolution = QString(tagValue).toInt();
+         if (fileVersion >= 3) {
+            int stageNumber = 0;
+            int resolution = 4610;
+            QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+            textStream >> stageNumber >> resolution;
+            sphereResolution[stageNumber] = resolution;
+         }
+         else {
+            sphereResolution[0] = tagValue.toInt();
+         }
       }
       else if (tag == flatOrSphereSelectionTag) {
          if (tagValue == DeformationFlatValue) {
@@ -471,6 +508,12 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
          }
          else if (tagValue == DeformationSphereValue) {
             flatOrSphereSelection = DEFORMATION_TYPE_SPHERE;
+         }
+         else if (tagValue == DeformationSphereMultiStageVectorValue) {
+            flatOrSphereSelection = DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR;
+         }
+         else if (tagValue == DeformationSphereSingleStageVectorValue) {
+            flatOrSphereSelection = DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR;
          }
          else {
             QString msg("ERROR invalid deformation flat/sphere value ");
@@ -485,12 +528,47 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
               >> borderResampleValue;
          borderResampleType = static_cast<BORDER_RESAMPLING_TYPE>(resampleTypeInt);
       }
+      else if (tag == sphericalNumberOfStagesTag) {
+         sphericalNumberOfStages = tagValue.toInt();
+      }
       else if (tag == sphericalNumberOfCyclesTag) {
-         QTextStream textStream(&tagValue, QIODevice::ReadOnly);
-         textStream >> sphericalNumberOfCycles;
+         if (fileVersion >= 3) {
+            int stageNumber = 0;
+            int cycles = 3;
+            QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+            textStream >> stageNumber >> cycles;
+            sphericalNumberOfCycles[stageNumber] = cycles;
+         }
+         else {
+            sphericalNumberOfCycles[0] = tagValue.toInt();
+         }
       }
       else if (tag == smoothingParamtersTag) {
-         if (fileVersion > 0) {
+         if (fileVersion >= 3) {
+            int stageNumber;
+            int cycleNumber;
+            float strength;
+            int cycles;
+            int iterations;
+            int neighborIterations;
+            int finalIterations;
+
+            QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+            textStream >> stageNumber
+                 >> cycleNumber
+                 >> strength
+                 >> cycles
+                 >> iterations
+                 >> neighborIterations
+                 >> finalIterations;
+
+            smoothingStrength[stageNumber][cycleNumber]           = strength;
+            smoothingCycles[stageNumber][cycleNumber]             = cycles;
+            smoothingIterations[stageNumber][cycleNumber]         = iterations;
+            smoothingNeighborIterations[stageNumber][cycleNumber] = neighborIterations;
+            smoothingFinalIterations[stageNumber][cycleNumber]    = finalIterations;
+         }
+         else if (fileVersion > 0) {
             int cycleNumber;
             float strength;
             int cycles;
@@ -506,23 +584,84 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
                  >> neighborIterations
                  >> finalIterations;
 
-            smoothingStrength[cycleNumber]           = strength;
-            smoothingCycles[cycleNumber]             = cycles;
-            smoothingIterations[cycleNumber]         = iterations;
-            smoothingNeighborIterations[cycleNumber] = neighborIterations;
-            smoothingFinalIterations[cycleNumber]    = finalIterations;
+            smoothingStrength[0][cycleNumber]           = strength;
+            smoothingCycles[0][cycleNumber]             = cycles;
+            smoothingIterations[0][cycleNumber]         = iterations;
+            smoothingNeighborIterations[0][cycleNumber] = neighborIterations;
+            smoothingFinalIterations[0][cycleNumber]    = finalIterations;
          }
          else {
             QTextStream textStream(&tagValue, QIODevice::ReadOnly);
-            textStream >> smoothingStrength[0]
-                 >> smoothingCycles[0]
-                 >> smoothingIterations[0]
-                 >> smoothingNeighborIterations[0]
-                 >> smoothingFinalIterations[0];
+            textStream >> smoothingStrength[0][0]
+                 >> smoothingCycles[0][0]
+                 >> smoothingIterations[0][0]
+                 >> smoothingNeighborIterations[0][0]
+                 >> smoothingFinalIterations[0][0];
          }
       }
+      else if (tag == landmarkVectorParametersTag) {
+         if (fileVersion >= 3) {
+             QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+             int stageNumber = 0;
+             int cycleNumber = 0;
+             textStream >> stageNumber;
+             textStream >> cycleNumber;
+             textStream >> landmarkVectorSmoothingIteratons[stageNumber][cycleNumber];
+             textStream >> landmarkVectorDisplacementFactor[stageNumber][cycleNumber];
+         }
+         else {
+             QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+             int cycleNumber = 0;
+             textStream >> cycleNumber;
+             if (textStream.atEnd() == false) {
+                textStream >> landmarkVectorSmoothingIteratons[0][cycleNumber];
+                textStream >> landmarkVectorDisplacementFactor[0][cycleNumber];
+             }
+             else {
+                for (int mm = 0; mm < MAX_SPHERICAL_CYCLES; mm++) {
+                   landmarkVectorSmoothingIteratons[0][mm] = cycleNumber;
+                }
+             }
+         }
+      }
+      else if (tag == landmarkVectorStageParametersTag) {
+         QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+         int stageNumber = 0;
+         textStream >> stageNumber;
+         textStream >> landmarkVectorEndpointFactor[stageNumber];
+      }
       else if (tag == morphingParametersTag) {
-         if (fileVersion > 0) {
+         if (fileVersion >= 3) {
+            int stageNumber;
+            int cycleNumber;
+            int cycles;
+            float linearForce;
+            float angularForce;
+            float stepSize;
+            float landmarkStepSize;
+            int iterations;
+            int smoothIterations;
+
+            QTextStream textStream(&tagValue, QIODevice::ReadOnly);
+            textStream >> stageNumber
+                 >> cycleNumber
+                 >> cycles
+                 >> linearForce
+                 >> angularForce
+                 >> stepSize
+                 >> landmarkStepSize
+                 >> iterations
+                 >> smoothIterations;
+
+            morphingCycles[stageNumber][cycleNumber] = cycles;
+            morphingLinearForce[stageNumber][cycleNumber] = linearForce;
+            morphingAngularForce[stageNumber][cycleNumber] = angularForce;
+            morphingStepSize[stageNumber][cycleNumber] = stepSize;
+            morphingLandmarkStepSize[stageNumber][cycleNumber] = landmarkStepSize;
+            morphingIterations[stageNumber][cycleNumber] = iterations;
+            morphingSmoothIterations[stageNumber][cycleNumber] = smoothIterations;
+         }
+         else if (fileVersion > 0) {
             int cycleNumber;
             int cycles;
             float linearForce;
@@ -542,34 +681,37 @@ DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStre
                  >> iterations
                  >> smoothIterations;
 
-            morphingCycles[cycleNumber] = cycles;
-            morphingLinearForce[cycleNumber] = linearForce;
-            morphingAngularForce[cycleNumber] = angularForce;
-            morphingStepSize[cycleNumber] = stepSize;
-            morphingLandmarkStepSize[cycleNumber] = landmarkStepSize;
-            morphingIterations[cycleNumber] = iterations;
-            morphingSmoothIterations[cycleNumber] = smoothIterations;
+            morphingCycles[0][cycleNumber] = cycles;
+            morphingLinearForce[0][cycleNumber] = linearForce;
+            morphingAngularForce[0][cycleNumber] = angularForce;
+            morphingStepSize[0][cycleNumber] = stepSize;
+            morphingLandmarkStepSize[0][cycleNumber] = landmarkStepSize;
+            morphingIterations[0][cycleNumber] = iterations;
+            morphingSmoothIterations[0][cycleNumber] = smoothIterations;
          }
          else {
             //
             // Some older files may only have 5 parameters
             //
-            morphingCycles[0] = 1;
-            morphingLandmarkStepSize[0] = morphingStepSize[0];
-            morphingSmoothIterations[0] = 0;
+            morphingCycles[0][0] = 1;
+            morphingLandmarkStepSize[0][0] = morphingStepSize[0][0];
+            morphingSmoothIterations[0][0] = 0;
             
             QTextStream textStream(&tagValue, QIODevice::ReadOnly);
-            textStream >> morphingCycles[0]
-                 >> morphingLinearForce[0]
-                 >> morphingAngularForce[0]
-                 >> morphingStepSize[0]
-                 >> morphingLandmarkStepSize[0]
-                 >> morphingIterations[0]
-                 >> morphingSmoothIterations[0];
+            textStream >> morphingCycles[0][0]
+                 >> morphingLinearForce[0][0]
+                 >> morphingAngularForce[0][0]
+                 >> morphingStepSize[0][0]
+                 >> morphingLandmarkStepSize[0][0]
+                 >> morphingIterations[0][0]
+                 >> morphingSmoothIterations[0][0];
          }
       }
       else if (tag == inverseDeformationFlagTag) {
          inverseDeformationFlag = (tagValue == "true");
+      }
+      else if (tag == pauseForCrossoversConfirmationTag) {
+         pauseForCrossoversConfirmation = (tagValue == "true");
       }
       else if (tag == flatParametersTag) {
          QTextStream textStream(&tagValue, QIODevice::ReadOnly);
@@ -698,6 +840,31 @@ DeformationMapFile::writeFileTagRelative(QTextStream& stream,
 }
 
 /**
+ * Write a tag/value pair and make it relative to a directory
+ */
+void
+DeformationMapFile::writeFileTagRelative(QTextStream& stream,
+                                         const QString& directory,
+                                         const QString& tag,
+                                         const QString valueIn[],
+                                         const int index)
+{
+   QString value = valueIn[index];
+
+   //
+   // Only do so for version 2 and later files
+   //
+   if (fileVersion >= 2) {
+      if (directory.isEmpty() == false) {
+         makeFileRelative(directory, value);
+      }
+   }
+   stream << tag << " "
+          << index << " "
+          << value << "\n";
+}
+
+/**
  * Write the file's data.
  */
 void
@@ -705,7 +872,8 @@ DeformationMapFile::writeFileData(QTextStream& stream, QDataStream& binStream,
                                  QDomDocument& /* xmlDoc */,
                                   QDomElement& /* rootElement */) throw (FileException)
 {
-   stream << deformMapFileVersion << " " << fileVersion << "\n";
+   fileVersion = DEFAULT_DEFORMATION_MAP_VERSION;
+   stream << deformMapFileVersionTag << " " << fileVersion << "\n";
 
    switch(flatOrSphereSelection) {
       case DEFORMATION_TYPE_FLAT:
@@ -713,9 +881,16 @@ DeformationMapFile::writeFileData(QTextStream& stream, QDataStream& binStream,
                 << DeformationFlatValue << "\n";
          break;
       case DEFORMATION_TYPE_SPHERE:
-      default:
          stream << flatOrSphereSelectionTag << " "
                 << DeformationSphereValue << "\n";
+         break;
+      case DEFORMATION_TYPE_SPHERE_MULTI_STAGE_VECTOR:
+         stream << flatOrSphereSelectionTag << " "
+                << DeformationSphereMultiStageVectorValue << "\n";
+         break;
+      case DEFORMATION_TYPE_SPHERE_SINGLE_STAGE_VECTOR:
+         stream << flatOrSphereSelectionTag << " "
+                << DeformationSphereSingleStageVectorValue << "\n";
          break;
    }
    
@@ -750,29 +925,42 @@ DeformationMapFile::writeFileData(QTextStream& stream, QDataStream& binStream,
    writeFileTagRelative(stream, sourceDirectoryName, 
                         sourceResampledCutTopoTag, sourceResampledCutTopoFileName);
    
-   stream << sphereResolutionTag << " " 
-          << sphereResolution << "\n";
+   for (int i = 0; i < sphericalNumberOfStages; i++) {
+      stream << sphereResolutionTag << " " << i << " " << sphereResolution[i] << "\n";
+   }
    stream << borderResampleTag << " " 
           << static_cast<int>(borderResampleType) << " " 
           << borderResampleValue << "\n";
-   stream << sphericalNumberOfCyclesTag << " " 
-          << sphericalNumberOfCycles << "\n";
-   for (int i = 0; i < sphericalNumberOfCycles; i++) {
-      stream << smoothingParamtersTag << " " << i << " " 
-             << smoothingStrength[i] << " " 
-             << smoothingCycles[i] << " " 
-             << smoothingIterations[i] << " " 
-             << smoothingNeighborIterations[i] << " " 
-             << smoothingFinalIterations[i] << "\n";
-      stream << morphingParametersTag << " " << i << " " 
-             << morphingCycles[i] << " " 
-             << morphingLinearForce[i] << " " 
-             << morphingAngularForce[i] << " " 
-             << morphingStepSize[i] << " " 
-             << morphingLandmarkStepSize[i] << " " 
-             << morphingIterations[i] << " " 
-             << morphingSmoothIterations[i] << "\n";
+   stream << sphericalNumberOfStagesTag << " "
+          << sphericalNumberOfStages << "\n";
+   for (int i = 0; i < sphericalNumberOfStages; i++) {
+      stream << sphericalNumberOfCyclesTag << " " << i << " "
+             << sphericalNumberOfCycles[i] << "\n";
    }
+   for (int i = 0; i < sphericalNumberOfStages; i++) {
+       for (int j = 0; j < sphericalNumberOfCycles[i]; j++) {
+          stream << smoothingParamtersTag << " " << i << " " << j << " "
+                 << smoothingStrength[i][j] << " "
+                 << smoothingCycles[i][j] << " "
+                 << smoothingIterations[i][j] << " "
+                 << smoothingNeighborIterations[i][j] << " "
+                 << smoothingFinalIterations[i][j] << "\n";
+          stream << morphingParametersTag << " " << i << " " << j << " "
+                 << morphingCycles[i][j] << " "
+                 << morphingLinearForce[i][j] << " "
+                 << morphingAngularForce[i][j] << " "
+                 << morphingStepSize[i][j] << " "
+                 << morphingLandmarkStepSize[i][j] << " "
+                 << morphingIterations[i][j] << " "
+                 << morphingSmoothIterations[i][j] << "\n";
+          stream << landmarkVectorParametersTag << " " << i << " " << j << " "
+                 << landmarkVectorSmoothingIteratons[i][j] << " "
+                 << landmarkVectorDisplacementFactor[i][j] << "\n";
+       }
+       stream << landmarkVectorStageParametersTag << " " << i << " "
+              << landmarkVectorEndpointFactor[i] << "\n";
+   }
+
    stream << flatParametersTag << " " 
           << flatSubSamplingTiles << " " 
           << flatBeta << " " 
@@ -786,8 +974,10 @@ DeformationMapFile::writeFileData(QTextStream& stream, QDataStream& binStream,
    
    writeFileTagRelative(stream, targetDirectoryName, 
                         targetSpecTag, targetSpecFileName);
-   writeFileTagRelative(stream, targetDirectoryName, 
-                        targetBorderTag, targetBorderFileName);
+   for (int i = 0; i < sphericalNumberOfStages; i++) {
+      writeFileTagRelative(stream, targetDirectoryName,
+                           targetBorderTag, targetBorderFileName, i);
+   }
    writeFileTagRelative(stream, targetDirectoryName, 
                         targetClosedTopoTag, targetClosedTopoFileName);
    writeFileTagRelative(stream, targetDirectoryName, 
@@ -808,7 +998,11 @@ DeformationMapFile::writeFileData(QTextStream& stream, QDataStream& binStream,
    stream << sphereFiducialSphereRatioTag << " "
           << ratioString << " "
           << fiducialSphereRatio << "\n";
-          
+
+   stream << pauseForCrossoversConfirmationTag
+          << (pauseForCrossoversConfirmation ? " true" : " false")
+          << "\n";
+
    if (inverseDeformationFlag) {
       stream << inverseDeformationFlagTag << " true\n";
    }

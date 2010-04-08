@@ -30,7 +30,6 @@
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
-#include <QDateTime>
 #include <QDoubleSpinBox>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -682,7 +681,7 @@ GuiMainWindowSurfaceActions::slotSimplifySurface()
               "window are loaded.  They will be discarded if you continue.", 
               (QMessageBox::Ok | QMessageBox::Cancel),
               QMessageBox::Ok)
-                 == QMessageBox::Ok) {
+                 != QMessageBox::Ok) {
          return;
       }
    }
@@ -1191,8 +1190,12 @@ GuiMainWindowSurfaceActions::slotDeformationRunFlatDialog()
                             "Flat registration is not availble for the Windows version of Caret.");
    return;
 #endif
-   GuiSurfaceDeformationDialog sdd(theMainWindow, DeformationMapFile::DEFORMATION_TYPE_FLAT);
-   sdd.exec();
+   static GuiSurfaceDeformationDialog* sdd = NULL;
+   if (sdd == NULL) {
+      sdd = new GuiSurfaceDeformationDialog(theMainWindow,
+                              DeformationMapFile::DEFORMATION_TYPE_FLAT);
+   }
+   sdd->show();
 }
 
 /**
@@ -1201,8 +1204,12 @@ GuiMainWindowSurfaceActions::slotDeformationRunFlatDialog()
 void 
 GuiMainWindowSurfaceActions::slotDeformationRunSphericalDialog()
 {
-   GuiSurfaceDeformationDialog sdd(theMainWindow, DeformationMapFile::DEFORMATION_TYPE_SPHERE);
-   sdd.exec();
+   static GuiSurfaceDeformationDialog* sdd = NULL;
+   if (sdd == NULL) {
+      sdd = new GuiSurfaceDeformationDialog(theMainWindow,
+                             DeformationMapFile::DEFORMATION_TYPE_SPHERE);
+   }
+   sdd->show();
 }
 
 /**

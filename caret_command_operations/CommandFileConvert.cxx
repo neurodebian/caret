@@ -25,6 +25,7 @@
 
 #include <QFileInfo>
 
+#include "AreaColorFile.h"
 #include "BrainSet.h"
 #include "BrainModelContours.h"
 #include "CommandFileConvert.h"
@@ -97,7 +98,7 @@ CommandFileConvert::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "---------------------------------------------------------------------- \n"
        + indent9 + "SYNOPSIS for Caret File Format Conversion \n"
-       + indent9 + "   " + cmdSwitch + " -format-convert <file-format> \\ \n"
+       + indent9 + "   " + cmdSwitch + " [options] -format-convert <file-format> \\ \n"
        + indent9 + "      <one-or-more-file-names>  \n"
        + indent9 + " \n"
        + indent9 + "DESCRIPTION for Caret File Format Conversion \n"
@@ -112,6 +113,17 @@ CommandFileConvert::getHelpInformation() const
    }
    helpInfo += (""
        + indent9 + "            \n"
+       + indent9 + "   OPTIONS\n"
+       + indent9 + "      [-area-color-file  filename]\n"
+       + indent9 + "      \n"
+       + indent9 + "      Use the area color file option when converting\n"
+       + indent9 + "      paint files to GIFTI format.  When the LabelTable \n"
+       + indent9 + "      in the output GIFTI file is created, color components\n"
+       + indent9 + "      will be assigned using the colors in the area color\n"
+       + indent9 + "      file.  If there is more than one area color file,\n"
+       + indent9 + "      precede each of the them with the \"-area-color-file\"\n"
+       + indent9 + "      option.\n"
+       + indent9 + "      \n"
        + indent9 + "---------------------------------------------------------------------- \n"
        + indent9 + "SYNOPSIS for Caret File Format Information \n"
        + indent9 + "   " + cmdSwitch + " -format-info <one-or-more-file-names> \n"
@@ -344,6 +356,14 @@ CommandFileConvert::getHelpInformation() const
        + indent9 + "   supports neither binary nor XML format, do not change the file:\n"
        + indent9 + "      " + cmdSwitch + " -format-convert BINARY:XML * \n"
        + indent9 + " \n"
+       + indent9 + "   Convert all files in the current directory that can be\n"
+       + indent9 + "   written in GIFTI XML-GZIP format to that format.  An\n"
+       + indent9 + "   area color file is included so that any paint files  \n"
+       + indent9 + "   that are converted to GIFTI label files, receive color\n"
+       + indent9 + "   assignments in their LabelTables.\n"
+       + indent9 + "      " + cmdSwitch + " -area-color-file Human.labels.areacolor \\\n"
+       + indent9 + "       -format-convert XML_BASE64_GZIP * \n"
+       + indent9 + " \n"
        + indent9 + "   Convert the two Caret files into ascii format Caret files: \n"
        + indent9 + "       " + cmdSwitch + " -format-convert ASCII file1.top \\ \n"
        + indent9 + "           file3.coord \n"
@@ -422,7 +442,9 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
    // This gets the preferred write type from the preferences file
    //
    fileWriteType = AbstractFile::FILE_FORMAT_OTHER;
-   
+
+   std::vector<QString> areaColorFileNames;
+
    //
    // Process the command line options
    //
@@ -430,7 +452,10 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
    QString dataFileFormatList;
    while (parameters->getParametersAvailable()) {
       const QString arg(parameters->getNextParameterAsString("Parameter"));
-      if (arg == "-format-convert") {
+      if (arg == "-area-color-file") {
+         areaColorFileNames.push_back(parameters->getNextParameterAsString("Area Color File Name"));
+      }
+      else if (arg == "-format-convert") {
          if (mode == MODE_NONE) {
             mode = MODE_FORMAT_CONVERT;
          }
@@ -616,6 +641,14 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
       throw CommandException("You must specify a mode parameter.");
    }
    
+   AreaColorFile areaColorFile;
+   int numAreaColorFiles = static_cast<int>(areaColorFileNames.size());
+   for (int i = 0; i < numAreaColorFiles; i++) {
+      AreaColorFile acf;
+      acf.readFile(areaColorFileNames[i]);
+      areaColorFile.append(acf);
+   }
+
    const int numberOfDataFiles = static_cast<int>(dataFileNames.size());
    
    switch (mode) {
@@ -631,13 +664,13 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
          if (numberOfDataFiles <= 0) {
             throw CommandException("No files specified.");
          }
-         fileFormatConvert(dataFileNames, dataFileFormatList);
+         fileFormatConvert(dataFileNames, dataFileFormatList, areaColorFile);
          break;
       case MODE_FORMAT_INFO:
          if (numberOfDataFiles <= 0) {
             throw CommandException("No files specified.");
          }
-         fileFormatConvert(dataFileNames, "INFO");
+         fileFormatConvert(dataFileNames, "INFO", areaColorFile);
          break;
       case MODE_SPEC_CONVERT:
          specFileConvert(dataFileFormatList, specFileName);
@@ -733,7 +766,8 @@ CommandFileConvert::contourConversion(const QString& contourType,
  */
 void 
 CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
-                                      const QString& dataFileFormatList) throw (CommandException)
+                                      const QString& dataFileFormatList,
+                                      const AreaColorFile& areaColorFile) throw (CommandException)
 {
    //
    // Convert the data format list to file types
@@ -837,6 +871,15 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
                   try {
                      af->readFile(filename);
                      af->setFileWriteType(conversionFormats[i]);
+                     
+                     //
+                     // Assign colors to paint files since may be GIFTI output
+                     //
+                     PaintFile* pf = dynamic_cast<PaintFile*>(af);
+                     if (pf != NULL) {
+                        pf->assignColors(areaColorFile);
+                     }
+
                      af->writeFile(filename);
                      std::cout << "converted to "
                                << AbstractFile::convertFormatTypeToName(conversionFormats[i]).toAscii().constData()
@@ -1306,6 +1349,10 @@ CommandFileConvert::surfaceFileConversion() throw (CommandException)
                //
                if (fileWriteType != AbstractFile::FILE_FORMAT_OTHER) {
                   coordFile->setFileWriteType(fileWriteType);
+               }
+               if (structureName.isEmpty() == false) {
+                  coordFile->setHeaderTag(AbstractFile::headerTagStructure,
+                                          structureName);
                }
                coordFile->writeFile(outputSurfaceName);
                

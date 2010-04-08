@@ -32,6 +32,7 @@
 #include "GiftiCommon.h"
 #include "GiftiDataArrayFile.h"
 #include "GiftiDataArrayFileSaxReader.h"
+#include "StringUtilities.h"
 
 /**
  * constructor.
@@ -190,6 +191,29 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
                return false;
             }
             labelIndex = s.toInt();
+
+            {
+               GiftiLabelTable::getDefaultColorFloat(labelRed,
+                                                     labelGreen,
+                                                     labelBlue,
+                                                     labelAlpha);
+               const QString redString = attributes.value(GiftiCommon::attRed);
+               if (redString.isEmpty() == false) {
+                  labelRed = StringUtilities::toFloat(redString);
+               }
+               const QString greenString = attributes.value(GiftiCommon::attGreen);
+               if (greenString.isEmpty() == false) {
+                  labelGreen = StringUtilities::toFloat(greenString);
+               }
+               const QString blueString = attributes.value(GiftiCommon::attBlue);
+               if (blueString.isEmpty() == false) {
+                  labelBlue = StringUtilities::toFloat(blueString);
+               }
+               const QString alphaString = attributes.value(GiftiCommon::attAlpha);
+               if (alphaString.isEmpty() == false) {
+                  labelAlpha = StringUtilities::toFloat(alphaString);
+               }
+            }
          }
          else {
             std::ostringstream str;
@@ -349,6 +373,7 @@ GiftiDataArrayFileSaxReader::endElement(const QString& /* namspaceURI */,
          break;
       case STATE_LABEL_TABLE_LABEL:
          labelTable->setLabel(labelIndex, elementText);
+         labelTable->setColorFloat(labelIndex, labelRed, labelGreen, labelBlue, labelAlpha);
          break;
       case STATE_DATA_ARRAY:
          if (dataArray != NULL) {

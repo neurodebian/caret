@@ -63,7 +63,7 @@ CommandSurfaceBorderVariability::getScriptBuilderParameters(ScriptBuilderParamet
                      FileFilters::getBorderGenericFileFilter());
    paramsOut.addFile("Output Border File",
                      FileFilters::getBorderGenericFileFilter());
-   paramsOut.addBoolean("Do Report", false);
+   //paramsOut.addBoolean("Do Report", false);
    paramsOut.addVariableListOfParameters("Options");
 }
 
@@ -79,15 +79,21 @@ CommandSurfaceBorderVariability::getHelpInformation() const
        + indent9 + "<input-border-file>\n"
        + indent9 + "<input-landmark-average-border-file>\n"
        + indent9 + "<output-border-file>\n"
+       + indent9 + "[-abs-distance] \n"
        + indent9 + "[-border-report] \n"
        + indent9 + "[-border-point-report] \n"
+       + indent9 + "[-threshold  value] \n"
        + indent9 + "\n"
-       + indent9 + "Print reports about variability between borders.\n"
+       + indent9 + "Create a new border file that shows the variability.\n"
+       + indent9 + "of the input and corresponding landmark variability.\n"
        + indent9 + "\n"
-       + indent9 + "Resample the input borders so that they have the same number\n"
-       + indent9 + "of links as the border with the corresponding name in the \n"
-       + indent9 + "input landmark average border file.  In addition, the \n"
-       + indent9 + "variability radius for the borders will also be set.\n"
+       + indent9 + "if \"-abs-distance\" is used, the variability is set\n"
+       + indent9 + "to the distance between the border point and the nearest\n"
+       + indent9 + "location in the corresponding border.   Otherwise, the\n"
+       + indent9 + "variability is set to the distance divided by the\n"
+       + indent9 + "landmark variability.\n"
+       + indent9 + "\n"
+       + indent9 + "The threshold default value is 2.5.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -111,6 +117,9 @@ CommandSurfaceBorderVariability::executeCommand() throw (BrainModelAlgorithmExce
       parameters->getNextParameterAsString("Output Border File Name");
    bool borderReportFlag = false;
    bool borderPointReportFlag = false;
+   bool absoluteDistanceFlag = false;
+   float threshold = 2.5;
+   float extremeThreshold = 4.5;
    while (parameters->getParametersAvailable()) {
       const QString paramName = 
          parameters->getNextParameterAsString("Optional Parameter");
@@ -119,6 +128,12 @@ CommandSurfaceBorderVariability::executeCommand() throw (BrainModelAlgorithmExce
       }
       else if (paramName == "-border-point-report") {
          borderPointReportFlag = true;
+      }
+      else if (paramName == "-threshold") {
+         threshold = parameters->getNextParameterAsFloat("Threshold");
+      }
+      else if (paramName == "-abs-distance") {
+         absoluteDistanceFlag = true;
       }
       else {
          throw CommandException("Unrecognized parameter: " + paramName);
@@ -131,17 +146,30 @@ CommandSurfaceBorderVariability::executeCommand() throw (BrainModelAlgorithmExce
    BorderFile inputLandmarkAverageBorderFile;
    inputLandmarkAverageBorderFile.readFile(inputLandmarkAverageBorderFileName);
    
-   inputBorderFile.resampleToMatchLandmarkBorders(inputLandmarkAverageBorderFile);
+   //inputBorderFile.resampleToMatchLandmarkBorders(inputLandmarkAverageBorderFile);
    
-   inputBorderFile.writeFile(outputBorderFileName);
+   BorderFile outputBorderFile;
+   QString textReport;
+   BorderFile::evaluateLandmarkVariability(inputBorderFile,
+                                           inputLandmarkAverageBorderFile,
+                                           threshold,
+                                           extremeThreshold,
+                                           absoluteDistanceFlag,
+                                           outputBorderFile,
+                                           textReport);
+   outputBorderFile.writeFile(outputBorderFileName);
+   
+   std::cout << textReport.toAscii().constData() << std::endl;
    
    if (borderReportFlag) {
-      doBorderReport(inputBorderFile);
-      doBorderReport(inputLandmarkAverageBorderFile);
+      doBorderReport(inputBorderFile, threshold, true);
+      doBorderReport(inputLandmarkAverageBorderFile, threshold, false);
    }
    
    if (borderPointReportFlag) {
-      doBorderPointReport(inputBorderFile, inputLandmarkAverageBorderFile);
+      doBorderPointReport(inputBorderFile, 
+                          inputLandmarkAverageBorderFile,
+                          threshold);
    }
 }
 
@@ -149,7 +177,9 @@ CommandSurfaceBorderVariability::executeCommand() throw (BrainModelAlgorithmExce
  * do the border report.
  */
 void 
-CommandSurfaceBorderVariability::doBorderReport(const BorderFile& bf)
+CommandSurfaceBorderVariability::doBorderReport(const BorderFile& bf,
+                                                const float threshold,
+                                                const bool showRatiosExceededFlag)
 {
    std::cout << QString(60, '=').toAscii().constData() << std::endl;
    std::cout << "Border Summary: "
@@ -175,7 +205,7 @@ CommandSurfaceBorderVariability::doBorderReport(const BorderFile& bf)
          for (int j = 0; j < numLinks; j++) {
             const float radius = border->getLinkRadius(j);
             variability.push_back(radius);
-            if (radius > 2.0) {
+            if (radius > threshold) {
                numLinksWithVariabilityGreaterThanTwo++;
             }
          }
@@ -218,16 +248,19 @@ CommandSurfaceBorderVariability::doBorderReport(const BorderFile& bf)
                 << std::endl;
    }
    
-   const int numGT2 = static_cast<int>(namesWithVariabilityGreaterThanTwo.size());
-   if (numGT2 > 0) {
-      std::cout << QString(60, '=').toAscii().constData() << std::endl;
-      std::cout << "The following borders had at least one point whose ratio exceeded 2.0: " << std::endl;
-      for (int i = 0; i < numGT2; i++) {
-         std::cout << namesWithVariabilityGreaterThanTwo[i].toAscii().constData()
-                   << " : " 
-                   << countWithVariabilityGreaterThanTwo[i]
-                   << " points"
-                   << std::endl;
+   if (showRatiosExceededFlag) {
+      const int numGT2 = static_cast<int>(namesWithVariabilityGreaterThanTwo.size());
+      if (numGT2 > 0) {
+         std::cout << QString(60, '=').toAscii().constData() << std::endl;
+         std::cout << "The following borders had at least one point whose ratio exceeded "
+                   << threshold << ": " << std::endl;
+         for (int i = 0; i < numGT2; i++) {
+            std::cout << namesWithVariabilityGreaterThanTwo[i].toAscii().constData()
+                      << " : " 
+                      << countWithVariabilityGreaterThanTwo[i]
+                      << " points"
+                      << std::endl;
+         }
       }
    }
    
@@ -239,7 +272,8 @@ CommandSurfaceBorderVariability::doBorderReport(const BorderFile& bf)
  */
 void 
 CommandSurfaceBorderVariability::doBorderPointReport(const BorderFile& bfIn,
-                                               const BorderFile& avgBorderFileIn)
+                                               const BorderFile& avgBorderFileIn,
+                                               const float threshold)
                                                            throw (CommandException)
 {
    std::vector<QString> originalBorderNames;
@@ -298,7 +332,7 @@ CommandSurfaceBorderVariability::doBorderPointReport(const BorderFile& bfIn,
                       << avg3dVar
                       << " "
                       << ratio;
-            if (ratio > 2.0) {
+            if (ratio > threshold) {
                std::cout << " ***";
             }
             std::cout << std::endl;

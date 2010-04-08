@@ -38,6 +38,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCursor>
+#include <QDir>
 #include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -98,7 +99,7 @@
 #include "DisplaySettingsSection.h"
 #include "DisplaySettingsStudyMetaData.h"
 #include "DisplaySettingsSurfaceShape.h"
-#include "DisplaySettingsSurfaceVectors.h"
+#include "DisplaySettingsVectors.h"
 #include "DisplaySettingsTopography.h"
 #include "DisplaySettingsVolume.h"
 #include "DisplaySettingsWustlRegion.h"
@@ -110,6 +111,7 @@
 #include "GeodesicDistanceFile.h"
 #include "GuiBrainModelOpenGL.h"
 #include "GuiBrainModelSelectionComboBox.h"
+#include "GuiBrainModelSurfaceSelectionComboBox.h"
 #include "GuiDataFileCommentDialog.h"
 #include "GuiDisplayControlDialog.h"
 #include "GuiDisplayControlSurfaceOverlayWidget.h"
@@ -122,6 +124,7 @@
 #include "GuiStudyMetaDataLinkCreationDialog.h"
 #include "GuiToolBar.h"
 #include "GuiTransformationMatrixSelectionControl.h"
+#include "GuiVolumeFileSelectionComboBox.h"
 #include "GuiVolumeResizingDialog.h"
 #include "GuiNodeAttributeColumnSelectionComboBox.h"
 #include "ImageFile.h"
@@ -140,12 +143,13 @@
 #include "SectionFile.h"
 #include "StringUtilities.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "SystemUtilities.h"
 #include "TopographyFile.h"
 #include "TransformationMatrixFile.h"
 #include "VtkModelFile.h"
 #include "WuQDataEntryDialog.h"
+#include "WuQFileDialog.h"
 #include "WuQMessageBox.h"
 #include "WuQWidgetGroup.h"
 #include "WustlRegionFile.h"
@@ -495,11 +499,13 @@ GuiDisplayControlDialog::GuiDisplayControlDialog(QWidget* parent)
    
    pageSurfaceMisc = NULL;
 
-   pageSurfaceVectorSelection = NULL;
-   pageSurfaceVectorSettings = NULL;
+   pageVectorSelection = NULL;
+   pageVectorSettings = NULL;
    
    pageTopography = NULL;
-   
+
+   pageSurfaceClipping = NULL;
+
    //
    // Layout for buttons
    //
@@ -875,17 +881,20 @@ GuiDisplayControlDialog::getPageName(const PAGE_NAME pageName) const
       case PAGE_NAME_SURFACE_AND_VOLUME:
          s = "Surface and Volume";
          break;
+      case PAGE_NAME_SURFACE_CLIPPING:
+         s = "Surface Clipping";
+         break;
       case PAGE_NAME_SURFACE_MISC:
          s = "Surface Miscellaneous";
          break;
-      case PAGE_NAME_SURFACE_VECTOR_SELECTION:
-         s = "Surface Vector Selection";
-         break;
-      case PAGE_NAME_SURFACE_VECTOR_SETTINGS:
-         s = "Surface Vector Settings";
-         break;
       case PAGE_NAME_TOPOGRAPHY:
          s = "Topography";
+         break;
+      case PAGE_NAME_VECTOR_SELECTION:
+         s = "Vector Selection";
+         break;
+      case PAGE_NAME_VECTOR_SETTINGS:
+         s = "Vector Settings";
          break;
       case PAGE_NAME_INVALID:
          s = "Invalid";
@@ -940,7 +949,7 @@ GuiDisplayControlDialog::updateDataValidityFlags()
    validSectionData = (brainSet->getSectionFile()->getNumberOfColumns() > 0);
    validShapeData = (brainSet->getSurfaceShapeFile()->getNumberOfColumns() > 0);
    validSurfaceAndVolumeData = (brainSet->getBrainModelSurfaceAndVolume() != NULL);
-   validSurfaceVectorData = (brainSet->getSurfaceVectorFile()->getNumberOfColumns() > 0);
+   validVectorData = (brainSet->getNumberOfVectorFiles() > 0);
    validTopographyData = (brainSet->getTopographyFile()->getNumberOfColumns() > 0);
 }
 
@@ -1146,20 +1155,22 @@ GuiDisplayControlDialog::updatePageSelectionComboBox()
       pageComboBoxItems.push_back(PAGE_NAME_SURFACE_AND_VOLUME);
    }
    if (validSurfaceData) {
+      pageComboBox->addItem(getPageName(PAGE_NAME_SURFACE_CLIPPING));
+      pageComboBoxItems.push_back(PAGE_NAME_SURFACE_CLIPPING);
+   }
+   if (validSurfaceData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_SURFACE_MISC));
       pageComboBoxItems.push_back(PAGE_NAME_SURFACE_MISC);
-   }
-   if (validSurfaceVectorData) {
-      pageComboBox->addItem(getPageName(PAGE_NAME_SURFACE_VECTOR_SELECTION));
-      pageComboBoxItems.push_back(PAGE_NAME_SURFACE_VECTOR_SELECTION);
-   }
-   if (validSurfaceVectorData) {
-      pageComboBox->addItem(getPageName(PAGE_NAME_SURFACE_VECTOR_SETTINGS));
-      pageComboBoxItems.push_back(PAGE_NAME_SURFACE_VECTOR_SETTINGS);
    }
    if (validTopographyData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_TOPOGRAPHY));
       pageComboBoxItems.push_back(PAGE_NAME_TOPOGRAPHY);
+   }
+   if (validVectorData) {
+      pageComboBox->addItem(getPageName(PAGE_NAME_VECTOR_SELECTION));
+      pageComboBoxItems.push_back(PAGE_NAME_VECTOR_SELECTION);
+      pageComboBox->addItem(getPageName(PAGE_NAME_VECTOR_SETTINGS));
+      pageComboBoxItems.push_back(PAGE_NAME_VECTOR_SETTINGS);
    }
    if (validVolumeData) {
       pageComboBox->addItem(getPageName(PAGE_NAME_VOLUME_SETTINGS));
@@ -1663,6 +1674,13 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageSurfaceAndVolume);
          break;
+      case PAGE_NAME_SURFACE_CLIPPING:
+         if (pageSurfaceClipping == NULL) {
+            createSurfaceClippingPage();
+            updateSurfaceClippingPage();
+         }
+         pageWidgetStack->setCurrentWidget(pageSurfaceClipping);
+         break;
       case PAGE_NAME_SURFACE_MISC:
          if (pageSurfaceMisc == NULL) {
             createSurfaceMiscPage();
@@ -1670,19 +1688,19 @@ GuiDisplayControlDialog::showDisplayControlPage(const PAGE_NAME pageName,
          }
          pageWidgetStack->setCurrentWidget(pageSurfaceMisc);
          break;
-      case PAGE_NAME_SURFACE_VECTOR_SELECTION:
-         if (pageSurfaceVectorSelection == NULL) {
-            createSurfaceVectorSelectionPage();
-            updateSurfaceVectorSelectionPage();
+      case PAGE_NAME_VECTOR_SELECTION:
+         if (pageVectorSelection == NULL) {
+            createVectorSelectionPage();
+            updateVectorSelectionPage();
          }
-         pageWidgetStack->setCurrentWidget(pageSurfaceVectorSelection);
+         pageWidgetStack->setCurrentWidget(pageVectorSelection);
          break;
-      case PAGE_NAME_SURFACE_VECTOR_SETTINGS:
-         if (pageSurfaceVectorSettings == NULL) {
-            createSurfaceVectorSettingsPage();
-            updateSurfaceVectorSettingsPage();
+      case PAGE_NAME_VECTOR_SETTINGS:
+         if (pageVectorSettings == NULL) {
+            createVectorSettingsPage();
+            updateVectorSettingsPage();
          }
-         pageWidgetStack->setCurrentWidget(pageSurfaceVectorSettings);
+         pageWidgetStack->setCurrentWidget(pageVectorSettings);
          break;
       case PAGE_NAME_TOPOGRAPHY:
          if (pageTopography == NULL) {
@@ -1851,15 +1869,16 @@ GuiDisplayControlDialog::initializeSelectedOverlay(const PAGE_NAME pageName)
       case PAGE_NAME_SHAPE_SETTINGS:
          surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_SURFACE_SHAPE;
          break;
+      case PAGE_NAME_SURFACE_CLIPPING:
       case PAGE_NAME_SURFACE_AND_VOLUME:
       case PAGE_NAME_SURFACE_MISC:
-      case PAGE_NAME_SURFACE_VECTOR_SELECTION:
-      case PAGE_NAME_SURFACE_VECTOR_SETTINGS:
       case PAGE_NAME_SURFACE_OVERLAY_UNDERLAY_NEW:
          break;
       case PAGE_NAME_TOPOGRAPHY:
          surfaceOverlay = BrainModelSurfaceOverlay::OVERLAY_TOPOGRAPHY;
          break;
+      case PAGE_NAME_VECTOR_SELECTION:
+      case PAGE_NAME_VECTOR_SETTINGS:
       case PAGE_NAME_VOLUME_SELECTION:
       case PAGE_NAME_VOLUME_SETTINGS:
       case PAGE_NAME_VOLUME_SURFACE_OUTLINE:
@@ -2974,6 +2993,7 @@ GuiDisplayControlDialog::slotVolumeAnimateStartPushButton()
       case VolumeFile::VOLUME_AXIS_OBLIQUE_ALL:
       case VolumeFile::VOLUME_AXIS_UNKNOWN:
          QMessageBox::critical(this, "ERROR", "Animation of all or oblique slices not supported.");
+         return;
          break;
    }
       
@@ -5108,250 +5128,593 @@ GuiDisplayControlDialog::updateSurfaceAndVolumeItems()
 }      
 
 /**
- * create the surface vector selection page.
- */
-void 
-GuiDisplayControlDialog::createSurfaceVectorSelectionPage()
-{
-   //
-   // Grid for column selection page
-   // box prevents gray background from showing through
-   //
-   pageSurfaceVectorSelection = new QWidget;
-   pageSurfaceVectorSelection->setFixedWidth(450);
-   surfaceVectorColumnsGridLayout = new QGridLayout(pageSurfaceVectorSelection);
-   surfaceVectorColumnsGridLayout->setColumnStretch(0, 0);
-   surfaceVectorColumnsGridLayout->setColumnStretch(1, 0);
-   surfaceVectorColumnsGridLayout->setColumnStretch(2, 1);
-   const int rowStretchNumber = 15000;
-   surfaceVectorColumnsGridLayout->addWidget(new QLabel(""),
-                                        rowStretchNumber, 0, Qt::AlignLeft);
-   surfaceVectorColumnsGridLayout->setRowStretch(rowStretchNumber, 1000);
-
-   //
-   // Button Group for selections
-   //
-   surfaceVectorButtonGroup = new QButtonGroup(this);
-   QObject::connect(surfaceVectorButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(readSurfaceVectorSelectionPage()));
-   
-   //
-   // Button Group for comment
-   //
-   surfaceVectorCommentButtonGroup = new QButtonGroup(this);
-   QObject::connect(surfaceVectorCommentButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(slotSurfaceVectorCommentPushButton(int)));
-
-   pageWidgetStack->addWidget(pageSurfaceVectorSelection);
-}
-
-/**
  * create the surface vector settings page.
  */
 void 
-GuiDisplayControlDialog::createSurfaceVectorSettingsPage()
+GuiDisplayControlDialog::createVectorSettingsPage()
 {
+   const int spinBoxMaxWidth = 200;
+
    //
-   // Display mode
+   // Color Mode
    //
-   QLabel* displayModeLabel = new QLabel("Display Mode");
-   surfaceVectorDisplayModeComboBox = new QComboBox;
-   surfaceVectorDisplayModeComboBox->insertItem(DisplaySettingsSurfaceVectors::DISPLAY_MODE_ALL,
-                                                "All");
-   surfaceVectorDisplayModeComboBox->insertItem(DisplaySettingsSurfaceVectors::DISPLAY_MODE_NONE,
-                                                "None");
-   surfaceVectorDisplayModeComboBox->insertItem(DisplaySettingsSurfaceVectors::DISPLAY_MODE_SPARSE,
-                                                "Sparse");
-   QObject::connect(surfaceVectorDisplayModeComboBox, SIGNAL(activated(int)),
-                    this, SLOT(readSurfaceVectorSettingsPage()));
-   
+   QLabel* colorModeLabel = new QLabel("Coloring Mode");
+   vectorColorModeComboBox = new QComboBox;
+   vectorColorModeComboBox->insertItem(DisplaySettingsVectors::COLOR_MODE_VECTOR_COLORS,
+                                       "Use Vector Colors");
+   vectorColorModeComboBox->insertItem(DisplaySettingsVectors::COLOR_MODE_XYZ_AS_RGB,
+                                       "Use XYZ as Red, Green, Blue");
+   QObject::connect(vectorColorModeComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+
+   //
+   // Vector Type
+   //
+   QLabel* vectorTypeLabel = new QLabel("Vector Type");
+   vectorTypeModeComboBox = new QComboBox;
+   vectorTypeModeComboBox->insertItem(DisplaySettingsVectors::VECTOR_TYPE_BIDIRECTIONAL,
+                                      "Bidirectional");
+   vectorTypeModeComboBox->insertItem(DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_ARROW,
+                                      "Unidirectional (Arrow)");
+   vectorTypeModeComboBox->insertItem(DisplaySettingsVectors::VECTOR_TYPE_UNIDIRECTIONAL_CYLINDER,
+                                      "Unidirectional (Cylinder)");
+   QObject::connect(vectorTypeModeComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+
    //
    // Sparse distance spin box
    //
-   QLabel* sparseDistanceLabel = new QLabel("Sparse Distance");
-   surfaceVectorSparseDistanceSpinBox = new QSpinBox;
-   surfaceVectorSparseDistanceSpinBox->setMinimum(0);
-   surfaceVectorSparseDistanceSpinBox->setMaximum(100000);
-   surfaceVectorSparseDistanceSpinBox->setSingleStep(1);
-   QObject::connect(surfaceVectorSparseDistanceSpinBox, SIGNAL(valueChanged(int)),
-                    this, SLOT(readSurfaceVectorSettingsPage()));
-                    
+   QLabel* sparseDistanceLabel = new QLabel("Sparse Index Skip");
+   vectorSparseDistanceSpinBox = new QSpinBox;
+   vectorSparseDistanceSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorSparseDistanceSpinBox->setMinimum(0);
+   vectorSparseDistanceSpinBox->setMaximum(100000);
+   vectorSparseDistanceSpinBox->setSingleStep(1);
+   QObject::connect(vectorSparseDistanceSpinBox, SIGNAL(valueChanged(int)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorSparseDistanceSpinBox->setToolTip("Number of indices skipped when \n"
+                                           "drawing vectors in a sparse mode.");
+
    //
    // Length multiplier
    //
    QLabel* lengthLabel = new QLabel("Length Multiplier ");
-   surfaceVectorLengthMultiplierDoubleSpinBox = new QDoubleSpinBox;
-   surfaceVectorLengthMultiplierDoubleSpinBox->setMinimum(0.0001);
-   surfaceVectorLengthMultiplierDoubleSpinBox->setMaximum(1000.0);
-   surfaceVectorLengthMultiplierDoubleSpinBox->setSingleStep(1.0);
-   surfaceVectorLengthMultiplierDoubleSpinBox->setDecimals(3);
-   surfaceVectorLengthMultiplierDoubleSpinBox->setValue(1.0);
-   QObject::connect(surfaceVectorLengthMultiplierDoubleSpinBox, SIGNAL(valueChanged(double)),
-                    this, SLOT(readSurfaceVectorSettingsPage()));
-                    
+   vectorLengthMultiplierDoubleSpinBox = new QDoubleSpinBox;
+   vectorLengthMultiplierDoubleSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorLengthMultiplierDoubleSpinBox->setMinimum(0.0001);
+   vectorLengthMultiplierDoubleSpinBox->setMaximum(1000.0);
+   vectorLengthMultiplierDoubleSpinBox->setSingleStep(1.0);
+   vectorLengthMultiplierDoubleSpinBox->setDecimals(3);
+   vectorLengthMultiplierDoubleSpinBox->setValue(1.0);
+   QObject::connect(vectorLengthMultiplierDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorLengthMultiplierDoubleSpinBox->setToolTip("Scales the length of\n"
+                                                   "vectors for display.");
+
+
+   //
+   // Drawing group box and layout
+   //
+   QGroupBox* drawingGroupBox = new QGroupBox("Drawing");
+   QGridLayout* drawGridLayout = new QGridLayout(drawingGroupBox);
+   drawGridLayout->addWidget(colorModeLabel, 0, 0);
+   drawGridLayout->addWidget(vectorColorModeComboBox, 0, 1);
+   drawGridLayout->addWidget(vectorTypeLabel, 1, 0);
+   drawGridLayout->addWidget(vectorTypeModeComboBox, 1, 1);
+   drawGridLayout->addWidget(sparseDistanceLabel, 2, 0);
+   drawGridLayout->addWidget(vectorSparseDistanceSpinBox, 2, 1);
+   drawGridLayout->addWidget(lengthLabel, 3, 0);
+   drawGridLayout->addWidget(vectorLengthMultiplierDoubleSpinBox, 3, 1);
+   drawingGroupBox->setFixedSize(drawingGroupBox->sizeHint());
+
+   //===========================================================================
+
+   //
+   // Surface Symbol
+   //
+   QLabel* surfaceSymbolLabel = new QLabel("Symbol");
+   vectorSurfaceSymbolComboBox = new QComboBox;
+   vectorSurfaceSymbolComboBox->insertItem(DisplaySettingsVectors::SURFACE_SYMBOL_3D,
+                                           "3D Symbol");
+   vectorSurfaceSymbolComboBox->insertItem(DisplaySettingsVectors::SURFACE_SYMBOL_2D_LINE,
+                                           "2D Line");
+   QObject::connect(vectorSurfaceSymbolComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+
+   //
+   // Display mode surface
+   //
+   QLabel* displayModeSurfaceLabel = new QLabel("Display Mode");
+   vectorDisplayModeSurfaceComboBox = new QComboBox;
+   vectorDisplayModeSurfaceComboBox->insertItem(DisplaySettingsVectors::DISPLAY_MODE_ALL,
+                                                "All");
+   vectorDisplayModeSurfaceComboBox->insertItem(DisplaySettingsVectors::DISPLAY_MODE_NONE,
+                                                "None");
+   vectorDisplayModeSurfaceComboBox->insertItem(DisplaySettingsVectors::DISPLAY_MODE_SPARSE,
+                                                "Sparse");
+   QObject::connect(vectorDisplayModeSurfaceComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+   
+   //
+   // Surface line width
+   //
+   float minLineWidth = 0.0, maxLineWidth = 10.0;
+   BrainModelOpenGL::getMinMaxLineWidth(minLineWidth, maxLineWidth);
+   QLabel* surfaceLineWidthLabel = new QLabel("Line Width");
+   vectorSurfaceLineWidthSpinBox = new QDoubleSpinBox;
+   vectorSurfaceLineWidthSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorSurfaceLineWidthSpinBox->setMinimum(minLineWidth);
+   vectorSurfaceLineWidthSpinBox->setMaximum(maxLineWidth);
+   vectorSurfaceLineWidthSpinBox->setSingleStep(1.0);
+   vectorSurfaceLineWidthSpinBox->setDecimals(2);
+   QObject::connect(vectorSurfaceLineWidthSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorSurfaceLineWidthSpinBox->setToolTip("Controls width of vectors drawn\n"
+                                             "as lines in 2D on a surface.");
+
+   //
+   // Surface Display Layout
+   //
+   QGroupBox* surfaceDisplayGroupBox = new QGroupBox("Surface Display");
+   QGridLayout* surfaceGridLayout = new QGridLayout(surfaceDisplayGroupBox);
+   surfaceGridLayout->addWidget(displayModeSurfaceLabel, 0, 0);
+   surfaceGridLayout->addWidget(vectorDisplayModeSurfaceComboBox, 0, 1);
+   surfaceGridLayout->addWidget(surfaceSymbolLabel, 1, 0);
+   surfaceGridLayout->addWidget(vectorSurfaceSymbolComboBox, 1, 1);
+   surfaceGridLayout->addWidget(surfaceLineWidthLabel, 2, 0);
+   surfaceGridLayout->addWidget(vectorSurfaceLineWidthSpinBox, 2, 1);
+   surfaceDisplayGroupBox->setFixedSize(surfaceDisplayGroupBox->sizeHint());
+
+   //===========================================================================
+
+   //
+   // Volume Display mode
+   //
+   QLabel* displayModeVolumeLabel = new QLabel("Display Mode");
+   vectorDisplayModeVolumeComboBox = new QComboBox;
+   vectorDisplayModeVolumeComboBox->insertItem(DisplaySettingsVectors::DISPLAY_MODE_ALL,
+                                                "All");
+   vectorDisplayModeVolumeComboBox->insertItem(DisplaySettingsVectors::DISPLAY_MODE_NONE,
+                                                "None");
+   vectorDisplayModeVolumeComboBox->insertItem(DisplaySettingsVectors::DISPLAY_MODE_SPARSE,
+                                                "Sparse");
+   QObject::connect(vectorDisplayModeVolumeComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+
+
+   //
+   // Volume slice above limit
+   //
+   QLabel* volumeSliceAboveLimitLabel = new QLabel("Slice Above Limit");
+   vectorVolumeSliceAboveLimitSpinBox = new QDoubleSpinBox;
+   vectorVolumeSliceAboveLimitSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorVolumeSliceAboveLimitSpinBox->setMinimum(0.0);
+   vectorVolumeSliceAboveLimitSpinBox->setMaximum(1000000.0);
+   vectorVolumeSliceAboveLimitSpinBox->setSingleStep(0.1);
+   vectorVolumeSliceAboveLimitSpinBox->setDecimals(2);
+   QObject::connect(vectorVolumeSliceAboveLimitSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorVolumeSliceAboveLimitSpinBox->setToolTip("Vectors within this distance above\n"
+                                                 "a volume slice are drawn.");
+
+   //
+   // Volume slice below limit
+   //
+   QLabel* volumeSliceBelowLimitLabel = new QLabel("Slice Below Limit");
+   vectorVolumeSliceBelowLimitSpinBox = new QDoubleSpinBox;
+   vectorVolumeSliceBelowLimitSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorVolumeSliceBelowLimitSpinBox->setMinimum(-1000000.0);
+   vectorVolumeSliceBelowLimitSpinBox->setMaximum(0.0);
+   vectorVolumeSliceBelowLimitSpinBox->setSingleStep(0.1);
+   vectorVolumeSliceBelowLimitSpinBox->setDecimals(2);
+   QObject::connect(vectorVolumeSliceBelowLimitSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorVolumeSliceBelowLimitSpinBox->setToolTip("Vectors within this distance below\n"
+                                                 "a volume slice are drawn.");
+
+   QGroupBox* volumeDisplayGroupBox = new QGroupBox("Volume Display");
+   QGridLayout* volumeDisplayGridLayout = new QGridLayout(volumeDisplayGroupBox);
+   volumeDisplayGridLayout->addWidget(displayModeVolumeLabel, 0, 0);
+   volumeDisplayGridLayout->addWidget(vectorDisplayModeVolumeComboBox, 0, 1);
+   volumeDisplayGridLayout->addWidget(volumeSliceAboveLimitLabel, 1, 0);
+   volumeDisplayGridLayout->addWidget(vectorVolumeSliceAboveLimitSpinBox, 1, 1);
+   volumeDisplayGridLayout->addWidget(volumeSliceBelowLimitLabel, 2, 0);
+   volumeDisplayGridLayout->addWidget(vectorVolumeSliceBelowLimitSpinBox, 2, 1);
+   volumeDisplayGroupBox->setFixedSize(volumeDisplayGroupBox->sizeHint());
+
+   //===========================================================================
+
+   //
+   // Magnitude Threshold
+   //
+   QLabel* magnitudeThresholdLabel = new QLabel("Threshold");
+   vectorMagnitudeThresholdSpinBox = new QDoubleSpinBox;
+   vectorMagnitudeThresholdSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorMagnitudeThresholdSpinBox->setMinimum(0.0);
+   vectorMagnitudeThresholdSpinBox->setMaximum(1000000.0);
+   vectorMagnitudeThresholdSpinBox->setSingleStep(0.05);
+   vectorMagnitudeThresholdSpinBox->setDecimals(3);
+   QObject::connect(vectorMagnitudeThresholdSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorMagnitudeThresholdSpinBox->setToolTip("Vectors with a magnitude less\n"
+                                               "than this value are not displayed.");
+
+   //
+   // Draw with magnitude check box
+   //
+   vectorDrawWithMagnitudeCheckBox = new QCheckBox("Draw With Magnitude");
+   QObject::connect(vectorDrawWithMagnitudeCheckBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorDrawWithMagnitudeCheckBox->setToolTip("If selected, vectors are drawn using their\n"
+                                               "magnitude as the vector length.  Otherwise, \n"
+                                               "vectors are drawn with a length of 1.0.");
+
+   //
+   // Group box and layout for magnitude
+   //
+   QGroupBox* magnitudeGroupBox = new QGroupBox("Magnitude");
+   QGridLayout* magnitudeGridLayout = new QGridLayout(magnitudeGroupBox);
+   magnitudeGridLayout->addWidget(vectorDrawWithMagnitudeCheckBox, 0, 0, 1, 2);
+   magnitudeGridLayout->addWidget(magnitudeThresholdLabel, 1, 0);
+   magnitudeGridLayout->addWidget(vectorMagnitudeThresholdSpinBox, 1, 1);
+   magnitudeGroupBox->setFixedSize(magnitudeGroupBox->sizeHint());
+
+   //===========================================================================
+
+   //
+   // Segmentation mask controls
+   //
+   QLabel* segmentationVolumeLabel = new QLabel("Volume");
+   vectorSegmentationMaskVolumeComboBox = 
+           new GuiVolumeFileSelectionComboBox(VolumeFile::VOLUME_TYPE_SEGMENTATION);
+   QObject::connect(vectorSegmentationMaskVolumeComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+
+   //
+   // Segmentation mask group box and layout
+   //
+   vectorSegmentationGroupBox = new QGroupBox("Segmentation Volume Masking");
+   vectorSegmentationGroupBox->setCheckable(true);
+   QObject::connect(vectorSegmentationGroupBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readVectorSettingsPage()));
+   QGridLayout* segmentationGridLayout = new QGridLayout(vectorSegmentationGroupBox);
+   segmentationGridLayout->setColumnStretch(0, 0);
+   segmentationGridLayout->setColumnStretch(1, 100);
+   segmentationGridLayout->addWidget(segmentationVolumeLabel, 0, 0);
+   segmentationGridLayout->addWidget(vectorSegmentationMaskVolumeComboBox, 0, 1);
+
+   //===========================================================================
+
+   //
+   // Functional mask controls
+   //
+   QLabel* vectorFunctionalMaskVolumeLabel = new QLabel("Volume");
+   vectorFunctionalMaskVolumeComboBox =
+           new GuiVolumeFileSelectionComboBox(VolumeFile::VOLUME_TYPE_FUNCTIONAL);
+   QObject::connect(vectorFunctionalMaskVolumeComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorFunctionalMaskVolumeNegThreshSpinBox = new QDoubleSpinBox;
+   vectorFunctionalMaskVolumeNegThreshSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorFunctionalMaskVolumeNegThreshSpinBox->setMinimum(-1.0E10);
+   vectorFunctionalMaskVolumeNegThreshSpinBox->setMaximum(1.0E10);
+   vectorFunctionalMaskVolumeNegThreshSpinBox->setSingleStep(1.0);
+   vectorFunctionalMaskVolumeNegThreshSpinBox->setDecimals(3);
+   QObject::connect(vectorFunctionalMaskVolumeNegThreshSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorFunctionalMaskVolumePosThreshSpinBox = new QDoubleSpinBox;
+   vectorFunctionalMaskVolumePosThreshSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorFunctionalMaskVolumePosThreshSpinBox->setMinimum(-1.0E10);
+   vectorFunctionalMaskVolumePosThreshSpinBox->setMaximum(1.0E10);
+   vectorFunctionalMaskVolumePosThreshSpinBox->setSingleStep(1.0);
+   vectorFunctionalMaskVolumePosThreshSpinBox->setDecimals(3);
+   QObject::connect(vectorFunctionalMaskVolumePosThreshSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   QLabel* functionalMaskValueLabel = new QLabel("Neg/Pos Threshold");
+   vectorFunctionalVolumeMaskGroupBox = new QGroupBox("Functional Volume Masking");
+   vectorFunctionalVolumeMaskGroupBox->setCheckable(true);
+   QObject::connect(vectorFunctionalVolumeMaskGroupBox, SIGNAL(toggled(bool)),
+                    this, SLOT(readVectorSettingsPage()));
+   QGridLayout* functionalMaskGridLayout = new QGridLayout(vectorFunctionalVolumeMaskGroupBox);
+   functionalMaskGridLayout->setColumnStretch(0, 0);
+   functionalMaskGridLayout->setColumnStretch(1, 0);
+   functionalMaskGridLayout->setColumnStretch(2, 0);
+   functionalMaskGridLayout->setColumnStretch(3, 100);
+   functionalMaskGridLayout->addWidget(vectorFunctionalMaskVolumeLabel, 0, 0);
+   functionalMaskGridLayout->addWidget(vectorFunctionalMaskVolumeComboBox, 0, 1, 1, 3);
+   functionalMaskGridLayout->addWidget(functionalMaskValueLabel, 1, 0);
+   functionalMaskGridLayout->addWidget(vectorFunctionalMaskVolumeNegThreshSpinBox, 1, 1);
+   functionalMaskGridLayout->addWidget(vectorFunctionalMaskVolumePosThreshSpinBox, 1, 2);
+
+   //===========================================================================
+
+   //
+   // Orientation combo box
+   //
+   QLabel* displayOrientationAxisLabel = new QLabel("Axis");
+   vectorDisplayOrientationComboBox = new QComboBox;
+   vectorDisplayOrientationComboBox->insertItem(DisplaySettingsVectors::DISPLAY_ORIENTATION_ANY,
+                                      "Any");
+   vectorDisplayOrientationComboBox->insertItem(DisplaySettingsVectors::DISPLAY_ORIENTATION_LEFT_RIGHT,
+                                      "Left/Right");
+   vectorDisplayOrientationComboBox->insertItem(DisplaySettingsVectors::DISPLAY_ORIENTATION_POSTERIOR_ANTERIOR,
+                                      "Posterior/Anterior");;
+   vectorDisplayOrientationComboBox->insertItem(DisplaySettingsVectors::DISPLAY_ORIENTATION_INFERIOR_SUPERIOR,
+                                      "Inferior/Superior");
+   QObject::connect(vectorDisplayOrientationComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readVectorSettingsPage()));
+
+   //
+   // Orientation angle
+   //
+   QLabel* orientationAngleLabel = new QLabel("Angle");
+   vectorDisplayOrientationAngleSpinBox = new QDoubleSpinBox;
+   vectorDisplayOrientationAngleSpinBox->setMaximumWidth(spinBoxMaxWidth);
+   vectorDisplayOrientationAngleSpinBox->setMinimum(-90.0);
+   vectorDisplayOrientationAngleSpinBox->setMaximum(90.0);
+   vectorDisplayOrientationAngleSpinBox->setSingleStep(1.0);
+   vectorDisplayOrientationAngleSpinBox->setDecimals(1);
+   QObject::connect(vectorDisplayOrientationAngleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readVectorSettingsPage()));
+   vectorDisplayOrientationAngleSpinBox->setToolTip("Angle of vectors from orientation.");
+
+   //
+   // Orientation layout
+   //
+   QGroupBox* vectorDisplayOrientationGroupBox = new QGroupBox("Orientation Filtering");
+   QGridLayout* vectorDisplayOrientationGridLayout = new QGridLayout(vectorDisplayOrientationGroupBox);
+   vectorDisplayOrientationGridLayout->addWidget(displayOrientationAxisLabel, 0, 0);
+   vectorDisplayOrientationGridLayout->addWidget(vectorDisplayOrientationComboBox, 0, 1);
+   vectorDisplayOrientationGridLayout->addWidget(orientationAngleLabel, 1, 0);
+   vectorDisplayOrientationGridLayout->addWidget(vectorDisplayOrientationAngleSpinBox, 1, 1);
+   vectorDisplayOrientationGroupBox->setFixedSize(vectorDisplayOrientationGroupBox->sizeHint());
+
+   //===========================================================================
+
+   //
+   // Layout for surface and volume display
+   //
+   QHBoxLayout* displayLayouts = new QHBoxLayout;
+   displayLayouts->addWidget(surfaceDisplayGroupBox);
+   displayLayouts->addWidget(volumeDisplayGroupBox);
+   displayLayouts->addStretch();
+
+   //
+   // Layout for orientation and magnitude
+   //
+   QHBoxLayout* orientationMagnitudeLayouts = new QHBoxLayout;
+   orientationMagnitudeLayouts->addWidget(vectorDisplayOrientationGroupBox);
+   orientationMagnitudeLayouts->addWidget(magnitudeGroupBox);
+   orientationMagnitudeLayouts->addStretch();
+
+
    //
    // Box for settings page
    //
-   pageSurfaceVectorSettings = new QWidget;
-   QGridLayout* surfaceVectorSettingsPageLayout = new QGridLayout(pageSurfaceVectorSettings);
-   surfaceVectorSettingsPageLayout->addWidget(displayModeLabel, 0, 0);
-   surfaceVectorSettingsPageLayout->addWidget(surfaceVectorDisplayModeComboBox, 0, 1);
-   surfaceVectorSettingsPageLayout->addWidget(sparseDistanceLabel, 1, 0);
-   surfaceVectorSettingsPageLayout->addWidget(surfaceVectorSparseDistanceSpinBox, 1, 1);
-   surfaceVectorSettingsPageLayout->addWidget(lengthLabel, 2, 0);
-   surfaceVectorSettingsPageLayout->addWidget(surfaceVectorLengthMultiplierDoubleSpinBox, 2, 1);
-   pageSurfaceVectorSettings->setFixedSize(pageSurfaceVectorSettings->sizeHint());
+   pageVectorSettings = new QWidget;
+   QVBoxLayout* vectorSettingsPageLayout = new QVBoxLayout(pageVectorSettings);
+   vectorSettingsPageLayout->setSpacing(1);
+   vectorSettingsPageLayout->addLayout(displayLayouts);
+   vectorSettingsPageLayout->addWidget(drawingGroupBox);
+   vectorSettingsPageLayout->addLayout(orientationMagnitudeLayouts);
+   vectorSettingsPageLayout->addWidget(vectorFunctionalVolumeMaskGroupBox);
+   vectorSettingsPageLayout->addWidget(vectorSegmentationGroupBox);
+   vectorSettingsPageLayout->addStretch();
+   pageVectorSettings->setFixedSize(pageVectorSettings->sizeHint());
 
-   pageWidgetStack->addWidget(pageSurfaceVectorSettings);
-}
+   pageWidgetStack->addWidget(pageVectorSettings);
 
-/**
- * update surface vector selection page.
- */
-void 
-GuiDisplayControlDialog::updateSurfaceVectorSelectionPage()
-{
-   if (pageSurfaceVectorSelection == NULL) {
-      return;
-   }
-   DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
-   SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
-   
-   const int numInPage = static_cast<int>(surfaceVectorRadioButtons.size());
-   for (int i = numInPage; i < svf->getNumberOfColumns(); i++) {
-      QRadioButton* rb = new QRadioButton("");
-      surfaceVectorButtonGroup->addButton(rb, i);
-      surfaceVectorRadioButtons.push_back(rb);
-      
-      QToolButton* pb = new QToolButton;
-      pb->setText("?");
-      pb->setObjectName("pb");
-      //pb->setFixedSize(pb->sizeHint());
-      //pb->setAutoDefault(false);
-      surfaceVectorCommentButtonGroup->addButton(pb, i);
-      surfaceVectorCommentPushButtons.push_back(pb);
-      
-      QLineEdit* le = new QLineEdit;
-      le->setObjectName("le");
-      surfaceVectorLineEdits.push_back(le);
-      
-      surfaceVectorColumnsGridLayout->addWidget(rb, i, 0);
-      surfaceVectorColumnsGridLayout->addWidget(pb, i, 1);
-      surfaceVectorColumnsGridLayout->addWidget(le, i, 2);
-   }
-
-   for (int i = 0; i < static_cast<int>(surfaceVectorRadioButtons.size()); i++) {
-      if (i < svf->getNumberOfColumns()) {
-         surfaceVectorRadioButtons[i]->show();
-         surfaceVectorCommentPushButtons[i]->show();
-         surfaceVectorLineEdits[i]->setText(svf->getColumnName(i));
-         surfaceVectorLineEdits[i]->show();
-      }
-      else {
-         surfaceVectorRadioButtons[i]->hide();
-         surfaceVectorCommentPushButtons[i]->hide();
-         surfaceVectorLineEdits[i]->hide();
-      }
-   }
-   
-   if ((dssv->getSelectedColumn(surfaceModelIndex) >= 0) &&
-       (dssv->getSelectedColumn(surfaceModelIndex) < static_cast<int>(surfaceVectorRadioButtons.size()))) {
-      surfaceVectorRadioButtons[dssv->getSelectedColumn(surfaceModelIndex)]->setChecked(true);
-   }
-   pageSurfaceVectorSelection->setEnabled(validSurfaceVectorData);
+   //
+   // Widget group for vector page items
+   //
+   vectorSettingsPageWidgetGroup = new WuQWidgetGroup(this);
+   vectorSettingsPageWidgetGroup->addWidget(vectorColorModeComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorTypeModeComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorSurfaceSymbolComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorDisplayModeSurfaceComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorDisplayModeVolumeComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorSparseDistanceSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorLengthMultiplierDoubleSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorSurfaceLineWidthSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorVolumeSliceAboveLimitSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorVolumeSliceBelowLimitSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorDrawWithMagnitudeCheckBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorMagnitudeThresholdSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorSegmentationGroupBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorSegmentationMaskVolumeComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorDisplayOrientationComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorDisplayOrientationAngleSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorFunctionalVolumeMaskGroupBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorFunctionalMaskVolumeComboBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorFunctionalMaskVolumeNegThreshSpinBox);
+   vectorSettingsPageWidgetGroup->addWidget(vectorFunctionalMaskVolumePosThreshSpinBox);
 }
 
 /**
  * update surface vector settings page.
  */
 void 
-GuiDisplayControlDialog::updateSurfaceVectorSettingsPage()
+GuiDisplayControlDialog::updateVectorSettingsPage()
 {
-   if (pageSurfaceVectorSettings == NULL) {
+   if (pageVectorSettings == NULL) {
       return;
    }
-   DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
-   
-   surfaceVectorDisplayModeComboBox->setCurrentIndex(dssv->getDisplayMode());
-   surfaceVectorSparseDistanceSpinBox->setValue(dssv->getSparseDisplayDistance());
-   surfaceVectorLengthMultiplierDoubleSpinBox->setValue(dssv->getLengthMultiplier());
-   pageSurfaceVectorSettings->setEnabled(validSurfaceVectorData);
+   vectorSettingsPageWidgetGroup->blockSignals(true);
+
+   DisplaySettingsVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsVectors();
+
+   vectorColorModeComboBox->setCurrentIndex(dssv->getColorMode());
+   vectorTypeModeComboBox->setCurrentIndex(dssv->getVectorType());
+   vectorSurfaceSymbolComboBox->setCurrentIndex(dssv->getSurfaceSymbol());
+   vectorDisplayModeSurfaceComboBox->setCurrentIndex(dssv->getDisplayModeSurface());
+   vectorDisplayModeVolumeComboBox->setCurrentIndex(dssv->getDisplayModeVolume());
+   vectorSparseDistanceSpinBox->setValue(dssv->getSparseDisplayDistance());
+   vectorLengthMultiplierDoubleSpinBox->setValue(dssv->getLengthMultiplier());
+   vectorSurfaceLineWidthSpinBox->setValue(dssv->getSurfaceVectorLineWidth());
+   vectorVolumeSliceAboveLimitSpinBox->setValue(dssv->getVolumeSliceDistanceAboveLimit());
+   vectorVolumeSliceBelowLimitSpinBox->setValue(dssv->getVolumeSliceDistanceBelowLimit());
+   vectorDrawWithMagnitudeCheckBox->setChecked(dssv->getDrawWithMagnitude());
+   vectorMagnitudeThresholdSpinBox->setValue(dssv->getMagnitudeThreshold());
+   vectorSegmentationGroupBox->setChecked(dssv->getSegmentationMaskingVolumeEnabled());
+   vectorSegmentationMaskVolumeComboBox->updateComboBox();
+   vectorSegmentationMaskVolumeComboBox->setSelectedVolumeFile(dssv->getSegmentationMaskingVolumeFile());
+   vectorDisplayOrientationAngleSpinBox->setValue(dssv->getDisplayOrientationAngle());
+   vectorDisplayOrientationComboBox->setCurrentIndex(dssv->getDisplayOrientation());
+   vectorFunctionalVolumeMaskGroupBox->setChecked(dssv->getFunctionalMaskingVolumeEnabled());
+   vectorFunctionalMaskVolumeComboBox->updateComboBox();
+   vectorFunctionalMaskVolumeComboBox->setSelectedVolumeFile(dssv->getFunctionalMaskingVolumeFile());
+   vectorFunctionalMaskVolumeNegThreshSpinBox->setValue(dssv->getFunctionalMaskingVolumeNegativeThreshold());
+   vectorFunctionalMaskVolumePosThreshSpinBox->setValue(dssv->getFunctionalMaskingVolumePositiveThreshold());
+   pageVectorSettings->setEnabled(validVectorData);
+
+   vectorSettingsPageWidgetGroup->blockSignals(false);
 }
 
 /**
  * update surface vector items in dialog.
  */
 void 
-GuiDisplayControlDialog::updateSurfaceVectorItems()
+GuiDisplayControlDialog::updateVectorItems()
 {
    updatePageSelectionComboBox();
 
-   updateSurfaceVectorSelectionPage();
-   updateSurfaceVectorSettingsPage();
+   updateVectorSelectionPage();
+   updateVectorSettingsPage();
 }
       
-/**
- * read the surface vector selection page.
- */
-void 
-GuiDisplayControlDialog::readSurfaceVectorSelectionPage()
-{
-   if (pageSurfaceVectorSelection == NULL) {
-      return;
-   }
-   SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
-   const int num = std::min(static_cast<int>(surfaceVectorRadioButtons.size()),
-                            svf->getNumberOfColumns());
-   for (int i = 0; i < num; i++) {
-      const QString name(surfaceVectorLineEdits[i]->text());
-      if (name != svf->getColumnName(i)) {
-         svf->setColumnName(i, name);
-      }
-   }
-   DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
-   dssv->setSelectedColumn(surfaceModelIndex, surfaceVectorButtonGroup->checkedId());
-   
-   GuiFilesModified fm;
-   fm.setSurfaceVectorModified();
-   theMainWindow->fileModificationUpdate(fm);
-   GuiBrainModelOpenGL::updateAllGL();
-}
-
 /**
  * read the surface vector settings page.
  */
 void 
-GuiDisplayControlDialog::readSurfaceVectorSettingsPage()
+GuiDisplayControlDialog::readVectorSettingsPage()
 {
-   if (pageSurfaceVectorSettings == NULL) {
+   if (pageVectorSettings == NULL) {
       return;
    }
-   DisplaySettingsSurfaceVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceVectors();
+   DisplaySettingsVectors* dssv = theMainWindow->getBrainSet()->getDisplaySettingsVectors();
    
-   //dssv->setSelectedColumn(surfaceModelIndex, surfaceVectorButtonGroup->checkedId());
-   dssv->setDisplayMode(static_cast<DisplaySettingsSurfaceVectors::DISPLAY_MODE>(
-                          surfaceVectorDisplayModeComboBox->currentIndex()));
-   dssv->setSparseDisplayDistance(surfaceVectorSparseDistanceSpinBox->value());
-   dssv->setLengthMultiplier(surfaceVectorLengthMultiplierDoubleSpinBox->value());
-   
+   //dssv->setSelectedColumn(surfaceModelIndex, vectorButtonGroup->checkedId());
+   dssv->setColorMode(static_cast<DisplaySettingsVectors::COLOR_MODE>(
+                          vectorColorModeComboBox->currentIndex()));
+   dssv->setVectorType(static_cast<DisplaySettingsVectors::VECTOR_TYPE>(
+                          vectorTypeModeComboBox->currentIndex()));
+   dssv->setSurfaceSymbol(static_cast<DisplaySettingsVectors::SURFACE_SYMBOL>(
+                            vectorSurfaceSymbolComboBox->currentIndex()));
+   dssv->setDisplayModeSurface(static_cast<DisplaySettingsVectors::DISPLAY_MODE>(
+                          vectorDisplayModeSurfaceComboBox->currentIndex()));
+   dssv->setDisplayModeVolume(static_cast<DisplaySettingsVectors::DISPLAY_MODE>(
+                          vectorDisplayModeVolumeComboBox->currentIndex()));
+   dssv->setSurfaceVectorLineWidth(vectorSurfaceLineWidthSpinBox->value());
+   dssv->setVolumeSliceDistanceAboveLimit(vectorVolumeSliceAboveLimitSpinBox->value());
+   dssv->setVolumeSliceDistanceBelowLimit(vectorVolumeSliceBelowLimitSpinBox->value());
+   dssv->setSparseDisplayDistance(vectorSparseDistanceSpinBox->value());
+   dssv->setLengthMultiplier(vectorLengthMultiplierDoubleSpinBox->value());
+   dssv->setDrawWithMagnitude(vectorDrawWithMagnitudeCheckBox->isChecked());
+   dssv->setMagnitudeThreshold(vectorMagnitudeThresholdSpinBox->value());
+   dssv->setSegmentationMaskingVolumeFile(vectorSegmentationMaskVolumeComboBox->getSelectedVolumeFile());
+   dssv->setSegmentationMaskingVolumeEnabled(vectorSegmentationGroupBox->isChecked());
+   dssv->setDisplayOrientationAngle(vectorDisplayOrientationAngleSpinBox->value());
+   dssv->setDisplayOrientation(static_cast<DisplaySettingsVectors::DISPLAY_ORIENTATION>(
+                                     vectorDisplayOrientationComboBox->currentIndex()));
+   dssv->setFunctionalMaskingVolumeEnabled(vectorFunctionalVolumeMaskGroupBox->isChecked());
+   dssv->setFunctionalMaskingVolumeFile(vectorFunctionalMaskVolumeComboBox->getSelectedVolumeFile());
+   dssv->setFunctionalMaskingVolumeNegativeThreshold(vectorFunctionalMaskVolumeNegThreshSpinBox->value());
+   dssv->setFunctionalMaskingVolumePositiveThreshold(vectorFunctionalMaskVolumePosThreshSpinBox->value());
+   theMainWindow->getBrainSet()->clearAllDisplayLists();
    GuiBrainModelOpenGL::updateAllGL();
 }
-      
+
 /**
- * called when surface vector comment button pressed.
+ *  update vector selection page.
  */
-void 
-GuiDisplayControlDialog::slotSurfaceVectorCommentPushButton(int item)
+void
+GuiDisplayControlDialog::updateVectorSelectionPage()
 {
-   SurfaceVectorFile* svf = theMainWindow->getBrainSet()->getSurfaceVectorFile();
-   if ((item >= 0) && (item < svf->getNumberOfColumns())) {
-      GuiDataFileCommentDialog* dfcd = new GuiDataFileCommentDialog(theMainWindow,
-                                                                    svf, 
-                                                                    item);
-      dfcd->show();
+   if (pageVectorSelection == NULL) {
+      return;
    }
+   vectorSelectionPageWidgetGroup->blockSignals(true);
+
+   BrainSet* bs = theMainWindow->getBrainSet();
+   const int numVectorFiles = bs->getNumberOfVectorFiles();
+   const int numCheckBoxes = static_cast<int>(vectorSelectionCheckBoxes.size());
+
+   //
+   // Add new check boxes
+   //
+   for (int i = numCheckBoxes; i < numVectorFiles; i++) {
+      QCheckBox* cb = new QCheckBox("");
+      cb->blockSignals(true);
+      QObject::connect(cb, SIGNAL(toggled(bool)),
+                       this, SLOT(readVectorSelectionPage()));
+      vectorSelectionCheckBoxes.push_back(cb);
+      vectorSelectionPageWidgetGroup->addWidget(cb);
+      pageVectorSelectionLayout->addWidget(cb);
+   }
+
+   //
+   // Hide unused checkboxes
+   //
+   for (int i = numVectorFiles; i < numCheckBoxes; i++) {
+      vectorSelectionCheckBoxes[i]->hide();
+   }
+
+   //
+   // Update valid checkboxes
+   //
+   DisplaySettingsVectors* dsv = bs->getDisplaySettingsVectors();
+   for (int i = 0; i < numVectorFiles; i++) {
+      vectorSelectionCheckBoxes[i]->show();
+      vectorSelectionCheckBoxes[i]->setText(
+         FileUtilities::basename(bs->getVectorFile(i)->getFileName()));
+      vectorSelectionCheckBoxes[i]->setChecked(dsv->getDisplayVectorFile(i));
+   }
+
+   pageVectorSelection->setEnabled(validVectorData);
+   pageVectorSelection->setFixedHeight(pageVectorSelection->sizeHint().height());
+
+   vectorSelectionPageWidgetGroup->blockSignals(false);
 }
-      
+
+/**
+ *  create the vector selection page.
+ */
+void
+GuiDisplayControlDialog::createVectorSelectionPage()
+{
+   pageVectorSelection = new QWidget;
+   pageWidgetStack->addWidget(pageVectorSelection);
+   pageVectorSelectionLayout = new QVBoxLayout(pageVectorSelection);
+
+   //
+   // Widget group for vector page items
+   //
+   vectorSelectionPageWidgetGroup = new WuQWidgetGroup(this);
+}
+
+/**
+ *  read the vector selection page.
+ */
+void
+GuiDisplayControlDialog::readVectorSelectionPage()
+{
+   if (pageVectorSelection == NULL) {
+      return;
+   }
+   BrainSet* bs = theMainWindow->getBrainSet();
+   int numVectorFiles = bs->getNumberOfVectorFiles();
+
+   //
+   // Determine files that are displayed
+   //
+   DisplaySettingsVectors* dsv = bs->getDisplaySettingsVectors();
+   for (int i = 0; i < numVectorFiles; i++) {
+      dsv->setDisplayVectorFile(i, vectorSelectionCheckBoxes[i]->isChecked());
+   }
+
+   bs->clearAllDisplayLists();
+   GuiBrainModelOpenGL::updateAllGL();
+}
+
 /**
  * Create the misc tab page
  */
@@ -5381,7 +5744,6 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    const int CEREBELLUM_VOLUME_INTERACTION_ROW = numRows++;
    const int FIDUCIAL_ROW     = numRows++;
    const int DRAW_MODE_ROW    = numRows++;
-   const int PARTIAL_VIEW_ROW = numRows++;
    const int PROJECTION_ROW   = numRows++;
    const int BRIGHTNESS_ROW = numRows++;
    const int CONTRAST_ROW   = numRows++;
@@ -5475,30 +5837,6 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    miscDrawModeComboBox->setToolTip("Choose Drawing Mode");
    QObject::connect(miscDrawModeComboBox, SIGNAL(activated(int)),
                     this, SLOT(readMiscSelections()));
-   
-   //
-   // Partial View 
-   //
-   gridLayout->addWidget(new QLabel("Partial View"), PARTIAL_VIEW_ROW, 0, Qt::AlignLeft);
-   miscPartialViewComboBox = new QComboBox;
-   miscPartialViewComboBox->setMaximumWidth(maxWidth);
-   gridLayout->addWidget(miscPartialViewComboBox, PARTIAL_VIEW_ROW, 1, Qt::AlignLeft);
-   QObject::connect(miscPartialViewComboBox, SIGNAL(activated(int)),
-                    this, SLOT(readMiscSelections()));
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_ALL,
-                                       "All");
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_POSITIVE_X,
-                                       "Positive X");
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_NEGATIVE_X,
-                                       "Negative X");
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_POSITIVE_Y,
-                                       "Positive Y");
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_NEGATIVE_Y,
-                                       "Negative Y");
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_POSITIVE_Z,
-                                       "Positive Z");
-   miscPartialViewComboBox->insertItem(DisplaySettingsSurface::PARTIAL_VIEW_NEGATIVE_Z,
-                                       "Negative Z");
    
    //
    // Projection
@@ -5749,7 +6087,6 @@ GuiDisplayControlDialog::createSurfaceMiscPage()
    surfaceMiscWidgetGroup->addWidget(miscCerebellumFiducialVolumeInteractionComboBox);
    surfaceMiscWidgetGroup->addWidget(miscActiveFiducialComboBox);
    surfaceMiscWidgetGroup->addWidget(miscDrawModeComboBox);
-   surfaceMiscWidgetGroup->addWidget(miscPartialViewComboBox);
    surfaceMiscWidgetGroup->addWidget(miscProjectionComboBox);
    surfaceMiscWidgetGroup->addWidget(miscBrightnessDoubleSpinBox);
    surfaceMiscWidgetGroup->addWidget(miscContrastDoubleSpinBox);
@@ -5798,7 +6135,6 @@ GuiDisplayControlDialog::updateMiscItems()
    miscActiveFiducialComboBox->updateComboBox();
    miscActiveFiducialComboBox->setSelectedBrainModel(theMainWindow->getBrainSet()->getActiveFiducialSurface());
    miscDrawModeComboBox->setCurrentIndex(dsn->getDrawMode());
-   miscPartialViewComboBox->setCurrentIndex(dsn->getPartialView());
    miscProjectionComboBox->setCurrentIndex(dsn->getViewingProjection());
    miscBrightnessDoubleSpinBox->setValue(dsn->getNodeBrightness());
    miscContrastDoubleSpinBox->setValue(dsn->getNodeContrast());
@@ -5863,8 +6199,6 @@ GuiDisplayControlDialog::readMiscSelections()
    
    dsn->setDrawMode(
       static_cast<DisplaySettingsSurface::DRAW_MODE>(miscDrawModeComboBox->currentIndex()));
-   dsn->setPartialView(static_cast<DisplaySettingsSurface::PARTIAL_VIEW_TYPE>(
-                       miscPartialViewComboBox->currentIndex()));
    dsn->setViewingProjection(static_cast<DisplaySettingsSurface::VIEWING_PROJECTION>(
                        miscProjectionComboBox->currentIndex()));
    dsn->setNodeBrightness(miscBrightnessDoubleSpinBox->value());
@@ -6214,6 +6548,7 @@ GuiDisplayControlDialog::readProbAtlasSurfaceL2LR2R()
    dspa->setApplySelectionToLeftAndRightStructuresFlag(probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    GuiBrainModelOpenGL::updateAllGL(NULL); 
+   displayOverlayLeftToLeftRightToRightMessage();
 }
 
 /**
@@ -6441,7 +6776,9 @@ GuiDisplayControlDialog::updateProbAtlasSurfaceItems(const bool filesChanged)
 
    DisplaySettingsProbabilisticAtlas* dspa = theMainWindow->getBrainSet()->getDisplaySettingsProbabilisticAtlasSurface();
    
+   probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
    probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dspa->getApplySelectionToLeftAndRightStructuresFlag());
+   probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
    
    updateProbAtlasSurfaceMainPage();
    updateProbAtlasSurfaceChannelPage(filesChanged);
@@ -7274,11 +7611,21 @@ GuiDisplayControlDialog::slotSceneListBox(int item)
       //
       // Clear all Left-to-Left and Right-to-Right items
       //
+      shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
       shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
+      metricApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
       metricApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      metricApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
+      paintApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
       paintApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      paintApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
+      rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
       rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
+      probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
       probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(false);
+      probAtlasSurfaceApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
       
       QString errorMessage;
       
@@ -7514,9 +7861,10 @@ GuiDisplayControlDialog::slotReplaceScenePushButton()
       //
       // Save all display settings
       //
-      QString errorMessage;
+      QString errorMessage, warningMessage;
       theMainWindow->getBrainSet()->replaceScene(sf, selectedIndex, mainWindowSceneClasses, 
-                          name, false, errorMessage);
+                          name, false, errorMessage, warningMessage);
+      errorMessage += warningMessage;
 
       updateSceneItems();
       setSelectedSceneItem(selectedIndex);
@@ -7591,8 +7939,9 @@ GuiDisplayControlDialog::slotAppendScenePushButton()
       //
       // Save all display settings
       //
-      QString errorMessage;
-      theMainWindow->getBrainSet()->saveScene(theMainWindow->getBrainSet()->getSceneFile(), mainWindowSceneClasses, name, false, errorMessage);
+      QString errorMessage, warningMessage;
+      theMainWindow->getBrainSet()->saveScene(theMainWindow->getBrainSet()->getSceneFile(), mainWindowSceneClasses, name, false, errorMessage, warningMessage);
+      errorMessage += warningMessage;
 
       updateSceneItems();
       setSelectedSceneItem(sceneListBox->count() - 1);
@@ -7680,8 +8029,9 @@ GuiDisplayControlDialog::slotInsertScenePushButton()
       //
       // Save all display settings
       //
-      QString errorMessage;
-      theMainWindow->getBrainSet()->insertScene(sf, selectedIndex, mainWindowSceneClasses, name, false, errorMessage);
+      QString errorMessage, warningMessage;
+      theMainWindow->getBrainSet()->insertScene(sf, selectedIndex, mainWindowSceneClasses, name, false, errorMessage, warningMessage);
+      errorMessage += warningMessage;
 
       updateSceneItems();
       setSelectedSceneItem(selectedIndex + 1);
@@ -8598,7 +8948,8 @@ GuiDisplayControlDialog::readRgbPaintL2LR2R()
    DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
    dsrp->setApplySelectionToLeftAndRightStructuresFlag(rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
-   GuiBrainModelOpenGL::updateAllGL(NULL);   
+   GuiBrainModelOpenGL::updateAllGL(NULL); 
+   displayOverlayLeftToLeftRightToRightMessage();  
 }
 
 /**
@@ -8675,7 +9026,9 @@ GuiDisplayControlDialog::updateRgbPaintMainPage()
    pageRgbPaintMainWidgetGroup->blockSignals(true);
    
    DisplaySettingsRgbPaint* dsrp = theMainWindow->getBrainSet()->getDisplaySettingsRgbPaint();
+   rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
    rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsrp->getApplySelectionToLeftAndRightStructuresFlag());
+   rgbApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
    //RgbPaintFile* rpf = theMainWindow->getBrainSet()->getRgbPaintFile();
    
    
@@ -9389,7 +9742,7 @@ GuiDisplayControlDialog::updateAllItemsInDialog(const bool filesChanged,
    updateProbAtlasVolumeItems(filesChanged);
    updateSectionMainPage();
    updateSurfaceAndVolumeItems();
-   updateSurfaceVectorItems();
+   updateVectorItems();
    updateTopographyItems();
    updateVolumeItems();
    
@@ -10011,8 +10364,10 @@ GuiDisplayControlDialog::updateShapeSelections()
    }
    
    DisplaySettingsSurfaceShape* dsss = theMainWindow->getBrainSet()->getDisplaySettingsSurfaceShape();
+   shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
    shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsss->getApplySelectionToLeftAndRightStructuresFlag());
-
+   shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
+   
    pageSurfaceShapeSelections->setEnabled(validShapeData);
    
    createAndUpdateSurfaceShapeSelections();
@@ -10088,6 +10443,7 @@ GuiDisplayControlDialog::readShapeL2LR2R()
    dsss->setApplySelectionToLeftAndRightStructuresFlag(shapeApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    GuiBrainModelOpenGL::updateAllGL(NULL);   
+   displayOverlayLeftToLeftRightToRightMessage();
 }
       
 /**
@@ -10627,7 +10983,9 @@ GuiDisplayControlDialog::updatePaintColumnPage()
    
    
    DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
+   paintApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
    paintApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsp->getApplySelectionToLeftAndRightStructuresFlag());
+   paintApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
    if (pf->getNumberOfColumns() > 0) {
       const int selCol = dsp->getSelectedDisplayColumn(surfaceModelIndex,
@@ -10666,7 +11024,8 @@ GuiDisplayControlDialog::readPaintL2LR2R()
    DisplaySettingsPaint* dsp = theMainWindow->getBrainSet()->getDisplaySettingsPaint();
    dsp->setApplySelectionToLeftAndRightStructuresFlag(paintApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
-   GuiBrainModelOpenGL::updateAllGL(NULL);   
+   GuiBrainModelOpenGL::updateAllGL(NULL);  
+   displayOverlayLeftToLeftRightToRightMessage(); 
 }
                 
 /**
@@ -11484,6 +11843,7 @@ GuiDisplayControlDialog::updateMetricMiscellaneousPage()
    if (pageMetricMiscellaneous == NULL) {
       return;
    }
+   updatingMetricMiscPageFlag = true;
    
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    metricGraphPopupComboBox->setCurrentIndex(dsm->getMDataPlotOnNodeID());
@@ -11492,7 +11852,8 @@ GuiDisplayControlDialog::updateMetricMiscellaneousPage()
    metricGraphManualScaleCheckBox->setChecked(manFlag);
    metricGraphManualScaleMinDoubleSpinBox->setValue(manMin);
    metricGraphManualScaleMaxDoubleSpinBox->setValue(manMax);
-   
+
+   updatingMetricMiscPageFlag = false;
 }
 
 /**
@@ -11504,13 +11865,16 @@ GuiDisplayControlDialog::readMetricMiscellaneousPage()
    if (pageMetricMiscellaneous == NULL) {
       return;
    }
+   if (updatingMetricMiscPageFlag) {
+      return;
+   }
+
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
    dsm->setDataPlotOnNodeID(static_cast<DisplaySettingsMetric::METRIC_DATA_PLOT>(
                                               metricGraphPopupComboBox->currentIndex()));
    dsm->setDataPlotManualScaling(metricGraphManualScaleCheckBox->isChecked(),
                                  metricGraphManualScaleMinDoubleSpinBox->value(),
                                  metricGraphManualScaleMaxDoubleSpinBox->value());
-
 }
 
 /**
@@ -11519,6 +11883,8 @@ GuiDisplayControlDialog::readMetricMiscellaneousPage()
 void 
 GuiDisplayControlDialog::createMetricMiscellaneousPage()
 {
+   updatingMetricMiscPageFlag = true;
+
    //
    // Animation section
    //
@@ -11584,7 +11950,11 @@ GuiDisplayControlDialog::createMetricMiscellaneousPage()
    popupGraphLayout->addLayout(popupGraphShowLayout);
    popupGraphLayout->addLayout(popupGraphScaleLayout);
    popupGraphGroup->setFixedSize(popupGraphGroup->sizeHint());
- 
+
+   std::vector<BrainModelSurface::SURFACE_TYPES> surfaceTypes;
+   std::vector<QString> surfaceNames;
+   BrainModelSurface::getSurfaceTypesAndNames(surfaceTypes, surfaceNames);
+
    //
    // Metric misc page and layout
    //  
@@ -11599,6 +11969,8 @@ GuiDisplayControlDialog::createMetricMiscellaneousPage()
    pageMetricSettingsWidgetGroup->addWidget(metricGraphPopupComboBox);
    pageMetricSettingsWidgetGroup->addWidget(metricGraphManualScaleMinDoubleSpinBox);
    pageMetricSettingsWidgetGroup->addWidget(metricGraphManualScaleMaxDoubleSpinBox);
+
+   updatingMetricMiscPageFlag = false;
 }
       
 /**
@@ -11629,6 +12001,10 @@ GuiDisplayControlDialog::createMetricSettingsPage()
                  "Metric Column\".");
    scaleButtonGroup->addButton(metricFileAutoScaleRadioButton, 
                                DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO);
+
+   metricFileAutoScalePercentageRadioButton = new QRadioButton("Auto Scale - Percentage");
+   metricFileAutoScalePercentageRadioButton->setToolTip("");
+   scaleButtonGroup->addButton(metricFileAutoScalePercentageRadioButton);
 
    metricFileAutoScaleSpecifiedColumnRadioButton = new QRadioButton("Auto Scale - Metric Column");
    metricFileAutoScaleSpecifiedColumnRadioButton->setToolTip(
@@ -11720,18 +12096,85 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    
    QGridLayout* colorMapGridLayout = new QGridLayout;
    colorMapGridLayout->setColumnMinimumWidth(0, 25);
+   colorMapGridLayout->setContentsMargins(0, 0, 0, 0);
    colorMapGridLayout->addWidget(colorMapPosMinMaxLabel, 0, 1);
    colorMapGridLayout->addWidget(metricColorPositiveMinDoubleSpinBox, 0, 2);
    colorMapGridLayout->addWidget(metricColorPositiveMaxDoubleSpinBox, 0, 3);
    colorMapGridLayout->addWidget(colorMapNegMinMaxLabel, 1, 1);
    colorMapGridLayout->addWidget(metricColorNegativeMaxDoubleSpinBox, 1, 2);
    colorMapGridLayout->addWidget(metricColorNegativeMinDoubleSpinBox, 1, 3);
+
+   QLabel* colorMapPercentagePosMinMaxLabel = new QLabel("Pos Min/Max");
+   metricColorPercentagePositiveMaxDoubleSpinBox = new QDoubleSpinBox;
+   metricColorPercentagePositiveMaxDoubleSpinBox->setMinimum(0);
+   metricColorPercentagePositiveMaxDoubleSpinBox->setMaximum(100.0);
+   metricColorPercentagePositiveMaxDoubleSpinBox->setSingleStep(1.0);
+   metricColorPercentagePositiveMaxDoubleSpinBox->setDecimals(0);
+   metricColorPercentagePositiveMaxDoubleSpinBox->setSuffix("%");
+   metricColorPercentagePositiveMaxDoubleSpinBox->setToolTip(
+                 "This positive percentile metric value is mapped to\n"
+                 "the 1.0 value in the color palette.");
+   QObject::connect(metricColorPercentagePositiveMaxDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readMetricSettingsPage()));
+
+   metricColorPercentagePositiveMinDoubleSpinBox = new QDoubleSpinBox;
+   metricColorPercentagePositiveMinDoubleSpinBox->setMinimum(0);
+   metricColorPercentagePositiveMinDoubleSpinBox->setMaximum(100.0);
+   metricColorPercentagePositiveMinDoubleSpinBox->setSingleStep(1.0);
+   metricColorPercentagePositiveMinDoubleSpinBox->setDecimals(0);
+   metricColorPercentagePositiveMinDoubleSpinBox->setSuffix("%");
+   metricColorPercentagePositiveMinDoubleSpinBox->setToolTip(
+                 "This positive percentile metric value is mapped to\n"
+                 "the 0.0 value in the color palette.");
+   QObject::connect(metricColorPercentagePositiveMinDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readMetricSettingsPage()));
+
+   QLabel* colorMapPercentageNegMinMaxLabel = new QLabel("Neg Max/Min");
+   metricColorPercentageNegativeMinDoubleSpinBox = new QDoubleSpinBox;
+   metricColorPercentageNegativeMinDoubleSpinBox->setMinimum(0.0);
+   metricColorPercentageNegativeMinDoubleSpinBox->setMaximum(100.0);
+   metricColorPercentageNegativeMinDoubleSpinBox->setSingleStep(1.0);
+   metricColorPercentageNegativeMinDoubleSpinBox->setDecimals(0);
+   metricColorPercentageNegativeMinDoubleSpinBox->setSuffix("%");
+   metricColorPercentageNegativeMinDoubleSpinBox->setToolTip(
+                 "This negative percentile metric value is mapped to\n"
+                 "the 0.0 value in the color palette.");
+   QObject::connect(metricColorPercentageNegativeMinDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readMetricSettingsPage()));
+
+   metricColorPercentageNegativeMaxDoubleSpinBox = new QDoubleSpinBox;
+   metricColorPercentageNegativeMaxDoubleSpinBox->setMinimum(0);
+   metricColorPercentageNegativeMaxDoubleSpinBox->setMaximum(100.0);
+   metricColorPercentageNegativeMaxDoubleSpinBox->setSingleStep(1.0);
+   metricColorPercentageNegativeMaxDoubleSpinBox->setDecimals(0);
+   metricColorPercentageNegativeMaxDoubleSpinBox->setSuffix("%");
+   metricColorPercentageNegativeMaxDoubleSpinBox->setToolTip(
+                 "This negative percentile metric value is mapped to\n"
+                 "the -1.0 value in the color palette.");
+   QObject::connect(metricColorPercentageNegativeMaxDoubleSpinBox, SIGNAL(valueChanged(double)),
+                    this, SLOT(readMetricSettingsPage()));
+
+   QWidget* colorMapPercentageWidget = new QWidget;
+   QGridLayout* colorMapPercentageGridLayout = new QGridLayout(colorMapPercentageWidget);
+   colorMapPercentageGridLayout->setContentsMargins(0, 0, 0, 0);
+   colorMapPercentageGridLayout->setColumnMinimumWidth(0, 25);
+   colorMapPercentageGridLayout->addWidget(colorMapPercentagePosMinMaxLabel, 0, 1);
+   colorMapPercentageGridLayout->addWidget(metricColorPercentagePositiveMinDoubleSpinBox, 0, 2);
+   colorMapPercentageGridLayout->addWidget(metricColorPercentagePositiveMaxDoubleSpinBox, 0, 3);
+   colorMapPercentageGridLayout->addWidget(colorMapPercentageNegMinMaxLabel, 1, 1);
+   colorMapPercentageGridLayout->addWidget(metricColorPercentageNegativeMaxDoubleSpinBox, 1, 2);
+   colorMapPercentageGridLayout->addWidget(metricColorPercentageNegativeMinDoubleSpinBox, 1, 3);
+   colorMapPercentageWidget->setFixedSize(colorMapPercentageWidget->sizeHint());
+   
    QGridLayout* colorScaleGridLayout = new QGridLayout;
    colorScaleGridLayout->addWidget(metricFileAutoScaleRadioButton, 0, 0, 1, 2);
-   colorScaleGridLayout->addWidget(metricFileAutoScaleSpecifiedColumnRadioButton, 1, 0, 1, 1);
-   colorScaleGridLayout->addWidget(metricFileAutoScaleSpecifiedColumnSelectionComboBox, 1, 1);
-   colorScaleGridLayout->addWidget(metricFuncVolumeAutoScaleRadioButton, 2, 0, 1, 2);
-   colorScaleGridLayout->addWidget(metricUserScaleRadioButton, 3, 0, 1, 2);
+   colorScaleGridLayout->addWidget(metricFileAutoScalePercentageRadioButton, 1, 0, 1, 1);
+   colorScaleGridLayout->addWidget(colorMapPercentageWidget, 2, 0, 1, 2);
+   colorScaleGridLayout->addWidget(metricFileAutoScaleSpecifiedColumnRadioButton, 3, 0, 1, 1);
+   colorScaleGridLayout->addWidget(metricFileAutoScaleSpecifiedColumnSelectionComboBox, 3, 1);
+   colorScaleGridLayout->addWidget(metricFuncVolumeAutoScaleRadioButton, 4, 0, 1, 2);
+   colorScaleGridLayout->addWidget(metricUserScaleRadioButton, 5, 0, 1, 2);
+
    QGroupBox* colorGroupBox = new QGroupBox("Color Mapping");
    QVBoxLayout* colorGroupLayout = new QVBoxLayout(colorGroupBox);
    colorGroupLayout->addLayout(colorScaleGridLayout);
@@ -11954,6 +12397,11 @@ GuiDisplayControlDialog::createMetricSettingsPage()
    pageMetricSettingsWidgetGroup->addWidget(threshColumnLabel);
    pageMetricSettingsWidgetGroup->addWidget(metricThresholdSettingColumnSelectionComboBox);
    pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScaleRadioButton);
+   pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScalePercentageRadioButton);
+   pageMetricSettingsWidgetGroup->addWidget(metricColorPercentagePositiveMaxDoubleSpinBox);
+   pageMetricSettingsWidgetGroup->addWidget(metricColorPercentagePositiveMinDoubleSpinBox);
+   pageMetricSettingsWidgetGroup->addWidget(metricColorPercentageNegativeMaxDoubleSpinBox);
+   pageMetricSettingsWidgetGroup->addWidget(metricColorPercentageNegativeMinDoubleSpinBox);
    pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScaleSpecifiedColumnRadioButton);
    pageMetricSettingsWidgetGroup->addWidget(metricFileAutoScaleSpecifiedColumnSelectionComboBox);
    pageMetricSettingsWidgetGroup->addWidget(metricFuncVolumeAutoScaleRadioButton);
@@ -12305,6 +12753,9 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
       case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO:
          metricFileAutoScaleRadioButton->setChecked(true);
          break;
+      case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE:
+         metricFileAutoScalePercentageRadioButton->setChecked(true);
+         break;
       case DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN:
          metricFileAutoScaleSpecifiedColumnRadioButton->setChecked(true);
          break;
@@ -12326,7 +12777,16 @@ GuiDisplayControlDialog::updateMetricSettingsPage()
    metricColorPositiveMaxDoubleSpinBox->setValue(posMaxMetric);
    metricColorNegativeMinDoubleSpinBox->setValue(negMinMetric);
    metricColorNegativeMaxDoubleSpinBox->setValue(negMaxMetric);
-   
+
+   metricColorPercentagePositiveMaxDoubleSpinBox->setValue(
+           dsm->getAutoScalePercentagePositiveMaximum());
+   metricColorPercentagePositiveMinDoubleSpinBox->setValue(
+           dsm->getAutoScalePercentagePositiveMinimum());
+   metricColorPercentageNegativeMinDoubleSpinBox->setValue(
+           dsm->getAutoScalePercentageNegativeMinimum());
+   metricColorPercentageNegativeMaxDoubleSpinBox->setValue(
+           dsm->getAutoScalePercentageNegativeMaximum());
+
    metricColorInterpolateCheckBox->setChecked(dsm->getInterpolateColors());
    
    //
@@ -12381,7 +12841,9 @@ GuiDisplayControlDialog::updateMetricItems()
    updatePageSelectionComboBox();
    
    DisplaySettingsMetric* dsm = theMainWindow->getBrainSet()->getDisplaySettingsMetric();
+   metricApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(true);
    metricApplySelectionToLeftAndRightStructuresFlagCheckBox->setChecked(dsm->getApplySelectionToLeftAndRightStructuresFlag());
+   metricApplySelectionToLeftAndRightStructuresFlagCheckBox->blockSignals(false);
    
    updateSurfaceOverlayWidgets();
    
@@ -12456,6 +12918,9 @@ GuiDisplayControlDialog::readMetricSettingsPage()
    if (metricFileAutoScaleRadioButton->isChecked()) {
       dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO);
    }
+   else if (metricFileAutoScalePercentageRadioButton->isChecked()) {
+      dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE);
+   }
    else if (metricFileAutoScaleSpecifiedColumnRadioButton->isChecked()) {
       dsm->setSelectedOverlayScale(DisplaySettingsMetric::METRIC_OVERLAY_SCALE_AUTO_SPECIFIED_COLUMN);
    }
@@ -12471,6 +12936,16 @@ GuiDisplayControlDialog::readMetricSettingsPage()
                            metricColorPositiveMaxDoubleSpinBox->value(),
                            metricColorNegativeMinDoubleSpinBox->value(),
                            metricColorNegativeMaxDoubleSpinBox->value());
+
+   dsm->setAutoScalePercentageNegativeMinimum(
+           metricColorPercentageNegativeMinDoubleSpinBox->value());
+   dsm->setAutoScalePercentageNegativeMaximum(
+           metricColorPercentageNegativeMaxDoubleSpinBox->value());
+   dsm->setAutoScalePercentagePositiveMinimum(
+           metricColorPercentagePositiveMinDoubleSpinBox->value());
+   dsm->setAutoScalePercentagePositiveMaximum(
+           metricColorPercentagePositiveMaxDoubleSpinBox->value());
+
    dsm->setInterpolateColors(metricColorInterpolateCheckBox->isChecked());
                            
    //
@@ -12516,6 +12991,7 @@ GuiDisplayControlDialog::readMetricL2LR2R()
    dsm->setApplySelectionToLeftAndRightStructuresFlag(metricApplySelectionToLeftAndRightStructuresFlagCheckBox->isChecked());
    theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
    GuiBrainModelOpenGL::updateAllGL(NULL);   
+   displayOverlayLeftToLeftRightToRightMessage();
 }
       
 /**
@@ -15376,6 +15852,9 @@ GuiDisplayControlDialog::applySelected()
       case PAGE_NAME_SURFACE_AND_VOLUME:
          readSurfaceAndVolumeSelections();
          break;
+      case PAGE_NAME_SURFACE_CLIPPING:
+         readSurfaceClippingPage();
+         break;
       case PAGE_NAME_SURFACE_MISC:
          readMiscSelections();
          break;
@@ -15409,14 +15888,14 @@ GuiDisplayControlDialog::applySelected()
       case PAGE_NAME_SCENE:
          slotSceneListBox(sceneListBox->currentRow());
          break;
-      case PAGE_NAME_SURFACE_VECTOR_SELECTION:
-         readSurfaceVectorSelectionPage();
-         break;
-      case PAGE_NAME_SURFACE_VECTOR_SETTINGS:
-         readSurfaceVectorSettingsPage();
-         break;
       case PAGE_NAME_TOPOGRAPHY:
          readTopographySelections();
+         break;
+      case PAGE_NAME_VECTOR_SELECTION:
+         readVectorSelectionPage();
+         break;
+      case PAGE_NAME_VECTOR_SETTINGS:
+         readVectorSettingsPage();
          break;
       case PAGE_NAME_VOLUME_SELECTION:
          readVolumeSelections();
@@ -16436,5 +16915,128 @@ GuiDisplayControlDialog::updateProbAtlasVolumeItems(const bool filesChanged)
    updateProbAtlasVolumeChannelPage(filesChanged);
    
    updatePageSelectionComboBox();
+}
+
+/**
+ * display left-to-left right-to-right message.
+ */
+void 
+GuiDisplayControlDialog::displayOverlayLeftToLeftRightToRightMessage()
+{
+   const QString msg =
+      "The 'Apply Shape L-to-L, R-to-R Matching to Coord Files' option affects only newly made overlay/underlay selections.  To "
+      "activate, select the desired surface (or All Surfaces), then press the View button for the desired column.  If the selected column "
+      "name contains 'Left' [or 'Right'], this column will be assigned to all surfaces identified as left [right] hemispheres.  Also, a "
+      "corresponding 'Right' [ or 'Left'] column (if it exists) will be assigned to all surfaces identified as right [left] hemispheres.";
+    
+    QtTextEditDialog te(this, true, true);
+    te.setText(msg);
+    te.exec();
+}
+
+/**
+ * read surface clipping page.
+ */
+void 
+GuiDisplayControlDialog::readSurfaceClippingPage()
+{
+   if (pageSurfaceClipping == NULL) {
+      return;
+   }
+
+   DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
+   dss->setClippingPlaneApplication(static_cast<DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION>(
+           this->surfaceClippingApplyComboBox->currentIndex()));
+   for (int i = 0; i < 6; i++) {
+      DisplaySettingsSurface::CLIPPING_PLANE_AXIS cpa =
+              static_cast<DisplaySettingsSurface::CLIPPING_PLANE_AXIS>(i);
+      dss->setClippingPlaneEnabled(cpa, this->surfaceClippingEnabledCheckBox[i]->isChecked());
+      dss->setClippingPlaneCoordinate(cpa, this->surfaceClippingCoordSpinBox[i]->value());
+   }
+
+   theMainWindow->getBrainSet()->clearAllDisplayLists();
+   GuiBrainModelOpenGL::updateAllGL();
+}
+
+/**
+ * Create the surface clipping page.
+ */
+void 
+GuiDisplayControlDialog::createSurfaceClippingPage()
+{
+   QLabel* applyLabel = new QLabel("Apply Clipping ");
+   surfaceClippingApplyComboBox = new QComboBox;
+   QObject::connect(surfaceClippingApplyComboBox, SIGNAL(activated(int)),
+                    this, SLOT(readSurfaceClippingPage()));
+   surfaceClippingApplyComboBox->insertItem(
+           static_cast<int>(DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_MAIN_WINDOW_ONLY),
+           "Main Window");
+   surfaceClippingApplyComboBox->insertItem(
+           static_cast<int>(DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_FIDUCIAL_SURFACES_ONLY),
+           "Fiducial Surfaces");
+   surfaceClippingApplyComboBox->insertItem(
+           static_cast<int>(DisplaySettingsSurface::CLIPPING_PLANE_APPLICATION_ALL_SURFACES),
+           "All Surfaces");
+   
+   this->surfaceClippingEnabledCheckBox[0] = new QCheckBox("Negative X");
+   this->surfaceClippingEnabledCheckBox[1] = new QCheckBox("Positive X");
+   this->surfaceClippingEnabledCheckBox[2] = new QCheckBox("Negative Y");
+   this->surfaceClippingEnabledCheckBox[3] = new QCheckBox("Positive Y");
+   this->surfaceClippingEnabledCheckBox[4] = new QCheckBox("Negative Z");
+   this->surfaceClippingEnabledCheckBox[5] = new QCheckBox("Positive Z");
+   
+   for (int i = 0; i < 6; i++) {
+      QObject::connect(this->surfaceClippingEnabledCheckBox[i], SIGNAL(toggled(bool)),
+                       this, SLOT(readSurfaceClippingPage()));
+      this->surfaceClippingCoordSpinBox[i] = new QDoubleSpinBox;
+      this->surfaceClippingCoordSpinBox[i]->setMinimum(-1000000.0);
+      this->surfaceClippingCoordSpinBox[i]->setMaximum( 1000000.0);
+      this->surfaceClippingCoordSpinBox[i]->setSingleStep(1);
+      this->surfaceClippingCoordSpinBox[i]->setDecimals(2);
+      QObject::connect(this->surfaceClippingCoordSpinBox[i], SIGNAL(valueChanged(double)),
+                       this, SLOT(readSurfaceClippingPage()));
+   }
+
+   surfaceClippingPageWidgetGroup = new WuQWidgetGroup(this);
+   surfaceClippingPageWidgetGroup->addWidget(applyLabel);
+   surfaceClippingPageWidgetGroup->addWidget(surfaceClippingApplyComboBox);
+
+   pageSurfaceClipping = new QWidget;
+   QGridLayout* gridLayout = new QGridLayout(pageSurfaceClipping);
+   gridLayout->addWidget(applyLabel, 0, 0);
+   gridLayout->addWidget(surfaceClippingApplyComboBox, 0, 1);
+   for (int i = 0; i < 6; i++) {
+      const int rowCount = gridLayout->rowCount();
+      gridLayout->addWidget(this->surfaceClippingEnabledCheckBox[i], rowCount, 0);
+      gridLayout->addWidget(this->surfaceClippingCoordSpinBox[i], rowCount, 1);
+      surfaceClippingPageWidgetGroup->addWidget(this->surfaceClippingEnabledCheckBox[i]);
+      surfaceClippingPageWidgetGroup->addWidget(this->surfaceClippingCoordSpinBox[i]);
+   }
+
+   pageSurfaceClipping->setFixedSize(pageSurfaceClipping->sizeHint());
+
+   pageWidgetStack->addWidget(pageSurfaceClipping);
+}
+
+/**
+ * update the surface clipping page.
+ */
+void 
+GuiDisplayControlDialog::updateSurfaceClippingPage()
+{
+   if (pageSurfaceClipping == NULL) {
+      return;
+   }
+
+   surfaceClippingPageWidgetGroup->blockSignals(true);
+   DisplaySettingsSurface* dss = theMainWindow->getBrainSet()->getDisplaySettingsSurface();
+   this->surfaceClippingApplyComboBox->setCurrentIndex(dss->getClippingPlaneApplication());
+   for (int i = 0; i < 6; i++) {
+      DisplaySettingsSurface::CLIPPING_PLANE_AXIS cpa =
+              static_cast<DisplaySettingsSurface::CLIPPING_PLANE_AXIS>(i);
+      this->surfaceClippingEnabledCheckBox[i]->setChecked(dss->getClippingPlaneEnabled(cpa));
+      this->surfaceClippingCoordSpinBox[i]->setValue(dss->getClippingPlaneCoordinate(cpa));
+   }
+   surfaceClippingPageWidgetGroup->blockSignals(false);
 }
 

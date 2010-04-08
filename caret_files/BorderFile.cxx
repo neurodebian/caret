@@ -39,11 +39,13 @@
 #include "CoordinateFile.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
+#include "GiftiLabelTable.h"
 #include "MathUtilities.h"
 #include "StatisticDataGroup.h"
 #include "StatisticMeanAndDeviation.h"
 #include "TopologyFile.h"
 #include "TransformationMatrixFile.h"
+#include "Caret6ProjectedItem.h"
 
 /** 
  * Constructor.
@@ -118,7 +120,19 @@ Border::applyTransformationMatrix(TransformationMatrix& tm)
       borderFile->setModified();
    }
 }  
-      
+
+/**
+ * append a border this "this" one.
+ */
+void 
+Border::appendBorder(const Border& b)
+{
+   const int numLinks = b.getNumberOfLinks();
+   for (int j = 0; j < numLinks; j++) {
+      this->addBorderLink(b.getLinkXYZ(j), b.getLinkSectionNumber(j));
+   }
+}      
+
 /** 
  * Get the data from a border.
  */
@@ -204,6 +218,18 @@ Border::setLinkRadius(const int linkNumber, const float radius)
       borderFile->setModified();
    }
 }      
+
+/**
+ * set the uncertainty.
+ */
+void 
+Border::setArealUncertainty(const float uncertainty)
+{
+   arealUncertainty = uncertainty;
+   if (borderFile != NULL) {
+      borderFile->setModified();
+   }
+}
 
 /**
  * find first link in "this" border that is within "tolerance" distance
@@ -688,10 +714,12 @@ Border::resampleBorderToDensity(const float densityIn,
    resampleBorder(x1, y1, z1, oldNumberOfLinks, density,
                   x2, y2, z2, newNumberOfLinks);
    
+   Border savedCopy = *this;
    clearLinks();
    for (int i = 0; i < newNumberOfLinks; i++) {
       float xyz[3] = { x2[i], y2[i], z2[i] };
-      addBorderLink(xyz);
+      addBorderLink(xyz, 0, savedCopy.getLinkRadius(
+                              savedCopy.getLinkNumberNearestToCoordinate(xyz)));
    }
    
    delete[] x1;
@@ -733,10 +761,12 @@ Border::resampleBorderToNumberOfLinks(const int newNumberOfLinks)
    resampleBorder(x1, y1, z1, oldNumberOfLinks, density, 
                   x2, y2, z2, newNumberOfLinks);
    
+   Border savedCopy = *this;
    clearLinks();
    for (int i = 0; i < newNumberOfLinks; i++) {
       const float xyz[3] = { x2[i], y2[i], z2[i] };
-      addBorderLink(xyz);
+      addBorderLink(xyz, 0, savedCopy.getLinkRadius(
+                              savedCopy.getLinkNumberNearestToCoordinate(xyz)));
    }
    
    delete[] x1;
@@ -920,7 +950,8 @@ dist (const float x1, const float y1, const float z1,
  */
 void 
 Border::resampleBorder(const float* xorig, const float* yorig, 
-                       const float* zorig, const int numPointsIn, 
+                       const float* zorig, 
+                        const int numPointsIn, 
                        const float density,
                        float* xout, float* yout, float* zout,
                        const int numPointsOut)
@@ -942,18 +973,18 @@ Border::resampleBorder(const float* xorig, const float* yorig,
       int k = j;
       /* find the distance to the jth point */
       while (dj < density){
-	 dj1 = dj;
-	 dj = dj+dist (xorig [j], yorig [j], zorig [j],
-		   xorig [j+1], yorig [j+1], zorig [j+1]);
-	 j++;
+         dj1 = dj;
+         dj = dj+dist (xorig [j], yorig [j], zorig [j],
+                       xorig [j+1], yorig [j+1], zorig [j+1]);
+         j++;
       }
       /* The new point lies in the jth segment */
       float frac = (density - dj1)/(dj-dj1);
 
       if (k != j) {
-	 x1 = xorig [j-1];
-	 y1 = yorig [j-1];
-	 z1 = zorig [j-1];
+         x1 = xorig [j-1];
+         y1 = yorig [j-1];
+         z1 = zorig [j-1];
       }
       xout [i+1] = (1-frac)*x1 + frac*xorig[j];
       yout [i+1] = (1-frac)*y1 + frac*yorig[j];
@@ -1590,7 +1621,247 @@ BorderFile::resampleToMatchLandmarkBorders(const BorderFile& landmarkBorderFile)
       }
    }
 }
+
+/**
+ * compute landmark variability.
+ */
+void 
+BorderFile::evaluateLandmarkVariability(const BorderFile& indivBorderFile,
+                                        const BorderFile& atlasBorderFile,
+                                        const float badThreshold,
+                                        const float extremeThreshold,
+                                        const bool useAbsoluteDistanceFlag,
+                                        BorderFile& outputBorderFile,
+                                        QString& outputTextReport) throw (FileException)
+{
+   outputBorderFile.clear();
+   outputTextReport = "";
+   
+   //
+   // Copy and resample the atlas border
+   //
+   BorderFile resampledAtlasBorderFile(atlasBorderFile);
+   resampledAtlasBorderFile.resampleAllBorders(0.25);
+   
+   //
+   // Set individual border variability
+   //
+   int longestBorderNameLength = 0;
+   int numIndivBorders = indivBorderFile.getNumberOfBorders();
+   for (int i = 0; i < numIndivBorders; i++) {
+      //
+      // Copy indiv border and find atlas border with same name
+      //
+      Border indivBorder = *(indivBorderFile.getBorder(i));
+      const Border* atlasBorder = resampledAtlasBorderFile.getBorderByName(indivBorder.getName());
+      if (atlasBorder == NULL) {
+         throw FileException("No atlas border named " 
+                             + indivBorder.getName()
+                             + " found.");
+      }
       
+      //
+      // Track longest border name length
+      //
+      longestBorderNameLength = std::max(longestBorderNameLength, 
+                                         indivBorder.getName().length());
+                                         
+      //
+      // Loop through indiv border points
+      //
+      int numLinks = indivBorder.getNumberOfLinks();
+      for (int j = 0; j < numLinks; j++) {
+         //
+         // Find nearest atlas link to indiv link
+         //
+         const float* xyz = indivBorder.getLinkXYZ(j);
+         const int atlasLinkNumber = atlasBorder->getLinkNumberNearestToCoordinate(xyz);
+         if (atlasLinkNumber >= 0) {
+            //
+            // Compute and set indiv variability
+            //
+            const float distance = MathUtilities::distance3D(xyz, 
+                                      atlasBorder->getLinkXYZ(atlasLinkNumber));
+            if (useAbsoluteDistanceFlag) {
+               indivBorder.setLinkRadius(j, distance);
+            }
+            else {
+               float atlasVariability = atlasBorder->getLinkRadius(atlasLinkNumber);
+               if (atlasVariability <= 0.0) {
+                  atlasVariability = 1.0;
+               }
+               const float indivVariability = distance / atlasVariability;
+               indivBorder.setLinkRadius(j, indivVariability);
+            }
+         }
+         else {
+            throw FileException("No nearest point in atlas border named "
+                                + atlasBorder->getName());
+         }
+      }
+      
+      //
+      // Add indiv border to output border file
+      //
+      outputBorderFile.addBorder(indivBorder);
+   }
+   
+   //
+   // Copy and resample the atlas border
+   //
+   BorderFile resampledIndivBorderFile(indivBorderFile);
+   resampledIndivBorderFile.resampleAllBorders(0.25);
+   
+   //
+   // Set atlas border variability
+   //
+   int numAtlasBorders = atlasBorderFile.getNumberOfBorders();
+   for (int i = 0; i < numAtlasBorders; i++) {
+      //
+      // Copy atlas border and find indiv border with same name
+      //
+      Border atlasBorder = *(atlasBorderFile.getBorder(i));
+      const Border* indivBorder = resampledIndivBorderFile.getBorderByName(atlasBorder.getName());
+      if (indivBorder == NULL) {
+         throw FileException("No indiv border named " 
+                             + atlasBorder.getName()
+                             + " found.");
+      }
+      
+      //
+      // Loop through atlas border points
+      //
+      int numLinks = atlasBorder.getNumberOfLinks();
+      for (int j = 0; j < numLinks; j++) {
+         //
+         // Find nearest indiv link to atlas link
+         //
+         const float* xyz = atlasBorder.getLinkXYZ(j);
+         const int indivLinkNumber = indivBorder->getLinkNumberNearestToCoordinate(xyz);
+         if (indivLinkNumber >= 0) {
+            //
+            // Compute and set atlas variability which is distance from
+            // indiv to atlas divided by ATLAS (yes ATLAS) variability
+            //
+            const float distance = MathUtilities::distance3D(xyz, 
+                                      indivBorder->getLinkXYZ(indivLinkNumber));
+            if (useAbsoluteDistanceFlag) {
+               atlasBorder.setLinkRadius(j, distance);
+            }
+            else {
+               float atlasVariability = atlasBorder.getLinkRadius(j);
+               if (atlasVariability <= 0.0) {
+                  atlasVariability = 1.0;
+               }
+               atlasVariability = distance / atlasVariability;
+               atlasBorder.setLinkRadius(j, atlasVariability);
+            }
+         }
+         else {
+            throw FileException("No nearest point in indiv border named "
+                                + indivBorder->getName());
+         }
+      }
+      
+      //
+      // Add atlas border to output border file
+      //
+      outputBorderFile.addBorder(atlasBorder);
+   }
+   
+   //
+   // Header for text report
+   //
+   const QString borderNameHeader("Border Name");
+   const QString badCountHeader("Bad Count");
+   const int badCountLength = badCountHeader.length();
+   const QString extremeCountHeader("Extreme Count");
+   const int extremeCountLength = extremeCountHeader.length();
+   const QString overlapPercentageHeader("Overlap Percentage");
+   const int overlapPercentageLength = overlapPercentageHeader.length();
+   longestBorderNameLength = std::max(longestBorderNameLength,
+                                      borderNameHeader.length());
+   QString s =
+      QString("%1  %2  %3  %4\n").arg(borderNameHeader, longestBorderNameLength)
+                              .arg(badCountHeader, badCountLength)
+                              .arg(extremeCountHeader, extremeCountLength)
+                              .arg(overlapPercentageHeader, overlapPercentageLength);
+   outputTextReport.append(s);
+   
+   //
+   // Loop through indiv borders in output border file
+   //
+   int totalNumberOfBorders = outputBorderFile.getNumberOfBorders();
+   for (int i = 0; i < numIndivBorders; i++) {
+      Border* indivBorder = outputBorderFile.getBorder(i);
+      const QString name = indivBorder->getName();
+      
+      //
+      // Find corresponding atlas border
+      //
+      Border* atlasBorder = NULL;
+      for (int j = numIndivBorders; j < totalNumberOfBorders; j++) {
+         Border* b = outputBorderFile.getBorder(j);
+         if (b->getName() == name) {
+            atlasBorder = b;
+            break;
+         }
+      }
+      if (atlasBorder == NULL) {
+         throw FileException("Unable to find atlas border named "
+                             + name
+                             + " in output border file. ");
+      }
+      
+      //
+      // Count bad and extreme points in atlas and indiv borders
+      //
+      int badCount = 0;
+      int extremeCount = 0;
+      for (int j = 0; j < indivBorder->getNumberOfLinks(); j++) {
+         if (indivBorder->getLinkRadius(j) > badThreshold) {
+            badCount++;
+         }
+         if (indivBorder->getLinkRadius(j) > extremeThreshold) {
+            extremeCount++;
+         }
+      }
+      for (int j = 0; j < atlasBorder->getNumberOfLinks(); j++) {
+         if (atlasBorder->getLinkRadius(j) > badThreshold) {
+            badCount++;
+         }
+         if (atlasBorder->getLinkRadius(j) > extremeThreshold) {
+            extremeCount++;
+         }
+      }
+      
+      //
+      // Determine bad and extreme counts
+      //
+      const int totalPoints = indivBorder->getNumberOfLinks()
+                            + atlasBorder->getNumberOfLinks();
+      const float overlapPercentage = 
+         (static_cast<float>(totalPoints - badCount)
+          / static_cast<float>(totalPoints))
+         * 100.0;
+         
+      //
+      // Add to text report
+      //
+      QString s =
+         QString("%1  %2  %3  %4\n").arg(name, longestBorderNameLength)
+                                    .arg(badCount, badCountLength)
+                                    .arg(extremeCount, extremeCountLength)
+                                    .arg(overlapPercentage, overlapPercentageLength, 'f', 1);
+      outputTextReport.append(s);
+      
+      //
+      // Change the atlas border name
+      //
+      atlasBorder->setName("ATLAS_" + name);
+   }
+}
+                                       
 /**
  * Create a border file that is an average of a group of border files.
  * Returns NULL if error.
@@ -2063,6 +2334,20 @@ BorderFile::resampleDisplayedBorders(const float density)
 }
 
 /**
+ * Resample all borders.
+ */
+void
+BorderFile::resampleAllBorders(const float density)
+{
+   const int num = getNumberOfBorders();
+   for (int i = 0; i < num; i++) {
+      Border* b = getBorder(i);
+      int dummy;
+      b->resampleBorderToDensity(density, 2, dummy);
+   }
+}
+
+/**
  * Orient the displayed borders clockwise.
  */
 void
@@ -2257,8 +2542,100 @@ BorderFile::setSphericalBorderRadius(const float newRadius)
             xyz[0] *= scale;
             xyz[1] *= scale;
             xyz[2] *= scale;
+            border->setLinkXYZ(j, xyz);
          }
       }
    }
+}
+
+/**
+ * convert configuration ID to spec file tag.
+ */
+QString
+BorderFile::convertConfigurationIDToSpecFileTag(const QString& nameIn)
+{  
+   const QString name(nameIn.toUpper());
+   if (name == "RAW") return SpecFile::getRawBorderFileTag();
+   else if (name == "FIDUCIAL") return SpecFile::getFiducialBorderFileTag();
+   else if (name == "INFLATED") return SpecFile::getInflatedBorderFileTag();
+   else if (name == "VERY_INFLATED") return SpecFile::getVeryInflatedBorderFileTag();
+   else if (name == "SPHERICAL") return SpecFile::getSphericalBorderFileTag();
+   else if (name == "ELLIPSOIDAL") return SpecFile::getEllipsoidBorderFileTag();
+   else if (name == "CMW") return SpecFile::getCompressedBorderFileTag();
+   else if (name == "FLAT") return SpecFile::getFlatBorderFileTag();
+   else if (name == "FLAT_LOBAR") return SpecFile::getLobarFlatBorderFileTag();
+   else if (name == "HULL") return SpecFile::getHullBorderFileTag();
+   else return SpecFile::getUnknownBorderFileMatchTag();
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+BorderFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   int numBorders = this->getNumberOfBorders();
+   if (numBorders <= 0) {
+      throw FileException("Contains no borders");
+   }
+
+   QString name = FileUtilities::filenameWithoutExtension(filenameIn)
+                + SpecFile::getBorderProjectionFileExtension();
+   QFile file(name);
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("CaretFileType", "BorderProjection");
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/BorderProjectionFileSchema.xsd");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   GiftiLabelTable labelTable;
+   if (colorFileIn != NULL) {
+      labelTable.createLabelsFromColors(*colorFileIn);
+   }
+   labelTable.writeAsXML(xmlWriter);
+
+   for (int i = 0; i < numBorders; i++) {
+      Border* b = this->getBorder(i);
+      int numLinks = b->getNumberOfLinks();
+      if (numLinks > 0) {
+
+         XmlGenericWriterAttributes attributes;
+         attributes.addAttribute("Index", i);
+         xmlWriter.writeStartElement("BorderProjection", attributes);
+
+         xmlWriter.writeElementCData("Name", b->getName());
+
+         for (int j = 0; j < numLinks; j++) {
+            Caret6ProjectedItem pi;
+            pi.projectionType = Caret6ProjectedItem::UNPROJECTED;
+            b->getLinkXYZ(j, pi.xyz);
+            pi.structure = structure;
+            pi.writeXML(xmlWriter);
+         }
+
+         xmlWriter.writeEndElement();
+      }
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+
+   file.close();
+
+   return name;
 }
 

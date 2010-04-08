@@ -27,6 +27,7 @@ HEADERS += Basename.h \
       CaretTips.h \
       Category.h \
 	   CommandLineUtilities.h \
+       DateAndTime.h \
 	   DebugControl.h \
 	   FileUtilities.h \
       GaussianComputation.h \
@@ -51,6 +52,7 @@ SOURCES += Basename.cxx \
       CaretTips.cxx \
       Category.cxx \
 	   CommandLineUtilities.cxx \
+      DateAndTime.cxx \
 	   DebugControl.cxx \
 	   FileUtilities.cxx \
       GaussianComputation.cxx \

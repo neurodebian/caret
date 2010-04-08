@@ -21,6 +21,7 @@ HEADERS += AbstractFile.h \
       BorderProjectionFile.h \
 	   BrainVoyagerFile.h \
 	   ByteSwapping.h \
+      Caret6ProjectedItem.h \
       CaretScriptFile.h \
       CellClass.h \
       CellColorFile.h \
@@ -64,7 +65,7 @@ HEADERS += AbstractFile.h \
       MetricFile.h \
       MniObjSurfaceFile.h \
       NeurolucidaFile.h \
-      NiftiHelper.h \
+      NiftiFileHeader.h \
       NodeAttributeFile.h \
       NodeRegionOfInterestFile.h \
       PaintFile.h \
@@ -85,9 +86,9 @@ HEADERS += AbstractFile.h \
       StudyMetaDataLinkSet.h \
       StudyNamePubMedID.h \
 	   SumsFileListFile.h \
+      SureFitVectorFile.h \
       SurfaceFile.h \
       SurfaceShapeFile.h \
-      SurfaceVectorFile.h \
       TextFile.h \
       TopographyFile.h \
       TopologyFile.h \
@@ -103,6 +104,8 @@ HEADERS += AbstractFile.h \
 	   WuNilHeader.h \
       WustlRegionFile.h \
       XhtmlTableExtractorFile.h \
+      XmlGenericWriter.h \
+      XmlGenericWriterAttributes.h \
       minc_cpp.h
 
 SOURCES += AbstractFile.cxx \
@@ -116,6 +119,7 @@ SOURCES += AbstractFile.cxx \
       BorderProjectionFile.cxx \
 	   BrainVoyagerFile.cxx \
 	   ByteSwapping.cxx \
+      Caret6ProjectedItem.cxx \
       CaretScriptFile.cxx \
       CellBase.cxx \
       CellColorFile.cxx \
@@ -159,7 +163,7 @@ SOURCES += AbstractFile.cxx \
       MetricFile.cxx \
       MniObjSurfaceFile.cxx \
       NeurolucidaFile.cxx \
-      NiftiHelper.cxx \
+      NiftiFileHeader.cxx \
       NodeAttributeFile.cxx \
       NodeRegionOfInterestFile.cxx \
       PaintFile.cxx \
@@ -180,8 +184,8 @@ SOURCES += AbstractFile.cxx \
       StudyMetaDataLinkSet.cxx \
       StudyNamePubMedID.cxx \
 	   SumsFileListFile.cxx \
+      SureFitVectorFile.cxx \
       SurfaceFile.cxx \
-      SurfaceVectorFile.cxx \
       SurfaceShapeFile.cxx \
       TextFile.cxx \
       TopographyFile.cxx \
@@ -196,4 +200,5 @@ SOURCES += AbstractFile.cxx \
 	   VtkModelFile.cxx \
 	   WuNilHeader.cxx \
       WustlRegionFile.cxx \
-      XhtmlTableExtractorFile.cxx
+      XhtmlTableExtractorFile.cxx \
+      XmlGenericWriter.cxx

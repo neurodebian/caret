@@ -3083,6 +3083,7 @@ BrainModelIdentification::getIdentificationTextForStudy(const StudyMetaData* smd
          }
       }
 
+/*
       if (smdl->getPageNumber().isEmpty() == false) {
          if (getDisplayStudyPageNumberInformation()) {
             idString += tagIndentation;
@@ -3094,6 +3095,7 @@ BrainModelIdentification::getIdentificationTextForStudy(const StudyMetaData* smd
             idString += tagNewLine;
          }
       }
+*/
    }
    
    return idString;
@@ -3442,9 +3444,9 @@ BrainModelIdentification::showScene(const SceneFile::Scene& scene,
             else if (infoName == "displayStudyPageReferenceStatisticDescriptionInformation") {
                setDisplayStudyPageReferenceStatisticDescriptionInformation(si->getValueAsBool());
             }
-            else if (infoName == "displayStudyPageNumberInformation") {
-               setDisplayStudyPageNumberInformation(si->getValueAsBool());
-            }
+            //else if (infoName == "displayStudyPageNumberInformation") {
+            //   setDisplayStudyPageNumberInformation(si->getValueAsBool());
+            //}
          }
       }      
       else if (sc->getName() == "GuiIdentifyMainWindow") { // used to be in Identify Dialog
@@ -3603,7 +3605,7 @@ BrainModelIdentification::saveScene(SceneFile::Scene& scene)
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyPageReferenceVoxelSizeInformation", getDisplayStudyPageReferenceVoxelSizeInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyPageReferenceStatisticInformation", getDisplayStudyPageReferenceStatisticInformation()));
    sc.addSceneInfo(SceneFile::SceneInfo("displayStudyPageReferenceStatisticDescriptionInformation", getDisplayStudyPageReferenceStatisticDescriptionInformation()));
-   sc.addSceneInfo(SceneFile::SceneInfo("displayStudyPageNumberInformation", getDisplayStudyPageNumberInformation()));
+   //sc.addSceneInfo(SceneFile::SceneInfo("displayStudyPageNumberInformation", getDisplayStudyPageNumberInformation()));
    scene.addSceneClass(sc);
 }
 
@@ -3783,7 +3785,7 @@ BrainModelIdentification::IdFilter::allOff(const bool turnSubFlagsOff)
       displayStudyPageReferenceVoxelSizeInformation = false;
       displayStudyPageReferenceStatisticInformation = false;
       displayStudyPageReferenceStatisticDescriptionInformation = false;
-      displayStudyPageNumberInformation = false;
+      //displayStudyPageNumberInformation = false;
    }
 }
 
@@ -3871,7 +3873,7 @@ BrainModelIdentification::IdFilter::allOn()
    displayStudyPageReferenceVoxelSizeInformation = true;
    displayStudyPageReferenceStatisticInformation = true;
    displayStudyPageReferenceStatisticDescriptionInformation = true;
-   displayStudyPageNumberInformation = true;
+   //displayStudyPageNumberInformation = true;
 }
 
 /**
@@ -4008,8 +4010,8 @@ BrainModelIdentification::IdFilter::anyStudyDataOn() const
       anyStudyTableDataOn() ||
       anyStudyFigureDataOn() ||
       anySubHeaderDataOn() ||
-      anyPageReferenceDataOn() ||
-      displayStudyPageNumberInformation;
+      anyPageReferenceDataOn(); // ||
+      //displayStudyPageNumberInformation;
       
    return anyOn;
 }            

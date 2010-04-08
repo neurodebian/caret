@@ -24,6 +24,8 @@
 /*LICENSE_END*/
 
 #include <algorithm>
+
+#include "XmlGenericWriter.h"
 #include <cmath>
 #include <limits>
 
@@ -36,6 +38,7 @@
 #include "MathUtilities.h"
 #include "SpecFile.h"
 #include "TopologyHelper.h"
+#include "Caret6ProjectedItem.h"
 
 /**
  * Constructor.
@@ -502,6 +505,93 @@ BorderProjection::removeLinksBeforeAfterLinkNearestPoint(const CoordinateFile* c
    }
 }
       
+/**
+ * remove links from border greater than specified distances of point
+ * if a specified distance is zero or less it is ignored.
+ */
+void 
+BorderProjection::removeLinksAwayFromPoint(const CoordinateFile* unprojectCoordFile,
+                                           const float pointXYZ[3],
+                                           const float xDistance,
+                                           const float yDistance,
+                                           const float zDistance,
+                                           const float straightLineDistance)
+{
+   //
+   // Squared nibble distance
+   //
+   float squaredStraightLineDistance = straightLineDistance * straightLineDistance;
+   
+   //
+   // Keeps track of links that are NOT nibbled
+   //
+   std::vector<BorderProjectionLink> linkTemp;
+   
+   //
+   // Loop through links
+   //
+   const int numLinks = getNumberOfLinks();
+   for (int i = 0; i < numLinks; i++) {
+      //
+      // Get link XYZ
+      //
+      float linkXYZ[3];
+      links[i].unprojectLink(unprojectCoordFile,
+                                            linkXYZ);
+                                            
+      //
+      // intially keep the link
+      //
+      bool keepLinkFlag = true;
+      
+      //
+      // Get distance components
+      //
+      const float dx = std::fabs(pointXYZ[0] - linkXYZ[0]);
+      const float dy = std::fabs(pointXYZ[1] - linkXYZ[1]);
+      const float dz = std::fabs(pointXYZ[2] - linkXYZ[2]);
+      
+      //
+      // Check distances
+      //
+      if (dx > xDistance) {
+         keepLinkFlag = false;
+      }
+      else if (dy > yDistance) {
+         keepLinkFlag = false;
+      }
+      else if (dz > zDistance) {
+         keepLinkFlag = false;
+      }
+      else {
+         //
+         // Distance Squared from point to link 
+         //
+         const float distanceSquared = dx*dx + dy*dy + dz*dz;
+         if (distanceSquared > squaredStraightLineDistance) {
+            keepLinkFlag = false;
+         }
+      }
+                                                          
+      //
+      // Should this link be kept
+      //
+      if (keepLinkFlag) {
+         linkTemp.push_back(links[i]);
+      }
+   }
+   
+   //
+   // were links removed
+   //
+   if (links.size() != linkTemp.size()) {
+      links = linkTemp;
+      if (borderProjectionFile != NULL) {
+         borderProjectionFile->setModified();
+      }
+   }
+}
+
 /**
  * remove links from border within specified distance of point.
  * if a specified distance is zero or less it is ignored
@@ -1371,4 +1461,119 @@ BorderProjectionFile::writeFileData(QTextStream& stream, QDataStream&,
    }
 }
 
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+BorderProjectionFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   int numBorders = this->getNumberOfBorderProjections();
+   if (numBorders <= 0) {
+      throw FileException("Contains no borders");
+   }
+   QFile file(filenameIn);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (file.exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("CaretFileType", "BorderProjection");
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/BorderProjectionFileSchema.xsd");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   GiftiLabelTable labelTable;
+   if (colorFileIn != NULL) {
+      labelTable.createLabelsFromColors(*colorFileIn);
+   }
+   labelTable.writeAsXML(xmlWriter);
+
+   for (int i = 0; i < numBorders; i++) {
+      BorderProjection* bp = this->getBorderProjection(i);
+      int numLinks = bp->getNumberOfLinks();
+      if (numLinks > 0) {
+
+         XmlGenericWriterAttributes attributes;
+         attributes.addAttribute("Index", i);
+         xmlWriter.writeStartElement("BorderProjection", attributes);
+
+         xmlWriter.writeElementCData("Name", bp->getName());
+
+         QString structureName = "Invalid";
+         if (structure.isLeftCortex()) {
+            structureName = "CortexLeft";
+         }
+         else if (structure.isRightCortex()) {
+            structureName = "CortexRight";
+         }
+         else if (structure.isCerebellum()) {
+            structureName = "Cerebellum";
+         }
+         xmlWriter.writeElementCharacters("Structure",
+                                          structureName);
+
+         for (int j = 0; j < numLinks; j++) {
+            BorderProjectionLink* bpl = bp->getBorderProjectionLink(j);
+            int section, nodes[3];
+            float areas[3], radius;
+            bpl->getData(section, nodes, areas, radius);
+
+            //
+            // Area and node indices do not match in Caret5 but
+            // they do in Caret6
+            //  In Caret5:  node-index area-index
+            //                   0         1
+            //                   1         2
+            //                   2         0
+            //
+            // But caret5 was clockwise order and we want
+            // counter clockwise so
+            //
+            //    node-index  area-index
+            //        2            0
+            //        1            2
+            //        0            1
+            //
+            //
+            int nodesCaret6[3];
+            float areasCaret6[3];
+            areasCaret6[0] = areas[0];
+            areasCaret6[1] = areas[2];
+            areasCaret6[2] = areas[1];
+            nodesCaret6[0] = nodes[2];
+            nodesCaret6[1] = nodes[1];
+            nodesCaret6[2] = nodes[0];
+
+            xmlWriter.writeStartElement("Projection");
+            xmlWriter.writeElementCharacters("Nodes", nodesCaret6, 3);
+            xmlWriter.writeElementCharacters("Areas", areasCaret6, 3);
+            xmlWriter.writeEndElement();
+         }
+
+         xmlWriter.writeEndElement();
+      }
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+   
+   file.close();
+
+   return filenameIn;
+}
 

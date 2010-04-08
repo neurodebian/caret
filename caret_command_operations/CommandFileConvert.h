@@ -30,6 +30,7 @@
 #include "AbstractFile.h"
 #include "CommandBase.h"
 
+class AreaColorFile;
 class BrainSet;
 class ProgramParameters;
 
@@ -88,7 +89,8 @@ class CommandFileConvert : public CommandBase {
       // Convert caret files or display info 
       // info about the file.
       void fileFormatConvert(const std::vector<QString>& dataFileNames,
-                             const QString& dataFileFormatList) throw (CommandException);
+                             const QString& dataFileFormatList,
+                             const AreaColorFile& areaColorFile) throw (CommandException);
       
       // Write/Update a spec file.
       void updateSpecFile(const std::vector<QString>& tags, 

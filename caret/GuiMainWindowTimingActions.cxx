@@ -27,8 +27,8 @@
 
 #include <QAction>
 #include <QApplication>
-#include <QDateTime>
 #include <QMessageBox>
+#include <QTime>
 
 #include "BrainModelSurface.h"
 #include "GuiBrainModelOpenGL.h"

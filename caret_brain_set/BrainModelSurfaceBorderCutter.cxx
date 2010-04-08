@@ -28,7 +28,6 @@
 #include <limits>
 #include <vector>
 
-#include <QDateTime>
 
 #include "vtkLine.h"
 

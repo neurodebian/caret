@@ -745,7 +745,12 @@ GiftiDataArrayFile::appendLabelDataHelper(const GiftiDataArrayFile& naf,
    GiftiLabelTable* myLabelTable = getLabelTable();
    for (int i = 0; i < numLabelsNew; i++) {
       if (oldIndicesToNewIndicesTable[i] == -2) {
-         oldIndicesToNewIndicesTable[i] = myLabelTable->addLabel(nltNew->getLabel(i));
+         int indx = myLabelTable->addLabel(nltNew->getLabel(i));
+         oldIndicesToNewIndicesTable[i] = indx;
+
+         unsigned char r, g, b, a;
+         nltNew->getColor(i, r, g, b, a);
+         myLabelTable->setColor(indx, r, g, b, a);
       }
    }
 }
@@ -837,6 +842,8 @@ GiftiDataArrayFile::readFileData(QFile& file,
    if (getReadMetaDataOnlyFlag() == false) {
       procesNiftiIntentNodeIndexArrays();
    }
+
+   this->validateDataArrays();
 }
 
 /**
@@ -884,91 +891,91 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
    if (readWithStreamReader) {
       GiftiDataArrayFileStreamReader streamReader(&file, this);
       streamReader.readData();
-      return;
    }
-   
-   QXmlSimpleReader reader;
-   GiftiDataArrayFileSaxReader saxReader(this);
-   reader.setContentHandler(&saxReader);
-   reader.setErrorHandler(&saxReader);
- 
-   //
-   // Some constant to determine how to read a file based upon the file's size
-   //
-   const int oneMegaByte = 1048576;
-   const qint64 bigFileSize = 25 * oneMegaByte;
-   
-   if (file.size() < bigFileSize) {
+   else {   
+      QXmlSimpleReader reader;
+      GiftiDataArrayFileSaxReader saxReader(this);
+      reader.setContentHandler(&saxReader);
+      reader.setErrorHandler(&saxReader);
+    
       //
-      // This call reads the entire file at once but this is a problem
-      // since the XML files can be very large and will cause the 
-      // QT XML parsing to crash
+      // Some constant to determine how to read a file based upon the file's size
       //
-      if (reader.parse(&file) == false) {
-         throw FileException(filename, saxReader.getErrorMessage());
+      const int oneMegaByte = 1048576;
+      const qint64 bigFileSize = 25 * oneMegaByte;
+      
+      if (file.size() < bigFileSize) {
+         //
+         // This call reads the entire file at once but this is a problem
+         // since the XML files can be very large and will cause the 
+         // QT XML parsing to crash
+         //
+         if (reader.parse(&file) == false) {
+            throw FileException(filename, saxReader.getErrorMessage());
+         }
       }
-   }
-   else {
-      //
-      // The following code reads the XML file in pieces
-      // and hopefully will prevent QT from crashing when
-      // reading large files
-      //
-      
-      //
-      // Create a data stream
-      //   
-      QDataStream stream(&file);
-      
-      //
-      // buffer for data read
-      //
-      const int bufferSize = oneMegaByte;
-      char buffer[bufferSize];
-      
-      //
-      // the XML input source
-      //
-      QXmlInputSource xmlInput;
+      else {
+         //
+         // The following code reads the XML file in pieces
+         // and hopefully will prevent QT from crashing when
+         // reading large files
+         //
+         
+         //
+         // Create a data stream
+         //   
+         QDataStream stream(&file);
+         
+         //
+         // buffer for data read
+         //
+         const int bufferSize = oneMegaByte;
+         char buffer[bufferSize];
+         
+         //
+         // the XML input source
+         //
+         QXmlInputSource xmlInput;
 
-      int totalRead = 0;
-      
-      bool firstTime = true;
-      while (stream.atEnd() == false) {
-         int numRead = stream.readRawData(buffer, bufferSize);
-         totalRead += numRead;
-         if (DebugControl::getDebugOn()) {
-            std::cout << "GIFTI large file read, total: " << numRead << ", " << totalRead << std::endl;
-         }
+         int totalRead = 0;
          
-         //
-         // Place the input data into the XML input
-         //
-         xmlInput.setData(QByteArray(buffer, numRead));
-         
-         //
-         // Process the data that was just read
-         //
-         if (firstTime) {
-            if (reader.parse(&xmlInput, true) == false) {
-               throw FileException(filename, saxReader.getErrorMessage());            
+         bool firstTime = true;
+         while (stream.atEnd() == false) {
+            int numRead = stream.readRawData(buffer, bufferSize);
+            totalRead += numRead;
+            if (DebugControl::getDebugOn()) {
+               std::cout << "GIFTI large file read, total: " << numRead << ", " << totalRead << std::endl;
             }
-         }
-         else {
-            if (reader.parseContinue() == false) {
-               throw FileException(filename, saxReader.getErrorMessage());
+            
+            //
+            // Place the input data into the XML input
+            //
+            xmlInput.setData(QByteArray(buffer, numRead));
+            
+            //
+            // Process the data that was just read
+            //
+            if (firstTime) {
+               if (reader.parse(&xmlInput, true) == false) {
+                  throw FileException(filename, saxReader.getErrorMessage());            
+               }
             }
+            else {
+               if (reader.parseContinue() == false) {
+                  throw FileException(filename, saxReader.getErrorMessage());
+               }
+            }
+            
+            firstTime = false;
          }
          
-         firstTime = false;
-      }
-      
-      //
-      // Tells parser that there is no more data
-      //
-      xmlInput.setData(QByteArray());
-      if (reader.parseContinue() == false) {
-         throw FileException(filename, saxReader.getErrorMessage());
+         //
+         // Tells parser that there is no more data
+         //
+         xmlInput.setData(QByteArray());
+         if (reader.parseContinue() == false) {
+            throw FileException(filename, saxReader.getErrorMessage());
+         }
       }
    }
     
@@ -1116,14 +1123,16 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
    
    stream << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << "\n";
 
-   stream << "<!DOCTYPE GIFTI SYSTEM \"http://www.nitrc.org/frs/download.php/115/gifti.dtd\">" << "\n";
+   stream << "<!DOCTYPE GIFTI SYSTEM \"http://www.nitrc.org/frs/download.php/1594/gifti.dtd\">" << "\n";
    
    stream << "<" 
-          << GiftiCommon::tagGIFTI << " " 
-          << GiftiCommon::attVersion << "=\"" 
+          << GiftiCommon::tagGIFTI << "\n"
+          << "      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
+          << "      xsi:noNamespaceSchemaLocation=\"http://brainvis.wustl.edu/caret6/xml_schemas/GIFTI_Caret.xsd\"\n"
+          << "      " << GiftiCommon::attVersion << "=\""
           << giftiFileVersionString 
-          << "\"  "
-          << GiftiCommon::attNumberOfDataArrays << "=\""
+          << "\"\n"
+          << "      " << GiftiCommon::attNumberOfDataArrays << "=\""
           << getNumberOfDataArrays()
           << "\""
           << ">" << "\n";
@@ -1322,4 +1331,10 @@ GiftiDataArrayFile::procesNiftiIntentNodeIndexArrays() throw (FileException)
    }
 }
 
-      
+/**
+ * validate the data arrays (optional for subclasses).
+ */
+void
+GiftiDataArrayFile::validateDataArrays() throw (FileException)
+{
+}

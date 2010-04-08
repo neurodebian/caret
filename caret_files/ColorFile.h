@@ -360,7 +360,11 @@ class ColorFile : public AbstractFile {
       // find out if comma separated file conversion supported
       virtual void getCommaSeparatedFileSupport(bool& readFromCSV,
                                                 bool& writeToCSV) const;
-      
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
+
 };
 
 #endif

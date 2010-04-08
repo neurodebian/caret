@@ -2436,7 +2436,7 @@ GuiMainWindowLayersActions::slotContourSpacing()
    const float spacing = QInputDialog::getDouble(theMainWindow,
                                                  "Contour Section Spacing",
                                                  "Spacing (mm)",
-                                                 0.1,
+                                                 cf->getSectionSpacing(),
                                                  -214748367,
                                                  2147483647,
                                                  2,

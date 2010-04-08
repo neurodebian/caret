@@ -69,6 +69,12 @@ class GuiCellAndFociReportDialog : public WuQDialog {
       // called when paint attributes all off button clicked
       void slotPaintAttributesAllOffToolButton();
       
+      // called when sums attributes all on button clicked
+      void slotSumsAttributesAllOnToolButton();
+      
+      // called when sums attributes all off button clicked
+      void slotSumsAttributesAllOffToolButton();
+      
    protected:
       // called when ok/cancel button pressed
       virtual void done(int r);
@@ -84,6 +90,9 @@ class GuiCellAndFociReportDialog : public WuQDialog {
                                  
       // create the paint section
       QWidget* createPaintSection();
+      
+      // create the sums section
+      QWidget* createSumsSection();
       
       // determine if a check box is shown and checked
       bool checked(const QCheckBox* cb) const;
@@ -161,10 +170,31 @@ class GuiCellAndFociReportDialog : public WuQDialog {
       QCheckBox* studyPageReferenceSubHeaderCheckBox;
             
       /// study page number check box
-      QCheckBox* studyPageNumberCheckBox;
+      //QCheckBox* studyPageNumberCheckBox;
       
       /// paint data type check boxes
       std::vector<QCheckBox*> paintNameCheckBoxes;
+      
+      /// sums check boxes
+      std::vector<QCheckBox*> sumsCheckBoxes;
+      
+      /// sums ID Number check box
+      QCheckBox* sumsIDNumberCheckBox;
+      
+      /// sums repeat number check box
+      QCheckBox* sumsRepeatNumberCheckBox;
+      
+      /// sums parent cell base ID check box
+      QCheckBox* sumsParentCellBaseIDCheckBox;
+      
+      /// sums version number check box
+      QCheckBox* sumsVersionNumberCheckBox;
+      
+      /// sums MSL ID check box
+      QCheckBox* sumsMSLIDCheckBox;
+      
+      /// sums attribute id check box
+      QCheckBox* sumsAttributeIDCheckBox;
       
       /// file type string (cell or foci)
       QString typeString;

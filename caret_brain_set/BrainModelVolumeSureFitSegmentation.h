@@ -31,7 +31,7 @@
 
 #include "BrainModelAlgorithm.h"
 #include "BrainModelSurface.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 class PaintFile;
@@ -112,11 +112,12 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       
       /// generate the corpus callosum slice (assumes AC at center)
       /// estimate white matter peak if invalid
-      static void generateCorpusCallosumSlice(const VolumeFile& anatomyVolumeFileIn,
+      static void generateCorpusCallosumSlice(VolumeFile& anatomyVolumeFileIn,
                                               VolumeFile& corpusCallosumVolumeFileOut,
                                               const Structure& structure,
                                               const float grayMatterPeakIn,
-                                              const float whiteMatterPeakIn) throw (BrainModelAlgorithmException);
+                                              const float whiteMatterPeakIn,
+                                              const bool looseMask = false) throw (BrainModelAlgorithmException);
                                               
    protected:
       /// apply volume mask and white matter maximum
@@ -177,13 +178,13 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       void writeDebugVolume(VolumeFile& vf, const QString& name) throw (BrainModelAlgorithmException);
       
       /// write the vector file for debugging
-      void writeDebugVector(VectorFile& vf, const QString& name) throw (BrainModelAlgorithmException);
+      void writeDebugVector(SureFitVectorFile& vf, const QString& name) throw (BrainModelAlgorithmException);
       
       /// Free a volume file.
       void freeVolumeInMemory(VolumeFile* &vf);
 
       /// Free a vector file.
-      void freeVectorInMemory(VectorFile* &vf);
+      void freeVectorInMemory(SureFitVectorFile* &vf);
 
       /// free all volumes and vector files in memory.
       void freeAllFilesInMemory();
@@ -261,22 +262,22 @@ class BrainModelVolumeSureFitSegmentation : public BrainModelAlgorithm {
       VolumeFile* cerebralWMErodeVolume;
       
       /// pia vector
-      VectorFile* gradPiaLevelVec;
+      SureFitVectorFile* gradPiaLevelVec;
       
       /// the gradient thin white matter vector
-      VectorFile* gradThinWMlevelVecFile;
+      SureFitVectorFile* gradThinWMlevelVecFile;
       
       /// the intensity gradient file
-      VectorFile* gradIntensityVecFile;
+      SureFitVectorFile* gradIntensityVecFile;
       
       /// total thin WM gradient file
-      VectorFile* gradInTotalThinWMVecFile;
+      SureFitVectorFile* gradInTotalThinWMVecFile;
       
       /// gray/white gradient
-      VectorFile* gradGWlevelVecFile;
+      SureFitVectorFile* gradGWlevelVecFile;
       
       /// gradient pial vector
-      VectorFile* outGradPialLevelGMGradOutITMagVecFile;
+      SureFitVectorFile* outGradPialLevelGMGradOutITMagVecFile;
       
       /// optional mask used for removal of non-cortical material
       VolumeFile* volumeMask;

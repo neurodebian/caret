@@ -207,6 +207,9 @@ class GuiSurfaceROIOperationPage : public QWizardPage {
       // called to assign metric
       void slotAssignMetricPushButton();
       
+      // called to assign node areas to metric
+      void slotNodeAreaMetricPushButton();
+      
       // called to assign paint
       void slotAssignPaintPushButton();
       
@@ -277,6 +280,7 @@ class GuiSurfaceROIOperationPage : public QWizardPage {
       /// operation mode
       enum OPERATION_MODE {
          OPERATION_MODE_ASSIGN_METRIC,
+         OPERATION_MODE_ASSIGN_METRIC_NODE_AREAS,
          OPERATION_MODE_ASSIGN_PAINT,
          OPERATION_MODE_ASSIGN_SURFACE_SHAPE,
          OPERATION_MODE_COMPUTE_INTEGRATED_FOLDING_INDEX,
@@ -346,6 +350,9 @@ class GuiSurfaceROIOperationPage : public QWizardPage {
       // create the shape cluster analysis page
       QWidget* createShapeClusterAnalysisPage();
       
+      // create the node areas page
+      QWidget* createNodeAreasPage();
+      
       // run a metric or shape cluster report
       void runMetricShapeClusterAnalysis(MetricFile* metricShapeFile,
                                          MetricFile* distortionMetricFile,
@@ -368,6 +375,9 @@ class GuiSurfaceROIOperationPage : public QWizardPage {
 
       /// the assign metric page
       QWidget* assignMetricPage;
+      
+      /// the assign node areas page
+      QWidget* nodeAreaMetricPage;
       
       /// the assign paint page
       QWidget* assignPaintPage;
@@ -426,6 +436,15 @@ class GuiSurfaceROIOperationPage : public QWizardPage {
       /// assign metric value double spin box
       QDoubleSpinBox* assignMetricValueDoubleSpinBox;
 
+      /// node area column selection
+      GuiNodeAttributeColumnSelectionComboBox* nodeAreaMetricColumnSelectionComboBox;
+      
+      /// node area column name line edit
+      QLineEdit* nodeAreaMetricColumnNameLineEdit;
+      
+      /// node area percentage check box
+      QCheckBox* nodeAreaPercentageCheckBox;
+      
       /// assign paint column selection
       GuiNodeAttributeColumnSelectionComboBox* assignPaintColumnSelectionComboBox;
       
@@ -632,6 +651,9 @@ class GuiSurfaceROINodeSelectionPage : public QWizardPage {
       // called when erode ROI push button pressed
       void slotErodeROIPushButton();
       
+      // called when extent push button pressed
+      void slotExtentPushButton();
+      
       // called when remove islands button pressed
       void slotRemoveIslands();
       
@@ -698,6 +720,9 @@ class GuiSurfaceROINodeSelectionPage : public QWizardPage {
      
      /// erode nodes push button
      QPushButton* erodeSelectedNodesPushButton;
+     
+     /// extend nodes push button
+     QPushButton* extentPushButton;
      
      /// invert nodes push button
      QPushButton* invertSelectedNodesPushButton;

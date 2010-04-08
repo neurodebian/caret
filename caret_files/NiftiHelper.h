@@ -40,6 +40,7 @@
 /*****===================================================================*****/
 
 #include "VolumeFile.h"
+#include "nifti1.h"
 
 /// class for help with NIFTI files.  Code stolen from nifti1_io.c/h that is part of nifticlib
 /// available from http://sourceforge.net/projects/niftilib
@@ -89,6 +90,17 @@ class NiftiHelper {
       
       // analyze HDR file is actually a NIFTI HDR file
       static bool hdrIsNiftiFile(const QString& hdrFileName);
+
+      // read the NIFTI header
+      static void getNiftiHeaderInformation(const QString& filenameIn,
+                                  nifti_1_header& niftiHeaderOut,
+                                  float qformMatrixOut[4][4],
+                                  float sformMatrixOut[4][4],
+                                  QString& headerDescriptionOut,
+                                  QString& errorMessageOut);
+
+      // get a string representation of the Q/S Form code
+      static QString getQSFormCodeAsString(const int qsForm);
 };
 
 #endif // __NIFTI_HELPER_H__

@@ -309,6 +309,12 @@ class BrainModelOpenGL {
                                              const int windowHeightIn,
                                              double& orthoRightOut,
                                              double& orthoTopOut);
+
+      /// get minimum/maximum point size
+      static void getMinMaxPointSize(float& minSizeOut, float& maxSizeOut);
+
+      /// get minimum/maximum line width
+      static void getMinMaxLineWidth(float& minWidthOut, float& maxWidthOut);
                                              
    protected:
       /// Draw a brain model
@@ -566,9 +572,27 @@ class BrainModelOpenGL {
       /// Draw the deformation field vectors.
       void drawDeformationFieldVectors(BrainModelSurface* bms);
 
-      /// Draw the surface vectors
-      void drawSurfaceVectors(BrainModelSurface* bms);
-      
+      /// Draw the vectors in 3d
+      void drawVectorFile3D(BrainModelSurface* bms);
+
+      /// check a vectors orientation (true if orientation is valid for display)
+      bool checkVectorOrientation(const float vector[3]);
+
+      /// Draw an arrow symbol
+      void drawArrowSymbol(const float xyz[3],
+                           const float tipXYZ[3],
+                           const float radius);
+
+      /// Draw a cylinder symbol
+      void drawCylinderSymbol(const float xyz[3],
+                              const float tipXYZ[3],
+                              const float radius);
+
+      /// Draw the volume foci file.
+      void drawVectorsOnVolume(const VolumeFile::VOLUME_AXIS axis,
+                               const float axisCoord,
+                               const float voxelSize);
+
       /// Convert from volume item XYZ to screen XYZ
       void convertVolumeItemXYZToScreenXY(const VolumeFile::VOLUME_AXIS axis,
                                              float xyz[3]);
@@ -648,6 +672,12 @@ class BrainModelOpenGL {
       /// get valid point size
       GLfloat getValidPointSize(const GLfloat pointSizeIn) const;
       
+      // enable the surface clipping planes
+      void enableSurfaceClippingPlanes(BrainModelSurface* bms);
+
+      // disable the surface clipping planes
+      void disableSurfaceClippingPlanes();
+
       /// linear (border, cut, contour) being drawn
       Border linearObjectBeingDrawn;
        
@@ -884,12 +914,6 @@ class BrainModelOpenGL {
       
       /// OpenGL text enabled
       static bool openGLTextEnabledFlag;
-      
-      /// get minimum/maximum point size
-      static void getMinMaxPointSize(float& minSizeOut, float& maxSizeOut);
-      
-      /// get minimum/maximum line width
-      static void getMinMaxLineWidth(float& minWidthOut, float& maxWidthOut);
       
       /// maximum point size
       float maximumPointSize;

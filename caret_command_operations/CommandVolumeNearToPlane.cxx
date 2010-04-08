@@ -29,7 +29,7 @@
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 /**
@@ -56,7 +56,7 @@ CommandVolumeNearToPlane::getScriptBuilderParameters(ScriptBuilderParameters& pa
 {
    paramsOut.clear();
    paramsOut.addFile("Input Mask Volume File Name", FileFilters::getVolumeGenericFileFilter());
-   paramsOut.addFile("Input Vector File Name", FileFilters::getVectorFileFilter());
+   paramsOut.addFile("Input Vector File Name", FileFilters::getSureFitVectorFileFilter());
    paramsOut.addFile("Output Volume File Name", FileFilters::getVolumeGenericFileFilter());
    paramsOut.addFloat("Sigma-N");
    paramsOut.addFloat("Sigma-W");
@@ -132,7 +132,7 @@ CommandVolumeNearToPlane::executeCommand() throw (BrainModelAlgorithmException,
    //
    // Read the vector file
    //
-   VectorFile vectorFile;
+   SureFitVectorFile vectorFile;
    vectorFile.readFile(inputVectorFileName);
    
    VolumeFile outputVolume = maskVolume;

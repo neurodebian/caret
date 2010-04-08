@@ -28,7 +28,6 @@
 #include <limits>
 #include <sstream>
 
-#include <QDateTime>
 #include <QFile>
 #include <QTextStream>
 
@@ -36,6 +35,7 @@
 #include "BrainModelSurfaceMetricCoordinateDifference.h"
 #include "BrainSet.h"
 #include "CoordinateFile.h"
+#include "DateAndTime.h"
 #include "DebugControl.h"
 #include "FileUtilities.h"
 #include "PaintFile.h"
@@ -227,7 +227,9 @@ BrainModelSurfaceMetricCoordinateDifference::executeClusterSearch() throw (Brain
       switch (mode) {
          case MODE_COORDINATE_DIFFERENCE:
             statisticalMapShapeFile->setNumberOfNodesAndColumns(numberOfNodes, 4);
-            statisticalMapShapeFile->addColumnOfCoordinateDifference(&coordAverageGroupA,
+            statisticalMapShapeFile->addColumnOfCoordinateDifference(
+                               MetricFile::COORDINATE_DIFFERENCE_MODE_ABSOLUTE,
+                                                           &coordAverageGroupA,
                                                            &coordAverageGroupB,
                                                            bms->getTopologyFile(),
                                                            0,
@@ -239,7 +241,8 @@ BrainModelSurfaceMetricCoordinateDifference::executeClusterSearch() throw (Brain
             break;
          case MODE_TMAP_DIFFERENCE:
             statisticalMapShapeFile->setNumberOfNodesAndColumns(numberOfNodes, 1);
-            statisticalMapShapeFile->addColumnOfCoordinateDifferenceTMap(&coordAverageGroupA,
+            statisticalMapShapeFile->addColumnOfCoordinateDifferenceTMap(
+                                                           &coordAverageGroupA,
                                                            &coordAverageGroupB,
                                                            bms->getTopologyFile(),
                                                            0,
@@ -313,7 +316,9 @@ BrainModelSurfaceMetricCoordinateDifference::executeClusterSearch() throw (Brain
                                                                c2);
          switch (mode) {
             case MODE_COORDINATE_DIFFERENCE:
-               shuffleStatisticalMapShapeFile->addColumnOfCoordinateDifference(&c1,
+               shuffleStatisticalMapShapeFile->addColumnOfCoordinateDifference(
+                               MetricFile::COORDINATE_DIFFERENCE_MODE_ABSOLUTE,
+                                                              &c1,
                                                               &c2,
                                                               bms->getTopologyFile(),
                                                               i,
@@ -440,7 +445,8 @@ BrainModelSurfaceMetricCoordinateDifference::executeClusterSearch() throw (Brain
       //
       // Show area and thresholds
       //
-      reportStream << "Date/Time:           " << QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
+      reportStream << "Date/Time:           " << DateAndTime::getDateAndTimeAsString() << "\n";
+                       //QDateTime::currentDateTime().toString("MMM d, yyyy hh:mm:ss") << "\n";
       for (unsigned int j = 0; j < coordFileNameGroupA.size(); j++) {
          reportStream << "Coord File Group A:  " << coordFileNameGroupA[j] << "\n";
       }

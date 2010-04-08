@@ -40,6 +40,7 @@
 #include "FileException.h"
 #include "VoxelIJK.h"
 #include "StudyMetaDataLinkSet.h"
+#include "TransformationMatrixFile.h"
 #include "WuNilHeader.h"
 
 #include "zlib.h"
@@ -48,7 +49,7 @@ class Border;
 class ParamsFile;
 class StatisticHistogram;
 class TransformationMatrix;
-class VectorFile;
+class SureFitVectorFile;
 class VolumeModification;
 class VolumeITKImage;
 class vtkImageData;
@@ -372,7 +373,7 @@ class VolumeFile : public AbstractFile {
       VolumeFile(const VolumeFile& vf);
       
       /// constructor creates volume from a vector file
-      VolumeFile(const VectorFile& vf);
+      VolumeFile(const SureFitVectorFile& vf);
       
       /// destructor
       ~VolumeFile();
@@ -806,7 +807,8 @@ class VolumeFile : public AbstractFile {
                             const VOLUME_TYPE volumeType,
                             const VOXEL_DATA_TYPE writeVoxelDataType,
                             std::vector<VolumeFile*>& volumesToWrite,
-                            const bool zipAfniBrikFile = false) throw (FileException);
+                            const bool zipAfniBrikFile = false,
+                            const ColorFile* labelColorsForCaret6 = NULL) throw (FileException);
                             
       /// read a raw volume file that has no header
       void readFileVolumeRaw(const QString& name,
@@ -1236,6 +1238,15 @@ class VolumeFile : public AbstractFile {
                                     const int whiteMax = 210,
                                     const int iterations = 5) throw (FileException);
                                     
+      /// NIFTI SForm TransformationMatrix
+      TransformationMatrix getNiftiSFormTransformationMatrix() const { return niftiSFormTransformationMatrix; }
+
+      /// NIFTI QForm TransformationMatrix
+      TransformationMatrix getNiftiQFormTransformationMatrix() const { return niftiQFormTransformationMatrix; }
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
       /// get study meta data link
       //StudyMetaDataLinkSet getStudyMetaDataLinkSet() const { return studyMetaDataLinkSet; }
 
@@ -1304,7 +1315,8 @@ class VolumeFile : public AbstractFile {
       /// write the specified NIFTI sub-volumes
       static void writeFileNifti(const QString& fileNameIn,
                             const VOXEL_DATA_TYPE writeVoxelDataType,
-                            std::vector<VolumeFile*>& volumesToWrite) throw (FileException);
+                            std::vector<VolumeFile*>& volumesToWrite,
+                            const ColorFile* labelColorsForCaret6 = NULL) throw (FileException);
                             
       /// write the specified SPM sub-volumes
       static void writeFileSPM(const QString& fileNameIn,
@@ -1543,6 +1555,12 @@ class VolumeFile : public AbstractFile {
       /// NIFTI TR
       float niftiTR;
       
+      /// NIFTI SForm TransformationMatrix
+      TransformationMatrix niftiSFormTransformationMatrix;
+
+      /// NIFTI QForm TransformationMatrix
+      TransformationMatrix niftiQFormTransformationMatrix;
+
       /// study meta data link
       //StudyMetaDataLinkSet studyMetaDataLinkSet;
       

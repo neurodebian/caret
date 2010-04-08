@@ -58,6 +58,16 @@
 #include "CutsFile.h"
 #include "DeformationFieldFile.h"
 #include "DeformationMapFile.h"
+#include "DisplaySettingsArealEstimation.h"
+#include "DisplaySettingsDeformationField.h"
+#include "DisplaySettingsGeodesicDistance.h"
+#include "DisplaySettingsMetric.h"
+#include "DisplaySettingsPaint.h"
+#include "DisplaySettingsRgbPaint.h"
+#include "DisplaySettingsSection.h"
+#include "DisplaySettingsSurfaceShape.h"
+#include "DisplaySettingsVectors.h"
+#include "DisplaySettingsTopography.h"
 #include "FileFilters.h"
 #include "FileUtilities.h"
 #include "FociColorFile.h"
@@ -84,7 +94,7 @@
 #include "StudyCollectionFile.h"
 #include "StudyMetaDataFile.h"
 #include "SurfaceShapeFile.h"
-#include "SurfaceVectorFile.h"
+#include "VectorFile.h"
 #include "TopographyFile.h"
 #include "TopologyFile.h"
 #include "VocabularyFile.h"
@@ -483,13 +493,15 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
                  "Surface Shape File",
                  SpecFile::getSurfaceShapeFileTag());
    
-   fm.setStatusForAll(false);
-   fm.setSurfaceVectorModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getSurfaceVectorFile(), 
-                 fm,
-                 sf->surfaceVectorFile,
-                 "Surface Vector File",
-                 SpecFile::getSurfaceVectorFileTag());
+   for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVectorFiles(); i++) {
+      fm.setStatusForAll(false);
+      fm.setVectorModified();
+      addFileToGrid(theMainWindow->getBrainSet()->getVectorFile(i),
+                    fm,
+                    sf->vectorFile,
+                    "Vector File",
+                    SpecFile::getVectorFileTag());
+   }
    
    fm.setStatusForAll(false);
    fm.setTopographyModified();
@@ -765,13 +777,74 @@ GuiLoadedFileManagementDialog::slotRemoveFileColumnButtonGroup(int item)
          dataColumnCheckBoxes.push_back(ded.addCheckBox(columnNames[i], false));
       }
       if (ded.exec() == WuQDataEntryDialog::Accepted) {
+         bool columnDeletedFlag = false;
          for (int i = (numCols - 1); i >= 0; i--) {
             if (dataColumnCheckBoxes[i]->isChecked()) {
                if (gndf != NULL) {
                   gndf->removeColumn(i);
+                  columnDeletedFlag = true;
                }
                if (naf != NULL) {
                   naf->removeColumn(i);
+                  columnDeletedFlag = true;
+               }
+            }
+         }
+         
+         if (columnDeletedFlag) {
+            BrainSet* bs = theMainWindow->getBrainSet();
+            if (gndf != NULL) {
+               if (dynamic_cast<SurfaceShapeFile*>(gndf) != NULL) {
+                  bs->getDisplaySettingsSurfaceShape()->update();
+               }
+               else if (dynamic_cast<MetricFile*>(gndf) != NULL) {
+                  bs->getDisplaySettingsMetric()->update();
+               }
+               else if (dynamic_cast<PaintFile*>(gndf) != NULL) {
+                  bs->getDisplaySettingsPaint()->update();
+               }
+               else {
+                  std::cout << "PROGRAM ERROR: "
+                            << "Unrecognized GIFTI file type at "
+                            << __LINE__
+                            << " in "
+                            << __FILE__
+                            << std::endl;
+               }
+            }
+            
+            if (naf != NULL) {
+               if (dynamic_cast<ArealEstimationFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsArealEstimation()->update();
+               }
+               else if (dynamic_cast<DeformationFieldFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsDeformationField()->update();
+               }
+               else if (dynamic_cast<GeodesicDistanceFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsGeodesicDistance()->update();
+               }
+               else if (dynamic_cast<LatLonFile*>(naf) != NULL) {
+                  //bs->getDisplaySettingsPaint()->update();
+               }
+               else if (dynamic_cast<RgbPaintFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsRgbPaint()->update();
+               }
+               else if (dynamic_cast<SectionFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsSection()->update();
+               }
+               else if (dynamic_cast<VectorFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsVectors()->update();
+               }
+               else if (dynamic_cast<TopographyFile*>(naf) != NULL) {
+                  bs->getDisplaySettingsTopography()->update();
+               }
+               else {
+                  std::cout << "PROGRAM ERROR: "
+                            << "Unrecognized Node Attribute file type at "
+                            << __LINE__
+                            << " in "
+                            << __FILE__
+                            << std::endl;
                }
             }
          }
@@ -954,8 +1027,8 @@ GuiLoadedFileManagementDialog::slotRemoveFileButtonGroup(int item)
       else if (dynamic_cast<SurfaceShapeFile*>(af) != NULL) {
          theMainWindow->getBrainSet()->clearSurfaceShapeFile();
       }
-      else if (dynamic_cast<SurfaceVectorFile*>(af) != NULL) {
-         theMainWindow->getBrainSet()->clearSurfaceVectorFile();
+      else if (dynamic_cast<VectorFile*>(af) != NULL) {
+         theMainWindow->getBrainSet()->removeVectorFile(dynamic_cast<VectorFile*>(af));
       }
       else if (dynamic_cast<MetricFile*>(af) != NULL) {
          theMainWindow->getBrainSet()->clearMetricFile();
@@ -1037,6 +1110,7 @@ GuiLoadedFileManagementDialog::slotRemoveFileButtonGroup(int item)
       }
 
       theMainWindow->fileModificationUpdate(dataFiles[item].dataFileTypeMask);
+      theMainWindow->getBrainSet()->clearAllDisplayLists();
       GuiBrainModelOpenGL::updateAllGL();
       QApplication::restoreOverrideCursor();
    }   
@@ -1331,20 +1405,15 @@ GuiLoadedFileManagementDialog::addFileToGrid(AbstractFile* af,
                                       fileNameLineEdit,
                                       modifiedLabel,
                                       specFileTagIn));
-         
-         for (int i = 0; i < dataFileInfo.getNumberOfFiles(); i++) {
-            if (dataFileInfo.files[i].selected == SpecFile::SPEC_TRUE) {
-               const QString name(FileUtilities::basename(dataFileInfo.files[i].filename));
-               if (name != filename) {
-                  const int rowNum = fileGridLayout->rowCount(); // + 1;
-/*
-                  fileGridLayout->addWidget(new QLabel(" "), rowNum, 0);
-                  fileGridLayout->addWidget(new QLabel(" "), rowNum, 1);
-                  fileGridLayout->addWidget(new QLabel(" "), rowNum, 2);
-                  fileGridLayout->addWidget(new QLabel(" "), rowNum, 3);
-                  fileGridLayout->addWidget(new QLabel(" "), rowNum, 4);
-*/
-                  fileGridLayout->addWidget(new QLabel(name), rowNum, columnFileNameIndex);
+
+         if (dynamic_cast<VectorFile*>(af) == false) {
+            for (int i = 0; i < dataFileInfo.getNumberOfFiles(); i++) {
+               if (dataFileInfo.files[i].selected == SpecFile::SPEC_TRUE) {
+                  const QString name(FileUtilities::basename(dataFileInfo.files[i].filename));
+                  if (name != filename) {
+                     const int rowNum = fileGridLayout->rowCount(); // + 1;
+                     fileGridLayout->addWidget(new QLabel(name), rowNum, columnFileNameIndex);
+                  }
                }
             }
          }
