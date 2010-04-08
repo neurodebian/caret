@@ -1395,8 +1395,8 @@ TopologyFile::importFromVtkFile(vtkPolyData* polyDataIn)
    std::vector<int> triangles;
    
    vtkCellArray* polys = polyData->GetPolys();
-   vtkIdType npts;
-   vtkIdType* pts;
+   int npts;
+   int* pts;
    for (polys->InitTraversal(); polys->GetNextCell(npts,pts); ) {
       if (npts == 3) {
          triangles.push_back(pts[0]);

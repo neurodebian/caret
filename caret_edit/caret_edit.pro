@@ -48,8 +48,6 @@ unix:!macx {
            -L../caret_files  -lCaretFiles \
            -L../caret_uniformize -lCaretUniformize \
            -L../caret_common  -lCaretCommon \
-           -L../caret_files  -lCaretFiles \
-           -L../caret_command_operations  -lCaretCommandOperations \
            -L../caret_statistics -lCaretStatistics 
 
    # for SGI systems

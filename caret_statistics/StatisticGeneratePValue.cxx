@@ -25,7 +25,6 @@
 /*LICENSE_END*/
 
 #include <cmath>
-#include <cstdio>
 #include <iostream>
 
 #include "StatisticDataGroup.h"

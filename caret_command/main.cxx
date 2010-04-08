@@ -109,9 +109,9 @@ main(int argc, char* argv[])
       //
       // Get image plugins so JPEGs can be loaded
       //
-      //Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
-      //Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
-      //Q_IMPORT_PLUGIN(qtiff)
+      Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
+      Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
+      Q_IMPORT_PLUGIN(qtiff) 
       
       //
       // Get all of the available commands

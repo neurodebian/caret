@@ -36,7 +36,7 @@
 
 #include <string.h>
 
-#if defined(Q_OS_LINUX) || defined(Q_OS_GLIBC)
+#ifdef Q_OS_LINUX
 static const char *period = ".";
 #endif
 #ifdef Q_OS_MAC

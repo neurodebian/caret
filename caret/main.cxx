@@ -523,9 +523,9 @@ main(int argc, char* argv[])
    //
    // needed for static linking to have JPEG support
    //
-   //Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
-   //Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
-   //Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
+   Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
+   Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
+   Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
 
    //
    // Set the locale to prevent crashes due to non-english date formats

@@ -43,10 +43,8 @@ class QSpinBox;
 
 class vtkAVIWriter;
 class vtkImageData;
-#ifdef HAVE_VTK_MPEG
 class vtkMPEG1Writer;
 class vtkMPEG2Writer;
-#endif // HAVE_VTK_MPEG
 
 /// Dialog for recording to movie file.
 class GuiRecordingDialog : public WuQDialog {
@@ -224,13 +222,11 @@ class GuiRecordingDialog : public WuQDialog {
       /// pointer for VTK's AVI writer
       vtkAVIWriter* vtkAviMovieWriter;
       
-#ifdef HAVE_VTK_MPEG
       /// pointer for caret's modified VTK's MPEG2 writer that writes MPEG1
       vtkMPEG1Writer* vtkMpeg1MovieWriter;
       
       /// pointer for VTK's MPEG2 writer
       vtkMPEG2Writer* vtkMpeg2MovieWriter;
-#endif // HAVE_VTK_MPEG
 };
 
 

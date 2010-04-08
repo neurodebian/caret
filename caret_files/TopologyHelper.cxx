@@ -185,8 +185,8 @@ TopologyHelper::TopologyHelper(vtkPolyData* vtkIn,
    
    if (buildNodeInfo) {
       vtkCellArray* polys = vtk->GetPolys();
-      vtkIdType npts;
-      vtkIdType* pts;
+      int npts;
+      int* pts;
       const int maxNodeNum = vtk->GetNumberOfPoints();  //-1;
       for (polys->InitTraversal(); polys->GetNextCell(npts,pts); ) {
          if (npts != 3) {
@@ -216,8 +216,8 @@ TopologyHelper::TopologyHelper(vtkPolyData* vtkIn,
    //
    vtkCellArray* polys = vtk->GetPolys();
    int cellId = 0;
-   vtkIdType npts;
-   vtkIdType* pts;
+   int npts;
+   int* pts;
    for (polys->InitTraversal(); polys->GetNextCell(npts,pts); cellId++) {
       if (npts != 3) {
          std::cerr << " Polygon is not a triangle in TopologyHelper"      

@@ -48,8 +48,8 @@ DEFINES += CARET_FLAG
 !exists( $(QWT_INC_DIR)/qwt.h ) {
    error("The environment variable for QWT includes \"QWT_INC_DIR\" not defined.")
 }
-!exists( $(QTDIR)/include/qt4/qt.h ) {
-   !exists( $(QTDIR)/include/qt4/Qt ) {
+!exists( $(QTDIR)/include/qt.h ) {
+   !exists( $(QTDIR)/include/Qt ) {
       error("The environment variable for QT \"QTDIR\" not defined.")
    }
 }
@@ -58,7 +58,7 @@ DEFINES += CARET_FLAG
 #
 # if this file exists then QT4 is being used
 #
-exists( $(QTDIR)/include/qt4/Qt/qicon.h ) {
+exists( $(QTDIR)/include/Qt/qicon.h ) {
    DEFINES += CARET_QT4
    QT += network opengl xml
 }
@@ -102,7 +102,7 @@ exists( $(NETCDF_INC_DIR)/minc.h ) {
    DEFINES += HAVE_MINC
    INCLUDEPATH += $(NETCDF_INC_DIR)
    NETCDF_LIBS = -L$(NETCDF_LIB_DIR) \
-                 -lminc2 \
+                 -lminc \
                  -lnetcdf
 
    message( "Building with MINC support" )
@@ -129,7 +129,7 @@ DEFINES += HAVE_VTK
 #
 # Check for VTK 5.x
 #
-#exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
   
    message( "Building WITH VTK5 support" )
 
@@ -141,12 +141,12 @@ DEFINES += HAVE_VTK
    #
    #
    #
-#   INCLUDEPATH += ../caret_vtk4_classes
+   INCLUDEPATH += ../caret_vtk4_classes
 
    #
    # need by caret_vtk4_classes
    #
-#   INCLUDEPATH += $(VTK_INC_DIR)/vtkmpeg2encode
+   INCLUDEPATH += $(VTK_INC_DIR)/vtkmpeg2encode
 
    #
    # VTK Libraries for VTK 5.x
@@ -155,7 +155,7 @@ DEFINES += HAVE_VTK
       #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
    }
    !win32 {
-#      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a
+      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
    }
    VTK_LIBS += \
               -L$(VTK_LIB_DIR) \
@@ -165,14 +165,19 @@ DEFINES += HAVE_VTK
               -lvtkImaging \
               -lvtkGraphics \
               -lvtkIO \
+              -lvtkMPEG2Encode \
               -lvtkFiltering \
-              -lvtkCommon
-#}
+              -lvtkCommon \
+              -lvtkjpeg \
+              -lvtkpng \
+              -lvtkexpat \
+              -lvtkzlib
+}
 
 #
 # Check for VTK 4.x (does not have vtkMPEG2Writer.h)
 #
-exists( doesnotexist.never ) {
+!exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
    #
    # VTK Libraries for VTK 4.x
    #
@@ -375,26 +380,11 @@ unix:!macx {
    # QWT libraries
    #
    QWT_LIBS = -L$(QWT_LIB_DIR) \
-         -lqwt-qt4
+         -lqwt
 
    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
 }
 
 
-# Debian specific build configuration
-# always perform release build, debug symbols are taken care of in
-# debian/rules
-CONFIG -= debug
-CONFIG += release
 
-# compile all internal static libs as shared libraries instead
-CONFIG(staticlib, plugin|staticlib): {
-	message("Compile as shared library in Debian build.")
-	CONFIG -= staticlib
-	CONFIG *= plugin
-}
-
-# link everything against VTK -- does not hurt as -Wl,--as-needed is
-# used for Debian build
-LIBS *= $$VTK_LIBS

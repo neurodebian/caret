@@ -10,7 +10,6 @@ include(../caret_qmake_include.pro)
 
 TEMPLATE = lib
 
-LIBS += -L../caret_brain_set -lCaretBrainSet
 
 # Input
 HEADERS += CommandBase.h \

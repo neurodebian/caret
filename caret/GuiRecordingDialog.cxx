@@ -62,10 +62,8 @@
 #ifdef HAVE_AVI_WRITER
 #include "vtkAVIWriter.h"
 #endif // HAVE_AVI_WRITER
-#ifdef HAVE_VTK_MPEG
 #include "vtkMPEG1Writer.h"
 #include "vtkMPEG2Writer.h"
-#endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
 
 #include "BrainModelRunExternalProgram.h"
@@ -171,10 +169,8 @@ GuiRecordingDialog::GuiRecordingDialog(QWidget* parent)
    dialogLayout->addLayout(buttonsLayout);
    
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    vtkMpeg1MovieWriter = NULL;
    vtkMpeg2MovieWriter = NULL;
-#endif // HAVE_VTK_MPEG
 #ifdef HAVE_AVI_WRITER
    vtkAviMovieWriter = NULL;
 #endif // HAVE_AVI_WRITER
@@ -189,7 +185,6 @@ GuiRecordingDialog::GuiRecordingDialog(QWidget* parent)
 GuiRecordingDialog::~GuiRecordingDialog()
 {
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    if (vtkMpeg2MovieWriter != NULL) {
       vtkMpeg2MovieWriter->Delete();
       vtkMpeg2MovieWriter = NULL;
@@ -198,7 +193,6 @@ GuiRecordingDialog::~GuiRecordingDialog()
       vtkMpeg1MovieWriter->Delete();
       vtkMpeg1MovieWriter = NULL;
    }
-#endif // HAVE_VTK_MPEG
 #ifdef HAVE_AVI_WRITER
    if (vtkAviMovieWriter != NULL) {
       vtkAviMovieWriter->Delete();
@@ -427,20 +421,16 @@ GuiRecordingDialog::createOutputMovieSection()
    movieFileTypeComboBox->addItem("MPEG (using mpeg_create)", 
                                   static_cast<int>(MOVIE_FILE_TYPE_MPEG_CREATE));
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    movieFileTypeComboBox->addItem("MPEG1 (using VTK)", 
                                   static_cast<int>(MOVIE_FILE_TYPE_MPEG1_VTK));
    const int mpeg1Index = movieFileTypeComboBox->count() - 1;
    movieFileTypeComboBox->addItem("MPEG2 (using VTK)", 
                                   static_cast<int>(MOVIE_FILE_TYPE_MPEG2_VTK));
-#endif // HAVE_VTK_MPEG
 #ifdef HAVE_AVI_WRITER
    movieFileTypeComboBox->addItem("AVI (using VTK)", 
                                   static_cast<int>(MOVIE_FILE_TYPE_AVI_VTK));
 #endif // HAVE_AVI_WRITER
-#ifdef HAVE_VTK_MPEG
    movieFileTypeComboBox->setCurrentIndex(mpeg1Index);
-#endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
    movieFileTypeComboBox->addItem("JPEG Images",
                                   static_cast<int>(MOVIE_FILE_TYPE_JPEG_IMAGES));
@@ -585,7 +575,6 @@ void
 GuiRecordingDialog::createMovieWithMpeg1VTK()
 {
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    //
    // Finish the movie
    //
@@ -599,7 +588,6 @@ GuiRecordingDialog::createMovieWithMpeg1VTK()
    // Cannot append images so delete all captured images
    //
    deleteTemporaryImages();
-#endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
 }
 
@@ -610,7 +598,6 @@ void
 GuiRecordingDialog::createMovieWithMpeg2VTK()
 {
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    //
    // Finish the movie
    //
@@ -624,7 +611,6 @@ GuiRecordingDialog::createMovieWithMpeg2VTK()
    // Cannot append images so delete all captured images
    //
    deleteTemporaryImages();
-#endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
 }
 
@@ -897,7 +883,6 @@ void
 GuiRecordingDialog::addImageToMpeg1VTK(const QImage& image)
 {
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    const QString fileName(movieNameLineEdit->text());
    vtkImageData* vtkImage = convertQImagetoVTKImageData(image);
    if (vtkMpeg1MovieWriter == NULL) {
@@ -915,7 +900,6 @@ GuiRecordingDialog::addImageToMpeg1VTK(const QImage& image)
    if (DebugControl::getDebugOn()) {
       std::cout << "MPEG Writer Error Code: " << vtkMpeg1MovieWriter->GetErrorCode() << std::endl;
    }
-#endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
 }
 
@@ -926,7 +910,6 @@ void
 GuiRecordingDialog::addImageToMpeg2VTK(const QImage& image)
 {
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    const QString fileName(movieNameLineEdit->text());
    vtkImageData* vtkImage = convertQImagetoVTKImageData(image);
    if (vtkMpeg2MovieWriter == NULL) {
@@ -944,7 +927,6 @@ GuiRecordingDialog::addImageToMpeg2VTK(const QImage& image)
    if (DebugControl::getDebugOn()) {
       std::cout << "MPEG Writer Error Code: " << vtkMpeg2MovieWriter->GetErrorCode() << std::endl;
    }
-#endif // HAVE_VTK_MPEG
 #endif // HAVE_VTK5
 }
 
@@ -1139,7 +1121,6 @@ void
 GuiRecordingDialog::deleteTemporaryImages()
 {
 #ifdef HAVE_VTK5
-#ifdef HAVE_VTK_MPEG
    if (vtkMpeg1MovieWriter != NULL) {
       vtkMpeg1MovieWriter->Delete();
       vtkMpeg1MovieWriter = NULL;
@@ -1148,7 +1129,6 @@ GuiRecordingDialog::deleteTemporaryImages()
       vtkMpeg2MovieWriter->Delete();
       vtkMpeg2MovieWriter = NULL;
    }
-#endif // HAVE_VTK_MPEG
 #ifdef HAVE_AVI_WRITER
    if (vtkAviMovieWriter != NULL) {
       vtkAviMovieWriter->Delete();
