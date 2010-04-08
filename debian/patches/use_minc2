@@ -1,0 +1,14 @@
+Description: Switch to current MINC version 2
+Author: Michael Hanke <michael.hanke@gmail.com>
+Last-Update: 2010-04-08
+--- a/caret_qmake_include.pro
++++ b/caret_qmake_include.pro
+@@ -102,7 +102,7 @@
+    DEFINES += HAVE_MINC
+    INCLUDEPATH += $(NETCDF_INC_DIR)
+    NETCDF_LIBS = -L$(NETCDF_LIB_DIR) \
+-                 -lminc \
++                 -lminc2 \
+                  -lnetcdf
+ 
+    message( "Building with MINC support" )

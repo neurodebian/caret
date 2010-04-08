@@ -1,0 +1,228 @@
+Description: Link libs dynamically
+ Build carets internal libraries as shared libs and link dynamically against
+ everything else as well. Upstream is not interested in merging this patch.
+Author: Michael Hanke <michael.hanke@gmail.com>
+Last-Update: 2010-04-08
+--- a/caret/caret5.pro
++++ b/caret/caret5.pro
+@@ -102,13 +102,13 @@
+ 
+ unix {
+    PRE_TARGETDEPS +=  \
+-      ../caret_command_operations/libCaretCommandOperations.a \
+-	   ../caret_brain_set/libCaretBrainSet.a \
+-	   ../caret_files/libCaretFiles.a \
+-	   ../caret_uniformize/libCaretUniformize.a \
+-	   ../caret_statistics/libCaretStatistics.a \
+-	   ../caret_common/libCaretCommon.a \
+-	   ../caret_widgets/libCaretWidgets.a      
++      ../caret_command_operations/libCaretCommandOperations.so \
++	   ../caret_brain_set/libCaretBrainSet.so \
++	   ../caret_files/libCaretFiles.so \
++	   ../caret_uniformize/libCaretUniformize.so \
++	   ../caret_statistics/libCaretStatistics.so \
++	   ../caret_common/libCaretCommon.so \
++	   ../caret_widgets/libCaretWidgets.so
+ }
+ 
+ unix:!macx {
+@@ -138,10 +138,7 @@
+    # FreeBSD also does not have libdl, but integrates its functions
+    # into libc.
+    !exists( /etc/rc.conf ) {
+-      LIBS += -lvtkjpeg \
+-              -lvtkpng \
+-              -lvtkexpat \
+-              -ldl 
++      LIBS += -ldl
+    }       
+ 
+    # for SGI systems
+--- a/caret/main.cxx
++++ b/caret/main.cxx
+@@ -523,9 +523,9 @@
+    //
+    // needed for static linking to have JPEG support
+    //
+-   Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
+-   Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
+-   Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
++   //Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
++   //Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
++   //Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
+ 
+    //
+    // Set the locale to prevent crashes due to non-english date formats
+--- a/caret_brain_set/caret_brain_set.pro
++++ b/caret_brain_set/caret_brain_set.pro
+@@ -5,6 +5,7 @@
+ TARGET       = CaretBrainSet
+ CONFIG  += staticlib 
+ INCLUDEPATH += .
++LIBS += -L../caret_files -lCaretFiles
+ 
+ include(../caret_qmake_include.pro)
+ 
+--- a/caret_command/caret_command.pro
++++ b/caret_command/caret_command.pro
+@@ -80,14 +80,14 @@
+ 
+ unix {
+    PRE_TARGETDEPS +=  \
+-           ../caret_command_operations/libCaretCommandOperations.a \
+-           ../caret_brain_set/libCaretBrainSet.a \
+-           ../caret_files/libCaretFiles.a \
+-           ../caret_widgets/libCaretWidgets.a \
+-           ../caret_uniformize/libCaretUniformize.a \
+-           ../caret_statistics/libCaretStatistics.a \
+-           ../caret_common/libCaretCommon.a \
+-           ../caret_widgets/libCaretWidgets.a
++           ../caret_command_operations/libCaretCommandOperations.so \
++           ../caret_brain_set/libCaretBrainSet.so \
++           ../caret_files/libCaretFiles.so \
++           ../caret_widgets/libCaretWidgets.so \
++           ../caret_uniformize/libCaretUniformize.so \
++           ../caret_statistics/libCaretStatistics.so \
++           ../caret_common/libCaretCommon.so \
++           ../caret_widgets/libCaretWidgets.so
+ 
+ }
+ 
+@@ -116,10 +116,7 @@
+    # FreeBSD also does not have libdl, but integrates its functions
+    # into libc.
+    !exists( /etc/rc.conf ) {
+-      LIBS += -lvtkjpeg \
+-              -lvtkpng \
+-              -lvtkexpat \
+-              -ldl 
++      LIBS += -ldl
+    }       
+            
+    # for SGI systems
+--- a/caret_command/main.cxx
++++ b/caret_command/main.cxx
+@@ -109,9 +109,9 @@
+       //
+       // Get image plugins so JPEGs can be loaded
+       //
+-      Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
+-      Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
+-      Q_IMPORT_PLUGIN(qtiff) 
++      //Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
++      //Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
++      //Q_IMPORT_PLUGIN(qtiff)
+       
+       //
+       // Get all of the available commands
+--- a/caret_command_operations/caret_command_operations.pro
++++ b/caret_command_operations/caret_command_operations.pro
+@@ -10,6 +10,7 @@
+ 
+ TEMPLATE = lib
+ 
++LIBS += -L../caret_brain_set -lCaretBrainSet
+ 
+ # Input
+ HEADERS += CommandBase.h \
+--- a/caret_edit/caret_edit.pro
++++ b/caret_edit/caret_edit.pro
+@@ -48,6 +48,8 @@
+            -L../caret_files  -lCaretFiles \
+            -L../caret_uniformize -lCaretUniformize \
+            -L../caret_common  -lCaretCommon \
++           -L../caret_files  -lCaretFiles \
++           -L../caret_command_operations  -lCaretCommandOperations \
+            -L../caret_statistics -lCaretStatistics 
+ 
+    # for SGI systems
+--- a/caret_files/caret_files.pro
++++ b/caret_files/caret_files.pro
+@@ -9,6 +9,12 @@
+ 
+ include(../caret_qmake_include.pro)
+ 
++LIBS += -lminc2 \
++        -L../caret_uniformize -lCaretUniformize \
++        -L../caret_statistics -lCaretStatistics \
++        -L../caret_common -lCaretCommon \
++        -L../caret_widgets -lCaretWidgets
++
+ # Input
+ HEADERS += AbstractFile.h \
+ 	   AfniHeader.h \
+--- a/caret_qmake_include.pro
++++ b/caret_qmake_include.pro
+@@ -48,8 +48,8 @@
+ !exists( $(QWT_INC_DIR)/qwt.h ) {
+    error("The environment variable for QWT includes \"QWT_INC_DIR\" not defined.")
+ }
+-!exists( $(QTDIR)/include/qt.h ) {
+-   !exists( $(QTDIR)/include/Qt ) {
++!exists( $(QTDIR)/include/qt4/qt.h ) {
++   !exists( $(QTDIR)/include/qt4/Qt ) {
+       error("The environment variable for QT \"QTDIR\" not defined.")
+    }
+ }
+@@ -58,7 +58,7 @@
+ #
+ # if this file exists then QT4 is being used
+ #
+-exists( $(QTDIR)/include/Qt/qicon.h ) {
++exists( $(QTDIR)/include/qt4/Qt/qicon.h ) {
+    DEFINES += CARET_QT4
+    QT += network opengl xml
+ }
+@@ -168,11 +168,7 @@
+               -lvtkGraphics \
+               -lvtkIO \
+               -lvtkFiltering \
+-              -lvtkCommon \
+-              -lvtkjpeg \
+-              -lvtkpng \
+-              -lvtkexpat \
+-              -lvtkzlib
++              -lvtkCommon
+ }
+ 
+ #
+@@ -383,11 +379,26 @@
+    # QWT libraries
+    #
+    QWT_LIBS = -L$(QWT_LIB_DIR) \
+-         -lqwt
++         -lqwt-qt4
+ 
+    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
+    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
+ }
+ 
+ 
+-
++# Debian specific build configuration
++# always perform release build, debug symbols are taken care of in
++# debian/rules
++CONFIG -= debug
++CONFIG += release
++
++# compile all internal static libs as shared libraries instead
++CONFIG(staticlib, plugin|staticlib): {
++	message("Compile as shared library in Debian build.")
++	CONFIG -= staticlib
++	CONFIG *= plugin
++}
++
++# link everything against VTK -- does not hurt as -Wl,--as-needed is
++# used for Debian build
++LIBS *= $$VTK_LIBS
+--- a/caret_widgets/caret_widgets.pro
++++ b/caret_widgets/caret_widgets.pro
+@@ -7,6 +7,8 @@
+ INCLUDEPATH += . \
+                ../caret_common
+ 
++LIBS += -L../caret_common -lCaretCommon
++
+ include(../caret_qmake_include.pro)
+ 
+ win32 {

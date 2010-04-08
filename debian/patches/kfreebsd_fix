@@ -1,0 +1,15 @@
+Description: Needed to build caret on machines running a glibc with a FreeBSD kernel.
+ Originally provided by Cyril Brulebois, later on modified.
+Author: Michael Hanke <michael.hanke@gmail.com>
+Last-Update: 2010-04-08
+--- a/caret_common/Basename.cxx
++++ b/caret_common/Basename.cxx
+@@ -36,7 +36,7 @@
+ 
+ #include <string.h>
+ 
+-#ifdef Q_OS_LINUX
++#if defined(Q_OS_LINUX) || defined(Q_OS_GLIBC)
+ static const char *period = ".";
+ #endif
+ #ifdef Q_OS_MAC

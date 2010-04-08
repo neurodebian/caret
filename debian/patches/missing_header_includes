@@ -1,0 +1,36 @@
+Description: Add missing include directives
+ GCC compiler versions after 4.3 auto-include much less headers than before.
+ This patch enables caret to be compiled with them.
+Author: Michael Hanke <michael.hanke@gmail.com>
+Last-Update: 2010-04-08
+--- a/caret/GuiMainWindowSurfaceActions.cxx
++++ b/caret/GuiMainWindowSurfaceActions.cxx
+@@ -26,6 +26,7 @@
+ #include <QGlobalStatic>
+ 
+ #include <sstream>
++#include <limits>
+ 
+ #include <QAction>
+ #include <QApplication>
+--- a/caret_command_operations/CommandSurfaceRegionOfInterestSelection.cxx
++++ b/caret_command_operations/CommandSurfaceRegionOfInterestSelection.cxx
+@@ -23,6 +23,8 @@
+  */
+ /*LICENSE_END*/
+ 
++#include <limits>
++
+ #include "BorderFile.h"
+ #include "BorderProjectionFile.h"
+ #include "BorderProjectionUnprojector.h"
+--- a/caret_statistics/StatisticGeneratePValue.cxx
++++ b/caret_statistics/StatisticGeneratePValue.cxx
+@@ -25,6 +25,7 @@
+ /*LICENSE_END*/
+ 
+ #include <cmath>
++#include <cstdio>
+ #include <iostream>
+ 
+ #include "StatisticDataGroup.h"
