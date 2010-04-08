@@ -1799,3 +1799,14 @@ PaletteFile::writeFileData(QTextStream& stream, QDataStream&,
       pal->writeFileData(stream);
    }
 }
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+PaletteFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   throw FileException(filenameIn
+                       + " cannot be written in Caret6 format at this time.");
+}
+

@@ -60,7 +60,7 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       // constructor
       BrainModelSurfaceBorderLandmarkIdentification(BrainSet* bs,
                                          const StereotaxicSpace& stereotaxicSpaceIn,
-                                         const VolumeFile* anatomicalVolumeFileIn,
+                                         VolumeFile* anatomicalVolumeFileIn,
                                          const BrainModelSurface* fiducialSurfaceIn,
                                          const BrainModelSurface* inflatedSurfaceIn,
                                          const BrainModelSurface* veryInflatedSurfaceIn,
@@ -130,8 +130,11 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       // create medial wall dorsal and ventral borders
       void createMedialWallDorsalAndVentralLandmarks() throw (BrainModelAlgorithmException);
       
+      // identify the dorsal medial wall NEW
+      void identifyDorsalMedialWallNew() throw (BrainModelAlgorithmException);
+      
       // identify the dorsal medial wall
-      void identifyDorsalMedialWall() throw (BrainModelAlgorithmException);
+      void identifyDorsalMedialWallOld() throw (BrainModelAlgorithmException);
       
       // identify the ventral medial wall
       void identifyVentralMedialWall() throw (BrainModelAlgorithmException);
@@ -218,16 +221,30 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
                          
       /// border nibble within modes
       enum BORDER_NIBBLE_MODE_DISTANCE {
-         BORDER_NIBBLE_MODE_WITHIN_DISTANCE_X,
-         BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Y,
-         BORDER_NIBBLE_MODE_WITHIN_DISTANCE_Z,
-         BORDER_NIBBLE_MODE_WITHIN_DISTANCE_LINEAR
+         BORDER_NIBBLE_MODE_DISTANCE_X,
+         BORDER_NIBBLE_MODE_DISTANCE_Y,
+         BORDER_NIBBLE_MODE_DISTANCE_Z,
+         BORDER_NIBBLE_MODE_DISTANCE_LINEAR
       };
       
       // nibble border within distance
       void nibbleBorderWithinDistance(const BrainModelSurface* surface,
                         const QString& borderName,
                         const int nodeNumber,
+                        const BORDER_NIBBLE_MODE_DISTANCE nibbleMode,
+                        const float nibbleDistance) throw (BrainModelAlgorithmException);
+                        
+      // nibble border within distance
+      void nibbleBorderWithinDistance(const BrainModelSurface* surface,
+                        const QString& borderName,
+                        const float nibbleFromHereXYZ[3],
+                        const BORDER_NIBBLE_MODE_DISTANCE nibbleMode,
+                        const float nibbleDistance) throw (BrainModelAlgorithmException);
+                        
+      // nibble border beyond distance
+      void nibbleBorderBeyondDistance(const BrainModelSurface* surface,
+                        const QString& borderName,
+                        const float nibbleFromHereXYZ[3],
                         const BORDER_NIBBLE_MODE_DISTANCE nibbleMode,
                         const float nibbleDistance) throw (BrainModelAlgorithmException);
                         
@@ -262,6 +279,16 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       // project the foci
       void projectFoci();
       
+      // draw a border moving along the "most-lateral" nodes 
+      /** DOES NOT WORK
+      void drawBorderMostLateral(
+                        const BrainModelSurface* borderSurface,
+                        const BrainModelSurfaceROINodeSelection* roiIn,
+                        const QString borderName,
+                        const std::vector<int>& nodeNumbers,
+                        const float samplingDistance) throw (BrainModelAlgorithmException);
+      */
+      
       // draw a border using geodesic method
       void drawBorderGeodesic(const BrainModelSurface* borderSurface,
                               const BrainModelSurfaceROINodeSelection* roi,
@@ -270,6 +297,32 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
                               const int endNodeNumber,
                               const float samplingDistance) throw (BrainModelAlgorithmException);
      
+      // draw a border using geodesic method connecting a group of nodes
+      void drawBorderGeodesic(const BrainModelSurface* borderSurface,
+                              const BrainModelSurfaceROINodeSelection* roi,
+                              const QString borderName,
+                              const std::vector<int>& nodeNumbers,
+                              const float samplingDistance) throw (BrainModelAlgorithmException);
+
+      // draw a border using heuristic geodesic method connecting a group of nodes
+      void drawBorderTargetedGeodesic(const BrainModelSurface* borderSurface,
+                              const BrainModelSurfaceROINodeSelection* roi,
+                              const QString borderName,
+                              const std::vector<int>& nodeNumbers,
+                              const float samplingDistance,
+                              float target[3],
+                              float targetweight) throw (BrainModelAlgorithmException);
+
+      // draw a border using heuristic geodesic method connecting a group of nodes
+      void drawBorderMetricGeodesic(const BrainModelSurface* borderSurface,
+                              const BrainModelSurfaceROINodeSelection* roi,
+                              const QString borderName,
+                              const std::vector<int>& nodeNumbers,
+                              const float samplingDistance,
+                              MetricFile* nodeCost,
+                              int metricColumn,
+                              float metricWeight) throw (BrainModelAlgorithmException);
+
       // Find node along geodesic path between nodes
       int findNodeAlongGeodesicPathBetweenNodes(
                             const BrainModelSurface* surface,
@@ -291,7 +344,7 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
                             
       // save an ROI to a file
       void saveRoiToFile(const BrainModelSurfaceROINodeSelection& roi,
-                         const QString& roiFileName);
+                         const QString& roiFileName) throw (BrainModelAlgorithmException);
       
       // merge borders (returned border was added to border projection file)
       BorderProjection* mergeBorders(const QString& outputBorderName,
@@ -343,11 +396,49 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       /// delete the debug files directory and the files within it
       void deleteDebugFilesDirectoryAndContents();
       
+      /// get the node that is most lateral in the extent
+      int getMostLateralNodeInExtent(const BrainModelSurface* surface,
+                                     const float startXYZ[6],
+                                     const float extent[6],
+                                     const float maxGeodesicDistance) const;
+
+      /// get the node that is most lateral in the extent
+      int getClosestNodeInExtent(const BrainModelSurface* surface,
+                                     const float startXYZ[6],
+                                     const float extent[6],
+                                     const float maxGeodesicDistance,
+                                     const float target[3]) const;
+      
+      /// node type for heuristic search
+      struct searchNode
+      {
+         float cost, heur;
+         int node, prev;
+      };
+
+      /// TSC: yes, these methods are overloaded, so sue me
+      /// connect nodes via graph search, favoring nodes closer to the target point
+      Border drawHeuristic(const BrainModelSurface* borderSurface,
+                           BrainModelSurfaceROINodeSelection* roi,
+                           int startNodeNumber,
+                           int endNodeNumber,
+                           float target[],
+                           float targetWeight) throw (BrainModelAlgorithmException);
+
+      /// connect nodes via graph search, favoring nodes closer to the target point
+      Border drawHeuristic(const BrainModelSurface* borderSurface,
+                           BrainModelSurfaceROINodeSelection* roi,
+                           int startNodeNumber,
+                           int endNodeNumber,
+                           MetricFile* nodeCost,
+                           int metricColumn,
+                           float metricWeight) throw (BrainModelAlgorithmException);
+
       /// stereotaxic space
       const StereotaxicSpace stereotaxicSpace;
       
       /// anatomical volume file
-      const VolumeFile* anatomicalVolumeFile;
+      VolumeFile* anatomicalVolumeFile;
       
       /// the input fiducial surface
       const BrainModelSurface* inputFiducialSurface;
@@ -463,8 +554,8 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       /// corpus callosum splenium limit node number
       int ccSpleniumLimitNodeNumber;
       
-      /// corpus callosum posterior node number
-      int ccPosteriorNodeNumber;
+      /// corpus callosum splenium end node number
+      int ccSpleniumEndNodeNumber;
       
       /// start node for medial wall
       int medialWallStartNodeNumber; 
@@ -492,6 +583,9 @@ class BrainModelSurfaceBorderLandmarkIdentification : public BrainModelAlgorithm
       
       /// name of directory containing debug files
       QString debugFilesDirectoryName;
+      
+      /// save all intermediate files
+      bool saveIntermediateFilesFlag;
       
       /// all landmarks were sucessfully created
       bool allLandmarksSuccessfulFlag;

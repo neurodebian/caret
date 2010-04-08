@@ -286,7 +286,7 @@ class GuiSpecFileDialogMainWindow : public QMainWindow {
       /// list topology files for selection by user
       QGroupBox* listTopologyFiles(QVBoxLayout* layout,
                              SpecFile& sf);
-                             
+
       /// Set the files that are checked as seleted in the spec file.
       void setCheckedFilesAsSelected();
 
@@ -405,7 +405,7 @@ class GuiSpecFileDialogMainWindow : public QMainWindow {
       QGroupBox* shapeGroup;
       
       /// group box containing files
-      QGroupBox* surfaceVectorGroup;
+      QGroupBox* vectorGroup;
       
       /// group box containing  files
       QGroupBox* topographyGroup;

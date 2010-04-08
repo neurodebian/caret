@@ -1,4 +1,7 @@
 /*LICENSE_START*/
+
+#include <StringUtilities.h>
+
 /*
  *  Copyright 1995-2002 Washington University School of Medicine
  *
@@ -554,6 +557,9 @@ ContourFile::clear()
    sectionSpacing = 1.0;
    sectionType = SECTION_TYPE_ALL;
    setMinMaxSections();
+   mainWindowScaling[0] = -1.0;
+   mainWindowScaling[1] = -1.0;
+   mainWindowScaling[2] = -1.0;
 }
 
 /**
@@ -1035,6 +1041,29 @@ ContourFile::importMDPlotFile(const MDPlotFile& mdf) throw (FileException)
    }
 }      
 
+/**
+ * Get main window scaling (invalid if negative values).
+ */
+void
+ContourFile::getMainWindowScaling(float scaleOut[3]) const
+{
+   scaleOut[0] = mainWindowScaling[0];
+   scaleOut[1] = mainWindowScaling[1];
+   scaleOut[2] = mainWindowScaling[2];
+}
+
+/**
+ * Set the main window scaling
+ */
+void
+ContourFile::setMainWindowScaling(const float scaleIn[3])
+{
+   mainWindowScaling[0] = scaleIn[0];
+   mainWindowScaling[1] = scaleIn[1];
+   mainWindowScaling[2] = scaleIn[2];
+   setModified();
+}
+
 /** 
  * Read a version 1 contour file.
  */
@@ -1056,6 +1085,15 @@ ContourFile::readFileDataVersion1(QTextStream& stream) throw (FileException)
       }
       else if (tag == tagSectionSpacing) {
          sectionSpacing = tagValue.toFloat();
+      }
+      else if (tag == tagMainWindowScaling) {
+         std::vector<float> scaling;
+         StringUtilities::token(tagValue, " ", scaling);
+         if (scaling.size() >= 3) {
+            mainWindowScaling[0] = scaling[0];
+            mainWindowScaling[1] = scaling[1];
+            mainWindowScaling[2] = scaling[2];
+         }
       }
    }
    
@@ -1196,6 +1234,11 @@ ContourFile::writeFileData(QTextStream& stream, QDataStream&,
    stream << tagFileVersion << " 1\n";
    stream << tagNumberOfContours << " " << numContours << "\n";
    stream << tagSectionSpacing << " " << sectionSpacing << "\n";
+   stream << tagMainWindowScaling
+          << " " << mainWindowScaling[0]
+          << " " << mainWindowScaling[1]
+          << " " << mainWindowScaling[2]
+          << "\n";
    
    stream << tagBeginData << "\n";
    

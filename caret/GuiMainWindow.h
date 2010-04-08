@@ -66,6 +66,7 @@ class GuiBordersCreateInterpolatedDialog;
 class GuiBrainModelViewingWindow;
 class GuiColorKeyDialog;
 class GuiDataFileMathDialog;
+class GuiConnectivityDialog;
 class GuiFilesModified;
 class GuiFlattenFullHemisphereDialog;
 class GuiImageEditorWindow;
@@ -549,6 +550,9 @@ class GuiMainWindow : public QMainWindow {
       /// redraw all windows using the brain set
       void slotRedrawWindowsUsingBrainSet(BrainSet* bs);
 
+      /// display the connectivity dialog
+      void displayConnectivityDialog();
+
    public:      
       /// update the transformation matrix Editor 
       void updateTransformationMatrixEditor(const TransformationMatrix* tm = NULL);
@@ -681,7 +685,10 @@ class GuiMainWindow : public QMainWindow {
       
       /// draw border dialog
       GuiDrawBorderDialog* drawBorderDialog;
-      
+
+      /// connectivity dialog
+      GuiConnectivityDialog* connectivityDialog;
+
       /// help viewer dialog
       GuiHelpViewerWindow* helpViewerDialog;
       

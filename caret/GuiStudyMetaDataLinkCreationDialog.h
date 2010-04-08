@@ -206,10 +206,10 @@ class GuiStudyMetaDataLinkCreationDialog : public WuQDialog {
       WuQWidgetGroup* linkTableWidgetsGroup;
       
       /// page number widget group
-      WuQWidgetGroup* pageNumberWidgetGroup;
+      //WuQWidgetGroup* pageNumberWidgetGroup;
       
       /// link page number line edit
-      QLineEdit* linkPageNumberLineEdit;
+      //QLineEdit* linkPageNumberLineEdit;
       
       /// link selected number label
       QLabel* currentLinkNumberLabel;

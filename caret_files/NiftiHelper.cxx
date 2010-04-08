@@ -38,9 +38,12 @@
 
 #include <cstdio>  // used for NULL
 #include <cmath>
+#include <sstream>
 
+#include <QTextStream>
+
+#include "ByteSwapping.h"
 #include "NiftiHelper.h"
-#include "nifti1.h"
 
 /**
  * Methods below are caret unique.
@@ -346,6 +349,13 @@ NiftiHelper::getNiftiIntentionInformation(const nifti_1_header& hdr,
    QString p3;
    
    switch (hdr.intent_code) {
+     case NIFTI_INTENT_NONE:
+        niftiIntentName = "NIFTI_INTENT_NONE";
+        intentDescription = "None" ;
+        p1 = "";
+        p2 = "";
+        p3 = "";
+        break;
      case NIFTI_INTENT_CORREL:     
         niftiIntentName = "NIFTI_INTENT_CORREL";
         intentDescription = "Correlation statistic" ;
@@ -647,4 +657,577 @@ NiftiHelper::hdrIsNiftiFile(const QString& hdrFileName)
    }
    
    return false;
+}
+
+/**
+ * Get the information NIFTI header.
+ */
+void
+NiftiHelper::getNiftiHeaderInformation(const QString& fileNameIn,
+                                       nifti_1_header& niftiHeaderOut,
+                                       float qformMatrixOut[4][4],
+                                       float sformMatrixOut[4][4],
+                                       QString& headerDescriptionOut,
+                                       QString& errorMessageOut)
+{
+   headerDescriptionOut = "";
+   errorMessageOut = "";
+
+   gzFile dataFile = gzopen(fileNameIn.toAscii().constData(), "rb");
+   if (dataFile == NULL) {
+      errorMessageOut = "Unable to open " + fileNameIn + "with ZLIB for reading.";
+   }
+
+   //
+   // Read the NIFTI header and close file after reading header
+   //
+   const unsigned long headerSize = sizeof(niftiHeaderOut);
+   const unsigned long numBytesRead = gzread(dataFile, (voidp)&niftiHeaderOut, headerSize);
+   if (numBytesRead != headerSize) {
+      gzclose(dataFile);
+      std::ostringstream str;
+      str << "Tried to read "
+          << headerSize
+          << " bytes from header.\n"
+          << "Only read "
+          << numBytesRead
+          << ".";
+      errorMessageOut = str.str().c_str();
+      return;
+   }
+
+   //
+   // Make sure it is a NIFTI file
+   //
+   const int version = NIFTI_VERSION(niftiHeaderOut);
+   switch (version) {
+      case 0:
+         gzclose(dataFile);
+         errorMessageOut = fileNameIn + "Is not a NIFTI volume file.";
+         return;
+         break;
+      case 1:
+         break;
+      default:
+         {
+            gzclose(dataFile);
+            std::ostringstream str;
+            str << fileNameIn.toAscii().constData()
+                << " is an invalid NIFTI version: "
+                << version
+                << ".";
+            errorMessageOut = str.str().c_str();
+            return;
+         }
+         break;
+   }
+
+   //
+   // Do bytes need to be swapped ?
+   //
+   bool byteSwapFlag = false;
+   if (NIFTI_NEEDS_SWAP(niftiHeaderOut)) {
+      byteSwapFlag = true;
+
+      ByteSwapping::swapBytes(&niftiHeaderOut.sizeof_hdr, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.extents, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.session_error, 1);
+      ByteSwapping::swapBytes(niftiHeaderOut.dim, 8);
+      ByteSwapping::swapBytes(&niftiHeaderOut.intent_p1, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.intent_p2, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.intent_p3, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.intent_code, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.datatype, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.bitpix, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.slice_start, 1);
+      ByteSwapping::swapBytes(niftiHeaderOut.pixdim, 8);
+      ByteSwapping::swapBytes(&niftiHeaderOut.vox_offset, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.scl_slope, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.scl_inter, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.slice_end, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.cal_max, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.cal_min, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.slice_duration, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.toffset, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.glmax, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.glmin, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.qform_code, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.sform_code, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.quatern_b, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.quatern_c, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.quatern_d, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.qoffset_x, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.qoffset_y, 1);
+      ByteSwapping::swapBytes(&niftiHeaderOut.qoffset_z, 1);
+      ByteSwapping::swapBytes(niftiHeaderOut.srow_x, 4);
+      ByteSwapping::swapBytes(niftiHeaderOut.srow_y, 4);
+      ByteSwapping::swapBytes(niftiHeaderOut.srow_z, 4);
+   }
+
+
+   VolumeFile::ORIENTATION qformOrientation[3] = {
+      VolumeFile::ORIENTATION_UNKNOWN,
+      VolumeFile::ORIENTATION_UNKNOWN,
+      VolumeFile::ORIENTATION_UNKNOWN
+   };
+   VolumeFile::ORIENTATION sformOrientation[3] = {
+      VolumeFile::ORIENTATION_UNKNOWN,
+      VolumeFile::ORIENTATION_UNKNOWN,
+      VolumeFile::ORIENTATION_UNKNOWN
+   };
+
+   if (niftiHeaderOut.sform_code > 0) {
+      //
+      // NIFTI origin is in the center of the voxel
+      // so move the origin to the corner of voxel
+      //
+      //volumeRead.origin[0] -= volumeRead.spacing[0] * 0.5;
+      //volumeRead.origin[1] -= volumeRead.spacing[1] * 0.5;
+      //volumeRead.origin[2] -= volumeRead.spacing[2] * 0.5;
+
+      NiftiHelper::mat44 m;
+      m.m[0][0] = niftiHeaderOut.srow_x[0];
+      m.m[0][1] = niftiHeaderOut.srow_x[1];
+      m.m[0][2] = niftiHeaderOut.srow_x[2];
+      m.m[0][3] = niftiHeaderOut.srow_x[3];
+      m.m[1][0] = niftiHeaderOut.srow_y[0];
+      m.m[1][1] = niftiHeaderOut.srow_y[1];
+      m.m[1][2] = niftiHeaderOut.srow_y[2];
+      m.m[1][3] = niftiHeaderOut.srow_y[3];
+      m.m[2][0] = niftiHeaderOut.srow_z[0];
+      m.m[2][1] = niftiHeaderOut.srow_z[1];
+      m.m[2][2] = niftiHeaderOut.srow_z[2];
+      m.m[2][3] = niftiHeaderOut.srow_z[3];
+      m.m[3][0] = 0.0;
+      m.m[3][1] = 0.0;
+      m.m[3][2] = 0.0;
+      m.m[3][3] = 1.0;
+      NiftiHelper::mat44ToCaretOrientation(m,
+                                           sformOrientation[0],
+                                           sformOrientation[1],
+                                           sformOrientation[2]);
+
+      for (int i = 0; i < 4; i++) {
+         for (int j = 0; j < 4; j++) {
+            sformMatrixOut[i][j] = m.m[i][j];
+         }
+      }
+   }
+   if (niftiHeaderOut.qform_code > 0) {
+      float qfac = (niftiHeaderOut.pixdim[0] < 0.0) ? -1.0 : 1.0 ;  /* left-handedness? */
+      NiftiHelper::mat44 m =
+         NiftiHelper::nifti_quatern_to_mat44(niftiHeaderOut.quatern_b, niftiHeaderOut.quatern_c, niftiHeaderOut.quatern_c,
+                                             0.0, 0.0, 0.0,
+                                             1.0, 1.0, 1.0,
+                                             qfac);
+      for (int i = 0; i < 4; i++) {
+         for (int j = 0; j < 4; j++) {
+            qformMatrixOut[i][j] = m.m[i][j];
+         }
+      }
+
+      NiftiHelper::mat44ToCaretOrientation(m,
+                                           qformOrientation[0],
+                                           qformOrientation[1],
+                                           qformOrientation[2]);
+   }
+
+   int precision = 3;
+
+   QStringList keys, values;
+
+   keys << "sizeof_hdr";
+   values << QString::number(niftiHeaderOut.sizeof_hdr);
+
+   keys << "data_type";
+   QString dataTypeString;
+   for (int i = 0; i < 10; i++) {
+      if (niftiHeaderOut.data_type[i] == '\0') {
+         break;
+      }
+      dataTypeString += niftiHeaderOut.data_type[i];
+   }
+   values << dataTypeString;
+
+   keys << "db_name";
+   QString dbNameString;
+   for (int i = 0; i < 18; i++) {
+      if (niftiHeaderOut.db_name[i] == '\0') {
+         break;
+      }
+      dbNameString += niftiHeaderOut.db_name[i];
+   }
+   values << dbNameString;
+
+   keys << "extents";
+   values << QString::number(niftiHeaderOut.extents);
+
+   keys << "session_error";
+   values << QString::number(niftiHeaderOut.session_error);
+
+   keys << "regular";
+   values << QChar(niftiHeaderOut.regular);
+
+   keys << "dim_info";
+   values << QString::number(niftiHeaderOut.dim_info);
+
+   keys << "dim";
+   QString dimString;
+   for (int i = 0; i < 8; i++) {
+      dimString += QString::number(niftiHeaderOut.dim[i]) + " ";
+   }
+   values << dimString;
+
+   keys << "intent_p1";
+   values << QString::number(niftiHeaderOut.intent_p1, 'f', precision);
+
+   keys << "intent_p2";
+   values << QString::number(niftiHeaderOut.intent_p2, 'f', precision);
+
+   keys << "intent_p3";
+   values << QString::number(niftiHeaderOut.intent_p3, 'f', precision);
+
+   keys << "intent_code";
+   values << QString::number(niftiHeaderOut.intent_code);
+
+   keys << "datatype";
+   values << QString::number(niftiHeaderOut.datatype);
+
+   keys << "bitpix";
+   values << QString::number(niftiHeaderOut.bitpix);
+
+   keys << "slice_start";
+   values << QString::number(niftiHeaderOut.slice_start);
+
+   keys << "pixdim";
+   QString pixDimString;
+   for (int i = 0; i < 8; i++) {
+      pixDimString += QString::number(niftiHeaderOut.pixdim[i], 'f', precision) + " ";
+   }
+   values << pixDimString;
+
+   keys << "vox_offset";
+   values << QString::number(niftiHeaderOut.vox_offset, 'f', precision);
+
+   keys << "scl_slope";
+   values << QString::number(niftiHeaderOut.scl_slope, 'f', precision);
+
+   keys << "scl_inter";
+   values << QString::number(niftiHeaderOut.scl_inter, 'f', precision);
+
+   keys << "slice_end";
+   values << QString::number(niftiHeaderOut.slice_end);
+
+   keys << "slice_code";
+   values << QString::number(niftiHeaderOut.slice_code);
+
+   keys << "xyzt_units";
+   values << QString::number(niftiHeaderOut.xyzt_units);
+
+   keys << "cal_max";
+   values << QString::number(niftiHeaderOut.cal_max, 'f', precision);
+
+   keys << "cal_min";
+   values << QString::number(niftiHeaderOut.cal_min, 'f', precision);
+
+   keys << "slice_duration";
+   values << QString::number(niftiHeaderOut.slice_duration, 'f', precision);
+
+   keys << "toffset";
+   values << QString::number(niftiHeaderOut.toffset, 'f', precision);
+
+   keys << "glmax";
+   values << QString::number(niftiHeaderOut.glmax);
+
+   keys << "glmin";
+   values << QString::number(niftiHeaderOut.glmin);
+
+   QString description;
+   for (int i = 0; i < 80; i++) {
+      if (niftiHeaderOut.descrip[i] == '\0') {
+         break;
+      }
+      description += niftiHeaderOut.descrip[i];
+   }
+   keys << "description";
+   values << description;
+
+   QString auxFile;
+   for (int i = 0; i < 24; i++) {
+      if (niftiHeaderOut.aux_file[i] == '\0') {
+         break;
+      }
+      auxFile += niftiHeaderOut.aux_file[i];
+   }
+   keys << "aux_file";
+   values << auxFile;
+
+   keys << "qform_code";
+   values << QString::number(niftiHeaderOut.qform_code);
+
+   keys << "sform_code";
+   values << QString::number(niftiHeaderOut.sform_code);
+
+   keys << "quatern_b";
+   values << QString::number(niftiHeaderOut.quatern_b, 'f', precision);
+
+   keys << "quatern_c";
+   values << QString::number(niftiHeaderOut.quatern_c, 'f', precision);
+
+   keys << "quatern_d";
+   values << QString::number(niftiHeaderOut.quatern_d, 'f', precision);
+
+   keys << "qoffset_x";
+   values << QString::number(niftiHeaderOut.qoffset_x, 'f', precision);
+
+   keys << "qoffset_y";
+   values << QString::number(niftiHeaderOut.qoffset_y, 'f', precision);
+
+   keys << "qoffset_z";
+   values << QString::number(niftiHeaderOut.qoffset_z, 'f', precision);
+
+   QString sRowX;
+   for (int i = 0; i < 4; i++) {
+      sRowX += QString::number(niftiHeaderOut.srow_x[i], 'f', precision) + " ";
+   }
+   keys << "srow_x";
+   values << sRowX;
+
+   QString sRowY;
+   for (int i = 0; i < 4; i++) {
+      sRowY += QString::number(niftiHeaderOut.srow_y[i], 'f', precision) + " ";
+   }
+   keys << "srow_y";
+   values << sRowY;
+
+   QString sRowZ;
+   for (int i = 0; i < 4; i++) {
+      sRowZ += QString::number(niftiHeaderOut.srow_z[i], 'f', precision) + " ";
+   }
+   keys << "srow_z";
+   values << sRowZ;
+
+   QString intentName;
+   for (int i = 0; i < 16; i++) {
+      if (niftiHeaderOut.intent_name[i] == '\0') {
+         break;
+      }
+      intentName += niftiHeaderOut.intent_name[i];
+   }
+   keys << "intent_name";
+   values << intentName;
+
+   QString magic;
+   for (int i = 0; i < 3; i++) {
+      if (niftiHeaderOut.magic[i] == '\0') {
+         break;
+      }
+      magic += niftiHeaderOut.magic[i];
+   }
+   keys << "magic";
+   values << magic;
+
+   //
+   // Get key maximum length
+   //
+   int maxLength = 0;
+   for (int i = 0; i < keys.count(); i++) {
+      maxLength = std::max(maxLength, keys.at(i).length());
+   }
+
+   //
+   // Place data into header description
+   //
+   for (int i = 0; i < keys.count(); i++) {
+      headerDescriptionOut +=
+              QString("%1: %2\n").arg(keys.at(i), maxLength).arg(values.at(i));
+   }
+   headerDescriptionOut += "\n";
+
+   //
+   // Intent Information
+   //
+   QString niftiIntentCodeAndParam;
+   QString niftiIntentName;
+   NiftiHelper::getNiftiIntentionInformation(niftiHeaderOut,
+                                             niftiIntentCodeAndParam,
+                                             niftiIntentName);
+   headerDescriptionOut += ("Intent Name:      " + niftiIntentName + "\n");
+   headerDescriptionOut += ("Intent Parameters:" + niftiIntentCodeAndParam + "\n");
+   headerDescriptionOut += "\n";
+
+   //
+   // qform matrix and orientation
+   //
+   headerDescriptionOut += ("QFORM: "
+                            + NiftiHelper::getQSFormCodeAsString(niftiHeaderOut.qform_code)
+                            + "\n");
+   for (int i = 0; i < 4; i++) {
+      headerDescriptionOut += "   ";
+      for (int j = 0; j < 4; j++) {
+         headerDescriptionOut +=
+            QString::number(qformMatrixOut[i][j], 'f', precision).rightJustified(12, ' ');
+      }
+      headerDescriptionOut += "\n";
+   }
+   headerDescriptionOut += "QFORM Orientation\n";
+   for (int i = 0; i < 3; i++) {
+      headerDescriptionOut += ("   "
+            + VolumeFile::getOrientationLabel(qformOrientation[i]) + "\n");
+   }
+   headerDescriptionOut += "\n";
+
+   //
+   // sform matrix and orientation
+   //
+   headerDescriptionOut += ("SFORM: "
+                            + NiftiHelper::getQSFormCodeAsString(niftiHeaderOut.sform_code)
+                            + "\n");
+   for (int i = 0; i < 4; i++) {
+      headerDescriptionOut += "   ";
+      for (int j = 0; j < 4; j++) {
+         headerDescriptionOut +=
+            QString::number(sformMatrixOut[i][j], 'f', precision).rightJustified(12, ' ');
+      }
+      headerDescriptionOut += "\n";
+   }
+   headerDescriptionOut += "SFORM Orientation\n";
+   for (int i = 0; i < 3; i++) {
+      headerDescriptionOut += ("   "
+            + VolumeFile::getOrientationLabel(sformOrientation[i]) + "\n");
+   }
+   headerDescriptionOut += "\n";
+
+   QString dataCodeString = ("Unrecognized data type code = "
+                             + QString::number(niftiHeaderOut.datatype));
+
+   switch (niftiHeaderOut.datatype) {
+      case DT_UNKNOWN:
+         dataCodeString = "DT_UNKNOWN";
+         break;
+      case DT_BINARY:
+         dataCodeString = "DT_BINARY";
+         break;
+      case NIFTI_TYPE_UINT8:
+         dataCodeString = "NIFTI_TYPE_UINT8";
+         break;
+      case NIFTI_TYPE_INT16:
+         dataCodeString = "NIFTI_TYPE_INT16";
+         break;
+      case NIFTI_TYPE_INT32:
+         dataCodeString = "NIFTI_TYPE_INT32";
+         break;
+      case NIFTI_TYPE_FLOAT32:
+         dataCodeString = "NIFTI_TYPE_FLOAT32";
+         break;
+      case NIFTI_TYPE_COMPLEX64:
+         dataCodeString = "NIFTI_TYPE_COMPLEX64";
+         break;
+      case NIFTI_TYPE_FLOAT64:
+         dataCodeString = "NIFTI_TYPE_FLOAT64";
+         break;
+      case NIFTI_TYPE_RGB24:
+         dataCodeString = "NIFTI_TYPE_RGB24";
+         break;
+      case NIFTI_TYPE_INT8:
+         dataCodeString = "NIFTI_TYPE_INT8";
+         break;
+      case NIFTI_TYPE_UINT16:
+         dataCodeString = "NIFTI_TYPE_UINT16";
+         break;
+      case NIFTI_TYPE_UINT32:
+         dataCodeString = "NIFTI_TYPE_UINT32";
+         break;
+      case NIFTI_TYPE_INT64:
+         dataCodeString = "NIFTI_TYPE_INT64";
+         break;
+      case NIFTI_TYPE_UINT64:
+         dataCodeString = "NIFTI_TYPE_UINT64";
+         break;
+      case NIFTI_TYPE_FLOAT128:
+         dataCodeString = "NIFTI_TYPE_FLOAT128";
+         break;
+      case NIFTI_TYPE_COMPLEX128:
+         dataCodeString = "NIFTI_TYPE_COMPLEX128";
+         break;
+      case NIFTI_TYPE_COMPLEX256:
+         dataCodeString = "NIFTI_TYPE_COMPLEX256";
+         break;
+   }
+   headerDescriptionOut += ("Data Type: " + dataCodeString + "\n");
+   headerDescriptionOut += "\n";
+
+   const int spaceUnits = XYZT_TO_SPACE(niftiHeaderOut.xyzt_units);
+   QString spaceUnitString("Unrecognized space code: "
+                           + QString::number(spaceUnits));
+   switch (spaceUnits) {
+      case NIFTI_UNITS_UNKNOWN:
+         spaceUnitString = "NIFTI_UNITS_UNKNOWN";
+         break;
+      case NIFTI_UNITS_METER:
+         spaceUnitString = "NIFTI_UNITS_METER";
+         break;
+      case NIFTI_UNITS_MM:
+         spaceUnitString = "NIFTI_UNITS_MM";
+         break;
+      case NIFTI_UNITS_MICRON:
+         spaceUnitString = "NIFTI_UNITS_MICRON";
+         break;
+   }
+   headerDescriptionOut +=("Space Units: " + spaceUnitString + "\n");
+
+   const int timeUnits  = XYZT_TO_TIME(niftiHeaderOut.xyzt_units);
+   QString timeUnitString("Unrecognized time code: "
+                          + QString::number(timeUnits));
+   switch (timeUnits) {
+      case NIFTI_UNITS_UNKNOWN:
+         timeUnitString = "NIFTI_UNITS_UNKNOWN";
+         break;
+      case NIFTI_UNITS_SEC:
+         timeUnitString = "NIFTI_UNITS_SEC";
+         break;
+      case NIFTI_UNITS_MSEC:
+         timeUnitString = "NIFTI_UNITS_MSEC";
+         break;
+      case NIFTI_UNITS_USEC:
+         timeUnitString = "NIFTI_UNITS_USEC";
+         break;
+      case NIFTI_UNITS_HZ:
+         timeUnitString = "NIFTI_UNITS_HZ";
+         break;
+      case NIFTI_UNITS_PPM:
+         timeUnitString = "NIFTI_UNITS_PPM";
+         break;
+   }
+   headerDescriptionOut +=("Time Units: " + timeUnitString + "\n");
+   headerDescriptionOut += "\n";
+}
+
+/**
+ * get a string representation of the Q/S Form code.
+ */
+QString
+NiftiHelper::getQSFormCodeAsString(const int qsForm)
+{
+   QString s = "Invalid Code: " + QString::number(qsForm);
+
+   switch (qsForm) {
+      case NIFTI_XFORM_UNKNOWN:
+         s = "NIFTI_XFORM_UNKNOWN";
+         break;
+      case NIFTI_XFORM_SCANNER_ANAT:
+         s = "NIFTI_XFORM_SCANNER_ANAT";
+         break;
+      case NIFTI_XFORM_ALIGNED_ANAT:
+         s = "NIFTI_XFORM_ALIGNED_ANAT";
+         break;
+      case NIFTI_XFORM_TALAIRACH:
+         s = "NIFTI_XFORM_TALAIRACH";
+         break;
+      case NIFTI_XFORM_MNI_152:
+         s = "NIFTI_XFORM_MNI_152";
+         break;
+   }
+
+   return s;
 }

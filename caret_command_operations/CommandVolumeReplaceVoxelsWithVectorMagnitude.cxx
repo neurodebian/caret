@@ -27,7 +27,7 @@
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 /**
@@ -101,7 +101,7 @@ CommandVolumeReplaceVoxelsWithVectorMagnitude::executeCommand() throw (BrainMode
    volumeFile.readFile(inputVolumeFileName);
  
  
-   VectorFile vectorFile;
+   SureFitVectorFile vectorFile;
    vectorFile.readFile(vectorFileName);
       
    vectorFile.copyMagnitudeToVolume(&volumeFile);

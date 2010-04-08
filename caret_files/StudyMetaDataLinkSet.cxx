@@ -36,6 +36,8 @@
 #include "StudyMetaDataLinkSet.h"
 #undef __STUDY_META_DATA_LINK_SET_MAIN__
 
+#include "XmlGenericWriter.h"
+
 /**
  * constructor.
  */
@@ -236,3 +238,17 @@ StudyMetaDataLinkSet::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(linkSetElement);
 }
 
+/**
+ * called to write XML.
+ */
+void
+StudyMetaDataLinkSet::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement(tagStudyMetaDataLinkSet);
+   const int num = getNumberOfStudyMetaDataLinks();
+   for (int i = 0; i < num; i++) {
+      StudyMetaDataLink smdl = getStudyMetaDataLink(i);
+      smdl.writeXML(xmlWriter);
+   }
+   xmlWriter.writeEndElement();
+}

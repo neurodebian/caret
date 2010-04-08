@@ -27,7 +27,7 @@
 #include "FileFilters.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
-#include "VectorFile.h"
+#include "SureFitVectorFile.h"
 #include "VolumeFile.h"
 
 /**
@@ -94,7 +94,7 @@ CommandVolumeConvertVectorToVolume::executeCommand() throw (BrainModelAlgorithmE
    splitOutputVolumeNameIntoNameAndLabel(outputVolumeFileName, 
                                          outputVolumeFileLabel);
                                             
-   VectorFile vectorFile;
+   SureFitVectorFile vectorFile;
    vectorFile.readFile(vectorFileName);
 
    VolumeFile volumeFile(vectorFile);

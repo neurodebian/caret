@@ -29,10 +29,12 @@
 
 #include "AbstractFile.h"
 
+class ColorFile;
 class FociProjectionFile;
 class FociSearch;
 class FociSearchSet;
 class StudyMetaDataFile;
+class XmlGenericWriter;
 
 /// class for saving foci searches
 class FociSearchFile : public AbstractFile {
@@ -87,6 +89,9 @@ class FociSearchFile : public AbstractFile {
       void insertFociSearchSet(FociSearchSet* fs,
                                const int afterIndex);
                             
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
+
    protected:
       // copy helper
       void copyHelper(const FociSearchFile& fs);
@@ -173,6 +178,9 @@ class FociSearchSet {
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement);
   
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
    protected:
       // copy helper
       void copyHelper(const FociSearchSet& fs);
@@ -355,6 +363,9 @@ class FociSearch {
       void writeXML(QDomDocument& xmlDoc,
                     QDomElement&  parentElement);
   
+      // called to write XML
+      void writeXML(XmlGenericWriter& xmlWriter) const throw (FileException);
+
    protected:
       // copy helper
       void copyHelper(const FociSearch& fs);

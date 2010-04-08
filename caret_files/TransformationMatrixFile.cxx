@@ -742,7 +742,7 @@ TransformationMatrix::transpose()
  * Multiply by the TransformationMatrix
  */
 void
-TransformationMatrix::multiply(const TransformationMatrix& tm)
+TransformationMatrix::preMultiply(const TransformationMatrix& tm)
 {
    double matrixOut[4][4];
    for (int row = 0; row < 4; row++) {
@@ -762,7 +762,19 @@ TransformationMatrix::multiply(const TransformationMatrix& tm)
                            + tm.matrix[row][1] * matrix[1][3]
                            + tm.matrix[row][2] * matrix[2][3]
                            + tm.matrix[row][3] * matrix[3][3];
+   }
+   setMatrix(matrixOut);
+   setMatrixFileModified();
+}
+
 /*
+ * Post-Multiply by the TransformationMatrix
+ */
+void
+TransformationMatrix::postMultiply(const TransformationMatrix& tm)
+{
+   double matrixOut[4][4];
+   for (int row = 0; row < 4; row++) {
          matrixOut[row][0] = matrix[row][0] * tm.matrix[0][0]
                            + matrix[row][1] * tm.matrix[1][0]
                            + matrix[row][2] * tm.matrix[2][0]
@@ -779,7 +791,6 @@ TransformationMatrix::multiply(const TransformationMatrix& tm)
                            + matrix[row][1] * tm.matrix[1][3]
                            + matrix[row][2] * tm.matrix[2][3]
                            + matrix[row][3] * tm.matrix[3][3];
-*/
    }
    setMatrix(matrixOut);
    setMatrixFileModified();
@@ -1020,7 +1031,7 @@ TransformationMatrix::scale(const double scaleX,
    m.matrix[0][0] = scaleX;
    m.matrix[1][1] = scaleY;
    m.matrix[2][2] = scaleZ;
-   multiply(m);
+   preMultiply(m);
    setMatrixFileModified();
 }
 
@@ -1070,7 +1081,7 @@ TransformationMatrix::translate(const double translateX,
    m.matrix[0][3] = translateX;
    m.matrix[1][3] = translateY;
    m.matrix[2][3] = translateZ;
-   multiply(m);
+   preMultiply(m);
    setMatrixFileModified();
 }
 

@@ -148,6 +148,8 @@ BrainModelSurfaceSmoothing::BrainModelSurfaceSmoothing(
             }
          }
       }
+
+      //std::cout << "LandmarkScale=" << landmarkScale << std::endl;
       
       //
       // Special stuff for landmark neighbor constrained smoothing
@@ -710,6 +712,17 @@ BrainModelSurfaceSmoothing::run()
                            neighAvg[0] += li[0] + landmarkScale * p[0];
                            neighAvg[1] += li[1] + landmarkScale * p[1];
                            neighAvg[2] += li[2] + landmarkScale * p[2];
+
+                           //std::cout << "Node "
+                           //          << i
+                           //          << ": p["
+                           //          << p[0]
+                           //          << ","
+                           //          << p[1]
+                           //          << ","
+                           //          << p[2]
+                           //          << "]"
+                           //          << std::endl;
                         }
                      }
                      

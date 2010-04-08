@@ -39,6 +39,7 @@
 #include "SpecFile.h"
 #include "StudyMetaDataFile.h"
 #include "StudyMetaDataLinkSet.h"
+#include "XmlGenericWriter.h"
 
 /**
  * constructor.
@@ -406,6 +407,56 @@ FociSearchFile::writeFileData(QTextStream& /*stream*/,
    }
 }
 
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+FociSearchFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException)
+{
+   const int numSearchSets = getNumberOfFociSearchSets();
+   if (numSearchSets <= 0) {
+      throw FileException("Contains no foci searches");
+   }
+
+   QFile file(filenameIn);
+   if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+      if (file.exists()) {
+         throw FileException("file exists and overwrite is prohibited.");
+      }
+   }
+   if (file.open(QFile::WriteOnly) == false) {
+      throw FileException("Unable to open for writing");
+   }
+   QTextStream stream(&file);
+
+   XmlGenericWriter xmlWriter(stream);
+   xmlWriter.writeStartDocument();
+
+   XmlGenericWriterAttributes attributes;
+   attributes.addAttribute("CaretFileType", "FociSearch");
+   attributes.addAttribute("xmlns:xsi",
+                           "http://www.w3.org/2001/XMLSchema-instance");
+   attributes.addAttribute("xsi:noNamespaceSchemaLocation",
+                           "http://brainvis.wustl.edu/caret6/xml_schemas/FociSearchFileSchema.xsd");
+   attributes.addAttribute("Version", "6.0");
+   xmlWriter.writeStartElement("CaretDataFile", attributes);
+
+   this->writeHeaderXMLWriter(xmlWriter);
+
+   for (int i = 0; i < numSearchSets; i++) {
+      FociSearchSet* fss = getFociSearchSet(i);
+      fss->writeXML(xmlWriter);
+   }
+
+   xmlWriter.writeEndElement();
+
+   xmlWriter.writeEndDocument();
+
+   file.close();
+
+   return filenameIn;
+}
+
 
 //============================================================================
 
@@ -659,6 +710,22 @@ FociSearchSet::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(searchSetElement);
 }
 
+/**
+ * called to write XML.
+ */
+void
+FociSearchSet::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement(tagFociSearchSet);
+   xmlWriter.writeElementCData(tagFociSearchSetName, name);
+   const int numSearches = getNumberOfFociSearches();
+   for (int i = 0; i < numSearches; i++) {
+      const FociSearch* fs = getFociSearch(i);
+      fs->writeXML(xmlWriter);
+   }
+   xmlWriter.writeEndElement();
+}
+
 //============================================================================
 
 /**
@@ -863,6 +930,21 @@ FociSearch::writeXML(QDomDocument& xmlDoc,
    parentElement.appendChild(searchElement);
 }
 
+/**
+ * called to write XML.
+ */
+void
+FociSearch::writeXML(XmlGenericWriter& xmlWriter) const throw (FileException)
+{
+   xmlWriter.writeStartElement(tagFociSearch);
+   xmlWriter.writeElementCData(tagFociSearchLogic, convertLogicTypeToName(logic));
+   xmlWriter.writeElementCData(tagFociSearchAttribute,
+                                   convertAttributeTypeToName(attribute));
+   xmlWriter.writeElementCData(tagFociSearchMatching,
+                                   convertMatchingTypeToName(matching));
+   xmlWriter.writeElementCData(tagFociSearchText, searchText);
+   xmlWriter.writeEndElement();
+}
 /**
  * get types and names for logic.
  */

@@ -74,6 +74,9 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
             /// get thresholds
             void getThresholds(float& threshMinOut, float& threshMaxOut) const;
             
+            /// get the maximum Y-Value
+            float getMaximumY(const BrainModelSurface* bms) const;
+            
             /// get the center of gravity using the surface (does not overwrite cluster's cog)
             void getCenterOfGravityForSurface(const BrainModelSurface* bms,
                                               float cog[3]) const;

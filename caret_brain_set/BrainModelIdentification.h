@@ -334,7 +334,7 @@ class BrainModelIdentification : public QObject {
       bool getDisplayStudyPageReferenceStatisticDescriptionInformation() const { return idFilter.displayStudyPageReferenceStatisticDescriptionInformation; }
             
       /// study page number information should be displayed
-      bool getDisplayStudyPageNumberInformation() const { return idFilter.displayStudyPageNumberInformation; }
+      //bool getDisplayStudyPageNumberInformation() const { return idFilter.displayStudyPageNumberInformation; }
             
       /// find out if green symbols should be displayed on surface
       bool getDisplayIDSymbol() const { return displayIDSymbol; }
@@ -585,7 +585,7 @@ class BrainModelIdentification : public QObject {
       void setDisplayStudyPageReferenceStatisticDescriptionInformation(const bool displayIt) { idFilter.displayStudyPageReferenceStatisticDescriptionInformation = displayIt; }
             
       /// study page number information should be displayed
-      void setDisplayStudyPageNumberInformation(const bool displayIt) { idFilter.displayStudyPageNumberInformation = displayIt; }
+      //void setDisplayStudyPageNumberInformation(const bool displayIt) { idFilter.displayStudyPageNumberInformation = displayIt; }
             
       /// set green symbols should be displayed on surface
       void setDisplayIDSymbol(const bool displayIt) { displayIDSymbol = displayIt; }
@@ -823,7 +823,7 @@ class BrainModelIdentification : public QObject {
             bool displayStudyPageReferenceStatisticDescriptionInformation;
             
             /// study page number information should be displayed
-            bool displayStudyPageNumberInformation;
+            //bool displayStudyPageNumberInformation;
             
             /// foci information should be displayed
             bool displayFociInformation;

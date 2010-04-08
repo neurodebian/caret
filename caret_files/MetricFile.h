@@ -112,7 +112,15 @@ class MetricFile : public GiftiNodeDataFile {
          /// concatenate columns with exact matching name
          CONCATENATE_COLUMNS_MODE_NAME_EXACT
       };
-      
+
+      /// coordinate difference mode
+      enum COORDINATE_DIFFERENCE_MODE {
+         /// absolute difference
+         COORDINATE_DIFFERENCE_MODE_ABSOLUTE,
+         /// signed difference
+         COORDINATE_DIFFERENCE_MODE_SIGNED
+      };
+
       // constructor
       MetricFile(const QString& descriptiveName = "MetricFile",
                  const QString& defaultDataArrayCategoryIn = GiftiCommon::intentUnknown,
@@ -156,7 +164,8 @@ class MetricFile : public GiftiNodeDataFile {
       virtual void removeDataArray(const int arrayIndex);
       
       /// add a column that is distance between nodes in two coordinate files (c1 - c2)
-      void addColumnOfCoordinateDifference(const CoordinateFile* c1,
+      void addColumnOfCoordinateDifference(const COORDINATE_DIFFERENCE_MODE diffMode,
+                                           const CoordinateFile* c1,
                                            const CoordinateFile* c2,
                                            const TopologyFile* topologyFile,
                                            const int column,
@@ -334,7 +343,7 @@ class MetricFile : public GiftiNodeDataFile {
       void getColumnThresholding(const int columnNumber,
                                  float& negThreshOut,
                                  float& posThreshOut) const;
-                                 
+
       /// set thresholding for a column
       void setColumnThresholding(const int columnNumber,
                                  const float negThreshIn,
@@ -357,6 +366,17 @@ class MetricFile : public GiftiNodeDataFile {
                                       int& numNegExceeded,
                                       int& numPosExceeded) const;
                                       
+      /// get data column min/max for the specified percentages
+      void getMinMaxValuesFromPercentages(const int columnNumber,
+                                          const float negMaxPct,
+                                          const float negMinPct,
+                                          const float posMinPct,
+                                          const float posMaxPct,
+                                          float& negMaxValueOut,
+                                          float& negMinValueOut,
+                                          float& posMinValueOut,
+                                          float& posMaxValueOut);
+
       /// get a metric for specifed node and column
       float getValue(const int nodeNumber, const int columnNumber) const; 
 
@@ -449,6 +469,9 @@ class MetricFile : public GiftiNodeDataFile {
       void importFreeSurferFunctionalFile(const int numNodes, 
                                           const QString& filename,
                                           const FILE_FORMAT fileFormat = AbstractFile::FILE_FORMAT_ASCII) throw (FileException);
+
+      /// write the file's memory in caret6 format to the specified name
+      virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
    protected:
       // copy helper used by assignment operator and copy constructor

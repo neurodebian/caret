@@ -120,10 +120,10 @@ class BrainModel {
       void getScaling(const int viewNumber, float scaleOut[3]) const;
             
       /// set the model's scaling
-      void setScaling(const int viewNumber, const float scaleIn[3]);
+      virtual void setScaling(const int viewNumber, const float scaleIn[3]);
             
       /// set the model's scaling
-      void setScaling(const int viewNumber, const float sx, const float sy, const float sz);
+      virtual void setScaling(const int viewNumber, const float sx, const float sy, const float sz);
             
       /// get the model's translation
       void getTranslation(const int viewNumber, float translationOut[3]) const;

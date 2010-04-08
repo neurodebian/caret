@@ -624,6 +624,7 @@ GuiStudyMetaDataFileEditorDialog::slotEnableDisablePushButtons()
    tableAddPushButton->setEnabled(false);
    pageReferenceAddPushButton->setEnabled(false);
    provenanceAddPushButton->setEnabled(false);
+   studyPubMedIDFetchPushButton->setEnabled(false);
    
    StudyMetaDataFile* smdf = theMainWindow->getBrainSet()->getStudyMetaDataFile();
    const int numStudies = smdf->getNumberOfStudyMetaData();
@@ -645,6 +646,7 @@ GuiStudyMetaDataFileEditorDialog::slotEnableDisablePushButtons()
       tableAddPushButton->setEnabled(true);
       pageReferenceAddPushButton->setEnabled(true);
       provenanceAddPushButton->setEnabled(true);
+      studyPubMedIDFetchPushButton->setEnabled(true);
    }
 }
       
@@ -858,7 +860,7 @@ GuiStudyMetaDataFileEditorDialog::createStudySelectionButtons()
    QObject::connect(tableAddPushButton, SIGNAL(clicked()),
                     this, SLOT(slotTableAddPushButton()));
            
-   QPushButton* studyPubMedIDFetchPushButton = new QPushButton("Fetch from PubMed...");
+   studyPubMedIDFetchPushButton = new QPushButton("Fetch from PubMed...");
    studyPubMedIDFetchPushButton->setAutoDefault(false);
    studyPubMedIDFetchPushButton->setToolTip("After entering the PubMed ID,\n"
                                        "press this button to retrieve\n"

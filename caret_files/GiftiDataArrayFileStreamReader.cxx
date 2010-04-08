@@ -34,6 +34,7 @@
 #include "GiftiLabelTable.h"
 #include "GiftiMatrix.h"
 #include "GiftiMetaData.h"
+#include "StringUtilities.h"
 
 /**
  * constructor.
@@ -251,6 +252,30 @@ GiftiDataArrayFileStreamReader::readLabelTable(GiftiLabelTable* labelTable)
       if (isStartElement()) {
          if (name() == GiftiCommon::tagLabel) {
             const QString indexString = attributes().value(GiftiCommon::attIndex).toString();
+
+            float labelRed, labelGreen, labelBlue, labelAlpha;
+            GiftiLabelTable::getDefaultColorFloat(labelRed,
+                                                  labelGreen,
+                                                  labelBlue,
+                                                  labelAlpha);
+            labelAlpha = 0.0;
+            const QString redString = attributes().value(GiftiCommon::attRed).toString();
+            if (redString.isEmpty() == false) {
+               labelRed = StringUtilities::toFloat(redString);
+            }
+            const QString greenString = attributes().value(GiftiCommon::attGreen).toString();
+            if (greenString.isEmpty() == false) {
+               labelGreen = StringUtilities::toFloat(greenString);
+            }
+            const QString blueString = attributes().value(GiftiCommon::attBlue).toString();
+            if (blueString.isEmpty() == false) {
+               labelBlue = StringUtilities::toFloat(blueString);
+            }
+            const QString alphaString = attributes().value(GiftiCommon::attAlpha).toString();
+            if (alphaString.isEmpty() == false) {
+               labelAlpha = StringUtilities::toFloat(alphaString);
+            }
+
             const QString name = readElementText();
             
             bool valid = false;
@@ -258,6 +283,7 @@ GiftiDataArrayFileStreamReader::readLabelTable(GiftiLabelTable* labelTable)
             if (valid) {
                if (indx >= 0) {
                   labelTable->setLabel(indx, name);
+                  labelTable->setColorFloat(indx, labelRed, labelGreen, labelBlue, labelAlpha);
                }
             }
          }
@@ -320,6 +346,7 @@ GiftiDataArrayFileStreamReader::readDataArray()
                      + encodingName);
       return;
    }
+   bool externalDataFlag = (encodingForReadingArrayData == GiftiDataArray::ENCODING_EXTERNAL_FILE_BINARY);
     
    //
    // External File Offset
@@ -394,6 +421,7 @@ GiftiDataArrayFileStreamReader::readDataArray()
    //
    // Loop through the file
    //
+   bool dataWasReadFlag = false;
    while (atEnd() == false) {
       //
       // Read next element
@@ -408,6 +436,40 @@ GiftiDataArrayFileStreamReader::readDataArray()
          // If end of data array, stop reading
          //
          if (name() == GiftiCommon::tagDataArray) {
+            if (dataWasReadFlag == false) {
+               //
+               // If we get here, the file had external data without
+               // a set of <Data></Data> tags
+               //
+               if (externalDataFlag) {
+                  try {
+                     //
+                     // Read the data
+                     //
+                     dataWasReadFlag = true;
+                     QString text = "";
+                     dataArray->readFromText(text,
+                                             endianName,
+                                             arraySubscriptingOrderForReadingArrayData,
+                                             dataTypeForReadingArrayData,
+                                             dimensionsForReadingArrayData,
+                                             encodingForReadingArrayData,
+                                             externalFileName,
+                                             externalFileOffsetForReadingData);
+
+                     //
+                     // Add GIFTI array to GIFTI file
+                     //
+                     giftiFile->addDataArray(dataArray);
+                  }
+                  catch (FileException& e) {
+                     delete dataArray;
+                     raiseError(e.whatQString());
+                     return;
+                  }
+
+               }
+            }
             break;
          }
       }
@@ -426,6 +488,7 @@ GiftiDataArrayFileStreamReader::readDataArray()
                //
                // Read the data
                //
+               dataWasReadFlag = true;
                QString text = readElementText();
                dataArray->readFromText(text,
                                        endianName,

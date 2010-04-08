@@ -103,7 +103,19 @@ class GiftiCommon {
       
       /// attribute for reading/writing GIFTI files
       static const QString attIndex;
-                                   
+
+      /// attribute for reading/writing GIFTI files
+      static const QString attRed;
+
+      /// attribute for reading/writing GIFTI files
+      static const QString attGreen;
+
+      /// attribute for reading/writing GIFTI files
+      static const QString attBlue;
+
+      /// attribute for reading/writing GIFTI files
+      static const QString attAlpha;
+
       /// attribute for reading/writing GIFTI files
       //static const QString attDataLocation;
       
@@ -220,7 +232,10 @@ class GiftiCommon {
       
       /// intent for triangles
       static const QString intentTopologyTriangles;
-      
+
+      /// intent for vectors
+      static const QString intentVectors;
+
       /// metadata unique id name
       static const QString metaDataNameUniqueID;
       
@@ -327,6 +342,10 @@ class GiftiCommon {
    const QString GiftiCommon::attNumberOfDataArrays = "NumberOfDataArrays";
    const QString GiftiCommon::attArraySubscriptingOrder = "ArrayIndexingOrder";
    const QString GiftiCommon::attIndex = "Index";
+   const QString GiftiCommon::attRed = "Red";
+   const QString GiftiCommon::attGreen = "Green";
+   const QString GiftiCommon::attBlue = "Blue";
+   const QString GiftiCommon::attAlpha = "Alpha";
    const QString GiftiCommon::attIntent = "Intent";
    //const QString GiftiCommon::attIntent = "Category";
    //const QString GiftiCommon::attDataLocation = "DataLocation";
@@ -370,7 +389,8 @@ class GiftiCommon {
    const QString GiftiCommon::intentShape = "NIFTI_INTENT_SHAPE";
    const QString GiftiCommon::intentTensors = "NIFTI_INTENT_GENMATRIX";
    const QString GiftiCommon::intentTopologyTriangles = "NIFTI_INTENT_TRIANGLE";
-
+   const QString GiftiCommon::intentVectors = "NIFTI_INTENT_VECTOR";
+   
    const QString GiftiCommon::metaDataNameUniqueID = "UniqueID";
    
    const QString GiftiCommon::metaDataNameTopologicalType = "TopologicalType";

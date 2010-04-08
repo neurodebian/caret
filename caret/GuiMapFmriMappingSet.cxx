@@ -27,6 +27,7 @@
 #include <QDateTime>
 
 #include "BrainModelSurface.h"
+#include "DateAndTime.h"
 #include "FileUtilities.h"
 #define __GUI_MAP_FMRI_MAPPING_SET_MAIN__
 #include "GuiMapFmriMappingSet.h"
@@ -175,8 +176,8 @@ GuiMapFmriMappingSet::initializeMetricFile(const std::vector<GuiMapFmriVolume*>&
    //
    // Initialize the name of the metric file
    //
-   QDateTime dt = QDateTime::currentDateTime();
-   const QString dts = dt.toString("dd_MMM_yyyy_hh_mm_ss");
+   //QDateTime dt = QDateTime::currentDateTime();
+   const QString dts = DateAndTime::getDateAndTimeForNaming(); //dt.toString("dd_MMM_yyyy_hh_mm_ss");
  
    std::ostringstream str;
    str << "map_data_"

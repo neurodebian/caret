@@ -24,11 +24,11 @@
 /*LICENSE_END*/
 
 #include <QGlobalStatic>
-#include <QDateTime>
 
 #ifdef Q_OS_WIN32
 #define NOMINMAX
 #endif
+#include <QTime>
 
 #include <iostream>
 #include <limits>

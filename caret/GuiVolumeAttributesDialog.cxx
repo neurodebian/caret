@@ -30,7 +30,6 @@
 
 #include <QApplication>
 #include <QComboBox>
-#include <QDateTime>
 #include "WuQFileDialog.h"
 #include <QGridLayout>
 #include <QGroupBox>
@@ -133,7 +132,7 @@ GuiVolumeAttributesDialog::GuiVolumeAttributesDialog(QWidget* parent,
    // create the alignment page
    //
    createAlignmentPage();
-                                 
+                               
    //
    // create the coordinates page
    //

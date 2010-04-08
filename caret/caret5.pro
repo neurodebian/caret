@@ -196,6 +196,7 @@ HEADERS += global_variables.h \
 	   GuiColorSelectionDialog.h \
       GuiCommaSeparatedValueFileEditor.h \
 	   GuiCommunicatorClientConnectDialog.h \
+      GuiConnectivityDialog.h \
 	   GuiContourAlignmentDialog.h \
 	   GuiContourDrawDialog.h \
 	   GuiContourReconstructionDialog.h \
@@ -329,6 +330,7 @@ HEADERS += global_variables.h \
 	   GuiTransformationMatrixDialog.h \
       GuiTransformationMatrixSelectionControl.h \
 	   GuiUserViewSaveDialog.h \
+      GuiVectorFileComboBox.h \
       GuiVocabularyFileEditorDialog.h \
 	   GuiVolumeAttributesDialog.h \
       GuiVolumeBiasCorrectionDialog.h \
@@ -395,6 +397,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiColorSelectionDialog.cxx \
       GuiCommaSeparatedValueFileEditor.cxx \
 	   GuiCommunicatorClientConnectDialog.cxx \
+      GuiConnectivityDialog.cxx \
 	   GuiContourAlignmentDialog.cxx \
 	   GuiContourDrawDialog.cxx \
 	   GuiContourReconstructionDialog.cxx \
@@ -528,6 +531,7 @@ SOURCES += CommunicatorClientAFNI.cxx \
 	   GuiTransformationMatrixDialog.cxx \
       GuiTransformationMatrixSelectionControl.cxx \
 	   GuiUserViewSaveDialog.cxx \
+      GuiVectorFileComboBox.cxx \
       GuiVocabularyFileEditorDialog.cxx \
 	   GuiVolumeAttributesDialog.cxx \
       GuiVolumeBiasCorrectionDialog.cxx \

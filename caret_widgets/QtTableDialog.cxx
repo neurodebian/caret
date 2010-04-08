@@ -14,10 +14,10 @@
  *  CARET is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *  GNU General Public License for more detailsx.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with CARET; if not, write to the Free Software
+ *  along with CARET; if not, write to the Free Softwarexx
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
@@ -46,11 +46,11 @@
 /**
  * constructor.
  */
-QtTableDialog::QtTableDialog(QWidget* parent, 
+QtTableDialog::QtTableDialog(QWidget* parentWidget,
                              const QString& title,
                              const StringTable& dataTable,
                              const bool deleteMeWhenClosed)
-   : WuQDialog(parent)  
+   : WuQDialog(parentWidget)
 {
    if (deleteMeWhenClosed) {
       setAttribute(Qt::WA_DeleteOnClose);
