@@ -24,5 +24,5 @@ LD_LIBRARY_PATH=/usr/lib/caret/lib/:/usr/lib/qt4/plugins/imageformats \
 CARET5_HOME=/usr/share/caret \
 CARET_WEB_BROWSER=/etc/alternatives/x-www-browser \
 CARET_ATLAS_DIRECTORIES=/usr/share/caret/data_files/fmri_mapping_files \
-exec /usr/lib/caret/bin/${0##*/} $@
+/usr/lib/caret/bin/${0##*/} "$@"
 
