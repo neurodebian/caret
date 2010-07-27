@@ -102,7 +102,7 @@ class GiftiCommon {
       static const QString attArraySubscriptingOrder;
       
       /// attribute for reading/writing GIFTI files
-      static const QString attIndex;
+      static const QString attKey;
 
       /// attribute for reading/writing GIFTI files
       static const QString attRed;
@@ -341,7 +341,7 @@ class GiftiCommon {
    const QString GiftiCommon::attVersion = "Version";
    const QString GiftiCommon::attNumberOfDataArrays = "NumberOfDataArrays";
    const QString GiftiCommon::attArraySubscriptingOrder = "ArrayIndexingOrder";
-   const QString GiftiCommon::attIndex = "Index";
+   const QString GiftiCommon::attKey = "Key";
    const QString GiftiCommon::attRed = "Red";
    const QString GiftiCommon::attGreen = "Green";
    const QString GiftiCommon::attBlue = "Blue";

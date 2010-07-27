@@ -2693,6 +2693,24 @@ SpecFile::Entry::prependPath(const QString& path,
 }
 
 /**
+ * Get all files (excluding data files) to input vector.
+ */
+void
+SpecFile::Entry::getAllFilesNoDataFile(std::vector<QString>& allFiles)
+{
+   allFiles.clear();
+
+   for (unsigned int i = 0; i < files.size(); i++) {
+      QString name = files[i].filename;
+      if (name.isEmpty() == false) {
+         if (name != ".") {
+            allFiles.push_back(name);
+         }
+      }
+   }
+}
+
+/**
  * add files to input vector.
  */
 void 
@@ -2703,7 +2721,7 @@ SpecFile::Entry::getAllFiles(std::vector<QString>& allFiles)
    for (unsigned int i = 0; i < files.size(); i++) {
       allFiles.push_back(files[i].filename);
       if (files[i].dataFileName.isEmpty() == false) {
-         if (files[i].dataFileName.isEmpty() == false) {
+         if (files[i].dataFileName != ".") {
             allFiles.push_back(files[i].dataFileName);
          }
       }

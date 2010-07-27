@@ -408,7 +408,7 @@ void
 CommandConvertSpecFileToCaret6::readColorFiles(SpecFile& sf)
 {
    std::vector<QString> areaColorFileNames;
-   sf.areaColorFile.getAllFiles(areaColorFileNames);
+   sf.areaColorFile.getAllFilesNoDataFile(areaColorFileNames);
    for (unsigned int i = 0; i < areaColorFileNames.size(); i++) {
       try {
          AreaColorFile acf;
@@ -421,7 +421,7 @@ CommandConvertSpecFileToCaret6::readColorFiles(SpecFile& sf)
    }
 
    std::vector<QString> borderColorFileNames;
-   sf.borderColorFile.getAllFiles(borderColorFileNames);
+   sf.borderColorFile.getAllFilesNoDataFile(borderColorFileNames);
    for (unsigned int i = 0; i < borderColorFileNames.size(); i++) {
       try {
          BorderColorFile bcf;
@@ -434,7 +434,7 @@ CommandConvertSpecFileToCaret6::readColorFiles(SpecFile& sf)
    }
 
    std::vector<QString> fociColorFileNames;
-   sf.fociColorFile.getAllFiles(fociColorFileNames);
+   sf.fociColorFile.getAllFilesNoDataFile(fociColorFileNames);
    for (unsigned int i = 0; i < fociColorFileNames.size(); i++) {
       try {
          FociColorFile fcf;

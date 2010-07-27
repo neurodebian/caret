@@ -44,6 +44,7 @@ class BrainModelSurfaceMetricSmoothing : public BrainModelAlgorithm {
          SMOOTH_ALGORITHM_DILATE,
          SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM,
          SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN,
+         SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN,
          SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS,
          SMOOTH_ALGORITHM_NONE
       };
@@ -64,7 +65,8 @@ class BrainModelSurfaceMetricSmoothing : public BrainModelAlgorithm {
                                        const float gaussNormAboveCutoffIn,
                                        const float gaussSigmaNormIn,
                                        const float gaussSigmaTangIn,
-                                       const float gaussTangentCutoffIn);
+                                       const float gaussTangentCutoffIn,
+                                       const float geodesicGaussSigmaIn); // = 2.0f);
       
       /// Destructor
       ~BrainModelSurfaceMetricSmoothing();
@@ -87,7 +89,8 @@ class BrainModelSurfaceMetricSmoothing : public BrainModelAlgorithm {
             NeighborInfo(const CoordinateFile* cf,
                          const int myNodeNumber,
                          const std::vector<int>& neighborsIn,
-                         const float maxDistanceCutoff);
+                         const float maxDistanceCutoff,
+                         const std::vector<float>* distances = NULL);
             
             /// Destructor
             ~NeighborInfo();
@@ -152,6 +155,9 @@ class BrainModelSurfaceMetricSmoothing : public BrainModelAlgorithm {
       
       /// desired full width half maximum
       float desiredFullWidthHalfMaximum;
+      
+      /// parameter for geodesic gaussian
+      float geodesicGaussSigma;
       
       /// full width half maximum smoothing results description
       QString fullWidthHalfMaximumSmoothingResultsDescription;

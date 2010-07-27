@@ -24,6 +24,8 @@
 /*LICENSE_END*/
 
 #include <iostream>
+
+#include "PaintFile.h"
 #include <set>
 #include <sstream>
 
@@ -38,6 +40,9 @@
 #include "GiftiDataArrayFileStreamReader.h"
 #include "GiftiDataArrayFileSaxReader.h"
 
+#include "MetricFile.h"
+#include "SurfaceShapeFile.h"
+#include "PaintFile.h"
 #include "StringUtilities.h"
 
 /**
@@ -167,7 +172,11 @@ GiftiDataArrayFile::copyHelperGiftiDataArrayFile(const GiftiDataArrayFile& nndf)
    defaultDataArrayIntent = nndf.defaultDataArrayIntent;
    dataAreIndicesIntoLabelTable = nndf.dataAreIndicesIntoLabelTable;
    numberOfNodesForSparseNodeIndexFile = nndf.numberOfNodesForSparseNodeIndexFile;
-   
+
+   int numArrays = this->getNumberOfDataArrays();
+   for (int i = (numArrays - 1); i >= 0; i--) {
+      this->removeDataArray(i);
+   }
    for (unsigned int i = 0; i < nndf.dataArrays.size(); i++) {
       addDataArray(new GiftiDataArray(*nndf.dataArrays[i]));
    }
@@ -731,7 +740,8 @@ GiftiDataArrayFile::appendLabelDataHelper(const GiftiDataArrayFile& naf,
                   oldIndicesToNewIndicesTable[indx] = -2;
                }
                else {
-                  std::cout << "WARNING Invalid label index set to zero: " << indx << std::endl;
+                  std::cout << "WARNING Invalid label index set to zero: " << indx 
+                            << " of " << numLabelsNew << " labels." << std::endl;
                   dataPtr[i] = 0;
                }
             }
@@ -841,6 +851,18 @@ GiftiDataArrayFile::readFileData(QFile& file,
    
    if (getReadMetaDataOnlyFlag() == false) {
       procesNiftiIntentNodeIndexArrays();
+   }
+
+   //
+   // Force metric, paint, shape data arrays to float
+   //
+   if ((dynamic_cast<MetricFile*>(this) != NULL) ||
+       (dynamic_cast<PaintFile*>(this) != NULL) ||
+       (dynamic_cast<SurfaceShapeFile*>(this) != NULL)) {
+      int numDataArrays = this->getNumberOfDataArrays();
+      for (int i = 0; i < numDataArrays; i++) {
+         this->getDataArray(i)->convertToDataType(this->defaultDataType);
+      }
    }
 
    this->validateDataArrays();
@@ -985,7 +1007,20 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
    const GiftiMetaData::MetaDataContainer* data = metaData.getMetaData();
    for (GiftiMetaData::ConstMetaDataIterator iter = data->begin(); iter != data->end(); iter++) {
       setHeaderTag(iter->first, iter->second);
-   }   
+   }
+
+   //
+   // Some GIFTI Label files have just a few labels with very large indices
+   // which causes many empty indices in the LabelTable.  Cleaning up
+   // the label table compacts these into sequential indices starting
+   // at zero.
+   //
+   //PaintFile* pf = dynamic_cast<PaintFile*>(this);
+   //if (pf != NULL) {
+   //   if (pf->getNumberOfPaintNames() > 1000) {
+   //      pf->cleanUpPaintNames();
+   //   }
+   //}
 }
 
 /*

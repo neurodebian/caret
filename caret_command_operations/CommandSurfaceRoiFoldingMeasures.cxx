@@ -61,6 +61,7 @@ CommandSurfaceRoiFoldingMeasures::getScriptBuilderParameters(ScriptBuilderParame
    paramsOut.addFile("Input Topology File", FileFilters::getTopologyGenericFileFilter());
    paramsOut.addFile("Output Text File", FileFilters::getTextFileFilter(), "Folding.txt");
    paramsOut.addFile("Region Of Interest File", FileFilters::getRegionOfInterestFileFilter(), "", "-roi");
+   paramsOut.addFile("Output Metric Measurements File", FileFilters::getMetricFileFilter(), "", "-metric");
 }
 
 /**
@@ -76,11 +77,15 @@ CommandSurfaceRoiFoldingMeasures::getHelpInformation() const
        + indent9 + "<topology-file-name>\n"
        + indent9 + "<output-text-report-file-name>\n"
        + indent9 + "[-roi  region-of-interest-file-name]\n"
+       + indent9 + "[-metric  output-metric-measurements-file-name]\n"
        + indent9 + "\n"
        + indent9 + "Generate a report of folding measurements on a surface.\n"
        + indent9 + "\n"
        + indent9 + "If an ROI is provided, the folding measurements are \n"
        + indent9 + "limited to that region of the surface.\n"
+       + indent9 + "\n"
+       + indent9 + "If a metric measurements file is added, it will be output\n"
+       + indent9 + "and contain folding measurements at each node.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -107,6 +112,7 @@ CommandSurfaceRoiFoldingMeasures::executeCommand() throw (BrainModelAlgorithmExc
       parameters->getNextParameterAsString("Text Report File Name");
    
    QString roiFileName;
+   QString metricFileName = "";
    while (parameters->getParametersAvailable()) {
       const QString paramName = 
          parameters->getNextParameterAsString("Optional parameter");
@@ -115,6 +121,12 @@ CommandSurfaceRoiFoldingMeasures::executeCommand() throw (BrainModelAlgorithmExc
             parameters->getNextParameterAsString("Region of Interest File Name");
          if (roiFileName.isEmpty()) {
             throw CommandException("Region of Interest File Name is missing.");
+         }
+      }
+      else if (paramName == "-metric") {
+         metricFileName = parameters->getNextParameterAsString("Metric File Name");
+         if (metricFileName.isEmpty()) {
+            throw CommandException("Metric File Name is missing.");
          }
       }
       else {
@@ -165,7 +177,8 @@ CommandSurfaceRoiFoldingMeasures::executeCommand() throw (BrainModelAlgorithmExc
           surfaceROI,
           "",
           false,
-          NULL);
+          NULL,
+          metricFileName);
    fmr.execute();
    
    //

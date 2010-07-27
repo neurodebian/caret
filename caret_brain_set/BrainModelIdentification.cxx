@@ -1664,8 +1664,7 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
          //
          // add name of file type
          //
-         idString += (tagIndentation
-                      + volumeName);
+         idString += (volumeName);
                       
          //
          // Print info about each file

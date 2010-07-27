@@ -137,10 +137,8 @@ check_env:
 #	   echo "Required environment variables are not set" ; \
 #	fi ; 
 
-test2:
-	@for i in ${DIRS} ; do \
-	   echo "testing..." ; \
-	   cd $$i ; \
-	   pwd ; \
-	   cd .. ; \
-	done
+test:
+	echo "Testing" ; \
+	cd testing ; \
+	./run_test.sh ; \
+	cd .. ;

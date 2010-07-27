@@ -1526,8 +1526,14 @@ BrainSet::showScene(const SceneFile::Scene* ss,
 
       //
       // Get rid of volume prob atlas files
-      //   
-      clearVolumeProbabilisticAtlasFiles();   
+      //
+      this->clearVolumeAnatomyFiles();
+      this->clearVolumeFunctionalFiles();
+      this->clearVolumePaintFiles();
+      this->clearVolumeProbabilisticAtlasFiles();
+      this->clearVolumeRgbFiles();
+      this->clearVolumeSegmentationFiles();
+      this->clearVolumeVectorFiles();
  
       //
       // Clear node identify symbols
@@ -2817,7 +2823,14 @@ BrainSet::convertVolumeBordersToFiducialCells()
       //
       for (int j = 0; j < numLinks; j++) {
          const float* xyz = b->getLinkXYZ(j);
-         cf.addCell(CellData(borderName, xyz[0], xyz[1], xyz[2], 0));
+         CellData cd(borderName, xyz[0], xyz[1], xyz[2], 0);
+         if (xyz[0] >= 0) {
+             cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
+         }
+         else {
+             cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
+         }
+         cf.addCell(cd);
       }
    }
    
@@ -5105,6 +5118,8 @@ BrainSet::readSurfaceFile(const QString& name,
    
    addBrainModel(bms, readingSpecFile);
 
+   setSelectedTopologyFiles();
+   
    if (updateSpec) {
       addToSpecFile(tag, name);
    }
@@ -6155,7 +6170,19 @@ BrainSet::readPaintFile(const QString& name,
       }
       std::vector<int> columnDestination2 = columnDestination;
       paintFile->append(pf, columnDestination2, fcm);
-      paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
+      if ((pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML) ||
+          (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_BASE64) ||
+          (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_GZIP_BASE64)) {
+         if (pf.getLabelTable()->getHadColorsWhenRead()) {
+             pf.getLabelTable()->addColorsToColorFile(*areaColorFile);
+             if (DebugControl::getDebugOn()) {
+                std::cout << "After GIFTI Label File reading there are "
+                          << areaColorFile->getNumberOfColors()
+                          << " area colors."
+                          << std::endl;
+             }
+         }
+      }
    }
    catch (FileException& e) {
       throw FileException(FileUtilities::basename(name), e.whatQString());
@@ -6196,7 +6223,19 @@ BrainSet::readPaintFile(const QString& name, const bool append,
          if (paintFile->getNumberOfNodes() != getNumberOfNodes()) {
             throw FileException(FileUtilities::basename(name), numNodesMessage);
          }
-         paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
+         if ((paintFile->getFileReadType() == AbstractFile::FILE_FORMAT_XML) ||
+             (paintFile->getFileReadType() == AbstractFile::FILE_FORMAT_XML_BASE64) ||
+             (paintFile->getFileReadType() == AbstractFile::FILE_FORMAT_XML_GZIP_BASE64)) {
+            if (paintFile->getLabelTable()->getHadColorsWhenRead()) {
+                paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
+                if (DebugControl::getDebugOn()) {
+                   std::cout << "After GIFTI Label File reading there are "
+                             << areaColorFile->getNumberOfColors()
+                             << " colors."
+                             << std::endl;
+                }
+            }
+         }
       }
       catch (FileException& e) {
          clearPaintFile();
@@ -6212,7 +6251,19 @@ BrainSet::readPaintFile(const QString& name, const bool append,
       }
       try {
          paintFile->append(pf);
-         paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
+         if ((pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML) ||
+             (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_BASE64) ||
+             (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_GZIP_BASE64)) {
+            if (pf.getLabelTable()->getHadColorsWhenRead()) {
+                pf.getLabelTable()->addColorsToColorFile(*areaColorFile);
+                if (DebugControl::getDebugOn()) {
+                   std::cout << "After GIFTI Label File reading there are "
+                             << areaColorFile->getNumberOfColors()
+                             << " colors."
+                             << std::endl;
+                }
+            }
+         }
       }
       catch (FileException& e) {
          throw FileException(FileUtilities::basename(name), e.whatQString());
@@ -7808,24 +7859,6 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
                     progressDialog)) return true;
 
    //
-   // Read in the area color file
-   // 
-   for (unsigned int i = 0; i < specFileIn.areaColorFile.files.size(); i++) {
-      if (specFileIn.areaColorFile.files[i].selected) {
-         if (updateFileReadProgressDialog(specFileIn.areaColorFile.files[i].filename, 
-                                          progressFileCounter, progressDialog)) {
-            return true;
-         }
-         try {
-            readAreaColorFile(specFileIn.areaColorFile.files[i].filename, true, true);
-         }
-         catch (FileException& e) {
-            errorMessages.push_back(e.whatQString());
-         }
-      }
-   }
-
-   //
    // Read in the anatomy volume files
    //
    for (unsigned int i = 0; i < specFileIn.volumeAnatomyFile.files.size(); i++) {
@@ -7990,6 +8023,24 @@ BrainSet::readSpecFile(const SPEC_FILE_READ_MODE specReadMode,
       }
    }
    
+   //
+   // Read in the area color file
+   //
+   for (unsigned int i = 0; i < specFileIn.areaColorFile.files.size(); i++) {
+      if (specFileIn.areaColorFile.files[i].selected) {
+         if (updateFileReadProgressDialog(specFileIn.areaColorFile.files[i].filename,
+                                          progressFileCounter, progressDialog)) {
+            return true;
+         }
+         try {
+            readAreaColorFile(specFileIn.areaColorFile.files[i].filename, true, true);
+         }
+         catch (FileException& e) {
+            errorMessages.push_back(e.whatQString());
+         }
+      }
+   }
+
    //
    // Read the rgb paint files
    //

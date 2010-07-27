@@ -137,6 +137,9 @@ class SpecFile : public AbstractFile {
             // get all files (including data files) to input vector
             void getAllFiles(std::vector<QString>& allFiles);
             
+            // get all files (excluding data files) to input vector
+            void getAllFilesNoDataFile(std::vector<QString>& allFiles);
+
             // clear all members except type and tag
             void clear(const bool removeFilesFromDiskToo);
             
@@ -506,6 +509,7 @@ class SpecFile : public AbstractFile {
       static QString getCaretScriptFileExtension() { return ".script"; }
       static QString getMniObjeSurfaceFileExtension() { return ".obj"; }
       static QString getZipFileExtension() { return ".zip"; }
+      static QString getMultiResMorphFileExtension() { return ".morph"; }
       
       // IMPORTANT if new extensions added, update the method
       //    addUnknownTypeOfFileToSpecFile()

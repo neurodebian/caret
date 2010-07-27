@@ -108,7 +108,7 @@ PaintFile::copyHelperPaint(const PaintFile& /*pf*/)
       
 /**
  * Clean up paint names (elminate unused ones).
- */
+ *
 void
 PaintFile::cleanUpPaintNames()
 {
@@ -209,7 +209,99 @@ PaintFile::cleanUpPaintNames()
    
    setModified();
 }
- 
+*/
+
+/**
+ * Clean up paint names (elminate unused ones).
+ */
+void
+PaintFile::cleanUpPaintNames()
+{
+   const int numPaintNames = this->getNumberOfPaintNames();
+   if (numPaintNames == 0) {
+      labelTable.clear();
+      return;
+   }
+
+   const int numNodes = getNumberOfNodes();
+   const int numCols  = getNumberOfColumns();
+   if ((numNodes == 0) || (numCols == 0)) {
+      labelTable.clear();
+      return;
+   }
+
+   GiftiLabelTable newLabelTable;
+
+   //
+   // Loop through all label names mapping into new label table
+   //
+   std::map<QString,int> namesToIndicesMap;
+   std::vector<int> remapIndices;
+   namesToIndicesMap.insert(std::make_pair("???", newLabelTable.getNumberOfLabels()));
+   int remapCount = 0;
+   for (int i = 0; i < numPaintNames; i++) {
+      if (i > 0) {
+         if ((i % 10000) == 0) {
+            std::cout << "Remap "
+                      << i
+                      << " of "
+                      << numPaintNames
+                      << std::endl;
+         }
+      }
+
+      const QString paintName = this->getPaintNameFromIndex(i);
+      std::map<QString,int>::iterator iter = namesToIndicesMap.find(paintName);
+
+      int newIndex = -1;
+      if (iter != namesToIndicesMap.end()) {
+         newIndex = iter->second;
+      }
+      else {
+         newIndex = newLabelTable.addLabel(paintName);;
+         namesToIndicesMap.insert(std::make_pair(paintName, newIndex));
+      }
+
+
+      if (newIndex != i) {
+         remapCount++;
+      }
+      remapIndices.push_back(newIndex);
+   }
+   if (remapCount == 0) {
+      return;
+   }
+   std::cout << "Remapping "
+             << remapCount
+             << " paint names."
+             << std::endl;
+
+   //
+   // Update any indices
+   //
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         int paintIndex = this->getPaint(i, j);
+         if ((paintIndex >=0) &&
+             (paintIndex < numPaintNames)) {
+            paintIndex = remapIndices[paintIndex];
+            this->setPaint(i, j, paintIndex);
+         }
+      }
+   }
+
+   //
+   // Update paint names
+   //
+   labelTable.clear();
+   int numNewNames = newLabelTable.getNumberOfLabels();
+   for (int i = 0; i < numNewNames; i++) {
+      labelTable.addLabel(newLabelTable.getLabel(i));
+   }
+
+   setModified();
+}
+
 /**
  * add a paint name to this paint file.
  */
@@ -1059,6 +1151,41 @@ PaintFile::assignPaintColumnWithVolumeFile(const VolumeFile* vf,
 }
 
 /**
+ * Remove prefixes (chars before first period) and/or suffixes (chars after last period)
+ * from all paint names.
+ */
+void
+PaintFile::removePrefixesAndSuffixesFromNames(const bool removePrefixesFlag,
+                                              const bool removeSuffixesFlag)
+{
+    int numPaintNames = this->getNumberOfPaintNames();
+    for (int i = 0; i < numPaintNames; i++) {
+        QString name = this->getPaintNameFromIndex(i);
+
+        bool nameChangedFlag = false;
+        if (removePrefixesFlag) {
+            int firstPeriod = name.indexOf(".");
+            if (firstPeriod >= 0) {
+                name = name.mid(firstPeriod + 1);
+                nameChangedFlag = true;
+            }
+        }
+
+        if (removeSuffixesFlag) {
+            int lastPeriod = name.lastIndexOf(".");
+            if (lastPeriod >= 0) {
+                name = name.left(lastPeriod);
+                nameChangedFlag = true;
+            }
+        }
+
+        if (nameChangedFlag) {
+            this->setPaintName(i, name);
+        }
+    }
+}
+
+/**
  * Read a paint file' data.
  */
 void
@@ -1565,6 +1692,11 @@ PaintFile::importFreeSurferAsciiLabelFile(const int numNodes,
       if (labelFiles.size() > 0) {
          appendToFileComment(" Imported from multiple files starting with ");
          appendToFileComment(FileUtilities::basename(labelFiles[0]));
+      }
+      else {
+         throw FileException("No file found in directory \""
+                             + directoryName
+                             + "\" that have file name extension \".label\"");
       }
    }
    else {

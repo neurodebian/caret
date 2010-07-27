@@ -86,8 +86,12 @@ FociProjectionFile::writeFileInCaret6Format(const QString& filenameIn, Structure
    }
    labelTable.writeAsXML(xmlWriter);
 
+   int fociNumber = 0;
    for (int n = 0; n < numFoci; n++) {
       CellProjection* fp = this->getCellProjection(n);
+      if (fp->getDuplicateFlag()) {
+         continue;
+      }
       Structure structure;
       structure.setType(Structure::STRUCTURE_TYPE_INVALID);
       if (fp->structure.isLeftCortex()) {
@@ -106,12 +110,12 @@ FociProjectionFile::writeFileInCaret6Format(const QString& filenameIn, Structure
       //
       // Ignore foci not on cortex or cerebellum or ambiguous
       //
-      if (structure.isInvalid()) {
-         continue;
-      }
+      //if (structure.isInvalid()) {
+      //   continue;
+      //}
 
       XmlGenericWriterAttributes attributes;
-      attributes.addAttribute("Index", n);
+      attributes.addAttribute("Index", fociNumber);
       xmlWriter.writeStartElement("FocusProjection", attributes);
 
       xmlWriter.writeElementCData("Name", fp->getName());
@@ -199,6 +203,8 @@ FociProjectionFile::writeFileInCaret6Format(const QString& filenameIn, Structure
       pi.writeXML(xmlWriter);
 
       xmlWriter.writeEndElement();
+
+      fociNumber++;
    }
 
    xmlWriter.writeEndElement();

@@ -90,7 +90,7 @@ class CommandFileConvert : public CommandBase {
       // info about the file.
       void fileFormatConvert(const std::vector<QString>& dataFileNames,
                              const QString& dataFileFormatList,
-                             const AreaColorFile& areaColorFile) throw (CommandException);
+                             const AreaColorFile* areaColorFile) throw (CommandException);
       
       // Write/Update a spec file.
       void updateSpecFile(const std::vector<QString>& tags, 

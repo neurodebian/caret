@@ -151,3 +151,22 @@ BrainSetAutoLoaderFile::setLastAutoLoadAnatomyVoxelIndices(const VoxelIJK& voxel
    previouslyLoadedVoxels.push_back(voxel);
 }
 
+/**
+ * Auto load the metric file for the specified node number (return error message).
+ */
+QString
+BrainSetAutoLoaderFile::loadFileForNode(const int nodeNumber)
+{
+    return "This auto loader does not load files by node number.";
+}
+
+/**
+ * Is auto loading metric file by node supported for this auto loader.
+ */
+bool
+BrainSetAutoLoaderFile::isLoadFileForNodeSupported() const
+{
+    return false;
+}
+
+

@@ -32,7 +32,7 @@
 CaretTips::CaretTips()
 {
    {
-      QString tip("To capture an image of any of Caret's Dialog or Windows, "
+      QString tip("To capture an image of any of Caret's Dialog or Windows,  "
                   "hold down the CTRL and SHIFT keys and press the F1 key (on Apple "
                   "computers, hold down the APPLE and SHIFT key and press the F1 key).  "
                   "A dialog will appear that asking the user how the captured image "
