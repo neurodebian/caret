@@ -577,14 +577,14 @@ BrainModelSurfaceDeformationMultiStageSphericalVector::tessellateSourceBordersIn
          endPointFlag = true;
       }
       
-      if (endPointFlag) {
-         std::cout << "Border "
-                   << borderNumber
-                   << " link "
-                   << linkNumber
-                   << " is an endpoint."
-                   << std::endl;
-      }
+      //if (endPointFlag) {
+      //   std::cout << "Border "
+      //             << borderNumber
+      //             << " link "
+      //             << linkNumber
+      //             << " is an endpoint."
+      //             << std::endl;
+      //}
 
       //
       // Projecting may fail in some cases so perturb when there is a failure
@@ -918,7 +918,8 @@ BrainModelSurfaceDeformationMultiStageSphericalVector::createDifferenceShapeFile
                                                   0.0,
                                                   0.0,
                                                   0.0,
-                                                  0.0);
+                                                  0.0,
+                                                  2.0);
            bmsms.execute();
        }
    }
@@ -1232,10 +1233,12 @@ BrainModelSurfaceDeformationMultiStageSphericalVector::createDeformedCoordinateF
       // See if X coordinate will need to be flipped (first cycle only !!!)
       //
       bool diffHemFlag = false;
-      if (cycleNumber == 1) {
-         diffHemFlag = (sourceBrainSet->getStructure() != targetBrainSet->getStructure());
-         if (diffHemFlag) {
-            std::cout << "Different Hemispheres" << std::endl;
+      if (stageNumber == 1) {
+         if (cycleNumber == 1) {
+            diffHemFlag = (sourceBrainSet->getStructure() != targetBrainSet->getStructure());
+            if (diffHemFlag) {
+               std::cout << "Different Hemispheres for Create Deformed Source Coordinates" << std::endl;
+            }
          }
       }
 

@@ -134,6 +134,7 @@ void
 GiftiLabelTable::clear()
 {
    labels.clear();
+   hadColorsWhenRead = false;
 }
 
 /**
@@ -336,6 +337,7 @@ void
 GiftiLabelTable::copyHelperGiftiLabelTable(const GiftiLabelTable& nlt)
 {
    labels = nlt.labels;
+   hadColorsWhenRead = nlt.hadColorsWhenRead;
 }      
 
 /**
@@ -447,7 +449,7 @@ GiftiLabelTable::writeAsXML(QTextStream& stream,
          labels[i].getColorFloat(red, green, blue, alpha);
          GiftiCommon::writeIndentationXML(stream, indent);
          stream << "<" << GiftiCommon::tagLabel << " "
-                << GiftiCommon::attIndex << "=\"" << i << "\" "
+                << GiftiCommon::attKey << "=\"" << i << "\" "
                 << GiftiCommon::attRed << "=\"" << QString::number(red, 'f', 3) << "\" "
                 << GiftiCommon::attGreen << "=\"" << QString::number(green, 'f', 3) << "\" "
                 << GiftiCommon::attBlue << "=\"" << QString::number(blue, 'f', 3) << "\" "
@@ -479,7 +481,7 @@ GiftiLabelTable::writeAsXML(XmlGenericWriter& xmlWriter) const
       labels[i].getColorFloat(red, green, blue, alpha);
 
       XmlGenericWriterAttributes attributes;
-      attributes.addAttribute(GiftiCommon::attIndex, i);
+      attributes.addAttribute(GiftiCommon::attKey, i);
       attributes.addAttribute(GiftiCommon::attRed, red);
       attributes.addAttribute(GiftiCommon::attGreen, green);
       attributes.addAttribute(GiftiCommon::attBlue, blue);

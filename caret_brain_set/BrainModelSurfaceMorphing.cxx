@@ -31,6 +31,7 @@
 
 #include <QFile>
 #include <QTextStream>
+#include <QTime>
 
 #include <algorithm>
 #include <cmath>
@@ -738,6 +739,9 @@ BrainModelSurfaceMorphing::setForcesOnNoMorphNodes()
 void
 BrainModelSurfaceMorphing::run(int iteration)
 {
+   QTime timer;
+   timer.start();
+
    //
    // set looping flag for non-threaded execution so that we do an iteration
    //
@@ -943,6 +947,13 @@ BrainModelSurfaceMorphing::run(int iteration)
          setThreadKeepLoopingFlag(false);
       }
    } // while (keepLooping)
+
+   if (DebugControl::getDebugOn()) {
+      std::cout << "   iteration"
+                  << iteration
+                  << " time: " << (static_cast<float>(timer.elapsed()) / 1000.0)
+             << std::endl;
+   }
 }
 
 /**
@@ -1126,7 +1137,7 @@ BrainModelSurfaceMorphing::computeAngularForce(const float* coords,
          if (node == nodeInfo.nodeNumber) {
             std::cout << "Morphing Debugging Node: " << node << std::endl;
             std::cout << "Neighbor: " << neighborNodeNumber << std::endl;
-            std::cout << "Angle (Fiducial, surface): " 
+            std::cout << "Angle1 (Fiducial, surface): " 
                       << (nodeInfo.angle1[neighborIndex] * MathUtilities::radiansToDegrees()) 
                       << " " << (angle1  * MathUtilities::radiansToDegrees())
                       << std::endl;
@@ -1204,7 +1215,7 @@ BrainModelSurfaceMorphing::computeAngularForce(const float* coords,
          if (node == nodeInfo.nodeNumber) {
             std::cout << "Morphing Debugging Node: " << node << std::endl;
             std::cout << "Neighbor: " << nextNeighborNodeNumber << std::endl;
-            std::cout << "Angle (Fiducial, surface): " 
+            std::cout << "Angle2 (Fiducial, surface): " 
                       << (nodeInfo.angle2[neighborIndex] * MathUtilities::radiansToDegrees())
                       << " " << (angle2 * MathUtilities::radiansToDegrees())
                        << std::endl;

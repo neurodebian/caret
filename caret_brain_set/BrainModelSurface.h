@@ -231,7 +231,8 @@ class BrainModelSurface : public BrainModel {
                                                   const bool enableFingerSmoothing,
                                                   const bool scaleToMatchFiducialArea,
                                                   const float iterationsScale,
-                                                  MetricFile* metricMeasurementsFile) const;
+                                                  MetricFile* metricMeasurementsFile,
+                                                  const float compressionFactorIn = 0.95) const;
       
       /// convert "this" surface to VTK PolyData
       vtkPolyData* convertToVtkPolyData() const;

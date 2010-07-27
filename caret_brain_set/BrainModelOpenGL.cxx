@@ -11134,7 +11134,8 @@ BrainModelOpenGL::drawArrowSymbol(const float xyz[3],
 
     if (std::fabs(vz) < zero) {
         ax = 57.2957795*std::acos( vx/v ); // rotation angle in x-y plane
-        if ( vx <= 0.0 ) ax = -ax;
+        //if ( vx <= 0.0 ) ax = -ax;  // JWH Fixes when Z is near zero
+        if ( vy <= 0.0 ) ax = -ax; // JWH Fixes when Z is near zero
     }
     else {
         ax = 57.2957795*std::acos( vz/v ); // rotation angle
@@ -11197,7 +11198,8 @@ BrainModelOpenGL::drawCylinderSymbol(const float xyz[3],
 
     if (std::fabs(vz) < zero) {
         ax = 57.2957795*std::acos( vx/v ); // rotation angle in x-y plane
-        if ( vx <= 0.0 ) ax = -ax;
+        //if ( vx <= 0.0 ) ax = -ax;  // JWH Fixes when Z is near zero
+        if ( vy <= 0.0 ) ax = -ax;  // JWH Fixes when Z is near zero
     }
     else {
         ax = 57.2957795*std::acos( vz/v ); // rotation angle

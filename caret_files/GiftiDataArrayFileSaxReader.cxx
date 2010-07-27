@@ -180,13 +180,19 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
       case STATE_LABEL_TABLE:
          if (qName == GiftiCommon::tagLabel) {
             state = STATE_LABEL_TABLE_LABEL;
-            const QString s = attributes.value(GiftiCommon::attIndex);
+            QString s = attributes.value(GiftiCommon::attKey);
+            if (s == NULL) {
+               s = attributes.value("Index");
+            }
+            else {
+               s = attributes.value("Index");
+            }
             if (s.isEmpty()) {
                std::ostringstream str;
                str << "Tag "
                    << GiftiCommon::tagLabel.toAscii().constData()
                    << " is missing its "
-                   << GiftiCommon::attIndex.toAscii().constData();
+                   << GiftiCommon::attKey.toAscii().constData();
                errorMessage = str.str().c_str();
                return false;
             }
@@ -200,18 +206,22 @@ GiftiDataArrayFileSaxReader::startElement(const QString& /* namespaceURI */,
                const QString redString = attributes.value(GiftiCommon::attRed);
                if (redString.isEmpty() == false) {
                   labelRed = StringUtilities::toFloat(redString);
+                  labelTable->setHadColorsWhenRead(true);
                }
                const QString greenString = attributes.value(GiftiCommon::attGreen);
                if (greenString.isEmpty() == false) {
                   labelGreen = StringUtilities::toFloat(greenString);
+                  labelTable->setHadColorsWhenRead(true);
                }
                const QString blueString = attributes.value(GiftiCommon::attBlue);
                if (blueString.isEmpty() == false) {
                   labelBlue = StringUtilities::toFloat(blueString);
+                  labelTable->setHadColorsWhenRead(true);
                }
                const QString alphaString = attributes.value(GiftiCommon::attAlpha);
                if (alphaString.isEmpty() == false) {
                   labelAlpha = StringUtilities::toFloat(alphaString);
+                  labelTable->setHadColorsWhenRead(true);
                }
             }
          }

@@ -26,6 +26,7 @@
 #include <QGlobalStatic>
 
 #include <sstream>
+#include <limits>
 
 #include <QAction>
 #include <QApplication>

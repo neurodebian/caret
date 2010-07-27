@@ -74,6 +74,7 @@ CommandSurfaceGenerateInflated::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-fiducial-coordinate-file-name> \n"
        + indent9 + "<input-closed-topology-file-name> \n"
+       + indent9 + "[-compression-factor value] \n"
        + indent9 + "[-iterations-scale  value] \n"
        + indent9 + "[-generate-inflated] \n"
        + indent9 + "[-generate-very-inflated] \n"
@@ -139,6 +140,7 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
    bool createSphereFlag = false; 
    bool createCompMedWallFlag = false;
    float iterationsScale = 1.0;  
+   float compressionFactor = 0.95;
    QString outputSpecFileName;
    QString inflatedCoordinateFileName;
    QString veryInflateCoordinateFileName;
@@ -153,6 +155,9 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
       if (paramName == "-output-spec") {
          outputSpecFileName = 
             parameters->getNextParameterAsString("Output Spec File Name");
+      }
+      else if (paramName == "-compression-factor") {
+          compressionFactor = parameters->getNextParameterAsFloat("Compression Factor");
       }
       else if (paramName == "-iterations-scale") {
          iterationsScale = parameters->getNextParameterAsFloat("Iterations Scale Value");
@@ -231,7 +236,8 @@ CommandSurfaceGenerateInflated::executeCommand() throw (BrainModelAlgorithmExcep
                                                            smoothFingersFlag,
                                                            scaleToMatchFiduciaFlag,
                                                            iterationsScale,
-                                                           NULL);
+                                                           NULL,
+                                                           compressionFactor);
    //
    // Write the output files
    //

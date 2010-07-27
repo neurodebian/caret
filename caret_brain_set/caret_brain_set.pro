@@ -32,6 +32,7 @@ HEADERS += BorderFileProjector.h \
       BrainModelSurface.h \
       BrainModelSurfaceAffineRegression.h \
 	   BrainModelSurfaceAndVolume.h \
+      BrainModelSurfaceBankStraddling.h \
       BrainModelSurfaceBorderCutter.h \
       BrainModelSurfaceBorderLandmarkIdentification.h \
        BrainModelSurfaceBorderToMetricConverter.h \
@@ -66,8 +67,10 @@ HEADERS += BorderFileProjector.h \
       BrainModelSurfaceMetricAnovaTwoWay.h \
 	   BrainModelSurfaceMetricClustering.h \
       BrainModelSurfaceMetricCoordinateDifference.h \
+	   BrainModelSurfaceMetricExtrema.h \
       BrainModelSurfaceMetricFindClustersBase.h \
       BrainModelSurfaceMetricFullWidthHalfMaximum.h \
+	   BrainModelSurfaceMetricGradient.h \
       BrainModelSurfaceMetricInGroupDifference.h \
       BrainModelSurfaceMetricInterHemClusters.h \
       BrainModelSurfaceMetricKruskalWallisRankTest.h \
@@ -140,6 +143,7 @@ HEADERS += BorderFileProjector.h \
       BrainSetAutoLoaderFile.h \
       BrainSetAutoLoaderManager.h \
       BrainSetAutoLoaderFileMetric.h \
+      BrainSetAutoLoaderFileMetricByNode.h \
       BrainSetAutoLoaderFilePaintCluster.h \
       BrainSetDataFileReader.h \
       BrainSetMultiThreadedSpecFileReader.h \
@@ -200,6 +204,7 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelSurface.cxx \
       BrainModelSurfaceAffineRegression.cxx \
 	   BrainModelSurfaceAndVolume.cxx \
+      BrainModelSurfaceBankStraddling.cxx \
       BrainModelSurfaceBorderCutter.cxx \
       BrainModelSurfaceBorderLandmarkIdentification.cxx \
       BrainModelSurfaceBorderToMetricConverter.cxx \
@@ -234,8 +239,10 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelSurfaceMetricAnovaTwoWay.cxx \
 	   BrainModelSurfaceMetricClustering.cxx \
       BrainModelSurfaceMetricCoordinateDifference.cxx \
+	   BrainModelSurfaceMetricExtrema.cxx \
       BrainModelSurfaceMetricFindClustersBase.cxx \
       BrainModelSurfaceMetricFullWidthHalfMaximum.cxx \
+	   BrainModelSurfaceMetricGradient.cxx \
       BrainModelSurfaceMetricInGroupDifference.cxx \
       BrainModelSurfaceMetricInterHemClusters.cxx \
       BrainModelSurfaceMetricKruskalWallisRankTest.cxx \
@@ -308,6 +315,7 @@ SOURCES += BorderFileProjector.cxx \
       BrainSetAutoLoaderFile.cxx \
       BrainSetAutoLoaderManager.cxx \
       BrainSetAutoLoaderFileMetric.cxx \
+      BrainSetAutoLoaderFileMetricByNode.cxx \
       BrainSetAutoLoaderFileFunctionalVolume.cxx \
       BrainSetAutoLoaderFilePaintCluster.cxx \
       BrainSetDataFileReader.cxx \

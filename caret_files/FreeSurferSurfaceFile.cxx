@@ -478,9 +478,11 @@ FreeSurferSurfaceFile::readFileData(QFile& file, QTextStream& stream,
                dataStream.setByteOrder(QDataStream::BigEndian);
                
                //
-               // Reset to beginning of file
+               // Reset to 4th byte
                //
-               file.seek(0);
+               if (file.seek(4) == false) {
+                  throw FileException("Seeking to 4th byte of file failed.");
+               }
                
                //
                // Get number of points
@@ -507,11 +509,74 @@ FreeSurferSurfaceFile::readFileData(QFile& file, QTextStream& stream,
                //
                for (int i = 0; i < numPoints; i++) {
                   qint32 vertexNumber;
-                  qint16 x, y, z;
+                  float x, y, z;
                   
                   dataStream >> vertexNumber >> x >> y >> z;
                   const float xyz[3] = { x, y, z };
                   
+                  //
+                  // Vertex indices are negative if part of border ???
+                  //
+                  vertexNumber = std::abs(vertexNumber);
+                  vertexNumber--;
+                  if (vertexNumber < 0) {
+                     throw FileException(filename, "Free Surfer vertex number less than zero "
+                                         + QString::number(vertexNumber));
+                  }
+                  setVertexCoordinates(i, vertexNumber, xyz);
+               }
+            }
+            //
+            // Could be a binary patch format
+            //
+            else if (filename.contains("patchOLD")) {
+               //
+               // We're reading a patch file
+               //
+               patchBinaryFileFlag = true;
+
+               //
+               // FreeSurfer Files are reportedly big endian
+               //
+               dataStream.setByteOrder(QDataStream::BigEndian);
+
+               //
+               // Reset to beginning of file
+               //
+               if (file.seek(0) == false) {
+                  throw FileException("Seeking to beginning of file failed.");
+               }
+
+               //
+               // Get number of points
+               //
+               qint32 numPoints;
+               dataStream >> numPoints;
+
+               if (DebugControl::getDebugOn()) {
+                  std::cout << "FreeSurface patch point count: " << numPoints << std::endl;
+               }
+
+               if ((numPoints < 0) || (numPoints > 10000000)) {
+                  throw FileException(filename, "Vertex count=" + QString::number(numPoints) + " invalid.\n"
+                                                  "File is not in big endian order or format has changed.");
+               }
+
+               //
+               // Allocate memory
+               //
+               setNumberOfVerticesAndTriangles(numPoints, 0);
+
+               //
+               // Read in vertices
+               //
+               for (int i = 0; i < numPoints; i++) {
+                  qint32 vertexNumber;
+                  qint16 x, y, z;
+
+                  dataStream >> vertexNumber >> x >> y >> z;
+                  const float xyz[3] = { x, y, z };
+
                   //
                   // Vertex indices are negative if part of border ???
                   //

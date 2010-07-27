@@ -2912,6 +2912,18 @@ GuiSurfaceROIOperationPage::slotComputeIntegratedFoldingIndex()
 QWidget* 
 GuiSurfaceROIOperationPage::createFoldingMeasurementsPage()
 {
+   foldingMeasurementsMetricFileCheckBox = new QCheckBox("Create Metric File ");
+   foldingMeasurementsMetricFileNameLineEdit = new QLineEdit;
+   foldingMeasurementsMetricFileNameLineEdit->setText("FoldingMeasurements.metric");
+   QHBoxLayout* metricLayout = new QHBoxLayout();
+   metricLayout->addWidget(foldingMeasurementsMetricFileCheckBox);
+   metricLayout->addWidget(foldingMeasurementsMetricFileNameLineEdit);
+   QObject::connect(foldingMeasurementsMetricFileCheckBox, SIGNAL(toggled(bool)),
+                    foldingMeasurementsMetricFileNameLineEdit, SLOT(setEnabled(bool)));
+   bool defaultFlag = false;
+   foldingMeasurementsMetricFileNameLineEdit->setEnabled(defaultFlag);
+   foldingMeasurementsMetricFileCheckBox->setChecked(defaultFlag);
+
    QPushButton* computePushButton = new QPushButton("Compute Folding Measurements");
    computePushButton->setFixedSize(computePushButton->sizeHint());
    computePushButton->setAutoDefault(false);
@@ -2920,7 +2932,9 @@ GuiSurfaceROIOperationPage::createFoldingMeasurementsPage()
 
    QWidget* w = new QWidget;
    QVBoxLayout* layout = new QVBoxLayout(w);
+   layout->addLayout(metricLayout);
    layout->addWidget(computePushButton);
+   layout->addStretch();
 
    return w;
 }
@@ -2941,6 +2955,10 @@ GuiSurfaceROIOperationPage::slotFoldingMeasurements()
       BrainModelSurfaceROINodeSelection* roi = 
          theMainWindow->getBrainSet()->getBrainModelSurfaceRegionOfInterestNodeSelection();
 
+      QString metricFileName = "";
+      if (foldingMeasurementsMetricFileCheckBox->isChecked()) {
+         metricFileName = foldingMeasurementsMetricFileNameLineEdit->text();
+      }
       QString headerText("Folding Measures");
       BrainModelSurfaceROIFoldingMeasurementReport fr(
                                theMainWindow->getBrainSet(),
@@ -2948,7 +2966,8 @@ GuiSurfaceROIOperationPage::slotFoldingMeasurements()
                                roi,
                                headerText,
                                false,
-                               NULL);
+                               NULL,
+                               metricFileName);
       fr.execute();
    
       //

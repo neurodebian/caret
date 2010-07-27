@@ -22,6 +22,7 @@
  *
  */
 
+#include <iostream>
 #include <QTextStream>
 
 #include "AbstractFile.h"
@@ -96,7 +97,20 @@ GiftiMetaData::get(const QString& name,
    for (ConstMetaDataIterator iter = metaData.begin();
         iter != metaData.end();
         iter++) {
-      if (nameLower == iter->first.toLower()) {
+      QString tagLower = iter->first.toLower();
+
+//      std::cout << "Comparing \""
+//                << nameLower.toAscii().constData()
+//                << "\" to \""
+//                << tagLower.toAscii().constData()
+//                << "\"."
+//                << std::endl;
+      
+      if (nameLower == tagLower) {
+         //std::cout << "Found \""
+         //          << nameLower.toAscii().constData()
+         //          << "\""
+         //          << std::endl;
          value = iter->second;
          return true;
       }

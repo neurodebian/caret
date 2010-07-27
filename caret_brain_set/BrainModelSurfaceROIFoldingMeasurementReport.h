@@ -40,7 +40,8 @@ class BrainModelSurfaceROIFoldingMeasurementReport : public BrainModelSurfaceROI
                                            const BrainModelSurfaceROINodeSelection* roiIn,
                                            const QString& headerTextIn,
                                            const bool semicolonSeparateReportFlagIn,
-                                           const BrainModelSurface* hullSurfaceIn = NULL);
+                                           const BrainModelSurface* hullSurfaceIn,
+                                           const QString& metricFoldingMeasurementsFileNameIn);
       
       // destructor
       ~BrainModelSurfaceROIFoldingMeasurementReport();
@@ -183,12 +184,20 @@ class BrainModelSurfaceROIFoldingMeasurementReport : public BrainModelSurfaceROI
       // compute the node curvature measurements
       void computeNodeCurvatureMeasurements(std::vector<NodeCurvatureMeasure>& cm) 
          throw (BrainModelAlgorithmException);
-         
+      
+      // create a metric file containing the folding measurements per node
+      void computeMetricFoldingMeasurementsFile(const std::vector<NodeCurvatureMeasure>& cm,
+                                               const BrainModelSurfaceROINodeSelection* roi)
+                                                   throw (BrainModelAlgorithmException);
+
       /// the cerebral hull surface
       const BrainModelSurface* hullSurface;       
       
       /// semicolon separate the report
       bool semicolonSeparateReportFlag;
+
+      /// If not empty, create a metric file with folding measurements per node
+      QString metricFoldingMeasurementsFileName;
 };
 
 #endif // __BRAIN_MODEL_SURFACE_ROI_FOLDING_MEASUREMENT_REPORT_H__

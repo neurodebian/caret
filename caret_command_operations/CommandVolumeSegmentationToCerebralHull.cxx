@@ -104,7 +104,7 @@ CommandVolumeSegmentationToCerebralHull::executeCommand() throw (BrainModelAlgor
    // Read segemtation
    //
    VolumeFile segmentationVolume;
-   segmentationVolume.readFile(hullVolumeFileName);
+   segmentationVolume.readFile(segmentationVolumeFileName);
    
    //
    // Expand around edges with empty slices

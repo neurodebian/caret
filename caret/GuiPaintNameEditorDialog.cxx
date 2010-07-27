@@ -106,13 +106,36 @@ GuiPaintNameEditorDialog::GuiPaintNameEditorDialog(QWidget* parent)
    //
    // Add new Paint Name button
    //
-   QPushButton* closePushButton = new QPushButton("Add New Paint Name...");
-   closePushButton->setAutoDefault(false);
-   closePushButton->setFixedSize(closePushButton->sizeHint());
-   QObject::connect(closePushButton, SIGNAL(clicked()),
+   QPushButton* addPaintNameButton = new QPushButton("Add New Paint Name...");
+   addPaintNameButton->setAutoDefault(false);
+   addPaintNameButton->setFixedSize(addPaintNameButton->sizeHint());
+   QObject::connect(addPaintNameButton, SIGNAL(clicked()),
                     this, SLOT(slotAddPaintName()));
+   //
+   // Remove prefix from names
+   //
+   QPushButton* removeNamePrefixesButton = new QPushButton("Remove Name Prefixes");
+   removeNamePrefixesButton->setAutoDefault(false);
+   removeNamePrefixesButton->setFixedSize(removeNamePrefixesButton->sizeHint());
+   QObject::connect(removeNamePrefixesButton, SIGNAL(clicked()),
+                    this, SLOT(slotRemovePrefixesFromPaintNames()));
+
+   //
+   // Remove suffix from names
+   //
+   QPushButton* removeNameSuffixesButton = new QPushButton("Remove Name Suffixes");
+   removeNameSuffixesButton->setAutoDefault(false);
+   removeNameSuffixesButton->setFixedSize(removeNameSuffixesButton->sizeHint());
+   QObject::connect(removeNameSuffixesButton, SIGNAL(clicked()),
+                    this, SLOT(slotRemoveSuffixesFromPaintNames()));
+
+   //
+   // Layout for name buttons
+   //
    QHBoxLayout* buttonsLayout = new QHBoxLayout;
-   buttonsLayout->addWidget(closePushButton);
+   buttonsLayout->addWidget(addPaintNameButton);
+   buttonsLayout->addWidget(removeNamePrefixesButton);
+   buttonsLayout->addWidget(removeNameSuffixesButton);
    
    //
    // Standard Dialog Buttons
@@ -161,8 +184,35 @@ GuiPaintNameEditorDialog::GuiPaintNameEditorDialog(QWidget* parent)
  */
 GuiPaintNameEditorDialog::~GuiPaintNameEditorDialog()
 {
+    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
+    pf->removePrefixesAndSuffixesFromNames(true, false);
+    this->loadPaintNames();
 }
       
+/**
+ * called to remove prefixes from names.
+ */
+void
+GuiPaintNameEditorDialog::slotRemovePrefixesFromPaintNames()
+{
+    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
+    pf->removePrefixesAndSuffixesFromNames(true, false);
+    this->loadPaintNames();
+    this->updateGUI();
+}
+
+/**
+ * called to remove suffixes from names.
+ */
+void
+GuiPaintNameEditorDialog::slotRemoveSuffixesFromPaintNames()
+{
+    PaintFile* pf = theMainWindow->getBrainSet()->getPaintFile();
+    pf->removePrefixesAndSuffixesFromNames(false, true);
+    this->loadPaintNames();
+    this->updateGUI();
+}
+
 /**
  * update the dialog.
  */

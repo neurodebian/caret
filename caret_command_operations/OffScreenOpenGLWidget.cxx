@@ -148,5 +148,10 @@ OffScreenOpenGLWidget::paintGL()
                                   brainModel,
                                   0,
                                   viewport);
+//   openGL->drawBrainModel(brainSet,
+//		                  brainModel,
+//		                  0,
+//		                  viewport,
+//		                  this);
 }
 

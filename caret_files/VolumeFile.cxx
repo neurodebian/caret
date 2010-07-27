@@ -105,6 +105,7 @@
 #include "vtkTriangle.h"
 #include "vtkTriangleFilter.h"
 #include "vtkUnsignedCharArray.h"
+#include "NiftiCaretExtension.h"
 
 
 /**
@@ -8347,8 +8348,23 @@ VolumeFile::createCerebralHullVolume(VolumeFile& cerebralHullOut) const
    //
    // dialate and erode to fill in sulci
    //
-   cerebralHullOut.doVolMorphOps(6, 6);
+   //cerebralHullOut.doVolMorphOps(6, 6);
+
+   //
+   // dilate six iterations
+   //
+   cerebralHullOut.doVolMorphOps(6, 0);
+
+   //
+   // fill cavities that may occur in deep sulci such as around insula
+   //
+   cerebralHullOut.fillSegmentationCavities();
    
+   //
+   // erode six iterations
+   //
+   cerebralHullOut.doVolMorphOps(0, 6);
+
    //
    // OR cerebral hull together with "this" segmentation
    //
@@ -10944,7 +10960,9 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
    volumeRead.niftiIntentParameter2 = hdr.intent_p2;
    volumeRead.niftiIntentParameter3 = hdr.intent_p3;
    volumeRead.niftiTR = hdr.slice_duration;
-   
+
+   QString caretExtensionString = "";
+
    //
    // Read the extender
    //
@@ -11089,6 +11107,10 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
                      volumeRead.setFilePubMedID(pmidAttr->getValue());
                   }
                }
+               else if ((extensionCode == 30) ||
+                        (extensionCode == 64)) {
+                  caretExtensionString = QString(data);
+               }
                
                delete[] data;
             }
@@ -11228,6 +11250,13 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
                break;
             }
          }
+      }
+
+      if (caretExtensionString.isEmpty() == false) {
+         NiftiCaretExtension caretExtension(volumesReadOut, NULL);
+         QString filesComment = "";
+         caretExtension.readAndApplyExtensionToVolumes(caretExtensionString,
+                                                       filesComment);
       }
    }
    catch (FileException& e) {
@@ -12664,7 +12693,8 @@ VolumeFile::writeFileAfni(const QString& fileNameIn,
                                                 false,
                                                 zipAfniBrikFile,
                                                 zipFile,
-                                                cppFile);
+                                                cppFile,
+                                                1.0);
       }
       catch (FileException& e) {
          writeErrorMessage = e.whatQString();
@@ -12721,7 +12751,18 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    if (numSubVolumes <= 0) {
       throw FileException(fileNameIn, "No volume data to write.");
    }
-   
+
+   //
+   // Get the maximum absolute value of all voxels
+   //
+   float maxAbsVoxelValue = 0.0;
+   for (int i = 0; i < numSubVolumes; i++) {
+      float minValue, maxValue;
+      volumesToWrite[i]->getMinMaxVoxelValues(minValue, maxValue);
+      maxAbsVoxelValue = std::max(std::fabs(minValue), maxAbsVoxelValue);
+      maxAbsVoxelValue = std::max(std::fabs(maxValue), maxAbsVoxelValue);
+   }
+
    //
    // Get the first volume
    //
@@ -12780,39 +12821,50 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // Set the datatype
    //
+   float maxDataTypeValue = std::numeric_limits<float>::max();
    switch (firstVolume->voxelDataType) {
       case VOXEL_DATA_TYPE_UNKNOWN:
          throw FileException(firstVolume->filename, "Unknown data type.");;
          break;
       case VOXEL_DATA_TYPE_CHAR:
          hdr.datatype = NIFTI_TYPE_INT8;
+         maxDataTypeValue = std::numeric_limits<char>::max();
          break;
       case VOXEL_DATA_TYPE_CHAR_UNSIGNED:
          hdr.datatype = NIFTI_TYPE_UINT8;
+         maxDataTypeValue = std::numeric_limits<unsigned char>::max();
          break;
       case VOXEL_DATA_TYPE_SHORT:
          hdr.datatype = NIFTI_TYPE_INT16;
+         maxDataTypeValue = std::numeric_limits<short>::max();
          break;
       case VOXEL_DATA_TYPE_SHORT_UNSIGNED:
          hdr.datatype = NIFTI_TYPE_UINT16;
+         maxDataTypeValue = std::numeric_limits<unsigned short>::max();
          break;
       case VOXEL_DATA_TYPE_INT:
          hdr.datatype = NIFTI_TYPE_INT32;
+         maxDataTypeValue = std::numeric_limits<int>::max();
          break;
       case VOXEL_DATA_TYPE_INT_UNSIGNED:
          hdr.datatype = NIFTI_TYPE_UINT32;
+         maxDataTypeValue = std::numeric_limits<unsigned int>::max();
          break;
       case VOXEL_DATA_TYPE_LONG:
          hdr.datatype = NIFTI_TYPE_INT64;
+         maxDataTypeValue = std::numeric_limits<long>::max();
          break;
       case VOXEL_DATA_TYPE_LONG_UNSIGNED:
          hdr.datatype = NIFTI_TYPE_UINT64;
+         maxDataTypeValue = std::numeric_limits<unsigned long>::max();
          break;
       case VOXEL_DATA_TYPE_FLOAT:
          hdr.datatype = NIFTI_TYPE_FLOAT32;
+         maxDataTypeValue = std::numeric_limits<float>::max();
          break;
       case VOXEL_DATA_TYPE_DOUBLE:
          hdr.datatype = NIFTI_TYPE_FLOAT64;
+         maxDataTypeValue = std::numeric_limits<float>::max();// FLOAT since date stored in FLOAT which is smaller than double
          break;
       case VOXEL_DATA_TYPE_RGB_VOXEL_INTERLEAVED:
          hdr.datatype = NIFTI_TYPE_RGB24;
@@ -12861,7 +12913,23 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    hdr.scl_slope = 1.0;
    hdr.scl_inter = 0.0;
-   
+
+   //
+   // Set scaling only if needed.  Data will be divided by this value
+   // as it is written.
+   // Scaling is applied after data is read.
+   // When data is written, it will be multiplied by this value to restore
+   // the original values.
+   //
+   if (maxAbsVoxelValue > maxDataTypeValue) {
+      if (maxDataTypeValue > 0.0) {
+         hdr.scl_slope = maxAbsVoxelValue / maxDataTypeValue;
+         if (hdr.scl_slope <= 0.0) {
+            hdr.scl_slope = 1.0;
+         }
+      }
+   }
+
    //
    // voxel sizes
    //
@@ -12982,6 +13050,26 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    }
 
    //
+   // Create the Caret extension
+   //
+   NiftiCaretExtension caretExtensionCreator(volumesToWrite, labelColorsForCaret6);
+   QString caretExtensionString = caretExtensionCreator.getExtensionAsString();
+   // Make sure niftiExtension length is a multiple of 16 bytes !!!!!
+   // and that includes the "esize" and "ecode".
+   // fill with blanks
+   const int caretExtlen = caretExtensionString.length() + 8;
+   const int caretExtFillNeeded = 16 - (caretExtlen % 16);
+   if (caretExtFillNeeded > 0) {
+      caretExtensionString += QString(caretExtFillNeeded, QChar(' '));
+   }
+   const int caretExtensionSize = caretExtensionString.length();
+
+   nifti1_extension caretExtension;
+   caretExtension.esize = 8 + caretExtensionSize;
+   caretExtension.ecode = 30;
+   caretExtension.edata = NULL;
+
+   //
    // Data offset is size of header
    //
    hdr.vox_offset = hdr.sizeof_hdr + sizeof(nifti1_extender);
@@ -12989,6 +13077,11 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
       hdr.vox_offset += sizeof(afniExtension.esize)
                         + sizeof(afniExtension.ecode)
                         + afniExtensionSize;
+   }
+   if (caretExtension.esize > 0) {
+      hdr.vox_offset += sizeof(caretExtension.esize)
+                        + sizeof(caretExtension.ecode)
+                        + caretExtensionSize;
    }
    
    //
@@ -13020,6 +13113,17 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
       }
    }
    firstVolume->dataFileWasZippedFlag = zipDataFileFlag;
+
+   if (DebugControl::getDebugOn()) {
+      std::cout << "AFNI Extension Length: "
+                << afniExtensionString.length()
+                << ", Size: "
+                << afniExtensionSize;
+      std::cout << "Caret Extension Length: "
+                << caretExtensionString.length()
+                << ", Size: "
+                << caretExtensionSize;
+   }
    
    //
    // Write the header
@@ -13045,6 +13149,12 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
          gzwrite(zipFile, (voidp)afniExtensionString.toAscii().constData(),
                           afniExtensionSize);
       }
+      if (caretExtension.esize > 0) {
+         gzwrite(zipFile, (voidp)&caretExtension.esize, sizeof(caretExtension.esize));
+         gzwrite(zipFile, (voidp)&caretExtension.ecode, sizeof(caretExtension.ecode));
+         gzwrite(zipFile, (voidp)caretExtensionString.toAscii().constData(),
+                          caretExtensionSize);
+      }
    }
    else {
       //
@@ -13066,6 +13176,12 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
          cppFile->write((const char*)afniExtensionString.toAscii().constData(),
                         afniExtensionSize);
       }
+      if (caretExtension.esize > 0) {
+         cppFile->write((const char*)&caretExtension.esize, sizeof(caretExtension.esize));
+         cppFile->write((const char*)&caretExtension.ecode, sizeof(caretExtension.ecode));
+         cppFile->write((const char*)caretExtensionString.toAscii().constData(),
+                          caretExtensionSize);
+      }
    }
    
 
@@ -13079,7 +13195,8 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
                                                 false,
                                                 zipDataFileFlag,
                                                 zipFile,
-                                                cppFile);
+                                                cppFile,
+                                                hdr.scl_slope);
       }
       catch (FileException& e) {
          writeErrorMessage = e.whatQString();
@@ -13354,7 +13471,8 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
                                                 false,
                                                 false,
                                                 NULL,
-                                                cppFile);
+                                                cppFile,
+                                                1.0);
       }
       catch (FileException& e) {
          writeErrorMessage = e.whatQString();
@@ -13566,7 +13684,8 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
                                                 byteSwapFlag,
                                                 false,
                                                 NULL,
-                                                cppFile);
+                                                cppFile,
+                                                1.0);
       }
       catch (FileException& e) {
          writeErrorMessage = e.whatQString();
@@ -13888,7 +14007,8 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
                                 const bool byteSwapNeeded,
                                 const bool compressDataWithZlib,
                                 gzFile zipStream,
-                                std::ofstream* cppStream) throw (FileException)
+                                std::ofstream* cppStream,
+                                const float divideByThisValue) throw (FileException)
 {
    if (voxelDataType == VOXEL_DATA_TYPE_UNKNOWN) {
       throw FileException("Unknown data type for writing.");
@@ -13903,7 +14023,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             char* data = new char[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<char>(voxels[i]);
+               data[i] = static_cast<char>(voxels[i] / divideByThisValue);
             }
             if (compressDataWithZlib) {
                gzwrite(zipStream, (void*)data, numVoxels * sizeof(char));
@@ -13918,7 +14038,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             unsigned char* data = new unsigned char[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<unsigned char>(voxels[i]);
+               data[i] = static_cast<unsigned char>(voxels[i] / divideByThisValue);
             }
             if (compressDataWithZlib) {
                gzwrite(zipStream, (void*)data, numVoxels * sizeof(unsigned char));
@@ -13933,7 +14053,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             short* data = new short[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<short>(voxels[i]);
+               data[i] = static_cast<short>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -13951,7 +14071,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             unsigned short* data = new unsigned short[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<unsigned short>(voxels[i]);
+               data[i] = static_cast<unsigned short>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -13969,7 +14089,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             int* data = new int[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<int>(voxels[i]);
+               data[i] = static_cast<int>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -13987,7 +14107,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             unsigned int* data = new unsigned int[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<unsigned int>(voxels[i]);
+               data[i] = static_cast<unsigned int>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -14005,7 +14125,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             long long* data = new long long[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<long long>(voxels[i]);
+               data[i] = static_cast<long long>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -14023,7 +14143,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             unsigned long long* data = new unsigned long long[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<unsigned long long>(voxels[i]);
+               data[i] = static_cast<unsigned long long>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -14041,7 +14161,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             float* data = new float[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<float>(voxels[i]);
+               data[i] = static_cast<float>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -14059,7 +14179,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             double* data = new double[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<double>(voxels[i]);
+               data[i] = static_cast<double>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);
@@ -14119,7 +14239,7 @@ VolumeFile::writeVolumeFileData(const VOXEL_DATA_TYPE voxelDataTypeForWriting,
          {
             float* data = new float[numVoxels];
             for (int i = 0; i < numVoxels; i++) {
-               data[i] = static_cast<float>(voxels[i]);
+               data[i] = static_cast<float>(voxels[i] / divideByThisValue);
             }
             if (byteSwapNeeded) {
                ByteSwapping::swapBytes(data, numVoxels);

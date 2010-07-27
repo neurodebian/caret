@@ -52,6 +52,7 @@
 #include "GuiMainWindow.h"
 #include "GuiMorphingMeasurementsDialog.h"
 #include "GuiMultiresolutionMorphingDialog.h"
+#include "WuQFileDialog.h"
 #include <QDoubleSpinBox>
 #include "QtUtilities.h"
 #include "global_variables.h"
@@ -166,19 +167,24 @@ GuiMultiresolutionMorphingDialog::GuiMultiresolutionMorphingDialog(QWidget* pare
    QObject::connect(okButton, SIGNAL(clicked()),
                     this, SLOT(accept()));
    
-   QPushButton* batchButton = NULL;
-/*
+   QPushButton* openButton = NULL;
+   QPushButton* saveButton = NULL;
    if (parametersOnlyMode == false) {
-      batchButton = new QPushButton("Batch...", this);
-      batchButton->setToolTip("Create a command file for\n"
-                                 "multi-resolution morphing.");
-      batchButton->setAutoDefault(false);
-      buttonsLayout->addWidget(batchButton);
-      QObject::connect(batchButton, SIGNAL(clicked()),
-                       this, SLOT(slotBatchButton()));
+       openButton = new QPushButton("Open...");
+       openButton->setAutoDefault(false);
+       QObject::connect(openButton, SIGNAL(clicked()),
+                        this, SLOT(slotOpenButton()));
+       openButton->setAutoDefault(false);
+
+       saveButton = new QPushButton("Save...");
+       saveButton->setAutoDefault(false);
+       QObject::connect(saveButton, SIGNAL(clicked()),
+                        this, SLOT(slotSaveButton()));
+
+       buttonsLayout->addWidget(openButton);
+       buttonsLayout->addWidget(saveButton);
    }
-*/
-   
+
    //
    // Cancel button 
    //
@@ -190,12 +196,7 @@ GuiMultiresolutionMorphingDialog::GuiMultiresolutionMorphingDialog(QWidget* pare
    QObject::connect(cancelButton, SIGNAL(clicked()),
                     this, SLOT(reject()));
    
-   if (batchButton != NULL) {
-      QtUtilities::makeButtonsSameSize(okButton, batchButton, cancelButton);
-   }
-   else {
-      QtUtilities::makeButtonsSameSize(okButton, cancelButton);
-   }
+   QtUtilities::makeButtonsSameSize(okButton, openButton, saveButton, cancelButton);
    
    loadParametersIntoDialog();
 }
@@ -205,231 +206,6 @@ GuiMultiresolutionMorphingDialog::GuiMultiresolutionMorphingDialog(QWidget* pare
  */
 GuiMultiresolutionMorphingDialog::~GuiMultiresolutionMorphingDialog()
 {
-}
-
-/**
- * Create a command file for running in batch mode.
- */
-void
-GuiMultiresolutionMorphingDialog::slotBatchButton()
-{
-   //
-   // save the  parameters
-   //
-   readParametersFromDialog();
-   
-   //
-   // get the morphing surfaces
-   //
-   BrainModelSurface* referenceSurface = 
-      referenceSurfaceComboBox->getSelectedBrainModelSurface();
-   BrainModelSurface* morphingSurface  = 
-      morphingSurfaceComboBox->getSelectedBrainModelSurface();
-   
-   //
-   // Check reference coordinate file
-   //
-   QString errorMessage;
-   QString warningMessage;
-   CoordinateFile* referenceCoordFile = NULL;
-   if (referenceSurface == NULL) {
-      errorMessage.append("No reference surface is selected.\n");
-   }
-   else {
-      referenceCoordFile = referenceSurface->getCoordinateFile();
-      if (referenceCoordFile->getModified()) {
-         warningMessage.append("Reference surface coordinate file is modified and should be saved.\n");
-      }
-      else if (referenceCoordFile->getFileName().isEmpty()) {
-         errorMessage.append("Reference surface coordinate file does not have a name so it needs to be saved\n"); 
-      }      
-   }
-   
-   //
-   // Check morphing coordinate file
-   //
-   CoordinateFile* morphCoordFile = NULL;
-   if (morphingSurface == NULL) {
-      errorMessage.append("No morphing surface is selected.\n");
-   }
-   else {
-      morphCoordFile = morphingSurface->getCoordinateFile();
-      if (morphCoordFile->getModified()) {
-         warningMessage.append("Morphing surface coordinate file is modified and should be saved.\n");
-      }
-      else if (morphCoordFile->getFileName().isEmpty()) {
-         errorMessage.append("Morphing surface coordinate file does not have a name so it needs to be saved\n"); 
-      }      
-   }
-   
-   //
-   // Check the topology file
-   //
-   TopologyFile* topologyFile = NULL;
-   if (morphingSurface != NULL) {
-      topologyFile = morphingSurface->getTopologyFile();
-      if (topologyFile == NULL) {
-         errorMessage.append("Morphing surface has no topology file.");
-      }
-      else if (topologyFile->getModified()) {
-         warningMessage.append("Morphing surface topology file is modified and should be saved.\n");
-      }
-      else if (topologyFile->getFileName().isEmpty()) {
-         errorMessage.append("Morphing surface topology file does not have a name so it needs to be saved\n"); 
-      }      
-   }
-   
-   //
-   // Check the spec file
-   //
-   const QString specFileName(theMainWindow->getBrainSet()->getSpecFileName());
-   if (specFileName.isEmpty()) {
-      errorMessage.append("There is no spec file.  A spec file can be created by saving\n"
-                          "the reference coordinate file, the morphing coordinate file\n"
-                          "and the morphing surface topology file.");
-   }
-   
-   //
-   // Are there any problems
-   //
-   if (errorMessage.isEmpty() == false) {
-      QMessageBox::critical(this, "Error", errorMessage);
-      return;
-   }
-   
-   //
-   // Check for flat/spherical surface
-   //
-   if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT) {
-      if ((morphingSurface->getSurfaceType() !=
-           BrainModelSurface::SURFACE_TYPE_FLAT) &
-          (morphingSurface->getSurfaceType() !=
-           BrainModelSurface::SURFACE_TYPE_FLAT_LOBAR)) {
-         warningMessage.append("Surface for morphing is not a flat surface.\n");
-      }
-   }
-   else {
-      if (morphingSurface->getSurfaceType() !=
-           BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
-         warningMessage.append("Surface for morphing is not a spherical surface.\n");
-      }
-   }
-   
-   //
-   // Are there potential problems
-   //
-   if (warningMessage.isEmpty() == false) {
-      if (QMessageBox::warning(this, "Warning", warningMessage, 
-                               (QMessageBox::Ok | QMessageBox::Cancel),
-                               QMessageBox::Cancel)
-                                  == QMessageBox::Cancel) {
-         return;
-      }
-   }
-   
-   //
-   // Index to parameters
-   //
-   QString morphSwitch("   -flat");
-   int indx = 0;
-   if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL) {
-      indx = 1;
-      morphSwitch = "   -sphere";
-   } 
-   
-   //
-   // Create the command
-   //
-   std::ostringstream commandStr;
-   commandStr 
-      << theMainWindow->getBrainSet()->getCaretHomeDirectory().toAscii().constData() << "/bin/caret_morph \\"<< "\n"
-      << morphSwitch.toAscii().constData() << "" << " \\\n"
-      << "   -cycles " << morphObject->getNumberOfCycles() << " \\\n";
-
-   if (morphObject->getDeleteIntermediateFiles()) {
-      commandStr << "   -delete_temp YES" << " \\\n";
-   }
-   else {
-      commandStr << "   -delete_temp NO" << " \\\n";
-   }
-   
-   for (int j = 0; j < morphObject->getNumberOfCycles(); j++) {
-      const int cycleNum = j + 1;
-      
-      int iters[BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS];
-      morphObject->getIterationsPerLevel(j, iters);
-      commandStr << "   -iter "
-                 << cycleNum << " ";
-      for (int k = 0; k < BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS; k++) {
-         commandStr << iters[k] << " ";
-      }
-      commandStr << " \\\n";
-      
-      float linearForce, angularForce, stepSize;
-      morphObject->getMorphingParameters(j, linearForce, angularForce, stepSize);
-      commandStr << "   -morph_force " 
-                 << cycleNum << " " 
-                 << linearForce << " "
-                 << angularForce << " "
-                 << stepSize << " \\\n";
-               
-      float strength;
-      int smoothIterations, edgeSmoothIterations;
-      morphObject->getSmoothingParameters(j, strength, smoothIterations, edgeSmoothIterations);
-      commandStr << "   -smooth " 
-                 << cycleNum << " "
-                 << strength << " "
-                 << smoothIterations << " "
-                 << edgeSmoothIterations << " \\\n";
-   }
-              
-   if (morphObject->getCrossoverSmoothAtEndOfEachCycle()) {
-      commandStr << "   -smooth_cross YES" << " \\\n";
-   }
-   else {
-      commandStr << "   -smooth_cross NO" << " \\\n";
-   }
-   
-   if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT) {
-      if (morphObject->getEnableFlatSurfaceOverlapSmoothing()) {
-         commandStr << "   -smooth_over YES" << " \\\n";
-      }
-      else {
-         commandStr << "   -smooth_over NO" << " \\\n";
-      }
-   }
-   
-   if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL) {
-      if (morphObject->getPointSphericalTilesOutward()) {
-         commandStr << "   -sphere_tile YES" << " \\\n";
-      }
-      else {
-         commandStr << "   -sphere_tile NO" << " \\\n";
-      }
-   }
-
-   commandStr << "   " << FileUtilities::basename(theMainWindow->getBrainSet()->getSpecFileName()).toAscii().constData() << " \\\n";
-   commandStr << "   " << FileUtilities::basename(topologyFile->getFileName()).toAscii().constData() << " \\\n";
-   commandStr << "   " << FileUtilities::basename(referenceCoordFile->getFileName()).toAscii().constData() << " \\\n";
-   commandStr << "   " << FileUtilities::basename(morphCoordFile->getFileName()).toAscii().constData() << "\n";
-   
-   QString commandFileName("caret_sphere_morph");
-   if (morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT) {
-      commandFileName = "caret_flat_morph";
-   }
-   
-   GuiBatchCommandDialog bcd(this,
-                             QDir::currentPath(),
-                             commandStr.str().c_str(),
-                             commandFileName);
-   if (bcd.exec() == QDialog::Rejected) {
-      return;
-   }
-   
-   //
-   // Allow the dialog to close.
-   //
-   reject();
 }
 
 /**
@@ -561,12 +337,12 @@ GuiMultiresolutionMorphingDialog::createIterationsSection()
    QGroupBox* itersGroupBox = new QGroupBox("Iterations");
    QGridLayout* itersLayout = new QGridLayout(itersGroupBox);
    
-   for (int i = 0; i < BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS; i++) {
+   for (int i = 0; i < MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS; i++) {
       QString labelValue("");
       if (i == 0) {
          labelValue = "Fine";
       }
-      else if (i == (BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS - 1)) {
+      else if (i == (MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS - 1)) {
          labelValue = "Coarse";
       }
       else if (i == 1) {
@@ -755,6 +531,77 @@ GuiMultiresolutionMorphingDialog::createMiscSection()
 }
 
 /**
+ * Called when save button pressed.
+ */
+void
+GuiMultiresolutionMorphingDialog::slotSaveButton()
+{
+    this->readParametersFromDialog();
+
+    //
+    // Create a file dialog to select the file.
+    //
+    WuQFileDialog saveParamFileDialog(this);
+    saveParamFileDialog.setModal(true);
+    saveParamFileDialog.setWindowTitle("Choose Multi-Resolution Morphing Parameters File");
+    saveParamFileDialog.setFileMode(WuQFileDialog::AnyFile);
+    saveParamFileDialog.setAcceptMode(WuQFileDialog::AcceptSave);
+    saveParamFileDialog.setHistory(theMainWindow->getBrainSet()->getPreferencesFile()->getRecentDataFileDirectories());
+    saveParamFileDialog.setDirectory(QDir::currentPath());
+    QString filterString("DeformationMapFile (*");
+    filterString.append(SpecFile::getMultiResMorphFileExtension());
+    filterString.append(")");
+    saveParamFileDialog.setFilters(QStringList(filterString));
+    if (saveParamFileDialog.exec() == QDialog::Accepted) {
+       try {
+          if (saveParamFileDialog.selectedFiles().count() > 0) {
+              this->morphObject->getMultiResMorphParametersFile()->writeFile(
+                                    saveParamFileDialog.selectedFiles().at(0));
+          }
+       }
+       catch (FileException& e) {
+          QMessageBox::critical(this, "Save Error", e.whatQString());
+          return;
+       }
+    }
+}
+
+/**
+ * Called when open button pressed.
+ */
+void
+GuiMultiresolutionMorphingDialog::slotOpenButton()
+{
+    //
+    // Create a file dialog to select the file.
+    //
+    WuQFileDialog openParamFileDialog(this);
+    openParamFileDialog.setModal(true);
+    openParamFileDialog.setWindowTitle("Choose Multi-Resolution Morphing Parameters File");
+    openParamFileDialog.setFileMode(WuQFileDialog::ExistingFile);
+    openParamFileDialog.setAcceptMode(WuQFileDialog::AcceptOpen);
+    openParamFileDialog.setHistory(theMainWindow->getBrainSet()->getPreferencesFile()->getRecentDataFileDirectories());
+    openParamFileDialog.setDirectory(QDir::currentPath());
+    QString filterString("DeformationMapFile (*");
+    filterString.append(SpecFile::getMultiResMorphFileExtension());
+    filterString.append(")");
+    openParamFileDialog.setFilters(QStringList(filterString));
+    if (openParamFileDialog.exec() == QDialog::Accepted) {
+       try {
+          if (openParamFileDialog.selectedFiles().count() > 0) {
+              this->morphObject->getMultiResMorphParametersFile()->readFile(
+                      openParamFileDialog.selectedFiles().at(0));
+              this->loadParametersIntoDialog();
+          }
+       }
+       catch (FileException& e) {
+          QMessageBox::critical(this, "Open Error", e.whatQString());
+          return;
+       }
+    }
+}
+
+/**
  * called when OK/Cancel buttons pressed
  */
 void 
@@ -918,30 +765,34 @@ GuiMultiresolutionMorphingDialog::done(int r)
 void
 GuiMultiresolutionMorphingDialog::loadParametersIntoDialog()
 {
+   MultiResMorphFile* morphFile = morphObject->getMultiResMorphParametersFile();
+
    //
    // load number of cycles
    //
-   numberOfCyclesComboBox->setCurrentIndex(morphObject->getNumberOfCycles() - 1);
+   numberOfCyclesComboBox->setCurrentIndex(morphFile->getNumberOfCycles() - 1);
    
    //
    // Get current cycle being edited
    //
-   const int editCycle = editCycleComboBox->currentIndex();
+   const int editCycleIndex = editCycleComboBox->currentIndex();
+   MultiResolutionMorphingCycle* editCycle = morphFile->getCycle(editCycleIndex);
    
    //
    // load iterations
    //
-   int iters[BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS];
-   morphObject->getIterationsPerLevel(editCycle, iters);
-   for (int i = 0; i < BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS; i++) {
+   int iters[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
+   editCycle->getIterationsAll(iters);
+   for (int i = 0; i < MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS; i++) {
       iterationsSpinBoxes[i]->setValue(iters[i]);
    }
    
    //
    // load morphing forces
    //
-   float linearForce, angularForce, stepSize;
-   morphObject->getMorphingParameters(editCycle, linearForce, angularForce, stepSize);
+   float linearForce = editCycle->getLinearForce();
+   float angularForce = editCycle->getAngularForce();
+   float stepSize = editCycle->getStepSize();
    linearForceDoubleSpinBox->setValue(linearForce);
    angularForceDoubleSpinBox->setValue(angularForce);
    stepSizeDoubleSpinBox->setValue(stepSize);
@@ -949,9 +800,9 @@ GuiMultiresolutionMorphingDialog::loadParametersIntoDialog()
    //
    // load smoothing parameters
    //
-   float strength;
-   int smoothIterations, smoothEdgeIterations;
-   morphObject->getSmoothingParameters(editCycle, strength, smoothIterations, smoothEdgeIterations);
+   float strength = editCycle->getSmoothingStrength();
+   int smoothIterations = editCycle->getSmoothingIterations();
+   int smoothEdgeIterations = editCycle->getSmoothingIterationEdges();
    smoothingStrengthDoubleSpinBox->setValue(strength);
    smoothingIterationsSpinBox->setValue(smoothIterations);
    smoothEdgesEverySpinBox->setValue(smoothEdgeIterations);
@@ -959,26 +810,29 @@ GuiMultiresolutionMorphingDialog::loadParametersIntoDialog()
    //
    // load delete intermediate files
    //
-   deleteTempFilesCheckBox->setChecked(morphObject->getDeleteIntermediateFiles());
+   deleteTempFilesCheckBox->setChecked(morphFile->isDeleteTemporaryFiles());
    
    //
    // Load smooth out crossovers check box
    //
-   smoothOutCrossoversCheckBox->setChecked(morphObject->getCrossoverSmoothAtEndOfEachCycle());
+   smoothOutCrossoversCheckBox->setChecked(morphFile->isSmoothOutCrossovers());
    
    //
    // Load smooth out flat surface overlap chekc box
    //
    if (smoothOutOverlapCheckBox != NULL) {
-      smoothOutOverlapCheckBox->setChecked(morphObject->getEnableFlatSurfaceOverlapSmoothing());
+      smoothOutOverlapCheckBox->setChecked(morphFile->isSmoothOutFlatSurfaceOverlap());
    }
    
    //
    // Load point spherical tiles out check box
    //
    if (pointSphericalTilesOutwardCheckBox != NULL) {
-      pointSphericalTilesOutwardCheckBox->setChecked(morphObject->getPointSphericalTilesOutward());
+      pointSphericalTilesOutwardCheckBox->setChecked(morphFile->isPointSphericalTrianglesOutward());
    }
+
+   this->alignSurfaceCheckBox->setChecked(morphFile->isAlignToCentralSulcalsLandmark());
+   this->cesLandmarkNameLineEdit->setText(morphFile->getCentralSulcusLandmarkName());
 }
 
 /**
@@ -992,63 +846,71 @@ GuiMultiresolutionMorphingDialog::readParametersFromDialog()
       indx = 1;
    } 
    
-   //
+   MultiResMorphFile* morphFile = morphObject->getMultiResMorphParametersFile();
+
+
+    //
    // save number of cycles
    //
-   morphObject->setNumberOfCycles(numberOfCyclesComboBox->currentIndex() + 1);
+   morphFile->setNumberOfCycles(numberOfCyclesComboBox->currentIndex() + 1);
    
    //
    // Get the cycle being edited
    //
-   const int editCycle = editCycleComboBox->currentIndex();
+   //
+   // Get current cycle being edited
+   //
+   const int editCycleIndex = editCycleComboBox->currentIndex();
+   MultiResolutionMorphingCycle* editCycle = morphFile->getCycle(editCycleIndex);
    
    //
    // save iterations
    //
-   int iters[BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS];
-   for (int i = 0; i < BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS; i++) {
+   int iters[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
+   for (int i = 0; i < MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS; i++) {
       iters[i] = iterationsSpinBoxes[i]->value();
    }
-   morphObject->setIterationsPerLevel(editCycle, iters);
+   editCycle->setIterationsAll(iters);
    
    //
    // save morphing forces
    //
-   morphObject->setMorphingParameters(editCycle,
-                                      linearForceDoubleSpinBox->value(),
-                                      angularForceDoubleSpinBox->value(),
-                                      stepSizeDoubleSpinBox->value());
+   editCycle->setLinearForce(linearForceDoubleSpinBox->value());
+   editCycle->setAngularForce(angularForceDoubleSpinBox->value());
+   editCycle->setStepSize(stepSizeDoubleSpinBox->value());
    
    //
    // save smoothing parameters
    //
-   morphObject->setSmoothingParameters(editCycle,
-                                       smoothingStrengthDoubleSpinBox->value(),
-                                       smoothingIterationsSpinBox->value(),
-                                       smoothEdgesEverySpinBox->value());
+   editCycle->setSmoothingStrength(smoothingStrengthDoubleSpinBox->value());
+   editCycle->setSmoothingIterations(smoothingIterationsSpinBox->value());
+   editCycle->setSmoothingIterationsEdges(smoothEdgesEverySpinBox->value());
    
    //
    // save delete intermediate files
    //
-   morphObject->setDeleteIntermediateFiles(deleteTempFilesCheckBox->isChecked());
+   morphFile->setDeleteTemporaryFiles(deleteTempFilesCheckBox->isChecked());
    
    //
    // Save smooth out crossovers
    //
-   morphObject->setCrossoverSmoothAtEndOfEachCycle(smoothOutCrossoversCheckBox->isChecked());
+   morphFile->setSmoothOutCrossovers(smoothOutCrossoversCheckBox->isChecked());
    
    //
    // save smooth out overlap 
    //
    if (smoothOutOverlapCheckBox != NULL) {
-      morphObject->setEnableFlatSurfaceOverlapSmoothing(smoothOutOverlapCheckBox->isChecked());
+       morphFile->setSmoothOutFlatSurfaceOverlap(smoothOutOverlapCheckBox->isChecked());
    }
    
    //
    // save point spherical tiles out
    //
    if (pointSphericalTilesOutwardCheckBox != NULL) {
-      morphObject->setPointSphericalTilesOutward(pointSphericalTilesOutwardCheckBox->isChecked());
+       morphFile->setPointSphericalTrianglesOutward(pointSphericalTilesOutwardCheckBox->isChecked());
    }
+
+   morphFile->setAlignToCentralSulcusLandmark(this->alignSurfaceCheckBox->isChecked());
+   morphFile->setCentralSulcusLandmarkName(this->cesLandmarkNameLineEdit->text());
 }
 

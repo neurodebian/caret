@@ -72,13 +72,23 @@ CommandSurfaceToSegmentationVolume::getHelpInformation() const
        + indent9 + "<input-coordinate-file-name>\n"
        + indent9 + "<input-topology-file-name>\n"
        + indent9 + "<output-volume-file-name>\n"
+       + indent9 + "[structure-name]\n"
        + indent9 + "\n"
        + indent9 + "Intersect a surface with a volume and create a segmentation\n"
        + indent9 + "volume.\n"
        + indent9 + "\n"
+       + indent9 + "The coordinate file must have its structure set to \n"
+       + indent9 + "one of \"left\" or \"right\" or else the command will\n"
+       + indent9 + "terminate with an error message.  The structure may \n"
+       + indent9 + "be specified with the optional \"structure-name\"\n"
+       + indent9 + "parameter.\n"
+       + indent9 + "\n"
        + indent9 + "The output volume file must exist and it must be in the \n"
        + indent9 + "same stereotaxic space as the surface.  A volume file may\n"
        + indent9 + "be created by using the \"-volume-create\" command.\n"
+       + indent9 + "\n"
+       + indent9 + "\"structure-name\" is optional and must be one of \n"
+       + indent9 + "\"left\" or \"right\".\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -106,6 +116,15 @@ CommandSurfaceToSegmentationVolume::executeCommand() throw (BrainModelAlgorithmE
    QString outputVolumeFileLabel;
    splitOutputVolumeNameIntoNameAndLabel(outputVolumeFileName, outputVolumeFileLabel);
 
+   QString structureName = "";
+   if (parameters->getParametersAvailable()) {
+      structureName = parameters->getNextParameterAsString("Structure Name").toLower();
+      if ((structureName != "left") &&
+          (structureName != "right")) {
+         throw CommandException("\"structure-name\" must be on of \"left\" or \"right\"");
+      }
+   }
+
    //
    // Read the volume file
    //
@@ -119,6 +138,9 @@ CommandSurfaceToSegmentationVolume::executeCommand() throw (BrainModelAlgorithmE
    BrainModelSurface* bms = brain.getBrainModelSurface(0);
    if (bms == NULL) {
       throw CommandException("Unable to find surface after reading files.");
+   }
+   if (structureName.isEmpty() == false) {
+      bms->setStructure(Structure::convertStringToType(structureName));
    }
    
    //
