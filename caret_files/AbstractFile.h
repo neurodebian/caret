@@ -603,6 +603,9 @@ class AbstractFile {
       /// set file postion for binary files for QT4 bug work around
       void setBinaryFilePosQT4Bug() throw (FileException);
 
+      /// allows files to do processing after a file is read
+      virtual void postFileReadingProcessing() throw (FileException);
+
       /// Name that was passed to read method
       mutable QString filename;
       

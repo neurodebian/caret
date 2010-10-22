@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <limits>
+
 #include "BorderFile.h"
 #include "BorderProjectionFile.h"
 #include "BorderProjectionUnprojector.h"

@@ -353,7 +353,7 @@ GuiMainWindowHelpActions::helpMenuCaretSearchWebSite()
          s = s.split(QRegExp("\\s+")).join("+");
          QString url("http://www.google.com/search?as_q=");
          url += s;
-         url += "&num=10&hl=en&client=safari&rls=en-us&btnG=Google+Search&as_epq=&as_oq=&as_eq=&lr=&as_ft=i&as_filetype=&as_qdr=all&as_nlo=&as_nhi=&as_occt=any&as_dt=i&as_sitesearch=brainmap.wustl.edu&as_rights=&safe=images";
+         url += "&num=10&hl=en&client=safari&rls=en-us&btnG=Google+Search&as_epq=&as_oq=&as_eq=&lr=&as_ft=i&as_filetype=&as_qdr=all&as_nlo=&as_nhi=&as_occt=any&as_dt=i&as_sitesearch=brainvis.wustl.edu&as_rights=&safe=images";
          theMainWindow->displayWebPage(url);
       }
    }

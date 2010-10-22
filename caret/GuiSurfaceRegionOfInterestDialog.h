@@ -547,6 +547,9 @@ class GuiSurfaceROIOperationPage : public QWizardPage {
       /// metric cluster report separate with semicolons
       QCheckBox* metricClusterSeparateWithSemicolonsCheckBox;
       
+     QCheckBox* foldingMeasurementsMetricFileCheckBox;
+     QLineEdit* foldingMeasurementsMetricFileNameLineEdit;
+
    friend class GuiSurfaceRegionOfInterestDialog;
 };
 

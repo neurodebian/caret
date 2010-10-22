@@ -31,6 +31,7 @@
 #include <cstdio>
 #include <iostream>
 #include <stack>
+#include <QMutexLocker>
 
 #include "DebugControl.h"
 #include "FileUtilities.h"
@@ -1218,6 +1219,7 @@ TopologyFile::getTopologyHelper(const bool needEdgeInfo,
                                 const bool needNodeInfo,
                                 const bool needNodeInfoSorted) const
 {
+   QMutexLocker locked(&gettingTopoHelper);//lock BEFORE testing whether rebuild is needed
    if (topologyHelper == NULL) {
       topologyHelperNeedsRebuild = true;
    }
@@ -1239,7 +1241,6 @@ TopologyFile::getTopologyHelper(const bool needEdgeInfo,
          }
       }
    }
-   
    if (topologyHelperNeedsRebuild) {
       if (topologyHelper != NULL) {
          delete topologyHelper;
@@ -1395,13 +1396,13 @@ TopologyFile::importFromVtkFile(vtkPolyData* polyDataIn)
    std::vector<int> triangles;
    
    vtkCellArray* polys = polyData->GetPolys();
-   int npts;
-   int* pts;
+   vtkIdType npts;
+   vtkIdType* pts;
    for (polys->InitTraversal(); polys->GetNextCell(npts,pts); ) {
       if (npts == 3) {
-         triangles.push_back(pts[0]);
-         triangles.push_back(pts[1]);
-         triangles.push_back(pts[2]);
+         triangles.push_back(static_cast<int>(pts[0]));
+         triangles.push_back(static_cast<int>(pts[1]));
+         triangles.push_back(static_cast<int>(pts[2]));
       }
       else {
          std::cout << "ERROR: VTK surface contains polygon with " << npts 

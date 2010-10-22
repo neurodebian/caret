@@ -1348,7 +1348,8 @@ class VolumeFile : public AbstractFile {
                                const bool byteSwapNeeded,
                                const bool compressDataWithZlib,
                                gzFile zipStream,
-                               std::ofstream* cppStream) throw (FileException);
+                               std::ofstream* cppStream,
+                               const float divideByThisValue) throw (FileException);
                                 
       /// copy volume data (used by copy contructor and assignment operator)
       void copyVolumeData(const VolumeFile& vf,

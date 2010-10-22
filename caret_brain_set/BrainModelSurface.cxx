@@ -1171,7 +1171,8 @@ BrainModelSurface::convertToVtkPolyData() const
          for (int j = 0; j < numTiles; j++) {
             int v[3];
             topology->getTile(j, v[0], v[1], v[2]);
-            cells->InsertNextCell(3, v);
+            vtkIdType vt[3] = { v[0], v[1], v[2] };
+            cells->InsertNextCell(static_cast<vtkIdType>(3), vt);
          }
          
          vtkPolyData* polyData = vtkPolyData::New();
@@ -1320,8 +1321,8 @@ BrainModelSurface::copyTopologyFromVTK(vtkPolyData* polyData)
       vtkCellArray* cells = polyData->GetPolys();
       if (cells->GetNumberOfCells() == numTiles) {
          int cellID = 0;
-         int npts;
-         int* pts;
+         vtkIdType npts;
+         vtkIdType* pts;
          for (cells->InitTraversal(); cells->GetNextCell(npts, pts); cellID++) {
             if (npts == 3) {
                int verts[3];
@@ -1536,6 +1537,7 @@ BrainModelSurface::computeNormals(const float* coordsIn)
          if (static_cast<int>(normals.size()) != (numCoords * 3)) {
             initializeNormals();
          }
+         std::fill(normals.begin(), normals.end(), 0.0);
 
          //
          // node normals are average of the node's tiles' normals
@@ -3747,7 +3749,7 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
       pushCoordinates();
       
       for (int i = 1; i <= maxIter; i++) {
-         if (ratio > 0.0) {
+         if (ratio != 0.0) {
             TransformationMatrix tm;
             tm.scale(ratio, ratio, ratio);
             applyTransformationMatrix(tm);
@@ -3764,7 +3766,7 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
          //
          const float newArea = getSurfaceArea();
          const float diffArea = newArea - desiredArea;
-         if ((fabs(diffArea) / desiredArea) > 0.05) {
+         //if ((fabs(diffArea) / desiredArea) > 0.05) {
             //
             // Was surface being made larger
             //
@@ -3803,7 +3805,7 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
                   ratio = 1.0 - (delta * 0.5);
                }
             }
-         }
+         //}
          
          //
          // Restore saved coordinates
@@ -3820,12 +3822,17 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
       for (int j = 0; j < static_cast<int>(coords.size()); j++) {
          if (DebugControl::getDebugOn()) {
             std::cout << "   Iteration: " << j << " surface area: " << coordAreas[j] << std::endl;
-            if (coordAreas[j] > 0.0) {
-               const float diff = fabs(coordAreas[j] - desiredArea);
-               if (diff < smallestDiff) {
-                  bestFit = j;
-                  smallestDiff = diff;
-               }
+            float* xyz = coords[j].getCoordinate(0);
+            std::cout << "   Coord 0: "
+                      << xyz[0] << ", "
+                      << xyz[1] << ", "
+                      << xyz[2] << std::endl;
+         }
+         if (coordAreas[j] > 0.0) {
+            const float diff = fabs(coordAreas[j] - desiredArea);
+            if (diff < smallestDiff) {
+               bestFit = j;
+               smallestDiff = diff;
             }
          }
       }
@@ -3839,6 +3846,10 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
       }
    }
    coordinates.clearDisplayList();
+
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Surface area after scaling: " << this->getSurfaceArea() << std::endl;
+   }
 }
 
 /**
@@ -4314,9 +4325,9 @@ BrainModelSurface::arealSmoothing(const float strength, const int iterations,
    delete[] nodeCoords;
    delete[] interiorNode;
    
-   if (DebugControl::getDebugOn()) {
+   //if (DebugControl::getDebugOn()) {
       std::cout << "Total time: " << (static_cast<float>(timer.elapsed()) / 1000.0) << std::endl;
-   }
+   //}
 }
 
 /**
@@ -5849,7 +5860,8 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
                                                           const bool enableFingerSmoothing,
                                                           const bool scaleToMatchFiducialArea,
                                                           const float iterationsScaleIn,
-                                                          MetricFile* metricMeasurementsFileOut) const
+                                                          MetricFile* metricMeasurementsFileOut,
+                                                          const float compressionFactorIn) const
 {
    if ((createInflated == false) &&
        (createVeryInflated == false) &&
@@ -6113,7 +6125,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       TransformationMatrix tm;
       tm.rotate(TransformationMatrix::ROTATE_X_AXIS, -27.0);
       cmwSurface->applyTransformationMatrix(tm);
-      cmwSurface->convertSphereToCompressedMedialWall(0.95);   //0.85);
+      cmwSurface->convertSphereToCompressedMedialWall(compressionFactorIn); //0.95);   //0.85);
       cmwSurface->projectCoordinatesToPlane(
                    BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO);
       cmwSurface->computeNormals();

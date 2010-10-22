@@ -864,7 +864,13 @@ AfniHeader::writeToNiftiExtension(QString& niftiExtension,
                            DateAndTime::getDateAndTimeAsString());
                            //QDateTime::currentDateTime().toString("ddd MMM d hh:mm::ss yyyy"));
    addAttribute(icodeDate);
-   
+
+   AfniAttribute caretMessage("AAA_CARET_MESSAGE",
+               "This AFNI extension is used only by Caret versions "
+               "5.613 and earlier.  Caret versions 5.614 and later "
+               "use the Caret extension in a NIFTI Volume File.");
+   addAttribute(caretMessage);
+
    //
    // Clear the extension
    //

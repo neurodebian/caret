@@ -1264,7 +1264,18 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    }
    removeHeaderTag(hemFlagTag);
    
+   this->postFileReadingProcessing();
+
    clearModified();
+}
+
+/**
+ * Allows files to do processing after a file is read.
+ */
+void
+AbstractFile::postFileReadingProcessing() throw (FileException)
+{
+    /// this method may be over ridden by sub classes
 }
 
 /**
@@ -1294,7 +1305,7 @@ AbstractFile::readFile(const QString& filenameIn) throw(FileException)
    QFileInfo fi(filenameIn);
    if (fi.exists()) {
       if (fi.isDir()) {
-         throw FileException(filenameIn + " is a directory, not a file.");
+         throw FileException(filenameIn + " is a directory, not a file");
       }
    }
    else {

@@ -43,12 +43,14 @@ BrainModelSurfaceROIFoldingMeasurementReport::BrainModelSurfaceROIFoldingMeasure
                                               const BrainModelSurfaceROINodeSelection* roiIn,
                                               const QString& headerTextIn,
                                               const bool semicolonSeparateReportFlagIn,
-                                              const BrainModelSurface* hullSurfaceIn)
+                                              const BrainModelSurface* hullSurfaceIn,
+                                              const QString& metricFoldingMeasurementsFileNameIn)
    : BrainModelSurfaceROIOperation(bs,
                                    surfaceIn,
                                    roiIn),
      hullSurface(hullSurfaceIn),
-     semicolonSeparateReportFlag(semicolonSeparateReportFlagIn)
+     semicolonSeparateReportFlag(semicolonSeparateReportFlagIn),
+     metricFoldingMeasurementsFileName(metricFoldingMeasurementsFileNameIn)
 {
    setHeaderText(headerTextIn);
 }
@@ -237,6 +239,8 @@ BrainModelSurfaceROIFoldingMeasurementReport::executeOperation() throw (BrainMod
       reportText.append(s);
    }
 */
+
+   computeMetricFoldingMeasurementsFile(cm, operationSurfaceROI);
 }
 
 /*  
@@ -255,12 +259,19 @@ BrainModelSurfaceROIFoldingMeasurementReport::computeNodeCurvatureMeasurements(s
                                          &curvatureShapeFile,
                                          -1,
                                          -1,
-                                         "Mean",
-                                         "Gauss",
+                                         SurfaceShapeFile::meanCurvatureColumnName,
+                                         SurfaceShapeFile::gaussianCurvatureColumnName,
                                          true);
    curvatures.execute();
    const int k1ShapeColumn = curvatures.getKMaxColumnNumber();
    const int k2ShapeColumn = curvatures.getKMinColumnNumber();
+
+   if (k1ShapeColumn < 0) {
+      throw new BrainModelAlgorithmException("K1 Curvature failed.");
+   }
+   if (k2ShapeColumn < 0) {
+      throw new BrainModelAlgorithmException("K2 Curvature failed.");
+   }
    
    //
    // Set the curvature measurements for each node
@@ -272,7 +283,163 @@ BrainModelSurfaceROIFoldingMeasurementReport::computeNodeCurvatureMeasurements(s
                             curvatureShapeFile.getValue(i, k2ShapeColumn));
    }
 }
-         
+
+void
+BrainModelSurfaceROIFoldingMeasurementReport::computeMetricFoldingMeasurementsFile(
+                                            const std::vector<NodeCurvatureMeasure>& cm,
+                                            const BrainModelSurfaceROINodeSelection* roi)
+                                               throw (BrainModelAlgorithmException)
+{
+   if (metricFoldingMeasurementsFileName.isEmpty()) {
+      return;
+   }
+
+   int numNodes = this->bms->getNumberOfNodes();
+   
+   int numColumns = 0;
+   const int COLUMN_K1 = numColumns++;
+   const int COLUMN_K2 = numColumns++;
+   const int COLUMN_MEAN = numColumns++;
+   const int COLUMN_GAUSS = numColumns++;
+   const int COLUMN_ICI = numColumns++;
+   const int COLUMN_NICI = numColumns++;
+   const int COLUMN_GLN = numColumns++;
+   const int COLUMN_AICI = numColumns++;
+   const int COLUMN_MCI = numColumns++;
+   const int COLUMN_NMCI = numColumns++;
+   const int COLUMN_MLN = numColumns++;
+   const int COLUMN_AMCI = numColumns++;
+   const int COLUMN_FI = numColumns++;
+   const int COLUMN_CI = numColumns++;
+   const int COLUMN_SI = numColumns++;
+   const int COLUMN_FICI = numColumns++;
+   const int COLUMN_FNICI = numColumns++;
+   const int COLUMN_FMCI = numColumns++;
+   const int COLUMN_FNMCI = numColumns++;
+   const int COLUMN_SH2SH = numColumns++;
+   const int COLUMN_SK2SK = numColumns++;
+   const int COLUMN_SURFACE_AREA = numColumns++;
+
+   MetricFile mf;
+   mf.setNumberOfNodesAndColumns(numNodes, numColumns);
+   mf.setColumnName(COLUMN_K1, "K1");
+   mf.setColumnComment(COLUMN_K1, "");
+   mf.setColumnName(COLUMN_K2, "K2");
+   mf.setColumnComment(COLUMN_K2, "");
+   mf.setColumnName(COLUMN_MEAN, "Mean");
+   mf.setColumnComment(COLUMN_MEAN, "");
+   mf.setColumnName(COLUMN_GAUSS, "GAUSS");
+   mf.setColumnComment(COLUMN_GAUSS, "");
+   mf.setColumnName(COLUMN_ICI, "ICI (Intrinsic Curvature Index)");
+   mf.setColumnComment(COLUMN_ICI, "");
+   mf.setColumnName(COLUMN_NICI, "NICI (Negative Intrinsic Curvature Index)");
+   mf.setColumnComment(COLUMN_NICI, "");
+   mf.setColumnName(COLUMN_GLN, "GLN (Gaussian L2 Norm)");
+   mf.setColumnComment(COLUMN_GLN, "");
+   mf.setColumnName(COLUMN_AICI, "AICI (Absolute Intrinsic Curvature Index)");
+   mf.setColumnComment(COLUMN_AICI, "");
+   mf.setColumnName(COLUMN_MCI, "MCI (Mean Curvature Index)");
+   mf.setColumnComment(COLUMN_MCI, "");
+   mf.setColumnName(COLUMN_NMCI, "NMCI (Negative Mean Curvature Index)");
+   mf.setColumnComment(COLUMN_NMCI, "");
+   mf.setColumnName(COLUMN_MLN, "MLN (Mean L2 Form)");
+   mf.setColumnComment(COLUMN_MLN, "");
+   mf.setColumnName(COLUMN_AMCI, "AMCI (Absolute Mean Curvature Index)");
+   mf.setColumnComment(COLUMN_AMCI, "");
+   mf.setColumnName(COLUMN_FI, "FI (Folding Index)");
+   mf.setColumnComment(COLUMN_FI, "");
+   mf.setColumnName(COLUMN_CI, "CI (Curvedness Index)");
+   mf.setColumnComment(COLUMN_CI, "");
+   mf.setColumnName(COLUMN_SI, "SI (Shape Index)");
+   mf.setColumnComment(COLUMN_SI, "");
+   mf.setColumnName(COLUMN_FICI, "FICI (Area Fraction of ICI)");
+   mf.setColumnComment(COLUMN_FICI, "");
+   mf.setColumnName(COLUMN_FNICI, "FNICI (Area Fraction of Negative ICI)");
+   mf.setColumnComment(COLUMN_FNICI, "");
+   mf.setColumnName(COLUMN_FMCI, "FMCI (Area Fraction of MCI)");
+   mf.setColumnComment(COLUMN_FMCI, "");
+   mf.setColumnName(COLUMN_FNMCI, "FNMCI (Area Fraction of Negative MCI)");
+   mf.setColumnComment(COLUMN_FNMCI, "");
+   mf.setColumnName(COLUMN_SH2SH, "SH2SH");
+   mf.setColumnComment(COLUMN_SH2SH, "");
+   mf.setColumnName(COLUMN_SK2SK, "SK2SK");
+   mf.setColumnComment(COLUMN_SK2SK, "");
+   mf.setColumnName(COLUMN_SURFACE_AREA, "Surface Area");
+   mf.setColumnComment(COLUMN_SURFACE_AREA, "");
+
+   std::vector<float> nodeAreas;
+   this->bms->getAreaOfAllNodes(nodeAreas);
+
+   for (int i = 0; i < numNodes; i++) {
+      if (roi->getNodeSelected(i)) {
+         //
+         // Add in partial amounts
+         //
+         const NodeCurvatureMeasure ncm = cm[i];
+         float ici   = ncm.Kplus;
+         float nici  = ncm.Kminus;
+         float gln   = (ncm.K * ncm.K);
+         float aici  = std::fabs(ncm.K);
+         float mci   = ncm.Hplus;
+         float nmci  = ncm.Hminus;
+         float mln   = (ncm.H * ncm.H);
+         float amci  = std::fabs(ncm.H);
+         float fi    = ncm.fi;
+         float ci    = ncm.ci;
+         float si    = std::fabs(ncm.si);
+         float fici  = ncm.KplusAreaMeasure;
+         float fnici = ncm.KminusAreaMeasure;
+         float fmci  = ncm.HplusAreaMeasure;
+         float fnmci = ncm.HminusAreaMeasure;
+         float sh2sh = 0.0;
+         if (amci != 0.0) {
+            sh2sh = mln / amci;
+         }
+         float sk2sk = 0.0;
+         if (aici != 0.0) {
+            sk2sk = gln / aici;
+         }
+
+         mf.setValue(i, COLUMN_K1, ncm.k1);
+         mf.setValue(i, COLUMN_K2, ncm.k2);
+         mf.setValue(i, COLUMN_MEAN, ncm.H);
+         mf.setValue(i, COLUMN_GAUSS, ncm.K);
+         mf.setValue(i, COLUMN_ICI, ici);
+         mf.setValue(i, COLUMN_NICI, nici);
+         mf.setValue(i, COLUMN_GLN, gln);
+         mf.setValue(i, COLUMN_AICI, aici);
+         mf.setValue(i, COLUMN_MCI, mci);
+         mf.setValue(i, COLUMN_NMCI, nmci);
+         mf.setValue(i, COLUMN_MLN, mln);
+         mf.setValue(i, COLUMN_AMCI, amci);
+         mf.setValue(i, COLUMN_FI, fi);
+         mf.setValue(i, COLUMN_CI, ci);
+         mf.setValue(i, COLUMN_SI, si);
+         mf.setValue(i, COLUMN_FICI, fici);
+         mf.setValue(i, COLUMN_FNICI,fnici);
+         mf.setValue(i, COLUMN_FMCI, fmci);
+         mf.setValue(i, COLUMN_FNMCI, fnmci);
+         mf.setValue(i, COLUMN_SH2SH, sh2sh);
+         mf.setValue(i, COLUMN_SK2SK, sk2sk);
+         mf.setValue(i, COLUMN_SURFACE_AREA, nodeAreas[i]);
+      }
+   }
+
+   for (int i = 0; i < numColumns; i++) {
+      float minValue, maxValue;
+      mf.getDataColumnMinMax(i, minValue, maxValue);
+      //ssf.setColumnColorMappingMinMax(i, minValue, maxValue);
+   }
+   
+   try {
+      mf.writeFile(metricFoldingMeasurementsFileName);
+   }
+   catch (FileException& e) {
+      throw BrainModelAlgorithmException("Writing Metric Folding Indices File: "
+                                         + e.whatQString());
+   }
+}
+
 //
 //==============================================================================
 //==============================================================================

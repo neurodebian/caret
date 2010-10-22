@@ -32,6 +32,7 @@
 #include <iostream>
 #include <set>
 #include <vector>
+#include <QMutex>
 
 #include "DebugControl.h"
 
@@ -143,9 +144,24 @@ class TopologyHelper {
       void getNodeNeighbors(const int nodeNum, std::vector<int>& neighborsOut) const;
       
       /// Get the neighbors of a node to a specified depth
+      void getNodeNeighborsToDepthOld(const int nodeNum, 
+                                   const int depth,
+                                   std::vector<int>& neighborsOut) const;
+      
       void getNodeNeighborsToDepth(const int nodeNum, 
                                    const int depth,
                                    std::vector<int>& neighborsOut) const;
+
+      void getNodeNeighborsToDepthIter(const int nodeNum, 
+                                   const int depth,
+                                   std::vector<int>& neighborsOut) const;
+
+   private:
+      void depthNeighHelper(int root, int remdepth, std::vector<int>& neighborsOut) const;
+      mutable std::vector<int> markNodes, nodelist[2];//persistent, never cleared, only initialized once, saving bazillions of nanoseconds
+      //could be templated over bool, which stores bitwise, but we already have three times that many floats and six times the ints in memory
+      mutable QMutex usingMarkNodes;//do not let threads clobber markNodes
+   public:
       
       /// Get the neighboring nodes for a node.  Returns a pointer to an array
       /// containing the neighbors.

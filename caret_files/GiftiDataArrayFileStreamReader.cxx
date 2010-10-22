@@ -251,7 +251,13 @@ GiftiDataArrayFileStreamReader::readLabelTable(GiftiLabelTable* labelTable)
       //
       if (isStartElement()) {
          if (name() == GiftiCommon::tagLabel) {
-            const QString indexString = attributes().value(GiftiCommon::attIndex).toString();
+            QString keyString = attributes().value(GiftiCommon::attKey).toString();
+            if (keyString == NULL) {
+               keyString = attributes().value("Index").toString();
+            }
+            else if (keyString.isEmpty()) {
+               keyString = attributes().value("Index").toString();
+            }
 
             float labelRed, labelGreen, labelBlue, labelAlpha;
             GiftiLabelTable::getDefaultColorFloat(labelRed,
@@ -262,24 +268,28 @@ GiftiDataArrayFileStreamReader::readLabelTable(GiftiLabelTable* labelTable)
             const QString redString = attributes().value(GiftiCommon::attRed).toString();
             if (redString.isEmpty() == false) {
                labelRed = StringUtilities::toFloat(redString);
+               labelTable->setHadColorsWhenRead(true);
             }
             const QString greenString = attributes().value(GiftiCommon::attGreen).toString();
             if (greenString.isEmpty() == false) {
                labelGreen = StringUtilities::toFloat(greenString);
+               labelTable->setHadColorsWhenRead(true);
             }
             const QString blueString = attributes().value(GiftiCommon::attBlue).toString();
             if (blueString.isEmpty() == false) {
                labelBlue = StringUtilities::toFloat(blueString);
+               labelTable->setHadColorsWhenRead(true);
             }
             const QString alphaString = attributes().value(GiftiCommon::attAlpha).toString();
             if (alphaString.isEmpty() == false) {
                labelAlpha = StringUtilities::toFloat(alphaString);
+               labelTable->setHadColorsWhenRead(true);
             }
 
             const QString name = readElementText();
             
             bool valid = false;
-            const int indx = indexString.toInt(&valid);
+            const int indx = keyString.toInt(&valid);
             if (valid) {
                if (indx >= 0) {
                   labelTable->setLabel(indx, name);
@@ -447,15 +457,17 @@ GiftiDataArrayFileStreamReader::readDataArray()
                      // Read the data
                      //
                      dataWasReadFlag = true;
-                     QString text = "";
-                     dataArray->readFromText(text,
-                                             endianName,
-                                             arraySubscriptingOrderForReadingArrayData,
-                                             dataTypeForReadingArrayData,
-                                             dimensionsForReadingArrayData,
-                                             encodingForReadingArrayData,
-                                             externalFileName,
-                                             externalFileOffsetForReadingData);
+                     if (this->giftiFile->getReadMetaDataOnlyFlag() == false) {
+                         QString text = "";
+                         dataArray->readFromText(text,
+                                                 endianName,
+                                                 arraySubscriptingOrderForReadingArrayData,
+                                                 dataTypeForReadingArrayData,
+                                                 dimensionsForReadingArrayData,
+                                                 encodingForReadingArrayData,
+                                                 externalFileName,
+                                                 externalFileOffsetForReadingData);
+                     }
 
                      //
                      // Add GIFTI array to GIFTI file
@@ -485,19 +497,21 @@ GiftiDataArrayFileStreamReader::readDataArray()
          }
          else if (elemName == GiftiCommon::tagData) {
             try {
-               //
-               // Read the data
-               //
-               dataWasReadFlag = true;
-               QString text = readElementText();
-               dataArray->readFromText(text,
-                                       endianName,
-                                       arraySubscriptingOrderForReadingArrayData,
-                                       dataTypeForReadingArrayData,
-                                       dimensionsForReadingArrayData,
-                                       encodingForReadingArrayData,
-                                       externalFileName,
-                                       externalFileOffsetForReadingData);
+                dataWasReadFlag = true;
+                if (this->giftiFile->getReadMetaDataOnlyFlag() == false) {
+                   //
+                   // Read the data
+                   //
+                   QString text = readElementText();
+                   dataArray->readFromText(text,
+                                           endianName,
+                                           arraySubscriptingOrderForReadingArrayData,
+                                           dataTypeForReadingArrayData,
+                                           dimensionsForReadingArrayData,
+                                           encodingForReadingArrayData,
+                                           externalFileName,
+                                           externalFileOffsetForReadingData);
+                }
                
                //
                // Add GIFTI array to GIFTI file

@@ -303,11 +303,11 @@ void
 CoordinateFile::getAllCoordinates(float* coordsOut) const
 {
    float* coords = dataArrays[0]->getDataPointerFloat();
-   const int num = getNumberOfCoordinates();
-   for (int i = 0; i < num; i++) {
-      coordsOut[i*3]   = coords[i*3];
-      coordsOut[i*3+1] = coords[i*3+1];
-      coordsOut[i*3+2] = coords[i*3+2];
+   const int num = 3 * getNumberOfCoordinates();
+   for (int i = 0; i < num; i += 3) {
+      coordsOut[i]   = coords[i];
+      coordsOut[i+1] = coords[i+1];
+      coordsOut[i+2] = coords[i+2];
    }
 }      
 

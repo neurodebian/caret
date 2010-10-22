@@ -362,6 +362,7 @@ BrainModelSurfaceSulcalDepthWithNormals::execute() throw (BrainModelAlgorithmExc
          // Get normal of hull node
          //
          const float* hullNormal = hullSurface->getNormal(hullNode);
+         const float* inflatedHullXYZ = inflatedHullSurface->getCoordinateFile()->getCoordinate(hullNode);
          const float* inflatedHullNormal = inflatedHullSurface->getNormal(hullNode);
          const float* lowSmoothNormal = lowlySmoothedHullSurface->getNormal(hullNode);
 
@@ -405,18 +406,26 @@ BrainModelSurfaceSulcalDepthWithNormals::execute() throw (BrainModelAlgorithmExc
 
          if (DebugControl::getDebugOn()) {
             if (i == DebugControl::getDebugNodeNumber()) {
+               const float* surfaceNormalXYZ = surface->getNormal(i);
+               const float* inflatedXYZ = inflatedSurface->getCoordinateFile()->getCoordinate(i);
                const float* sn = inflatedSurface->getNormal(i);
                std::cout << "surface node:      " << i << std::endl;
                std::cout << "   hull node:      " << hullNode << std::endl;
                std::cout << "   surface node:   " << surfaceXYZ[0] << ", " << surfaceXYZ[1] << ", "
                                                 << surfaceXYZ[2] << std::endl;
+               std::cout << "   surface normal: " << surfaceNormalXYZ[0] << ", " << surfaceNormalXYZ[1] << ", "
+                                                << surfaceNormalXYZ[2] << std::endl;
                std::cout << "   dot:            " << MathUtilities::dotProduct(sn, inflatedHullNormal) << std::endl;
+               std::cout << "   inflated surface XYZ:   " << inflatedXYZ[0] << ", " << inflatedXYZ[1] << ", "
+                                                << inflatedXYZ[2] << std::endl;
                std::cout << "   inflated surface normal: " << sn[0] << ", " << sn[1] << ", "
                                                 << sn[2] << std::endl;
                std::cout << "   hull node:      " << hullXYZ[0] << ", " << hullXYZ[1] << ", "
                                                 << hullXYZ[2] << std::endl;
                std::cout << "   hull normal:    " << hullNormal[0] << ", " << hullNormal[1] << ", "
                                                 << hullNormal[2] << std::endl;
+               std::cout << "   inflated hull XYZ:   " << inflatedHullXYZ[0] << ", " << inflatedHullXYZ[1] << ", "
+                                                << inflatedHullXYZ[2] << std::endl;
                std::cout << "   inflated hull normal:    " << inflatedHullNormal[0] << ", " << inflatedHullNormal[1] << ", "
                                                 << inflatedHullNormal[2] << std::endl;
                std::cout << "   lowly smoothed hull normal:    " << lowSmoothNormal[0] << ", " << lowSmoothNormal[1] << ", "

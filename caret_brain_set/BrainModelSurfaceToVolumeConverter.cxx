@@ -240,6 +240,35 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
    
    nodeToVoxelMapping.clear();
    
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Surface to Volume Converter:" << std::endl;
+      std::cout << "   Space: "
+                << volumeSpaceHint.getName().toAscii().constData()
+                << std::endl;
+      std::cout << "   Surface Offset: "
+                << surfaceOffset[0] << ", "
+                << surfaceOffset[1] << ", "
+                << surfaceOffset[2] << std::endl;
+      std::cout << "   Volume Origin: "
+                << volumeDimensions[0] << ", "
+                << volumeDimensions[1] << ", "
+                << volumeDimensions[2] << std::endl;
+      std::cout << "   Voxel Size: "
+                << voxelSize[0] << ", "
+                << voxelSize[1] << ", "
+                << voxelSize[2] << std::endl;
+      std::cout << "   Origin: "
+                << volumeOrigin[0] << ", "
+                << volumeOrigin[1] << ", "
+                << volumeOrigin[2] << std::endl;
+      std::cout << "   Inner Boundary: "
+                << innerBoundary << std::endl;
+      std::cout << "   Outer Boundary: "
+                << outerBoundary << std::endl;
+      std::cout << "   Thickness Step: "
+                << thicknessStep << std::endl;
+   }
+
    QTime timer;
    timer.start();
    
@@ -383,44 +412,7 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
          //
          float bounds[6];
          surface->getBounds(bounds);
-         
-         //
-         // Offset based on structure
-         //
-         float offset = 1.0;
-         switch (surface->getStructure().getType()) {
-            case Structure::STRUCTURE_TYPE_CORTEX_LEFT:
-               offset = -10.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT:
-               offset = 10.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CORTEX_BOTH:
-               offset = 1.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CEREBELLUM:
-               offset = 1.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_LEFT:
-               offset = 1.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CEREBELLUM_OR_CORTEX_RIGHT:
-               offset = 1.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CORTEX_LEFT_OR_CEREBELLUM:
-               offset = 1.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CORTEX_RIGHT_OR_CEREBELLUM:
-               offset = 1.0;
-               break;
-            case Structure::STRUCTURE_TYPE_CEREBRUM_CEREBELLUM:
-            case Structure::STRUCTURE_TYPE_SUBCORTICAL:
-            case Structure::STRUCTURE_TYPE_ALL:
-            case Structure::STRUCTURE_TYPE_INVALID:
-               offset = 1.0;
-               break;
-         }
-         
+                  
          //
          // Guess at location inside surface
          //
@@ -463,6 +455,11 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
             case Structure::STRUCTURE_TYPE_SUBCORTICAL:
             case Structure::STRUCTURE_TYPE_ALL:
             case Structure::STRUCTURE_TYPE_INVALID:
+               throw BrainModelAlgorithmException(
+                       "Coordinate/Surface \""
+                       + surfaceFileName
+                       + " MUST have its structure set to "
+                       + "\"left\" or \"right\"");
                break;
          }
          
@@ -601,30 +598,30 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
          break;
       case CONVERT_TO_ROI_VOLUME_USING_PAINT:
          {
-            //
-            // Find out which paint names were used and add them to the ROI names
-            //
-            PaintFile* pf = brainSet->getPaintFile();
-            std::vector<int> paintNamesUsed(pf->getNumberOfPaintNames(), 0);
-            for (int i = 0; i < numberOfVoxels; i++) {
-               const int index = static_cast<int>(volume->getVoxelWithFlatIndex(i));
-               if (index > 0) {
-                  if (paintNamesUsed[index] == 0) {
-                     paintNamesUsed[index] = 
-                        volume->addRegionName(pf->getPaintNameFromIndex(index));
+               //
+               // Find out which paint names were used and add them to the ROI names
+               //
+               PaintFile* pf = brainSet->getPaintFile();
+               std::vector<int> paintNamesUsed(pf->getNumberOfPaintNames(), 0);
+               for (int i = 0; i < numberOfVoxels; i++) {
+                  const int index = static_cast<int>(volume->getVoxelWithFlatIndex(i));
+                  if (index > 0) {
+                     if (paintNamesUsed[index] == 0) {
+                        paintNamesUsed[index] =
+                           volume->addRegionName(pf->getPaintNameFromIndex(index));
+                     }
                   }
                }
-            }
-            
-            //
-            // Update voxel values for updated region indices
-            //
-            for (int i = 0; i < numberOfVoxels; i++) {
-               const int index = static_cast<int>(volume->getVoxelWithFlatIndex(i));
-               if (index > 0) {
-                  volume->setVoxelWithFlatIndex(i, 0, static_cast<float>(paintNamesUsed[index]));
+
+               //
+               // Update voxel values for updated region indices
+               //
+               for (int i = 0; i < numberOfVoxels; i++) {
+                  const int index = static_cast<int>(volume->getVoxelWithFlatIndex(i));
+                  if (index > 0) {
+                     volume->setVoxelWithFlatIndex(i, 0, static_cast<float>(paintNamesUsed[index]));
+                  }
                }
-            }
          }
          break;
       case CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE:

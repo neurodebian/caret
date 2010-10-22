@@ -109,6 +109,12 @@ class GiftiLabelTable {
       // set all labels enabled
       void setAllLabelsEnabled(const bool b);
 
+      // Set LabelTable had colors when it was read
+      void setHadColorsWhenRead(bool b) { this->hadColorsWhenRead = b; }
+
+      // Get LabelTable had colors when it was read
+      bool getHadColorsWhenRead() const { return this->hadColorsWhenRead; }
+
       // get teh color components as floats ranging 0.0 to 1.0
       void getColorFloat(const int indx,
                          float& red,
@@ -308,6 +314,9 @@ class GiftiLabelTable {
       // the labels
       LabelContainer labels;
       
+      // colors were present when label table was read
+      bool hadColorsWhenRead;
+
       /*** IF ADDITIONAL MEMBERS ARE ADDED UPDATE copyHelperGiftiLabelTable() ***/
 };
 

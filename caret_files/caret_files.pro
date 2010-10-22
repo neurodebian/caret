@@ -50,6 +50,7 @@ HEADERS += AbstractFile.h \
 	   FreeSurferSurfaceFile.h \
 	   GenericXmlFile.h \
       GeodesicDistanceFile.h \
+      GeodesicHelper.h \
       GiftiCommon.h \
       GiftiDataArray.h \
       GiftiDataArrayFile.h \
@@ -64,7 +65,9 @@ HEADERS += AbstractFile.h \
       MDPlotFile.h \
       MetricFile.h \
       MniObjSurfaceFile.h \
+      MultiResMorphFile.h \
       NeurolucidaFile.h \
+      NiftiCaretExtension.h \
       NiftiFileHeader.h \
       NodeAttributeFile.h \
       NodeRegionOfInterestFile.h \
@@ -148,6 +151,7 @@ SOURCES += AbstractFile.cxx \
 	   FreeSurferSurfaceFile.cxx \
 	   GenericXmlFile.cxx \
       GeodesicDistanceFile.cxx \
+      GeodesicHelper.cxx \
       GiftiCommon.cxx \
       GiftiDataArray.cxx \
       GiftiDataArrayFile.cxx \
@@ -162,7 +166,9 @@ SOURCES += AbstractFile.cxx \
       MDPlotFile.cxx \
       MetricFile.cxx \
       MniObjSurfaceFile.cxx \
+      MultiResMorphFile.cxx \
       NeurolucidaFile.cxx \
+      NiftiCaretExtension.cxx \
       NiftiFileHeader.cxx \
       NodeAttributeFile.cxx \
       NodeRegionOfInterestFile.cxx \

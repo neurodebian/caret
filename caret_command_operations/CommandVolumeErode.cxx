@@ -66,9 +66,9 @@ CommandVolumeErode::getHelpInformation() const
    QString helpInfo =
       (indent3 + getShortDescription() + "\n"
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
-       + indent9 + "<iterations>\n"
        + indent9 + "<input-volume-file-name>\n"
        + indent9 + "<output-volume-file-name>\n"
+       + indent9 + "<iterations>\n"
        + indent9 + "\n"
        + indent9 + "Erode the volume for the specified number of iterations.\n"
        + indent9 + "\n");

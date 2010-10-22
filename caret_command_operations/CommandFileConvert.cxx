@@ -641,12 +641,15 @@ CommandFileConvert::executeCommand() throw (BrainModelAlgorithmException,
       throw CommandException("You must specify a mode parameter.");
    }
    
-   AreaColorFile areaColorFile;
+   AreaColorFile* areaColorFile = NULL;
    int numAreaColorFiles = static_cast<int>(areaColorFileNames.size());
-   for (int i = 0; i < numAreaColorFiles; i++) {
-      AreaColorFile acf;
-      acf.readFile(areaColorFileNames[i]);
-      areaColorFile.append(acf);
+   if (numAreaColorFiles > 0) {
+      areaColorFile = new AreaColorFile();
+      for (int i = 0; i < numAreaColorFiles; i++) {
+         AreaColorFile acf;
+         acf.readFile(areaColorFileNames[i]);
+         areaColorFile->append(acf);
+      }
    }
 
    const int numberOfDataFiles = static_cast<int>(dataFileNames.size());
@@ -767,7 +770,7 @@ CommandFileConvert::contourConversion(const QString& contourType,
 void 
 CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
                                       const QString& dataFileFormatList,
-                                      const AreaColorFile& areaColorFile) throw (CommandException)
+                                      const AreaColorFile* areaColorFile) throw (CommandException)
 {
    //
    // Convert the data format list to file types
@@ -877,7 +880,9 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
                      //
                      PaintFile* pf = dynamic_cast<PaintFile*>(af);
                      if (pf != NULL) {
-                        pf->assignColors(areaColorFile);
+                        if (areaColorFile != NULL) {
+                            pf->assignColors(*areaColorFile);
+                        }
                      }
 
                      af->writeFile(filename);
@@ -1091,7 +1096,7 @@ CommandFileConvert::freeSurferLabelToCaretConvert() throw (CommandException)
 {
    try {
       QString freeSurfaceLabelDirName(inputSurfaceName);
-      freeSurfaceLabelDirName.append("/junk");
+      freeSurfaceLabelDirName.append("/" + inputSurfaceName);
 
       QString freeSurfaceSurfaceName(inputSurfaceName2);
 
