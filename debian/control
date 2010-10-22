@@ -1,10 +1,10 @@
 Source: caret
 Section: science
 Priority: optional
-Maintainer: Michael Hanke <michael.hanke@gmail.com>
-Uploaders: Yaroslav Halchenko <debian@onerussian.com>
+Maintainer: NeuroDebian Team <team@neuro.debian.net>
+Uploaders: Michael Hanke <michael.hanke@gmail.com>, Yaroslav Halchenko <debian@onerussian.com>
 Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.3), libqt4-opengl-dev | libqt4-dev (<< 4.4.0), libqwt5-qt4-dev, libvtk5-dev, libminc-dev
-Standards-Version: 3.8.4
+Standards-Version: 3.9.1
 Homepage: http://brainvis.wustl.edu/wiki/index.php/Caret:About
 Vcs-Browser: http://git.debian.org/?p=pkg-exppsy/caret.git
 Vcs-Git: git://git.debian.org/git/pkg-exppsy/caret.git
@@ -24,10 +24,3 @@ Description: Computerized Anatomical Reconstruction and Editing Toolkit
  .
  Caret can download and use stereotaxic atlases (human, monkey, mouse and rat)
  from an open online database.
- .
- Reference:
- .
-  Van Essen, D.C., Dickson, J., Harwell, J., Hanlon, D., Anderson, C.H. and
-  Drury, H.A. 2001. An Integrated Software System for Surface-based Analyses of
-  Cerebral Cortex. Journal of American Medical Informatics Association, 8(5),
-  443-459.

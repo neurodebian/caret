@@ -5,12 +5,13 @@ Author: Michael Hanke <michael.hanke@gmail.com>
 Last-Update: 2010-04-08
 --- a/caret/caret5.pro
 +++ b/caret/caret5.pro
-@@ -102,13 +102,13 @@
+@@ -102,21 +102,19 @@
  
  unix {
     PRE_TARGETDEPS +=  \
 -      ../caret_command_operations/libCaretCommandOperations.a \
 -	   ../caret_brain_set/libCaretBrainSet.a \
+-      ../caret_vtk4_classes/libCaretVtk4Classes.a \
 -	   ../caret_files/libCaretFiles.a \
 -	   ../caret_uniformize/libCaretUniformize.a \
 -	   ../caret_statistics/libCaretStatistics.a \
@@ -26,7 +27,14 @@ Last-Update: 2010-04-08
  }
  
  unix:!macx {
-@@ -138,10 +138,7 @@
+    LIBS +=  \
+       -L../caret_command_operations -lCaretCommandOperations \
+ 	   -L../caret_brain_set -lCaretBrainSet \
+-      -L../caret_vtk4_classes -lCaretVtk4Classes \
+ 	   -L../caret_files -lCaretFiles \
+ 	   -L../caret_uniformize -lCaretUniformize \
+ 	   -L../caret_statistics -lCaretStatistics \
+@@ -140,10 +138,7 @@
     # FreeBSD also does not have libdl, but integrates its functions
     # into libc.
     !exists( /etc/rc.conf ) {
@@ -65,12 +73,13 @@ Last-Update: 2010-04-08
  
 --- a/caret_command/caret_command.pro
 +++ b/caret_command/caret_command.pro
-@@ -80,14 +80,14 @@
+@@ -80,15 +80,14 @@
  
  unix {
     PRE_TARGETDEPS +=  \
 -           ../caret_command_operations/libCaretCommandOperations.a \
 -           ../caret_brain_set/libCaretBrainSet.a \
+-           ../caret_vtk4_classes/libCaretVtk4Classes.a \
 -           ../caret_files/libCaretFiles.a \
 -           ../caret_widgets/libCaretWidgets.a \
 -           ../caret_uniformize/libCaretUniformize.a \
@@ -88,7 +97,15 @@ Last-Update: 2010-04-08
  
  }
  
-@@ -116,10 +116,7 @@
+@@ -96,7 +95,6 @@
+    LIBS += \
+            -L../caret_command_operations -lCaretCommandOperations \
+            -L../caret_brain_set -lCaretBrainSet \
+-           -L../caret_vtk4_classes -lCaretVtk4Classes \
+            -L../caret_files -lCaretFiles \
+            -L../caret_widgets -lCaretWidgets \
+ 	        -L../caret_uniformize -lCaretUniformize \
+@@ -118,10 +116,7 @@
     # FreeBSD also does not have libdl, but integrates its functions
     # into libc.
     !exists( /etc/rc.conf ) {
@@ -153,18 +170,7 @@ Last-Update: 2010-04-08
  	   AfniHeader.h \
 --- a/caret_qmake_include.pro
 +++ b/caret_qmake_include.pro
-@@ -48,8 +48,8 @@
- !exists( $(QWT_INC_DIR)/qwt.h ) {
-    error("The environment variable for QWT includes \"QWT_INC_DIR\" not defined.")
- }
--!exists( $(QTDIR)/include/qt.h ) {
--   !exists( $(QTDIR)/include/Qt ) {
-+!exists( $(QTDIR)/include/qt4/qt.h ) {
-+   !exists( $(QTDIR)/include/qt4/Qt ) {
-       error("The environment variable for QT \"QTDIR\" not defined.")
-    }
- }
-@@ -58,7 +58,7 @@
+@@ -62,7 +62,7 @@
  #
  # if this file exists then QT4 is being used
  #
@@ -173,32 +179,49 @@ Last-Update: 2010-04-08
     DEFINES += CARET_QT4
     QT += network opengl xml
  }
-@@ -168,11 +168,7 @@
-               -lvtkGraphics \
+@@ -106,7 +106,6 @@
+    DEFINES += HAVE_MINC
+    INCLUDEPATH += $$(NETCDF_INC_DIR)
+    NETCDF_LIBS = -L$$(NETCDF_LIB_DIR) \
+-                 -lminc \
+                  -lnetcdf
+ 
+    exists( $(NETCDF_LIB_DIR)/libminc2.a ) {
+@@ -160,7 +159,7 @@
+    #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
+ }
+ !win32 {
+-   VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
++#  VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a
+ }
+ VTK_LIBS += \
+    -L$$(VTK_LIB_DIR) \
+@@ -171,11 +170,7 @@
                -lvtkIO \
                -lvtkFiltering \
--              -lvtkCommon \
+               -lvtkCommon \
+-	      -lvtksys \
 -              -lvtkjpeg \
 -              -lvtkpng \
 -              -lvtkexpat \
 -              -lvtkzlib
-+              -lvtkCommon
- }
++              -lvtksys
  
- #
-@@ -383,11 +379,26 @@
+ exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+     message( "Building WITH MPEG support" )
+@@ -388,7 +383,7 @@
     # QWT libraries
     #
-    QWT_LIBS = -L$(QWT_LIB_DIR) \
--         -lqwt
+    QWT_LIBS = -L$$(QWT_LIB_DIR) \
+-         -lqwt 
 +         -lqwt-qt4
- 
-    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
-    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
+    LIBS += \
+          -ltiff \
+          -ljpeg
+@@ -402,4 +397,20 @@
+    #QMAKE_LFLAGS_RELEASE += -pg
  }
  
- 
--
 +# Debian specific build configuration
 +# always perform release build, debug symbols are taken care of in
 +# debian/rules
@@ -215,6 +238,7 @@ Last-Update: 2010-04-08
 +# link everything against VTK -- does not hurt as -Wl,--as-needed is
 +# used for Debian build
 +LIBS *= $$VTK_LIBS
+ 
 --- a/caret_widgets/caret_widgets.pro
 +++ b/caret_widgets/caret_widgets.pro
 @@ -7,6 +7,8 @@

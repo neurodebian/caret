@@ -1,6 +1,1 @@
-missing_header_includes
-kfreebsd_fix
-use_minc2
-support_vtk52+
-no_mpeg2
 shared_libraries

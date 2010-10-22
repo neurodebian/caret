@@ -25,7 +25,7 @@ endif
 cfg-%:
 	@echo "Configuring: '$*'"
 	cd $* && qmake-qt4 "CONFIG+=dll" \
-	                   "QMAKE_CXXFLAGS_RELEASE=$(CXXFLAGS)" \
+	                   "QMAKE_CXXFLAGS_RELEASE=$(CXXFLAGS) -DQT4_FILE_POS_BUG=1" \
 	                   "QMAKE_LFLAGS_RELEASE += -Wl,--as-needed --no-undefined"
 
 
