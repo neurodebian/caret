@@ -1,0 +1,28 @@
+Author: Michael Hanke <michael.hanke@gmail.com>
+Description: Prevent compile failure when -DQT4_FILE_POS_BUG=1
+diff --git a/caret_files/DeformationMapFile.cxx b/caret_files/DeformationMapFile.cxx
+index 7326b5c..bb822ec 100644
+--- a/caret_files/DeformationMapFile.cxx
++++ b/caret_files/DeformationMapFile.cxx
+@@ -381,7 +381,7 @@ DeformationMapFile::swapSourceAndTargetFiles()
+  * Read the deformation map file's data.
+  */
+ void
+-DeformationMapFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream& binStream,
++DeformationMapFile::readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,
+                                   QDomElement& /* rootElement */) 
+                                                     throw (FileException)
+ {
+diff --git a/caret_files/TopologyFile.cxx b/caret_files/TopologyFile.cxx
+index d93490c..f294afc 100644
+--- a/caret_files/TopologyFile.cxx
++++ b/caret_files/TopologyFile.cxx
+@@ -1689,7 +1689,7 @@ TopologyFile::readTilesBinary(QDataStream& binStream) throw (FileException)
+  * Read topology file version 1.
+  */
+ void
+-TopologyFile::readFileDataVersion1(QFile& /*file*/,
++TopologyFile::readFileDataVersion1(QFile& file,
+                                    QTextStream& stream,
+                                    QDataStream& binStream) throw (FileException)
+ {
