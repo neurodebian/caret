@@ -5,6 +5,10 @@
 TARGET       = CaretBrainSet
 CONFIG  += staticlib 
 INCLUDEPATH += .
+ubuntu {
+	CONFIG -= staticlib
+	CONFIG += plugin
+}
 
 include(../caret_qmake_include.pro)
 
@@ -78,6 +82,7 @@ HEADERS += BorderFileProjector.h \
       BrainModelSurfaceMetricTwinComparison.h \
       BrainModelSurfaceMetricTwoSampleTTest.h \
       BrainModelSurfaceMetricSmoothing.h \
+      BrainModelSurfaceMetricSmoothingAll.h \
 	   BrainModelSurfaceMorphing.h \
 	   BrainModelSurfaceMultiresolutionMorphing.h \
       BrainModelSurfaceNodeColoring.h \
@@ -88,6 +93,7 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelSurfacePointLocator.h \
 	   BrainModelSurfacePointProjector.h \
       BrainModelSurfacePolyhedron.h \
+      BrainModelSurfacePolyhedronNew.h \
       BrainModelSurfaceROIAssignMetric.h \
       BrainModelSurfaceROIAssignMetricNodeArea.h \
       BrainModelSurfaceROIAssignPaint.h \
@@ -125,6 +131,8 @@ HEADERS += BorderFileProjector.h \
       BrainModelVolumeNearToPlane.h \
       BrainModelVolumeProbAtlasToFunctional.h \
       BrainModelVolumeRegionOfInterest.h \
+      BrainModelVolumeROIGradient.h \
+      BrainModelVolumeROIMinima.h \
       BrainModelVolumeSegmentationStereotaxic.h \
       BrainModelVolumeSureFitErrorCorrection.h \
       BrainModelVolumeSureFitSegmentation.h \
@@ -250,6 +258,7 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelSurfaceMetricTwinComparison.cxx \
       BrainModelSurfaceMetricTwoSampleTTest.cxx \
       BrainModelSurfaceMetricSmoothing.cxx \
+      BrainModelSurfaceMetricSmoothingAll.cxx \
 	   BrainModelSurfaceMorphing.cxx \
 	   BrainModelSurfaceMultiresolutionMorphing.cxx \
       BrainModelSurfaceNodeColoring.cxx \
@@ -260,6 +269,7 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelSurfacePointLocator.cxx \
 	   BrainModelSurfacePointProjector.cxx \
       BrainModelSurfacePolyhedron.cxx \
+      BrainModelSurfacePolyhedronNew.cxx \
       BrainModelSurfaceROIAssignMetric.cxx \
       BrainModelSurfaceROIAssignMetricNodeArea.cxx \
       BrainModelSurfaceROIAssignPaint.cxx \
@@ -297,6 +307,8 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelVolumeNearToPlane.cxx \
       BrainModelVolumeProbAtlasToFunctional.cxx \
       BrainModelVolumeRegionOfInterest.cxx \
+      BrainModelVolumeROIGradient.cxx \
+      BrainModelVolumeROIMinima.cxx \
       BrainModelVolumeSegmentationStereotaxic.cxx \
       BrainModelVolumeSureFitErrorCorrection.cxx \
       BrainModelVolumeSureFitSegmentation.cxx \

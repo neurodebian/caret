@@ -2924,10 +2924,20 @@ BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(VolumeFile& ana
       delete hist;
    }
    
+   int redoCounter = 0;
    float threshhold = (grayMatterPeak + whiteMatterPeak) * 0.5;
    do
    {
       redo = false;
+      redoCounter++;
+      if (DebugControl::getDebugOn()) {
+         std::cout << "Redo " << redoCounter
+                   << ": Gray: " << grayMatterPeak
+                   << " White: " << whiteMatterPeak
+                   << " Threshold: " << threshhold
+                   << std::endl;
+      }
+      
       corpusCallosumVolumeFileOut = anatomyVolumeFileIn;
       corpusCallosumVolumeFileOut.thresholdVolume(threshhold);
    
@@ -2962,8 +2972,27 @@ BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(VolumeFile& ana
          extent[4] -= 10;
          extent[5] += 10;
       }
+
+      if (DebugControl::getDebugOn()) {
+         try {
+            QString name = "CC_BeforeMask_" + QString::number(redoCounter) + ".nii.gz";
+            corpusCallosumVolumeFileOut.setDescriptiveLabel(name);
+            corpusCallosumVolumeFileOut.writeFile(name);
+         }
+         catch (FileException e) {
+         }
+      }
       corpusCallosumVolumeFileOut.maskVolume(extent);
       corpusCallosumVolumeFileOut.stretchVoxelValues();
+      if (DebugControl::getDebugOn()) {
+         try {
+            QString name = "CC_AfterMask_" + QString::number(redoCounter) + ".nii.gz";
+            corpusCallosumVolumeFileOut.setDescriptiveLabel(name);
+            corpusCallosumVolumeFileOut.writeFile(name);
+         }
+         catch (FileException e) {
+         }
+      }
    
                  
       //FillBiggestObject.py CC.slice.mnc CC.slice.fill.mnc xAC_1_low xAC_1_high  `expr ACy - 50` `expr ACy + 40` ACz `expr ACz + 40
@@ -2988,7 +3017,17 @@ BrainModelVolumeSureFitSegmentation::generateCorpusCallosumSlice(VolumeFile& ana
       if (!redo)
       {
          corpusCallosumVolumeFileOut.floodFillWithVTK(voxelSeed, 255, 255, 0);
+         if (DebugControl::getDebugOn()) {
+            try {
+               QString name = "CC_FloodFill_" + QString::number(redoCounter) + ".nii.gz";
+               corpusCallosumVolumeFileOut.setDescriptiveLabel(name);
+               corpusCallosumVolumeFileOut.writeFile(name);
+            }
+            catch (FileException e) {
+            }
+         }
          corpusCallosumVolumeFileOut.setDescriptiveLabel("CorpusCallosumSlice");
+         
          //
          // Get extent of volume
          //

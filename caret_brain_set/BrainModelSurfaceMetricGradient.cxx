@@ -23,7 +23,6 @@
  */
 /*LICENSE_END*/
 
-#include "BrainModelVolume.h"
 #include "BrainModelSurfaceMetricGradient.h"
 #include "BrainSet.h"
 #include "BrainModelSurface.h"
@@ -82,7 +81,7 @@ void BrainModelSurfaceMetricGradient::calcrref(double* matrix[], int rows, int c
    {
       tempd = std::abs(matrix[i][i]);//search for pivot
       temp = i;
-      for (j = 0; j < rows; ++j)
+      for (j = i + 1; j < rows; ++j)
       {
          tempd2 = std::abs(matrix[j][i]);
          if (tempd2 > tempd)
@@ -139,7 +138,6 @@ BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(
                                                VectorFile* gradOutIn,
                                                MetricFile* gradMagOutIn,
                                                int magOutIndexIn,
-                                               int depthIn,
                                                bool avgNormalsIn)
    : BrainModelAlgorithm(bs)
 {
@@ -149,7 +147,6 @@ BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(
    gradOut    = gradOutIn;
    gradMagOut = gradMagOutIn;
    magOutIndex = magOutIndexIn;
-   depth = depthIn;
    avgNormals = avgNormalsIn;
 }
                                       
@@ -175,10 +172,6 @@ BrainModelSurfaceMetricGradient::execute() throw (BrainModelAlgorithmException)
    const TopologyHelper* myhelper = topo->getTopologyHelper(false, true, false);
    mysurf->computeNormals();
    mysurf->orientNormalsOut();
-   if (depth < 1)
-   {
-      depth = 1;
-   }
    if (source == NULL) {
       throw BrainModelAlgorithmException("Invalid coordinate file.");
    }
@@ -291,7 +284,7 @@ BrainModelSurfaceMetricGradient::execute() throw (BrainModelAlgorithmException)
          rrefb[2][j] = 0.0;
       }
       nodemetric = metricData[i];//uses metric difference for 2 reasons: makes rref cumulate smaller values, and makes root node not matter to calculation
-      myhelper->getNodeNeighborsToDepth(i, depth, neighbors);//intelligently detects depth == 1 (and invalid depth)
+      myhelper->getNodeNeighbors(i, neighbors);//intelligently detects depth == 1 (and invalid depth)
       numNeigh = neighbors.size();
       for (j = 0; j < numNeigh; ++j)
       {

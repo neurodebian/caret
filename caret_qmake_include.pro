@@ -3,35 +3,13 @@
 #  Compile debug on mac since that is where development is done
 #  Compile optimized on Linux and Windows
 #
-macx {
-   #
-   # Uncomment for Debug
-   #
-   CONFIG      -= release
-   CONFIG      += warn_on debug
-   
-   #
-   # Uncomment for Release
-   #
-   #CONFIG	+= release
-   #CONFIG	-= debug
-
-   #
-   # Suppress "has different visibility" and ALL warnings
-   #
-   QMAKE_LFLAGS_APP += -w
-
-}
-!macx {
-   CONFIG	+= release
-   CONFIG	-= debug
-}
-
 CONFIG	+= qt thread
 
 QT 	+= network opengl xml
 #QT	+= qt3support
 QT	-= qt3support
+QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
+QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
 
 #
 # when missing, it must be the GIFTI API library
@@ -66,13 +44,17 @@ exists( $(QTDIR)/include/Qt/qicon.h ) {
    DEFINES += CARET_QT4
    QT += network opengl xml
 }
-
+#=================================================================================
 #=================================================================================
 #
-# enable for profile (performance) measurement
+# OpenMP (www.openmp.org)
 #
-#QMAKE_CXXFLAGS_DEBUG += -pg
-#QMAKE_LFLAGS_DEBUG += -pg
+!win32 {
+   QMAKE_CXXFLAGS_DEBUG   += -fopenmp
+   QMAKE_LFLAGS_DEBUG     += -fopenmp
+   QMAKE_CXXFLAGS_RELEASE += -fopenmp
+   QMAKE_LFLAGS_RELEASE   += -fopenmp
+}
 
 #=================================================================================
 #
@@ -146,12 +128,12 @@ message( "Building WITH VTK5 support" )
 #
 #
 #
-INCLUDEPATH += ../caret_vtk4_classes
+!ubuntu:INCLUDEPATH += ../caret_vtk4_classes
 
 #
 # need by caret_vtk4_classes
 #
-INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
+!ubuntu:INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
 
 #
 # VTK Libraries for VTK 5.x
@@ -159,7 +141,7 @@ INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
 win32 {
    #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
 }
-!win32 {
+!win32:!ubuntu {
    VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
 }
 VTK_LIBS += \
@@ -177,7 +159,7 @@ VTK_LIBS += \
               -lvtkexpat \
               -lvtkzlib
 
-exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ):!ubuntu {
     message( "Building WITH MPEG support" )
     DEFINES += HAVE_MPEG
     VTK_LIBS += -lvtkMPEG2Encode
@@ -286,10 +268,6 @@ win32 {
    INCLUDEPATH += $$(ZLIB_INC_DIR)
 ##   LIBS        += -L$$(ZLIB_LIB_DIR) -lzlib
 
-      QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
-      QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
-
-
       #
       # QWT libraries
       #
@@ -320,14 +298,10 @@ macx {
    # Build objects for Universal binaries
    #
    #CONFIG += ppc x86
-   #QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
-   #   -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
-   #QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated \
-   #   -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
-   QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
-      -isysroot /Developer/SDKs/MacOSX10.5.sdk
-   QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated \
-      -isysroot /Developer/SDKs/MacOSX10.5.sdk
+   #QMAKE_CXXFLAGS_RELEASE +=  -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+   #QMAKE_CXXFLAGS_DEBUG +=  -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
+   QMAKE_CXXFLAGS_RELEASE +=  -isysroot /Developer/SDKs/MacOSX10.5.sdk
+   QMAKE_CXXFLAGS_DEBUG += -isysroot /Developer/SDKs/MacOSX10.5.sdk
 
    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 
@@ -368,22 +342,19 @@ macx {
    #QMAKE_LFLAGS_DEBUG += -m64
    #QMAKE_LFLAGS_RELEASE += -m64
 
-#   CONFIG      -= release
-#   CONFIG      += warn_on debug
-
    #
    # QWT libraries
    #
    QWT_LIBS = -L$$(QWT_LIB_DIR) \
               -lqwt
-
+   QMAKE_LFLAGS_APP += -w
 }
 
 #=================================================================================
 #
 # Unix (but not Mac) unique stuff
 #
-unix:!macx {
+unix:!macx:!ubuntu {
    #
    # QWT libraries
    #
@@ -392,14 +363,59 @@ unix:!macx {
    LIBS += \
          -ltiff \
          -ljpeg
+}
 
-   QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
-   QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
-   #profiling
-   #QMAKE_CXXFLAGS_RELEASE +=  -pg
-   #QMAKE_CXXFLAGS_DEBUG += -pg
-   #QMAKE_LFLAGS_DEBUG += -pg
-   #QMAKE_LFLAGS_RELEASE += -pg
+unix:release:!debug:!profile {
+    QMAKE_POST_LINK=strip --strip-debug $(TARGET)
+}
+
+ubuntu {
+    LIBS -= -lqwt
+    LIBS += -lpng
+    VTK_LIBS -= -lvtkjpeg -lvtkpng -lvtkexpat -lvtkzlib
+    QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt-qt4
+    QMAKE_CXXFLAGS += -DUBUNTU
+    DEFINES -= HAVE_MPEG
+    VTK_LIBS -= -lvtkMPEG2Encode
+    exists( $(NETCDF_INC_DIR)/minc.h ) {
+       DEFINES += HAVE_MINC
+       INCLUDEPATH += $$(NETCDF_INC_DIR)
+       NETCDF_LIBS = -L$$(NETCDF_LIB_DIR) \
+                     -lminc2 \
+                     -lnetcdf
+       NETCDF_LIBS -= -lminc
+    }
+
+}
+
+release {
+    QMAKE_CXXFLAGS_RELEASE -= -g
+    QMAKE_CXXFLAGS_DEBUG -= -g
+    QMAKE_LFLAGS_DEBUG -= -g
+    QMAKE_LFLAGS_RELEASE -= -g
+    QMAKE_CXXFLAGS_RELEASE += -O2
+    QMAKE_CXXFLAGS_DEBUG += -O2
+    QMAKE_LFLAGS_DEBUG += -O2
+    QMAKE_LFLAGS_RELEASE += -O2    
+}
+
+debug {
+    QMAKE_CXXFLAGS_RELEASE += -g
+    QMAKE_CXXFLAGS_DEBUG += -g
+    QMAKE_LFLAGS_DEBUG += -g
+    QMAKE_LFLAGS_RELEASE += -g
+    QMAKE_CXXFLAGS_RELEASE -= -O2
+    QMAKE_CXXFLAGS_DEBUG -= -O2
+    QMAKE_LFLAGS_DEBUG -= -O2
+    QMAKE_LFLAGS_RELEASE -= -O2
+    
+}
+
+profile {
+   QMAKE_CXXFLAGS_RELEASE +=  -pg -O2
+   QMAKE_CXXFLAGS_DEBUG += -pg -O2
+   QMAKE_LFLAGS_DEBUG += -pg
+   QMAKE_LFLAGS_RELEASE += -pg
 }
 
 

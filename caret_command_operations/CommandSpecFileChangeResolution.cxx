@@ -27,11 +27,14 @@
 #include <QFile>
 #include <QFileInfo>
 #include <BrainModelSurfaceDeformDataFile.h>
+#include <cmath>
+#include <iostream>
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceDeformation.h"
 #include "BrainModelSurfaceDeformationMapCreate.h"
 #include "BrainModelSurfacePolyhedron.h"
+#include "BrainModelSurfacePolyhedronNew.h"
 #include "BrainModelSurfaceStandardSphere.h"
 #include "BrainSet.h"
 #include "CommandSpecFileChangeResolution.h"
@@ -102,6 +105,10 @@ CommandSpecFileChangeResolution::getHelpInformation() const
        + indent9 + "This command should be run from the directory containing\n"
        + indent9 + "the input spec file.\n"
        + indent9 + "\n"
+       + indent9 + "If the number of nodes does not match a standard mesh from\n"
+       + indent9 + "the list below, a close resolution is found by dividing\n"
+       + indent9 + "the faces of an icosahedron and projecting to a sphere.\n"
+       + indent9 + "\n"
        + indent9 + "Number of Nodes   Number of Triangles\n"
        + indent9 + "---------------   -------------------\n");
 
@@ -147,7 +154,7 @@ CommandSpecFileChangeResolution::executeCommand() throw (BrainModelAlgorithmExce
       parameters->getNextParameterAsString("Spec File Name");
    const QString outputDirectoryName =
       parameters->getNextParameterAsString("Directory Name");
-   const int numberOfNodes =
+   int numberOfNodes =
       parameters->getNextParameterAsInt("Number of Nodes");
    checkForExcessiveParameters();
 
@@ -176,16 +183,29 @@ CommandSpecFileChangeResolution::executeCommand() throw (BrainModelAlgorithmExce
          }
       }
    }
+   int mynodes, mytris, lastnodes = -1000;
+   int newNumberOfDivisions = -1;
    if ((numberOfIterations < 0) &&
-       (stdSphereNumberOfNodes < 0)) {
-      throw CommandException("Invalid number of nodes: "
+       (stdSphereNumberOfNodes < 0)) {//Instead of crashing, find a close resolution with the new polyhedron
+      if (numberOfNodes < 4)
+      {//in case we throw in tetrahedron sometime
+         throw CommandException("Invalid number of nodes: "
                              + QString::number(numberOfNodes));
+      }
+      std::cout << "Nonstandard resolution specified..." << std::endl;
+      for (int i = 1; i < 10000; ++i)//10363 divisions overflows an int32 in number of triangles, tighten this sanity check?
+      {
+         BrainModelSurfacePolyhedronNew::getNumberOfNodesAndTrianglesFromDivisions(i, mynodes, mytris);
+         if (abs(numberOfNodes - lastnodes) < abs(mynodes - numberOfNodes))
+         {
+            newNumberOfDivisions = i - 1;
+            numberOfNodes = lastnodes;//reset node number because it is used in labels elsewhere
+            std::cout << "Using closest divided icosahedron, with " << numberOfNodes << " nodes." << std::endl;
+            break;
+         }
+         lastnodes = mynodes;
+      }
    }
-
-   //
-   // create the output directory
-   //
-   this->createOutputDirectory(outputDirectoryName);
 
    //
    // Create the spherical target
@@ -201,10 +221,19 @@ CommandSpecFileChangeResolution::executeCommand() throw (BrainModelAlgorithmExce
       brainSet.getLoadedFilesSpecFile()->clear();
       QDir::setCurrent(originalPath);
    }
+   else if (newNumberOfDivisions > 0) {
+      BrainModelSurfacePolyhedronNew tetranew(&brainSet, newNumberOfDivisions);
+      tetranew.execute();
+   }
    else {
       throw CommandException("Invalid number of nodes: "
                              + QString::number(numberOfNodes));
    }
+
+   //
+   // create the output directory
+   //
+   this->createOutputDirectory(outputDirectoryName);
 
    BrainModelSurface* targetSphericalSurface = brainSet.getBrainModelSurface(0);
    if (targetSphericalSurface == NULL) {
@@ -221,13 +250,23 @@ CommandSpecFileChangeResolution::executeCommand() throw (BrainModelAlgorithmExce
    const QString defTargetPrefix = "def_sphere";
    const QString defTargetCoordName = defTargetPrefix
                                     + SpecFile::getCoordinateFileExtension();
-   const QString defTargetTopoName = defTargetPrefix
+   QString defTargetTopoName = defTargetPrefix
                                     + SpecFile::getTopoFileExtension();
-   const QString defTargetSpecName = deformedPrefix
+   QString defTargetSpecName = deformedPrefix
                                    + FileUtilities::basename(usersSpecFileName);
    const QString defTargetDefMapName = defTargetPrefix
                                    + SpecFile::getDeformationMapFileExtension();
-
+   
+   // 
+   // Change target def map name to include correct number of nodes
+   // This name gets used for deforming data files so that the data files
+   // have the correct number of nodes.
+   // 9/10/2010
+   //
+   defTargetSpecName = this->createOutputSpecFileName(defTargetSpecName,
+                                                 targetSphericalSurface->getNumberOfNodes());
+   
+   
    //
    // Read the user's brain set
    //
@@ -247,6 +286,18 @@ CommandSpecFileChangeResolution::executeCommand() throw (BrainModelAlgorithmExce
       usersSphericalSurface = createSphereFromUsersFiducial(usersBrainSet);
    }
 
+   TopologyFile* sourceTopologyFile = fiducialSurface->getTopologyFile();
+   if (sourceTopologyFile != NULL) {
+      defTargetTopoName = this->createOutputSpecFileName(
+              FileUtilities::basename(sourceTopologyFile->getFileName()), numberOfNodes);
+      defTargetTopoName = BrainModelSurfaceDeformDataFile::createDeformedFileName(
+                                  sourceTopologyFile->getFileName(),
+                                  defTargetSpecName,
+                                  "",
+                                  numberOfNodes,
+                                  false);
+   }
+   
    //
    // Set the radius of the target sphere
    //
@@ -291,6 +342,8 @@ CommandSpecFileChangeResolution::executeCommand() throw (BrainModelAlgorithmExce
                                                 BrainModelSurfaceDeformationMapCreate::DEFORMATION_SURFACE_TYPE_SPHERE);
    bmsdmc.execute();
 
+   defMapFile.setMetricDeformationType(DeformationMapFile::METRIC_DEFORM_AVERAGE_TILE_NODES);
+   
    //
    // Write the deformation map file
    //
@@ -459,4 +512,43 @@ CommandSpecFileChangeResolution::readUsersSpecFile(const QString& usersSpecFileN
    return bs;
 }
       
+QString
+CommandSpecFileChangeResolution::createOutputSpecFileName(const QString& sourceSpecName,
+                                                          const int numberOfNodes) 
+{
+      QString directory, species,  casename,  anatomy, hemisphere;
+      QString description, descriptionNoTypeName, theDate, numNodes, extension;
+      const bool valid = FileUtilities::parseCaretDataFileName(sourceSpecName,
+                           directory, species,  casename,  anatomy, hemisphere,
+                           description, descriptionNoTypeName, theDate, numNodes, extension);
+      if (valid) {
+         QString newNumberOfNodes = QString::number(numberOfNodes);
+         QString nodeString, atlasString;
+         bool nodesValid = FileUtilities::parseCaretDataFileNumberOfNodes(numNodes,
+                                                                          nodeString,
+                                                                          atlasString);
+         if (nodesValid) {
+            if (atlasString.isEmpty() == false) {
+               QString thousandNodes = QString::number(numberOfNodes / 1000);
+               newNumberOfNodes = thousandNodes
+                                + "k"
+                                + atlasString;
+            }
+         }
+         
+         const QString newSpecName =
+            FileUtilities::reassembleCaretDataFileName(directory,
+                                                       species,
+                                                       casename,
+                                                       anatomy,
+                                                       hemisphere,
+                                                       description,
+                                                       theDate,
+                                                       newNumberOfNodes,
+                                                       extension);
+         return newSpecName;
+      }
+      
+      return sourceSpecName;
+}
 

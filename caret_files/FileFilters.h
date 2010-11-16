@@ -184,7 +184,7 @@ class FileFilters {
       static QString getMetricFileFilter() { return QString("Metric Files (*%1)").arg(SpecFile::getMetricFileExtension()); }
       
       /// file filer for metric or shape as metric file
-      static QString getMetricOrShapeAsMetricFileFilter() { return QString("Metric [or Shape] Files (*%1 *%2)").arg(SpecFile::getMetricFileExtension()).arg(SpecFile::getSurfaceShapeFileExtension()); }
+      static QString getMetricOrShapeAsMetricFileFilter() { return QString("Metric [or Shape] Files (*%1 *%2 *%3 *%4)").arg(SpecFile::getMetricFileExtension()).arg(SpecFile::getSurfaceShapeFileExtension()).arg(SpecFile::getGiftiFunctionalFileExtension()).arg(SpecFile::getGiftiShapeFileExtension()); }
       
       /// file filer for  file
       static QString getMetricShapeFileFilter() { return QString("Metric/Shape Files (*%1 *%2)").arg(SpecFile::getMetricFileExtension()).arg(SpecFile::getSurfaceShapeFileExtension()); }
@@ -217,7 +217,7 @@ class FileFilters {
       static QString getSurfaceShapeFileFilter() { return QString("Surface Shape Files (*%1)").arg(SpecFile::getSurfaceShapeFileExtension()); }
       
       /// file filer for shape or metric as shape file
-      static QString getSurfaceShapeOrMetricAsShapeFileFilter() { return QString("Surface Shape [or Metric] Files (*%1 *%2)").arg(SpecFile::getMetricFileExtension()).arg(SpecFile::getSurfaceShapeFileExtension()); }
+      static QString getSurfaceShapeOrMetricAsShapeFileFilter() { return QString("Surface Shape [or Metric] Files (*%1 *%2 *%3 *%4)").arg(SpecFile::getMetricFileExtension()).arg(SpecFile::getSurfaceShapeFileExtension()).arg(SpecFile::getGiftiFunctionalFileExtension()).arg(SpecFile::getGiftiShapeFileExtension()); }
       
       /// file filer for  file
       static QString getTopographyFileFilter() { return QString("Topography Files (*%1)").arg(SpecFile::getTopographyFileExtension()); }

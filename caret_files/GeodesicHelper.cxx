@@ -616,20 +616,50 @@ void GeodesicHelper::getGeoFromNode(const int node, float* valuesOut, const bool
    output = temp;//restore the pointer to the original memory
 }
 
-void GeodesicHelper::getGeoFromNode(const int node, float* valuesOut, std::vector<int>& parentsOut, const bool smoothflag)
+void GeodesicHelper::getGeoFromNode(const int node, float* valuesOut, int* parentsOut, const bool smoothflag)
 {
-   if (node < 0 || node >= numNodes || !valuesOut)
+   if (node < 0 || node >= numNodes || !valuesOut || !parentsOut)
    {
       return;
    }
-   QMutexLocker locked(&inUse);//again, do not scope this, we need the parent array to stay put
+   QMutexLocker locked(&inUse);//don't screw with member variables while in use
    float* temp = output;//swap out the output pointer to avoid allocation
+   int* tempi = parent;
    output = valuesOut;
+   parent = parentsOut;
    dijkstra(node, smoothflag);
-   output = temp;//restore the pointer to the original memory
+   output = temp;//restore the pointers to the original memory
+   parent = tempi;
+}
+
+void GeodesicHelper::getGeoFromNode(const int node, std::vector<float>& valuesOut, const bool smoothflag)
+{
+   if (node < 0 || node >= numNodes)
+   {
+      return;
+   }
+   QMutexLocker locked(&inUse);
+   dijkstra(node, smoothflag);
+   valuesOut.resize(numNodes);
+   for (int i = 0; i < numNodes; ++i)
+   {
+      valuesOut[i] = output[i];
+   }
+}
+
+void GeodesicHelper::getGeoFromNode(const int node, std::vector<float>& valuesOut, std::vector<int>& parentsOut, const bool smoothflag)
+{
+   if (node < 0 || node >= numNodes)
+   {
+      return;
+   }
+   QMutexLocker locked(&inUse);
+   dijkstra(node, smoothflag);
+   valuesOut.resize(numNodes);
    parentsOut.resize(numNodes);
    for (int i = 0; i < numNodes; ++i)
    {
+      valuesOut[i] = output[i];
       parentsOut[i] = parent[i];
    }
 }

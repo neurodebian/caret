@@ -6,6 +6,10 @@ TARGET = CaretUniformize
 CONFIG += staticlib
 
 INCLUDEPATH += .
+ubuntu {
+	CONFIG -= staticlib
+	CONFIG += plugin
+}
 
 include(../caret_qmake_include.pro)  
 

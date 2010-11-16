@@ -114,9 +114,9 @@ CommandMetricSmoothing::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "   NOTE: Geodesic Gaussian IGNORES the strength parameter,\n"
        + indent9 + "      amount of smoothing is controlled solely by sigma and\n"
-       + indent9 + "      iterations.  A very small sigma (around a fourth of\n"
-       + indent9 + "      node spacing) may result in no smoothing on many nodes,\n"
-       + indent9 + "      as the neighbor cutoff distance is 4 times the sigma.\n"
+       + indent9 + "      iterations.  The intent is to do one iteration of\n"
+       + indent9 + "      smoothing, with the sigma specifying how much smoother\n"
+       + indent9 + "      the metric is desired to be.\n"
        + indent9 + "\n");
       
    return helpInfo;

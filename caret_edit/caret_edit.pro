@@ -43,7 +43,8 @@ macx {
 }
 
 unix:!macx {
-   LIBS += -L../caret_widgets -lCaretWidgets \
+   LIBS += -L../caret_command_operations -lCaretCommandOperations \
+           -L../caret_widgets -lCaretWidgets \
            -L../caret_brain_set -lCaretBrainSet \
            -L../caret_files  -lCaretFiles \
            -L../caret_uniformize -lCaretUniformize \
@@ -55,6 +56,8 @@ unix:!macx {
       LIBS       += -lgen -LD_LAYOUT:lgot_buffer=500
    }
 }
+
+
 
 LIBS += $$VTK_LIBS
 contains( DEFINES, HAVE_MINC ) {

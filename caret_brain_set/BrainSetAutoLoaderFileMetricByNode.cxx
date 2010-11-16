@@ -91,15 +91,8 @@ BrainSetAutoLoaderFileMetricByNode::loadFileForNode(const int nodeNumber)
          fileCounter++;
       }
 
-      if (DebugControl::getDebugOn()) {
-          std::cout << "Node Number: "
-                    << nodeNumber
-                    << ", file: "
-                    << metricFileNameToLoad.toAscii().constData()
-                    << std::endl;
-      }
-
       //std::cout << "Searched " << fileCounter << " files." << std::endl;
+      QString columnName = "";
       if (metricFileNameToLoad.isEmpty() == false) {
          if (DebugControl::getDebugOn()) {
             std::cout << "Load: "
@@ -146,6 +139,7 @@ BrainSetAutoLoaderFileMetricByNode::loadFileForNode(const int nodeNumber)
                }
             }
             autoLoadColumnNumber = col;
+            columnName = brainSet->getMetricFile()->getColumnName(col);
          }
          catch (FileException e) {
             errorMessage += (e.whatQString() + "\n");
@@ -155,6 +149,17 @@ BrainSetAutoLoaderFileMetricByNode::loadFileForNode(const int nodeNumber)
          errorMessage = ("No metric file for node "
                          + QString::number(nodeNumber) + "\n");
       }
+
+      //if (DebugControl::getDebugOn()) {
+          std::cout << "Node Number: "
+                    << nodeNumber
+                    << ", file: "
+                    << metricFileNameToLoad.toAscii().constData()
+                    << ", column-name: "
+                    << columnName.toAscii().constData()
+                    << std::endl;
+      //}
+
    }
 
    if (autoLoadColumnNumber >= 0) {

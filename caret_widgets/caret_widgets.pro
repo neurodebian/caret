@@ -20,6 +20,10 @@ macx {
 unix:!macx {
    TEMPLATE	= lib
 }
+ubuntu {
+	CONFIG -= staticlib
+	CONFIG += plugin
+}
 
 # Input
 HEADERS += \

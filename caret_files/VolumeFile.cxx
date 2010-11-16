@@ -1194,12 +1194,50 @@ VolumeFile::getRegionIndexFromName(const QString& name) const
 }
 
 /**
+ * Set a region name.
+ */
+void
+VolumeFile::setRegionName(int index, QString& name)
+{
+   if (index >= static_cast<int>(this->regionNames.size())) {
+       this->regionNames.resize(index + 1, "");
+   }
+   this->regionNames[index] = name;
+   this->setModified();
+}
+
+/**
  * remove all region names.
  */
 void 
 VolumeFile::deleteAllRegionNames()
 {
    regionNames.clear();
+}
+
+/**
+ * Create region names for voxels that do not index into a region.
+ */
+void
+VolumeFile::createRegionNamesForVoxelsThatDoNotIndexIntoRegionNames()
+{
+   int numVoxels = this->getTotalNumberOfVoxels();
+   for (int iv = 0; iv < numVoxels; iv++) {
+       int voxel = static_cast<int>(this->voxels[iv]);
+
+       if (voxel >= 0) {
+           QString name = this->getRegionNameFromIndex(voxel);
+           if (name.isEmpty()) {
+               if (voxel > 0) {
+                  name = "Region_" + QString::number(voxel);
+               }
+               else {
+                  name = "???";
+               }
+               this->setRegionName(voxel, name);
+           }
+       }
+   }
 }
 
 /**
@@ -5953,6 +5991,7 @@ VolumeFile::readFileData(QFile& /*file*/, QTextStream& /*stream*/, QDataStream&,
    throw FileException(filename, "VolumeFile::readFileData was called and should never be called."
                          "This is a programming error.");
 }
+
 
 /** write a volume in the specified type and add the correct file extension 
  * (assumes no file extension).
@@ -12333,7 +12372,8 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
          space[0] = -mmppix[0];
          space[1] =  mmppix[1];
          space[2] = -mmppix[2];
-         volumeRead.setOriginAtCornerOfVoxel(org, space);
+         //volumeRead.setOriginAtCornerOfVoxel(org, space);
+         volumeRead.setOrigin(org);//Tim C: corner of voxel convention discarded by 4dfp, due to interpolation method
          volumeRead.orientation[0] = ORIENTATION_RIGHT_TO_LEFT;
          volumeRead.orientation[1] = ORIENTATION_ANTERIOR_TO_POSTERIOR;
          volumeRead.orientation[2] = ORIENTATION_INFERIOR_TO_SUPERIOR;
@@ -12352,7 +12392,7 @@ VolumeFile::readFileWuNil(const QString& fileNameIn,
          break;
       case 4: // sagittal
          space[0] = -mmppix[0];
-         space[1] = -mmppix[1];
+         space[1] =  mmppix[1];//Tim C: ground truth from S2T says x and y flip, that is, i and k voxel indices
          space[2] = -mmppix[2];
          volumeRead.orientation[0] = ORIENTATION_ANTERIOR_TO_POSTERIOR;
          volumeRead.orientation[1] = ORIENTATION_SUPERIOR_TO_INFERIOR;
@@ -13593,13 +13633,17 @@ VolumeFile::writeFileWuNil(const QString& fileNameIn,
       wunilHeader.addAttribute(byteOrder);
    }
    
-   float originCorner[3];
-   firstVolume->getOriginAtCornerOfVoxel(originCorner);
-   float org[3];
-   org[0] = fabs(originCorner[0]);
-   org[1] = -firstVolume->dimensions[1]*firstVolume->spacing[1] 
-           - originCorner[1] - firstVolume->spacing[1];
-   org[2] = -fabs(firstVolume->dimensions[2]*firstVolume->spacing[2] + originCorner[2]);
+   float lpiorigin[3];
+   //firstVolume->getOriginAtCornerOfVoxel(originCorner);
+   firstVolume->getOrigin(lpiorigin);//Tim C: corner of voxel convention discarded due to interpolation method, see read wunil
+   float org[3], rai[3];
+   //find rai origin
+   rai[0] = firstVolume->spacing[0] * (firstVolume->dimensions[0] - 1) + lpiorigin[0];
+   rai[1] = firstVolume->spacing[1] * (firstVolume->dimensions[1] - 1) + lpiorigin[1];
+   rai[2] = lpiorigin[2];
+   org[0] = -rai[0] + firstVolume->spacing[0] * firstVolume->dimensions[0];//this spacing gets flipped due to RAI origin
+   org[1] = -firstVolume->spacing[1] - rai[1];//ditto
+   org[2] = -rai[2] - firstVolume->spacing[2] * firstVolume->dimensions[2];
    WuNilAttribute nc(WuNilAttribute::NAME_CENTER, org, 3);
    wunilHeader.addAttribute(nc);
    
