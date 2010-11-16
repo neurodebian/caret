@@ -436,7 +436,7 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                   }
                }
                if (dilateModeFlag) {
-                  outputValues[i] = neighborSum;//WARNING: used for geodesic gaussian, if this is changed, make geogauss give the same result (ignore strength)
+                  outputValues[i] = neighborSum;//WARNING: used for geodesic gaussian, if this is changed, make geogauss gives the same result (ignore strength)
                }
                else {
                   outputValues[i] = (inputValues[i] * oneMinusStrength)
@@ -602,6 +602,12 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
             break;
          case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
             gh->getNodesToGeoDist(i, geoCutoff, neighbors, *distance, true);
+            if (neighbors.size() < 6)
+            {//in case a really small kernel is specified
+               topologyHelper->getNodeNeighbors(i, neighbors);
+               neighbors.push_back(i);//for geogauss, we want the center node in the list
+               gh->getGeoToTheseNodes(i, neighbors, *distance, true);
+            }
             break;
          case SMOOTH_ALGORITHM_NONE:
             break;

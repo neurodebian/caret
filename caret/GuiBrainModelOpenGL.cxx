@@ -3486,9 +3486,36 @@ GuiBrainModelOpenGL::mouseSurfaceView(const GuiBrainModelOpenGLMouseEvent& me)
    switch(me.event) {
       case GuiBrainModelOpenGLMouseEvent::MOUSE_LEFT_CLICK:
        {
+         //BrainSetAutoLoaderManager* autoLoader = bs->getAutoLoaderManager();
+         //if (autoLoader->getAnyAutoLoaderSelected()) {
+         //   selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_NODE, false);
+         //   if (selectedNode.getItemIndex1() >= 0) {
+         //      QString errorMessage =
+         //         autoLoader->processAutoLoading(selectedNode.getItemIndex1());
+         //      GuiFilesModified fm;
+         //      fm.setMetricModified();
+         //      fm.setVolumeModified();
+         //      theMainWindow->fileModificationUpdate(fm);
+         //      if (errorMessage.isEmpty() == false) {
+         //         QMessageBox::critical(this, "ERROR", errorMessage);
+         //      }
+         //   }
+         //   GuiFilesModified fm;
+         //   fm.setMetricModified();
+         //   fm.setVolumeModified();
+         //   theMainWindow->fileModificationUpdate(fm);
+         //}
+
+         //
+         // Perform an ID operation
+         //
+         QTime timer;
+         timer.start();
+         selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_ALL, true);
+         int total_time = timer.elapsed();
+         std::cout << "id time:" << total_time << std::endl;
          BrainSetAutoLoaderManager* autoLoader = bs->getAutoLoaderManager();
          if (autoLoader->getAnyAutoLoaderSelected()) {
-            selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_NODE, false);
             if (selectedNode.getItemIndex1() >= 0) {
                QString errorMessage =
                   autoLoader->processAutoLoading(selectedNode.getItemIndex1());
@@ -3505,11 +3532,6 @@ GuiBrainModelOpenGL::mouseSurfaceView(const GuiBrainModelOpenGLMouseEvent& me)
             fm.setVolumeModified();
             theMainWindow->fileModificationUpdate(fm);
          }
-
-         //
-         // Perform an ID operation
-         //
-         selectBrainModelItem(me.x, me.y, BrainModelOpenGL::SELECTION_MASK_ALL, true);
          
          //
          // Adjust transformation axes only in main window

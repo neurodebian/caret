@@ -392,7 +392,10 @@ class BrainModelSurface : public BrainModel {
       void getAreaOfAllNodes(std::vector<float>& nodeAreas) const;
       
       /// get the mean distance between nodes
-      float getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI = NULL) const;
+      void getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI,
+                                        float& meanDist,
+                                        float& minDist,
+                                        float& maxDist) const;
       
       /// push (save) the coordinates
       void pushCoordinates();

@@ -143,15 +143,17 @@ class TopologyHelper {
       /// Get the neighbors of a node
       void getNodeNeighbors(const int nodeNum, std::vector<int>& neighborsOut) const;
       
-      /// Get the neighbors of a node to a specified depth
+      /// Get the neighbors of a node to a specified depth the old way
       void getNodeNeighborsToDepthOld(const int nodeNum, 
                                    const int depth,
                                    std::vector<int>& neighborsOut) const;
       
+      /// Get the neighbors to a specified depth as fast as possible, order unimportant (this is the new code)
       void getNodeNeighborsToDepth(const int nodeNum, 
                                    const int depth,
                                    std::vector<int>& neighborsOut) const;
 
+      /// Get the neighbors to a specified depth preserving the kind of ordering of the old code
       void getNodeNeighborsToDepthIter(const int nodeNum, 
                                    const int depth,
                                    std::vector<int>& neighborsOut) const;

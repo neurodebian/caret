@@ -30,6 +30,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QImageIOPlugin>
+#include <QTime>
 
 #include "BrainSet.h"
 #include "CaretVersion.h"
@@ -109,10 +110,11 @@ main(int argc, char* argv[])
       //
       // Get image plugins so JPEGs can be loaded
       //
+#ifndef UBUNTU
       Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
       Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
       Q_IMPORT_PLUGIN(qtiff) 
-      
+#endif
       //
       // Get all of the available commands
       //
@@ -235,6 +237,8 @@ main(int argc, char* argv[])
             //  Run the command
             //
             QString errorMessage;
+            QTime timer;
+            timer.start();
             if (commandToRun->execute(errorMessage)) {
                programExitCode = commandToRun->getExitCode();
             }
@@ -246,6 +250,9 @@ main(int argc, char* argv[])
                }
                std::exit(-1);
             }
+            //std::cout << "Execution Time (seconds): "
+            //          << (timer.elapsed() * 0.001)
+            //          << std::endl;
          }
       }
       

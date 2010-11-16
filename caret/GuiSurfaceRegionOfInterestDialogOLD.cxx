@@ -1139,9 +1139,11 @@ GuiSurfaceRegionOfInterestDialogOLD::createReportHeader(const QString& headerTex
        << centerOfGravity[2] << std::ends;
    reportTextEdit->append(str.str().c_str());
    
+   float meanDist, minDist, maxDist;
+   bms->getMeanDistanceBetweenNodes(surfaceROI, meanDist, minDist, maxDist);
    str.str("");  // clears contents
    str << "Region Mean Distance Between Nodes: "
-       << bms->getMeanDistanceBetweenNodes(surfaceROI)
+       << meanDist
        << std::ends;
    reportTextEdit->append(str.str().c_str());
    

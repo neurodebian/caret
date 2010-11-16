@@ -71,7 +71,6 @@ CommandMetricGradient::getScriptBuilderParameters(ScriptBuilderParameters& param
    paramsOut.addFile("Output Vector File", FileFilters::getGiftiVectorFileFilter());
    paramsOut.addFile("Output Metric File", FileFilters::getMetricFileFilter());
    paramsOut.addInt("Output Metric Column Number", 1, 1);
-   paramsOut.addInt("Neighbor Depth", 1, 1);
    paramsOut.addBoolean("Average Normals", false);
    paramsOut.addFloat("Smoothing Kernel", -1.0, -1.0);
 }
@@ -92,12 +91,11 @@ CommandMetricGradient::getHelpInformation() const
        + indent9 + "<output-vector>\n"
        + indent9 + "<output-metric>\n"
        + indent9 + "<out-metric-col-num>\n"
-       + indent9 + "<neighbor-depth>\n"
        + indent9 + "<average-normals>\n"
        + indent9 + "<smooth-kernel>\n"
        + indent9 + "\n"
        + indent9 + "Generate the surface gradient of a metric file.  Uses a linear\n"
-       + indent9 + "regression on a projection of the neighbor distances to a plane\n"
+       + indent9 + "regression on a projection of the neighbor positions to a plane\n"
        + indent9 + "perpendicular to the surface normal, for each node.  Use \"NULL\"\n"
        + indent9 + "for either output file to skip storing that output.  If output-metric\n"
        + indent9 + "exists, the column specified by out-metric-col is replaced if it\n"
@@ -117,14 +115,14 @@ CommandMetricGradient::getHelpInformation() const
        + indent9 + "\n"
        + indent9 + "      out-metric-col-num which column to put the gradient magnitude into\n"
        + indent9 + "\n"
-       + indent9 + "      neighbor-depth     distance in hops to include neighbors for calculation\n"
-       + indent9 + "\n"
        + indent9 + "      average-normals    uses an average of the normals of the node and all\n"
        + indent9 + "                       neighbors, use 'true' if your surface is not smooth.\n"
        + indent9 + "\n"
        + indent9 + "      smooth-kernel      applies smoothing before computing gradient.  Uses\n"
        + indent9 + "                       geodesic gaussian smoothing with specified kernel.\n"
-       + indent9 + "                       Give a negative number to skip smoothing.\n"
+       + indent9 + "                       Give a negative number to skip smoothing.  Kernel\n"
+       + indent9 + "                       specifies the geodesic distance where weight is\n"
+       + indent9 + "                       0.607, center node has weight of 1.\n"
        + indent9 + "\n"
        + indent9 + "\n");
       
@@ -155,8 +153,6 @@ CommandMetricGradient::executeCommand() throw (BrainModelAlgorithmException,
       parameters->getNextParameterAsString("Output Metric File");
    int magCol =
       parameters->getNextParameterAsInt("Output Metric Column Number");
-   int depth =
-      parameters->getNextParameterAsInt("Neighbor Depth");
    bool avgNormals =
       parameters->getNextParameterAsBoolean("Average Surface Normals");
    float smoothing = 
@@ -189,7 +185,7 @@ CommandMetricGradient::executeCommand() throw (BrainModelAlgorithmException,
       myvec = new VectorFile();
       myvec->setFileName(vector);
    }
-   BrainModelSurfaceMetricGradient myobject(&mybs, 0, &mymetric, metricCol, myvec, mymag, magCol - 1, depth, avgNormals);
+   BrainModelSurfaceMetricGradient myobject(&mybs, 0, &mymetric, metricCol, myvec, mymag, magCol - 1, avgNormals);
    myobject.execute();
    if (myvec != NULL) myvec->writeFile(vector);
    if (mymag != NULL) mymag->writeFile(mag);

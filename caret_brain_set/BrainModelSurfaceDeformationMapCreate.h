@@ -59,10 +59,16 @@ class BrainModelSurfaceDeformationMapCreate : public BrainModelAlgorithm {
       void createSphericalDeformationMap();
       
       /// source surface
-      const BrainModelSurface* sourceSurface;
+      BrainModelSurface* sourceSurface;
       
       /// target surface
-      const BrainModelSurface* targetSurface;
+      BrainModelSurface* targetSurface;
+      
+      /// source surface
+      const BrainModelSurface* sourceSurfaceIn;
+      
+      /// target surface
+      const BrainModelSurface* targetSurfaceIn;
       
       /// deformation map 
       DeformationMapFile* deformationMapFile;

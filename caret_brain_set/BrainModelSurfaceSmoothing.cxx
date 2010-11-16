@@ -43,6 +43,9 @@
 #include "TopologyFile.h"
 #include "TopologyHelper.h"
 
+static const int SLEEP_TIME = 1;
+static const int SLEEP_TIME_MICROSECONDS = 250;
+
 /**
  * Constructor for the main controller of smoothing.
  */
@@ -478,7 +481,8 @@ BrainModelSurfaceSmoothing::execute() throw (BrainModelAlgorithmException)
          // This is need for the case that there is only one iteration.
          //
          while (getNumChildThreadStarted() < numberOfThreads) {
-            msleep(1);
+            //msleep(SLEEP_TIME);
+            usleep(SLEEP_TIME_MICROSECONDS);
          }
          
          for (int j = 0; j < numberOfThreads; j++) {
@@ -502,7 +506,8 @@ BrainModelSurfaceSmoothing::execute() throw (BrainModelAlgorithmException)
          // Wait until all of the threads finish
          //
          while (getNumChildThreadDone() < numberOfThreads) {
-            msleep(1);
+            //msleep(SLEEP_TIME);
+            usleep(SLEEP_TIME_MICROSECONDS);
          }
          if (DebugControl::getDebugOn()) {
             std::cout << "All smoothing threads completed iteration." << std::endl;
@@ -601,7 +606,8 @@ BrainModelSurfaceSmoothing::run()
          // Wait until parent says it is okay to go
          //
          while (getThreadedIterationDoneFlag()) {
-            msleep(1);
+            //msleep(SLEEP_TIME);
+            usleep(SLEEP_TIME_MICROSECONDS);
          }
          if (DebugControl::getDebugOn()) {
             std::cout << "Smoothing Thread " << getThreadNumber() << " now executing." << std::endl;

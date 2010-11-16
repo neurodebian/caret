@@ -1,0 +1,2 @@
+debian/caret_app_wrapper usr/lib/caret/bin
+debian/caret.desktop usr/share/applications

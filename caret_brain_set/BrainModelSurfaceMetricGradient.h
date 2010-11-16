@@ -44,7 +44,6 @@ class BrainModelSurfaceMetricGradient : public BrainModelAlgorithm {
                                         VectorFile* gradOutIn,
                                         MetricFile* gradMagOutIn,
                                         int magOutIndexIn,
-                                        int depthIn = 1,
                                         bool avgNormalsIn = false);
                                             
       /// Destructor

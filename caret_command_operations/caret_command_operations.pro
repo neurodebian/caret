@@ -10,6 +10,11 @@ include(../caret_qmake_include.pro)
 
 TEMPLATE = lib
 
+ubuntu {
+	CONFIG -= staticlib
+	CONFIG += plugin
+}
+
 
 # Input
 HEADERS += CommandBase.h \
@@ -50,6 +55,7 @@ HEADERS += CommandBase.h \
            CommandMetricExtrema.h \
            CommandMetricFileCreate.h \
            CommandMetricGradient.h \
+           CommandMetricGradientAll.h \
            CommandMetricInGroupDifference.h \
            CommandMetricInformation.h \
            CommandMetricMath.h \
@@ -228,6 +234,8 @@ HEADERS += CommandBase.h \
            CommandVolumeResample.h \
            CommandVolumeRescaleVoxels.h \
            CommandVolumeResize.h \
+           CommandVolumeROIGradient.h \
+           CommandVolumeROIMinima.h \
            CommandVolumeScale0to255.h \
            CommandVolumeScalePercent0to255.h \
            CommandVolumeSculpt.h \
@@ -289,6 +297,7 @@ SOURCES += CommandBase.cxx \
            CommandMetricCorrelationCoefficientMap.cxx \
            CommandMetricExtrema.cxx \
            CommandMetricFileCreate.cxx \
+           CommandMetricGradientAll.cxx \
            CommandMetricGradient.cxx \
            CommandMetricInGroupDifference.cxx \
            CommandMetricInformation.cxx \
@@ -468,6 +477,8 @@ SOURCES += CommandBase.cxx \
            CommandVolumeResample.cxx \
            CommandVolumeRescaleVoxels.cxx \
            CommandVolumeResize.cxx \
+           CommandVolumeROIGradient.cxx \
+           CommandVolumeROIMinima.cxx \
            CommandVolumeScale0to255.cxx \
            CommandVolumeScalePercent0to255.cxx \
            CommandVolumeSculpt.cxx \

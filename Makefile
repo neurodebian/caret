@@ -4,25 +4,31 @@ PROGS	= caret \
 	  caret_command \
 	  caret_edit 
 
-LIBS	= \
+UBUNTULIBS	= \
 	  caret_statistics \
 	  caret_common \
 	  caret_files \
 	  caret_brain_set \
 	  caret_command_operations \
 	  caret_uniformize \
-	  caret_widgets \
-	  caret_vtk4_classes
+	  caret_widgets
+
+LIBS = $(UBUNTULIBS) caret_vtk4_classes
 
 DIRS	= $(LIBS) $(PROGS)
+UBUNTUDIRS = $(UBUNTULIBS) $(PROGS)
 
 all:
 	@echo ""
 	@echo ""
-	@echo "Use \"make qmake-static\" to create the makefiles with static libraries."
-	@echo "Use \"make qmake-dynamic\" to create the makefiles with dynamic libraries."
-	@echo "Use \"make build\" to build the libraries and executables."
-	@echo "Use \"make clean\" to remove executables, libraries, and objects."
+	@echo "Use \"make qmake-debug\"\n     to create the makefiles with static libraries for debug."
+	@echo "Use \"make qmake-debug-dynamic\"\n     to create the makefiles with dynamic libraries for debug."
+	@echo "Use \"make qmake-profile\"\n     to create the makefiles with static libraries for profiling/debugging."
+	@echo "Use \"make qmake-profile-dynamic\" \n     to create the makefiles with dynamic libraries for profiling/debugging."
+	@echo "Use \"make qmake-release\"\n     to create the makefiles with static libraries for release."
+	@echo "Use \"make qmake-release-dynamic\"\n     to create the makefiles with dynamic libraries for release."
+	@echo "Use \"make build\"\n     to build the libraries and executables."
+	@echo "Use \"make clean\"\n     to remove executables, libraries, and objects."
 	@echo ""
 	@echo "Use \"make doc\" to build the Doxygen generated documentation."
 	@echo ""
@@ -35,6 +41,14 @@ build:
 	   echo "making " $$i ; \
 	   cd $$i ; \
 	   make ; \
+	   cd .. ; \
+	done
+
+build16:
+	@for i in ${DIRS} ; do \
+	   echo "making " $$i ; \
+	   cd $$i ; \
+	   make -j 16; \
 	   cd .. ; \
 	done
 
@@ -70,48 +84,130 @@ clean:
 	   cd .. ; \
 	done
 
-qmake-static:
-	@for i in ${LIBS} ; do \
-	   echo "creating makefile for static libs with qmake for " $$i ; \
+distclean:
+	@for i in ${DIRS} ; do \
+	   echo "cleaning " $$i ; \
 	   cd $$i ; \
-	   qmake ; \
-	   cd .. ; \
-	done
-	@for i in ${PROGS} ; do \
-	   echo "creating makefile with qmake for " $$i ; \
-	   cd $$i ; \
-	   qmake ; \
+	   make distclean ; \
 	   cd .. ; \
 	done
 
-qmake-dynamic:
+qmake-debug:
 	@for i in ${LIBS} ; do \
-	   echo "creating makefile for dynamic libs with qmake for " $$i ; \
+	   echo "creating debug makefile for static libs with qmake for " $$i ; \
 	   cd $$i ; \
-	   qmake "CONFIG+=dll"; \
+	   qmake "CONFIG += debug"; \
+	   cd .. ; \
+	done
+	@for i in ${PROGS} ; do \
+	   echo "creating debug makefile with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG += debug"; \
+	   cd .. ; \
+	done
+
+qmake-debug-dynamic:
+	@for i in ${LIBS} ; do \
+	   echo "creating makefile for static libs with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG += debug dll"; \
 	   cd .. ; \
 	done
 	@for i in ${PROGS} ; do \
 	   echo "creating makefile with qmake for " $$i ; \
 	   cd $$i ; \
-	   qmake ; \
+	   qmake "CONFIG += debug"; \
+	   cd .. ; \
+	done
+
+qmake-release:
+	@for i in ${LIBS} ; do \
+	   echo "creating makefile for static libs with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG -= debug" "CONFIG += release"; \
+	   cd .. ; \
+	done
+	@for i in ${PROGS} ; do \
+	   echo "creating makefile with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG -= debug" "CONFIG += release"; \
+	   cd .. ; \
+	done
+
+qmake-release-dynamic:
+	@for i in ${LIBS} ; do \
+	   echo "creating makefile for static libs with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG -= debug" "CONFIG += release dll"; \
+	   cd .. ; \
+	done
+	@for i in ${PROGS} ; do \
+	   echo "creating makefile with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG -= debug" "CONFIG += release"; \
+	   cd .. ; \
+	done
+
+qmake-profile:
+	@for i in ${LIBS} ; do \
+	   echo "creating makefile for dynamic libs with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG += debug profile"; \
+	   cd .. ; \
+	done
+	@for i in ${PROGS} ; do \
+	   echo "creating makefile with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG += debug profile"; \
+	   cd .. ; \
+	done
+        
+qmake-profile-dynamic:
+	@for i in ${LIBS} ; do \
+	   echo "creating makefile for dynamic libs with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG += debug profile dll"; \
+	   cd .. ; \
+	done
+	@for i in ${PROGS} ; do \
+	   echo "creating makefile with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG += debug profile"; \
+	   cd .. ; \
+	done
+
+ubuntu:
+	@for i in ${UBUNTULIBS} ; do \
+	   echo "creating makefile for dynamic libs with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG -= debug" "CONFIG += release ubuntu dll"; \
+	   cd .. ; \
+	done
+	@for i in ${PROGS} ; do \
+	   echo "creating makefile with qmake for " $$i ; \
+	   cd $$i ; \
+	   qmake "CONFIG -= debug" "CONFIG += release ubuntu"; \
 	   cd .. ; \
 	done
 	
 rebuild:
-	make qmake-static
+	make qmake-debug
 	make build
 	
+rebuild16:
+	make qmake-debug
+	make build16
+
 rebuild8:
-	make qmake-static
+	make qmake-debug
 	make build8
 	
 rebuild4:
-	make qmake-static
+	make qmake-debug
 	make build4
 	
 rebuild2:
-	make qmake-static
+	make qmake-debug
 	make build2
 	
 check_env:

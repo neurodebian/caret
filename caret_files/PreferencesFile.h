@@ -237,9 +237,9 @@ class PreferencesFile : public AbstractFile {
       
       /// get the maximum number of threads
       int getMaximumNumberOfThreads() const;
-      
+
       /// set the maximum number of threads
-      void setMaximumNumberOfThreads(const int num) { maximumNumberOfThreads = num; }
+      void setMaximumNumberOfThreads(const int num);
       
       /// get the number of digits right of the decimal when writing float to text files
       int getTextFileDigitsRightOfDecimal()

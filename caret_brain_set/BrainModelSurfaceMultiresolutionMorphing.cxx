@@ -475,6 +475,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                morphTypeString = "spheremorph";
                break;
          }
+         QString cycleNumberString = QString::number(currentCycle + 1);
          for (int i = 0; i < numberOfLevels; i++) {
             std::ostringstream ostr;
             ostr << morphTypeString.toAscii().constData()
@@ -518,6 +519,33 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
                   hexSubSample.execute();
                   BrainSet* subSampledBrainSet = hexSubSample.getSubsampledBrainSet();
                   if (subSampledBrainSet != NULL) {
+                     subSampledBrainSet->setSpecFileName("InitialFlatHex_Cycle"
+                                                         + cycleNumberString
+                                                         + ".spec");
+                     BrainModelSurface* flatHexSurface = subSampledBrainSet->getBrainModelSurface(1);
+                     subSampledBrainSet->writeCoordinateFile("InitialFlatHex_Cycle"
+                                                                + cycleNumberString
+                                                                + ".coord",
+                                                             BrainModelSurface::SURFACE_TYPE_FLAT,
+                                                             flatHexSurface->getCoordinateFile(),
+                                                             true);
+                     subSampledBrainSet->writeTopologyFile("InitialFlatHex_Cycle"
+                                                           + cycleNumberString
+                                                           + ".topo",
+                                                           TopologyFile::TOPOLOGY_TYPE_CUT,
+                                                           flatHexSurface->getTopologyFile());
+                     intermediateFiles.push_back(flatHexSurface->getCoordinateFile()->getFileName());
+                     intermediateFiles.push_back(flatHexSurface->getTopologyFile()->getFileName());
+                  
+                     BrainModelSurface* fiducialHexSurface = subSampledBrainSet->getBrainModelSurface(0);
+                     subSampledBrainSet->writeCoordinateFile("InitialFiducialHex_Cycle"
+                                                                + cycleNumberString
+                                                                + ".coord",
+                                                             BrainModelSurface::SURFACE_TYPE_FIDUCIAL,
+                                                             fiducialHexSurface->getCoordinateFile(),
+                                                             true);
+                     intermediateFiles.push_back(fiducialHexSurface->getCoordinateFile()->getFileName());
+                  
                      //
                      // Create the non-morphed surface
                      //
@@ -1709,7 +1737,8 @@ BrainModelSurfaceMultiresolutionMorphing::flatUpsample(BrainSet* fromBrain, Brai
             // Transfer the coordinates from the morphed "from" surface
             //
             BrainSetNodeAttribute* bna = fromBrain->getNodeAttributes(i);
-            toCoords->setCoordinate(bna->morphNode, fromCoords->getCoordinate(i));
+            const float* xyz = fromCoords->getCoordinate(i);
+            toCoords->setCoordinate(bna->morphNode, xyz);
             
             //
             // Use the visited flag to mark this node as being updated
