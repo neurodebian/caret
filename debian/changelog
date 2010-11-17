@@ -1,14 +1,14 @@
-caret (5.6.1.5~dfsg.1-1) UNRELEASED; urgency=low
+caret (5.6.1.6~dfsg.1-1) UNRELEASED; urgency=low
 
-  * New upstream release. Merged all patches besides the shared library setup.
-    Thanks to John Harwell.
+  * New upstream release. Merged all patches. Thanks to John Harwell and
+    Jon Schindler.
   * Switch the source package format 3.0 (quilt). Moved remaining patch under
     quilt's arms.
   * Bumped Standards-Version to 3.9.1, no changes necessary.
   * Changed maintainer to NeuroDebian team.
   * Updated debian/copyright.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Fri, 22 Oct 2010 08:58:20 -0400
+ -- Michael Hanke <michael.hanke@gmail.com>  Tue, 16 Nov 2010 17:28:18 -0500
 
 caret (5.6.1.3~dfsg.1-2) unstable; urgency=low
 
