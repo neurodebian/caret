@@ -1724,6 +1724,7 @@ SpecFile::readTagsFromXML(QDomElement& topElement)  throw (FileException)
    QFile file;
    QTextStream textStream;
    QDataStream dataStream;
+   dataStream.setVersion(QDataStream::Qt_4_3);
    readFileData(file, textStream, dataStream, topElement);
   
    setFileReadType(savedReadType);
@@ -1791,6 +1792,7 @@ SpecFile::writeTagsToXML(QDomDocument& xmlDoc,
   
    QTextStream textStream;
    QDataStream dataStream;
+   dataStream.setVersion(QDataStream::Qt_4_3);
    writeFileData(textStream, dataStream, xmlDoc, topElement);
   
    setFileWriteType(savedWriteType);

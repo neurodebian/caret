@@ -1028,6 +1028,7 @@ AbstractFile::readFileFromArray(const char* data,
       throw FileException("", "Unable to create temporary read/write file in AbstractFile::readFile");
    }
    QDataStream stream(&file);
+   stream.setVersion(QDataStream::Qt_4_3);
    stream.writeRawData(data, dataLength);
    //char newline[2] = { '\n', '\0' };
    //stream.writeRawBytes(newline, 1);
@@ -1050,6 +1051,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    //
    QTextStream stream(&file);
    QDataStream binStream(&file);
+   binStream.setVersion(QDataStream::Qt_4_3);
 
    //
    // Determine if GIFTI node data file
@@ -2242,6 +2244,7 @@ AbstractFile::writeFileToArray(QByteArray& ba) throw (FileException)
 {
    QTextStream ts(ba, QIODevice::WriteOnly);
    QDataStream ds(&ba, QIODevice::WriteOnly);
+   ds.setVersion(QDataStream::Qt_4_3);
    writeFileContents(ts, ds);
 }
       
@@ -2452,6 +2455,7 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
    if (writingQFile->open(QFile::WriteOnly)) {
       QTextStream stream(writingQFile);
       QDataStream binStream(writingQFile);
+      binStream.setVersion(QDataStream::Qt_4_3);
       
       try {
          writeFileContents(stream, binStream);
@@ -3410,6 +3414,7 @@ AbstractFile::findBinaryDataOffsetQT4Bug(QFile& file,
    file.seek(0);
    
    QDataStream dataStream(&file);
+   dataStream.setVersion(QDataStream::Qt_4_3);
    
    const int arraySize = 2048;
    char buffer[arraySize];

@@ -929,6 +929,7 @@ GiftiDataArray::readFromText(QString& text,
                   // Read the data
                   //
                   QDataStream stream(&file);
+                  stream.setVersion(QDataStream::Qt_4_3);
                   const int numBytesRead = stream.readRawData((char*)pointerToForReadingData,
                                                               numberOfBytes);
                   if (numBytesRead != numberOfBytes) {

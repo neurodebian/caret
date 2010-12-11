@@ -925,6 +925,7 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
          // Create a data stream
          //   
          QDataStream stream(&file);
+         stream.setVersion(QDataStream::Qt_4_3);
          
          //
          // buffer for data read
