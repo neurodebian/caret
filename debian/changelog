@@ -1,3 +1,11 @@
+caret (5.6.1.3~dfsg.1-3) unstable; urgency=low
+
+  * Add patch to prevent data corruption with Qt 4.6, due to a change in
+    the behavior of QDataStream (Closes: #605612).
+  * Change maintainer to NeuroDebian team.
+
+ -- Michael Hanke <mih@debian.org>  Sat, 11 Dec 2010 10:40:20 -0500
+
 caret (5.6.1.3~dfsg.1-2) unstable; urgency=low
 
   * Add slightly modified patch to address FTBFS on kFreeBSD originally
