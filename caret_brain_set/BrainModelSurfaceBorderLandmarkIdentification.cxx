@@ -1926,7 +1926,7 @@ Border BrainModelSurfaceBorderLandmarkIdentification::drawHeuristic(const BrainM
    std::list<searchNode*> startQ;
    std::list<searchNode*>::iterator iter, myend;
    int numVert = borderSurface->getNumberOfNodes(), i, j;
-   searchNode** closedList = new searchNode*[numVert], *tempn, *tempn2 = NULL;
+   searchNode** closedList = new searchNode*[numVert], *tempn, *tempn2;
    for (i = 0; i < numVert; ++i)
    {
       closedList[i] = NULL;
@@ -2113,7 +2113,7 @@ Border BrainModelSurfaceBorderLandmarkIdentification::drawHeuristic(const BrainM
    {
       throw BrainModelAlgorithmException("Metric column number exceeds number of columns in metric.");
    }
-   searchNode** closedList = new searchNode*[numVert], *tempn, *tempn2 = NULL;
+   searchNode** closedList = new searchNode*[numVert], *tempn, *tempn2;
    for (i = 0; i < numVert; ++i)
    {
       closedList[i] = NULL;

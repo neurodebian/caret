@@ -1449,7 +1449,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
                                                       &newFile,
                                                       aef);
          const int result = fcsd.exec(); 
-         newFile.clear(); // frees memory
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          if (result == QDialog::Accepted) {
             if (fcsd.getEraseAllExistingColumns()) {
@@ -1767,7 +1766,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
                                                       &newFile,
                                                       gdf);
          const int result = fcsd.exec(); 
-         newFile.clear(); // frees memory
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          if (result == QDialog::Accepted) {
             if (fcsd.getEraseAllExistingColumns()) {
@@ -1796,7 +1794,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
                                                       &newFile,
                                                       llf);
          const int result = fcsd.exec(); 
-         newFile.clear(); // frees memory
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          if (result == QDialog::Accepted) {
             if (fcsd.getEraseAllExistingColumns()) {
@@ -1819,7 +1816,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
                                                       &newFile,
                                                       mf);
          const int result = fcsd.exec(); 
-         newFile.clear(); // frees memory
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          if (result == QDialog::Accepted) {
             if (fcsd.getEraseAllExistingColumns()) {
@@ -1842,7 +1838,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
                                                       &newFile,
                                                       pf);
          const int result = fcsd.exec(); 
-         newFile.clear(); // frees memory
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          if (result == QDialog::Accepted) {
             if (fcsd.getEraseAllExistingColumns()) {
@@ -2003,7 +1998,6 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
                                                       &newFile,
                                                       ssf);
          const int result = fcsd.exec(); 
-         newFile.clear(); // frees memory
          QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
          if (result == QDialog::Accepted) {
             if (fcsd.getEraseAllExistingColumns()) {

@@ -1264,18 +1264,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    }
    removeHeaderTag(hemFlagTag);
    
-   this->postFileReadingProcessing();
-
    clearModified();
-}
-
-/**
- * Allows files to do processing after a file is read.
- */
-void
-AbstractFile::postFileReadingProcessing() throw (FileException)
-{
-    /// this method may be over ridden by sub classes
 }
 
 /**

@@ -127,11 +127,18 @@ GiftiNodeDataFile::setColumnName(const int col, const QString& name)
  */
 int 
 GiftiNodeDataFile::getColumnFromNameOrNumber(const QString& columnNameOrNumber,
-                                             const bool addColumnIfNotFound) throw (FileException)
+                                             const bool addColumnIfNotFoundAndNotNumber) throw (FileException)
 {
    //
-   // Try number first
+   // Try name first
    //
+   const int numCols = getNumberOfColumns();
+   for (int i = 0; i < numCols; i++) {
+      const QString name = getColumnName(i);
+      if (name == columnNameOrNumber) {
+         return i;
+      }
+   }
    
    //
    // To see if it is a number, simply convert to int and check for success
@@ -144,52 +151,27 @@ GiftiNodeDataFile::getColumnFromNameOrNumber(const QString& columnNameOrNumber,
          return (columnNumber - 1);
       }
       else {
-         if (addColumnIfNotFound && columnNumber - getNumberOfColumns() < 2)
-         {//only add column if integer specifies exactly one column further
-            if (getNumberOfNodes() > 0)
-            {
-               addColumns(1);
-               const int col = getNumberOfColumns() - 1;
-               setColumnName(col, "new column");
-               return col;
-            } else {
-               setNumberOfNodesAndColumns(1, 1);//will not accept 0 for either argument
-               setColumnName(0, "new column");
-               return 0;
-            }
-         }//if add flag is false, it tries to find it as a column name
+         throw FileException("ERROR Invalid column name/number " 
+                             + QString::number(columnNumber)
+                             + " in file "
+                             + FileUtilities::basename(getFileName()));
       }
    }
    
    //
-   // Try Name
-   //
-   const int numCols = getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = getColumnName(i);
-      if (name == columnNameOrNumber) {
-         return i;
-      }
-   }
-      
-   //
    // Add column if there are nodes
    //
-   if (addColumnIfNotFound) {
+   if (addColumnIfNotFoundAndNotNumber) {
       if (getNumberOfNodes() > 0) {
          addColumns(1);
          const int col = getNumberOfColumns() - 1;
          setColumnName(col, columnNameOrNumber);
          return col;
-      } else {
-         setNumberOfNodesAndColumns(1, 1);//will not accept 0 for either argument
-         setColumnName(0, columnNameOrNumber);
-         return 0;
       }
    }
    
    //
-   // failed to find 
+   // faild to find 
    //
    throw FileException("ERROR column name/number " 
                           + columnNameOrNumber

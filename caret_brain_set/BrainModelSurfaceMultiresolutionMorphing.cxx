@@ -79,32 +79,165 @@ BrainModelSurfaceMultiresolutionMorphing::BrainModelSurfaceMultiresolutionMorphi
    
    brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_UNKNOWN;
    
+   
+   for (int i = 0; i < MAXIMUM_NUMBER_OF_CYCLES; i++) {
+      switch (morphingSurfaceType) {
+         case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
+            iterationsPerLevel[i][0] = 0;
+            iterationsPerLevel[i][1] = 10;
+            iterationsPerLevel[i][2] = 20;
+            iterationsPerLevel[i][3] = 40;
+            iterationsPerLevel[i][4] = 60;
+            iterationsPerLevel[i][5] = 80;
+            iterationsPerLevel[i][6] = 100;
+            smoothingStrength[i]       = 1.0;
+            smoothingEdgeIterations[i] = 10;
+            smoothingIterations[i]     = 50;
+            linearForce[i]      = 0.50;
+            angularForce[i]     = 0.40;
+            stepSize[i]         = 0.5;
+            break;
+         case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
+            iterationsPerLevel[i][0] =  0;
+            iterationsPerLevel[i][1] = 25;
+            iterationsPerLevel[i][2] = 10;
+            iterationsPerLevel[i][3] = 10;
+            iterationsPerLevel[i][4] =  5;
+            iterationsPerLevel[i][5] =  2;
+            iterationsPerLevel[i][6] =  1;
+            smoothingStrength[i]       = 1.0;
+            smoothingEdgeIterations[i] = 10;
+            smoothingIterations[i]     = 10;
+            linearForce[i]      = 0.50;
+            angularForce[i]     = 0.30;
+            stepSize[i]         = 0.50;
+            break;
+      }
+   }
+   
    switch (morphingSurfaceType) {
-   case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
-       brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_FLAT;
-       this->multiResMorphFile.initializeParametersFlat();
-       crossoverSmoothStrength = 1.0;
-       crossoverSmoothCycles   = 10;
-       crossoverSmoothIterations = 50;
-       crossoverSmoothEdgeIterations = 10;
-       crossoverSmoothProjectToSphereIterations = 0;
-       crossoverSmoothNeighborDepth = 5;
-       break;
-   case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
-       brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_SPHERICAL;
-       this->multiResMorphFile.initializeParametersSpherical();
-       crossoverSmoothStrength = 1.0;
-       crossoverSmoothCycles   = 10;
-       crossoverSmoothIterations = 10;
-       crossoverSmoothEdgeIterations = 0;
-       crossoverSmoothProjectToSphereIterations = 10;
-       crossoverSmoothNeighborDepth = 30;
-       break;
+      case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
+         brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_FLAT;
+         numberOfCycles = 5;   
+         numberOfLevels = 7;
+         crossoverSmoothAtEndOfEachCycle = true;
+         crossoverSmoothStrength = 1.0;
+         crossoverSmoothCycles   = 10;
+         crossoverSmoothIterations = 50;
+         crossoverSmoothEdgeIterations = 10;
+         crossoverSmoothProjectToSphereIterations = 0;
+         crossoverSmoothNeighborDepth = 5;
+
+         iterationsPerLevel[0][0] = 0;
+         iterationsPerLevel[0][1] = 10;
+         iterationsPerLevel[0][2] = 20;
+         iterationsPerLevel[0][3] = 40;
+         iterationsPerLevel[0][4] = 60;
+         iterationsPerLevel[0][5] = 70;
+         iterationsPerLevel[0][6] = 60;
+         linearForce[0]           = 0.50;
+         angularForce[0]          = 0.50;
+         stepSize[0]              = 0.50;
+         
+         iterationsPerLevel[1][0] = 0;
+         iterationsPerLevel[1][1] = 10;
+         iterationsPerLevel[1][2] = 20;
+         iterationsPerLevel[1][3] = 40;
+         iterationsPerLevel[1][4] = 60;
+         iterationsPerLevel[1][5] = 60;
+         iterationsPerLevel[1][6] = 50;
+         linearForce[1]           = 0.50;
+         angularForce[1]          = 0.50;
+         stepSize[1]              = 0.50;
+         
+         iterationsPerLevel[2][0] = 0;
+         iterationsPerLevel[2][1] = 10;
+         iterationsPerLevel[2][2] = 20;
+         iterationsPerLevel[2][3] = 40;
+         iterationsPerLevel[2][4] = 60;
+         iterationsPerLevel[2][5] = 60;
+         iterationsPerLevel[2][6] = 50;
+         linearForce[2]           = 0.50;
+         angularForce[2]          = 0.50;
+         stepSize[2]              = 0.50;
+         
+         iterationsPerLevel[3][0] = 0;
+         iterationsPerLevel[3][1] = 20;
+         iterationsPerLevel[3][2] = 20;
+         iterationsPerLevel[3][3] = 40;
+         iterationsPerLevel[3][4] = 60;
+         iterationsPerLevel[3][5] = 50;
+         iterationsPerLevel[3][6] = 30;
+         linearForce[3]           = 0.50;
+         angularForce[3]          = 0.50;
+         stepSize[3]              = 0.50;
+         
+         iterationsPerLevel[4][0] = 0;
+         iterationsPerLevel[4][1] = 20;
+         iterationsPerLevel[4][2] = 20;
+         iterationsPerLevel[4][3] = 40;
+         iterationsPerLevel[4][4] = 60;
+         iterationsPerLevel[4][5] = 50;
+         iterationsPerLevel[4][6] = 30;
+         linearForce[4]           = 0.40;
+         angularForce[4]          = 0.50;
+         stepSize[4]              = 0.50;
+         
+         break;
+      case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
+         brainModelSurfaceType = BrainModelSurface::SURFACE_TYPE_SPHERICAL;
+         numberOfCycles = 4;   
+         numberOfLevels = 6;
+         
+         iterationsPerLevel[0][0] = 2;
+         iterationsPerLevel[0][1] = 3;
+         iterationsPerLevel[0][2] = 5;
+         iterationsPerLevel[0][3] = 20;
+         iterationsPerLevel[0][4] = 20;
+         iterationsPerLevel[0][5] = 15;
+         iterationsPerLevel[0][6] = 0;
+         
+         iterationsPerLevel[1][0] = 2;
+         iterationsPerLevel[1][1] = 3;
+         iterationsPerLevel[1][2] = 15;
+         iterationsPerLevel[1][3] = 20;
+         iterationsPerLevel[1][4] = 15;
+         iterationsPerLevel[1][5] = 0;
+         iterationsPerLevel[1][6] = 0;
+         
+         iterationsPerLevel[2][0] = 2;
+         iterationsPerLevel[2][1] = 5;
+         iterationsPerLevel[2][2] = 10;
+         iterationsPerLevel[2][3] = 10;
+         iterationsPerLevel[2][4] = 10;
+         iterationsPerLevel[2][5] = 0;
+         iterationsPerLevel[2][6] = 0;
+         
+         iterationsPerLevel[3][0] = 2;
+         iterationsPerLevel[3][1] = 5;
+         iterationsPerLevel[3][2] = 10;
+         iterationsPerLevel[3][3] = 20;
+         iterationsPerLevel[3][4] = 5;
+         iterationsPerLevel[3][5] = 0;
+         iterationsPerLevel[3][6] = 0;
+         
+         crossoverSmoothAtEndOfEachCycle = true;
+         crossoverSmoothStrength = 1.0;
+         crossoverSmoothCycles   = 10;
+         crossoverSmoothIterations = 10;
+         crossoverSmoothEdgeIterations = 0;
+         crossoverSmoothProjectToSphereIterations = 10;
+         crossoverSmoothNeighborDepth = 30;
+         break;
    }
    outputFileNamePrefix = "";
    outputFileNameSuffix = "";
    
+   deleteIntermediateFiles = true;
    intermediateFiles.clear();
+   
+   smoothOutFlatSurfaceOverlap = true;
+   pointSphericalTilesOutward  = false;
    
    //
    // Get name of original coordinate file
@@ -129,7 +262,123 @@ void
 BrainModelSurfaceMultiresolutionMorphing::copyParameters(
                                           const BrainModelSurfaceMultiresolutionMorphing& bmsm)
 {
-    this->multiResMorphFile = bmsm.multiResMorphFile;
+   numberOfCycles = bmsm.numberOfCycles;
+   numberOfLevels = bmsm.numberOfLevels;
+   
+   for (int i = 0; i < MAXIMUM_NUMBER_OF_CYCLES; i++) {
+      for (int j = 0; j < MAXIMUM_NUMBER_OF_LEVELS; j++) {
+         iterationsPerLevel[i][j] = bmsm.iterationsPerLevel[i][j];
+      }
+      
+      linearForce[i] = bmsm.linearForce[i];
+      angularForce[i] = bmsm.angularForce[i];
+      stepSize[i] = bmsm.stepSize[i];
+      smoothingStrength[i] = bmsm.smoothingStrength[i];
+      smoothingIterations[i] = bmsm.smoothingIterations[i];
+      smoothingEdgeIterations[i] = bmsm.smoothingEdgeIterations[i];
+   }
+   
+   deleteIntermediateFiles = bmsm.deleteIntermediateFiles;
+   smoothOutFlatSurfaceOverlap = bmsm.smoothOutFlatSurfaceOverlap;
+   pointSphericalTilesOutward = bmsm.pointSphericalTilesOutward;
+   crossoverSmoothAtEndOfEachCycle = bmsm.crossoverSmoothAtEndOfEachCycle;
+}
+
+/**
+ * get morphing parameters
+ */
+void 
+BrainModelSurfaceMultiresolutionMorphing::getMorphingParameters(
+                                            const int cycleNumber,
+                                            float& linearForceOut,
+                                            float& angularForceOut,
+                                            float& stepSizeOut) const
+{
+   linearForceOut  = linearForce[cycleNumber];
+   angularForceOut = angularForce[cycleNumber];
+   stepSizeOut     = stepSize[cycleNumber];
+}
+                           
+/**
+ * set morphing parameters
+ */
+void 
+BrainModelSurfaceMultiresolutionMorphing::setMorphingParameters(
+                                            const int cycleNumber,
+                                            const float linearForceIn,
+                                            const float angularForceIn,
+                                            const float stepSizeIn)
+{
+   linearForce[cycleNumber]  = linearForceIn;
+   angularForce[cycleNumber] = angularForceIn;
+   stepSize[cycleNumber]     = stepSizeIn;
+}
+   
+/**
+ * Set the number of cycles
+ */
+void
+BrainModelSurfaceMultiresolutionMorphing::setNumberOfCycles(const int num)
+{
+   numberOfCycles = num;
+   numberOfCycles = std::min(numberOfCycles, static_cast<int>(MAXIMUM_NUMBER_OF_CYCLES));
+   numberOfCycles = std::max(numberOfCycles, 1);
+}
+
+/**
+ * get the iterations per level
+ */
+void 
+BrainModelSurfaceMultiresolutionMorphing::getIterationsPerLevel(
+                                            const int cycleNumber,
+                                            int iter[MAXIMUM_NUMBER_OF_LEVELS]) const
+{
+   for (int i = 0; i < MAXIMUM_NUMBER_OF_LEVELS; i++) {
+      iter[i] = iterationsPerLevel[cycleNumber][i];
+   }
+}
+
+/**
+ * set the iterations per level
+ */
+void 
+BrainModelSurfaceMultiresolutionMorphing::setIterationsPerLevel(
+                                            const int cycleNumber,
+                                            const int iter[MAXIMUM_NUMBER_OF_LEVELS])
+{
+   for (int i = 0; i < MAXIMUM_NUMBER_OF_LEVELS; i++) {
+      iterationsPerLevel[cycleNumber][i] = iter[i];
+   }
+}
+
+/**
+ * get smoothing parameters
+ */
+void 
+BrainModelSurfaceMultiresolutionMorphing::getSmoothingParameters(
+                                                            const int cycleNumber,
+                                                            float& strength,
+                                                            int& iterations,
+                                                            int& edgeIterations) const
+{
+   strength = smoothingStrength[cycleNumber];
+   iterations = smoothingIterations[cycleNumber];
+   edgeIterations = smoothingEdgeIterations[cycleNumber];
+}
+
+/**
+ * set smoothing parameters
+ */
+void 
+BrainModelSurfaceMultiresolutionMorphing::setSmoothingParameters(
+                                                            const int cycleNumber,
+                                                            const float strength,
+                                                            const int iterations,
+                                                            const int edgeIterations)
+{
+   smoothingStrength[cycleNumber]       = strength;
+   smoothingIterations[cycleNumber]     = iterations;
+   smoothingEdgeIterations[cycleNumber] = edgeIterations;
 }
 
 /**
@@ -249,27 +498,22 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
        << " morphing surface="
        << FileUtilities::basename(morphingSurface->getFileName()).toAscii().constData()
        << "\n";
-   int numberOfCycles = this->multiResMorphFile.getNumberOfCycles();
    for (int j = 0; j < numberOfCycles; j++) {
-       MultiResolutionMorphingCycle* cycle = this->getMultiResMorphParametersFile()->getCycle(j);
       str << "cycle "
           << j
           << ":"
           << " iterations=";
-
-      int iterationsPerLevel[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
-      cycle->getIterationsAll(iterationsPerLevel);
-      for (int i = 0; i < MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS; i++) {
-         str << iterationsPerLevel[i] << " ";
+      for (int i = 0; i < MAXIMUM_NUMBER_OF_LEVELS; i++) {    
+         str << iterationsPerLevel[j][i] << " ";
       }
       str << "\n"
-         << " linear force=" << cycle->getLinearForce()
-         << " angular force=" << cycle->getAngularForce()
-         << " step size=" << cycle->getStepSize()
+         << " linear force=" << linearForce[j]
+         << " angular force=" << angularForce[j]
+         << " step size=" << stepSize[j]
          << "\n"
-         << "smoothing strength=" << cycle->getSmoothingStrength()
-         << " iterations=" << cycle->getSmoothingIterations()
-         << " edge iterations=" << cycle->getSmoothingIterationEdges()
+         << "smoothing strength=" << smoothingStrength[j]
+         << " iterations=" << smoothingIterations[j]
+         << " edge iterations=" << smoothingEdgeIterations[j]
          << "\n";
    }
    const QString fileComment(str.str().c_str());
@@ -309,8 +553,6 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
          "and Coordinate files.");
    }
    
-   int numberOfLevels = this->multiResMorphFile.getNumberOfLevels();
-
    //
    // Create the progress dialog
    //
@@ -337,7 +579,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
          case BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT:
             break;
          case BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL:
-            if (this->multiResMorphFile.isPointSphericalTrianglesOutward()) {
+            if (pointSphericalTilesOutward) {
                originalTopologyFile = morphingSurface->getTopologyFile();
                newTopologyFile = new TopologyFile(*originalTopologyFile);
                morphingSurface->setTopologyFile(newTopologyFile);
@@ -685,7 +927,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
          // enabled and doing the last cycle
          //
          if ((morphingSurfaceType == BrainModelSurfaceMorphing::MORPHING_SURFACE_FLAT) &&
-                 this->multiResMorphFile.isSmoothOutFlatSurfaceOverlap() &&
+            smoothOutFlatSurfaceOverlap &&
             lastCycleFlag) {
             
             //
@@ -855,7 +1097,7 @@ BrainModelSurfaceMultiresolutionMorphing::execute() throw (BrainModelAlgorithmEx
       //
       // Delete intermediate files is user wants them deleted
       //
-      if (this->multiResMorphFile.isDeleteTemporaryFiles()) {
+      if (deleteIntermediateFiles) {
          for (int i = 0; i < static_cast<int>(intermediateFiles.size()); i++) {
             QFile::remove(intermediateFiles[i]);
          }
@@ -1062,19 +1304,15 @@ BrainModelSurfaceMultiresolutionMorphing::smoothOutCrossovers(BrainModelSurface*
    
    int numNodeCrossovers = 10;
    
-   MultiResolutionMorphingCycle* cycle = this->multiResMorphFile.getCycle(currentCycle);
-   int smoothingIterations = cycle->getSmoothingIterations();
-   float smoothingStrength = cycle->getSmoothingStrength();
-   int smoothingEdgesIterations = cycle->getSmoothingIterationEdges();
    int iterCount = 0;
-   while ((numNodeCrossovers > 2) && (iterCount < smoothingIterations)) {
+   while ((numNodeCrossovers > 2) && (iterCount < smoothingIterations[currentCycle])) {
       int numIters = 10;
-      if ((smoothingIterations - iterCount) < numIters) {
-         numIters = (smoothingIterations - iterCount);
+      if ((smoothingIterations[currentCycle] - iterCount) < numIters) {
+         numIters = (smoothingIterations[currentCycle] - iterCount);
       }
       if (numIters > 0) {
-         bms->arealSmoothing(smoothingStrength, numIters,
-                             smoothingEdgesIterations);
+         bms->arealSmoothing(smoothingStrength[currentCycle], numIters, 
+                             smoothingEdgeIterations[currentCycle]);
          iterCount += numIters; 
       }
       else {
@@ -1090,7 +1328,7 @@ BrainModelSurfaceMultiresolutionMorphing::smoothOutCrossovers(BrainModelSurface*
          //
          // If normals should be pointed outward
          //
-         if (this->multiResMorphFile.isPointSphericalTrianglesOutward()) {
+         if (pointSphericalTilesOutward) {
             bms->orientTilesOutward(BrainModelSurface::SURFACE_TYPE_SPHERICAL);
          }
       }
@@ -1108,7 +1346,7 @@ BrainModelSurfaceMultiresolutionMorphing::smoothOutCrossovers(BrainModelSurface*
    }
    
    
-   if (this->multiResMorphFile.isSmoothOutCrossovers()) {
+   if (crossoverSmoothAtEndOfEachCycle) {
       //
       // Set project back to sphere if sphere
       //
@@ -1289,7 +1527,7 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionDownsample(
       //
       // limit to maximum number of levels
       //
-      if (brains.size() == MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS) {
+      if (brains.size() == MAXIMUM_NUMBER_OF_LEVELS) {
          break;
       }
    }
@@ -1428,8 +1666,8 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
    // Limit to available levels
    //
    int startNum = numBrains - 1;
-   if (startNum >= MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS) {
-      startNum = MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS - 1;
+   if (startNum >= MAXIMUM_NUMBER_OF_LEVELS) {
+      startNum = MAXIMUM_NUMBER_OF_LEVELS - 1;
    }
    
    //
@@ -1449,26 +1687,20 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
       fiducialSurface->computeNormals();
       flatSurface->computeNormals();
       
-      MultiResolutionMorphingCycle* morphCycle = this->multiResMorphFile.getCycle(currentCycle);
-      int iterationsPerLevel[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
-      morphCycle->getIterationsAll(iterationsPerLevel);
-
       if (DebugControl::getDebugOn()) {
          std::cout << std::endl << "*** Morphing Level surface " << bi
                    << ": nodes " << bs->getNumberOfNodes() 
-                   << ", iterations " << iterationsPerLevel[bi] << std::endl;
+                   << ", iterations " << iterationsPerLevel[currentCycle][bi] << std::endl;
       }
     
       //
       // Morph the surface for the specified iterations
       //
       BrainModelSurfaceMorphing bsm(bs, fiducialSurface, flatSurface, morphingSurfaceType);
-      MultiResolutionMorphingCycle* cycle =
-              this->multiResMorphFile.getCycle(this->currentCycle);
-      bsm.setMorphingParameters(iterationsPerLevel[bi],
-                                cycle->getLinearForce(),
-                                cycle->getAngularForce(),
-                                cycle->getStepSize());
+      bsm.setMorphingParameters(iterationsPerLevel[currentCycle][bi],
+                                linearForce[currentCycle], 
+                                angularForce[currentCycle], 
+                                stepSize[currentCycle]);
       bsm.execute();
       
       //
@@ -1477,7 +1709,7 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
       std::ostringstream str;
       str << intermediateCoordFileNamePrefix[bi].toAscii().constData()
           << ".Morph"
-          << iterationsPerLevel[bi];
+          << iterationsPerLevel[currentCycle][bi];
       intermediateCoordFileNamePrefix[bi] = str.str().c_str();
       QString coordName(intermediateCoordFileNamePrefix[bi]);
       coordName.append(SpecFile::getCoordinateFileExtension());
@@ -1608,10 +1840,10 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
             // Morph the surface for the specified iterations
             //
             BrainModelSurfaceMorphing bsm(brains[0]  /*bs*/, referenceSurface, morphingSurface, morphingSurfaceType);
-            bsm.setMorphingParameters(iterationsPerLevel[0],
-                                      cycle->getLinearForce(),
-                                      cycle->getAngularForce(),
-                                      cycle->getStepSize());
+            bsm.setMorphingParameters(iterationsPerLevel[currentCycle][0], 
+                                      linearForce[currentCycle], 
+                                      angularForce[currentCycle], 
+                                      stepSize[currentCycle]);
             bsm.execute();
          }
       }  
@@ -1655,10 +1887,10 @@ BrainModelSurfaceMultiresolutionMorphing::multiresolutionMorph(std::vector<Brain
             // Morph the surface for the specified iterations
             //
             BrainModelSurfaceMorphing bsm(brains[0]  /*bs*/, referenceSurface, morphingSurface, morphingSurfaceType);
-            bsm.setMorphingParameters(iterationsPerLevel[0],
-                                      cycle->getLinearForce(),
-                                      cycle->getAngularForce(),
-                                      cycle->getStepSize());
+            bsm.setMorphingParameters(iterationsPerLevel[currentCycle][0], 
+                                      linearForce[currentCycle], 
+                                      angularForce[currentCycle], 
+                                      stepSize[currentCycle]);
             bsm.execute();
          }
       }
@@ -1791,7 +2023,6 @@ BrainModelSurfaceMultiresolutionMorphing::flatUpsample(BrainSet* fromBrain, Brai
     //
     // Do for each level
     //
-    int numberOfLevels = this->multiResMorphFile.getNumberOfLevels();
     for (int lvl = (numberOfLevels - 1); lvl > 0; lvl--) {
        //
        // Create name of standard sphere spec file

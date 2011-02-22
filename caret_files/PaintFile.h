@@ -211,11 +211,6 @@ class PaintFile : public GiftiNodeDataFile {
       /// write the file's memory in caret6 format to the specified name
       virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
-      /// remove prefixes (chars before first period) and/or suffixes (chars after last period)
-      /// from all paint names.
-      void removePrefixesAndSuffixesFromNames(const bool removePrefixesFlag,
-                                              const bool removeSuffixesFlag);
-
    protected:
       // import a single free surfer label file
       void importSingleFreeSurferLabelFile(const int column,

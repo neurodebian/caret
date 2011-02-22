@@ -2823,14 +2823,7 @@ BrainSet::convertVolumeBordersToFiducialCells()
       //
       for (int j = 0; j < numLinks; j++) {
          const float* xyz = b->getLinkXYZ(j);
-         CellData cd(borderName, xyz[0], xyz[1], xyz[2], 0);
-         if (xyz[0] >= 0) {
-             cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
-         }
-         else {
-             cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
-         }
-         cf.addCell(cd);
+         cf.addCell(CellData(borderName, xyz[0], xyz[1], xyz[2], 0));
       }
    }
    

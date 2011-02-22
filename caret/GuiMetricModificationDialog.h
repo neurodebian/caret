@@ -181,12 +181,6 @@ class GuiMetricModificationDialog : public WuQDialog {
       /// gaussian spherical surface combo box
       GuiBrainModelSelectionComboBox* gaussSphericalSurfaceComboBox;
       
-      /// geodesic gaussian parameters group box
-      QGroupBox* geodesicGaussianParametersGroupBox;
-
-      /// geodesic gaussian sigma
-      QDoubleSpinBox* geodesicGaussianSigmaDoubleSpinBox;
-
       /// full width half maximum group box
       QGroupBox* fullWidthHalfMaximumGroupBox;
       

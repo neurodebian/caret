@@ -324,8 +324,9 @@ BrainModelSurfaceCurvature::determineCurvature(const int num,
    
    //
    // For KMAX and KMIN, is the largest of the two values
+   // when ignoring the signs
    //
-   if (k1 > k2) {
+   if (std::fabs(k1) > std::fabs(k2)) {
       kmax = k1;
       kmin = k2;
    }
