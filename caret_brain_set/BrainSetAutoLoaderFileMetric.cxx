@@ -282,9 +282,7 @@ BrainSetAutoLoaderFileMetric::loadFileForVoxel(const VoxelIJK& voxel)
        }
     }
 
-    if (autoLoadColumnNumber >= 0) {
-        this->setAutoLoadLastMetricColumnNumber(autoLoadColumnNumber);
-    }
+    this->setAutoLoadLastMetricColumnNumber(autoLoadColumnNumber);
     brainSet->getDisplaySettingsMetric()->update();
     brainSet->getNodeColoring()->assignColors();
     brainSet->clearAllDisplayLists();

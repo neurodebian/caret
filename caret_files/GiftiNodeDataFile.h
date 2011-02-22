@@ -108,7 +108,7 @@ class GiftiNodeDataFile : public GiftiDataArrayFile {
       // name or number.  Input numbers range 1..N and output column 
       // numbers range 0..(N-1)
       int getColumnFromNameOrNumber(const QString& columnNameOrNumber,
-                                    const bool addColumnIfNotFound)  throw (FileException);
+                                    const bool addColumnIfNotFoundAndNotNumber)  throw (FileException);
       
       // get the comment for a column
       QString getColumnComment(const int col) const;

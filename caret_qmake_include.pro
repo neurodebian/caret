@@ -7,14 +7,14 @@ macx {
    #
    # Uncomment for Debug
    #
-   CONFIG      -= release
-   CONFIG      += warn_on debug
+   #CONFIG      -= release
+   #CONFIG      += warn_on debug
    
    #
    # Uncomment for Release
    #
-   #CONFIG	+= release
-   #CONFIG	-= debug
+   CONFIG	+= release
+   CONFIG	-= debug
 
    #
    # Suppress "has different visibility" and ALL warnings
@@ -388,18 +388,11 @@ unix:!macx {
    # QWT libraries
    #
    QWT_LIBS = -L$$(QWT_LIB_DIR) \
-         -lqwt 
-   LIBS += \
-         -ltiff \
-         -ljpeg
+         -lqwt
 
    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
-   #profiling
-   #QMAKE_CXXFLAGS_RELEASE +=  -pg
-   #QMAKE_CXXFLAGS_DEBUG += -pg
-   #QMAKE_LFLAGS_DEBUG += -pg
-   #QMAKE_LFLAGS_RELEASE += -pg
 }
+
 
 

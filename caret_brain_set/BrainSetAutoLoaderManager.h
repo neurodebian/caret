@@ -8,7 +8,6 @@ class BrainSet;
 class BrainSetAutoLoaderFile;
 class BrainSetAutoLoaderFileFunctionalVolume;
 class BrainSetAutoLoaderFileMetric;
-class BrainSetAutoLoaderFileMetricByNode;
 class BrainSetAutoLoaderFilePaintCluster;
 
 /// processes automatic loading of data files
@@ -17,9 +16,6 @@ class BrainSetAutoLoaderManager {
    public:
       /// number of metric auto loaders
       enum { NUMBER_OF_METRIC_AUTO_LOADERS = 4 };
-
-      /// number of metric node auto loaders
-      enum { NUMBER_OF_METRIC_NODE_AUTO_LOADERS = 4 };
 
       /// number of functional volume auto loaders
       enum { NUMBER_OF_FUNCTIONAL_VOLUME_AUTO_LOADERS = 1 };
@@ -41,9 +37,6 @@ class BrainSetAutoLoaderManager {
 
       /// get a metric autoloader
       BrainSetAutoLoaderFileMetric* getMetricAutoLoader(const int indx);
-
-      /// get a metric by node autoloader
-      BrainSetAutoLoaderFileMetricByNode* getMetricNodeAutoLoader(const int indx);
 
       /// get a functional volume auto loader
       BrainSetAutoLoaderFileFunctionalVolume* getFunctionalVolumeAutoLoader(const int indx);
@@ -75,9 +68,6 @@ class BrainSetAutoLoaderManager {
 
       /// metric auto loaders
       BrainSetAutoLoaderFileMetric* metricAutoLoaders[NUMBER_OF_METRIC_AUTO_LOADERS];
-
-      /// metric node auto loaders
-      BrainSetAutoLoaderFileMetricByNode* metricNodeAutoLoaders[NUMBER_OF_METRIC_NODE_AUTO_LOADERS];
 
       /// functional volume auto loaders
       BrainSetAutoLoaderFileFunctionalVolume* functionalVolumeAutoLoaders[NUMBER_OF_FUNCTIONAL_VOLUME_AUTO_LOADERS];

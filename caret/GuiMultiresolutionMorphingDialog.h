@@ -56,6 +56,9 @@ class GuiMultiresolutionMorphingDialog : public WuQDialog {
       /// called when OK/Cancel buttons pressed
       void done(int r);
       
+      /// called when Batch button is pressed.
+      void slotBatchButton();
+      
       /// called when  combo box item is selected
       void slotNumberOfCyclesSpinBox();
       
@@ -64,12 +67,6 @@ class GuiMultiresolutionMorphingDialog : public WuQDialog {
       
       /// called when edit cycle combo box item is highlighted before selection made
       void slotEditCycleSpinBoxOldValue();
-
-      /// called when save button pressed
-      void slotSaveButton();
-
-      /// called when open button pressed
-      void slotOpenButton();
 
    private: 
          
@@ -94,9 +91,6 @@ class GuiMultiresolutionMorphingDialog : public WuQDialog {
       /// create the misc section
       QWidget* createMiscSection();
       
-      /// create file open/save section
-      QWidget* createFileOpenSaveSection();
-
       /// create the surface section
       QWidget* createSurfaceSection();
       
@@ -116,7 +110,7 @@ class GuiMultiresolutionMorphingDialog : public WuQDialog {
       QComboBox* editCycleComboBox;
       
       /// iterations spin boxes
-      QSpinBox* iterationsSpinBoxes[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
+      QSpinBox* iterationsSpinBoxes[BrainModelSurfaceMultiresolutionMorphing::MAXIMUM_NUMBER_OF_LEVELS];
    
       /// linear force float spin box
       QDoubleSpinBox* linearForceDoubleSpinBox;

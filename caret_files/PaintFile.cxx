@@ -1151,41 +1151,6 @@ PaintFile::assignPaintColumnWithVolumeFile(const VolumeFile* vf,
 }
 
 /**
- * Remove prefixes (chars before first period) and/or suffixes (chars after last period)
- * from all paint names.
- */
-void
-PaintFile::removePrefixesAndSuffixesFromNames(const bool removePrefixesFlag,
-                                              const bool removeSuffixesFlag)
-{
-    int numPaintNames = this->getNumberOfPaintNames();
-    for (int i = 0; i < numPaintNames; i++) {
-        QString name = this->getPaintNameFromIndex(i);
-
-        bool nameChangedFlag = false;
-        if (removePrefixesFlag) {
-            int firstPeriod = name.indexOf(".");
-            if (firstPeriod >= 0) {
-                name = name.mid(firstPeriod + 1);
-                nameChangedFlag = true;
-            }
-        }
-
-        if (removeSuffixesFlag) {
-            int lastPeriod = name.lastIndexOf(".");
-            if (lastPeriod >= 0) {
-                name = name.left(lastPeriod);
-                nameChangedFlag = true;
-            }
-        }
-
-        if (nameChangedFlag) {
-            this->setPaintName(i, name);
-        }
-    }
-}
-
-/**
  * Read a paint file' data.
  */
 void
