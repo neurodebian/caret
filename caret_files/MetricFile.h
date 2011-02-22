@@ -506,9 +506,6 @@ class MetricFile : public GiftiNodeDataFile {
       // write metric file
       void writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStream) throw (FileException);
       
-      /// allows files to do processing after a file is read
-      virtual void postFileReadingProcessing() throw (FileException);
-
       static const QString tagColumnColorMapping;
       static const QString tagColumnThreshold;
       static const QString tagColumnAverageThreshold;

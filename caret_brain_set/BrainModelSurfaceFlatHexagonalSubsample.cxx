@@ -136,9 +136,7 @@ BrainModelSurfaceFlatHexagonalSubsample::execute() throw (BrainModelAlgorithmExc
    //
    // Average distance between each linked pair of nodes in flat surface
    //
-   float meanDistance, minDist, maxDist;
-   flatSurfaceForResampling->getMeanDistanceBetweenNodes(NULL, meanDistance, minDist, maxDist);
-   //const float meanDistance = flatSurfaceForResampling->getMeanDistanceBetweenNodes();
+   const float meanDistance = flatSurfaceForResampling->getMeanDistanceBetweenNodes();
 
    //
    // Area of flat surface
@@ -348,44 +346,6 @@ BrainModelSurfaceFlatHexagonalSubsample::execute() throw (BrainModelAlgorithmExc
          // Set the new index for this point
          //
          hexNode.nodeIndex = flatSubSampSurface->getNumberOfNodes() - 1;
-         
-         if (DebugControl::getDebugOn()) {
-            if (DebugControl::getDebugNodeNumber() == hexNode.nodeIndex) {
-                int n1 = hexNode.tileNodes[0];
-                int n2 = hexNode.tileNodes[1];
-                int n3 = hexNode.tileNodes[2];
-                 std::cout << "Hexagonal SubSample Output Node: " << hexNode.nodeIndex << "\n";
-                 std::cout << "   HexNode NearestNode: " << hexNode.nearestNode << "\n";
-                 std::cout << "   HexNode Triangle: " << hexNode.tile << "\n";
-                 std::cout << "   HexNode Triangle Nodes: " << hexNode.tileNodes[0] << ", " 
-                                                            << hexNode.tileNodes[1] << ", "
-                                                            << hexNode.tileNodes[2] << "\n";
-                 std::cout << "   HexNode Triangle Areas: " << hexNode.tileAreas[0] << ", " 
-                                                            << hexNode.tileAreas[1] << ", "
-                                                            << hexNode.tileAreas[2] << "\n";
-                 std::cout << "   HexNode Anatomical: " << fiducialXYZ[0] << ", " 
-                                                            << fiducialXYZ[1] << ", "
-                                                            << fiducialXYZ[2] << "\n";
-                 std::cout << "   HexNode Flat: " << hexNode.xyz[0] << ", " 
-                                                            << hexNode.xyz[1] << ", "
-                                                            << hexNode.xyz[2] << "\n";
-                 float* f1 = fiducialCoords->getCoordinate(n1);
-                 std::cout << "   Anat Node " << n1 << " " 
-                                              << f1[0] << ", "
-                                              << f1[1] << ", "
-                                              << f1[2] << "\n";
-                 float* f2 = fiducialCoords->getCoordinate(n2);
-                 std::cout << "   Anat Node " << n2 << " " 
-                                              << f2[0] << ", "
-                                              << f2[1] << ", "
-                                              << f2[2] << "\n";
-                 float* f3 = fiducialCoords->getCoordinate(n3);
-                 std::cout << "   Anat Node " << n3 << " " 
-                                              << f3[0] << ", "
-                                              << f3[1] << ", "
-                                              << f3[2] << "\n";
-            }
-         }
          
          subSampBrainSet->resetNodeAttributes();
          BrainSetNodeAttribute* bna = subSampBrainSet->getNodeAttributes(hexNode.nodeIndex);

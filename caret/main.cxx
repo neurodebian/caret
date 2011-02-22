@@ -64,9 +64,7 @@
 #include "SpecFile.h"
 #include "SpecFileUtilities.h"
 #include "StringUtilities.h"
-#include "UbuntuMessage.h"
 #include "WuQFileDialog.h"
-#include "QtTextEditDialog.h"
 
 #define CARET_MAIN_FLAG
 #include "global_variables.h"
@@ -525,11 +523,10 @@ main(int argc, char* argv[])
    //
    // needed for static linking to have JPEG support
    //
-#ifndef UBUNTU
    Q_IMPORT_PLUGIN(qjpeg) //QJpegPlugin)
    Q_IMPORT_PLUGIN(qgif)  //QGifPlugin)
    Q_IMPORT_PLUGIN(qtiff) //QTiffPlugin)
-#endif
+
    //
    // Set the locale to prevent crashes due to non-english date formats
    //
@@ -609,14 +606,6 @@ main(int argc, char* argv[])
    //
    app.setGuiMainWindow(theMainWindow);
 #endif
-
-#ifdef UBUNTU
-   QtTextEditDialog* te = new QtTextEditDialog(theMainWindow, true, true);
-   te->setWindowTitle("UBUNTU WARNING");
-   te->setMinimumSize(600, 600);
-   te->setText(UbuntuMessage::getWarningMessage());
-   te->exec();                    
-#endif UBUNTU
 
    if (initialSpecFiles.empty() == false) {
       if (QFile::exists(initialSpecFiles[0]) == false) {

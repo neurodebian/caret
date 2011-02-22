@@ -179,9 +179,6 @@ class BrainModelSurfaceDeformDataFile {
       static void linkColorFileHelper(const SpecFile::Entry& colorFiles,
                                       const QString& sourceSpecFilePath,
                                       SpecFile& outputSpecFile);
-                                      
-      /// get a string containing names of surfaces loaded.
-      static QString getLoadedSurfaces(BrainSet* bs);
 };
 
 #endif // __BRAIN_MODEL_SURFACE_DEFORM_DATA_FILE_H__

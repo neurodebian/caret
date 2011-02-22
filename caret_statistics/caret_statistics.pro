@@ -10,10 +10,6 @@ INCLUDEPATH += .
 include(../caret_qmake_include.pro)
 
 TEMPLATE = lib
-ubuntu {
-	CONFIG -= staticlib
-	CONFIG += plugin
-}
 
 # turn off unicode for displaying windows web browser
 win32 {

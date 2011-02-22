@@ -413,9 +413,6 @@ GuiMainWindow::GuiMainWindow(const bool enableTimingMenu,
    volumeProbAtlasColorKeyDialog = NULL;
     
    QString title("CARET v");
-#ifdef UBUNTU
-   title.append("u");
-#endif
    title.append(CaretVersion::getCaretVersionAsString());
    title.append(" (");
    title.append(__DATE__);

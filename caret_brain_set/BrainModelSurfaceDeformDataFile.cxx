@@ -353,30 +353,6 @@ BrainModelSurfaceDeformDataFile::addCommentAboutDeformation(const DeformationMap
 }
  
 /**
- * Get a string containing names of surfaces loaded.
- */
-QString 
-BrainModelSurfaceDeformDataFile::getLoadedSurfaces(BrainSet* bs) 
-{
-   QString namesOut;
-   
-   int numModels = bs->getNumberOfBrainModels();
-   for (int i = 0; i < numModels; i++) {
-      BrainModelSurface* bms = bs->getBrainModelSurface(i);
-      if (bms != NULL) {
-         if (namesOut.isEmpty()) {
-            namesOut += "\nSurfaces Loaded: ";
-         }
-         else {
-            namesOut += "\n";
-         }
-         namesOut += bms->getCoordinateFile()->getFileName();
-      }
-   }
-   return namesOut;
-}
-
-/**
  * deform a border file
  */
 void
@@ -480,24 +456,14 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
       throw BrainModelAlgorithmException(e.whatQString());
    }
    
-   const QString sourceSurfaceNames = getLoadedSurfaces(sourceBrainSet);
-   const QString targetSurfaceNames = getLoadedSurfaces(targetBrainSet);
-
    //
    // If the input file is a border file, make it into a border projection file
    //
    if (haveBorderFile) {
       if (sourceBorderSurface == NULL) {
-         if (dataFileType == DATA_FILE_BORDER_FLAT) {
-            QString msg("Unable to find flat surface for flat border file ");
-            msg.append(dmf->getSourceFlatCoordFileName());
-            throw BrainModelAlgorithmException(msg);
-         }
-         else {
-            QString msg("Unable to find spherical surface for spherical border file ");
-            msg.append(dmf->getSourceSphericalCoordFileName());
-            throw BrainModelAlgorithmException(msg);
-         }
+         QString msg("Unable to find surface for border file ");
+         msg.append(dmf->getSourceFlatCoordFileName());
+         throw BrainModelAlgorithmException(msg);
       }
       //
       // Create a border file projector and project the border file
@@ -547,7 +513,6 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
    if (unprojectSourceSurface == NULL) {
       QString msg("Missing source surface for border file deformation unprojection: ");
       msg.append(unprojectSourceSurfaceName);
-      msg.append(sourceSurfaceNames);
       throw BrainModelAlgorithmException(msg);
    }
    
@@ -570,7 +535,6 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
    //
    BrainModelSurface* targetProjectSurface = NULL;
    QString targetProjectSurfaceName;
-   QString msg1 = "";
    if (dmf->getInverseDeformationFlag()) {
       //
       // Use the deformed surface for projection
@@ -589,7 +553,6 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
                                                 dmf->getSourceDeformedSphericalCoordFileName());
             break;
       }
-      msg1 = sourceSurfaceNames;
    }
    else {
       //
@@ -609,12 +572,10 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
                                                 dmf->getTargetSphericalCoordFileName());
             break;
       }
-      msg1 = targetSurfaceNames;
    }
    if (targetProjectSurface == NULL) {
-      QString msg("Unable to find target surface for projection of borders: ");
+      QString msg("Unable to find target surface: ");
       msg.append(targetProjectSurfaceName);
-      msg.append(msg1);
       throw BrainModelAlgorithmException(msg);
    }
    
@@ -671,9 +632,8 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
             BrainModelSurface* bms = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                      dmf->getTargetFlatCoordFileName());
             if (bms == NULL) {
-               QString msg("Unable to find target flat coord file for border unprojection: ");
+               QString msg("Unable to find target flat coord file: ");
                msg.append(dmf->getTargetFlatCoordFileName());
-               msg.append(targetSurfaceNames);
                throw BrainModelAlgorithmException(msg);
             }
             BorderProjectionUnprojector tbfu;
@@ -694,9 +654,8 @@ BrainModelSurfaceDeformDataFile::deformBorderFile(BrainSet* sourceBrainSet,
             BrainModelSurface* bms = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                                      dmf->getTargetSphericalCoordFileName());
             if (bms == NULL) {
-               QString msg("Unable to find target spherical coord file for border unprojection: ");
+               QString msg("Unable to find target spherical coord file: ");
                msg.append(dmf->getTargetSphericalCoordFileName());
-               msg.append(targetSurfaceNames);
                throw BrainModelAlgorithmException(msg);
             }
             BorderProjectionUnprojector tbfu;
@@ -1377,7 +1336,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
       }
    }
    if (targetProjectSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find target's deformed surface for cell deformation.");
+      throw BrainModelAlgorithmException("Unable to find target's deformed surface.");
    }
    
    //
@@ -1386,7 +1345,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociFile(BrainSet* sourceBrainSet,
    const BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                              dmf->getTargetFiducialCoordFileName());
    if (targetFiducialSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find target fiducial coord file for cell deformation.");
+      throw BrainModelAlgorithmException("Unable to find target fiducial coord file.");
    }
    const CoordinateFile* targetFiducialCoordinateFile = targetFiducialSurface->getCoordinateFile();
    
@@ -1682,7 +1641,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
       }
    }
    if (targetProjectSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find target's deformed surface for cell deformation.");
+      throw BrainModelAlgorithmException("Unable to find target's deformed surface.");
    }
    
    //
@@ -1691,7 +1650,7 @@ BrainModelSurfaceDeformDataFile::deformCellOrFociProjectionFile(BrainSet* source
    const BrainModelSurface* targetFiducialSurface = targetBrainSet->getBrainModelSurfaceWithCoordinateFileName(
                                              dmf->getTargetFiducialCoordFileName());
    if (targetFiducialSurface == NULL) {
-      throw BrainModelAlgorithmException("Unable to find target fiducial coord file for cell deformation.");
+      throw BrainModelAlgorithmException("Unable to find target fiducial coord file.");
    }
    const CoordinateFile* targetFiducialCoordinateFile = targetFiducialSurface->getCoordinateFile();
    
@@ -2032,11 +1991,11 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
    // Make sure needed files present
    //
    if (brainSet.getNumberOfBrainModels() < 1) {
-      throw BrainModelAlgorithmException("Unable to find brain model of indiv topo and coord for flat coord deformation");
+      throw BrainModelAlgorithmException("Unable to find brain model of indiv topo and coord");
    }
    const BrainModelSurface* bms = brainSet.getBrainModelSurface(0);
    if (bms == NULL) {
-      throw BrainModelAlgorithmException("Unable to find brain model surface of indiv topo and coord for flat coord deformation");
+      throw BrainModelAlgorithmException("Unable to find brain model surface of indiv topo and coord");
    }
    
    //
@@ -2067,7 +2026,7 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
       cf.readFile(deformedCoordFileName);
    }
    catch (FileException&) {
-      throw BrainModelAlgorithmException("Unable to read deformed coordinate file for flat coord deformation.");
+      throw BrainModelAlgorithmException("Unable to read deformed coordinate file.");
    }
    
    //
@@ -2127,7 +2086,7 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
       newTopoFile.setTopologyType(topoType);
    }
    catch (FileException& e) {
-      throw BrainModelAlgorithmException("Unable to read atlas topo file for flat coord deformation.");
+      throw BrainModelAlgorithmException("Unable to read atlas topo file.");
    }
    
    //
@@ -2171,7 +2130,7 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
       cf.writeFile(cf.getFileName());
    }
    catch (FileException& e) {
-      QString msg("Unable to rewrite deformed coord file for flat coord deformation.\n");
+      QString msg("Unable to rewrite deformed coord file.\n");
       msg.append(e.whatQString());
       throw BrainModelAlgorithmException(msg);
    }
@@ -2192,7 +2151,7 @@ BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(const DeformationMapFi
       newTopoFile.writeFile(outputTopoFileName);
    }
    catch (FileException& e) {
-      QString msg("Unable to write output topo file for flat coord deformation\n");
+      QString msg("Unable to write output topo file\n");
       msg.append(e.whatQString());
       throw BrainModelAlgorithmException(msg);
    }

@@ -100,7 +100,7 @@ macx {
 #   QMAKE_INFO_PLIST 	= Info.plist
 }
 
-unix:!ubuntu {
+unix {
    PRE_TARGETDEPS +=  \
       ../caret_command_operations/libCaretCommandOperations.a \
 	   ../caret_brain_set/libCaretBrainSet.a \
@@ -112,46 +112,7 @@ unix:!ubuntu {
 	   ../caret_widgets/libCaretWidgets.a      
 }
 
-ubuntu {
-   PRE_TARGETDEPS +=  \
-      ../caret_command_operations/libCaretCommandOperations.so \
-           ../caret_brain_set/libCaretBrainSet.so \
-           ../caret_files/libCaretFiles.so \
-           ../caret_uniformize/libCaretUniformize.so \
-           ../caret_statistics/libCaretStatistics.so \
-           ../caret_common/libCaretCommon.so \
-           ../caret_widgets/libCaretWidgets.so
-   LIBS +=  \
-      -L../caret_command_operations -lCaretCommandOperations \
-           -L../caret_brain_set -lCaretBrainSet \
-           -L../caret_files -lCaretFiles \
-           -L../caret_uniformize -lCaretUniformize \
-           -L../caret_statistics -lCaretStatistics \
-           -L../caret_common -lCaretCommon \
-           -L../caret_widgets -lCaretWidgets
-
-   contains ( DEFINES, HAVE_ITK ) {
-      LIBS += $$ITK_LIBS
-   }
-
-   LIBS += $$VTK_LIBS
-
-   LIBS += $$QWT_LIBS
-
-   contains( DEFINES, HAVE_MINC ) {
-      LIBS += $$NETCDF_LIBS
-   }
-   LIBS -= -lvtkjpeg -lvtkpng -lvtkexpat -lvtkzlib
-   LIBS += -ldl
-   QTPLUGIN -= qgif qjpeg qtiff
-   QMAKE_CXXFLAGS += -DUBUNTU
-}
-
-unix:release {
-    QMAKE_POST_LINK=strip $(TARGET)
-}
-
-unix:!macx:!ubuntu {
+unix:!macx {
    LIBS +=  \
       -L../caret_command_operations -lCaretCommandOperations \
 	   -L../caret_brain_set -lCaretBrainSet \

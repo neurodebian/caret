@@ -207,17 +207,13 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       throw CommandException("ERROR: Reading spec file: "
                               + errorMessage);
    }
-   if (errorMessage.length() > 0) {
-      throw CommandException("ERROR: Reading spec file: "
-                              + errorMessage);
-   }
    
    //
    // Get the surface
    //
    BrainModelSurface* bms = brainSet.getBrainModelSurface(0);
    if (bms == NULL) {
-      throw CommandException("Unable to find surface, check file names.");
+      throw CommandException("Unable to find surface.h");
    }
    
    //

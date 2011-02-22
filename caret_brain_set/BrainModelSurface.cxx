@@ -184,14 +184,8 @@ BrainModelSurface::getSurfaceInformation(std::vector<QString>& labels,
    labels.push_back("Surface Area");
    values.push_back(QString::number(getSurfaceArea(), 'f', 2));
    
-   float meanDist, minDist, maxDist;
-   getMeanDistanceBetweenNodes(NULL, meanDist, minDist, maxDist);
-   labels.push_back("Mean/Min/Max Distance");
-   values.push_back(QString::number(meanDist, 'f', 6)
-                    + "/"
-                    + QString::number(minDist, 'f', 6)
-                    + "/"
-                    + QString::number(maxDist, 'f', 6));
+   labels.push_back("Mean Distance");
+   values.push_back(QString::number(getMeanDistanceBetweenNodes(), 'f', 6));
    
    labels.push_back("Spherical Radius");
    if (getSurfaceType() == BrainModelSurface::SURFACE_TYPE_SPHERICAL) {
@@ -3859,13 +3853,10 @@ BrainModelSurface::scaleSurfaceToArea(const float desiredArea,
 }
 
 /**
- * Get the mean, min, max distance between the nodes
+ * Get the mean distance between the nodes
  */
-void
-BrainModelSurface::getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI,
-                                               float& meanDist,
-                                               float& minDist,
-                                               float& maxDist) const
+float
+BrainModelSurface::getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI) const
 {
    const TopologyHelper* helper = topology->getTopologyHelper(false, true, false);
    const float numNodes = helper->getNumberOfNodes();
@@ -3876,9 +3867,7 @@ BrainModelSurface::getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection
       useRoiFlag = true;
    }
    
-   meanDist = 0.0;
-   minDist = std::numeric_limits<float>::max();
-   maxDist = -std::numeric_limits<float>::max();
+   float meanDist = 0.0;
    
    for (int i = 0; i < numNodes; i++) {
       bool doNode = true;
@@ -3900,10 +3889,7 @@ BrainModelSurface::getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection
             }
             if (checkNeigh) {
                neighCount++;
-               float nodeDist = coordinates.getDistanceBetweenCoordinates(i, neigh);
-               dist += nodeDist;
-               minDist = std::min(nodeDist, minDist);
-               maxDist = std::max(nodeDist, maxDist);
+               dist += coordinates.getDistanceBetweenCoordinates(i, neigh);
             }
          }
          if (neighCount > 1) {
@@ -3915,6 +3901,8 @@ BrainModelSurface::getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection
    if (numNodes > 1) {
       meanDist /= static_cast<float>(numNodes);
    }
+   
+   return meanDist;
 }
 
 /**
@@ -4516,9 +4504,7 @@ BrainModelSurface::smoothOutFlatSurfaceOverlap(const float strength,
    //
    // Use a multiple of the mean distance between nodes for searching around node
    //
-   float meanDist, minDist, maxDist;
-   getMeanDistanceBetweenNodes(NULL, meanDist, minDist, maxDist);
-   float longestLinkDistance =  meanDist * 3;
+   const float longestLinkDistance = getMeanDistanceBetweenNodes() * 3;
    if (DebugControl::getDebugOn()) {
       std::cout << "Longest link distance is " << longestLinkDistance << std::endl;
    }
@@ -4557,14 +4543,6 @@ BrainModelSurface::smoothOutFlatSurfaceOverlap(const float strength,
             //
             std::vector<int> nearbyNodes;
             bmspl.getPointsWithinRadius(xyz, longestLinkDistance, nearbyNodes);
-            if (DebugControl::getDebugNodeNumber() == i) {
-               std::cout << "Node "
-                         << i
-                         << " has "
-                         << nearbyNodes.size()
-                         << " nearby neighbors"
-                         << std::endl;
-            }
             
             //
             // Find tiles used by the nearby nodes
@@ -5882,8 +5860,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
                                                           const bool enableFingerSmoothing,
                                                           const bool scaleToMatchFiducialArea,
                                                           const float iterationsScaleIn,
-                                                          MetricFile* metricMeasurementsFileOut,
-                                                          const float compressionFactorIn) const
+                                                          MetricFile* metricMeasurementsFileOut) const
 {
    if ((createInflated == false) &&
        (createVeryInflated == false) &&
@@ -6147,7 +6124,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       TransformationMatrix tm;
       tm.rotate(TransformationMatrix::ROTATE_X_AXIS, -27.0);
       cmwSurface->applyTransformationMatrix(tm);
-      cmwSurface->convertSphereToCompressedMedialWall(compressionFactorIn); //0.95);   //0.85);
+      cmwSurface->convertSphereToCompressedMedialWall(0.95);   //0.85);
       cmwSurface->projectCoordinatesToPlane(
                    BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO);
       cmwSurface->computeNormals();

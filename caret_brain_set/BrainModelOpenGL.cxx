@@ -92,9 +92,6 @@
 #include "vtkTransform.h"
 #include "vtkTriangle.h"
 
-/* Number of slices used in Cylinder,Disk,Cone quadrics */
-static const int QUADRIC_NUMBER_OF_SLICES = 4;
-
 /**
  * Constructor.
  */
@@ -6883,7 +6880,7 @@ void
 BrainModelOpenGL::drawingCommandsCylinder()
 {
    //gluCylinder(cylinderQuadric, 0.5, 0.5, 1.0, 10, 10);
-   gluCylinder(cylinderQuadric, 0.5, 0.5, 1.0, QUADRIC_NUMBER_OF_SLICES, 1);
+   gluCylinder(cylinderQuadric, 0.5, 0.5, 1.0, 10, 1);
 }
       
 /**
@@ -6943,7 +6940,7 @@ BrainModelOpenGL::createConeQuadricAndDisplayList()
 void 
 BrainModelOpenGL::drawingCommandsCone()
 {
-   gluCylinder(coneQuadric, 0.5, 0.0, 1.0, QUADRIC_NUMBER_OF_SLICES, 1); //10);
+   gluCylinder(coneQuadric, 0.5, 0.0, 1.0, 10, 1); //10);
 }
 
 /**
@@ -7285,7 +7282,7 @@ BrainModelOpenGL::createDiskQuadricAndDisplayList()
 void 
 BrainModelOpenGL::drawingCommandsDisk()
 {
-   gluDisk(diskQuadric, 0.0, 0.5, QUADRIC_NUMBER_OF_SLICES, 1);
+   gluDisk(diskQuadric, 0.0, 0.5, 10, 1);
 }
       
 /**
@@ -10706,9 +10703,6 @@ BrainModelOpenGL::drawVectorFile3D(BrainModelSurface* bms)
       functionalMaskVolume = dsv->getFunctionalMaskingVolumeFile();
    }
 
-   GLboolean cullFaceStatus = glIsEnabled(GL_CULL_FACE);
-   glEnable(GL_CULL_FACE);
-
    glColor3f(0.0, 1.0, 0.0);
    switch (surfaceSymbol) {
       case DisplaySettingsVectors::SURFACE_SYMBOL_3D:
@@ -10901,9 +10895,6 @@ BrainModelOpenGL::drawVectorFile3D(BrainModelSurface* bms)
       }
    }
 
-   if (cullFaceStatus == GL_FALSE) {
-       glDisable(GL_CULL_FACE);
-   }
    glDisable(GL_COLOR_MATERIAL);
    glDisable(GL_LIGHTING);
 
@@ -11232,7 +11223,6 @@ BrainModelOpenGL::drawCylinderSymbol(const float xyz[3],
             drawCylinder();
         glPopMatrix();
 
-/*
         glPushMatrix();
            glTranslatef(0.0, 0.0, v);
            glScalef(radius, radius, 1.0);
@@ -11244,7 +11234,6 @@ BrainModelOpenGL::drawCylinderSymbol(const float xyz[3],
            glScalef(radius, radius, 1.0);
            drawDisk(1.0);
         glPopMatrix();
-*/
     glPopMatrix();
 }
 

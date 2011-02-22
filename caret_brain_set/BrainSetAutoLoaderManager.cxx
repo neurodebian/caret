@@ -8,7 +8,6 @@
 #include "BrainSetAutoLoaderManager.h"
 #include "BrainSetAutoLoaderFileFunctionalVolume.h"
 #include "BrainSetAutoLoaderFileMetric.h"
-#include "BrainSetAutoLoaderFileMetricByNode.h"
 #include "BrainSetAutoLoaderFilePaintCluster.h"
 #include "DebugControl.h"
 #include "MetricFile.h"
@@ -23,10 +22,6 @@ BrainSetAutoLoaderManager::BrainSetAutoLoaderManager(BrainSet* bs)
    for (int i = 0; i < NUMBER_OF_METRIC_AUTO_LOADERS; i++) {
       metricAutoLoaders[i] = new BrainSetAutoLoaderFileMetric(bs, i);
       allFileAutoLoaders.push_back(metricAutoLoaders[i]);
-   }
-   for (int i = 0; i < NUMBER_OF_METRIC_NODE_AUTO_LOADERS; i++) {
-      metricNodeAutoLoaders[i] = new BrainSetAutoLoaderFileMetricByNode(bs, i);
-      allFileAutoLoaders.push_back(metricNodeAutoLoaders[i]);
    }
    for (int i = 0; i < NUMBER_OF_FUNCTIONAL_VOLUME_AUTO_LOADERS; i++) {
       functionalVolumeAutoLoaders[i] = new BrainSetAutoLoaderFileFunctionalVolume(bs, i);
@@ -100,15 +95,6 @@ BrainSetAutoLoaderFileMetric*
 BrainSetAutoLoaderManager::getMetricAutoLoader(const int indx)
 {
    return this->metricAutoLoaders[indx];
-}
-
-/**
- * get a metric node autoloader.
- */
-BrainSetAutoLoaderFileMetricByNode*
-BrainSetAutoLoaderManager::getMetricNodeAutoLoader(const int indx)
-{
-   return this->metricNodeAutoLoaders[indx];
 }
 
 /**
@@ -253,26 +239,6 @@ QString
 BrainSetAutoLoaderManager::processAutoLoading(const int nodeNumber)
 {
    QString errorMessage = "";
-
-   for (int i = 0; i < BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS; i++) {
-      const QString indexString = QString::number(i + 1);
-
-      //
-      // Auto load metric
-      //
-      BrainSetAutoLoaderFileMetricByNode* alm = this->getMetricNodeAutoLoader(i);
-
-      if (alm->getAutoLoadEnabled()) {
-         VoxelIJK voxelIJK;
-
-         if (nodeNumber >= 0) {
-             errorMessage += alm->loadFileForNode(nodeNumber);
-         }
-         else {
-            errorMessage += "No node selected for autoloading metric by node.";
-         }
-      }
-   }
 
    for (int i = 0; i < BrainSetAutoLoaderManager::NUMBER_OF_METRIC_AUTO_LOADERS; i++) {
       const QString indexString = QString::number(i + 1);

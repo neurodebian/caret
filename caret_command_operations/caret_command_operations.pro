@@ -10,11 +10,6 @@ include(../caret_qmake_include.pro)
 
 TEMPLATE = lib
 
-ubuntu {
-	CONFIG -= staticlib
-	CONFIG += plugin
-}
-
 
 # Input
 HEADERS += CommandBase.h \
@@ -52,10 +47,7 @@ HEADERS += CommandBase.h \
            CommandMetricComposite.h \
            CommandMetricCompositeIdentifiedColumns.h \
            CommandMetricCorrelationCoefficientMap.h \
-           CommandMetricExtrema.h \
            CommandMetricFileCreate.h \
-           CommandMetricGradient.h \
-           CommandMetricGradientAll.h \
            CommandMetricInGroupDifference.h \
            CommandMetricInformation.h \
            CommandMetricMath.h \
@@ -87,8 +79,6 @@ HEADERS += CommandBase.h \
            CommandPaintComposite.h \
            CommandPaintDilation.h \
            CommandPaintFileCreate.h \
-           CommandPaintLabelNameUpdate.h \
-           CommandPaintSetColumnName.h \
            CommandPreferencesFileSettings.h \
            CommandSceneCreate.h \
            CommandScriptComment.h \
@@ -115,7 +105,6 @@ HEADERS += CommandBase.h \
            CommandSurfaceAlignToStandardOrientation.h \
            CommandSurfaceApplyTransformationMatrix.h \
            CommandSurfaceAverage.h \
-           CommandSurfaceBankStraddling.h \
            CommandSurfaceBorderCreateAverage.h \
            CommandSurfaceBorderCreateParallelBorder.h \
            CommandSurfaceBorderCutter.h \
@@ -123,7 +112,6 @@ HEADERS += CommandBase.h \
            CommandSurfaceBorderDrawAroundROI.h \
            CommandSurfaceBorderDrawGeodesic.h \
            CommandSurfaceBorderDrawMetric.h \
-           CommandSurfaceBorderFileMerge.h \
            CommandSurfaceBorderIntersection.h \
            CommandSurfaceBorderLandmarkIdentification.h \
            CommandSurfaceBorderLengths.h \
@@ -157,8 +145,6 @@ HEADERS += CommandBase.h \
            CommandSurfaceInflate.h \
            CommandSurfaceInformation.h \
            CommandSurfaceGenerateInflated.h \
-           CommandSurfaceGeodesic.h \
-           CommandSurfaceNormals.h \
            CommandSurfacePlaceFociAtExtremum.h \
            CommandSurfacePlaceFociAtLimits.h \
            CommandSurfaceRegionOfInterestSelection.h \
@@ -234,8 +220,6 @@ HEADERS += CommandBase.h \
            CommandVolumeResample.h \
            CommandVolumeRescaleVoxels.h \
            CommandVolumeResize.h \
-           CommandVolumeROIGradient.h \
-           CommandVolumeROIMinima.h \
            CommandVolumeScale0to255.h \
            CommandVolumeScalePercent0to255.h \
            CommandVolumeSculpt.h \
@@ -295,10 +279,7 @@ SOURCES += CommandBase.cxx \
            CommandMetricComposite.cxx \
            CommandMetricCompositeIdentifiedColumns.cxx \
            CommandMetricCorrelationCoefficientMap.cxx \
-           CommandMetricExtrema.cxx \
            CommandMetricFileCreate.cxx \
-           CommandMetricGradientAll.cxx \
-           CommandMetricGradient.cxx \
            CommandMetricInGroupDifference.cxx \
            CommandMetricInformation.cxx \
            CommandMetricMath.cxx \
@@ -330,8 +311,6 @@ SOURCES += CommandBase.cxx \
            CommandPaintComposite.cxx \
            CommandPaintDilation.cxx \
            CommandPaintFileCreate.cxx \
-           CommandPaintLabelNameUpdate.cxx \
-           CommandPaintSetColumnName.cxx \
            CommandPreferencesFileSettings.cxx \
            CommandSceneCreate.cxx \
            CommandScriptComment.cxx \
@@ -358,7 +337,6 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceAlignToStandardOrientation.cxx \
            CommandSurfaceApplyTransformationMatrix.cxx \
            CommandSurfaceAverage.cxx \
-           CommandSurfaceBankStraddling.cxx \
            CommandSurfaceBorderCreateAverage.cxx \
            CommandSurfaceBorderCreateParallelBorder.cxx \
            CommandSurfaceBorderCutter.cxx \
@@ -366,7 +344,6 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceBorderDrawAroundROI.cxx \
            CommandSurfaceBorderDrawGeodesic.cxx \
            CommandSurfaceBorderDrawMetric.cxx \
-           CommandSurfaceBorderFileMerge.cxx \
            CommandSurfaceBorderIntersection.cxx \
            CommandSurfaceBorderLandmarkIdentification.cxx \
            CommandSurfaceBorderLengths.cxx \
@@ -398,11 +375,9 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceFociStudyValidate.cxx \
            CommandSurfaceFociUnprojection.cxx \
            CommandSurfaceGenerateInflated.cxx \
-           CommandSurfaceGeodesic.cxx \
            CommandSurfaceIdentifySulci.cxx \
            CommandSurfaceInflate.cxx \
            CommandSurfaceInformation.cxx \
-           CommandSurfaceNormals.cxx \
            CommandSurfacePlaceFociAtExtremum.cxx \
            CommandSurfacePlaceFociAtLimits.cxx \
            CommandSurfaceRegionOfInterestSelection.cxx \
@@ -477,8 +452,6 @@ SOURCES += CommandBase.cxx \
            CommandVolumeResample.cxx \
            CommandVolumeRescaleVoxels.cxx \
            CommandVolumeResize.cxx \
-           CommandVolumeROIGradient.cxx \
-           CommandVolumeROIMinima.cxx \
            CommandVolumeScale0to255.cxx \
            CommandVolumeScalePercent0to255.cxx \
            CommandVolumeSculpt.cxx \

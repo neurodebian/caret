@@ -369,69 +369,6 @@ removeTrailingPeriod(QString& s)
 }
 
 /**
- * parse a spec file name number of nodes (73k_fs_lr => 73k  _fs_lr).
- */
-bool 
-FileUtilities::parseCaretDataFileNumberOfNodes(const QString& numNodesIn,
-                                               QString& numNodesOut,
-                                               QString& atlasOut)
-{
-   numNodesOut = "";
-   atlasOut = "";
-   
-   const QString numNodesNumberRE("^(\\d+\\.)$");  // eg: 71723
-   const QString numNodesNumberAndTextRE("^(\\d+k)(_.+)$");  // eg: 164k_fs_LR
-   
-   for (int i = 0; i < 2; i++) {
-      QString re  = "";
-      switch(i) {
-         case 0:
-            re = numNodesNumberRE;
-            break;
-         case 1:
-            re = numNodesNumberAndTextRE;
-            break;
-      }
-      
-      QRegExp regexp(re);
-      if (regexp.isValid() == false) {
-         std::cout << "Program Error: "
-                  << qPrintable(re)
-                  << " is an invalid regular expression."
-                  << std::endl;
-         return false;
-      }
-      
-      if (DebugControl::getDebugOn()) {
-         std::cout << "-------------------------------------------------------------" << std::endl;
-         std::cout << "Testing iter " << i << ": " << qPrintable(numNodesIn) << std::endl;
-      }
-      
-      if (regexp.indexIn(numNodesIn) >= 0) {
-         const int numCaptures = regexp.numCaptures();
-         
-         switch (i) {
-            case 0:
-               if (numCaptures == 1) {
-                  numNodesOut = regexp.cap(1);
-                  return true;
-               }
-               break;
-            case 1:
-               if (numCaptures == 2) {
-                  numNodesOut = regexp.cap(1);
-                  atlasOut = regexp.cap(2);
-                  return true;
-               }
-               break;
-         }
-      }
-   }
-   
-   return false;
-}
-                                               
-/**
  * Parse a data file name to see if it is a valid Caret file name.
  * Returns true if the file name is a valid Caret file name.
  */
@@ -465,23 +402,8 @@ FileUtilities::parseCaretDataFileName(const QString& filenameIn,
    //
    // Chop off any path on the file's name
    //
-   QString filename(FileUtilities::basename(filenameIn));
-   
-   //
-   // Remove GIFTI extension
-   //
-   bool hasGiftiExtension = false;
-   if (filename.endsWith(".gii")) {
-       if (filename.endsWith(".coord.gii") 
-           || filename.endsWith(".topo.gii")
-           || filename.endsWith(".func.gii")
-           || filename.endsWith(".label.gii")
-           || filename.endsWith(".shape.gii")) {
-           filename = filename.left(filename.length() - 4);
-           hasGiftiExtension = true;
-       }
-   }
-   
+   const QString filename(FileUtilities::basename(filenameIn));
+ 
    //
    // clear the filename's components.
    //
@@ -533,9 +455,7 @@ FileUtilities::parseCaretDataFileName(const QString& filenameIn,
    //
    // number of nodes is one or more numbers.
    //
-   //const QString numNodesRE("(\\d+\\.)");
-   const QString numNodesNumberRE("(\\d+\\.)");  // eg: 71723
-   const QString numNodesNumberAndTextRE("(\\d+k_.+\\.)");  // eg: 164k_fs_LR
+   const QString numNodesRE("(\\d+\\.)");
    
    //
    // extension  is a string containing one or more letters, numbers, undersores, or dashes 
@@ -545,240 +465,184 @@ FileUtilities::parseCaretDataFileName(const QString& filenameIn,
    //
    // Loop through the regular expressions.
    //
-   const int numberOfRegularExpresions = 9;
+   const int numberOfRegularExpresions = 7;
    for (int i = 0; i < numberOfRegularExpresions; i++) {
-      for (int nodeTest = 0; nodeTest < 2; nodeTest++) {
-         QString numNodesRE = numNodesNumberRE;
-         switch (nodeTest) {
-            case 0:
-               numNodesRE = numNodesNumberAndTextRE;
-               break;
-            case 1:
-               numNodesRE = numNodesNumberRE;
-               break;
+      //
+      // Create the regular expression
+      //
+      QString re;
+      
+      switch (i) {
+         case 0:  
+            re = "^"
+               + speciesRE 
+               + caseRE 
+               + brainPartRE
+               + hemisphereRE 
+               + descriptionRE
+               + dateRE
+               + numNodesRE
+               + extensionRE 
+               + "$";
+             break;
+         case 1:  
+            re = "^"
+               + speciesRE 
+               + caseRE 
+               + brainPartRE
+               + hemisphereRE 
+               + descriptionRE
+               + numNodesRE
+               + extensionRE 
+               + "$";
+            break;
+         case 2:  
+            re = "^"
+               + caseRE 
+               + hemisphereRE 
+               + descriptionRE
+               + dateRE
+               + numNodesRE
+               + extensionRE 
+               + "$";
+            break;
+         case 3:  
+            re = "^"
+               + caseRE 
+               + hemisphereRE 
+               + descriptionRE
+               + numNodesRE
+               + extensionRE 
+               + "$";
+            break;
+         case 4:
+            re = "^"
+               + caseRE 
+               + numNodesRE
+               + extensionRE 
+               + "$";
+            break;
+         case 5:
+            re = "^"
+               + caseRE 
+               + extensionRE 
+               + "$";
+            break;
+         case 6:
+            re = "^"
+               + speciesRE
+               + caseRE
+               + hemisphereRE
+               + descriptionRE
+               + extensionRE
+               + "$";
+            break;
+      }
+            
+      
+      //
+      // Create the regular expression object.
+      //
+      QRegExp regexp(re);
+      if (regexp.isValid() == false) {
+         std::cout << "Program Error: "
+                  << qPrintable(re)
+                  << " is an invalid regular expression."
+                  << std::endl;
+         return false;
+      }
+      
+      if (DebugControl::getDebugOn()) {
+         std::cout << "-------------------------------------------------------------" << std::endl;
+         std::cout << "Testing iter " << i << ": " << qPrintable(filename) << std::endl;
+      }
+      
+      if (regexp.indexIn(filename) >= 0) {
+         const int numCaptures = regexp.numCaptures();
+         if (DebugControl::getDebugOn()) {
+            std::cout << "num captures: " << numCaptures << std::endl;
+            for (int j = 1; j <= numCaptures; j++) {
+               std::cout << "   cap " << j << ": " << regexp.cap(j).toAscii().constData() << std::endl;
+            }
          }
-         
-         //
-         // Create the regular expression
-         //
-         QString re;
          
          switch (i) {
-            case 0:  
-               re = "^"
-                  + speciesRE 
-                  + caseRE 
-                  + brainPartRE
-                  + hemisphereRE 
-                  + descriptionRE
-                  + dateRE
-                  + numNodesRE
-                  + extensionRE 
-                  + "$";
-                break;
-            case 1:  
-               re = "^"
-                  + speciesRE 
-                  + caseRE 
-                  + brainPartRE
-                  + hemisphereRE 
-                  + descriptionRE
-                  + numNodesRE
-                  + extensionRE 
-                  + "$";
+            case 0:
+               if (numCaptures == 9) {
+                  species = regexp.cap(1);
+                  casename = regexp.cap(2);
+                  anatomy = regexp.cap(3);
+                  hemisphere = regexp.cap(4);
+                  description = regexp.cap(5);
+                  theDate = regexp.cap(6);
+                  numNodes = regexp.cap(8);
+                  extension = regexp.cap(9);
+                  validName = true;
+               }
                break;
-            case 2:  
-               re = "^"
-                  + caseRE 
-                  + hemisphereRE 
-                  + descriptionRE
-                  + dateRE
-                  + numNodesRE
-                  + extensionRE 
-                  + "$";
+            case 1:
+               if (numCaptures == 7) {
+                  species = regexp.cap(1);
+                  casename = regexp.cap(2);
+                  anatomy = regexp.cap(3);
+                  hemisphere = regexp.cap(4);
+                  description = regexp.cap(5);
+                  numNodes = regexp.cap(6);
+                  extension = regexp.cap(7);
+                  validName = true;
+               }
                break;
-            case 3:  
-               re = "^"
-                  + caseRE 
-                  + hemisphereRE 
-                  + descriptionRE
-                  + numNodesRE
-                  + extensionRE 
-                  + "$";
+            case 2:
+               if (numCaptures == 7) {
+                  species = regexp.cap(1);
+                  hemisphere = regexp.cap(2);
+                  description = regexp.cap(3);
+                  theDate = regexp.cap(4);
+                  numNodes = regexp.cap(6);
+                  extension = regexp.cap(7);
+                  validName = true;
+               }
+               break;
+            case 3:
+               if (numCaptures == 5) {
+                  species = regexp.cap(1);
+                  hemisphere = regexp.cap(2);
+                  description = regexp.cap(3);
+                  numNodes = regexp.cap(4);
+                  extension = regexp.cap(5);
+                  validName = true;
+               }
                break;
             case 4:
-               re = "^"
-                  + caseRE 
-                  + numNodesRE
-                  + extensionRE 
-                  + "$";
+               if (numCaptures == 3) {
+                  species = regexp.cap(1);
+                  numNodes = regexp.cap(2);
+                  extension = regexp.cap(3);
+                  validName = true;
+               }
                break;
             case 5:
-               re = "^"
-                  + caseRE 
-                  + extensionRE 
-                  + "$";
+               if (numCaptures == 2) {
+                  species = regexp.cap(1);
+                  extension = regexp.cap(2);
+                  validName = true;
+               }
                break;
             case 6:
-               re = "^"
-                  + speciesRE
-                  + caseRE
-                  + hemisphereRE
-                  + numNodesRE
-                  + extensionRE
-                  + "$";
-               break;
-               break;
-            case 7:
-               re = "^"
-                  + speciesRE
-                  + caseRE
-                  + hemisphereRE
-                  + descriptionRE
-                  + extensionRE
-                  + "$";
-            case 8:
-               re = "^"
-                  + caseRE
-                  + hemisphereRE
-                  + numNodesRE
-                  + extensionRE
-                  + "$";
-               break;
-         }
-               
-         
-         //
-         // Create the regular expression object.
-         //
-         QRegExp regexp(re);
-         if (regexp.isValid() == false) {
-            std::cout << "Program Error: "
-                     << qPrintable(re)
-                     << " is an invalid regular expression."
-                     << std::endl;
-            return false;
-         }
-         
-         if (DebugControl::getDebugOn()) {
-            std::cout << "-------------------------------------------------------------" << std::endl;
-            std::cout << "Testing iter " << i << ": " << qPrintable(filename) << std::endl;
-         }
-         
-         if (regexp.indexIn(filename) >= 0) {
-            const int numCaptures = regexp.numCaptures();
-            if (DebugControl::getDebugOn()) {
-               std::cout << "num captures/patternID/nodeType: " 
-                         << numCaptures << "/" << i << "/" << nodeTest << std::endl;
-               for (int j = 1; j <= numCaptures; j++) {
-                  std::cout << "   cap " << j << ": " << regexp.cap(j).toAscii().constData() << std::endl;
+               if (numCaptures == 5) {
+                  species = regexp.cap(1);
+                  casename = regexp.cap(2);
+                  hemisphere = regexp.cap(3);
+                  description = regexp.cap(4);
+                  extension = regexp.cap(5);
+                  validName = true;
                }
-            }
-            
-            switch (i) {
-               case 0:
-                  if (numCaptures == 9) {
-                     species = regexp.cap(1);
-                     casename = regexp.cap(2);
-                     anatomy = regexp.cap(3);
-                     hemisphere = regexp.cap(4);
-                     description = regexp.cap(5);
-                     theDate = regexp.cap(6);
-                     numNodes = regexp.cap(8);
-                     extension = regexp.cap(9);
-                     validName = true;
-                  }
-                  break;
-               case 1:
-                  if (numCaptures == 7) {
-                     species = regexp.cap(1);
-                     casename = regexp.cap(2);
-                     anatomy = regexp.cap(3);
-                     hemisphere = regexp.cap(4);
-                     description = regexp.cap(5);
-                     numNodes = regexp.cap(6);
-                     extension = regexp.cap(7);
-                     validName = true;
-                  }
-                  break;
-               case 2:
-                  if (numCaptures == 7) {
-                     species = regexp.cap(1);
-                     hemisphere = regexp.cap(2);
-                     description = regexp.cap(3);
-                     theDate = regexp.cap(4);
-                     numNodes = regexp.cap(6);
-                     extension = regexp.cap(7);
-                     validName = true;
-                  }
-                  break;
-               case 3:
-                  if (numCaptures == 5) {
-                     species = regexp.cap(1);
-                     hemisphere = regexp.cap(2);
-                     description = regexp.cap(3);
-                     numNodes = regexp.cap(4);
-                     extension = regexp.cap(5);
-                     validName = true;
-                  }
-                  break;
-               case 4:
-                  if (numCaptures == 3) {
-                     species = regexp.cap(1);
-                     numNodes = regexp.cap(2);
-                     extension = regexp.cap(3);
-                     validName = true;
-                  }
-                  break;
-               case 5:
-                  if (numCaptures == 2) {
-                     species = regexp.cap(1);
-                     extension = regexp.cap(2);
-                     validName = true;
-                  }
-                  break;
-               case 6:
-                  if (numCaptures == 5) {
-                     species = regexp.cap(1);
-                     casename = regexp.cap(2);
-                     hemisphere = regexp.cap(3);
-                     numNodes = regexp.cap(4);
-                     extension = regexp.cap(5);
-                     validName = true;
-                  }
-                  break;
-               case 7:
-                  if (numCaptures == 5) {
-                     species = regexp.cap(1);
-                     casename = regexp.cap(2);
-                     hemisphere = regexp.cap(3);
-                     description = regexp.cap(4);
-                     extension = regexp.cap(5);
-                     validName = true;
-                  }
-                  break;
-               case 8:
-                  if (numCaptures == 4) {
-                     casename = regexp.cap(1);
-                     hemisphere = regexp.cap(2);
-                     numNodes = regexp.cap(3);
-                     extension = regexp.cap(4);
-                     validName = true;
-                  }  
-            }
-            
-            if (validName) {
                break;
-            }         
          }
          
          if (validName) {
             break;
-         }
-      }
-      
-      if (validName) {
-         break;
+         }         
       }
    }
    
@@ -793,10 +657,6 @@ FileUtilities::parseCaretDataFileName(const QString& filenameIn,
       removeTrailingPeriod(description);
       removeTrailingPeriod(theDate);
       removeTrailingPeriod(numNodes);
-      
-      if (hasGiftiExtension) {
-         extension += ".gii";
-      }
       
       if (description.isEmpty() == false) {
          descriptionNoTypeName = description;

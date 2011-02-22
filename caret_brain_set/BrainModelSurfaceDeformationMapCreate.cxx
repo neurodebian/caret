@@ -43,8 +43,8 @@ BrainModelSurfaceDeformationMapCreate::BrainModelSurfaceDeformationMapCreate(
                                       DeformationMapFile* deformationMapFileIn,
                                       const DEFORMATION_SURFACE_TYPE deformationSurfaceTypeIn)
    : BrainModelAlgorithm(bs),
-     sourceSurfaceIn(sourceSurfaceIn),
-     targetSurfaceIn(targetSurfaceIn)
+     sourceSurface(sourceSurfaceIn),
+     targetSurface(targetSurfaceIn)
 {
    deformationMapFile = deformationMapFileIn;
    deformationSurfaceType = deformationSurfaceTypeIn;
@@ -55,14 +55,6 @@ BrainModelSurfaceDeformationMapCreate::BrainModelSurfaceDeformationMapCreate(
  */
 BrainModelSurfaceDeformationMapCreate::~BrainModelSurfaceDeformationMapCreate()
 {
-   if (this->sourceSurface != NULL) {
-      delete this->sourceSurface;
-      this->sourceSurface = NULL;
-   }
-   if (this->targetSurface != NULL) {
-      delete this->targetSurface;
-      this->targetSurface = NULL;
-   }
 }
 
 /**
@@ -74,44 +66,34 @@ BrainModelSurfaceDeformationMapCreate::execute() throw (BrainModelAlgorithmExcep
    //
    // Check inputs
    //
-   if (sourceSurfaceIn == NULL) {
+   if (sourceSurface == NULL) {
       throw BrainModelAlgorithmException("Source surface is invalid.");
    }
-   if (targetSurfaceIn == NULL) {
+   if (targetSurface == NULL) {
       throw BrainModelAlgorithmException("Target surface is invalid.");
    }
    if (deformationMapFile == NULL) {
-      throw BrainModelAlgorithmException("Deformation Map is invalid.");
+      throw BrainModelAlgorithmException("Deformaiont Map is invalid.");
    }
    
-   if (sourceSurfaceIn->getNumberOfNodes() <= 0) {
+   if (sourceSurface->getNumberOfNodes() <= 0) {
       throw BrainModelAlgorithmException("Source surface contains no nodes.");
    }
-   if (targetSurfaceIn->getNumberOfNodes() <= 0) {
+   if (targetSurface->getNumberOfNodes() <= 0) {
       throw BrainModelAlgorithmException("Target surface contains no nodes.");
    }
    
    //
    // Verify there is topology
    //
-   const TopologyFile* sourceTopologyFile = sourceSurfaceIn->getTopologyFile();
+   const TopologyFile* sourceTopologyFile = sourceSurface->getTopologyFile();
    if (sourceTopologyFile == NULL) {
       throw BrainModelAlgorithmException("Source surface contains no topology.");
    }
-   const TopologyFile* targetTopologyFile = targetSurfaceIn->getTopologyFile();
+   const TopologyFile* targetTopologyFile = targetSurface->getTopologyFile();
    if (targetTopologyFile == NULL) {
       throw BrainModelAlgorithmException("Target surface contains no topology.");
    }
-   
-   //
-   // Copy the source and target surfaces so that they can be modified
-   //
-   this->sourceSurface = new BrainModelSurface(*(this->sourceSurfaceIn));
-   this->targetSurface = new BrainModelSurface(*(this->targetSurfaceIn));
-   this->sourceSurface->getCoordinateFile()->setFileName(
-      this->sourceSurfaceIn->getCoordinateFile()->getFileName());
-   this->targetSurface->getCoordinateFile()->setFileName(
-      this->targetSurfaceIn->getCoordinateFile()->getFileName());
    
    //
    // Clear the deformation map
@@ -167,11 +149,9 @@ BrainModelSurfaceDeformationMapCreate::createSphericalDeformationMap()
 {
    //
    // Make sure source surface is same radius as target sphere
-   // and at origin
    //
-   this->sourceSurface->translateToCenterOfMass();
-   this->targetSurface->translateToCenterOfMass();
-   this->sourceSurface->convertToSphereWithRadius(targetSurface->getSphericalSurfaceRadius());
+   BrainModelSurface sphereSurface(*sourceSurface);
+   sphereSurface.convertToSphereWithRadius(targetSurface->getSphericalSurfaceRadius());
       
    //
    // Get the coordinate files for the surfaces
@@ -182,7 +162,7 @@ BrainModelSurfaceDeformationMapCreate::createSphericalDeformationMap()
    //
    // Create a Point Projector source surface.
    //
-   BrainModelSurfacePointProjector bspp(sourceSurface,
+   BrainModelSurfacePointProjector bspp(&sphereSurface,
                            BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_SPHERE,
                            false);
    

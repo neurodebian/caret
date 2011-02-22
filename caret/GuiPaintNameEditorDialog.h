@@ -73,12 +73,6 @@ class GuiPaintNameEditorDialog : public WuQDialog {
       /// called to add a new paint name
       void slotAddPaintName();
       
-      /// called to remove prefixes from names
-      void slotRemovePrefixesFromPaintNames();
-
-      /// called to remove suffixes from names
-      void slotRemoveSuffixesFromPaintNames();
-
    protected:
       // load the paint names
       void loadPaintNames();

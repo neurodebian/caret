@@ -283,12 +283,6 @@ BrainModelSurfaceMetricOneAndPairedTTest::executeClusterSearch() throw (BrainMod
    findClusters(shuffleStatisticalMapShapeFile, shuffleTMapClusters, "Finding Clusters in Permuted T-Map", -1, true);
    
    //
-   // Set pValue for shuffled T-Map
-   // 
-   setRandomizedClusterPValues(*shuffleStatisticalMapShapeFile,
-                               shuffleTMapClusters);
-                               
-   //
    // Find area of the "P-Value" cluster in the permuted T-Map
    //
    float significantCorrectedArea = std::numeric_limits<float>::max();
@@ -310,13 +304,13 @@ BrainModelSurfaceMetricOneAndPairedTTest::executeClusterSearch() throw (BrainMod
       int cnt = shuffleTMapClusters.size() - 1;
       if (shuffleTMapClusters.empty() == false) {
          if (tMapCluster.areaCorrected > shuffleTMapClusters[0].areaCorrected) {
-            cnt = 1;
+            cnt = 0;
          }
          else {
             for (unsigned int j = 0; j < shuffleTMapClusters.size() - 1; j++) {
                if ((tMapCluster.areaCorrected < shuffleTMapClusters[j].areaCorrected) &&
                    (tMapCluster.areaCorrected >= shuffleTMapClusters[j+1].areaCorrected)) {
-                  cnt = j + 2;
+                  cnt = j;
                }
             }
          }

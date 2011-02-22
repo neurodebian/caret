@@ -2823,14 +2823,7 @@ BrainSet::convertVolumeBordersToFiducialCells()
       //
       for (int j = 0; j < numLinks; j++) {
          const float* xyz = b->getLinkXYZ(j);
-         CellData cd(borderName, xyz[0], xyz[1], xyz[2], 0);
-         if (xyz[0] >= 0) {
-             cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_RIGHT);
-         }
-         else {
-             cd.setCellStructure(Structure::STRUCTURE_TYPE_CORTEX_LEFT);
-         }
-         cf.addCell(cd);
+         cf.addCell(CellData(borderName, xyz[0], xyz[1], xyz[2], 0));
       }
    }
    
@@ -3264,8 +3257,7 @@ BrainSet::readAreaColorFile(const QString& name, const bool append,
    }
    
    areaColorFile->setModifiedCounter(modified);
-   paintFile->getLabelTable()->assignColors(*areaColorFile);
-
+   
    if (updateSpec) {
       addToSpecFile(SpecFile::getAreaColorFileTag(), name);
    }
@@ -6139,7 +6131,6 @@ BrainSet::readDeformationFieldFile(const QString& name, const bool append,
 void
 BrainSet::writePaintFile(const QString& name) throw (FileException)
 {
-   paintFile->getLabelTable()->assignColors(*areaColorFile);
    loadedFilesSpecFile.paintFile.setAllSelections(SpecFile::SPEC_FALSE);
    paintFile->writeFile(name);
    addToSpecFile(SpecFile::getPaintFileTag(), name);
@@ -6171,12 +6162,11 @@ BrainSet::readPaintFile(const QString& name,
          }
       }
       std::vector<int> columnDestination2 = columnDestination;
+      paintFile->append(pf, columnDestination2, fcm);
       if ((pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML) ||
           (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_BASE64) ||
           (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_GZIP_BASE64)) {
          if (pf.getLabelTable()->getHadColorsWhenRead()) {
-             // allow area colors to override label table colors
-             pf.getLabelTable()->assignColors(*areaColorFile);
              pf.getLabelTable()->addColorsToColorFile(*areaColorFile);
              if (DebugControl::getDebugOn()) {
                 std::cout << "After GIFTI Label File reading there are "
@@ -6186,8 +6176,6 @@ BrainSet::readPaintFile(const QString& name,
              }
          }
       }
-      paintFile->append(pf, columnDestination2, fcm);
-      paintFile->getLabelTable()->assignColors(*areaColorFile);
    }
    catch (FileException& e) {
       throw FileException(FileUtilities::basename(name), e.whatQString());
@@ -6232,7 +6220,6 @@ BrainSet::readPaintFile(const QString& name, const bool append,
              (paintFile->getFileReadType() == AbstractFile::FILE_FORMAT_XML_BASE64) ||
              (paintFile->getFileReadType() == AbstractFile::FILE_FORMAT_XML_GZIP_BASE64)) {
             if (paintFile->getLabelTable()->getHadColorsWhenRead()) {
-                paintFile->getLabelTable()->assignColors(*areaColorFile);
                 paintFile->getLabelTable()->addColorsToColorFile(*areaColorFile);
                 if (DebugControl::getDebugOn()) {
                    std::cout << "After GIFTI Label File reading there are "
@@ -6261,7 +6248,6 @@ BrainSet::readPaintFile(const QString& name, const bool append,
              (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_BASE64) ||
              (pf.getFileReadType() == AbstractFile::FILE_FORMAT_XML_GZIP_BASE64)) {
             if (pf.getLabelTable()->getHadColorsWhenRead()) {
-                pf.getLabelTable()->assignColors(*areaColorFile);
                 pf.getLabelTable()->addColorsToColorFile(*areaColorFile);
                 if (DebugControl::getDebugOn()) {
                    std::cout << "After GIFTI Label File reading there are "
@@ -6276,7 +6262,6 @@ BrainSet::readPaintFile(const QString& name, const bool append,
          throw FileException(FileUtilities::basename(name), e.whatQString());
       }
    }
-   paintFile->getLabelTable()->assignColors(*areaColorFile);
    paintFile->setModifiedCounter(modified);
 
    if (readingSpecFileFlag == false) {

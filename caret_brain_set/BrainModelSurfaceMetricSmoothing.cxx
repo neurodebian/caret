@@ -27,14 +27,12 @@
 #include <limits>
 #include <set>
 #include <QDateTime>
-#include <cmath>
 
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceMetricFullWidthHalfMaximum.h"
 #include "BrainModelSurfaceMetricSmoothing.h"
 #include "DebugControl.h"
 #include "GaussianComputation.h"
-#include "GeodesicHelper.h"
 #include "MetricFile.h"
 #include "StringUtilities.h"
 #include "TopologyFile.h"
@@ -59,8 +57,7 @@ BrainModelSurfaceMetricSmoothing::BrainModelSurfaceMetricSmoothing(
                                                 const float gaussNormAboveCutoffIn,
                                                 const float gaussSigmaNormIn,
                                                 const float gaussSigmaTangIn,
-                                                const float gaussTangentCutoffIn,
-                                                const float geodesicGaussSigmaIn)
+                                                const float gaussTangentCutoffIn)
    : BrainModelAlgorithm(bs)
 {
    fiducialSurface = fiducialSurfaceIn;
@@ -81,7 +78,6 @@ BrainModelSurfaceMetricSmoothing::BrainModelSurfaceMetricSmoothing(
    gaussSigmaNorm = gaussSigmaNormIn;
    gaussSigmaTang = gaussSigmaTangIn;
    gaussTangentCutoff = gaussTangentCutoffIn;
-   geodesicGaussSigma = geodesicGaussSigmaIn;
 }
 
 /**
@@ -216,7 +212,6 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
             break;
          case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
          case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
-         case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
          case SMOOTH_ALGORITHM_NONE:
             break;
       }
@@ -403,23 +398,6 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                      }
                   }
                   break;
-               case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
-                  {//distance to neighbor is geodesic, not euclidean, check determineNeighbors
-                     int j, end = neighInfo.numNeighbors;
-                     float totalWeight = 0.0f, weight, tempf;
-                     for (j = 0; j < end; ++j)
-                     {//weighted average, using gaussian of geodesic distance as weight
-                        tempf = neighInfo.distanceToNeighbor[j] / geodesicGaussSigma;
-                        weight = std::exp(-tempf * tempf * 0.5f);//the gaussian function
-                        totalWeight += weight;
-                        neighborSum += weight * inputValues[neighInfo.neighbors[j]];
-                     }
-                     neighborSum /= totalWeight;
-                     dilateModeFlag = true;//HACK: makes it use the gaussian computation, with no extra precedence for center node
-                     //this is equivalent to strength = 1; oneMinusStrength = 0;, but with less computation
-                     //IF DILATE IS EVER CHANGED, MAKE SURE TO USE ONLY NEIGHBORSUM IF MODE IS GEODESIC_GAUSSIAN
-                  }
-               break;
             }
             
             
@@ -436,7 +414,7 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                   }
                }
                if (dilateModeFlag) {
-                  outputValues[i] = neighborSum;//WARNING: used for geodesic gaussian, if this is changed, make geogauss gives the same result (ignore strength)
+                  outputValues[i] = neighborSum;
                }
                else {
                   outputValues[i] = (inputValues[i] * oneMinusStrength)
@@ -504,12 +482,6 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
       case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
          smoothComment.append("Weighted Average Neighbors Smoothing: \n");
          break;
-      case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
-         smoothComment.append("Geodesic Gaussian Smoothing: \n");
-         smoothComment.append("   Sigma: ");
-         smoothComment.append(StringUtilities::fromNumber(geodesicGaussSigma));
-         smoothComment.append("\n");
-         break;
    }
    smoothComment.append("   Stength/Iterations: ");
    smoothComment.append(StringUtilities::fromNumber(strength));
@@ -544,29 +516,19 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
    // Coordinate file and maximum distance cutoff
    //
    CoordinateFile* cf = fiducialSurface->getCoordinateFile();
-   GeodesicHelper* gh = NULL;
    float maxDistanceCutoff = std::numeric_limits<float>::max();
-   float geoCutoff = 4.0f * geodesicGaussSigma;
-   std::vector<float>* distance = NULL;
    switch (algorithm) {
       case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
-          break;
       case SMOOTH_ALGORITHM_DILATE:
-          break;
       case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
-          break;
       case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
-          break;
+         cf = fiducialSurface->getCoordinateFile();
+         break;
       case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
          cf = gaussianSphericalSurface->getCoordinateFile();
          maxDistanceCutoff = std::max(std::max(gaussNormBelowCutoff,
                                                gaussNormAboveCutoff),
-                                               gaussTangentCutoff);
-         break;
-      case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
-         cf = fiducialSurface->getCoordinateFile();
-         gh = new GeodesicHelper(cf, topologyFile);
-         distance = new std::vector<float>;
+                                      gaussTangentCutoff);
          break;
       case SMOOTH_ALGORITHM_NONE:
          break;
@@ -600,15 +562,6 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
                topologyHelper->getNodeNeighborsToDepth(i, 5, neighbors);
             }
             break;
-         case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
-            gh->getNodesToGeoDist(i, geoCutoff, neighbors, *distance, true);
-            if (neighbors.size() < 6)
-            {//in case a really small kernel is specified
-               topologyHelper->getNodeNeighbors(i, neighbors);
-               neighbors.push_back(i);//for geogauss, we want the center node in the list
-               gh->getGeoToTheseNodes(i, neighbors, *distance, true);
-            }
-            break;
          case SMOOTH_ALGORITHM_NONE:
             break;
       }
@@ -616,10 +569,8 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
       //
       // add to all neighbors
       //
-      nodeNeighbors.push_back(NeighborInfo(cf, i, neighbors, maxDistanceCutoff, distance));
+      nodeNeighbors.push_back(NeighborInfo(cf, i, neighbors, maxDistanceCutoff));
    }
-   if (gh) delete gh;
-   if (distance) delete distance;
    const float elapsedTime = timer.elapsed() * 0.001;
    if (DebugControl::getDebugOn()) {
       std::cout << "Time to determine neighbors: " << elapsedTime << " seconds." << std::endl;
@@ -634,22 +585,15 @@ BrainModelSurfaceMetricSmoothing::determineNeighbors()
 BrainModelSurfaceMetricSmoothing::NeighborInfo::NeighborInfo(const CoordinateFile* cf,
                                                     const int myNodeNumber,
                                                     const std::vector<int>& neighborsIn,
-                                                    const float maxDistanceCutoff,
-                                                    const std::vector<float>* distances)
+                                                    const float maxDistanceCutoff)
 {
    const int numNeighborsIn = static_cast<int>(neighborsIn.size());
-   if (distances)
-   {//use STL vector copy operator, don't need to exclude anything
-      distanceToNeighbor = *distances;
-      neighbors = neighborsIn;
-   } else {
-      for (int i = 0; i < numNeighborsIn; i++) {
-         const int node = neighborsIn[i];
-         const float dist = cf->getDistanceBetweenCoordinates(myNodeNumber, node);
-         if (dist <= maxDistanceCutoff) {
-            neighbors.push_back(node);
-            distanceToNeighbor.push_back(dist);
-         }
+   for (int i = 0; i < numNeighborsIn; i++) {
+      const int node = neighborsIn[i];
+      const float dist = cf->getDistanceBetweenCoordinates(myNodeNumber, node);
+      if (dist <= maxDistanceCutoff) {
+         neighbors.push_back(node);
+         distanceToNeighbor.push_back(dist);
       }
    }
    numNeighbors = static_cast<int>(neighbors.size());

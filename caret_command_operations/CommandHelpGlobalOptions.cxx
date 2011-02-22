@@ -123,7 +123,6 @@ CommandHelpGlobalOptions::processGlobalOptions(ProgramParameters& params) throw 
 {
    processChangeDirectoryCommand(params);
    processSetPermissionsCommand(params);
-   processSetRandomSeedCommand(params);
 }
 
 /**
@@ -267,11 +266,11 @@ CommandHelpGlobalOptions::processSetRandomSeedCommand(ProgramParameters& params)
             BrainSet::setRandomSeed(seedValue);
          }
          //
-         // Remove the "-RANDOMSEED" and mode name parameters
+         // Remove the "-CHMOD" and mode name parameters
          // Remember, remove largest index first since array shrinks
          //
-         params.removeParameterAtIndex(seedIndex);
          params.removeParameterAtIndex(randomSeedIndex);
+         params.removeParameterAtIndex(seedIndex);
       }
       else {
          throw CommandException("ERROR: Value missing for \"-RANDOMSEED\" option.");

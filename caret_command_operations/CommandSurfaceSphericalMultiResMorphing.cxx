@@ -79,17 +79,12 @@ CommandSurfaceSphericalMultiResMorphing::getHelpInformation() const
        + indent9 + "[-ces-borderprojection-file  \n"
        + indent9 + "   <border-projection-file-name>  \n"
        + indent9 + "   <central-sulcus-border-name> ]\n"
-       + indent9 + "[-parameters  multi-res-morph-parameters-file.morph]\n"
        + indent9 + "\n"
-       + indent9 + "Perform spherical multi-resolution morphing (distortion correction)\n"
+       + indent9 + "Peform spherical multi-resolution morphing (distortion correction)\n"
        + indent9 + "\n"
        + indent9 + "If a border projection file and the name of the central\n"
        + indent9 + "sulcus border are provided, the surface will be aligned\n"
        + indent9 + "to standard orientation.\n"
-       + indent9 + "\n"
-       + indent9 + "If a multi-res morph parameters file is specified it\n"
-       + indent9 + "will override the default multi-resolution \n"
-       + indent9 + "morphing parameters.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -116,7 +111,6 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
       
    QString borderProjectionFileName;
    QString centralSulcusBorderName;
-   QString multiResMorphParamsFileName;
    while (parameters->getParametersAvailable()) {
       const QString paramName(parameters->getNextParameterAsString("opt-param"));
       if (paramName == "-ces-borderprojection-file") {
@@ -124,10 +118,6 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
             parameters->getNextParameterAsString("Border Projection File Name");
          centralSulcusBorderName = 
             parameters->getNextParameterAsString("Central Sulcus Border Name");
-      }
-      else if (paramName == "-parameters") {
-          multiResMorphParamsFileName =
-                  parameters->getNextParameterAsString("Multi-Resolution Morphing Parameters File");
       }
       else {
          throw CommandException("Unrecognized optional parameter: " + paramName);
@@ -196,7 +186,7 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
                                 + "\".");
       }
    }
-
+      
    //
    // Do flat multiresolution morphing
    //
@@ -205,9 +195,6 @@ CommandSurfaceSphericalMultiResMorphing::executeCommand() throw (BrainModelAlgor
                                                   sphericalSurface,
                                                   BrainModelSurfaceMorphing::MORPHING_SURFACE_SPHERICAL,
                                                   &centralSulcusBorderProjection);
-   if (multiResMorphParamsFileName.isEmpty() == false) {
-       bmsmm.getMultiResMorphParametersFile()->readFile(multiResMorphParamsFileName);
-   }
    bmsmm.execute();   
    
    std::cout << "cycle                "
