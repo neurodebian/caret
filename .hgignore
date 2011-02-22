@@ -1,0 +1,23 @@
+syntax: glob
+*.o
+*.obj
+*.so
+*.a
+*.exe
+*.app
+moc*.cpp
+caret/caret5
+caret_command/caret_command
+caret_edit/caret_edit
+caret/Makefile
+caret_brain_set/Makefile
+caret_command/Makefile
+caret_command_operations/Makefile
+caret_common/Makefile
+caret_edit/Makefile
+caret_files/Makefile
+caret_statistics/Makefile
+caret_uniformize/Makefile
+caret_vtk4_classes/Makefile
+caret_widgets/Makefile
+

@@ -34,7 +34,6 @@
 #include "BrainSetNodeAttribute.h"
 #include "BrainModelSurface.h"
 #include "BrainModelSurfaceMorphing.h"
-#include "MultiResMorphFile.h"
 #include "StatisticsUtilities.h"
 #include "SurfaceShapeFile.h"
 
@@ -85,6 +84,9 @@ class MorphingMeasurements {
 /// Class that performs multiresolution morphing on a brain surface
 class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
    public:
+      /// Maximum number of cycles
+      enum { MAXIMUM_NUMBER_OF_CYCLES = 10 };
+      
       /// Constructor
       BrainModelSurfaceMultiresolutionMorphing(BrainSet* brainSetIn,
                                           BrainModelSurface* referenceSurfaceIn,
@@ -104,26 +106,90 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       BrainModelSurfaceMorphing::MORPHING_SURFACE_TYPE 
          getMorphingSurfaceType() const { return morphingSurfaceType; }
 
+      /// get morphing parameters
+      void getMorphingParameters(const int cycleNumber,
+                                 float& linearForceOut,
+                                 float& angularForceOut,
+                                 float& stepSizeOut) const;
+                                 
+      /// set morphing parameters
+      void setMorphingParameters(const int cycleNumber,
+                                 const float linearForceIn,
+                                 const float angularForceIn,
+                                 const float stepSizeIn);
+                              
+      /// maximum number of levels
+      enum { MAXIMUM_NUMBER_OF_LEVELS = 7 };
+      
+      /// get the number of cycles
+      int getNumberOfCycles() const { return numberOfCycles; }
+      
+      /// set the number of cycles
+      void setNumberOfCycles(const int num);
+      
+      /// get the number of levels
+      int getNumberOfLevels() const { return numberOfLevels; }
+      
+      /// set the number of levels
+      void setNumberOfLevels(const int num) { numberOfLevels = num; }
+      
+      /// get the iterations per level
+      void getIterationsPerLevel(const int cycleNumber, 
+                                 int iter[MAXIMUM_NUMBER_OF_LEVELS]) const;
+      
+      /// set the iterations per level
+      void setIterationsPerLevel(const int cycleNumber, 
+                                 const int iter[MAXIMUM_NUMBER_OF_LEVELS]);
+      
+      /// get smoothing parameters
+      void getSmoothingParameters(const int cycleNumber, 
+                                  float& strength,
+                                  int& iterations,
+                                  int& edgeIterations) const;
+
+      /// set smoothing parameters
+      void setSmoothingParameters(const int cycleNumber, 
+                                  const float strength,
+                                  const int iterations,
+                                  const int edgeIterations);
+
+      /// get delete intermediate files
+      bool getDeleteIntermediateFiles() const { return deleteIntermediateFiles; }
+      
+      /// set delete intermediate files
+      void setDeleteIntermediateFiles(const bool deleteFiles)
+                                  { deleteIntermediateFiles = deleteFiles; }
+       
       /// get the surface measurements taken while morphing
       void getMorphingMeasurements(std::vector<MorphingMeasurements>& mm) const
                                                   { mm = measurements; }
 
+      /// enable smoothing of flat surface overlap
+      void setEnableFlatSurfaceOverlapSmoothing(const bool b) { smoothOutFlatSurfaceOverlap = b; }
+      
+      /// get smoothing of flat surface overlap enabled
+      bool getEnableFlatSurfaceOverlapSmoothing() const { return smoothOutFlatSurfaceOverlap; }
+      
+      /// enable pointing of spherical tiles outward
+      void setPointSphericalTilesOutward(const bool b) { pointSphericalTilesOutward = b; }
+      
+      /// get pointing of spherical tiles outward
+      bool getPointSphericalTilesOutward() const { return pointSphericalTilesOutward; }
+      
+      /// get crossover smooth at end of each cycle
+      bool getCrossoverSmoothAtEndOfEachCycle() const 
+                  { return crossoverSmoothAtEndOfEachCycle; }
+      
+      /// set crossover smooth at end of each cycle
+      void setCrossoverSmoothAtEndOfEachCycle(const bool b)
+                  { crossoverSmoothAtEndOfEachCycle = b; }
+      
       /// get automatically save all created files
       bool getAutoSaveAllFiles() const { return autoSaveFilesFlag; }
       
       /// set automatically save all created files
       void setAutoSaveAllFiles(const bool b) { autoSaveFilesFlag = b; }
       
-      /// get multi-res morph file that contains parameters for editing
-      MultiResMorphFile* getMultiResMorphParametersFile() {
-          return &this->multiResMorphFile;
-      }
-
-      /// get multi-res morph file that contains parameters for reading
-      const MultiResMorphFile* getMultiResMorphParametersFile() const {
-          return &this->multiResMorphFile;
-      }
-
    protected:
       enum {
          SURFACE_FIDUCIAL_INDEX  = 0,
@@ -187,18 +253,48 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       
       /// surface shape file used for distortion measurements
       SurfaceShapeFile shapeMeasurementsFile;
-
+      
+      /// number of cycles
+      int numberOfCycles;
+      
+      /// numberOf levels
+      int numberOfLevels;
+      
+      /// iterations at each level
+      int iterationsPerLevel[MAXIMUM_NUMBER_OF_CYCLES][MAXIMUM_NUMBER_OF_LEVELS];
+      
+      /// linear force
+      float linearForce[MAXIMUM_NUMBER_OF_CYCLES];
+      
+      /// angular force
+      float angularForce[MAXIMUM_NUMBER_OF_CYCLES];
+      
+      /// step size
+      float stepSize[MAXIMUM_NUMBER_OF_CYCLES];
+      
+      /// smoothing strength
+      float smoothingStrength[MAXIMUM_NUMBER_OF_CYCLES];
+      
+      /// smoothing iterations
+      int smoothingIterations[MAXIMUM_NUMBER_OF_CYCLES];
+      
+      /// smoothing edges every X iterations
+      int smoothingEdgeIterations[MAXIMUM_NUMBER_OF_CYCLES];
+      
+      /// delete intermediate files
+      bool deleteIntermediateFiles;
+      
       /// intermediate files
       std::vector<QString> intermediateFiles;
       
       /// prefix of intermediate files names
-      QString intermediateFileNamePrefix[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
+      QString intermediateFileNamePrefix[MAXIMUM_NUMBER_OF_LEVELS];
       
       /// prefix of intermediate coord files being morphed
-      QString intermediateCoordFileNamePrefix[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
+      QString intermediateCoordFileNamePrefix[MAXIMUM_NUMBER_OF_LEVELS];
       
       /// name of intermediate spec files
-      QString intermediateSpecFileNames[MultiResolutionMorphingCycle::MAXIMUM_NUMBER_OF_LEVELS];
+      QString intermediateSpecFileNames[MAXIMUM_NUMBER_OF_LEVELS];
       
       /// name of original morphing surface coord file
       QString origCoordFileName;
@@ -214,6 +310,15 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       
       /// the hemisphere being morphed
       Structure::STRUCTURE_TYPE brainStruct;
+      
+      /// smooth out flat surface overlap flag
+      bool smoothOutFlatSurfaceOverlap;
+      
+      /// point spherical tiles outward
+      bool pointSphericalTilesOutward;
+      
+      /// crossover smooth at end of each cycle
+      bool crossoverSmoothAtEndOfEachCycle;
       
       /// surface type for crossover checks
       BrainModelSurface::SURFACE_TYPES brainModelSurfaceType;
@@ -241,9 +346,6 @@ class BrainModelSurfaceMultiresolutionMorphing : public BrainModelAlgorithm {
       
       /// auto save all created files
       bool autoSaveFilesFlag;
-
-      /// multi-res morph file contains parameters
-      MultiResMorphFile multiResMorphFile;
 };
 
 

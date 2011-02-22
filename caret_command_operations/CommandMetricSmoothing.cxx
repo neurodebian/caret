@@ -58,7 +58,6 @@ CommandMetricSmoothing::getScriptBuilderParameters(ScriptBuilderParameters& para
    values.push_back("DILATE");  descriptions.push_back("Dilation");
    values.push_back("FWHM");   descriptions.push_back("Full Width Half Maximum");
    values.push_back("GAUSS");   descriptions.push_back("Gaussian");
-   values.push_back("GEOGAUSS"); descriptions.push_back("Geodesic Gaussian");
    values.push_back("WAN");     descriptions.push_back("Weighted Average Neighbors");
 
    paramsOut.clear();
@@ -70,8 +69,7 @@ CommandMetricSmoothing::getScriptBuilderParameters(ScriptBuilderParameters& para
    paramsOut.addListOfItems("Smoothing Algorithm", values, descriptions);
    paramsOut.addInt("Smoothing Number of Iterations", 50, 1, 100000);
    paramsOut.addFloat("Smoothing Strength", 1.0, 0.0, 1.0);
-   paramsOut.addVariableListOfParameters("Options");
-   //TODO: add geodesic Gaussian to parameters...john?
+   paramsOut.addVariableListOfParameters("Gaussian Options");
 }
 
 /**
@@ -91,8 +89,6 @@ CommandMetricSmoothing::getHelpInformation() const
        + indent9 + "<smoothing-number-of-iterations>\n"
        + indent9 + "<smoothing-strength>\n"
        + indent9 + " \n"
-       + indent9 + "[-geo-gauss sigma] \n"
-       + indent9 + " \n"
        + indent9 + "[-fwhm  desired-full-width-half-maximum] \n"
        + indent9 + " \n"
        + indent9 + "[-gauss   spherical-coordinate-file-name\n"
@@ -108,15 +104,8 @@ CommandMetricSmoothing::getHelpInformation() const
        + indent9 + "   AN      Average Neighbors\n"
        + indent9 + "   DILATE  Dilation\n"
        + indent9 + "   FWHM    Full-Width Half-Maximum\n"
-       + indent9 + "   GAUSS   Gaussian, requires -gauss\n"
-       + indent9 + "   GEOGAUSS   Geodesic Gaussian, uses -geo-gauss, default 2.0\n"
+       + indent9 + "   GAUSS   Gaussian\n"
        + indent9 + "   WAN     Weighted Average Neighbors\n"
-       + indent9 + "\n"
-       + indent9 + "   NOTE: Geodesic Gaussian IGNORES the strength parameter,\n"
-       + indent9 + "      amount of smoothing is controlled solely by sigma and\n"
-       + indent9 + "      iterations.  A very small sigma (around a fourth of\n"
-       + indent9 + "      node spacing) may result in no smoothing on many nodes,\n"
-       + indent9 + "      as the neighbor cutoff distance is 4 times the sigma.\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -149,19 +138,18 @@ CommandMetricSmoothing::executeCommand() throw (BrainModelAlgorithmException,
 
    float desiredFullWidthHalfMaximum = 0.0;
    QString gaussianSphericalSurfaceName;
-   float gaussSigmaNorm  = 2.0;
-   float gaussSigmaTang  = 2.0;
-   float gaussNormBelow  = 2.0;
-   float gaussNormAbove  = 2.0;
-   float gaussTangCutoff = 3.0;
-   float geoGaussSigma = 2.0;
+   float gaussSigmaNorm  = 1.0;
+   float gaussSigmaTang  = 1.0;
+   float gaussNormBelow  = 1.0;
+   float gaussNormAbove  = 1.0;
+   float gaussTangCutoff = 1.0;
    while (parameters->getParametersAvailable()) {
       const QString paramValue = parameters->getNextParameterAsString("Gaussian Parameter");
       if (paramValue == "-fwhm") {
          desiredFullWidthHalfMaximum = 
             parameters->getNextParameterAsFloat("Desired Full Width Half Maximum");
       }
-      else if (paramValue == "-gauss") { 
+      else if (paramValue == "-g") { 
          gaussianSphericalSurfaceName = 
             parameters->getNextParameterAsString("Guassian Spherical Surface");
          gaussSigmaNorm = 
@@ -174,10 +162,6 @@ CommandMetricSmoothing::executeCommand() throw (BrainModelAlgorithmException,
             parameters->getNextParameterAsFloat("Gaussian Norm Above Cutoff");
          gaussTangCutoff = 
             parameters->getNextParameterAsFloat("Gaussian Tangent Cutoff");
-      }
-      else if (paramValue == "-geo-gauss") { 
-         geoGaussSigma = 
-            parameters->getNextParameterAsFloat("Geodesic Gaussian Sigma");
       }
       else {
          throw CommandException("Unrecognized parameter: " + paramValue);
@@ -199,9 +183,6 @@ CommandMetricSmoothing::executeCommand() throw (BrainModelAlgorithmException,
    }
    else if (algorithmName == "GAUSS") {
       smoothingAlgorithm = BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN;
-   }
-   else if (algorithmName == "GEOGAUSS") {
-      smoothingAlgorithm = BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN;
    }
    else if (algorithmName == "WAN") {
       smoothingAlgorithm = BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS;
@@ -265,8 +246,7 @@ CommandMetricSmoothing::executeCommand() throw (BrainModelAlgorithmException,
                                                    gaussNormAbove,
                                                    gaussSigmaNorm,
                                                    gaussSigmaTang,
-                                                   gaussTangCutoff,
-                                                   geoGaussSigma);
+                                                   gaussTangCutoff);
       smoothing.execute();
    }
    

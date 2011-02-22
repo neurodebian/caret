@@ -36,12 +36,6 @@ class GuiConnectivityDialog : public WuQDialog {
       /// called to read metric auto load controls
       void readMetricAutoLoadControls();
 
-      /// called when metric node auto load directory button pressed
-      void slotMetricNodeAutoLoadDirectoryPushButton(int indx);
-
-      /// called to read metric not auto load controls
-      void readMetricNodeAutoLoadControls();
-
       /// called when functional volume auto load directory button pressed
       void slotFunctionalVolumeAutoLoadDirectoryPushButton(int indx);
 
@@ -64,15 +58,11 @@ class GuiConnectivityDialog : public WuQDialog {
       enum PAGES {
          PAGE_CLUSTER_AUTO_LOADER,
          PAGE_FUNCTIONAL_VOLUME_AUTO_LOADER,
-         PAGE_METRIC_AUTO_LOADER,
-         PAGE_METRIC_NODE_AUTO_LOADER
+         PAGE_METRIC_AUTO_LOADER
       };
 
       /// update the metric auto loadcontrols
       void updateMetricAutoLoadControls();
-
-      /// update the metric node auto loadcontrols
-      void updateMetricNodeAutoLoadControls();
 
       /// update the functional volume auto loadcontrols
       void updateFunctionalVolumeAutoLoadControls();
@@ -82,9 +72,6 @@ class GuiConnectivityDialog : public WuQDialog {
 
       /// create the metric auto loader widget
       QWidget* createMetricAutoLoadersWidget();
-
-      /// create the metric node auto loader widget
-      QWidget* createMetricNodeAutoLoadersWidget();
 
       /// create the functional volume loader widget
       QWidget* createFunctionalVolumeAutoLoaderWidget();
@@ -115,23 +102,6 @@ class GuiConnectivityDialog : public WuQDialog {
 
       /// an update of the metric controls is in progress
       bool updatingMetricAutoLoadControlsFlag;
-
-
-
-      /// metric node auto load replace column check box
-      QCheckBox* metricNodeAutoLoadReplaceColumnCheckBox[BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS];
-
-      /// metric node auto load group box
-      QGroupBox* metricNodeAutoLoadGroupBox[BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS];
-
-      /// metric node auto load directory line edit
-      QLineEdit* metricNodeAutoLoadDirectoryLineEdit[BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS];
-
-      /// metric auto load display surface selection control
-      GuiBrainModelSurfaceSelectionComboBox* metricNodeAutoLoadDisplaySurfaceSelectionControl[BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS];
-
-      /// an update of the metric node controls is in progress
-      bool updatingMetricNodeAutoLoadControlsFlag;
 
 
 
@@ -184,9 +154,6 @@ class GuiConnectivityDialog : public WuQDialog {
 
       /// metric auto loaders widget
       QWidget* pageMetricAutoLoaders;
-
-      /// metric node auto loaders widget
-      QWidget* pageMetricNodeAutoLoaders;
 
       /// functional volumes widget
       QWidget* pageFunctionalVolumeAutoLoaders;

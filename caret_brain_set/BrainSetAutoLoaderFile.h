@@ -11,8 +11,6 @@
 #include "SceneFile.h"
 #include "VoxelIJK.h"
 
-class BrainModelSurface;
-class BrainSet;
 class VolumeFile;
 
 /// base class for file auto loaders
@@ -102,12 +100,6 @@ class BrainSetAutoLoaderFile {
 
       // auto load the metric file for the specified voxel (return error message)
       virtual QString loadFileForVoxel(const VoxelIJK& voxel) = 0;
-
-      // auto load the metric file for the specified node number (return error message)
-      virtual QString loadFileForNode(const int nodeNumber);
-
-      // is auto loading metric file by node supported for this auto loader
-      virtual bool isLoadFileForNodeSupported() const;
 
       /** get the auto load volume intersection surface */
       BrainModelSurface* getAutoLoadVolumeIntersectionSurface() {

@@ -1096,7 +1096,7 @@ CommandFileConvert::freeSurferLabelToCaretConvert() throw (CommandException)
 {
    try {
       QString freeSurfaceLabelDirName(inputSurfaceName);
-      freeSurfaceLabelDirName.append("/" + inputSurfaceName);
+      freeSurfaceLabelDirName.append("/junk");
 
       QString freeSurfaceSurfaceName(inputSurfaceName2);
 

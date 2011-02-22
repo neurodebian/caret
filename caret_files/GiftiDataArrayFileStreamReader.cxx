@@ -457,17 +457,15 @@ GiftiDataArrayFileStreamReader::readDataArray()
                      // Read the data
                      //
                      dataWasReadFlag = true;
-                     if (this->giftiFile->getReadMetaDataOnlyFlag() == false) {
-                         QString text = "";
-                         dataArray->readFromText(text,
-                                                 endianName,
-                                                 arraySubscriptingOrderForReadingArrayData,
-                                                 dataTypeForReadingArrayData,
-                                                 dimensionsForReadingArrayData,
-                                                 encodingForReadingArrayData,
-                                                 externalFileName,
-                                                 externalFileOffsetForReadingData);
-                     }
+                     QString text = "";
+                     dataArray->readFromText(text,
+                                             endianName,
+                                             arraySubscriptingOrderForReadingArrayData,
+                                             dataTypeForReadingArrayData,
+                                             dimensionsForReadingArrayData,
+                                             encodingForReadingArrayData,
+                                             externalFileName,
+                                             externalFileOffsetForReadingData);
 
                      //
                      // Add GIFTI array to GIFTI file
@@ -497,21 +495,19 @@ GiftiDataArrayFileStreamReader::readDataArray()
          }
          else if (elemName == GiftiCommon::tagData) {
             try {
-                dataWasReadFlag = true;
-                if (this->giftiFile->getReadMetaDataOnlyFlag() == false) {
-                   //
-                   // Read the data
-                   //
-                   QString text = readElementText();
-                   dataArray->readFromText(text,
-                                           endianName,
-                                           arraySubscriptingOrderForReadingArrayData,
-                                           dataTypeForReadingArrayData,
-                                           dimensionsForReadingArrayData,
-                                           encodingForReadingArrayData,
-                                           externalFileName,
-                                           externalFileOffsetForReadingData);
-                }
+               //
+               // Read the data
+               //
+               dataWasReadFlag = true;
+               QString text = readElementText();
+               dataArray->readFromText(text,
+                                       endianName,
+                                       arraySubscriptingOrderForReadingArrayData,
+                                       dataTypeForReadingArrayData,
+                                       dimensionsForReadingArrayData,
+                                       encodingForReadingArrayData,
+                                       externalFileName,
+                                       externalFileOffsetForReadingData);
                
                //
                // Add GIFTI array to GIFTI file

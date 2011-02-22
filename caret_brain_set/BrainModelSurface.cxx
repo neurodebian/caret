@@ -5860,8 +5860,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
                                                           const bool enableFingerSmoothing,
                                                           const bool scaleToMatchFiducialArea,
                                                           const float iterationsScaleIn,
-                                                          MetricFile* metricMeasurementsFileOut,
-                                                          const float compressionFactorIn) const
+                                                          MetricFile* metricMeasurementsFileOut) const
 {
    if ((createInflated == false) &&
        (createVeryInflated == false) &&
@@ -6125,7 +6124,7 @@ BrainModelSurface::createInflatedAndEllipsoidFromFiducial(const bool createInfla
       TransformationMatrix tm;
       tm.rotate(TransformationMatrix::ROTATE_X_AXIS, -27.0);
       cmwSurface->applyTransformationMatrix(tm);
-      cmwSurface->convertSphereToCompressedMedialWall(compressionFactorIn); //0.95);   //0.85);
+      cmwSurface->convertSphereToCompressedMedialWall(0.95);   //0.85);
       cmwSurface->projectCoordinatesToPlane(
                    BrainModelSurface::COORDINATE_PLANE_MOVE_POSITIVE_Z_TO_ZERO);
       cmwSurface->computeNormals();

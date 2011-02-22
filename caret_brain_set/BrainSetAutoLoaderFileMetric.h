@@ -56,7 +56,7 @@ class BrainSetAutoLoaderFileMetric : public BrainSetAutoLoaderFile {
       }
 
       // auto load the metric file for the specified voxel (return error message)
-      virtual QString loadFileForVoxel(const VoxelIJK& voxel);
+      QString loadFileForVoxel(const VoxelIJK& voxel);
 
    protected:
       /// auto load metric display surface

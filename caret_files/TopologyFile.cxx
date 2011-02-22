@@ -31,7 +31,6 @@
 #include <cstdio>
 #include <iostream>
 #include <stack>
-#include <QMutexLocker>
 
 #include "DebugControl.h"
 #include "FileUtilities.h"
@@ -1219,7 +1218,6 @@ TopologyFile::getTopologyHelper(const bool needEdgeInfo,
                                 const bool needNodeInfo,
                                 const bool needNodeInfoSorted) const
 {
-   QMutexLocker locked(&gettingTopoHelper);//lock BEFORE testing whether rebuild is needed
    if (topologyHelper == NULL) {
       topologyHelperNeedsRebuild = true;
    }
@@ -1241,6 +1239,7 @@ TopologyFile::getTopologyHelper(const bool needEdgeInfo,
          }
       }
    }
+   
    if (topologyHelperNeedsRebuild) {
       if (topologyHelper != NULL) {
          delete topologyHelper;

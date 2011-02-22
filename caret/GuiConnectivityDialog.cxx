@@ -15,7 +15,6 @@
 #include "BrainSetAutoLoaderManager.h"
 #include "BrainSetAutoLoaderFileFunctionalVolume.h"
 #include "BrainSetAutoLoaderFileMetric.h"
-#include "BrainSetAutoLoaderFileMetricByNode.h"
 #include "BrainSetAutoLoaderFilePaintCluster.h"
 #include "GuiBrainModelSurfaceSelectionComboBox.h"
 #include "GuiConnectivityDialog.h"
@@ -33,7 +32,6 @@ GuiConnectivityDialog::GuiConnectivityDialog(QWidget* parent,
    : WuQDialog(parent, f)
 {
    updatingMetricAutoLoadControlsFlag = true;
-   updatingMetricNodeAutoLoadControlsFlag = true;
    updatingFunctionalVolumeAutoLoadControlsFlag = true;
    updatingClusterAutoLoadControlsFlag = true;
 
@@ -44,7 +42,6 @@ GuiConnectivityDialog::GuiConnectivityDialog(QWidget* parent,
    //
    pageClusterAutoLoaders = createClusterAutoLoaderWidget();
    pageMetricAutoLoaders = createMetricAutoLoadersWidget();
-   pageMetricNodeAutoLoaders = createMetricNodeAutoLoadersWidget();
    pageFunctionalVolumeAutoLoaders = createFunctionalVolumeAutoLoaderWidget();
 
    //
@@ -58,8 +55,6 @@ GuiConnectivityDialog::GuiConnectivityDialog(QWidget* parent,
                                   PAGE_FUNCTIONAL_VOLUME_AUTO_LOADER);
    pageSelectionComboBox->addItem("Metric Auto Loaders",
                                   PAGE_METRIC_AUTO_LOADER);
-   pageSelectionComboBox->addItem("Metric Node Auto Loaders",
-                                  PAGE_METRIC_NODE_AUTO_LOADER);
    QObject::connect(pageSelectionComboBox, SIGNAL(activated(int)),
                     this, SLOT(slotPageSelectionComboBox()));
    QHBoxLayout* pageControlLayout = new QHBoxLayout();
@@ -75,7 +70,6 @@ GuiConnectivityDialog::GuiConnectivityDialog(QWidget* parent,
    pageStackedWidget->addWidget(pageClusterAutoLoaders);
    pageStackedWidget->addWidget(pageFunctionalVolumeAutoLoaders);
    pageStackedWidget->addWidget(pageMetricAutoLoaders);
-   pageStackedWidget->addWidget(pageMetricNodeAutoLoaders);
    
    //
    // Scroll area for pages
@@ -137,9 +131,6 @@ GuiConnectivityDialog::slotPageSelectionComboBox()
       case PAGE_METRIC_AUTO_LOADER:
          newPage = pageMetricAutoLoaders;
          break;
-      case PAGE_METRIC_NODE_AUTO_LOADER:
-         newPage = pageMetricNodeAutoLoaders;
-         break;
    }
 
    if (newPage != NULL) {
@@ -163,7 +154,6 @@ GuiConnectivityDialog::updateDialog()
 {
    this->updateClusterAutoLoadControls();
    this->updateMetricAutoLoadControls();
-   this->updateMetricNodeAutoLoadControls();
    this->updateFunctionalVolumeAutoLoadControls();
 }
 
@@ -318,123 +308,6 @@ GuiConnectivityDialog::createMetricAutoLoadersWidget()
    autoLoadLayouts->addStretch();
    return autoLoadWidget;
 }
-
-/**
- * Create the metric node auto loader widget.
- */
-QWidget*
-GuiConnectivityDialog::createMetricNodeAutoLoadersWidget()
-{
-   //
-   // Metric auto load controls
-   //
-   QWidget* autoLoadWidget = new QWidget;
-   QVBoxLayout* autoLoadLayouts = new QVBoxLayout(autoLoadWidget);
-
-   QButtonGroup* autoLoadButtonGroup = new QButtonGroup(this);
-   QObject::connect(autoLoadButtonGroup, SIGNAL(buttonClicked(int)),
-                    this, SLOT(slotMetricNodeAutoLoadDirectoryPushButton(int)));
-
-   std::vector<BrainModelSurface::SURFACE_TYPES> surfaceTypes;
-   std::vector<QString> surfaceNames;
-   BrainModelSurface::getSurfaceTypesAndNames(surfaceTypes, surfaceNames);
-
-   for (int i = 0; i < BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS; i++) {
-       this->metricNodeAutoLoadReplaceColumnCheckBox[i] = new QCheckBox("Replace Previously Loaded Column");
-       QObject::connect(this->metricNodeAutoLoadReplaceColumnCheckBox[i], SIGNAL(toggled(bool)),
-                        this, SLOT(readMetricNodeAutoLoadControls()));
-
-       QPushButton* autoLoadDirectoryPushButton = new QPushButton("Metric Directory...");
-       autoLoadButtonGroup->addButton(autoLoadDirectoryPushButton, i);
-       this->metricNodeAutoLoadDirectoryLineEdit[i] = new QLineEdit;
-       this->metricNodeAutoLoadDirectoryLineEdit[i]->setEnabled(false);
-
-       QLabel* displaySurfaceLabel = new QLabel("Display Surface");
-       this->metricNodeAutoLoadDisplaySurfaceSelectionControl[i] =
-               new GuiBrainModelSurfaceSelectionComboBox(surfaceTypes);
-       QObject::connect(this->metricNodeAutoLoadDisplaySurfaceSelectionControl[i], SIGNAL(activated(int)),
-                        this, SLOT(readMetricNodeAutoLoadControls()));
-
-       this->metricNodeAutoLoadGroupBox[i] = new QGroupBox("Auto Load Metric By Node " + QString::number(i + 1));
-       this->metricNodeAutoLoadGroupBox[i]->setCheckable(true);
-       QObject::connect(this->metricNodeAutoLoadGroupBox[i], SIGNAL(toggled(bool)),
-                        this, SLOT(readMetricNodeAutoLoadControls()));
-       QGridLayout* metricAutoLoadLayout = new QGridLayout(metricNodeAutoLoadGroupBox[i]);
-       metricAutoLoadLayout->addWidget(metricNodeAutoLoadReplaceColumnCheckBox[i], 0, 0, 1, 2);
-       metricAutoLoadLayout->addWidget(autoLoadDirectoryPushButton, 1, 0);
-       metricAutoLoadLayout->addWidget(this->metricNodeAutoLoadDirectoryLineEdit[i], 1, 1);
-       metricAutoLoadLayout->addWidget(displaySurfaceLabel, 2, 0);
-       metricAutoLoadLayout->addWidget(this->metricNodeAutoLoadDisplaySurfaceSelectionControl[i], 2, 1);
-       autoLoadLayouts->addWidget(this->metricNodeAutoLoadGroupBox[i]);
-   }
-
-   autoLoadLayouts->addStretch();
-   return autoLoadWidget;
-}
-
-
-/**
- * Called when metric node auto load directory button pressed.
- */
-void
-GuiConnectivityDialog::slotMetricNodeAutoLoadDirectoryPushButton(int indx)
-{
-    QString dirName = WuQFileDialog::getExistingDirectory(this,
-                                    "Choose Metric File Directory",
-                                    QDir::currentPath());
-    if (dirName.isEmpty() == false) {
-       this->metricNodeAutoLoadDirectoryLineEdit[indx]->setText(dirName);
-       readMetricNodeAutoLoadControls();
-    }
-}
-
-/**
- * Called to read metric not auto load controls.
- */
-void
-GuiConnectivityDialog::readMetricNodeAutoLoadControls()
-{
-    if (updatingMetricNodeAutoLoadControlsFlag) {
-       return;
-    }
-
-    BrainSet* bs = theMainWindow->getBrainSet();
-    BrainSetAutoLoaderManager* autoLoaderManager = bs->getAutoLoaderManager();
-    for (int i = 0; i < BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS; i++) {
-        BrainSetAutoLoaderFileMetricByNode* alm = autoLoaderManager->getMetricNodeAutoLoader(i);
-        alm->setAutoLoadDirectoryName(this->metricNodeAutoLoadDirectoryLineEdit[i]->text());
-        alm->setAutoLoadEnabled(this->metricNodeAutoLoadGroupBox[i]->isChecked());
-        alm->setAutoLoadReplaceLastFileEnabled(this->metricNodeAutoLoadReplaceColumnCheckBox[i]->isChecked());
-        alm->setAutoLoadMetricDisplaySurface(
-                this->metricNodeAutoLoadDisplaySurfaceSelectionControl[i]->getSelectedBrainModelSurface());
-    }
-}
-
-/**
- * Update the metric node auto loadcontrols.
- */
-void
-GuiConnectivityDialog::updateMetricNodeAutoLoadControls()
-{
-    updatingMetricNodeAutoLoadControlsFlag = true;
-
-    BrainSet* bs = theMainWindow->getBrainSet();
-    BrainSetAutoLoaderManager* autoLoaderManager = bs->getAutoLoaderManager();
-    for (int i = 0; i < BrainSetAutoLoaderManager::NUMBER_OF_METRIC_NODE_AUTO_LOADERS; i++) {
-        BrainSetAutoLoaderFileMetricByNode* alm = autoLoaderManager->getMetricNodeAutoLoader(i);
-        this->metricNodeAutoLoadReplaceColumnCheckBox[i]->setChecked(alm->getAutoLoadReplaceLastFileEnabled());
-        this->metricNodeAutoLoadDirectoryLineEdit[i]->setText(
-                     alm->getAutoLoadDirectoryName());
-        this->metricNodeAutoLoadGroupBox[i]->setChecked(alm->getAutoLoadEnabled());
-        this->metricNodeAutoLoadDisplaySurfaceSelectionControl[i]->updateComboBox();
-        this->metricNodeAutoLoadDisplaySurfaceSelectionControl[i]->setSelectedBrainModelSurface(
-               alm->getAutoLoadMetricDisplaySurface());
-    }
-
-    updatingMetricNodeAutoLoadControlsFlag = false;
-}
-
-
 
 /**
  * Create the cluster auto loaders widget.

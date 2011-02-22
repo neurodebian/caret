@@ -994,110 +994,57 @@ GiftiDataArray::convertArrayIndexingOrder() throw (FileException)
       return;
    }
    
-   if (numDim > 2) {
-       throw FileException("Row/Column Major order conversion unavailable for arrays "
-                           "with dimensions greater than two.");
-   }
+   //
+   // Copy the data
+   //
+   std::vector<uint8_t> dataCopy = data;
    
    //
    // Swap data
    //
    if (numDim == 2) {
-       int dimI = dimensions[0];
-       int dimJ = dimensions[1];
-
-       //
-       // Is matrix square?
-       //
-       if (dimI == dimJ) {
-           switch (dataType) {
-              case DATA_TYPE_FLOAT32:
-                 {
-                   for (int i = 1; i < dimI; i++) {
-                       for (int j = 0; j < i; j++) {
-                           const int indexLowerLeft  = (i * dimJ) + j;
-                           const int indexUpperRight = (j * dimI) + i;
-                           float temp = dataPointerFloat[indexLowerLeft];
-                           dataPointerFloat[indexLowerLeft] = dataPointerFloat[indexUpperRight];
-                           dataPointerFloat[indexUpperRight] = temp;
-                       }
-                   }
-                 }
-                 break;
-              case DATA_TYPE_INT32:
-                 {
-                   for (int i = 1; i < dimI; i++) {
-                       for (int j = 0; j < i; j++) {
-                           const int indexLowerLeft  = (i * dimJ) + j;
-                           const int indexUpperRight = (j * dimI) + i;
-                           float temp = dataPointerInt[indexLowerLeft];
-                           dataPointerInt[indexLowerLeft] = dataPointerInt[indexUpperRight];
-                           dataPointerInt[indexUpperRight] = temp;
-                       }
-                   }
-                 }
-                 break;
-              case DATA_TYPE_UINT8:
-                 {
-                   for (int i = 1; i < dimI; i++) {
-                       for (int j = 0; j < i; j++) {
-                           const int indexLowerLeft  = (i * dimJ) + j;
-                           const int indexUpperRight = (j * dimI) + i;
-                           float temp = dataPointerUByte[indexLowerLeft];
-                           dataPointerUByte[indexLowerLeft] = dataPointerUByte[indexUpperRight];
-                           dataPointerUByte[indexUpperRight] = temp;
-                       }
-                   }
-                 }
-                 break;
-           }
-       }
-       else {
-           //
-           // Copy the data
-           //
-           std::vector<uint8_t> dataCopy = data;
-
-          switch (dataType) {
-             case DATA_TYPE_FLOAT32:
-                {
-                   float* ptr = (float*)&(dataCopy[0]);
-                   for (int i = 0; i < dimI; i++) {
-                      for (int j = 0; j < dimJ; j++) {
-                         const int indx = (i * dimJ) + j;
-                         const int ptrIndex = (j * dimI) + i;
-                         dataPointerFloat[indx] = ptr[ptrIndex];
-                      }
-                   }
-                }
-                break;
-             case DATA_TYPE_INT32:
-                {
-                   uint32_t* ptr = (uint32_t*)&(dataCopy[0]);
-                   for (int i = 0; i < dimI; i++) {
-                      for (int j = 0; j < dimJ; j++) {
-                         const int indx = (i * dimJ) + j;
-                         const int ptrIndex = (j * dimI) + i;
-                         dataPointerInt[indx] = ptr[ptrIndex];
-                      }
-                   }
-                }
-                break;
-             case DATA_TYPE_UINT8:
-                {
-                   uint8_t* ptr = (uint8_t*)&(dataCopy[0]);
-                   for (int i = 0; i < dimI; i++) {
-                      for (int j = 0; j < dimJ; j++) {
-                         const int indx = (i * dimJ) + j;
-                         const int ptrIndex = (j * dimI) + i;
-                         dataPointerUByte[indx] = ptr[ptrIndex];
-                      }
-                   }
-                }
-                break;
-          }
-       }
+      switch (dataType) {
+         case DATA_TYPE_FLOAT32:
+            {
+               float* ptr = (float*)&(dataCopy[0]);
+               for (int i = 0; i < dimensions[0]; i++) {
+                  for (int j = 0; j < dimensions[1]; j++) {
+                     const int indx = (i * dimensions[1]) + j;
+                     const int ptrIndex = (j * dimensions[1]) + i;
+                     dataPointerFloat[indx] = ptr[ptrIndex];
+                  }
+               }
+            }
+            break;
+         case DATA_TYPE_INT32:
+            {
+               uint32_t* ptr = (uint32_t*)&(dataCopy[0]);
+               for (int i = 0; i < dimensions[0]; i++) {
+                  for (int j = 0; j < dimensions[1]; j++) {
+                     const int indx = (i * dimensions[1]) + j;
+                     const int ptrIndex = (j * dimensions[1]) + i;
+                     dataPointerInt[indx] = ptr[ptrIndex];
+                  }
+               }
+            }
+            break;
+         case DATA_TYPE_UINT8:
+            {
+               uint8_t* ptr = (uint8_t*)&(dataCopy[0]);
+               for (int i = 0; i < dimensions[0]; i++) {
+                  for (int j = 0; j < dimensions[1]; j++) {
+                     const int indx = (i * dimensions[1]) + j;
+                     const int ptrIndex = (j * dimensions[1]) + i;
+                     dataPointerUByte[indx] = ptr[ptrIndex];
+                  }
+               }
+            }
+            break;
+      }
    }
+      
+   throw FileException("Row/Column Major order conversion unavailable for arrays "
+                       "with dimensions greater than two.");
 }
 
 /**

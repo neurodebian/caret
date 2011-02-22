@@ -197,22 +197,12 @@ MetricFile::append(const GiftiDataArrayFile& naf,
       return;
    }
 
-   //
-   // indexDestination will be incorrect if the metric file had
-   // a column that was multi-dimensional and was split up into
-   // new single dimension data arrays.  New -1 for new arrays
-   // meaning create a new column.
-   //
-   while (static_cast<int>(indexDestination.size()) < numAppendArrays) {
-       indexDestination.push_back(-1);
-   }
-
    GiftiNodeDataFile::append(naf, indexDestination, fcm);
    columnMappingInfo.resize(getNumberOfDataArrays());
 
    //
    // Note: indexDestination is modified by GiftiDataArrayFile so that it always
-   // contains the destination column indices
+   // contains the desination colummn indices
    //
    for (int i = 0; i < numAppendArrays; i++) {
       const int arrayIndex = indexDestination[i];
@@ -2493,80 +2483,6 @@ MetricFile::readLegacyNodeFileData(QFile& file, QTextStream& stream,
          readFileVersion_0(file, stream, binStream);
          break;
    }
-}
-
-/**
- * Allows files to do processing after a file is read.
- */
-void
-MetricFile::postFileReadingProcessing() throw (FileException)
-{
-    std::vector<GiftiDataArray*> newArrays;
-    std::vector<int> arrayIndicesToRemove;
-
-    int numDataArrays = this->getNumberOfDataArrays();
-    for (int i = 0; i < numDataArrays; i++) {
-        GiftiDataArray* gda = this->getDataArray(i);
-        std::vector<int> dims = gda->getDimensions();
-        if (dims.size() > 2) {
-            throw FileException("data dimensions must be 2 or less");
-        }
-        else if (dims.size() == 2) {
-            if (dims[1] > 1) {
-
-                //
-                // Split the two dimensional array into single dim arrays
-                //
-                GiftiDataArray* twoDimArray = this->getDataArray(i);
-                int numNewArrays = dims[1];
-                int numNodes = twoDimArray->getDimension(0);
-                float* twoDimData = twoDimArray->getDataPointerFloat();
-
-                //
-                // Dimensions for the new arrays
-                //
-                std::vector<int> newDim;
-                newDim.push_back(numNodes);
-                newDim.push_back(1);
-                for (int j = 0; j < numNewArrays; j++) {
-                    //
-                    // Create the new data arrays and fill them with the data
-                    //
-                    GiftiDataArray* gda = new GiftiDataArray(this,
-                                                       twoDimArray->getIntent(),
-                                                       twoDimArray->getDataType(),
-                                                       newDim,
-                                                       GiftiDataArray::ENCODING_INTERNAL_COMPRESSED_BASE64_BINARY);
-                    float* data = gda->getDataPointerFloat();
-                    long twoDimDataOffset = numNodes * j;
-                    for (int m = 0; m < numNodes; m++) {
-                        data[m] = twoDimData[twoDimDataOffset + m];
-                    }
-
-                    newArrays.push_back(gda);
-                }
-
-                arrayIndicesToRemove.push_back(i);
-            }
-        }
-    }
-
-    //
-    // Remove arrays that were split up.
-    //
-    for (int i = static_cast<int>(arrayIndicesToRemove.size() - 1); i >= 0; i--) {
-        int arrayIndex = arrayIndicesToRemove[i];
-        this->removeDataArray(arrayIndex);
-    }
-
-    //
-    // Add the new single dim arrays
-    //
-    for (unsigned int i = 0; i < newArrays.size(); i++) {
-        this->addDataArray(newArrays[i]);
-        int lastCol = this->getNumberOfColumns() - 1;
-        this->setColumnName(lastCol, "#" + QString::number(lastCol));
-    }
 }
 
 /**
