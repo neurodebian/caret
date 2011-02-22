@@ -1162,19 +1162,6 @@ GuiApplyDeformationMapDialog::setDeformedFileName(const FILE_DIALOG_TYPE fdt)
 bool
 GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
 {
-   /*
-    * Force rereading of brains since users may have changed
-    * items in the Apply deformation map dialog.
-    */
-   if (sourceBrainSet != NULL) {
-      delete sourceBrainSet;
-      sourceBrainSet = NULL;
-   }
-   if (targetBrainSet != NULL) {
-      delete targetBrainSet;
-      targetBrainSet = NULL;
-   }
-
    errorMessage = "";
    
    const QString savedDirectory(QDir::currentPath());
@@ -1199,9 +1186,13 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
          sourceSpecMissing = false;
       }
       catch (FileException& e) {
+         //
+         // David has a bad habit of renaming spec files, so just hope the
+         // data files are still the same name and in the same location.
+         //
          QDir::setCurrent(deformationMapFile.getSourceDirectory());
-         errorMessage = e.whatQString();
-         return true;
+         //errorMessage = e.whatQString());
+         //return true;
       }
       
       //
@@ -1214,7 +1205,7 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
             deformationMapFile.getSourceSphericalCoordFileName(),
             deformationMapFile.getSourceFlatCoordFileName(),
             "",
-            true, //sourceSpecMissing,
+            sourceSpecMissing,
             sourceSpecFile.getStructure());
       
       //
@@ -1302,9 +1293,13 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
          targetSpecMissing = false;
       }
       catch (FileException& e) {
+         //
+         // David has a bad habit of renaming spec files, so just hope the
+         // data files are still the same name and in the same location.
+         //
          QDir::setCurrent(deformationMapFile.getSourceDirectory());
-         errorMessage = e.whatQString();
-         return true;
+         //errorMessage = e.whatQString());
+         //return true;
       }
       
       //
@@ -1317,7 +1312,7 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
             deformationMapFile.getTargetSphericalCoordFileName(),
             deformationMapFile.getTargetFlatCoordFileName(),
             "",
-            true, //targetSpecMissing,
+            targetSpecMissing,
             targetSpecFile.getStructure());
       
       //

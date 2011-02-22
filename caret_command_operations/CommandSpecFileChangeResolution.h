@@ -55,9 +55,6 @@ class CommandSpecFileChangeResolution : public CommandBase {
                                    ProgramParametersException,
                                    StatisticException);
 
-      QString createOutputSpecFileName(const QString& sourceSpecName,
-                                       const int numberOfNodes);
-                                       
       // create the output directory
       void createOutputDirectory(const QString& directoryName);
 

@@ -74,7 +74,6 @@
 #include "CommandMetricExtrema.h"
 #include "CommandMetricFileCreate.h"
 #include "CommandMetricGradient.h"
-#include "CommandMetricGradientAll.h"
 #include "CommandMetricInGroupDifference.h"
 #include "CommandMetricInformation.h"
 #include "CommandMetricMath.h"
@@ -254,8 +253,6 @@
 #include "CommandVolumeResample.h"
 #include "CommandVolumeRescaleVoxels.h"
 #include "CommandVolumeResize.h"
-#include "CommandVolumeROIGradient.h"
-#include "CommandVolumeROIMinima.h"
 #include "CommandVolumeScale0to255.h"
 #include "CommandVolumeScalePercent0to255.h"
 #include "CommandVolumeSculpt.h"
@@ -341,7 +338,6 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandMetricExtrema);
    commandsOut.push_back(new CommandMetricFileCreate);
    commandsOut.push_back(new CommandMetricGradient);
-   commandsOut.push_back(new CommandMetricGradientAll);
    commandsOut.push_back(new CommandMetricInGroupDifference);
    commandsOut.push_back(new CommandMetricInformation);
    commandsOut.push_back(new CommandMetricMath);
@@ -521,8 +517,6 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandVolumeResample);
    commandsOut.push_back(new CommandVolumeRescaleVoxels);
    commandsOut.push_back(new CommandVolumeResize);
-   commandsOut.push_back(new CommandVolumeROIGradient);
-   commandsOut.push_back(new CommandVolumeROIMinima);
    commandsOut.push_back(new CommandVolumeScale0to255);
    commandsOut.push_back(new CommandVolumeScalePercent0to255);
    commandsOut.push_back(new CommandVolumeSculpt);

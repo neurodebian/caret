@@ -538,20 +538,7 @@ GuiPaintNameEditorDialog::slotNameButtonClicked(int indx)
                   return;
                }
 
-               pf->setPaintName(paintFileIndices[indx], newName);  
-               
-               /*
-                * If needed, copy old color to a new color.
-                */
-               AreaColorFile* acf = theMainWindow->getBrainSet()->getAreaColorFile();
-               bool match = false;
-               acf->getColorIndexByName(newName, match);
-               if (match == false) {
-                  unsigned char r, g, b, a;
-                  acf->getColorByName(oldName, match,
-                                                          r, g, b, a);
-                  acf->addColor(newName, r, g, b, a);
-               }
+               pf->setPaintName(paintFileIndices[indx], newName);         
                updateGUI();
             }
          }
@@ -713,8 +700,8 @@ GuiPaintNameEditorDialog::slotEditColorButtonClicked(int indx)
       
       if (createNewColorFlag) {
          colorName = name;
-         PreferencesFile* pref = theMainWindow->getBrainSet()->getPreferencesFile();
-         pref->getSurfaceForegroundColor(r, g, b);
+         PreferencesFile* pf = theMainWindow->getBrainSet()->getPreferencesFile();
+         pf->getSurfaceForegroundColor(r, g, b);
          colorIndex = acf->addColor(name, r, g, b);
       }
 

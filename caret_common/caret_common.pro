@@ -20,11 +20,6 @@ win32 {
 #   INCLUDEPATH += /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
 #} 
 
-ubuntu {
-	CONFIG -= staticlib
-	CONFIG += plugin
-}
-
 # Input
 HEADERS += Basename.h \
       CaretException.h \
@@ -50,7 +45,6 @@ HEADERS += Basename.h \
 	   StringUtilities.h \
       Structure.h \
 	   SystemUtilities.h \
-      UbuntuMessage.h \
       ValueIndexSort.h
 
 SOURCES += Basename.cxx \

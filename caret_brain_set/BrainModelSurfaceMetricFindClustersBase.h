@@ -153,10 +153,6 @@ class BrainModelSurfaceMetricFindClustersBase : public BrainModelAlgorithm {
                         const int columnNumber,
                         const bool useLargestClusterPerColumnFlag);
       
-      // set randomized cluster p-values
-      void setRandomizedClusterPValues(const MetricFile& randomFile, 
-                                std::vector<Cluster>& randomClusters);
-                                
       // print the clusters
       void printClusters(QTextStream& stream, const std::vector<Cluster>& clusters,
                          const float sigArea = -1.0);

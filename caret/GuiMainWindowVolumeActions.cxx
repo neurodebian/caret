@@ -484,7 +484,6 @@ GuiMainWindowVolumeActions::slotGenerateColorsForPaints()
    std::set<QString> uniquePaintNames;
    for (int i = 0; i < theMainWindow->getBrainSet()->getNumberOfVolumePaintFiles(); i++) {
       VolumeFile* vf = theMainWindow->getBrainSet()->getVolumePaintFile(i);
-      vf->createRegionNamesForVoxelsThatDoNotIndexIntoRegionNames();
       const int num = vf->getNumberOfRegionNames();
       for (int j = 0; j < num; j++) {
          uniquePaintNames.insert(vf->getRegionNameFromIndex(j));

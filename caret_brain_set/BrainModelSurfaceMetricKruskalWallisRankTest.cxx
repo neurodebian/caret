@@ -317,12 +317,6 @@ BrainModelSurfaceMetricKruskalWallisRankTest::executeClusterSearch() throw (Brai
                    -1, true);
       
       //
-      // Set pValue for shuffled T-Map
-      // 
-      setRandomizedClusterPValues(*shuffleStatisticalMapShapeFile,
-                               shuffleFMapClusters);
-                               
-      //
       // Find area of the "P-Value" cluster in the shuffled F-Map
       //
       float significantCorrectedArea = std::numeric_limits<float>::max();
@@ -344,13 +338,13 @@ BrainModelSurfaceMetricKruskalWallisRankTest::executeClusterSearch() throw (Brai
          int cnt = shuffleFMapClusters.size() - 1;
          if (shuffleFMapClusters.empty() == false) {
             if (fMapCluster.areaCorrected > shuffleFMapClusters[0].areaCorrected) {
-               cnt = 1;
+               cnt = 0;
             }
             else {
                for (unsigned int j = 0; j < shuffleFMapClusters.size() - 1; j++) {
                   if ((fMapCluster.areaCorrected < shuffleFMapClusters[j].areaCorrected) &&
                       (fMapCluster.areaCorrected >= shuffleFMapClusters[j+1].areaCorrected)) {
-                     cnt = j + 2;
+                     cnt = j;
                   }
                }
             }

@@ -745,12 +745,6 @@ class VolumeFile : public AbstractFile {
       /// add a region name (returns its index)
       int addRegionName(const QString& name);
       
-      /// set a region name
-      void setRegionName(int index, QString& name);
-
-      /// create region names for voxels that do not index into a region
-      void createRegionNamesForVoxelsThatDoNotIndexIntoRegionNames();
-
       /// synchronize the region names in the volumes (index X is always region Y)
       static void synchronizeRegionNames(std::vector<VolumeFile*>& volumeFiles);
       

@@ -1701,7 +1701,7 @@ BrainModelIdentification::getVolumeFileIdentificationText(BrainSet* brainSet,
                            idString += linkToVocabulary(brainSet, files[n]->getRegionNameFromIndex(voxel));
                         }
                         else {
-                           idString += ("bad-index=" + QString::number(voxel));
+                           idString += "bad-index ";
                         }
                         if (bmv->getSelectedVolumePaintFile() == files[n]) {
                            idString += tagBoldEnd;

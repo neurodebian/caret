@@ -7,14 +7,14 @@ macx {
    #
    # Uncomment for Debug
    #
-   #CONFIG      -= release
-   #CONFIG      += warn_on debug
+   CONFIG      -= release
+   CONFIG      += warn_on debug
    
    #
    # Uncomment for Release
    #
-   CONFIG	+= release
-   CONFIG	-= debug
+   #CONFIG	+= release
+   #CONFIG	-= debug
 
    #
    # Suppress "has different visibility" and ALL warnings
@@ -50,11 +50,7 @@ DEFINES += CARET_FLAG
 }
 !exists( $(QTDIR)/include/qt.h ) {
    !exists( $(QTDIR)/include/Qt ) {
-      !exists( $(QTDIR)/include/qt4/qt.h ) {
-         !exists( $(QTDIR)/include/qt4/Qt ) {
-            error("The environment variable for QT \"QTDIR\" not defined.")
-         }
-      }
+      error("The environment variable for QT \"QTDIR\" not defined.")
    }
 }
 
@@ -71,27 +67,14 @@ exists( $(QTDIR)/include/Qt/qicon.h ) {
 #
 # enable for profile (performance) measurement
 #
-#QMAKE_CXXFLAGS_DEBUG   += -pg
-#QMAKE_LFLAGS_DEBUG     += -pg
-#QMAKE_CXXFLAGS_RELEASE += -pg
-#QMAKE_LFLAGS_RELEASE   += -pg
-
-#=================================================================================
-#
-# OpenMP (www.openmp.org)
-#
-!win32 {
-   QMAKE_CXXFLAGS_DEBUG   += -fopenmp
-   QMAKE_LFLAGS_DEBUG     += -fopenmp
-   QMAKE_CXXFLAGS_RELEASE += -fopenmp
-   QMAKE_LFLAGS_RELEASE   += -fopenmp
-}
+#QMAKE_CXXFLAGS_DEBUG += -pg
+#QMAKE_LFLAGS_DEBUG += -pg
 
 #=================================================================================
 #
 # Update include paths
 #
-INCLUDEPATH	+= $$(QWT_INC_DIR)
+INCLUDEPATH	+= $(QWT_INC_DIR)
 
 INCLUDEPATH += \
    ../caret_brain_set \
@@ -117,17 +100,10 @@ DEPENDPATH += \
 #
 exists( $(NETCDF_INC_DIR)/minc.h ) {
    DEFINES += HAVE_MINC
-   INCLUDEPATH += $$(NETCDF_INC_DIR)
-   NETCDF_LIBS = -L$$(NETCDF_LIB_DIR) \
+   INCLUDEPATH += $(NETCDF_INC_DIR)
+   NETCDF_LIBS = -L$(NETCDF_LIB_DIR) \
                  -lminc \
                  -lnetcdf
-
-   exists( $(NETCDF_LIB_DIR)/libminc2.a ) {
-      NETCDF_LIBS += -lminc2
-   }
-   exists( $(NETCDF_LIB_DIR)/libminc2.so ) {
-      NETCDF_LIBS += -lminc2
-   }
 
    message( "Building with MINC support" )
 }
@@ -143,7 +119,7 @@ exists( $(NETCDF_INC_DIR)/minc.h ) {
 #
 # VTK settings
 #
-INCLUDEPATH	+= $$(VTK_INC_DIR)
+INCLUDEPATH	+= $(VTK_INC_DIR)
 
 #
 # have VTK compiler defines (primarily for GIFTI API)
@@ -151,82 +127,93 @@ INCLUDEPATH	+= $$(VTK_INC_DIR)
 DEFINES += HAVE_VTK
 
 #
-# VTK 5.x flag
+# Check for VTK 5.x
 #
-DEFINES += HAVE_VTK5
-message( "Building WITH VTK5 support" )
+exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+  
+   message( "Building WITH VTK5 support" )
 
-#
-#
-#
-INCLUDEPATH += ../caret_vtk4_classes
+   #
+   # VTK 5.x flag
+   #
+   DEFINES += HAVE_VTK5
 
-#
-# need by caret_vtk4_classes
-#
-INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
+   #
+   #
+   #
+   INCLUDEPATH += ../caret_vtk4_classes
 
-#
-# VTK Libraries for VTK 5.x
-#
-win32 {
-   #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
-}
-!win32 {
-   VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
-}
-VTK_LIBS += \
-   -L$$(VTK_LIB_DIR) \
+   #
+   # need by caret_vtk4_classes
+   #
+   INCLUDEPATH += $(VTK_INC_DIR)/vtkmpeg2encode
+
+   #
+   # VTK Libraries for VTK 5.x
+   #
+   win32 {
+      #VTK_LIBS = ../caret_vtk4_classes/debug/libCaretVtk4Classes.a 
+   }
+   !win32 {
+      VTK_LIBS = ../caret_vtk4_classes/libCaretVtk4Classes.a 
+   }
+   VTK_LIBS += \
+              -L$(VTK_LIB_DIR) \
+	      -lvtkRendering \
               -lvtkFiltering \
               -lvtkGenericFiltering \
               -lvtkImaging \
               -lvtkGraphics \
               -lvtkIO \
+	      -lvtkDICOMParser \
+              -lvtkMPEG2Encode \
               -lvtkFiltering \
+              -lvtkRendering \
               -lvtkCommon \
-	      -lvtksys \
               -lvtkjpeg \
               -lvtkpng \
+              -lvtktiff \
+              -lvtksys \
+              -lvtkftgl \
               -lvtkexpat \
-              -lvtkzlib
-
-exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
-    message( "Building WITH MPEG support" )
-    DEFINES += HAVE_MPEG
-    VTK_LIBS += -lvtkMPEG2Encode
+              -lvtkzlib \
+              -L/home/john/caret_libraries/shared_64/Mesa-7.0.4/lib64 \
+              -lOSMesa
 }
+
 #
 # Check for VTK 4.x (does not have vtkMPEG2Writer.h)
 #
-#!exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
-#   #
-#   # VTK Libraries for VTK 4.x
-#   #
-#   VTK_LIBS = -L$$(VTK_LIB_DIR) \
-#              -lvtkGraphics \
-#              -lvtkFiltering \
-#              -lvtkIO \
-#              -lvtkPatented \
-#              -lvtkImaging \
-#              -lvtkCommon \
-#              -lvtkGraphics \
-#              -lvtkFiltering \
-#              -lvtkIO \
-#              -lvtkPatented \
-#              -lvtkImaging \
-#              -lvtkCommon \
-#              -lvtkFiltering \
-#              -lvtkCommon \
-#              -lvtkjpeg \
-#              -lvtkpng \
-#              -lvtkexpat \
-#              -lvtkDICOMParser \
-#	      -lvtksys
-#   !macx {
-#      VTK_LIBS += \
-#              -lvtkzlib
-#   }
-#}
+!exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+   #
+   # VTK Libraries for VTK 4.x
+   #
+   VTK_LIBS = -L$(VTK_LIB_DIR) \
+              -lvtkGraphics \
+              -lvtkFiltering \
+              -lvtkIO \
+              -lvtkPatented \
+              -lvtkImaging \
+              -lvtkCommon \
+              -lvtkGraphics \
+              -lvtkFiltering \
+              -lvtkIO \
+              -lvtkPatented \
+              -lvtkImaging \
+              -lvtkCommon \
+              -lvtkFiltering \
+              -lvtkCommon \
+              -lvtkjpeg \
+              -lvtkpng \
+              -lvtkexpat \
+              -lvtktiff \
+              -lvtkDICOMParser \
+	      -lvtksys
+   !macx {
+      VTK_LIBS += \
+              -lvtkzlib
+   }
+}
 
 #==============================================================================
 #
@@ -235,8 +222,8 @@ exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
 #exists ( $(OSMESA_INC_DIR)/GL/osmesa.h ) {
 #   DEFINES += HAVE_OSMESA
 #
-#   OSMESA_INCLUDE_PATH = $$(OSMESA_INC_DIR)
-#   OSMESA_LIBS = -L$$(OSMESA_LIB_DIR) \
+#   OSMESA_INCLUDE_PATH = $(OSMESA_INC_DIR)
+#   OSMESA_LIBS = -L$(OSMESA_LIB_DIR) \
 #                 -lOSMesa \
 #                 -lGL \
 #                 -lGLU \
@@ -255,19 +242,19 @@ exists( $(ITK_INC_DIR)/INTENTIONALLY_NO_VTK ) {
    DEFINES += HAVE_ITK
 
    INCLUDEPATH += \
-      $$(ITK_INC_DIR) \
-      $$(ITK_INC_DIR)/Algorithms \
-      $$(ITK_INC_DIR)/BasicFilters \
-      $$(ITK_INC_DIR)/Common \
-      $$(ITK_INC_DIR)/IO \
-      $$(ITK_INC_DIR)/Numerics \
-      $$(ITK_INC_DIR)/Numerics/Statistics \
-      $$(ITK_INC_DIR)/Patented \
-      $$(ITK_INC_DIR)/SpatialObject \
-      $$(ITK_INC_DIR)/Utilities/vxl/core \
-      $$(ITK_INC_DIR)/Utilities/vxl/vcl 
+      $(ITK_INC_DIR) \
+      $(ITK_INC_DIR)/Algorithms \
+      $(ITK_INC_DIR)/BasicFilters \
+      $(ITK_INC_DIR)/Common \
+      $(ITK_INC_DIR)/IO \
+      $(ITK_INC_DIR)/Numerics \
+      $(ITK_INC_DIR)/Numerics/Statistics \
+      $(ITK_INC_DIR)/Patented \
+      $(ITK_INC_DIR)/SpatialObject \
+      $(ITK_INC_DIR)/Utilities/vxl/core \
+      $(ITK_INC_DIR)/Utilities/vxl/vcl 
 
-   ITK_LIBS = -L$$(ITK_LIB_DIR) \
+   ITK_LIBS = -L$(ITK_LIB_DIR) \
       -lITKBasicFilters \
       -lITKStatistics \
       -lITKNumerics \
@@ -296,8 +283,8 @@ win32 {
       error( "You must define ZLIB_INC_DIR to the ZLIB include files directory.")
    }
    CONFIG      += rtti exceptions console
-   INCLUDEPATH += $$(ZLIB_INC_DIR)
-##   LIBS        += -L$$(ZLIB_LIB_DIR) -lzlib
+   INCLUDEPATH += $(ZLIB_INC_DIR)
+##   LIBS        += -L$(ZLIB_LIB_DIR) -lzlib
 
       QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
       QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
@@ -306,7 +293,7 @@ win32 {
       #
       # QWT libraries
       #
-      QWT_LIBS = -L$$(QWT_LIB_DIR) \
+      QWT_LIBS = -L$(QWT_LIB_DIR) \
                  -lqwt
 }
 
@@ -333,14 +320,10 @@ macx {
    # Build objects for Universal binaries
    #
    #CONFIG += ppc x86
-   #QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
-   #   -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
-   #QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated \
-   #   -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated \
-      -isysroot /Developer/SDKs/MacOSX10.5.sdk
+      -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated \
-      -isysroot /Developer/SDKs/MacOSX10.5.sdk
+      -isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch i386 -arch ppc
 
    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 
@@ -348,19 +331,19 @@ macx {
    # Link  for OSX 10.4
    #
    #QMAKE_LFLAGS_DEBUG += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk
-   QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk
+   QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk
 
    #QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
 
    # Link for Intel
-   #QMAKE_LFLAGS_DEBUG += -arch i386
-   #QMAKE_LFLAGS_RELEASE += -arch i386
+   QMAKE_LFLAGS_DEBUG += -arch i386
+   QMAKE_LFLAGS_RELEASE += -arch i386
 
    #
    # Add Link PPC for universal binaries
    #
    #QMAKE_LFLAGS_DEBUG += -arch ppc 
-   #QMAKE_LFLAGS_RELEASE += -arch ppc  
+   QMAKE_LFLAGS_RELEASE += -arch ppc  
 
    #
    # Universal binaries
@@ -387,7 +370,7 @@ macx {
    #
    # QWT libraries
    #
-   QWT_LIBS = -L$$(QWT_LIB_DIR) \
+   QWT_LIBS = -L$(QWT_LIB_DIR) \
               -lqwt
 
 }
@@ -400,19 +383,12 @@ unix:!macx {
    #
    # QWT libraries
    #
-   QWT_LIBS = -L$$(QWT_LIB_DIR) \
-         -lqwt 
-   LIBS += \
-         -ltiff \
-         -ljpeg
+   QWT_LIBS = -L$(QWT_LIB_DIR) \
+         -lqwt
 
    QMAKE_CXXFLAGS_RELEASE +=  -Wno-deprecated
    QMAKE_CXXFLAGS_DEBUG += -Wno-deprecated
-   #profiling
-   #QMAKE_CXXFLAGS_RELEASE +=  -pg
-   #QMAKE_CXXFLAGS_DEBUG += -pg
-   #QMAKE_LFLAGS_DEBUG += -pg
-   #QMAKE_LFLAGS_RELEASE += -pg
 }
+
 
 

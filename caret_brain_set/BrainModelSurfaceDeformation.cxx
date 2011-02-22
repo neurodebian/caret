@@ -584,7 +584,7 @@ BrainModelSurfaceDeformation::resampleBorderFiles(const int stageNumber,
                Border* sourceBorder = sourceBorderFile->getBorder(i);
                const int sourceBorderNumLinks = sourceBorder->getNumberOfLinks();
                if (sourceBorderNumLinks > 1) {
-//                  for (int j = 0; j < sourceBorderNumLinks; j++) {
+                  for (int j = 0; j < sourceBorderNumLinks; j++) {
                   
                      //
                      // Get the sampling density
@@ -626,7 +626,7 @@ BrainModelSurfaceDeformation::resampleBorderFiles(const int stageNumber,
                      // Resample target border to match source border
                      //
                      targetBorder->resampleBorderToNumberOfLinks(newNumLinks);
-//                  }
+                  }
                }
             }
          }

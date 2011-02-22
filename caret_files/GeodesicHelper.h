@@ -90,7 +90,7 @@ class GeodesicHelper
       inline void clear() { store.clear(); };
    };
    float* output, **distances, **distances2;//use primitives for speed, and they don't need to change size
-   int** nodeNeighbors, **nodeNeighbors2;//copy neighbors at constructor, because I don't want to mess with inheritance, and I want speed of repeated calls
+   int** nodeNeighbors, **nodeNeighbors2, **neigh2Tri;//copy neighbors at constructor, because I don't want to mess with inheritance, and I want speed of repeated calls
    int* numNeighbors, *numNeighbors2, *marked, *changed, *parent;
    int numNodes;
    GeodesicHelper() { marked = NULL; };//Don't allow construction without arguments
@@ -126,28 +126,11 @@ public:
          delete[] distances2;
       }
    };
-   /// Get distances from root node, up to a geodesic distance cutoff (stops computing when no more nodes are within that distance)
    void getNodesToGeoDist(const int node, const float maxdist, std::vector<int>& neighborsOut, std::vector<float>& distsOut, const bool smoothflag = true);
-   
-   /// Get distances from root node, up to a geodesic distance cutoff, and also return their parents (root node has itself as parent)
    void getNodesToGeoDist(const int node, const float maxdist, std::vector<int>& neighborsOut, std::vector<float>& distsOut, std::vector<int>& parentsOut, const bool smoothflag = true);
-   
-   /// Get distances from root node to entire surface - fastest method for full surface for only one node, but allocate the array first
    void getGeoFromNode(const int node, float* valuesOut, const bool smoothflag = true);//MUST be already allocated to number of nodes
-
-   /// Get distances from root node to entire surface, vector method (not as fast)
-   void getGeoFromNode(const int node, std::vector<float>& valuesOut, const bool smoothflag = true);//MUST be already allocated to number of nodes
-   
-   /// Get distances from root node to entire surface and parents - fastest method with parents for full surface, single node, allocate both arrays first (root node has self as parent)
-   void getGeoFromNode(const int node, float* valuesOut, int* parentsOut, const bool smoothflag = true);
-   
-   /// Get distances from root node to entire surface, and their parents, vector method (not as fast, root node has self as parent)
-   void getGeoFromNode(const int node, std::vector<float>& valuesOut, std::vector<int>& parentsOut, const bool smoothflag = true);
-   
-   /// Get distances from all nodes to all nodes, passes back NULL if cannot allocate, if successful you must eventually delete the memory
+   void getGeoFromNode(const int node, float* valuesOut, std::vector<int>& parentsOut, const bool smoothflag = true);
    float** getGeoAllToAll(const bool smooth = true);//i really don't think this needs an overloaded function that outputs parents
-   
-   /// Get distances to a restricted set of nodes - output vector is in the SAME ORDER and same size as the input vector ofInterest
    void getGeoToTheseNodes(const int root, const std::vector<int>& ofInterest, std::vector<float>& distsOut, bool smoothflag = true);
 };
 

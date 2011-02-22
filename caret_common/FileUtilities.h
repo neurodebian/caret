@@ -93,11 +93,6 @@ class FileUtilities {
       /// return the filename without extension
       static QString filenameWithoutExtension(const QString& s);
       
-      /// parse a spec file name number of nodes (73k_fs_lr => 73k  _fs_lr)
-      static bool parseCaretDataFileNumberOfNodes(const QString& numNodesIn,
-                                                  QString& numNodesOut,
-                                                  QString& atlasOut);
-                                                  
       /// parse a data file name to see if it is a valid Caret file name.
       /// Returns true if the file's name is a valid Caret name.
       static bool parseCaretDataFileName(const QString& filenameIn,

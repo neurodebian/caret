@@ -628,17 +628,9 @@ int
 PreferencesFile::getMaximumNumberOfThreads() const 
 {
    //if (DebugControl::getDebugOn()) { 
-   return maximumNumberOfThreads;
+   //   return maximumNumberOfThreads;
    //}
-   //return 1;
-}
-
-/**
- * Set the maximum number of threads.
- */
-void
-PreferencesFile::setMaximumNumberOfThreads(int numThreads) {
-    this->maximumNumberOfThreads = numThreads;
+   return 1;
 }
 
 /**

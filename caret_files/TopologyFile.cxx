@@ -154,11 +154,9 @@ TopologyFile::addTile(const int v1, const int v2, const int v3)
    }
    topologyHelperNeedsRebuild = true;
    setModified();
-   
-   // add one to node since node number range is [0..N-1]
-   numberOfNodes = std::max(v1+1, numberOfNodes);
-   numberOfNodes = std::max(v2+1, numberOfNodes);
-   numberOfNodes = std::max(v3+1, numberOfNodes);
+   numberOfNodes = std::max(v1, numberOfNodes);
+   numberOfNodes = std::max(v2, numberOfNodes);
+   numberOfNodes = std::max(v3, numberOfNodes);
 }
 
 /**
@@ -1279,10 +1277,9 @@ TopologyFile::setTile(const int tileNumber, const int v1, const int v2, const in
    tiles[tileNumber * 3 + 2] = v3;
    setModified();
    topologyHelperNeedsRebuild = true;
-   // add one to node since node number range is [0..N-1]
-   numberOfNodes = std::max(v1+1, numberOfNodes);
-   numberOfNodes = std::max(v2+1, numberOfNodes);
-   numberOfNodes = std::max(v3+1, numberOfNodes);
+   numberOfNodes = std::max(v1, numberOfNodes);
+   numberOfNodes = std::max(v2, numberOfNodes);
+   numberOfNodes = std::max(v3, numberOfNodes);
 }
 
 /**
@@ -1639,10 +1636,9 @@ TopologyFile::readTilesAscii(QTextStream& stream,
             tilePtr[j3 + 2] = t3;
          }
          
-         // add one to node since node number range is [0..N-1]
-         numberOfNodes = std::max(numberOfNodes, t1+1);
-         numberOfNodes = std::max(numberOfNodes, t2+1);
-         numberOfNodes = std::max(numberOfNodes, t3+1);
+         numberOfNodes = std::max(numberOfNodes, t1);
+         numberOfNodes = std::max(numberOfNodes, t2);
+         numberOfNodes = std::max(numberOfNodes, t3);
       }
    }
    
@@ -1679,10 +1675,9 @@ TopologyFile::readTilesBinary(QDataStream& binStream) throw (FileException)
          tilePtr[j3 + 1] = t2;
          tilePtr[j3 + 2] = t3;
          
-         // add one to node since node number range is [0..N-1]
-         numberOfNodes = std::max(numberOfNodes, t1+1);
-         numberOfNodes = std::max(numberOfNodes, t2+1);
-         numberOfNodes = std::max(numberOfNodes, t3+1);
+         numberOfNodes = std::max(numberOfNodes, t1);
+         numberOfNodes = std::max(numberOfNodes, t2);
+         numberOfNodes = std::max(numberOfNodes, t3);
       }   
    }
    
