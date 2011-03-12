@@ -131,7 +131,7 @@ DisplaySettingsStudyMetaData::getKeywordsAndUsageByFoci(std::vector<QString>& ke
             //
             for (int k = 0; k < numKeywords; k++) {
                const QString& kw = keywords[k];
-               std::map<QString,int>::iterator iter = keywordFociCount.find(kw);
+               std::map<QString,int,CaseInsensitiveStringCompare>::iterator iter = keywordFociCount.find(kw);
                if (iter != keywordFociCount.end()) {
                   keywordFociCount[kw] += numberOfFociLinkingToStudy[i];
                }
@@ -143,7 +143,7 @@ DisplaySettingsStudyMetaData::getKeywordsAndUsageByFoci(std::vector<QString>& ke
       //}
    }
    
-   for (std::map<QString,int>::iterator iter = keywordFociCount.begin();
+   for (std::map<QString,int,CaseInsensitiveStringCompare>::iterator iter = keywordFociCount.begin();
         iter != keywordFociCount.end();
         iter++) {
       keywordsOut.push_back(iter->first);
@@ -470,7 +470,7 @@ DisplaySettingsStudyMetaData::getSubheadersAndUsageByFoci(
             //
             for (int k = 0; k < numSubheaders; k++) {
                const QString& sh = subheaders[k];
-               std::map<QString,int>::iterator iter = subheaderFociCount.find(sh);
+               std::map<QString,int,CaseInsensitiveStringCompare>::iterator iter = subheaderFociCount.find(sh);
                if (iter != subheaderFociCount.end()) {
                   subheaderFociCount[sh] += numberOfFociLinkingToStudy[i];
                }
@@ -482,7 +482,7 @@ DisplaySettingsStudyMetaData::getSubheadersAndUsageByFoci(
       //}
    }
    
-   for (std::map<QString,int>::iterator iter = subheaderFociCount.begin();
+   for (std::map<QString,int,CaseInsensitiveStringCompare>::iterator iter = subheaderFociCount.begin();
         iter != subheaderFociCount.end();
         iter++) {
       subheadersOut.push_back(iter->first);

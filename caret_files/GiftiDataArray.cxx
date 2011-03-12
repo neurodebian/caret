@@ -258,7 +258,7 @@ GiftiDataArray::deleteRows(const std::vector<int>& rowsToDeleteIn)
    //
    // size of row in bytes
    //
-   int numBytesInRow = 1;
+   long numBytesInRow = 1;
    for (unsigned int i = 1; i < dimensions.size(); i++) {
       numBytesInRow = dimensions[i];
    }
@@ -305,7 +305,7 @@ GiftiDataArray::allocateData()
    //
    // Determine the number of items to allocate
    //
-   int dataSizeInBytes = 1;
+   long dataSizeInBytes = 1;
    for (unsigned int i = 0; i < dimensions.size(); i++) {
       dataSizeInBytes *= dimensions[i];
    }
@@ -325,6 +325,7 @@ GiftiDataArray::allocateData()
          dataTypeSize = sizeof(uint8_t);
          break;
    }
+   
    dataSizeInBytes *= dataTypeSize;
    
    //
@@ -406,7 +407,7 @@ GiftiDataArray::clear()
 /**
  * get the number of nodes (1st dimension).
  */
-int 
+long
 GiftiDataArray::getNumberOfRows() const 
 { 
    if (dimensions.empty() == false) {
@@ -418,14 +419,14 @@ GiftiDataArray::getNumberOfRows() const
 /**
  * get the total number of elements.
  */
-int 
+long
 GiftiDataArray::getTotalNumberOfElements() const
 {
    if (dimensions.empty()) {
       return 0;
    }
    
-   int num = 1;
+   long num = 1;
    for (unsigned int i = 0; i < dimensions.size(); i++) {
       num *= dimensions[i];
    }
@@ -435,7 +436,7 @@ GiftiDataArray::getTotalNumberOfElements() const
 /**
  * get number of components per node (2nd dimension).
  */
-int 
+long
 GiftiDataArray::getNumberOfComponents() const 
 { 
    if (dimensions.size() > 1) {
@@ -450,11 +451,11 @@ GiftiDataArray::getNumberOfComponents() const
 /**
  * get data offset.
  */
-int 
-GiftiDataArray::getDataOffset(const int nodeNum,
-                                  const int componentNum) const
+long
+GiftiDataArray::getDataOffset(const long nodeNum,
+                                  const long componentNum) const
 {
-   const int off = nodeNum * dimensions[1] + componentNum;
+   const long off = nodeNum * dimensions[1] + componentNum;
    return off;
 }
 
@@ -695,7 +696,7 @@ GiftiDataArray::getArraySubscriptingOrderFromName(const QString& name,
  */
 void 
 GiftiDataArray::getExternalFileInformation(QString& nameOut,
-                                           int& offsetOut) const
+                                           long& offsetOut) const
 {
    nameOut = externalFileName;
    offsetOut = externalFileOffset;
@@ -706,7 +707,7 @@ GiftiDataArray::getExternalFileInformation(QString& nameOut,
  */
 void 
 GiftiDataArray::setExternalFileInformation(const QString& nameIn,
-                                           const int offsetIn)
+                                           const long offsetIn)
 {
    externalFileName = nameIn;
    externalFileOffset = offsetIn;
@@ -724,8 +725,8 @@ GiftiDataArray::remapIntValues(const std::vector<int>& remappingTable)
    if (dataType != DATA_TYPE_INT32) {
       return;
    }
-   const int num = getTotalNumberOfElements();
-   for (int i = 0; i < num; i++) {
+   const long num = getTotalNumberOfElements();
+   for (long i = 0; i < num; i++) {
       dataPointerInt[i] = remappingTable[dataPointerInt[i]];
    }
 }
@@ -742,7 +743,7 @@ GiftiDataArray::readFromText(QString& text,
             const std::vector<int>& dimensionsForReading,
             const ENCODING encodingForReading,
             const QString& externalFileNameForReading,
-            const int externalFileOffsetForReading) throw (FileException)
+            const long externalFileOffsetForReading) throw (FileException)
 {
    const DATA_TYPE requiredDataType = dataType;
    dataType = dataTypeForReading;
@@ -762,7 +763,7 @@ GiftiDataArray::readFromText(QString& text,
       //
       // Total number of elements in Data Array
       //
-      const int numElements = getTotalNumberOfElements();
+      const long numElements = getTotalNumberOfElements();
       
       switch (encoding) {
          case ENCODING_INTERNAL_ASCII:
@@ -773,7 +774,7 @@ GiftiDataArray::readFromText(QString& text,
                   case DATA_TYPE_FLOAT32:
                      {
                         float* ptr = dataPointerFloat;
-                        for (int i = 0; i < numElements; i++) {
+                        for (long i = 0; i < numElements; i++) {
                            stream >> *ptr;
                            ptr++;
                         }
@@ -782,7 +783,7 @@ GiftiDataArray::readFromText(QString& text,
                   case DATA_TYPE_INT32:
                      {
                         int32_t* ptr = dataPointerInt;
-                        for (int i = 0; i < numElements; i++) {
+                        for (long i = 0; i < numElements; i++) {
                            stream >> *ptr;
                            ptr++;
                         }
@@ -792,7 +793,7 @@ GiftiDataArray::readFromText(QString& text,
                      {
                         uint8_t* ptr = dataPointerUByte;
                         char c;
-                        for (int i = 0; i < numElements; i++) {
+                        for (long i = 0; i < numElements; i++) {
                            stream >> c;
                            *ptr = static_cast<uint8_t>(c);
                            ptr++;
@@ -908,36 +909,47 @@ GiftiDataArray::readFromText(QString& text,
                   //
                   // Set the number of bytes that must be read
                   //
-                  int numberOfBytes = 0;
+                  long numberOfBytesToRead = 0;
                   char* pointerToForReadingData = NULL;
                   switch (dataType) {
                      case DATA_TYPE_FLOAT32:
-                        numberOfBytes = numElements * sizeof(float);
+                        numberOfBytesToRead = numElements * sizeof(float);
                         pointerToForReadingData = (char*)dataPointerFloat;
                         break;
                      case DATA_TYPE_INT32:
-                        numberOfBytes = numElements * sizeof(int32_t);
+                        numberOfBytesToRead = numElements * sizeof(int32_t);
                         pointerToForReadingData = (char*)dataPointerInt;
                         break;
                      case DATA_TYPE_UINT8:
-                        numberOfBytes = numElements * sizeof(uint8_t);
+                        numberOfBytesToRead = numElements * sizeof(uint8_t);
                         pointerToForReadingData = (char*)dataPointerUByte;
                         break;
                   }
                
                   //
                   // Read the data
+                  // All data may not be read in one call to stream.readRawData()
+                  // so loop until all data is read.
                   //
                   QDataStream stream(&file);
-                  const int numBytesRead = stream.readRawData((char*)pointerToForReadingData,
-                                                              numberOfBytes);
-                  if (numBytesRead != numberOfBytes) {
+                  stream.setVersion(QDataStream::Qt_4_3);
+                  long actualNumberOfBytesRead = 0;
+                  while (actualNumberOfBytesRead < numberOfBytesToRead) {
+                     const long numBytesRead = stream.readRawData(
+                           (char*)&pointerToForReadingData[actualNumberOfBytesRead],
+                           numberOfBytesToRead);
+                     if (numBytesRead <= 0) {
+                        break;
+                     }
+                     actualNumberOfBytesRead += numBytesRead;
+                  }
+                  if (actualNumberOfBytesRead != numberOfBytesToRead) {
                      throw FileException("Tried to read "
-                                         + QString::number(numberOfBytes)
+                                         + QString::number(numberOfBytesToRead)
                                          + " from "
                                          + externalFileName
                                          + " but only read "
-                                         + QString::number(numBytesRead)
+                                         + QString::number(actualNumberOfBytesRead)
                                          + ".");
                   }
                   
@@ -994,57 +1006,120 @@ GiftiDataArray::convertArrayIndexingOrder() throw (FileException)
       return;
    }
    
-   //
-   // Copy the data
-   //
-   std::vector<uint8_t> dataCopy = data;
+   if (numDim > 2) {
+       throw FileException("Row/Column Major order conversion unavailable for arrays "
+                           "with dimensions greater than two.");
+   }
    
    //
    // Swap data
    //
    if (numDim == 2) {
-      switch (dataType) {
-         case DATA_TYPE_FLOAT32:
-            {
-               float* ptr = (float*)&(dataCopy[0]);
-               for (int i = 0; i < dimensions[0]; i++) {
-                  for (int j = 0; j < dimensions[1]; j++) {
-                     const int indx = (i * dimensions[1]) + j;
-                     const int ptrIndex = (j * dimensions[1]) + i;
-                     dataPointerFloat[indx] = ptr[ptrIndex];
-                  }
-               }
-            }
-            break;
-         case DATA_TYPE_INT32:
-            {
-               uint32_t* ptr = (uint32_t*)&(dataCopy[0]);
-               for (int i = 0; i < dimensions[0]; i++) {
-                  for (int j = 0; j < dimensions[1]; j++) {
-                     const int indx = (i * dimensions[1]) + j;
-                     const int ptrIndex = (j * dimensions[1]) + i;
-                     dataPointerInt[indx] = ptr[ptrIndex];
-                  }
-               }
-            }
-            break;
-         case DATA_TYPE_UINT8:
-            {
-               uint8_t* ptr = (uint8_t*)&(dataCopy[0]);
-               for (int i = 0; i < dimensions[0]; i++) {
-                  for (int j = 0; j < dimensions[1]; j++) {
-                     const int indx = (i * dimensions[1]) + j;
-                     const int ptrIndex = (j * dimensions[1]) + i;
-                     dataPointerUByte[indx] = ptr[ptrIndex];
-                  }
-               }
-            }
-            break;
+       int dimI = dimensions[0];
+       int dimJ = dimensions[1];
+
+       /*
+        * If a dimensions is "1", the data does not need to be transposed.
+        */
+       if ((dimI == 1) || (dimJ == 1)) {
+          return;
+       }
+
+       //
+       // Is matrix square?
+       //
+       if (dimI == dimJ) {
+           switch (dataType) {
+              case DATA_TYPE_FLOAT32:
+                 {
+                   for (long i = 1; i < dimI; i++) {
+                       for (long j = 0; j < i; j++) {
+                           const long indexLowerLeft  = (i * dimJ) + j;
+                           const long indexUpperRight = (j * dimI) + i;
+                           float temp = dataPointerFloat[indexLowerLeft];
+                           dataPointerFloat[indexLowerLeft] = dataPointerFloat[indexUpperRight];
+                           dataPointerFloat[indexUpperRight] = temp;
+                       }
+                   }
+                 }
+                 break;
+              case DATA_TYPE_INT32:
+                 {
+                   for (long i = 1; i < dimI; i++) {
+                       for (long j = 0; j < i; j++) {
+                           const long indexLowerLeft  = (i * dimJ) + j;
+                           const long indexUpperRight = (j * dimI) + i;
+                           float temp = dataPointerInt[indexLowerLeft];
+                           dataPointerInt[indexLowerLeft] = dataPointerInt[indexUpperRight];
+                           dataPointerInt[indexUpperRight] = temp;
+                       }
+                   }
+                 }
+                 break;
+              case DATA_TYPE_UINT8:
+                 {
+                   for (long i = 1; i < dimI; i++) {
+                       for (long j = 0; j < i; j++) {
+                           const long indexLowerLeft  = (i * dimJ) + j;
+                           const long indexUpperRight = (j * dimI) + i;
+                           float temp = dataPointerUByte[indexLowerLeft];
+                           dataPointerUByte[indexLowerLeft] = dataPointerUByte[indexUpperRight];
+                           dataPointerUByte[indexUpperRight] = temp;
+                       }
+                   }
+                 }
+                 break;
+           }
+       }
+       else {
+           //
+           // Copy the data
+           //
+           std::vector<uint8_t> dataCopy = data;
+
+          switch (dataType) {
+             case DATA_TYPE_FLOAT32:
+                {
+                   float* ptr = (float*)&(dataCopy[0]);
+                   for (long i = 0; i < dimI; i++) {
+                      for (long j = 0; j < dimJ; j++) {
+                         const long indx = (i * dimJ) + j;
+                         const long ptrIndex = (j * dimI) + i;
+                         dataPointerFloat[indx] = ptr[ptrIndex];
+                      }
+                   }
+                }
+                break;
+             case DATA_TYPE_INT32:
+                {
+                   uint32_t* ptr = (uint32_t*)&(dataCopy[0]);
+                   for (long i = 0; i < dimI; i++) {
+                      for (long j = 0; j < dimJ; j++) {
+                         const long indx = (i * dimJ) + j;
+                         const long ptrIndex = (j * dimI) + i;
+                         dataPointerInt[indx] = ptr[ptrIndex];
+                      }
+                   }
+                }
+                break;
+             case DATA_TYPE_UINT8:
+                {
+                   uint8_t* ptr = (uint8_t*)&(dataCopy[0]);
+                   for (long i = 0; i < dimI; i++) {
+                      for (long j = 0; j < dimJ; j++) {
+                         const long indx = (i * dimJ) + j;
+                         const long ptrIndex = (j * dimI) + i;
+                         dataPointerUByte[indx] = ptr[ptrIndex];
+                      }
+                   }
+                }
+                break;
+          }
+          
+          dimensions[0] = dimJ;
+          dimensions[1] = dimI;
       }
    }
-      
-   throw FileException("Row/Column Major order conversion unavailable for arrays "
-                       "with dimensions greater than two.");
 }
 
 /**
@@ -1052,13 +1127,14 @@ GiftiDataArray::convertArrayIndexingOrder() throw (FileException)
  */
 void 
 GiftiDataArray::writeAsXML(QTextStream& stream, 
-                           const int indentOffset) 
+                           const int indentOffset,
+                           std::ofstream* externalBinaryOutputStream) 
                                                 throw (FileException)
 {
    //
    // Do not write if data array is isEmpty
    //
-   const int numRows = dimensions[0];
+   const long numRows = dimensions[0];
    if (numRows <= 0) {
       return;
    }
@@ -1110,8 +1186,8 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
    //
    // External file not supported
    //
-   const QString externalFileName = "";
-   const QString externalFileOffset = "0";
+   //const QString externalFileName = "";
+   //const QString externalFileOffset = "0";
    
    //
    // Write the opening tag
@@ -1190,7 +1266,7 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
             //
             // determine the number of items per row (node)
             //
-            int numItemsPerRow = 1;
+            long numItemsPerRow = 1;
             for (unsigned int i = 1; i < dimensions.size(); i++) {
                numItemsPerRow *= dimensions[i];
             }
@@ -1203,17 +1279,17 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
                GiftiCommon::writeIndentationXML(stream, indent);
                switch (dataType) {
                   case DATA_TYPE_FLOAT32:
-                     for (int j = 0; j < numItemsPerRow; j++) {
+                     for (long j = 0; j < numItemsPerRow; j++) {
                         stream << dataPointerFloat[offset + j] << " ";
                      }
                      break;
                   case DATA_TYPE_INT32:
-                     for (int j = 0; j < numItemsPerRow; j++) {
+                     for (long j = 0; j < numItemsPerRow; j++) {
                         stream << dataPointerInt[offset + j] << " ";
                      }
                      break;
                   case DATA_TYPE_UINT8:
-                     for (int j = 0; j < numItemsPerRow; j++) {
+                     for (long j = 0; j < numItemsPerRow; j++) {
                         stream << dataPointerUByte[offset + j] << " ";
                      }
                      break;
@@ -1229,11 +1305,19 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
             //
             // Encode the data with VTK's Base64 algorithm
             //
-            char* buffer = new char[static_cast<int>(data.size() * 1.5)];
+            const unsigned long bufferLength = static_cast<long>(data.size() * 1.5);
+            char* buffer = new char[bufferLength];
             const unsigned long compressedLength =
                vtkBase64Utilities::Encode(&data[0],
                                           data.size(),
                                           (unsigned char*)buffer);
+            if (compressedLength >= bufferLength) {
+               throw FileException(
+                     "Base64 encoding buffer length ("
+                     + QString::number(bufferLength)
+                     + ") is too small but needs to be "
+                     + compressedLength);
+            }
             buffer[compressedLength] = '\0';
             
             //
@@ -1271,7 +1355,7 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
             //
             // Encode the data with VTK's Base64 algorithm
             //
-            char* buffer = new char[static_cast<int>(compressedDataLength * 1.5)];
+            char* buffer = new char[static_cast<long>(compressedDataLength * 1.5)];
             const unsigned long compressedLength =
                vtkBase64Utilities::Encode(compressedDataBuffer,
                                           compressedDataLength,
@@ -1305,7 +1389,13 @@ GiftiDataArray::writeAsXML(QTextStream& stream,
 #endif // HAVE_VTK
          break;
       case ENCODING_EXTERNAL_FILE_BINARY:
-         throw FileException("Writing external binary data not supported.");
+         {
+            const long dataLength = data.size();
+            externalBinaryOutputStream->write((const char*)&data[0], dataLength);
+            if (externalBinaryOutputStream->bad()) {
+               throw FileException("Output stream for external file reports its status as bad.");
+            }
+         }
          break;
    }
    
@@ -1355,7 +1445,7 @@ GiftiDataArray::convertToDataType(const DATA_TYPE newDataType)
          //
          //  Get total number of elements
          //
-         uint32_t numElements = 1;
+         long numElements = 1;
          for (unsigned int i = 0; i < dimensions.size(); i++) {
             numElements *= dimensions[i];
          }
@@ -1363,7 +1453,7 @@ GiftiDataArray::convertToDataType(const DATA_TYPE newDataType)
          //
          // copy the data
          //
-         for (uint32_t i = 0; i < numElements; i++) {
+         for (long i = 0; i < numElements; i++) {
             switch (dataType) {
                case DATA_TYPE_FLOAT32:
                   switch (oldDataType) {
@@ -1459,8 +1549,8 @@ GiftiDataArray::getMinMaxValues(int& minValue, int& maxValue) const
       minValueInt = std::numeric_limits<int>::max();
       minValueInt = std::numeric_limits<int>::min();
       
-      int numItems = getTotalNumberOfElements();
-      for (int i = 0; i < numItems; i++) {
+      long numItems = getTotalNumberOfElements();
+      for (long i = 0; i < numItems; i++) {
          minValueInt = std::min(minValueInt, dataPointerInt[i]);
          maxValueInt = std::max(maxValueInt, dataPointerInt[i]);
       }
@@ -1480,8 +1570,8 @@ GiftiDataArray::getMinMaxValues(float& minValue, float& maxValue) const
       minValueFloat = std::numeric_limits<float>::max();
       maxValueFloat = -std::numeric_limits<float>::max();
       
-      int numItems = getTotalNumberOfElements();
-      for (int i = 0; i < numItems; i++) {
+      long numItems = getTotalNumberOfElements();
+      for (long i = 0; i < numItems; i++) {
          minValueFloat = std::min(minValueFloat, dataPointerFloat[i]);
          maxValueFloat = std::max(maxValueFloat, dataPointerFloat[i]);
       }
@@ -1521,12 +1611,12 @@ GiftiDataArray::getMinMaxValuesFromPercentages(const float negMaxPctIn,
       posMinPctValue = 0.0;
       posMaxPctValue = 0.0;
 
-      const int num = getTotalNumberOfElements();
+      const long num = getTotalNumberOfElements();
       if (num > 0) {
          std::vector<float> negatives, positives;
          negatives.reserve(num);
          positives.reserve(num);
-         for (int i = 0; i < num; i++) {
+         for (long i = 0; i < num; i++) {
             if (dataPointerFloat[i] > 0.0) {
                positives.push_back(dataPointerFloat[i]);
             }
@@ -1603,13 +1693,13 @@ GiftiDataArray::zeroize()
 /**
  * get an offset for indices into data (dimensionality of indices must be same as data).
  */
-int 
+long
 GiftiDataArray::getDataOffset(const int indices[]) const
 {
    const int numDim = static_cast<int>(dimensions.size());
    
-   int offset = 0;
-   int dimProduct = 1;
+   long offset = 0;
+   long dimProduct = 1;
    switch (arraySubscriptingOrder) {
       case ARRAY_SUBSCRIPTING_ORDER_HIGHEST_FIRST:
          for (int d = (numDim - 1); d >= 0; d--) {
@@ -1634,7 +1724,7 @@ GiftiDataArray::getDataOffset(const int indices[]) const
 float 
 GiftiDataArray::getDataFloat32(const int indices[]) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    return dataPointerFloat[offset];
 }
 
@@ -1644,7 +1734,7 @@ GiftiDataArray::getDataFloat32(const int indices[]) const
 const float* 
 GiftiDataArray::getDataFloat32Pointer(const int indices[]) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    return &dataPointerFloat[offset];
 }
 
@@ -1654,7 +1744,7 @@ GiftiDataArray::getDataFloat32Pointer(const int indices[]) const
 int32_t 
 GiftiDataArray::getDataInt32(const int indices[]) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    return dataPointerInt[offset];
 }
 
@@ -1664,7 +1754,7 @@ GiftiDataArray::getDataInt32(const int indices[]) const
 const int32_t* 
 GiftiDataArray::getDataInt32Pointer(const int indices[]) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    return &dataPointerInt[offset];
 }
 
@@ -1674,7 +1764,7 @@ GiftiDataArray::getDataInt32Pointer(const int indices[]) const
 uint8_t 
 GiftiDataArray::getDataUInt8(const int indices[]) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    return dataPointerUByte[offset];
 }
 
@@ -1684,7 +1774,7 @@ GiftiDataArray::getDataUInt8(const int indices[]) const
 const uint8_t*
 GiftiDataArray::getDataUInt8Pointer(const int indices[]) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    return &dataPointerUByte[offset];
 }
 
@@ -1694,7 +1784,7 @@ GiftiDataArray::getDataUInt8Pointer(const int indices[]) const
 void 
 GiftiDataArray::setDataFloat32(const int indices[], const float dataValue) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    dataPointerFloat[offset] = dataValue;
 }
 
@@ -1704,7 +1794,7 @@ GiftiDataArray::setDataFloat32(const int indices[], const float dataValue) const
 void 
 GiftiDataArray::setDataInt32(const int indices[], const int32_t dataValue) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    dataPointerInt[offset] = dataValue;
 }
 
@@ -1714,7 +1804,7 @@ GiftiDataArray::setDataInt32(const int indices[], const int32_t dataValue) const
 void 
 GiftiDataArray::setDataUInt8(const int indices[], const uint8_t dataValue) const
 {
-   const int offset = getDataOffset(indices);
+   const long offset = getDataOffset(indices);
    dataPointerUByte[offset] = dataValue;
 }      
 

@@ -131,7 +131,7 @@ PreferencesFile::clear()
    preferredWriteDataType.resize(fileFormats.size());
    std::fill(preferredWriteDataType.begin(),
              preferredWriteDataType.end(),
-             AbstractFile::FILE_FORMAT_BINARY);
+             AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
    
    //
    // Default display lists off since they blow away the X-server on Linux with 
@@ -628,9 +628,17 @@ int
 PreferencesFile::getMaximumNumberOfThreads() const 
 {
    //if (DebugControl::getDebugOn()) { 
-   //   return maximumNumberOfThreads;
+   return maximumNumberOfThreads;
    //}
-   return 1;
+   //return 1;
+}
+
+/**
+ * Set the maximum number of threads.
+ */
+void
+PreferencesFile::setMaximumNumberOfThreads(int numThreads) {
+    this->maximumNumberOfThreads = numThreads;
 }
 
 /**

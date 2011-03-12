@@ -62,6 +62,7 @@ class BrainModelSurfaceDeformDataFile {
       static void deformBorderFile(BrainSet* sourceBrainSet,
                                    BrainSet* targetBrainSet,
                                    const DeformationMapFile* dmf,
+                                   const bool useSourceTargetPathsFlag,
                                    const DATA_FILE_TYPE dataFileType,
                                    const QString& dataFileName,
                                    const QString& outputFileNameIn = "")
@@ -86,7 +87,8 @@ class BrainModelSurfaceDeformDataFile {
       static void deformCoordinateFile(const DeformationMapFile* dmf,
                                        const QString& dataFileName,
                                        QString& outputFileNameInOut,
-                                       const bool smoothCoordFileOneIteration)
+                                       const bool smoothCoordFileOneIteration,
+                                       const bool useSourceTargetPathsFlag)
                                           throw (BrainModelAlgorithmException);
 
       /// deform flat coordinate files
@@ -98,6 +100,7 @@ class BrainModelSurfaceDeformDataFile {
       /// deform a flat coordinate file
       static void deformFlatCoordinateFile(const DeformationMapFile* dmf,
                                        const QString& atlasTopoFileName,
+                                       const bool useSourceTargetPathsFlag,
                                        const QString& coordFileName,
                                        const QString& topoFileName,
                                        const QString& outputCoordFileNameIn = "",
@@ -109,6 +112,7 @@ class BrainModelSurfaceDeformDataFile {
       static void deformCellOrFociFile(BrainSet* sourceBrainSet,
                                        BrainSet* targetBrainSet,
                                        const DeformationMapFile* dmf,
+                                       const bool useSourceTargetPathsFlag,
                                        const QString& dataFileName,
                                        const bool fociFileFlag,
                                        const QString& outputFileNameIn = "")
@@ -127,6 +131,7 @@ class BrainModelSurfaceDeformDataFile {
       static void deformCellOrFociProjectionFile(BrainSet* sourceBrainSet,
                                        BrainSet* targetBrainSet,
                                        const DeformationMapFile* dmf,
+                                       const bool useSourceTargetPathsFlag,
                                        const QString& dataFileName,
                                        const bool fociFileFlag,
                                        const QString& outputFileNameIn = "")
@@ -144,6 +149,7 @@ class BrainModelSurfaceDeformDataFile {
       /// deform a node attribute data file
       static void deformNodeAttributeFile(const DeformationMapFile* dmf,
                                           const DATA_FILE_TYPE dataFileType,
+                                          const bool useSourceTargetPathsFlag,
                                           const QString& dataFileName,
                                           const QString& outputFileNameIn = "") 
                                              throw (BrainModelAlgorithmException);
@@ -151,6 +157,7 @@ class BrainModelSurfaceDeformDataFile {
       /// deform a nifti node data file
       static void deformGiftiNodeDataFile(const DeformationMapFile* dmf,
                                           const DATA_FILE_TYPE dataFileType,
+                                          const bool useSourceTargetPathsFlag,
                                           const QString& dataFileName,
                                           const QString& outputFileNameIn = "") 
                                              throw (BrainModelAlgorithmException);
@@ -179,6 +186,9 @@ class BrainModelSurfaceDeformDataFile {
       static void linkColorFileHelper(const SpecFile::Entry& colorFiles,
                                       const QString& sourceSpecFilePath,
                                       SpecFile& outputSpecFile);
+                                      
+      /// get a string containing names of surfaces loaded.
+      static QString getLoadedSurfaces(BrainSet* bs);
 };
 
 #endif // __BRAIN_MODEL_SURFACE_DEFORM_DATA_FILE_H__

@@ -247,7 +247,8 @@ GuiMetricModificationDialog::slotApplyButton()
                   gaussSmoothNormAboveDoubleSpinBox->value(),
                   gaussSmoothSigmaNormDoubleSpinBox->value(),
                   gaussSmoothSigmaTangDoubleSpinBox->value(),
-                  gaussSmoothTangentDoubleSpinBox->value()); 
+                  gaussSmoothTangentDoubleSpinBox->value(),
+                  geodesicGaussianSigmaDoubleSpinBox->value());
             try {
                //QTime timer;
                //timer.start();
@@ -280,7 +281,8 @@ GuiMetricModificationDialog::slotApplyButton()
                gaussSmoothNormAboveDoubleSpinBox->value(),
                gaussSmoothSigmaNormDoubleSpinBox->value(),
                gaussSmoothSigmaTangDoubleSpinBox->value(),
-               gaussSmoothTangentDoubleSpinBox->value()); 
+               gaussSmoothTangentDoubleSpinBox->value(),
+               geodesicGaussianSigmaDoubleSpinBox->value());
          try {
             
             QTime timer;
@@ -302,6 +304,8 @@ GuiMetricModificationDialog::slotApplyButton()
                                              bmsms.getFullWidthHalfMaximumSmoothingResultsDescription());
                   break;
                case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+                  break;
+               case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
                   break;
                case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
                   break;
@@ -666,6 +670,7 @@ GuiMetricModificationDialog::slotSmoothingAlgorithmComboBox(int item)
 {
    bool enableFwhmParams = false;
    bool enableGaussParams = false;
+   bool enableGeodesicGaussParams = false;
    bool enableStrengthParams = true;
    
    switch (static_cast<BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM>(item)) {
@@ -681,6 +686,10 @@ GuiMetricModificationDialog::slotSmoothingAlgorithmComboBox(int item)
       case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
          enableGaussParams = true;
          break;
+      case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
+          enableGeodesicGaussParams = true;
+          enableStrengthParams = false;
+          break;
       case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
          break;
       case BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_NONE:
@@ -689,6 +698,7 @@ GuiMetricModificationDialog::slotSmoothingAlgorithmComboBox(int item)
 
    fullWidthHalfMaximumGroupBox->setEnabled(enableFwhmParams);
    gaussSmoothParametersGroupBox->setEnabled(enableGaussParams);
+   geodesicGaussianParametersGroupBox->setEnabled(enableGeodesicGaussParams);
    gaussSurfaceGroupBox->setEnabled(enableGaussParams);
    strengthWidgetGroup->setEnabled(enableStrengthParams);
 }
@@ -740,6 +750,8 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
                                           "Full Width Half Maximum");
    smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN,
                                           "Gaussian");
+   smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN,
+                                          "Geodesic Gaussian");
    smoothingAlgorithmComboBox->insertItem(BrainModelSurfaceMetricSmoothing::SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS,
                                           "Weighted Average Neighbors");
    QObject::connect(smoothingAlgorithmComboBox, SIGNAL(activated(int)),
@@ -891,6 +903,18 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
    fullWidthHalfMaximumGroupBox->setFixedSize(fullWidthHalfMaximumGroupBox->sizeHint());
    
    //
+   // Geodesic Gaussian
+   //
+   QLabel* geodesicGaussSigmaLabel = new QLabel("Sigma");
+   geodesicGaussianSigmaDoubleSpinBox = new QDoubleSpinBox;
+   geodesicGaussianSigmaDoubleSpinBox->setValue(2.0);
+   geodesicGaussianParametersGroupBox = new QGroupBox("Geodesic Gaussian Parameters");
+   QGridLayout* geodesicGaussianGroupLayout = new QGridLayout(geodesicGaussianParametersGroupBox);
+   geodesicGaussianGroupLayout->addWidget(geodesicGaussSigmaLabel, 0, 0);
+   geodesicGaussianGroupLayout->addWidget(geodesicGaussianSigmaDoubleSpinBox, 0, 1);
+   geodesicGaussianParametersGroupBox->setFixedSize(geodesicGaussianParametersGroupBox->sizeHint());
+
+   //
    // Enable/disable gaussian parameters
    //
    slotSmoothingAlgorithmComboBox(smoothingAlgorithmComboBox->currentIndex());
@@ -901,6 +925,7 @@ GuiMetricModificationDialog::createSmoothingPartOfDialog()
    QVBoxLayout* leftColumnLayout = new QVBoxLayout;
    leftColumnLayout->addWidget(smoothingGroupBox);
    leftColumnLayout->addWidget(fullWidthHalfMaximumGroupBox);
+   leftColumnLayout->addWidget(geodesicGaussianParametersGroupBox);
    QVBoxLayout* rightColumnLayout = new QVBoxLayout;
    rightColumnLayout->addWidget(gaussSmoothParametersGroupBox);
    QHBoxLayout* smoothParamsLayout = new QHBoxLayout;

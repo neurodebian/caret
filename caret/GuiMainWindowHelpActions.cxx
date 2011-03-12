@@ -155,8 +155,8 @@ GuiMainWindowHelpActions::helpMenuCaretHelp()
 void
 GuiMainWindowHelpActions::helpMenuCaretHelpAssistant()
 {
-   assistantWindow = new GuiHelpAssistantWindow("/usr/local/caret_libraries/qt-software/qt/bin/");
-   assistantWindow->showPage("");
+   //assistantWindow = new GuiHelpAssistantWindow("/usr/local/caret_libraries/qt-software/qt/bin/");
+   //assistantWindow->showPage("");
 }
 
 /**

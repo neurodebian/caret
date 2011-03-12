@@ -197,12 +197,22 @@ MetricFile::append(const GiftiDataArrayFile& naf,
       return;
    }
 
+   //
+   // indexDestination will be incorrect if the metric file had
+   // a column that was multi-dimensional and was split up into
+   // new single dimension data arrays.  New -1 for new arrays
+   // meaning create a new column.
+   //
+   while (static_cast<int>(indexDestination.size()) < numAppendArrays) {
+       indexDestination.push_back(-1);
+   }
+
    GiftiNodeDataFile::append(naf, indexDestination, fcm);
    columnMappingInfo.resize(getNumberOfDataArrays());
 
    //
    // Note: indexDestination is modified by GiftiDataArrayFile so that it always
-   // contains the desination colummn indices
+   // contains the destination column indices
    //
    for (int i = 0; i < numAppendArrays; i++) {
       const int arrayIndex = indexDestination[i];
@@ -1316,6 +1326,9 @@ MetricFile::readMetricNodeData(QTextStream& stream, QDataStream& binStream) thro
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;
@@ -2427,6 +2440,7 @@ MetricFile::readFileVersion_2(QFile& file,
    
 #ifdef QT4_FILE_POS_BUG
    if (getFileReadType() == FILE_FORMAT_BINARY) {
+   
       qint64 offset = findBinaryDataOffsetQT4Bug(file, "tag-BEGIN-DATA");
       if (offset > 0) {
          offset++;  
@@ -2434,10 +2448,22 @@ MetricFile::readFileVersion_2(QFile& file,
       }
    }
 #else
-   file.seek(stream.pos());
+   file.reset();
+   file.seek(0);
+   qint64 offset = findBinaryDataOffsetQT4Bug(file, "tag-BEGIN-DATA");
+   offset++;  
 #endif // QT4_FILE_POS_BUG
    
-   readMetricNodeData(stream, binStream);
+   file.reset();
+   file.seek(0);
+   stream.reset();
+   stream.seek(0);
+   QDataStream binStream2(&file);
+   binStream2.setVersion(QDataStream::Qt_4_3);
+   binStream2.skipRawData(offset);
+   readMetricNodeData(stream, binStream2);
+   
+//   readMetricNodeData(stream, binStream);
 }
 
 /**
@@ -2483,6 +2509,80 @@ MetricFile::readLegacyNodeFileData(QFile& file, QTextStream& stream,
          readFileVersion_0(file, stream, binStream);
          break;
    }
+}
+
+/**
+ * Allows files to do processing after a file is read.
+ */
+void
+MetricFile::postFileReadingProcessing() throw (FileException)
+{
+    std::vector<GiftiDataArray*> newArrays;
+    std::vector<int> arrayIndicesToRemove;
+
+    const long numDataArrays = this->getNumberOfDataArrays();
+    for (long i = 0; i < numDataArrays; i++) {
+        GiftiDataArray* gda = this->getDataArray(i);
+        std::vector<int> dims = gda->getDimensions();
+        if (dims.size() > 2) {
+            throw FileException("data dimensions must be 2 or less");
+        }
+        else if (dims.size() == 2) {
+            if (dims[1] > 1) {
+
+                //
+                // Split the two dimensional array into single dim arrays
+                //
+                GiftiDataArray* twoDimArray = this->getDataArray(i);
+                long numNewArrays = dims[1];
+                long numNodes = dims[0];
+                float* twoDimData = twoDimArray->getDataPointerFloat();
+
+                //
+                // Dimensions for the new arrays
+                //
+                std::vector<int> newDim;
+                newDim.push_back(numNodes);
+                newDim.push_back(1);
+                for (long j = 0; j < numNewArrays; j++) {
+                    //
+                    // Create the new data arrays and fill them with the data
+                    //
+                    GiftiDataArray* gda = new GiftiDataArray(this,
+                                                       twoDimArray->getIntent(),
+                                                       twoDimArray->getDataType(),
+                                                       newDim,
+                                                       GiftiDataArray::ENCODING_INTERNAL_COMPRESSED_BASE64_BINARY);
+                    float* data = gda->getDataPointerFloat();
+                    long twoDimDataOffset = numNodes * j;
+                    for (long m = 0; m < numNodes; m++) {
+                        data[m] = twoDimData[twoDimDataOffset + m];
+                    }
+
+                    newArrays.push_back(gda);
+                }
+
+                arrayIndicesToRemove.push_back(i);
+            }
+        }
+    }
+
+    //
+    // Remove arrays that were split up.
+    //
+    for (long i = static_cast<int>(arrayIndicesToRemove.size() - 1); i >= 0; i--) {
+        int arrayIndex = arrayIndicesToRemove[i];
+        this->removeDataArray(arrayIndex);
+    }
+
+    //
+    // Add the new single dim arrays
+    //
+    for (unsigned long i = 0; i < newArrays.size(); i++) {
+        this->addDataArray(newArrays[i]);
+        int lastCol = this->getNumberOfColumns() - 1;
+        this->setColumnName(lastCol, "#" + QString::number(lastCol));
+    }
 }
 
 /**
@@ -2569,6 +2669,9 @@ MetricFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStream)
          case FILE_FORMAT_XML_GZIP_BASE64:
             throw FileException(filename, "XML GZip Base64 not supported.");
             break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
          case FILE_FORMAT_OTHER:
             throw FileException(filename, "Writing in Other format not supported.");
             break;
@@ -2806,7 +2909,7 @@ MetricFile::computeTValues(const float constant,
    mf->setFileComment("T-Value from " + getFileName());
    
    
-   const float squareRootN = std::sqrt(numCols);
+   const float squareRootN = std::sqrt((float)numCols);
    
    //
    // Compute mean and deviation for each node
@@ -3058,9 +3161,9 @@ MetricFile::computeStatisticalLeveneMap(const std::vector<MetricFile*>& inputFil
    //
    // Perform levene's test on each node
    //
+   StatisticDataGroup **dataGroups= new StatisticDataGroup *[numFiles];
    for (int i = 0; i < numNodes; i++) {
       StatisticLeveneVarianceEquality levene;
-      StatisticDataGroup* dataGroups[numFiles];
       for (int j = 0; j < numFiles; j++) {
          const MetricFile* mf = inputFiles[j];
          std::vector<float>* metricData = new std::vector<float>;
@@ -3085,6 +3188,7 @@ MetricFile::computeStatisticalLeveneMap(const std::vector<MetricFile*>& inputFil
          throw FileException(e);
       }
    }
+   delete dataGroups;
    
    //
    // Set the min/max values for the columns

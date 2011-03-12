@@ -82,10 +82,13 @@ CommandSurfaceSmoothing::getHelpInformation() const
        + indent9 + "   <smoothing-strength>\n"
        + indent9 + "   <smoothing-iterations>\n"
        + indent9 + "   <smoothing-edge-iterations>\n"
+       + indent9 + "   [-linear]\n"
        + indent9 + "   [-project-to-sphere   every-x-iterations]\n"
        + indent9 + "   [-roi-file  roi-file-name]\n"
        + indent9 + "\n"
        + indent9 + "Smooth a surface.\n"
+       + indent9 + "\n"
+       + indent9 + "Use \"-linear\" for a linear smoothing algorithm.\n"
        + indent9 + "\n"
        + indent9 + "Use \"-project-to-sphere\" to project the surface to a\n"
        + indent9 + "sphere \"every-x-iterations\".\n"
@@ -150,6 +153,7 @@ CommandSurfaceSmoothing::executeCommand() throw (BrainModelAlgorithmException,
    roi.selectAllNodes(bms);
    
    int projectToSphereIterations = -1;
+   bool linearFlag = false;
    
    //
    // Process the parameters for node selection
@@ -161,7 +165,10 @@ CommandSurfaceSmoothing::executeCommand() throw (BrainModelAlgorithmException,
       const QString parameterName =
          parameters->getNextParameterAsString("SURFACE SMOOTHING option");
          
-      if (parameterName == "-project-to-sphere") {
+      if (parameterName == "-linear") {
+         linearFlag = true;
+      }
+      else if (parameterName == "-project-to-sphere") {
          projectToSphereIterations = 
             parameters->getNextParameterAsInt("SURFACE SMOOTHING Project to Sphere Every X Iterations");
       }
@@ -171,6 +178,11 @@ CommandSurfaceSmoothing::executeCommand() throw (BrainModelAlgorithmException,
          NodeRegionOfInterestFile roiFile;
          roiFile.readFile(roiFileName);
          roi.getRegionOfInterestFromFile(roiFile);
+      }
+      else if (parameterName == "-num-threads") {
+          int numThreads = parameters->getNextParameterAsInt("Number of threads");
+          PreferencesFile* pf = BrainSet::getPreferencesFile();
+          pf->setMaximumNumberOfThreads(numThreads);
       }
       else {
          throw CommandException("Unrecognized operation = \""
@@ -190,11 +202,20 @@ CommandSurfaceSmoothing::executeCommand() throw (BrainModelAlgorithmException,
    //
    // Smooth the surface
    //
-   bms->arealSmoothing(smoothingStrength,
+   if (linearFlag) {
+       bms->linearSmoothing(smoothingStrength,
+                            smoothingIterations,
+                            smoothingEdgeIterations,
+                            &nodesToBeSmoothed,
+                            projectToSphereIterations);
+   }
+   else {
+       bms->arealSmoothing(smoothingStrength,
                        smoothingIterations,
                        smoothingEdgeIterations,
                        &nodesToBeSmoothed,
                        projectToSphereIterations);
+   }
 
    //
    // Write the coordinate file

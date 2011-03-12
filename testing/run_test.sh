@@ -24,4 +24,4 @@ caret_command -show-scene \
 caret_command -image-compare \
    image1-test.jpg \
    image1-correct.jpg \
-   -tol 3
+   -tol 10

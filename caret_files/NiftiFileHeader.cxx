@@ -1660,9 +1660,10 @@ NiftiFileHeader::hdrIsNiftiFile(const QString& hdrFileName)
       //
       // read bytes 348
       //
-      int numBytesToRead = 348;
+      const int numBytesToRead = 348;
       char bytes[numBytesToRead];
       QDataStream stream(&file);
+	  stream.setVersion(QDataStream::Qt_4_3);
       const bool errorFlag = (stream.readRawData(bytes, numBytesToRead) != numBytesToRead);
       file.close();
       if (errorFlag) {

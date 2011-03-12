@@ -31,6 +31,7 @@
 #include "FreeSurferSurfaceFile.h"
 #include "GiftiDataArrayFile.h"
 #include "MniObjSurfaceFile.h"
+#include <QMutex>
 
 class PaintFile;
 class NodeRegionOfInterestFile;
@@ -248,6 +249,8 @@ class TopologyFile : public GiftiDataArrayFile {
       
       /// node section number
       std::vector<int> nodeSections;
+      
+      mutable QMutex gettingTopoHelper;
       
       //
       // NOTE: IF ANY NEW VARIABLES ARE ADDED BE SURE TO UPDATE THE COPY CONSTRUCTOR

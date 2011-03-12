@@ -26,11 +26,17 @@
 
 #include <iostream>
 
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QTextStream>
+#include <QXmlDefaultHandler>
 
+#include "DebugControl.h"
 #include "GiftiCommon.h"
 #include "GiftiDataArrayFile.h"
 #include "GiftiDataArrayFileStreamReader.h"
+#include "GiftiDataArrayReadListener.h"
 #include "GiftiLabelTable.h"
 #include "GiftiMatrix.h"
 #include "GiftiMetaData.h"
@@ -44,7 +50,38 @@ GiftiDataArrayFileStreamReader::GiftiDataArrayFileStreamReader(QFile* file,
    : QXmlStreamReader(file)
 {
    giftiFile = giftiFileIn;
+   this->numberOfDataArraysInFile = 0;
+   this->dataArrayReadIndex = 0;
+   this->giftiDataArrayReadListener = NULL;
 }
+
+/// For incrementally reading arrays
+/// the listener is called with each array as it is read and
+/// it is the responsibility of the listener to delete the array.
+void
+GiftiDataArrayFileStreamReader::readFileAndReportDataArraysAsTheyAreRead(
+      const QString& filename,
+      GiftiDataArrayReadListener* giftiDataArrayReadListenerIn) throw (FileException)
+{
+   QFile file(filename);
+   if (file.open(QIODevice::ReadOnly)) {
+      try {
+         GiftiDataArrayFile gdaf;
+         GiftiDataArrayFileStreamReader streamReader(&file, &gdaf);
+         streamReader.giftiDataArrayReadListener = giftiDataArrayReadListenerIn;
+         streamReader.readData();
+         file.close();
+      }
+      catch (FileException e) {
+         file.close();
+         throw FileException(e);
+      }
+   }
+   else {
+      throw FileException(filename, file.errorString());
+   }
+}
+
 
 /**
  * destructor.
@@ -86,7 +123,16 @@ GiftiDataArrayFileStreamReader::readData() throw (FileException)
                raiseError("GIFTI file version unknown.");
             }
             const float version = versionString.toFloat();
-            
+
+            /*
+             * Number of Data Arrays.
+             */
+            const QString numberOfDataArraysString = attributes().value(GiftiCommon::attNumberOfDataArrays).toString();
+            if (numberOfDataArraysString.isEmpty()) {
+               raiseError("GIFTI file number of data arrays is missing.");
+            }
+            this->numberOfDataArraysInFile = numberOfDataArraysString.toInt();
+
             if (version == 1.0) {
                readGiftiVersion1();
             }
@@ -102,6 +148,10 @@ GiftiDataArrayFileStreamReader::readData() throw (FileException)
                        + GiftiCommon::tagGIFTI
                        + ".");
          }
+      }
+
+      if (error()) {
+         break;
       }
    }
    
@@ -316,7 +366,7 @@ GiftiDataArrayFileStreamReader::readDataArray()
    const QString dimensionalityName = attributes().value(GiftiCommon::attDimensionality).toString();
    const QString encodingName = attributes().value(GiftiCommon::attEncoding).toString();
    const QString endianName = attributes().value(GiftiCommon::attEndian).toString();
-   const QString externalFileName = attributes().value(GiftiCommon::attExternalFileName).toString();
+   QString externalFileName = attributes().value(GiftiCommon::attExternalFileName).toString();
    const QString externalFileOffsetString = attributes().value(GiftiCommon::attExternalFileOffset).toString();
 
    //
@@ -361,15 +411,39 @@ GiftiDataArrayFileStreamReader::readDataArray()
    //
    // External File Offset
    //
-   int externalFileOffsetForReadingData = 0;
+   long externalFileOffsetForReadingData = 0;
    if (externalFileOffsetString.isEmpty() == false) {
       bool validOffsetFlag = false;
-      externalFileOffsetForReadingData = externalFileOffsetString.toInt(&validOffsetFlag);
+      externalFileOffsetForReadingData = externalFileOffsetString.toLong(&validOffsetFlag);
       if (validOffsetFlag == false) {
-         raiseError("File Offset is not an integer ("
+         raiseError("File Offset is not a long integer ("
                              + externalFileOffsetString
                              + ")");
          return;
+      }
+   }
+   
+   //
+   // Determine full path to external file name
+   //
+   if (externalFileName.isEmpty() == false) {
+      if (QFileInfo(externalFileName).isAbsolute() == false) {
+          //
+          // If exernal file name path is not absolute, 
+          // use path from the gifti data file that refers
+          // to the external binary file.
+          //
+          QFileInfo fileInfo(this->giftiFile->getFileName());
+          QString fullPathName = 
+              fileInfo.absolutePath()
+              + QDir::separator()
+              + externalFileName;
+          if (DebugControl::getDebugOn()) {
+             std::cout << "External Name: " << externalFileName.toAscii().constData() << std::endl;
+             std::cout << "External Full Path: " << fullPathName.toAscii().constData() << std::endl;
+             std::cout << std::endl;
+          }
+          externalFileName = fullPathName;
       }
    }
    
@@ -400,7 +474,7 @@ GiftiDataArrayFileStreamReader::readDataArray()
       const QString dimNumString = attributes().value(GiftiCommon::getAttDim(i)).toString();
       if (dimNumString.isEmpty()) {
          raiseError("Required dimension "
-                        + GiftiCommon::GiftiCommon::getAttDim(i)
+                        + GiftiCommon::getAttDim(i)
                         + " not found for DataArray"); 
          return;
       }
@@ -457,20 +531,33 @@ GiftiDataArrayFileStreamReader::readDataArray()
                      // Read the data
                      //
                      dataWasReadFlag = true;
-                     QString text = "";
-                     dataArray->readFromText(text,
-                                             endianName,
-                                             arraySubscriptingOrderForReadingArrayData,
-                                             dataTypeForReadingArrayData,
-                                             dimensionsForReadingArrayData,
-                                             encodingForReadingArrayData,
-                                             externalFileName,
-                                             externalFileOffsetForReadingData);
+                     if (this->giftiFile->getReadMetaDataOnlyFlag() == false) {
+                         QString text = "";
+                         dataArray->readFromText(text,
+                                                 endianName,
+                                                 arraySubscriptingOrderForReadingArrayData,
+                                                 dataTypeForReadingArrayData,
+                                                 dimensionsForReadingArrayData,
+                                                 encodingForReadingArrayData,
+                                                 externalFileName,
+                                                 externalFileOffsetForReadingData);
+                     }
 
                      //
                      // Add GIFTI array to GIFTI file
                      //
-                     giftiFile->addDataArray(dataArray);
+                     if (this->giftiDataArrayReadListener != NULL) {
+                        const QString errorMessage =
+                           this->giftiDataArrayReadListener->dataArrayWasRead(
+                              dataArray, this->dataArrayReadIndex, this->numberOfDataArraysInFile);
+                        if (errorMessage.isEmpty() == false) {
+                           raiseError(errorMessage);
+                        }
+                        this->dataArrayReadIndex++;
+                     }
+                     else {
+                        giftiFile->addDataArray(dataArray);
+                     }
                   }
                   catch (FileException& e) {
                      delete dataArray;
@@ -495,24 +582,37 @@ GiftiDataArrayFileStreamReader::readDataArray()
          }
          else if (elemName == GiftiCommon::tagData) {
             try {
-               //
-               // Read the data
-               //
-               dataWasReadFlag = true;
-               QString text = readElementText();
-               dataArray->readFromText(text,
-                                       endianName,
-                                       arraySubscriptingOrderForReadingArrayData,
-                                       dataTypeForReadingArrayData,
-                                       dimensionsForReadingArrayData,
-                                       encodingForReadingArrayData,
-                                       externalFileName,
-                                       externalFileOffsetForReadingData);
+                dataWasReadFlag = true;
+                if (this->giftiFile->getReadMetaDataOnlyFlag() == false) {
+                   //
+                   // Read the data
+                   //
+                   QString text = readElementText();
+                   dataArray->readFromText(text,
+                                           endianName,
+                                           arraySubscriptingOrderForReadingArrayData,
+                                           dataTypeForReadingArrayData,
+                                           dimensionsForReadingArrayData,
+                                           encodingForReadingArrayData,
+                                           externalFileName,
+                                           externalFileOffsetForReadingData);
+                }
                
-               //
-               // Add GIFTI array to GIFTI file
-               //
-               giftiFile->addDataArray(dataArray);
+                //
+                // Add GIFTI array to GIFTI file
+                //
+                if (this->giftiDataArrayReadListener != NULL) {
+                   const QString errorMessage =
+                      this->giftiDataArrayReadListener->dataArrayWasRead(
+                         dataArray, this->dataArrayReadIndex, this->numberOfDataArraysInFile);
+                   if (errorMessage.isEmpty() == false) {
+                      raiseError(errorMessage);
+                   }
+                   this->dataArrayReadIndex++;
+                }
+                else {
+                   giftiFile->addDataArray(dataArray);
+                }
             }
             catch (FileException& e) {
                delete dataArray;

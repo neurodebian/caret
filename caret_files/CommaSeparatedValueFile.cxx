@@ -107,6 +107,7 @@ CommaSeparatedValueFile::readFromTextStream(QFile& file,
                                              QTextStream& stream) throw (FileException)
 {  
    QDataStream dummyDataStream(&file);
+   dummyDataStream.setVersion(QDataStream::Qt_4_3);
    QDomElement dummyDomElement;
    readFileData(file, stream, dummyDataStream, dummyDomElement);
 }
@@ -118,6 +119,7 @@ void
 CommaSeparatedValueFile::writeToTextStream(QTextStream& stream) throw (FileException)
 {
    QDataStream dummyDataStream;
+   dummyDataStream.setVersion(QDataStream::Qt_4_3);
    QDomDocument dummyDomDocument;
    QDomElement dummyDomElement;
    

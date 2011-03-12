@@ -225,9 +225,9 @@ BrainModelSurfaceMetricFullWidthHalfMaximum::execute() throw (BrainModelAlgorith
    // Exactly as in equation in paper
    //
    if (varS != 0.0) {
-      const double denom = std::log(1.0 - (varDS / (2.0 * varS)));
+      const double denom = std::log((double)(1.0 - (varDS / (2.0 * varS))));
       if (denom != 0.0) {
-         const double val = (-2.0 * std::log(2)) / denom;
+         const double val = (-2.0 * std::log(2.0)) / denom;
          if (val >= 0.0) {
             fullWidthHalfMaximum = dv * std::sqrt(val);
             //std::cout << "Paper Equation: " << XXXfullWidthHalfMaximum

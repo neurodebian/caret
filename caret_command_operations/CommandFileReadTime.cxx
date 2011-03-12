@@ -196,6 +196,15 @@ CommandFileReadTime::executeCommand() throw (BrainModelAlgorithmException,
       FreeSurferSurfaceFile fs;
       readFileForTiming(&fs, fileName, timeInSeconds, fileSizeInMB);
    }
+   else if (fileName.endsWith("fsbin")) {
+      FreeSurferSurfaceFile fs;
+      fs.setFileReadType(AbstractFile::FILE_FORMAT_BINARY);
+      readFileForTiming(&fs, fileName, timeInSeconds, fileSizeInMB);
+   }
+   else if (fileName.endsWith(".func.gii")) {
+      MetricFile mf;
+      readFileForTiming(&mf, fileName, timeInSeconds, fileSizeInMB);
+   }
    else if (fileName.endsWith(SpecFile::getGiftiGenericFileExtension())) {
       GiftiDataArrayFile gifti;
       readFileForTiming(&gifti, fileName, timeInSeconds, fileSizeInMB);

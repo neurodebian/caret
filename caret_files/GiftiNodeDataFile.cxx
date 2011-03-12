@@ -127,18 +127,11 @@ GiftiNodeDataFile::setColumnName(const int col, const QString& name)
  */
 int 
 GiftiNodeDataFile::getColumnFromNameOrNumber(const QString& columnNameOrNumber,
-                                             const bool addColumnIfNotFoundAndNotNumber) throw (FileException)
+                                             const bool addColumnIfNotFound) throw (FileException)
 {
    //
-   // Try name first
+   // Try number first
    //
-   const int numCols = getNumberOfColumns();
-   for (int i = 0; i < numCols; i++) {
-      const QString name = getColumnName(i);
-      if (name == columnNameOrNumber) {
-         return i;
-      }
-   }
    
    //
    // To see if it is a number, simply convert to int and check for success
@@ -151,27 +144,52 @@ GiftiNodeDataFile::getColumnFromNameOrNumber(const QString& columnNameOrNumber,
          return (columnNumber - 1);
       }
       else {
-         throw FileException("ERROR Invalid column name/number " 
-                             + QString::number(columnNumber)
-                             + " in file "
-                             + FileUtilities::basename(getFileName()));
+         if (addColumnIfNotFound && columnNumber - getNumberOfColumns() < 2)
+         {//only add column if integer specifies exactly one column further
+            if (getNumberOfNodes() > 0)
+            {
+               addColumns(1);
+               const int col = getNumberOfColumns() - 1;
+               setColumnName(col, "new column");
+               return col;
+            } else {
+               setNumberOfNodesAndColumns(1, 1);//will not accept 0 for either argument
+               setColumnName(0, "new column");
+               return 0;
+            }
+         }//if add flag is false, it tries to find it as a column name
       }
    }
    
    //
+   // Try Name
+   //
+   const int numCols = getNumberOfColumns();
+   for (int i = 0; i < numCols; i++) {
+      const QString name = getColumnName(i);
+      if (name == columnNameOrNumber) {
+         return i;
+      }
+   }
+      
+   //
    // Add column if there are nodes
    //
-   if (addColumnIfNotFoundAndNotNumber) {
+   if (addColumnIfNotFound) {
       if (getNumberOfNodes() > 0) {
          addColumns(1);
          const int col = getNumberOfColumns() - 1;
          setColumnName(col, columnNameOrNumber);
          return col;
+      } else {
+         setNumberOfNodesAndColumns(1, 1);//will not accept 0 for either argument
+         setColumnName(0, columnNameOrNumber);
+         return 0;
       }
    }
    
    //
-   // faild to find 
+   // failed to find 
    //
    throw FileException("ERROR column name/number " 
                           + columnNameOrNumber
@@ -821,6 +839,8 @@ GiftiNodeDataFile::readLegacyFileData(QFile& file,
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         break;      
       case FILE_FORMAT_OTHER:
          break;
       case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:
@@ -858,6 +878,8 @@ GiftiNodeDataFile::writeLegacyFileData(QTextStream& stream,
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         break;      
       case FILE_FORMAT_OTHER:
          break;
       case FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE:

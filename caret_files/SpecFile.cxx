@@ -919,7 +919,7 @@ SpecFile::getAllDataFilesInSpecFile(std::vector<QString>& allFiles,
       for (unsigned int j = 0; j < allEntries[i]->files.size(); j++) {
          allFiles.push_back(allEntries[i]->files[j].filename);
          if (includeVolumeDataFiles) {
-            if (allEntries[i]->fileType == Entry::Entry::FILE_TYPE_VOLUME) {
+            if (allEntries[i]->fileType == Entry::FILE_TYPE_VOLUME) {
                allFiles.push_back(allEntries[i]->files[j].dataFileName);
             }
          }
@@ -1679,6 +1679,9 @@ SpecFile::readFileData(QFile& /*file*/, QTextStream& stream, QDataStream&,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Reading XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Reading in Other format not supported.");
          break;
@@ -1724,6 +1727,7 @@ SpecFile::readTagsFromXML(QDomElement& topElement)  throw (FileException)
    QFile file;
    QTextStream textStream;
    QDataStream dataStream;
+   dataStream.setVersion(QDataStream::Qt_4_3);
    readFileData(file, textStream, dataStream, topElement);
   
    setFileReadType(savedReadType);
@@ -1758,6 +1762,9 @@ SpecFile::writeFileData(QTextStream& stream, QDataStream&,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;
@@ -1791,6 +1798,7 @@ SpecFile::writeTagsToXML(QDomDocument& xmlDoc,
   
    QTextStream textStream;
    QDataStream dataStream;
+   dataStream.setVersion(QDataStream::Qt_4_3);
    writeFileData(textStream, dataStream, xmlDoc, topElement);
   
    setFileWriteType(savedWriteType);
@@ -1938,6 +1946,9 @@ SpecFile::writeFiles(QTextStream& stream,
                case FILE_FORMAT_XML_GZIP_BASE64:
                   throw FileException(filename, "XML GZip Base64 not supported.");
                   break;
+               case FILE_FORMAT_XML_EXTERNAL_BINARY:
+                  throw FileException(filename, "Writing XML External Binary not supported.");
+                  break;      
                case FILE_FORMAT_OTHER:
                   throw FileException(filename, "Writing in Other format not supported.");
                   break;
@@ -2007,6 +2018,9 @@ SpecFile::writeFiles(QTextStream& stream,
                case FILE_FORMAT_XML_GZIP_BASE64:
                   throw FileException(filename, "XML GZip Base64 not supported.");
                   break;
+               case FILE_FORMAT_XML_EXTERNAL_BINARY:
+                  throw FileException(filename, "Writing XML External Binary not supported.");
+                  break;      
                case FILE_FORMAT_OTHER:
                   throw FileException(filename, "Writing in Other format not supported.");
                   break;
@@ -2063,6 +2077,9 @@ SpecFile::writeFiles(QTextStream& stream,
                case FILE_FORMAT_XML_GZIP_BASE64:
                   throw FileException(filename, "XML GZip Base64 not supported.");
                   break;
+               case FILE_FORMAT_XML_EXTERNAL_BINARY:
+                  throw FileException(filename, "Writing XML External Binary not supported.");
+                  break;      
                case FILE_FORMAT_OTHER:
                   throw FileException(filename, "Writing in Other format not supported.");
                   break;
@@ -2117,6 +2134,9 @@ SpecFile::writeFiles(QTextStream& stream,
             case FILE_FORMAT_XML_GZIP_BASE64:
                throw FileException(filename, "XML GZip Base64 not supported.");
                break;
+            case FILE_FORMAT_XML_EXTERNAL_BINARY:
+               throw FileException(filename, "Writing XML External Binary not supported.");
+               break;      
             case FILE_FORMAT_OTHER:
                throw FileException(filename, "Writing in Other format not supported.");
                break;
@@ -2983,6 +3003,9 @@ SpecFile::Entry::writeFiles(QTextStream& stream,
             case FILE_FORMAT_XML_GZIP_BASE64:
                throw FileException("", "Writing new spec in XML GZIP Base64 format not supported");
                break;
+            case FILE_FORMAT_XML_EXTERNAL_BINARY:
+               throw FileException("", "Writing XML External Binary not supported.");
+               break;      
             case FILE_FORMAT_OTHER:
                throw FileException("", "Writing new spec in OTHER format not supported");
                break;

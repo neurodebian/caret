@@ -195,6 +195,9 @@ FreeSurferFunctionalFile::readFileData(QFile& /*file*/,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "\"XML-Base64 GZIP Encoding\" file format not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "\"XML-External Binary Encoding\" file format not supported.");
+         break;
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "\"Other\" file format not supported.");
          break;

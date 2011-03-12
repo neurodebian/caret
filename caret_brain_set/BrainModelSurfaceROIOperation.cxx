@@ -216,9 +216,12 @@ BrainModelSurfaceROIOperation::createReportHeader(float& roiAreaOut)
    reportText.append(sl.join(""));
    reportText.append("\n");
    
+   float meanDistance, minDist, maxDist;
+   bms->getMeanDistanceBetweenNodes(operationSurfaceROI, meanDistance, minDist, maxDist);
    sl.clear();
    sl << "Region Mean Distance Between Nodes: "
-       << QString::number(bms->getMeanDistanceBetweenNodes(operationSurfaceROI), 'f', 5);
+//       << QString::number(bms->getMeanDistanceBetweenNodes(operationSurfaceROI), 'f', 5);
+   << QString::number(meanDistance, 'f', 5);
    reportText.append(sl.join(""));
    reportText.append("\n");
    reportText.append(" \n");

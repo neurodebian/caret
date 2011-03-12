@@ -509,6 +509,7 @@ class SpecFile : public AbstractFile {
       static QString getCaretScriptFileExtension() { return ".script"; }
       static QString getMniObjeSurfaceFileExtension() { return ".obj"; }
       static QString getZipFileExtension() { return ".zip"; }
+      static QString getMultiResMorphFileExtension() { return ".morph"; }
       
       // IMPORTANT if new extensions added, update the method
       //    addUnknownTypeOfFileToSpecFile()

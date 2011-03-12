@@ -60,6 +60,12 @@ class CommandHelpGlobalOptions : public CommandBase {
       // process the set random seed
       static void processSetRandomSeedCommand(ProgramParameters& params) throw (CommandException);
       
+      // process the file writing format preference
+      static void processFileWritingFormat(ProgramParameters& params) throw (CommandException);
+      
+      // process the METRIC file writing format preference
+      static void processMetricFileWritingFormat(ProgramParameters& params) throw (CommandException);
+      
       // execute the command
       void executeCommand() throw (BrainModelAlgorithmException,
                                    CommandException,

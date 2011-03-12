@@ -633,9 +633,9 @@ ImageFile::compareFileForUnitTesting(const AbstractFile* af,
       for (int j = 0; j < height; j++) {
          QColor im1 = image.pixel(i, j);
          QColor im2 = otherImage->pixel(i, j);
-         if ((std::fabs(im1.red() - im2.red()) > tolerance) ||
-             (std::fabs(im1.green() - im2.green()) > tolerance) ||
-             (std::fabs(im1.blue() - im2.blue()) > tolerance)) {
+         if ((abs(im1.red() - im2.red()) > tolerance) ||
+             (abs(im1.green() - im2.green()) > tolerance) ||
+             (abs(im1.blue() - im2.blue()) > tolerance)) {
             pixelCount++;
          }
       }

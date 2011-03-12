@@ -8,8 +8,9 @@ CONFIG	+= staticlib
 INCLUDEPATH += .
 
 include(../caret_qmake_include.pro)
-   
-TEMPLATE	= lib
+
+!vs:TEMPLATE = lib
+vs:TEMPLATE=vclib
 
 # turn off unicode for displaying windows web browser
 win32 {
@@ -19,6 +20,11 @@ win32 {
 #macx {
 #   INCLUDEPATH += /System/Library/Frameworks//ApplicationServices.framework/Versions/A/Frameworks/SpeechSynthesis.framework/Versions/A/Headers
 #} 
+
+dll {
+	CONFIG -= staticlib
+	CONFIG += plugin
+}
 
 # Input
 HEADERS += Basename.h \
@@ -45,7 +51,9 @@ HEADERS += Basename.h \
 	   StringUtilities.h \
       Structure.h \
 	   SystemUtilities.h \
-      ValueIndexSort.h
+      UbuntuMessage.h \
+      ValueIndexSort.h \
+    CaretVersion.h
 
 SOURCES += Basename.cxx \
       CaretLinkedList.cxx \
@@ -71,4 +79,3 @@ SOURCES += Basename.cxx \
       Structure.cxx \
 	   SystemUtilities.cxx \
       ValueIndexSort.cxx
-

@@ -480,11 +480,7 @@ BrainModelSurfaceROIFoldingMeasurementReport::NodeCurvatureMeasure::setMeasureme
    KplusAreaMeasure =  ((K > 0.0) ? 1.0 : 0.0);
    KminusAreaMeasure = ((K < 0.0) ? 1.0 : 0.0);
    ci = std::sqrt((k1*k1 + k2*k2) / 2.0);
-   si = 0.0;
-   const float denom = k2 - k1;
-   if (denom != 0.0) {
-      si = (2.0 / M_PI) * atan((k2 + k1) / denom);
-   }
+   si = (2.0 / M_PI) * std::atan2((k1 + k2), (k1 - k2));
    fi = std::fabs(k1) * (std::fabs(k1) - std::fabs(k2));
 }
 

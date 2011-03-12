@@ -43,8 +43,8 @@ BrainModelSurfaceDeformationMapCreate::BrainModelSurfaceDeformationMapCreate(
                                       DeformationMapFile* deformationMapFileIn,
                                       const DEFORMATION_SURFACE_TYPE deformationSurfaceTypeIn)
    : BrainModelAlgorithm(bs),
-     sourceSurface(sourceSurfaceIn),
-     targetSurface(targetSurfaceIn)
+     sourceSurfaceIn(sourceSurfaceIn),
+     targetSurfaceIn(targetSurfaceIn)
 {
    deformationMapFile = deformationMapFileIn;
    deformationSurfaceType = deformationSurfaceTypeIn;
@@ -55,6 +55,14 @@ BrainModelSurfaceDeformationMapCreate::BrainModelSurfaceDeformationMapCreate(
  */
 BrainModelSurfaceDeformationMapCreate::~BrainModelSurfaceDeformationMapCreate()
 {
+   if (this->sourceSurface != NULL) {
+      delete this->sourceSurface;
+      this->sourceSurface = NULL;
+   }
+   if (this->targetSurface != NULL) {
+      delete this->targetSurface;
+      this->targetSurface = NULL;
+   }
 }
 
 /**
@@ -66,34 +74,44 @@ BrainModelSurfaceDeformationMapCreate::execute() throw (BrainModelAlgorithmExcep
    //
    // Check inputs
    //
-   if (sourceSurface == NULL) {
+   if (sourceSurfaceIn == NULL) {
       throw BrainModelAlgorithmException("Source surface is invalid.");
    }
-   if (targetSurface == NULL) {
+   if (targetSurfaceIn == NULL) {
       throw BrainModelAlgorithmException("Target surface is invalid.");
    }
    if (deformationMapFile == NULL) {
-      throw BrainModelAlgorithmException("Deformaiont Map is invalid.");
+      throw BrainModelAlgorithmException("Deformation Map is invalid.");
    }
    
-   if (sourceSurface->getNumberOfNodes() <= 0) {
+   if (sourceSurfaceIn->getNumberOfNodes() <= 0) {
       throw BrainModelAlgorithmException("Source surface contains no nodes.");
    }
-   if (targetSurface->getNumberOfNodes() <= 0) {
+   if (targetSurfaceIn->getNumberOfNodes() <= 0) {
       throw BrainModelAlgorithmException("Target surface contains no nodes.");
    }
    
    //
    // Verify there is topology
    //
-   const TopologyFile* sourceTopologyFile = sourceSurface->getTopologyFile();
+   const TopologyFile* sourceTopologyFile = sourceSurfaceIn->getTopologyFile();
    if (sourceTopologyFile == NULL) {
       throw BrainModelAlgorithmException("Source surface contains no topology.");
    }
-   const TopologyFile* targetTopologyFile = targetSurface->getTopologyFile();
+   const TopologyFile* targetTopologyFile = targetSurfaceIn->getTopologyFile();
    if (targetTopologyFile == NULL) {
       throw BrainModelAlgorithmException("Target surface contains no topology.");
    }
+   
+   //
+   // Copy the source and target surfaces so that they can be modified
+   //
+   this->sourceSurface = new BrainModelSurface(*(this->sourceSurfaceIn));
+   this->targetSurface = new BrainModelSurface(*(this->targetSurfaceIn));
+   this->sourceSurface->getCoordinateFile()->setFileName(
+      this->sourceSurfaceIn->getCoordinateFile()->getFileName());
+   this->targetSurface->getCoordinateFile()->setFileName(
+      this->targetSurfaceIn->getCoordinateFile()->getFileName());
    
    //
    // Clear the deformation map
@@ -149,9 +167,14 @@ BrainModelSurfaceDeformationMapCreate::createSphericalDeformationMap()
 {
    //
    // Make sure source surface is same radius as target sphere
+   // and at origin
    //
-   BrainModelSurface sphereSurface(*sourceSurface);
-   sphereSurface.convertToSphereWithRadius(targetSurface->getSphericalSurfaceRadius());
+   //this->sourceSurface->translateToCenterOfMass();
+   //this->targetSurface->translateToCenterOfMass();
+   this->sourceSurface->translateMidpointToOrigin();
+   this->targetSurface->translateMidpointToOrigin();
+   float radius = targetSurface->getSphericalSurfaceRadius();
+   this->sourceSurface->convertToSphereWithRadius(radius);
       
    //
    // Get the coordinate files for the surfaces
@@ -162,7 +185,7 @@ BrainModelSurfaceDeformationMapCreate::createSphericalDeformationMap()
    //
    // Create a Point Projector source surface.
    //
-   BrainModelSurfacePointProjector bspp(&sphereSurface,
+   BrainModelSurfacePointProjector bspp(sourceSurface,
                            BrainModelSurfacePointProjector::SURFACE_TYPE_HINT_SPHERE,
                            false);
    

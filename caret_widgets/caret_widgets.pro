@@ -9,16 +9,16 @@ INCLUDEPATH += . \
 
 include(../caret_qmake_include.pro)
 
-win32 {
+win32:vs {
+    TEMPLATE = vclib
+}
+!vs {
    TEMPLATE	= lib
 }
 
-macx {
-   TEMPLATE	= lib
-}
-
-unix:!macx {
-   TEMPLATE	= lib
+dll {
+	CONFIG -= staticlib
+	CONFIG += plugin
 }
 
 # Input

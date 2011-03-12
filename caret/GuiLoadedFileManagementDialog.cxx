@@ -607,7 +607,7 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    
    fm.setStatusForAll(false);
    fm.setWustlRegionModified();
-   addFileToGrid(theMainWindow->getBrainSet()->getWustlRegionFile(), fm, sf->wustlRegionFile, "",
+   addFileToGrid(theMainWindow->getBrainSet()->getWustlRegionFile(), fm, sf->wustlRegionFile,   "",
                  SpecFile::getWustlRegionFileTag());
    
    //
@@ -649,7 +649,9 @@ GuiLoadedFileManagementDialog::GuiLoadedFileManagementDialog(QWidget* parent)
    QObject::connect(closeButton, SIGNAL(clicked()),
                     this, SLOT(close()));
                     
-   resize(std::max(width(), 800), height());
+   QSize minSize = this->minimumSize();
+   this->setMinimumSize(std::max(minSize.width(), 800), minSize.height());
+   //resize(std::max(width(), 800), stdheight());
 }
 
 /**

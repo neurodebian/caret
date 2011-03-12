@@ -401,6 +401,17 @@ GiftiLabelTable::createLabelsFromColors(const ColorFile& colorFile)
 void 
 GiftiLabelTable::assignColors(const ColorFile& colorFile)
 {
+   //
+   // Use alpha of zero for ???
+   //
+   bool colorExactMatch = false;
+   unsigned char cur, cug, cub, cua;
+   int colorFileUnknownIndex = colorFile.getColorByName("???",
+                                          colorExactMatch,
+                                          cur, cug, cub, cua);
+   
+   
+   
    unsigned char r, g, b, a;
    GiftiLabelTable::getDefaultColor(r, g, b, a);
    bool exactMatch = false;
@@ -410,18 +421,25 @@ GiftiLabelTable::assignColors(const ColorFile& colorFile)
       int indx = colorFile.getColorByName(labelName,
                                           exactMatch,
                                           r, g, b, a);
-      labels[i].setColorFileIndex(indx);
-      labels[i].setColor(r, g, b, a);
+      if (indx >= 0) {
+          labels[i].setColorFileIndex(indx);
+          labels[i].setColor(r, g, b, a);
+      }
+      else if (colorFileUnknownIndex >= 0) {
+          labels[i].setColorFileIndex(-1);
+          labels[i].setColor(cur, cug, cub, 0);
+      }
    }
    
    //
    // Use alpha of zero for ???
+   // index might change
    //
    int unknownIndex = this->addLabel("???");
    if (unknownIndex >= 0) {
-      float r, g, b, a;
-      this->getColorFloat(unknownIndex, r, g, b, a);
-      this->setColorFloat(unknownIndex, r, r, b, 0.0);
+      float ur, ug, ub, ua;
+      this->getColorFloat(unknownIndex, ur, ug, ub, ua);
+      this->setColorFloat(unknownIndex, ur, ug, ub, 0.0);
    }
 }      
 

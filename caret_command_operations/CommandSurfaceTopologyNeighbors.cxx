@@ -57,6 +57,7 @@ CommandSurfaceTopologyNeighbors::getScriptBuilderParameters(ScriptBuilderParamet
    paramsOut.clear();
    paramsOut.addFile("Input Topology File Name", FileFilters::getTopologyGenericFileFilter());
    paramsOut.addFile("Output Text File Name", FileFilters::getTextFileFilter());
+   paramsOut.addVariableListOfParameters("Options");
 }
 
 /**
@@ -70,10 +71,15 @@ CommandSurfaceTopologyNeighbors::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-topology-file-name>\n"
        + indent9 + "<output-text-file-name>\n"
+       + indent9 + "[-neighbor-depth  depth]\n"
        + indent9 + "\n"
        + indent9 + "For each node in the input topology file, generate a list\n"
        + indent9 + "of the node's neighbors.  Each line in the output text file\n"
        + indent9 + "contains the node number followed by the node's neighbors.\n"
+       + indent9 + "\n"
+       + indent9 + "If the \"-neighbor-depth\" parameter is supplied, neighbors\n"
+       + indent9 + "to the desired depth are output.  Otherwise, the depth is 1\n"
+       + indent9 + "(the immediate neighbors).\n"
        + indent9 + "\n");
       
    return helpInfo;
@@ -93,6 +99,20 @@ CommandSurfaceTopologyNeighbors::executeCommand() throw (BrainModelAlgorithmExce
       parameters->getNextParameterAsString("Input Topology File Name");
    const QString outputTextFileName =
       parameters->getNextParameterAsString("Output Text File Name");
+   int depth = 1;
+   while (parameters->getParametersAvailable()) {
+      QString paramName = parameters->getNextParameterAsString("Surface Neighbors Parameter");
+      if (paramName == "-neighbor-depth") {
+         depth = parameters->getNextParameterAsInt("Neighbor Depth");
+         if (depth < 1) {
+            throw CommandException("Depth must be greater than zero.");
+         }
+      }
+      else {
+         throw CommandException("Invalid Parameter: " + paramName);
+      }   
+   }
+   
    //
    // Read input topology file
    //
@@ -110,7 +130,7 @@ CommandSurfaceTopologyNeighbors::executeCommand() throw (BrainModelAlgorithmExce
    for (int i = 0; i < numNodes; i++) {
       QString nodeLine(QString::number(i));
       std::vector<int> neighbors;
-      th->getNodeNeighbors(i, neighbors);
+      th->getNodeNeighborsToDepth(i, depth, neighbors);
       for (unsigned int j = 0; j < neighbors.size(); j++) {
          nodeLine += (blank + QString::number(neighbors[j]));
       }

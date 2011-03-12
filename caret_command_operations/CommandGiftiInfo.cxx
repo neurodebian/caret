@@ -170,7 +170,7 @@ CommandGiftiInfo::executeCommand() throw (BrainModelAlgorithmException,
                             gda->getEndian()).toAscii().constData()
                       << std::endl;
             QString externalFileName;
-            int externalFileOffset = 0;
+            long externalFileOffset = 0;
             gda->getExternalFileInformation(externalFileName, externalFileOffset);
             std::cout << indent3.toAscii().constData()
                       << "External File Name: "

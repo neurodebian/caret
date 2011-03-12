@@ -79,6 +79,8 @@ class AbstractFile {
          FILE_FORMAT_XML_BASE64,
          /// XML GZip Base64 file format
          FILE_FORMAT_XML_GZIP_BASE64,
+         /// XML External Binary format
+         FILE_FORMAT_XML_EXTERNAL_BINARY,
          /// Other file format
          FILE_FORMAT_OTHER,
          /// comma separated value file format
@@ -354,6 +356,18 @@ class AbstractFile {
       static void setPreferredWriteType(const std::vector<FILE_FORMAT> t)
                                              { preferredWriteType = t; }
       
+      /// set the preferred write type for caret commmand 
+      static void setPreferredWriteTypeCaretCommand(const std::vector<FILE_FORMAT> t)
+                                             { preferredWriteTypeCaretCommand = t; }
+      
+      /// set the preferred METRIC write type for caret commmand 
+      static void setPreferredMetricWriteTypeCaretCommand(const FILE_FORMAT t)
+                                             { preferredMetricWriteTypeCaretCommand = t; }
+      
+      /// get the preferred METRIC write type for caret commmand
+      static FILE_FORMAT getPreferredMetricWriteTypeCaretCommand()
+                                             { return preferredMetricWriteTypeCaretCommand; }
+
       /// set the default file name prefix and number of nodes
       static void setDefaultFileNamePrefix(const QString& s,
                                            const int numNodes);
@@ -603,6 +617,9 @@ class AbstractFile {
       /// set file postion for binary files for QT4 bug work around
       void setBinaryFilePosQT4Bug() throw (FileException);
 
+      /// allows files to do processing after a file is read
+      virtual void postFileReadingProcessing() throw (FileException);
+
       /// Name that was passed to read method
       mutable QString filename;
       
@@ -652,6 +669,9 @@ class AbstractFile {
       /// supports xml gzipped base64 format files (do not clear)
       FILE_IO fileSupportXMLGZipBase64;
       
+      /// supports xml external binary format files (do not clear)
+      FILE_IO fileSupportXMLExternalBinary;
+      
       /// supports comma separated value format (do not clear)
       FILE_IO fileSupportCommaSeparatedValueFile;
       
@@ -697,6 +717,12 @@ class AbstractFile {
       /// write to this data type whenever possible
       static std::vector<FILE_FORMAT> preferredWriteType;
       
+      /// write to this data type whenever possible when running caret command
+      static std::vector<FILE_FORMAT> preferredWriteTypeCaretCommand;
+      
+      /// write metric files to this data type when running caret command
+      static FILE_FORMAT preferredMetricWriteTypeCaretCommand;
+      
       /// the number of digits right of the decimal when writing float to text files
       static int textFileDigitsRightOfDecimal;
       
@@ -739,6 +765,7 @@ class AbstractFile {
       static QString getHeaderTagEncodingValueXML() { return "XML"; }
       static QString getHeaderTagEncodingValueXMLBase64() { return "XML_BASE64"; }
       static QString getHeaderTagEncodingValueXMLGZipBase64() { return "XML_BASE64_GZIP"; }
+      static QString getHeaderTagEncodingValueXMLExternalBinary() { return "XML_EXTERNAL_BINARY"; }
       static QString getHeaderTagEncodingValueOther() { return "OTHER"; }
       static QString getHeaderTagEncodingValueCommaSeparatedValueFile() { return "COMMA_SEPARATED_VALUE_FILE"; }
       static const QString headerTagConfigurationID;
@@ -793,6 +820,8 @@ class AbstractFile {
       
    int AbstractFile::textFileDigitsRightOfDecimal = 6;
    std::vector<AbstractFile::FILE_FORMAT> AbstractFile::preferredWriteType; 
+   std::vector<AbstractFile::FILE_FORMAT> AbstractFile::preferredWriteTypeCaretCommand; 
+   AbstractFile::FILE_FORMAT AbstractFile::preferredMetricWriteTypeCaretCommand = AbstractFile::FILE_FORMAT_OTHER;
    bool AbstractFile::appendVersionIdWhenFilesWritten = false;
    QString AbstractFile::defaultFileNamePrefix = "";
    int AbstractFile::defaultFileNameNumberOfNodes = 0;

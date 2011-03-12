@@ -485,6 +485,7 @@ BrainVoyagerFile::readFile(const QString& filenameIn)  throw (FileException)
 
       try {
          QDataStream stream(&file);
+		 stream.setVersion(QDataStream::Qt_4_3);
          
          if (DebugControl::getDebugOn()) {
             switch(stream.byteOrder()) {

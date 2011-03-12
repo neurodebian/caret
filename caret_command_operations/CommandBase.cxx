@@ -71,7 +71,10 @@
 #include "CommandMetricComposite.h"
 #include "CommandMetricCompositeIdentifiedColumns.h"
 #include "CommandMetricCorrelationCoefficientMap.h"
+#include "CommandMetricExtrema.h"
 #include "CommandMetricFileCreate.h"
+#include "CommandMetricGradient.h"
+#include "CommandMetricGradientAll.h"
 #include "CommandMetricInGroupDifference.h"
 #include "CommandMetricInformation.h"
 #include "CommandMetricMath.h"
@@ -83,6 +86,7 @@
 #include "CommandMetricStatisticsAnovaOneWay.h"
 #include "CommandMetricStatisticsAnovaTwoWay.h"
 #include "CommandMetricStatisticsCoordinateDifference.h"
+#include "CommandMetricCorrelationMatrix.h"
 #include "CommandMetricStatisticsInterhemisphericClusters.h"
 #include "CommandMetricStatisticsKruskalWallis.h"
 #include "CommandMetricStatisticsLeveneMap.h"
@@ -95,6 +99,7 @@
 #include "CommandMetricStatisticsTMap.h"
 #include "CommandMetricStatisticsTwoSampleTTest.h"
 #include "CommandMetricStatisticsZMap.h"
+#include "CommandMetricTranspose.h"
 #include "CommandMetricTwinComparison.h"
 #include "CommandMetricTwinPairedDataDiffs.h"
 #include "CommandPaintAddColumns.h"
@@ -103,6 +108,8 @@
 #include "CommandPaintComposite.h"
 #include "CommandPaintDilation.h"
 #include "CommandPaintFileCreate.h"
+#include "CommandPaintLabelNameUpdate.h"
+#include "CommandPaintSetColumnName.h"
 #include "CommandPreferencesFileSettings.h"
 #include "CommandSceneCreate.h"
 #include "CommandScriptComment.h"
@@ -129,6 +136,7 @@
 #include "CommandSurfaceAlignToStandardOrientation.h"
 #include "CommandSurfaceApplyTransformationMatrix.h"
 #include "CommandSurfaceAverage.h"
+#include "CommandSurfaceBankStraddling.h"
 #include "CommandSurfaceBorderCreateAverage.h"
 #include "CommandSurfaceBorderCreateParallelBorder.h"
 #include "CommandSurfaceBorderCutter.h"
@@ -136,6 +144,7 @@
 #include "CommandSurfaceBorderDrawAroundROI.h"
 #include "CommandSurfaceBorderDrawGeodesic.h"
 #include "CommandSurfaceBorderDrawMetric.h"
+#include "CommandSurfaceBorderFileMerge.h"
 #include "CommandSurfaceBorderToPaint.h"
 #include "CommandSurfaceBorderIntersection.h"
 #include "CommandSurfaceBorderLandmarkIdentification.h"
@@ -167,8 +176,10 @@
 #include "CommandSurfaceFociStudyValidate.h"
 #include "CommandSurfaceFociUnprojection.h"
 #include "CommandSurfaceGenerateInflated.h"
+#include "CommandSurfaceGeodesic.h"
 #include "CommandSurfaceInflate.h"
 #include "CommandSurfaceInformation.h"
+#include "CommandSurfaceNormals.h"
 #include "CommandSurfacePlaceFociAtLimits.h"
 #include "CommandSurfacePlaceFociAtExtremum.h"
 #include "CommandSurfaceRegionOfInterestSelection.h"
@@ -181,6 +192,8 @@
 #include "CommandSurfaceRoiShapeMeasures.h"
 #include "CommandSurfaceRoiStatisticalReport.h"
 #include "CommandSurfaceSmoothing.h"
+#include "CommandSurfaceSphere.h"
+#include "CommandSurfaceSphereProjectUnproject.h"
 #include "CommandSurfaceSphericalMultiResMorphing.h"
 #include "CommandSurfaceSulcalDepth.h"
 #include "CommandSurfaceSulcalIdentificationProbabilistic.h"
@@ -190,6 +203,7 @@
 #include "CommandSurfaceToSegmentationVolume.h"
 #include "CommandSurfaceToVolume.h"
 #include "CommandSurfaceTopologyDisconnectNodes.h"
+#include "CommandSurfaceTopologyFixOrientation.h"
 #include "CommandSurfaceTopologyNeighbors.h"
 #include "CommandSurfaceTopologyReport.h"
 #include "CommandSurfaceTransformToStandardView.h"
@@ -245,6 +259,8 @@
 #include "CommandVolumeResample.h"
 #include "CommandVolumeRescaleVoxels.h"
 #include "CommandVolumeResize.h"
+#include "CommandVolumeROIGradient.h"
+#include "CommandVolumeROIMinima.h"
 #include "CommandVolumeScale0to255.h"
 #include "CommandVolumeScalePercent0to255.h"
 #include "CommandVolumeSculpt.h"
@@ -327,7 +343,11 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandMetricComposite);
    commandsOut.push_back(new CommandMetricCompositeIdentifiedColumns);
    commandsOut.push_back(new CommandMetricCorrelationCoefficientMap);
+   commandsOut.push_back(new CommandMetricCorrelationMatrix);
+   commandsOut.push_back(new CommandMetricExtrema);
    commandsOut.push_back(new CommandMetricFileCreate);
+   commandsOut.push_back(new CommandMetricGradient);
+   commandsOut.push_back(new CommandMetricGradientAll);
    commandsOut.push_back(new CommandMetricInGroupDifference);
    commandsOut.push_back(new CommandMetricInformation);
    commandsOut.push_back(new CommandMetricMath);
@@ -351,6 +371,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandMetricStatisticsTMap);
    commandsOut.push_back(new CommandMetricStatisticsTwoSampleTTest);
    commandsOut.push_back(new CommandMetricStatisticsZMap);
+   commandsOut.push_back(new CommandMetricTranspose);
    commandsOut.push_back(new CommandMetricTwinComparison);
    commandsOut.push_back(new CommandMetricTwinPairedDataDiffs);
    commandsOut.push_back(new CommandPaintAddColumns);
@@ -359,6 +380,8 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandPaintComposite);
    commandsOut.push_back(new CommandPaintDilation);
    commandsOut.push_back(new CommandPaintFileCreate);
+   commandsOut.push_back(new CommandPaintLabelNameUpdate);
+   commandsOut.push_back(new CommandPaintSetColumnName);
    commandsOut.push_back(new CommandPreferencesFileSettings);
    commandsOut.push_back(new CommandSceneCreate);
    commandsOut.push_back(new CommandScriptComment);
@@ -385,6 +408,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceAlignToStandardOrientation);
    commandsOut.push_back(new CommandSurfaceApplyTransformationMatrix);
    commandsOut.push_back(new CommandSurfaceAverage);
+   commandsOut.push_back(new CommandSurfaceBankStraddling);
    commandsOut.push_back(new CommandSurfaceBorderCreateAverage);
    commandsOut.push_back(new CommandSurfaceBorderCreateParallelBorder);
    commandsOut.push_back(new CommandSurfaceBorderCutter);
@@ -392,6 +416,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceBorderDrawAroundROI);
    commandsOut.push_back(new CommandSurfaceBorderDrawGeodesic);
    commandsOut.push_back(new CommandSurfaceBorderDrawMetric);
+   commandsOut.push_back(new CommandSurfaceBorderFileMerge);
    commandsOut.push_back(new CommandSurfaceBorderToPaint);
    commandsOut.push_back(new CommandSurfaceBorderIntersection);
    commandsOut.push_back(new CommandSurfaceBorderLandmarkIdentification);
@@ -423,9 +448,11 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceFociStudyValidate);
    commandsOut.push_back(new CommandSurfaceFociUnprojection);
    commandsOut.push_back(new CommandSurfaceGenerateInflated);
+   commandsOut.push_back(new CommandSurfaceGeodesic);
    commandsOut.push_back(new CommandSurfaceIdentifySulci);
    commandsOut.push_back(new CommandSurfaceInflate);
    commandsOut.push_back(new CommandSurfaceInformation);
+   commandsOut.push_back(new CommandSurfaceNormals);
    commandsOut.push_back(new CommandSurfacePlaceFociAtExtremum);
    commandsOut.push_back(new CommandSurfacePlaceFociAtLimits);
    commandsOut.push_back(new CommandSurfaceRegionOfInterestSelection);
@@ -437,6 +464,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceRoiNodeAreas);
    commandsOut.push_back(new CommandSurfaceRoiShapeMeasures);
    commandsOut.push_back(new CommandSurfaceRoiStatisticalReport);
+   commandsOut.push_back(new CommandSurfaceSphere());
    commandsOut.push_back(new CommandSurfaceSulcalDepth);
    commandsOut.push_back(new CommandSurfaceSulcalIdentificationProbabilistic);
    commandsOut.push_back(new CommandSurfaceToCArrays);
@@ -444,7 +472,9 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceToSegmentationVolume);
    commandsOut.push_back(new CommandSurfaceToVolume);
    commandsOut.push_back(new CommandSurfaceSmoothing);
+   commandsOut.push_back(new CommandSurfaceSphereProjectUnproject);
    commandsOut.push_back(new CommandSurfaceSphericalMultiResMorphing);
+   commandsOut.push_back(new CommandSurfaceTopologyFixOrientation);
    commandsOut.push_back(new CommandSurfaceTopologyDisconnectNodes);
    commandsOut.push_back(new CommandSurfaceTopologyNeighbors);
    commandsOut.push_back(new CommandSurfaceTopologyReport);
@@ -501,6 +531,8 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandVolumeResample);
    commandsOut.push_back(new CommandVolumeRescaleVoxels);
    commandsOut.push_back(new CommandVolumeResize);
+   commandsOut.push_back(new CommandVolumeROIGradient);
+   commandsOut.push_back(new CommandVolumeROIMinima);
    commandsOut.push_back(new CommandVolumeScale0to255);
    commandsOut.push_back(new CommandVolumeScalePercent0to255);
    commandsOut.push_back(new CommandVolumeSculpt);

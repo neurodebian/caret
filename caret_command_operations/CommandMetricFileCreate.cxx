@@ -23,6 +23,8 @@
  */
 /*LICENSE_END*/
 
+#include <cmath>
+
 #include "CommandMetricFileCreate.h"
 #include "FileFilters.h"
 #include "MetricFile.h"
@@ -72,9 +74,12 @@ CommandMetricFileCreate::getHelpInformation() const
        + indent9 + "[-number-of-nodes  number-of-nodes] \n"
        + indent9 + "[-coordinate-file  coordinate-file-for-number-of-nodes] \n"
        + indent9 + "[-set-column-name  column-number  column-name]\n"
+       + indent9 + "[-random]\n"
        + indent9 + "\n"
        + indent9 + "Create a metric file with the specified number of nodes\n"
-       + indent9 + "and columns with all values initialized to zero.  \n"
+       + indent9 + "and columns with all values initialized to zero (default) \n"
+       + indent9 + "or random numbers in the range zero to one if the \n"
+       + indent9 + "\"-random\" option is specified.\n"
        + indent9 + "\n"
        + indent9 + "The number of columns MUST be specified using either the\n"
        + indent9 + "\"-number-of-nodes\" option or the \"-coordinate-file\"\n"
@@ -110,6 +115,7 @@ CommandMetricFileCreate::executeCommand() throw (BrainModelAlgorithmException,
                              "greater than zero.");
    }
    int numberOfNodes = -1;
+   bool randomFlag = false;
    
    //
    // Process optional parameters
@@ -126,6 +132,9 @@ CommandMetricFileCreate::executeCommand() throw (BrainModelAlgorithmException,
          CoordinateFile coordinateFile;
          coordinateFile.readFile(coordinateFileName);
          numberOfNodes = coordinateFile.getNumberOfCoordinates();
+      }
+      else if (paramName == "-random") {
+         randomFlag = true;
       }
       else if (paramName == "-set-column-name") {
          int metricColumnNumber = parameters->getNextParameterAsInt("Column Number");
@@ -165,6 +174,24 @@ CommandMetricFileCreate::executeCommand() throw (BrainModelAlgorithmException,
          //
          metricFile.setColumnName(i,
                                  metricColumnNames[i]);
+      }
+   }
+   
+   if (randomFlag) {
+      const double divisor = RAND_MAX + 1.0f;
+      for (int i = 0; i < numberOfColumns; i++) {
+         GiftiDataArray* gda = metricFile.getDataArray(i);
+         float* data = gda->getDataPointerFloat();
+         for (int j = 0; j < numberOfNodes; j++) {
+            float v = ::rand()/(divisor);
+            if (v < 0.0) {
+               v = 0.0;
+            }
+            else if (v > 1.0) {
+               v = 1.0;
+            }
+            data[j] = v;
+         }
       }
    }
    

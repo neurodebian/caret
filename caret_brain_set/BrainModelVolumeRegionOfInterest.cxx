@@ -780,7 +780,7 @@ BrainModelVolumeRegionOfInterest::resetROIVolume(const VolumeFile* vf,
                for (int k = 0; k < dim[2]; k++) {
                   unsigned char rgb[4];
                   roiVolume->getVoxelColor(i, j, k, rgb); 
-                  if (rgb[3] == VolumeFile::VolumeFile::VOXEL_COLOR_STATUS_VALID) {
+                  if (rgb[3] == VolumeFile::VOXEL_COLOR_STATUS_VALID) {
                      roiVolume->setVoxel(i, j, k, 0, 1.0);
                   }
                   else {
