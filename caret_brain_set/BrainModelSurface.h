@@ -216,6 +216,9 @@ class BrainModelSurface : public BrainModel {
       /// convert a sphere to a compressed medial wall surface
       void convertSphereToCompressedMedialWall(const float compressionFactor = 0.5);
       
+      /// move the surface so that the midpoint of the surface is at the origin
+      void translateMidpointToOrigin();
+      
       /// convert a sphere to a flat surface
       void convertSphereToFlat();
       
@@ -231,7 +234,8 @@ class BrainModelSurface : public BrainModel {
                                                   const bool enableFingerSmoothing,
                                                   const bool scaleToMatchFiducialArea,
                                                   const float iterationsScale,
-                                                  MetricFile* metricMeasurementsFile) const;
+                                                  MetricFile* metricMeasurementsFile,
+                                                  const float compressionFactorIn = 0.95) const;
       
       /// convert "this" surface to VTK PolyData
       vtkPolyData* convertToVtkPolyData() const;
@@ -391,7 +395,10 @@ class BrainModelSurface : public BrainModel {
       void getAreaOfAllNodes(std::vector<float>& nodeAreas) const;
       
       /// get the mean distance between nodes
-      float getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI = NULL) const;
+      void getMeanDistanceBetweenNodes(BrainModelSurfaceROINodeSelection* surfaceROI,
+                                        float& meanDist,
+                                        float& minDist,
+                                        float& maxDist) const;
       
       /// push (save) the coordinates
       void pushCoordinates();

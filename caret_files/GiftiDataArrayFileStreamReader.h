@@ -32,6 +32,7 @@
 #include "FileException.h"
 
 class GiftiDataArrayFile;
+class GiftiDataArrayReadListener;
 class GiftiLabelTable;
 class GiftiMetaData;
 class QFile;
@@ -43,6 +44,12 @@ class GiftiDataArrayFileStreamReader : QXmlStreamReader {
       GiftiDataArrayFileStreamReader(QFile* file,
                                      GiftiDataArrayFile* giftiFileIn);
       
+      /// For incrementally reading arrays
+      /// the listener is called with each array as it is read and
+      /// it is the responsibility of the listener to delete the array.
+      static void readFileAndReportDataArraysAsTheyAreRead(const QString& filename,
+                                     GiftiDataArrayReadListener* giftiDataArrayReadListenerIn) throw (FileException);
+
       /// destructor
       ~GiftiDataArrayFileStreamReader();
       
@@ -67,6 +74,15 @@ class GiftiDataArrayFileStreamReader : QXmlStreamReader {
       
       /// GIFTI Data Array File being read
       GiftiDataArrayFile* giftiFile;
+
+      /// Optional listener
+      GiftiDataArrayReadListener* giftiDataArrayReadListener;
+
+      /// number of data arrays in GIFTI attribute
+      int numberOfDataArraysInFile;
+
+      /// increments as data arrays are read
+      int dataArrayReadIndex;
 };
 
 #endif // __GIFTI_DATA_ARRAY_FILE_STREAM_READER_H__

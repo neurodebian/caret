@@ -1167,6 +1167,9 @@ RgbPaintFile::readFileDataVersion2(QTextStream& stream,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;
@@ -1263,6 +1266,9 @@ RgbPaintFile::writeFileData(QTextStream& stream,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

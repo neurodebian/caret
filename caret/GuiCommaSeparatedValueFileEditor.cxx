@@ -338,7 +338,7 @@ GuiCommaSeparatedValueFileEditorMainWindow::deleteRows()
       }
       
       if (rowsToDelete.empty() == false) {
-         for (std::set<int>::iterator iter = rowsToDelete.begin();
+         for (std::set<int,std::greater<int> >::iterator iter = rowsToDelete.begin();
               iter != rowsToDelete.end();
               iter++) {
             //std::cout << "Deleting row: " << *iter << std::endl;

@@ -27,6 +27,7 @@
  */
 /*LICENSE_END*/
 
+#include <fstream>
 #include <map>
 #include <QString>
 #include <vector>
@@ -137,23 +138,23 @@ class GiftiDataArray {
       std::vector<int> getDimensions() const { return dimensions; }
       
       /// current size of the data (in bytes)
-      uint32_t getDataSizeInBytes() const { return data.size(); }
+      long getDataSizeInBytes() const { return data.size(); }
 
       /// get a dimension
       int getDimension(const int dimIndex) const { return dimensions[dimIndex]; }
       
       // get the number of rows (1st dimension)
-      int getNumberOfRows() const;
+      long getNumberOfRows() const;
       
       // get number of components per node (2nd dimension)
-      int getNumberOfComponents() const;
+      long getNumberOfComponents() const;
       
       // get the total number of elements
-      int getTotalNumberOfElements() const;
+      long getTotalNumberOfElements() const;
       
       // get data offset 
-      int getDataOffset(const int nodeNum, 
-                    const int componentNum) const;
+      long getDataOffset(const long nodeNum,
+                    const long componentNum) const;
                     
       // read a data array from text
       void readFromText(QString& text,
@@ -163,11 +164,12 @@ class GiftiDataArray {
                         const std::vector<int>& dimensionsForReading,
                         const ENCODING encodingForReading,
                         const QString& externalFileNameForReading,
-                        const int externalFileOffsetForReading) throw (FileException);
+                        const long externalFileOffsetForReading) throw (FileException);
                                                
       // write the data as XML
       void writeAsXML(QTextStream& stream, 
-                      const int indentOffset) throw (FileException);
+                      const int indentOffset,
+                      std::ofstream* externalBinaryOutputStream) throw (FileException);
                
       // get the data type name
       static QString getDataTypeName(const DATA_TYPE dataType);
@@ -215,11 +217,11 @@ class GiftiDataArray {
       
       // get external file information
       void getExternalFileInformation(QString& nameOut,
-                                      int& offsetOut) const;
+                                      long& offsetOut) const;
                                       
       // set external file information
       void setExternalFileInformation(const QString& nameIn,
-                                      const int offsetIn);
+                                      const long offsetIn);
                                       
       /// get the metadata
       GiftiMetaData* getMetaData() { return &metaData; }
@@ -334,7 +336,7 @@ class GiftiDataArray {
                                                     DATA_TYPE& dataTypeOut);
       
       // get an offset for indices into data (dimensionality of indices must be same as data)
-      int getDataOffset(const int indices[]) const;
+      long getDataOffset(const int indices[]) const;
       
       // get a float value (data type must be float and dimensionality of indices must be same as data)
       float getDataFloat32(const int indices[]) const;
@@ -437,7 +439,7 @@ class GiftiDataArray {
       QString externalFileName;
       
       /// external file offset
-      int externalFileOffset;
+      long externalFileOffset;
       
       /// minimum float value
       mutable float minValueFloat;

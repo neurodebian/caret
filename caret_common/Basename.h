@@ -26,6 +26,6 @@
 #ifndef __BASENAME__
 #define __BASENAME__
 
-char* Basename(char* path);
-char* Dirname(char* path);
+const char* Basename(char* path);
+const char* Dirname(char* path);
 #endif

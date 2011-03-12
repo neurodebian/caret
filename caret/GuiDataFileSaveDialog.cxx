@@ -2231,6 +2231,9 @@ GuiDataFileSaveDialog::slotLoadParametersForFileType()
          case AbstractFile::FILE_FORMAT_XML_GZIP_BASE64:
             text = "XML GZip Base64 Encoded Binary";
             break;
+         case AbstractFile::FILE_FORMAT_XML_EXTERNAL_BINARY:
+            text = "XML External Binary";
+            break;
          case AbstractFile::FILE_FORMAT_OTHER:
             text = "Other";
             break;

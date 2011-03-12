@@ -31,6 +31,84 @@
 #include "GuiMainWindow.h"
 #include "global_variables.h"
 
+#if QT_VERSION >= 0x040600
+#include <QLibraryInfo>
+#include <QTextStream>
+#include <QString>
+
+/**
+ * conostructor.
+ */
+GuiHelpAssistantWindow::GuiHelpAssistantWindow(const QString& path,
+                                               QObject* parent)  
+{
+    m_parent = parent;
+    process = NULL;
+}
+                       
+/**
+ * destructor.
+ */
+GuiHelpAssistantWindow::~GuiHelpAssistantWindow()
+{
+}
+
+/**
+ * show help page.
+ */
+void 
+GuiHelpAssistantWindow::showPage(const QString& pageNameIn)
+{
+   QString pageName(pageNameIn);   
+   if (pageName.isEmpty()) {
+      pageName = "index.html";
+   }
+   
+   //
+   // If not absolute page, assume that file is in caret help directory
+   //    
+   QFileInfo fileInfo(pageName);
+   if (fileInfo.isAbsolute() == false) {
+      QString defaultPage(theMainWindow->getBrainSet()->getCaretHomeDirectory());
+      defaultPage.append("/");
+      defaultPage.append("caret5_help");
+      defaultPage.append("/");
+      defaultPage.append(pageName);
+      pageName = defaultPage;
+   }
+   
+   if(!process)
+   {
+        process = new QProcess(m_parent);
+        QString app = QLibraryInfo::location(QLibraryInfo::BinariesPath)
+             + QLatin1String("/assistant");
+        process->start(app, QStringList() << QLatin1String("-enableRemoteControl"));
+         if (!process->waitForStarted()) {
+             QMessageBox::critical((QWidget*)m_parent, tr("Remote Control"),
+                 tr("Could not start Qt Assistant from %1.").arg(app));
+             return;
+         }
+    }    
+
+     // show index page
+     QTextStream str(process);
+     str << pageName
+          << QLatin1Char('\0') << endl;
+}
+
+/**
+ * called if error.
+ */
+void 
+GuiHelpAssistantWindow::showError(const QString& message)
+{
+   if(process) delete process;
+   QMessageBox::critical(theMainWindow, "ERROR", message);
+}
+
+#else // QT_VERSION < 4.6.0
+
+
 /**
  * conostructor.
  */
@@ -88,3 +166,4 @@ GuiHelpAssistantWindow::showError(const QString& message)
    QMessageBox::critical(theMainWindow, "ERROR", message);
 }
       
+#endif // QT_VERSION >= 0x040600

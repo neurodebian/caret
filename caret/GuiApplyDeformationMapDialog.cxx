@@ -609,6 +609,14 @@ GuiApplyDeformationMapDialog::slotApplyButton()
    }
 
    //
+   // If this is true, the command will try to read data files from 
+   // the source directory listed in the deformation map file and 
+   // write the deformed files into the target directory listed in
+   // the deformation map file.
+   //
+   const bool useSourceAndTargetPaths = false;
+   
+   //
    // Deform the data file
    //
    try {
@@ -619,6 +627,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
          case BrainModelSurfaceDeformDataFile::DATA_FILE_TOPOGRAPHY:
             BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(&deformationMapFile,
                                                                      dft,
+                                                                     useSourceAndTargetPaths,
                                                                      dataFileName,
                                                                      deformedFileName);
             break;
@@ -628,6 +637,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
          case BrainModelSurfaceDeformDataFile::DATA_FILE_SHAPE:
             BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(&deformationMapFile,
                                                                      dft,
+                                                                     useSourceAndTargetPaths,
                                                                      dataFileName,
                                                                      deformedFileName);
             break;
@@ -637,13 +647,15 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                BrainModelSurfaceDeformDataFile::deformCoordinateFile(&deformationMapFile,
                                                                      dataFileName,
                                                                      deformedFileName2,
-                                                                     smoothCoordsOneIterationCheckBox->isChecked());
+                                                                     smoothCoordsOneIterationCheckBox->isChecked(),
+                                                                     useSourceAndTargetPaths);
             }
             break;
          case BrainModelSurfaceDeformDataFile::DATA_FILE_COORDINATE_FLAT:
             BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(
                                     &deformationMapFile,
                                     atlasTopoFileName,
+                                    useSourceAndTargetPaths,
                                     dataFileName,
                                     indivTopoFileName,
                                     deformedFileName,
@@ -657,6 +669,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                              sourceBrainSet,
                              targetBrainSet,
                              &deformationMapFile,
+                             useSourceAndTargetPaths,
                              dft,
                              dataFileName,
                              deformedFileName);
@@ -666,6 +679,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                                  sourceBrainSet,
                                  targetBrainSet,
                                  &deformationMapFile,
+                                 useSourceAndTargetPaths,
                                  dataFileName,
                                  false,
                                  deformedFileName);
@@ -675,6 +689,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                                  sourceBrainSet,
                                  targetBrainSet,
                                  &deformationMapFile,
+                                 useSourceAndTargetPaths,
                                  dataFileName,
                                  false,
                                  deformedFileName);
@@ -684,6 +699,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                                  sourceBrainSet,
                                  targetBrainSet,
                                  &deformationMapFile,
+                                 useSourceAndTargetPaths,
                                  dataFileName,
                                  true,
                                  deformedFileName);
@@ -692,6 +708,7 @@ GuiApplyDeformationMapDialog::slotApplyButton()
                                  sourceBrainSet,
                                  targetBrainSet,
                                  &deformationMapFile,
+                                 useSourceAndTargetPaths,
                                  dataFileName,
                                  true,
                                  deformedFileName);
@@ -1162,6 +1179,19 @@ GuiApplyDeformationMapDialog::setDeformedFileName(const FILE_DIALOG_TYPE fdt)
 bool
 GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
 {
+   /*
+    * Force rereading of brains since users may have changed
+    * items in the Apply deformation map dialog.
+    */
+   if (sourceBrainSet != NULL) {
+      delete sourceBrainSet;
+      sourceBrainSet = NULL;
+   }
+   if (targetBrainSet != NULL) {
+      delete targetBrainSet;
+      targetBrainSet = NULL;
+   }
+
    errorMessage = "";
    
    const QString savedDirectory(QDir::currentPath());
@@ -1186,13 +1216,9 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
          sourceSpecMissing = false;
       }
       catch (FileException& e) {
-         //
-         // David has a bad habit of renaming spec files, so just hope the
-         // data files are still the same name and in the same location.
-         //
          QDir::setCurrent(deformationMapFile.getSourceDirectory());
-         //errorMessage = e.whatQString());
-         //return true;
+         errorMessage = e.whatQString();
+         return true;
       }
       
       //
@@ -1205,7 +1231,7 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
             deformationMapFile.getSourceSphericalCoordFileName(),
             deformationMapFile.getSourceFlatCoordFileName(),
             "",
-            sourceSpecMissing,
+            true, //sourceSpecMissing,
             sourceSpecFile.getStructure());
       
       //
@@ -1293,13 +1319,9 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
          targetSpecMissing = false;
       }
       catch (FileException& e) {
-         //
-         // David has a bad habit of renaming spec files, so just hope the
-         // data files are still the same name and in the same location.
-         //
          QDir::setCurrent(deformationMapFile.getSourceDirectory());
-         //errorMessage = e.whatQString());
-         //return true;
+         errorMessage = e.whatQString();
+         return true;
       }
       
       //
@@ -1312,7 +1334,7 @@ GuiApplyDeformationMapDialog::readBrains(QString& errorMessage)
             deformationMapFile.getTargetSphericalCoordFileName(),
             deformationMapFile.getTargetFlatCoordFileName(),
             "",
-            targetSpecMissing,
+            true, //targetSpecMissing,
             targetSpecFile.getStructure());
       
       //

@@ -1881,7 +1881,7 @@ StudyMetaData::Table::~Table()
 /**
  * copy constructor.
  */
-StudyMetaData::StudyMetaData::Table::Table(const Table& t)
+StudyMetaData::Table::Table(const Table& t)
 {
    parentStudyMetaData = NULL;
    copyHelper(t);
@@ -1890,8 +1890,8 @@ StudyMetaData::StudyMetaData::Table::Table(const Table& t)
 /**
  * assignment operator.
  */
-StudyMetaData::StudyMetaData::Table& 
-StudyMetaData::StudyMetaData::Table::operator=(const Table& t)
+StudyMetaData::Table& 
+StudyMetaData::Table::operator=(const Table& t)
 {
    if (this != &t) {
       copyHelper(t);
@@ -1903,7 +1903,7 @@ StudyMetaData::StudyMetaData::Table::operator=(const Table& t)
  * copy helper used by copy constructor and assignment operator.
  */
 void 
-StudyMetaData::StudyMetaData::Table::copyHelper(const Table& t)
+StudyMetaData::Table::copyHelper(const Table& t)
 {
    StudyMetaData* savedParentStudyMetaData = parentStudyMetaData;
    
@@ -3912,6 +3912,9 @@ StudyMetaDataFile::readFileData(QFile& /*file*/,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "Reading XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Reading XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Reading in Other format not supported.");
          break;
@@ -3962,6 +3965,9 @@ StudyMetaDataFile::writeFileData(QTextStream& /*stream*/,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

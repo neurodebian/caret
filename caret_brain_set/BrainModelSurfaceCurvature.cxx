@@ -140,9 +140,9 @@ BrainModelSurfaceCurvature::execute() throw (BrainModelAlgorithmException)
       kMaxColumn = shapeFile->getNumberOfColumns() - 2;
       kMinColumn = shapeFile->getNumberOfColumns() - 1;
       
-      shapeFile->setColumnName(kMaxColumn, "k-max (k1, first principal curvature)");
+      shapeFile->setColumnName(kMaxColumn, "k1 (kmajor, first principal curvature)");
       shapeFile->setColumnColorMappingMinMax(kMaxColumn, -1.5, 1.5);
-      shapeFile->setColumnName(kMinColumn, "k-min (k2, second principal curvature)");
+      shapeFile->setColumnName(kMinColumn, "k2 (kminor, second principal curvature)");
       shapeFile->setColumnColorMappingMinMax(kMinColumn, -1.5, 1.5);
    }
    
@@ -323,10 +323,9 @@ BrainModelSurfaceCurvature::determineCurvature(const int num,
    mean  = (k1 + k2) / 2.0;
    
    //
-   // For KMAX and KMIN, is the largest of the two values
-   // when ignoring the signs
+   // For KMAX and KMIN, is the largest of the two absolute values
    //
-   if (std::fabs(k1) > std::fabs(k2)) {
+   if (std::abs(k1) > std::abs(k2)) {
       kmax = k1;
       kmin = k2;
    }

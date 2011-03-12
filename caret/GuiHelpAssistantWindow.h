@@ -27,6 +27,36 @@
 #ifndef __GUI_HELP_ASSISTANT_WINDOW_H__
 #define __GUI_HELP_ASSISTANT_WINDOW_H__
 
+#include <Qt>
+
+#if QT_VERSION >= QT_VERSION_CHECK(4,6,0)
+#include <QProcess>
+#include <QObject>
+/// dialog for showing help in a qt assistant window
+class GuiHelpAssistantWindow : public QObject {
+   Q_OBJECT
+   
+   public:
+      // conostructor
+      GuiHelpAssistantWindow(const QString& path,
+                             QObject* parent = 0);
+                             
+      // destructor
+      ~GuiHelpAssistantWindow();
+      
+      // show help page
+      virtual void showPage(const QString& pageNameIn);
+      QProcess *process;
+      QObject* m_parent;
+   protected slots:
+      // called if error
+      void showError(const QString& message);
+      
+   protected:
+};
+
+#else
+#pragma message  ("Running out of date version of QT, please update soon.\n")
 #include <QAssistantClient>
 
 /// dialog for showing help in a qt assistant window
@@ -50,6 +80,7 @@ class GuiHelpAssistantWindow : public QAssistantClient {
       
    protected:
 };
+#endif //Q QT_VERSION >= 0x040600
 
 #endif // __GUI_HELP_ASSISTANT_WINDOW_H__
 

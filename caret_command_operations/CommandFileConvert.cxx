@@ -891,7 +891,9 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
                                << ".";
                   }
                   catch (FileException& e) {
-                     std::cout << "error converting or writing.";
+                     std::cout << "error converting or writing: "
+                               << e.whatQString().toAscii().constData()
+                               << std::endl;
                   }
                   fileProcessedFlag = true;
                }
@@ -1096,7 +1098,7 @@ CommandFileConvert::freeSurferLabelToCaretConvert() throw (CommandException)
 {
    try {
       QString freeSurfaceLabelDirName(inputSurfaceName);
-      freeSurfaceLabelDirName.append("/junk");
+      freeSurfaceLabelDirName.append("/" + inputSurfaceName);
 
       QString freeSurfaceSurfaceName(inputSurfaceName2);
 

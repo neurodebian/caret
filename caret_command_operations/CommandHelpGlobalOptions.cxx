@@ -28,9 +28,11 @@
 
 #include <QDir>
 
+#include "AbstractFile.h"
 #include "BrainSet.h"
 #include "CommandHelpGlobalOptions.h"
 #include "FileFilters.h"
+#include "MetricFile.h"
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
 
@@ -65,6 +67,10 @@ CommandHelpGlobalOptions::getScriptBuilderParameters(ScriptBuilderParameters& pa
 QString 
 CommandHelpGlobalOptions::getHelpInformation() const
 {
+   std::vector<AbstractFile::FILE_FORMAT> fileFormats;
+   std::vector<QString> fileFormatNames;
+   AbstractFile::getFileFormatTypesAndNames(fileFormats, fileFormatNames);
+   
    QString helpInfo =
       (indent3 + getShortDescription() + "\n"
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
@@ -97,6 +103,23 @@ CommandHelpGlobalOptions::getHelpInformation() const
        + indent9 + "Adding the parameter \"-RANDOMSEED <seed-value>\" to \n"
        + indent9 + "the command will result in the random number generator's \n"
        + indent9 + "seed value being set to the provided value. \n"
+       + indent9 + "\n"
+       + indent9 + "Adding the parameter \"-WRITE-FILE-FORMAT  <format-type(s)>\"\n"
+       + indent9 + "to the command will set the format(s) for writing data\n"
+       + indent9 + "files.  \"format-types\" are any of the file format types\n"
+       + indent9 + "listed below and multiple file formats are allowed but must\n"
+       + indent9 + "be separated by a colon.\n"
+       + indent9 + "\n"
+       + indent9 + "Adding the parameter \"-WRITE-FILE-FORMAT-METRIC <format-type>\"\n"
+       + indent9 + "sets the format for writing metric files.  One and only one\n"
+       + indent9 + "format must be specified.\n"
+       + indent9 + "\n"
+       + indent9 + "Available file formats are:\n");
+   for (unsigned int i = 0; i < fileFormatNames.size(); i++) {
+       helpInfo +=
+         (indent9 + "         " + fileFormatNames[i] + "\n");
+   }
+   helpInfo += (""
        + indent9 + "\n");
       
    return helpInfo;
@@ -123,6 +146,9 @@ CommandHelpGlobalOptions::processGlobalOptions(ProgramParameters& params) throw 
 {
    processChangeDirectoryCommand(params);
    processSetPermissionsCommand(params);
+   processSetRandomSeedCommand(params);
+   processFileWritingFormat(params);
+   processMetricFileWritingFormat(params);
 }
 
 /**
@@ -266,11 +292,11 @@ CommandHelpGlobalOptions::processSetRandomSeedCommand(ProgramParameters& params)
             BrainSet::setRandomSeed(seedValue);
          }
          //
-         // Remove the "-CHMOD" and mode name parameters
+         // Remove the "-RANDOMSEED" and mode name parameters
          // Remember, remove largest index first since array shrinks
          //
-         params.removeParameterAtIndex(randomSeedIndex);
          params.removeParameterAtIndex(seedIndex);
+         params.removeParameterAtIndex(randomSeedIndex);
       }
       else {
          throw CommandException("ERROR: Value missing for \"-RANDOMSEED\" option.");
@@ -278,4 +304,101 @@ CommandHelpGlobalOptions::processSetRandomSeedCommand(ProgramParameters& params)
    }
 }
 
+/**
+ * process the file writing format preference.
+ */
+void 
+CommandHelpGlobalOptions::processFileWritingFormat(ProgramParameters& params) throw (CommandException)
+{
+   //
+   // See if file format write preference should set
+   //
+   const int fileFormatIndex = params.getIndexOfParameterWithValue("-WRITE-FILE-FORMAT");
+   if (fileFormatIndex >= 0) {
+      const int typesIndex = fileFormatIndex + 1;
+      if (typesIndex < params.getNumberOfParameters()) {
+         const QString typesValueString = params.getParameterAtIndex(typesIndex);
+         if (typesValueString.isEmpty() == false) {
+            std::vector<AbstractFile::FILE_FORMAT> formatList;
+            const QStringList sl = typesValueString.split(':', QString::SkipEmptyParts);
+            for (int i = 0; i < sl.count(); i++) {
+               bool validFlag = false;
+               const AbstractFile::FILE_FORMAT formatType =
+                  AbstractFile::convertFormatNameToType(sl.at(i), &validFlag);
+               if (validFlag) {
+                     formatList.push_back(formatType);
+               }
+               else {
+                  throw CommandException("ERROR: Unrecognized file format data type " 
+                                         + sl.at(i)
+                                         + " for \"-WRITE-FILE-FORMAT\" option.");
+               }
+            }
+            if (formatList.empty() == false) {
+               AbstractFile::setPreferredWriteTypeCaretCommand(formatList);
+            }
+         }
+         
+         //
+         // Remove the "-WRITE-FILE-FORMAT" and format name parameters
+         // Remember, remove largest index first since array shrinks
+         //
+         params.removeParameterAtIndex(typesIndex);
+         params.removeParameterAtIndex(fileFormatIndex);
+      }
+      else {
+         throw CommandException("ERROR: Value missing for \"-WRITE-FILE-FORMAT\" option.");
+      }
+   }
+}
+
+/**
+ * process the METRIC file writing format preference.
+ */
+void 
+CommandHelpGlobalOptions::processMetricFileWritingFormat(ProgramParameters& params) throw (CommandException)
+{
+   MetricFile mf;
+   //
+   // See if file format write preference should set
+   //
+   const int fileFormatIndex = params.getIndexOfParameterWithValue("-WRITE-FILE-FORMAT-METRIC");
+   if (fileFormatIndex >= 0) {
+      const int typeIndex = fileFormatIndex + 1;
+      if (typeIndex < params.getNumberOfParameters()) {
+         const QString typeValueString = params.getParameterAtIndex(typeIndex);
+         if (typeValueString.isEmpty() == false) {
+            bool validFlag = false;
+            const AbstractFile::FILE_FORMAT format =
+               AbstractFile::convertFormatNameToType(typeValueString, &validFlag);
+            if (validFlag) {
+               if (mf.getCanWrite(format)) {
+                  AbstractFile::setPreferredMetricWriteTypeCaretCommand(format);
+               }
+               else {
+                  throw CommandException("ERROR: Metric file cannot write format data type " 
+                                         + typeValueString
+                                         + " for \"-WRITE-FILE-FORMAT-METRIC\" option.");
+               }
+            }
+            else {
+                  throw CommandException("ERROR: Unrecognized file format data type " 
+                                         + typeValueString
+                                         + " for \"-WRITE-FILE-FORMAT-METRIC\" option.");
+            }
+         }
+         
+         //
+         // Remove the "-WRITE-FILE-FORMAT" and format name parameters
+         // Remember, remove largest index first since array shrinks
+         //
+         params.removeParameterAtIndex(typeIndex);
+         params.removeParameterAtIndex(fileFormatIndex);
+      }
+      else {
+         throw CommandException("ERROR: Value missing for \"-WRITE-FILE-FORMAT-METRIC\" option.");
+      }
+   }
+}
+      
 

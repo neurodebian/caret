@@ -79,11 +79,13 @@ GiftiDataArrayFile::GiftiDataArrayFile(const QString& descriptiveName,
       setFileReadWriteType(FILE_FORMAT_XML, FILE_IO_READ_AND_WRITE);
       setFileReadWriteType(FILE_FORMAT_XML_BASE64, FILE_IO_READ_AND_WRITE);
       setFileReadWriteType(FILE_FORMAT_XML_GZIP_BASE64, FILE_IO_READ_AND_WRITE);
+      setFileReadWriteType(FILE_FORMAT_XML_EXTERNAL_BINARY, FILE_IO_READ_AND_WRITE);
    }
    else {
       setFileReadWriteType(FILE_FORMAT_XML, FILE_IO_READ_ONLY);
       setFileReadWriteType(FILE_FORMAT_XML_BASE64, FILE_IO_READ_ONLY);
       setFileReadWriteType(FILE_FORMAT_XML_GZIP_BASE64, FILE_IO_READ_ONLY);
+      setFileReadWriteType(FILE_FORMAT_XML_EXTERNAL_BINARY, FILE_IO_READ_ONLY);
    }
    //
    
@@ -135,6 +137,7 @@ GiftiDataArrayFile::GiftiDataArrayFile()
    setFileReadWriteType(FILE_FORMAT_XML_BASE64, FILE_IO_NONE);
    setFileReadWriteType(FILE_FORMAT_XML_GZIP_BASE64, FILE_IO_NONE);
 #endif // HAVE_VTK
+   setFileReadWriteType(FILE_FORMAT_XML_EXTERNAL_BINARY, FILE_IO_READ_AND_WRITE);
 }
 
 /**
@@ -841,6 +844,9 @@ GiftiDataArrayFile::readFileData(QFile& file,
       case FILE_FORMAT_XML_GZIP_BASE64:
          readFileDataXML(file);
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         readFileDataXML(file);
+         break;
       case FILE_FORMAT_OTHER:
          readLegacyFileData(file, stream, binStream);
          break;
@@ -891,6 +897,9 @@ GiftiDataArrayFile::writeFileData(QTextStream& stream,
          writeFileDataXML(stream);
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
+         writeFileDataXML(stream);
+         break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
          writeFileDataXML(stream);
          break;
       case FILE_FORMAT_OTHER:
@@ -947,6 +956,7 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
          // Create a data stream
          //   
          QDataStream stream(&file);
+		 stream.setVersion(QDataStream::Qt_4_3);
          
          //
          // buffer for data read
@@ -1057,6 +1067,7 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
       // Create a data stream
       //   
       QDataStream stream(&file);
+	  stream.setVersion(QDataStream::Qt_4_3);
       
       //
       // buffer for data read
@@ -1121,7 +1132,7 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
 */
 
 /**
- * write the XML file.
+ * write the XML file. 
  */
 void 
 GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
@@ -1143,6 +1154,9 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
          encoding = GiftiDataArray::ENCODING_INTERNAL_COMPRESSED_BASE64_BINARY;
+         break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         encoding = GiftiDataArray::ENCODING_EXTERNAL_FILE_BINARY;
          break;
       case FILE_FORMAT_OTHER:
          break;
@@ -1173,6 +1187,21 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
           << ">" << "\n";
    int indent = 0;
 
+   //
+   // External binary file.
+   //
+   QString externalBinaryFileName;
+   long externalBinaryFileDataOffset = 0;
+   std::ofstream* externalBinaryOutputStream = NULL;
+   if (encoding == GiftiDataArray::ENCODING_EXTERNAL_FILE_BINARY) {
+       externalBinaryFileName = getFileNameNoPath() + ".data";
+       externalBinaryOutputStream = new std::ofstream(externalBinaryFileName.toAscii().constData(),
+                                                      std::ofstream::binary);
+       if (externalBinaryOutputStream == NULL) {
+          throw FileException("Unable to open " + externalBinaryFileName + " for output.");
+       }
+   }
+   
 #ifdef CARET_FLAG
    //
    // copy the Abstract File header into this file's metadata 
@@ -1205,11 +1234,20 @@ GiftiDataArrayFile::writeFileDataXML(QTextStream& stream) throw (FileException)
 #ifdef CARET_FLAG
       dataArrays[i]->setEncoding(encoding);
 #endif // CARET_FLAG
-      dataArrays[i]->writeAsXML(stream, indent);
+      if (externalBinaryOutputStream != NULL) {
+          externalBinaryFileDataOffset = externalBinaryOutputStream->tellp();
+      }
+      dataArrays[i]->setExternalFileInformation(externalBinaryFileName,
+                                                externalBinaryFileDataOffset);
+      dataArrays[i]->writeAsXML(stream, indent, externalBinaryOutputStream);
    }
    indent--;
    
    stream << "</" << GiftiCommon::tagGIFTI << ">" << "\n";
+   
+   if (externalBinaryOutputStream != NULL) {
+      externalBinaryOutputStream->close();
+   }
 }      
 
 /**

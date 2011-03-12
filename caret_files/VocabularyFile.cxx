@@ -208,6 +208,9 @@ VocabularyFile::readFileData(QFile& file,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "Reading XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Reading XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Reading in Other format not supported.");
          break;
@@ -259,11 +262,14 @@ VocabularyFile::writeFileData(QTextStream& stream,
          }
          break;
       case FILE_FORMAT_XML_BASE64:
-         throw FileException(filename, "XML Base64 not supported.");
+         throw FileException(filename, "Writing in XML Base64 not supported.");
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
-         throw FileException(filename, "XML GZip Base64 not supported.");
+         throw FileException(filename, "Writing in XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

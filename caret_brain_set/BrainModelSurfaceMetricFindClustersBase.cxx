@@ -936,6 +936,27 @@ BrainModelSurfaceMetricFindClustersBase::findClustersMultiThread(MetricFile* mf,
 */
 
 /**
+ * Set randomized cluster p-values.
+ */
+void 
+BrainModelSurfaceMetricFindClustersBase::setRandomizedClusterPValues(
+                                                 const MetricFile& randomFile, 
+                                                 std::vector<Cluster>& randomClusters)
+{
+   const float numberOfIterations = randomFile.getNumberOfColumns();
+   if (numberOfIterations <= 0.0) {
+       return;
+   }
+   
+   int numClusters = static_cast<int>(randomClusters.size());
+   for (int i = 0; i < numClusters; i++) {
+       const float pValue = (i + 1) / numberOfIterations;
+       Cluster& cluster = randomClusters[i];
+       cluster.pValue = pValue;
+   }
+}
+                                
+/**
  * print the clusters
  */
 void 

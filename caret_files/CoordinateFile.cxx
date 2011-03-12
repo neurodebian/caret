@@ -303,11 +303,11 @@ void
 CoordinateFile::getAllCoordinates(float* coordsOut) const
 {
    float* coords = dataArrays[0]->getDataPointerFloat();
-   const int num = getNumberOfCoordinates();
-   for (int i = 0; i < num; i++) {
-      coordsOut[i*3]   = coords[i*3];
-      coordsOut[i*3+1] = coords[i*3+1];
-      coordsOut[i*3+2] = coords[i*3+2];
+   const int num = 3 * getNumberOfCoordinates();
+   for (int i = 0; i < num; i += 3) {
+      coordsOut[i]   = coords[i];
+      coordsOut[i+1] = coords[i+1];
+      coordsOut[i+2] = coords[i+2];
    }
 }      
 
@@ -855,7 +855,10 @@ CoordinateFile::readLegacyNodeFileData(QFile& /*file*/, QTextStream& stream,
    if (getReadMetaDataOnlyFlag()) {
       return;
    }
-
+   //if we ever want to switch to qt_4_6 above enable the line below
+   //binStream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+   binStream.setVersion(QDataStream::Qt_4_3);
+   
    switch (getFileReadType()) {
       case FILE_FORMAT_ASCII:
          {
@@ -889,7 +892,6 @@ CoordinateFile::readLegacyNodeFileData(QFile& /*file*/, QTextStream& stream,
             if (numCoords > 0) {
                setNumberOfCoordinates(static_cast<int>(numCoords));
                float* coordPtr = dataArrays[0]->getDataPointerFloat();
-            
                for (int i = 0; i < numCoords; i++) {
                   const int i3 = i * 3;
                   binStream >> coordPtr[i3];
@@ -974,6 +976,9 @@ CoordinateFile::readLegacyNodeFileData(QFile& /*file*/, QTextStream& stream,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "Reading XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Reading XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Reading in Other format not supported.");
          break;
@@ -992,6 +997,10 @@ void
 CoordinateFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStream) throw (FileException)
 {
    const int numCoords = getNumberOfCoordinates();
+   //if we ever want to switch to qt_4_6 above enable the line below
+   //binStream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+   binStream.setVersion(QDataStream::Qt_4_3);
+   //stream.setVersion(QDataStream::Qt_4_3);
    
    switch (getFileWriteType()) {
       case FILE_FORMAT_ASCII:
@@ -1007,6 +1016,7 @@ CoordinateFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStr
          if (numCoords > 0) {
             const float* xyz = getCoordinate(0);
             for (int i = 0; i < numCoords; i++) {
+	       
                const int i3 = i * 3;
                binStream << xyz[i3];
                binStream << xyz[i3+1];
@@ -1055,6 +1065,9 @@ CoordinateFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStr
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

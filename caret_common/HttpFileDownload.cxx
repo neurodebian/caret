@@ -199,11 +199,12 @@ HttpFileDownload::uploadFileToSums(const std::vector<QString>& additionalTags,
    }
 //#endif // QT4_FILE_POS_BUG
    QDataStream dataStream(&file);
-
+   dataStream.setVersion(QDataStream::Qt_4_3);
    // file contents
    QFile inputFile(uploadFileName);
    if (inputFile.open(QIODevice::ReadOnly)) {
       QDataStream inputStream(&inputFile);
+	  inputStream.setVersion(QDataStream::Qt_4_3);
       
       const int inputFileSize = inputFile.size();
       const int bufferSize = 4096;
@@ -549,6 +550,7 @@ HttpFileDownload::slotDone(bool error)
                QFile file(outputFileName);
                if (file.open(QIODevice::WriteOnly)) {
                   QDataStream stream(&file);
+				  stream.setVersion(QDataStream::Qt_4_3);
                   stream.writeRawData(ba.data(), num);
                   file.close();
                }

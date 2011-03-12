@@ -31,6 +31,7 @@
 #include <cstdio>
 #include <iostream>
 #include <stack>
+#include <QMutexLocker>
 
 #include "DebugControl.h"
 #include "FileUtilities.h"
@@ -153,9 +154,11 @@ TopologyFile::addTile(const int v1, const int v2, const int v3)
    }
    topologyHelperNeedsRebuild = true;
    setModified();
-   numberOfNodes = std::max(v1, numberOfNodes);
-   numberOfNodes = std::max(v2, numberOfNodes);
-   numberOfNodes = std::max(v3, numberOfNodes);
+   
+   // add one to node since node number range is [0..N-1]
+   numberOfNodes = std::max(v1+1, numberOfNodes);
+   numberOfNodes = std::max(v2+1, numberOfNodes);
+   numberOfNodes = std::max(v3+1, numberOfNodes);
 }
 
 /**
@@ -1218,6 +1221,7 @@ TopologyFile::getTopologyHelper(const bool needEdgeInfo,
                                 const bool needNodeInfo,
                                 const bool needNodeInfoSorted) const
 {
+   QMutexLocker locked(&gettingTopoHelper);//lock BEFORE testing whether rebuild is needed
    if (topologyHelper == NULL) {
       topologyHelperNeedsRebuild = true;
    }
@@ -1239,7 +1243,6 @@ TopologyFile::getTopologyHelper(const bool needEdgeInfo,
          }
       }
    }
-   
    if (topologyHelperNeedsRebuild) {
       if (topologyHelper != NULL) {
          delete topologyHelper;
@@ -1276,9 +1279,10 @@ TopologyFile::setTile(const int tileNumber, const int v1, const int v2, const in
    tiles[tileNumber * 3 + 2] = v3;
    setModified();
    topologyHelperNeedsRebuild = true;
-   numberOfNodes = std::max(v1, numberOfNodes);
-   numberOfNodes = std::max(v2, numberOfNodes);
-   numberOfNodes = std::max(v3, numberOfNodes);
+   // add one to node since node number range is [0..N-1]
+   numberOfNodes = std::max(v1+1, numberOfNodes);
+   numberOfNodes = std::max(v2+1, numberOfNodes);
+   numberOfNodes = std::max(v3+1, numberOfNodes);
 }
 
 /**
@@ -1635,9 +1639,10 @@ TopologyFile::readTilesAscii(QTextStream& stream,
             tilePtr[j3 + 2] = t3;
          }
          
-         numberOfNodes = std::max(numberOfNodes, t1);
-         numberOfNodes = std::max(numberOfNodes, t2);
-         numberOfNodes = std::max(numberOfNodes, t3);
+         // add one to node since node number range is [0..N-1]
+         numberOfNodes = std::max(numberOfNodes, t1+1);
+         numberOfNodes = std::max(numberOfNodes, t2+1);
+         numberOfNodes = std::max(numberOfNodes, t3+1);
       }
    }
    
@@ -1674,9 +1679,10 @@ TopologyFile::readTilesBinary(QDataStream& binStream) throw (FileException)
          tilePtr[j3 + 1] = t2;
          tilePtr[j3 + 2] = t3;
          
-         numberOfNodes = std::max(numberOfNodes, t1);
-         numberOfNodes = std::max(numberOfNodes, t2);
-         numberOfNodes = std::max(numberOfNodes, t3);
+         // add one to node since node number range is [0..N-1]
+         numberOfNodes = std::max(numberOfNodes, t1+1);
+         numberOfNodes = std::max(numberOfNodes, t2+1);
+         numberOfNodes = std::max(numberOfNodes, t3+1);
       }   
    }
    
@@ -1717,6 +1723,9 @@ TopologyFile::readFileDataVersion1(QFile& /*file*/,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Reading in Other format not supported.");
          break;
@@ -1824,6 +1833,9 @@ TopologyFile::writeLegacyFileData(QTextStream& stream, QDataStream& binStream)
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

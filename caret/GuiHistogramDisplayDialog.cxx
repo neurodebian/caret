@@ -144,7 +144,7 @@ GuiHistogramDisplayDialog::GuiHistogramDisplayDialog(QWidget* parent,
    QGroupBox* displayModeGroupBox = new QGroupBox("Display Mode");
    QVBoxLayout* displayModeLayout = new QVBoxLayout(displayModeGroupBox);
    displayModeComboBox = new QComboBox;
-   displayModeLayout->addWidget(displayModeComboBox, Qt::AlignLeft);
+   displayModeLayout->addWidget(displayModeComboBox);
    displayModeComboBox->insertItem(HISTO_SELECTION_ALL, "All");
    displayModeComboBox->insertItem(HISTO_SELECTION_MIDDLE_96, "Middle 96%");
    QObject::connect(displayModeComboBox, SIGNAL(activated(int)),

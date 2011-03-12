@@ -3550,7 +3550,7 @@ GuiDisplayControlDialog::updateVolumeSelectionPage()
       volumeVectorLabel->setEnabled(true);
       volumeVectorInfoPushButton->setEnabled(true);
       volumeVectorMetaDataPushButton->setEnabled(true);
-      vectorVolumeSparsitySpinBox->setValue(dsv->getVectorVolumeSparsity());
+      //vectorVolumeSparsitySpinBox->setValue(dsv->getVectorVolumeSparsity());
    }
 
    updateVolumeToolTips();
@@ -3602,6 +3602,7 @@ GuiDisplayControlDialog::updateVolumeSettingsPage()
    obliqueSlicesSamplingSizeDoubleSpinBox->setValue(dsv->getObliqueSlicesSamplingSize());
    continueVolumeAnimation = false;   
    
+   vectorVolumeSparsitySpinBox->setValue(dsv->getVectorVolumeSparsity());
    vectorVolumeGroupBox->setEnabled(theMainWindow->getBrainSet()->getNumberOfVolumeVectorFiles() > 0);
    
    pageVolumeSettingsWidgetGroup->blockSignals(false);

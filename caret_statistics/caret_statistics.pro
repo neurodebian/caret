@@ -9,7 +9,12 @@ INCLUDEPATH += .
 
 include(../caret_qmake_include.pro)
 
-TEMPLATE = lib
+!vs:TEMPLATE = lib
+vs:TEMPLATE=vclib
+dll {
+	CONFIG -= staticlib
+	CONFIG += plugin
+}
 
 # turn off unicode for displaying windows web browser
 win32 {

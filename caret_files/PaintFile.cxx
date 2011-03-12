@@ -1151,6 +1151,41 @@ PaintFile::assignPaintColumnWithVolumeFile(const VolumeFile* vf,
 }
 
 /**
+ * Remove prefixes (chars before first period) and/or suffixes (chars after last period)
+ * from all paint names.
+ */
+void
+PaintFile::removePrefixesAndSuffixesFromNames(const bool removePrefixesFlag,
+                                              const bool removeSuffixesFlag)
+{
+    int numPaintNames = this->getNumberOfPaintNames();
+    for (int i = 0; i < numPaintNames; i++) {
+        QString name = this->getPaintNameFromIndex(i);
+
+        bool nameChangedFlag = false;
+        if (removePrefixesFlag) {
+            int firstPeriod = name.indexOf(".");
+            if (firstPeriod >= 0) {
+                name = name.mid(firstPeriod + 1);
+                nameChangedFlag = true;
+            }
+        }
+
+        if (removeSuffixesFlag) {
+            int lastPeriod = name.lastIndexOf(".");
+            if (lastPeriod >= 0) {
+                name = name.left(lastPeriod);
+                nameChangedFlag = true;
+            }
+        }
+
+        if (nameChangedFlag) {
+            this->setPaintName(i, name);
+        }
+    }
+}
+
+/**
  * Read a paint file' data.
  */
 void
@@ -1427,6 +1462,9 @@ PaintFile::readPaintDataForNodes(const std::vector<int>& paintToPaintNameIndex,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;
@@ -1515,6 +1553,9 @@ PaintFile::writeLegacyNodeFileData(QTextStream& stream, QDataStream& binStream) 
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

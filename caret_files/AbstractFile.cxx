@@ -144,7 +144,7 @@ AbstractFile::AbstractFile(const QString& descriptiveNameIn,
       preferredWriteType.resize(fileFormats.size());
       std::fill(preferredWriteType.begin(),
                 preferredWriteType.end(),
-                AbstractFile::FILE_FORMAT_BINARY);
+                AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
    }
    
    writingQFile = NULL;
@@ -165,6 +165,7 @@ AbstractFile::AbstractFile(const QString& descriptiveNameIn,
    fileSupportXML      = supportsXMLFormat;
    fileSupportXMLBase64 = supportsXMLBase64Format;
    fileSupportXMLGZipBase64 = supportsXMLGZipBase64Format;
+   fileSupportXMLExternalBinary = FILE_IO_NONE;
    fileSupportOther    = supportsOtherFormat;
    fileSupportCommaSeparatedValueFile = supportsCsvfFormat;
 
@@ -237,6 +238,7 @@ AbstractFile::copyHelperAbstractFile(const AbstractFile& af)
    fileSupportXML    = af.fileSupportXML;
    fileSupportXMLBase64 = af.fileSupportXMLBase64;
    fileSupportXMLGZipBase64 = af.fileSupportXMLGZipBase64;
+   fileSupportXMLExternalBinary = af.fileSupportXMLExternalBinary;
    fileSupportOther  = af.fileSupportOther;
    fileSupportCommaSeparatedValueFile = af.fileSupportCommaSeparatedValueFile;
    enableAppendFileComment = af.enableAppendFileComment;
@@ -321,6 +323,7 @@ AbstractFile::clearAbstractFile()
    // fileSupportXML;
    // fileSupportXMLBase64
    // fileSupportXMLGZipBase64
+   // fileSupportXMLExternalBinary
    // fileSupportOther
    // fileSupportCommaSeparatedValueFile
    // fileWriteType
@@ -354,6 +357,9 @@ AbstractFile::setFileReadWriteType(const FILE_FORMAT format, const FILE_IO readA
       case FILE_FORMAT_XML_GZIP_BASE64:
           fileSupportXMLGZipBase64 = readAndOrWrite;
           break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         fileSupportXMLExternalBinary = readAndOrWrite;
+         break;
       case FILE_FORMAT_OTHER:
          fileSupportOther = readAndOrWrite;
          break;
@@ -688,6 +694,9 @@ AbstractFile::getCanRead(const FILE_FORMAT ff) const
       case FILE_FORMAT_XML_GZIP_BASE64:
          fio = fileSupportXMLGZipBase64;
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         fio = fileSupportXMLExternalBinary;
+         break;
       case FILE_FORMAT_OTHER:
          fio = fileSupportOther;
          break;
@@ -724,6 +733,9 @@ AbstractFile::getCanWrite(const FILE_FORMAT ff) const
       case FILE_FORMAT_XML_GZIP_BASE64:
          fio = fileSupportXMLGZipBase64;
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         fio = fileSupportXMLExternalBinary;
+         break;
       case FILE_FORMAT_OTHER:
          fio = fileSupportOther;
          break;
@@ -759,6 +771,9 @@ AbstractFile::convertFormatTypeToName(const FILE_FORMAT formatIn)
          break;
       case FILE_FORMAT_XML_GZIP_BASE64:
          s = getHeaderTagEncodingValueXMLGZipBase64();
+         break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         s = getHeaderTagEncodingValueXMLExternalBinary();
          break;
       case FILE_FORMAT_OTHER:
          s = getHeaderTagEncodingValueOther();
@@ -797,6 +812,9 @@ AbstractFile::convertFormatNameToType(const QString& name,
    }
    else if (name == getHeaderTagEncodingValueXMLGZipBase64()) {
       format = FILE_FORMAT_XML_GZIP_BASE64;
+   }
+   else if (name == getHeaderTagEncodingValueXMLExternalBinary()) {
+      format = FILE_FORMAT_XML_EXTERNAL_BINARY;
    }
    else if (name == getHeaderTagEncodingValueOther()) {
       format = FILE_FORMAT_OTHER;
@@ -837,6 +855,9 @@ AbstractFile::getFileFormatTypesAndNames(std::vector<FILE_FORMAT>& typesOut,
    
    typesOut.push_back(FILE_FORMAT_XML_GZIP_BASE64);
    namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_XML_GZIP_BASE64));
+   
+   typesOut.push_back(FILE_FORMAT_XML_EXTERNAL_BINARY);
+   namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_XML_EXTERNAL_BINARY));
    
    typesOut.push_back(FILE_FORMAT_OTHER);
    namesOut.push_back(convertFormatTypeToName(FILE_FORMAT_OTHER));
@@ -1028,6 +1049,7 @@ AbstractFile::readFileFromArray(const char* data,
       throw FileException("", "Unable to create temporary read/write file in AbstractFile::readFile");
    }
    QDataStream stream(&file);
+   stream.setVersion(QDataStream::Qt_4_3);
    stream.writeRawData(data, dataLength);
    //char newline[2] = { '\n', '\0' };
    //stream.writeRawBytes(newline, 1);
@@ -1050,6 +1072,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    //
    QTextStream stream(&file);
    QDataStream binStream(&file);
+   binStream.setVersion(QDataStream::Qt_4_3);
 
    //
    // Determine if GIFTI node data file
@@ -1071,7 +1094,8 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
          }
          if ((getCanRead(FILE_FORMAT_XML) == false) &&
              (getCanRead(FILE_FORMAT_XML_BASE64) == false) &&
-             (getCanRead(FILE_FORMAT_XML_GZIP_BASE64) == false)) {
+             (getCanRead(FILE_FORMAT_XML_GZIP_BASE64) == false) &&
+             (getCanRead(FILE_FORMAT_XML_EXTERNAL_BINARY) == false)) {
             throw FileException(filename, 
                "is an XML file but XML is not supported for this type of file.\n"
                "Perhaps you need a new version of Caret.");
@@ -1264,7 +1288,18 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
    }
    removeHeaderTag(hemFlagTag);
    
+   this->postFileReadingProcessing();
+
    clearModified();
+}
+
+/**
+ * Allows files to do processing after a file is read.
+ */
+void
+AbstractFile::postFileReadingProcessing() throw (FileException)
+{
+    /// this method may be over ridden by sub classes
 }
 
 /**
@@ -2242,6 +2277,7 @@ AbstractFile::writeFileToArray(QByteArray& ba) throw (FileException)
 {
    QTextStream ts(ba, QIODevice::WriteOnly);
    QDataStream ds(&ba, QIODevice::WriteOnly);
+   ds.setVersion(QDataStream::Qt_4_3);
    writeFileContents(ts, ds);
 }
       
@@ -2280,6 +2316,12 @@ AbstractFile::writeFileContents(QTextStream& stream, QDataStream& dataStream) th
       case FILE_FORMAT_XML_GZIP_BASE64:
          if (getCanWrite(FILE_FORMAT_XML_GZIP_BASE64) == false) {
             throw FileException(filename, "XML GZip Base64 type file not supported.");
+         }
+         isXmlFile = true;
+         break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         if (getCanWrite(FILE_FORMAT_XML_EXTERNAL_BINARY) == false) {
+            throw FileException(filename, "XML External Binary type file not suppported.");
          }
          isXmlFile = true;
          break;
@@ -2336,6 +2378,9 @@ AbstractFile::writeFileContents(QTextStream& stream, QDataStream& dataStream) th
             break;
          case FILE_FORMAT_XML_GZIP_BASE64:
             setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueXMLGZipBase64());
+            break;
+         case FILE_FORMAT_XML_EXTERNAL_BINARY:
+            setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueXMLExternalBinary());
             break;
          case FILE_FORMAT_OTHER:
             setHeaderTag(headerTagEncoding, getHeaderTagEncodingValueOther());
@@ -2399,6 +2444,25 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
    filename = filenameIn;
    
    //
+   // Caret command may set a file format preference 
+   //
+   for (unsigned int i = 0; i < preferredWriteTypeCaretCommand.size(); i++) {
+      if (getCanWrite(preferredWriteTypeCaretCommand[i])) {
+         fileWriteType = preferredWriteTypeCaretCommand[i];
+         break;
+      }
+   }
+   
+   //
+   // Special case for metric file
+   //
+   if (dynamic_cast<MetricFile*>(this) != NULL) {
+      if (getCanWrite(preferredMetricWriteTypeCaretCommand)) {
+         fileWriteType = preferredMetricWriteTypeCaretCommand;
+      }
+   }
+   
+   //
    // Check file type here to avoid opening and clearing a file on disk.
    //
    switch (fileWriteType) {
@@ -2427,6 +2491,11 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
             throw FileException(filename, "XML GZip Base64 type file not supported.");
          }
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         if (getCanWrite(FILE_FORMAT_XML_EXTERNAL_BINARY) == false) {
+            throw FileException(filename, "XML External Binary type file not supported.");
+         }
+         break;
       case FILE_FORMAT_OTHER:
          if (getCanWrite(FILE_FORMAT_OTHER) == false) {
             throw FileException(filename, "\"Other\" type file not supported.");
@@ -2452,6 +2521,7 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
    if (writingQFile->open(QFile::WriteOnly)) {
       QTextStream stream(writingQFile);
       QDataStream binStream(writingQFile);
+	  binStream.setVersion(QDataStream::Qt_4_3);
       
       try {
          writeFileContents(stream, binStream);
@@ -3410,6 +3480,7 @@ AbstractFile::findBinaryDataOffsetQT4Bug(QFile& file,
    file.seek(0);
    
    QDataStream dataStream(&file);
+   dataStream.setVersion(QDataStream::Qt_4_3);
    
    const int arraySize = 2048;
    char buffer[arraySize];

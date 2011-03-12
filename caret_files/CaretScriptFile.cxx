@@ -201,7 +201,7 @@ CaretScriptFile::runCommandsInFile(QWidget* parentWidget,
             //
             // Try all variable substitutions
             //
-            for (std::set<Variable>::iterator iter = variables.begin();
+            for (std::multiset<Variable>::iterator iter = variables.begin();
                  iter != variables.end(); 
                  iter++) {
                paramName = paramName.replace(iter->getVariableName(),
@@ -516,7 +516,11 @@ CaretScriptFile::readFileData(QFile& /*file*/,
          throw FileException(filename, "Reading XML Base64 not supported.");
          break;   
       case FILE_FORMAT_XML_GZIP_BASE64:
-         throw FileException(filename, "Reading XML GZip Base64 not supported.");         break;      
+         throw FileException(filename, "Reading XML GZip Base64 not supported.");         
+         break;      
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Reading XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:         
          throw FileException(filename, "Reading in Other format not supported.");
          break;      
@@ -557,6 +561,9 @@ CaretScriptFile::writeFileData(QTextStream& /*stream*/,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException(filename, "Writing in XML GZip Base64 not supported.");
          break;
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException(filename, "Writing XML External Binary not supported.");
+         break;      
       case FILE_FORMAT_OTHER:
          throw FileException(filename, "Writing in Other format not supported.");
          break;

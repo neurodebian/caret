@@ -2314,6 +2314,7 @@ WuQFileDialog::restoreState(const QByteArray& state)
 {
    QByteArray sd = state;
    QDataStream stream(&sd, QIODevice::ReadOnly);
+   stream.setVersion(QDataStream::Qt_4_3);
    if (stream.atEnd()) {
       return false;
    }
@@ -2364,6 +2365,7 @@ WuQFileDialog::saveState() const
 {
    QByteArray data;
    QDataStream stream(&data, QIODevice::WriteOnly);
+   stream.setVersion(QDataStream::Qt_4_3);
    
    stream << qint32(WUQFileDialogMagic);
    stream << qint32(WUQFileDialogVersion);

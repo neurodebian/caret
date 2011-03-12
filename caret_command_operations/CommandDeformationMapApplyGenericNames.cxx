@@ -407,6 +407,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
       case BrainModelSurfaceDeformDataFile::DATA_FILE_TOPOGRAPHY:
          BrainModelSurfaceDeformDataFile::deformNodeAttributeFile(&deformationMapFile,
                                                                   dft,
+                                                                  false,
                                                                   dataFileName,
                                                                   deformedFileName);
          break;
@@ -415,6 +416,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
       case BrainModelSurfaceDeformDataFile::DATA_FILE_SHAPE:
          BrainModelSurfaceDeformDataFile::deformGiftiNodeDataFile(&deformationMapFile,
                                                                   dft,
+                                                                  false,
                                                                   dataFileName,
                                                                   deformedFileName);
          break;
@@ -424,13 +426,15 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
             BrainModelSurfaceDeformDataFile::deformCoordinateFile(&deformationMapFile,
                                                                   dataFileName,
                                                                   deformedFileName2,
-                                                                  true);
+                                                                  true,
+                                                                  false);
          }
          break;
       case BrainModelSurfaceDeformDataFile::DATA_FILE_COORDINATE_FLAT:
          BrainModelSurfaceDeformDataFile::deformFlatCoordinateFile(
                                  &deformationMapFile,
                                  targetCutTopologyFileName,
+                                 false,
                                  dataFileName,
                                  sourceCutTopologyFileName,
                                  deformedFileName,
@@ -444,6 +448,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
                           &sourceBrainSet,
                           &targetBrainSet,
                           &deformationMapFile,
+                          false,
                           dft,
                           dataFileName,
                           deformedFileName);
@@ -453,6 +458,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
                               &sourceBrainSet,
                               &targetBrainSet,
                               &deformationMapFile,
+                              false,
                               dataFileName,
                               false,
                               deformedFileName);
@@ -462,6 +468,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
                               &sourceBrainSet,
                               &targetBrainSet,
                               &deformationMapFile,
+                              false,
                               dataFileName,
                               false,
                               deformedFileName);
@@ -471,6 +478,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
                               &sourceBrainSet,
                               &targetBrainSet,
                               &deformationMapFile,
+                              false,
                               dataFileName,
                               true,
                               deformedFileName);
@@ -480,6 +488,7 @@ CommandDeformationMapApplyGenericNames::executeCommand() throw (BrainModelAlgori
                               &sourceBrainSet,
                               &targetBrainSet,
                               &deformationMapFile,
+                              false,
                               dataFileName,
                               true,
                               deformedFileName);

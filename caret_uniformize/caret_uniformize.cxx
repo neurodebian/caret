@@ -734,7 +734,7 @@ static void remove_field (UN_options * option_data, float * fpar, short * sfim)
 
           /* monitor the results for short range (rickr) */
           {
-            d = exp( log(anat_data[ixyz]) - f);
+            d = exp( log((float)(anat_data[ixyz]) - f));
             if ( d > 32767.0 )
             {
                 if ( d > dmax ) dmax = d;

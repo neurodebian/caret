@@ -564,7 +564,7 @@ GiftiDataArrayFileSaxReader::createDataArray(const QXmlAttributes& attributes)
       const QString dimNumString = attributes.value(GiftiCommon::getAttDim(i));
       if (dimNumString.isEmpty()) {
          errorMessage = "Required dimension "
-                        + GiftiCommon::GiftiCommon::getAttDim(i)
+                        + GiftiCommon::getAttDim(i)
                         + " not found for DataArray"; 
          return false;
       }

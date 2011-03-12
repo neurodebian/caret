@@ -455,6 +455,9 @@ NeurolucidaFile::readFileData(QFile& /* file */,
       case FILE_FORMAT_XML_GZIP_BASE64:
          throw FileException("Reading of XMK GZip Base64 format Neurolucida files not supported..");
          break;   
+      case FILE_FORMAT_XML_EXTERNAL_BINARY:
+         throw FileException("\"XML-External Binary Encoding\" file format not supported.");
+         break;
       case FILE_FORMAT_OTHER:
          throw FileException("Reading of other format Neurolucida files not supported..");
          break;

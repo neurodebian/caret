@@ -34,13 +34,16 @@
 #include <QLayout>
 #include <QPushButton>
 
+#ifdef HAVE_QWT
 #include <qwt_plot_curve.h>
 #include <qwt_plot_marker.h>
 #include <qwt_plot_picker.h>
+#endif // HAVE_QWT
 
 #include "GuiGraphWidget.h"
 #include <QDoubleSpinBox>
 
+#ifdef HAVE_QWT
 /**
  * Constructor.
  */
@@ -286,6 +289,8 @@ GuiQwtGraph::setLegends(const QString& topLegendIn,
    leftLegend = leftLegendIn;
    rightLegend = rightLegendIn;
 }
+
+#endif // HAVE_QWT
 //=============================================================================
 
 /**
@@ -295,6 +300,7 @@ GuiGraphWidget::GuiGraphWidget(QWidget* parent,
                   const QString& title)
    : QWidget(parent)
 {
+#ifdef HAVE_QWT
    xDataMinimum = std::numeric_limits<double>::max();
    xDataMaximum = -std::numeric_limits<double>::max();
    
@@ -434,6 +440,17 @@ GuiGraphWidget::GuiGraphWidget(QWidget* parent,
    pickYLabel = new QLabel("to get coordinates.");
    labelGroupBoxLayout->addWidget(pickYLabel);
    labelGroupBox->setFixedHeight(labelGroupBox->sizeHint().height());
+#else  // HAVE_QWT
+   //
+   // Warning Label
+   //
+   QLabel* warningLabel = new QLabel(
+      "<HTML><B>Graphs are not available.<br>"
+      "Caret was built without the QWT Graph Library.</B></HTML>");
+
+   QVBoxLayout* widgetLayout = new QVBoxLayout(this);
+   widgetLayout->addWidget(warningLabel);
+#endif // HAVE_QWT
 }
 
 /**
@@ -449,10 +466,12 @@ GuiGraphWidget::~GuiGraphWidget()
 void 
 GuiGraphWidget::slotApplyScalePushButton()
 {
+#ifdef HAVE_QWT
    graphWidget->setScale(xMinimumDoubleSpinBox->value(),
                          xMaximumDoubleSpinBox->value(),
                          yMinimumDoubleSpinBox->value(),
                          yMaximumDoubleSpinBox->value());
+#endif HAVE_QWT
 }
       
 /**
@@ -476,7 +495,9 @@ GuiGraphWidget::getGraphMinMax(double& xMin,
                                double& yMin,
                                double& yMax)
 {
+#ifdef HAVE_QWT
    graphWidget->getScale(xMin, xMax, yMin, yMax);
+#endif
 }
              
 /**
@@ -488,11 +509,13 @@ GuiGraphWidget::setGraphMinMax(const double xMin,
                                const double yMin,
                                const double yMax)
 {
+#ifdef HAVE_QWT
    xMinimumDoubleSpinBox->setValue(xMin);
    xMaximumDoubleSpinBox->setValue(xMax);
    yMinimumDoubleSpinBox->setValue(yMin);
    yMaximumDoubleSpinBox->setValue(yMax);
    slotApplyScalePushButton();
+#endif  // HAVE_QWT
 }
                    
 /**
@@ -504,6 +527,7 @@ GuiGraphWidget::addData(const std::vector<double>& dataX,
                            const QColor& color,
                            const DRAW_DATA_TYPE ddtIn)
 {
+#ifdef HAVE_QWT
    GuiQwtGraph::DRAW_DATA_TYPE ddt = GuiQwtGraph::DRAW_DATA_TYPE_LINES;
    switch (ddtIn) {
       case DRAW_DATA_TYPE_LINES:
@@ -552,19 +576,21 @@ GuiGraphWidget::addData(const std::vector<double>& dataX,
 
       return curvesInGraphWidget.size() - 1;
    }
-   
+#endif // HAVE_QWT
    return -1;
 }
   
 /**
  * called when a point is picked.
  */
+#ifdef HAVE_QWT
 void 
 GuiGraphWidget::slotPointPicked(const QwtDoublePoint& dp)
 {
    pickXLabel->setText("X: " + QString::number(dp.x(), 'f', 6));
    pickYLabel->setText("Y: " + QString::number(dp.y(), 'f', 6));
 }
+#endif // HAVE_QWT
 
 /**
  * set the minimum peak.
@@ -572,7 +598,9 @@ GuiGraphWidget::slotPointPicked(const QwtDoublePoint& dp)
 void 
 GuiGraphWidget::slotSetMinimumPeak(int val)
 {
+#ifdef HAVE_QWT
    graphWidget->slotSetMinimumPeak(val);
+#endif  // HAVE_QWT
 }
 
 /**
@@ -581,7 +609,9 @@ GuiGraphWidget::slotSetMinimumPeak(int val)
 void 
 GuiGraphWidget::slotSetMaximumPeak(int val)
 {
+#ifdef HAVE_QWT
    graphWidget->slotSetMaximumPeak(val);
+#endif  // HAVE_QWT
 }
 
 /**
@@ -590,8 +620,10 @@ GuiGraphWidget::slotSetMaximumPeak(int val)
 void 
 GuiGraphWidget::setScaleXMinimum(double val)
 {
+#ifdef HAVE_QWT
    xMinimumDoubleSpinBox->setValue(val);
    graphWidget->setScaleXMinimum(val);
+#endif  // HAVE_QWT
 }
 
 /**
@@ -600,8 +632,10 @@ GuiGraphWidget::setScaleXMinimum(double val)
 void 
 GuiGraphWidget::setScaleXMaximum(double val)
 {
+#ifdef HAVE_QWT
    xMaximumDoubleSpinBox->setValue(val);
    graphWidget->setScaleXMaximum(val);
+#endif  // HAVE_QWT
 }
 
 /**
@@ -610,8 +644,10 @@ GuiGraphWidget::setScaleXMaximum(double val)
 void 
 GuiGraphWidget::setScaleYMinimum(double val)
 {
+#ifdef HAVE_QWT
    yMinimumDoubleSpinBox->setValue(val);
    graphWidget->setScaleYMinimum(val);
+#endif  // HAVE_QWT
 }
 
 /**
@@ -620,8 +656,10 @@ GuiGraphWidget::setScaleYMinimum(double val)
 void 
 GuiGraphWidget::setScaleYMaximum(double val)
 {
+#ifdef HAVE_QWT
    yMaximumDoubleSpinBox->setValue(val);
    graphWidget->setScaleYMaximum(val);
+#endif  // HAVE_QWT
 }
 
 /**
@@ -631,6 +669,7 @@ void
 GuiGraphWidget::setDataDisplayed(const int dataIndex,
                                     const bool displayIt)
 {
+#ifdef HAVE_QWT
    if (dataIndex < static_cast<int>(curvesInGraphWidget.size())) {
       if (displayIt) {
          curvesInGraphWidget[dataIndex]->setStyle(QwtPlotCurve::Lines);
@@ -640,6 +679,7 @@ GuiGraphWidget::setDataDisplayed(const int dataIndex,
       }
       graphWidget->replot();
    }
+#endif  // HAVE_QWT
 }                            
 
 /**
@@ -648,10 +688,12 @@ GuiGraphWidget::setDataDisplayed(const int dataIndex,
 void 
 GuiGraphWidget::removeData(const int dataNumber)
 {
+#ifdef HAVE_QWT
    if ((dataNumber >= 0) && (dataNumber < static_cast<int>(curvesInGraphWidget.size()))) {
       //graphWidget->removeCurve(curvesInGraphWidget[dataNumber]);
       curvesInGraphWidget[dataNumber]->detach();
    }
+#endif  // HAVE_QWT
 }
 
 /**
@@ -660,9 +702,11 @@ GuiGraphWidget::removeData(const int dataNumber)
 void 
 GuiGraphWidget::removeAllData()
 {
+#ifdef HAVE_QWT
    for (int i = 0; i < static_cast<int>(curvesInGraphWidget.size()); i++) {
       curvesInGraphWidget[i]->detach();
    }
+#endif  // HAVE_QWT
 }
       
 /**
@@ -674,5 +718,7 @@ GuiGraphWidget::setLegends(const QString& topLegend,
                            const QString& leftLegend,
                            const QString& rightLegend)
 {
+#ifdef HAVE_QWT
    graphWidget->setLegends(topLegend, bottomLegend, leftLegend, rightLegend);
+#endif  // HAVE_QWT
 }

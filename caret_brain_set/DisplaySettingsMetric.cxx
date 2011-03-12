@@ -138,20 +138,34 @@ DisplaySettingsMetric::getMetricsForColoringAndPalette(int& displayColumnOut,
    }
    
    MetricFile* mf = brainSet->getMetricFile();
+
+   /*
+    * Use functional volume if there are no metric files.
+    */
    bool useFunctionalVolumeFlag = false;
-   
-   switch (getSelectedOverlayScale()) {
-      case METRIC_OVERLAY_SCALE_AUTO:
+   if (brainSet->getNumberOfVolumeFunctionalFiles() > 0) {
+      useFunctionalVolumeFlag = true;
+      if (mf->getNumberOfColumns() > 0) {
          if (displayColumnOut >= 0) {
-            float minValue, maxValue;
-            mf->getDataColumnMinMax(displayColumnOut, minValue, maxValue);
-            if (minValue < 0.0) {
-               negMaxValue = minValue;
-            }
-            if (maxValue > 0.0) {
-               posMaxValue = maxValue;
+            if (displayColumnOut < mf->getNumberOfColumns()) {
+               useFunctionalVolumeFlag = false;
             }
          }
+      }
+   }
+
+   switch (getSelectedOverlayScale()) {
+      case METRIC_OVERLAY_SCALE_AUTO:
+            if (displayColumnOut >= 0) {
+               float minValue, maxValue;
+               mf->getDataColumnMinMax(displayColumnOut, minValue, maxValue);
+               if (minValue < 0.0) {
+                  negMaxValue = minValue;
+               }
+               if (maxValue > 0.0) {
+                  posMaxValue = maxValue;
+               }
+            }
          break;
       case METRIC_OVERLAY_SCALE_AUTO_PERCENTAGE:
          if (displayColumnOut >= 0) {
@@ -186,15 +200,16 @@ DisplaySettingsMetric::getMetricsForColoringAndPalette(int& displayColumnOut,
                             posMaxValue,
                             negMinValue,
                             negMaxValue);
+         useFunctionalVolumeFlag = false;  // use the USER SCALE values
          break;
    }
    
    //
    // Use volume for min/max values if no metrics
    //
-   if (mf->getNumberOfColumns() <= 0) {
-      useFunctionalVolumeFlag = true;
-   }
+   //if (mf->getNumberOfColumns() <= 0) {
+   //   useFunctionalVolumeFlag = true;
+   //}
    
    if (useFunctionalVolumeFlag) {
       BrainModelVolume* bmv = brainSet->getBrainModelVolume();

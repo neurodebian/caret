@@ -1,25 +1,30 @@
 PROJECT_NAME	       = Caret5
 
-OUTPUT_DIRECTORY       = /Users/john/caret5_osx/doc
+OUTPUT_DIRECTORY       = /home/jschindl/c5doc
 
 OUTPUT_LANGUAGE        = English
 
-EXTRACT_ALL            = NO
+EXTRACT_ALL            = YES
 
 EXTRACT_PRIVATE	       = YES
+
+HAVE_DOT         = YES
+
+CALL_GRAPH = YES
+ 
+CALLER_GRAPH = YES
 
 INPUT                  = ./caret \
 			 ./caret_brain_set \
 			 ./caret_command \
+             ./caret_command_operations \
 			 ./caret_common \
-			 ./caret_copy_spec \
 			 ./caret_edit \
-			 ./caret_file_convert \
 			 ./caret_files \
-			 ./caret_map_fmri \ 
-			 ./caret_metric \
-			 ./caret_widgets \
-			 ./caret_zip_spec
+             ./caret_statistics \
+             ./caret_uniformize \
+             ./caret_widgets
+
 
 FILE_PATTERNS          = *.h *.cxx
 

@@ -29,13 +29,16 @@
 
 #include <vector>
 
+#ifdef HAVE_QWT
 #include <qwt_plot.h>
+#endif // HAVE_QWT
 #include <QLabel>
 
 class QDoubleSpinBox;
 class QwtPlotCurve;
 class QwtPlotMarker;
 
+#ifdef HAVE_QWT
 /// graph based upon Qwt Graph
 class GuiQwtGraph : public QwtPlot
 {
@@ -137,6 +140,7 @@ class GuiQwtGraph : public QwtPlot
       QString rightLegend;
                         
 };
+#endif // HAVE_QWT
 
 /// the graph widget
 class GuiGraphWidget : public QWidget {
@@ -212,9 +216,11 @@ class GuiGraphWidget : public QWidget {
       void setScaleYMaximum(double val);
       
    protected slots:
+#ifdef HAVE_QWT
       // called when a point is picked
       void slotPointPicked(const QwtDoublePoint&);
-      
+#endif // HAVE_QWT
+
       // apply scale push button
       void slotApplyScalePushButton();
       
@@ -222,18 +228,22 @@ class GuiGraphWidget : public QWidget {
       void slotResetScalePushButton();
       
    protected:
+#ifdef HAVE_QWT
       /// the graph
       GuiQwtGraph* graphWidget;
-      
+#endif // HAVE_QWT
+
       /// pick label showing X coordinates
       QLabel* pickXLabel;
       
       /// pick label showing Y coordinates
       QLabel* pickYLabel;
       
+#ifdef HAVE_QWT
       /// the curves in the graph widget
       std::vector<QwtPlotCurve*> curvesInGraphWidget;
-      
+#endif // HAVE_QWT
+
       /// x-minimum float spin box
       QDoubleSpinBox* xMinimumDoubleSpinBox;
       
