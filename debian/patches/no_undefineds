@@ -1,5 +1,3 @@
-diff --git a/caret_brain_set/caret_brain_set.pro b/caret_brain_set/caret_brain_set.pro
-index e950ba9..620a88d 100644
 --- a/caret_brain_set/caret_brain_set.pro
 +++ b/caret_brain_set/caret_brain_set.pro
 @@ -5,12 +5,14 @@
@@ -8,7 +6,7 @@ index e950ba9..620a88d 100644
  INCLUDEPATH += .
 +# need to include before ubuntu settings to get VTK_LIBS
 +include(../caret_qmake_include.pro)
- ubuntu {
+ dll {
  	CONFIG -= staticlib
  	CONFIG += plugin
 +	LIBS += $$VTK_LIBS
@@ -16,5 +14,16 @@ index e950ba9..620a88d 100644
  
 -include(../caret_qmake_include.pro)
  
- TEMPLATE     = lib
+ vs:TEMPLATE=vclib
+ !vs:TEMPLATE=lib
+--- a/caret/caret5.pro
++++ b/caret/caret5.pro
+@@ -187,7 +187,7 @@
+    
+    LIBS += $$VTK_LIBS
+    LIBS -= -lvtkjpeg -lvtkpng -lvtkexpat -lvtkzlib
+-   LIBS += -ldl
++   LIBS += -ldl -lz -lqwt-qt4
+    QTPLUGIN -= qgif qjpeg qtiff
+    QMAKE_CXXFLAGS += -DUBUNTU
  

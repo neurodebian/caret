@@ -1,0 +1,29 @@
+diff --git a/caret_common/CaretVersion.h b/caret_common/CaretVersion.h
+index d0848e8..c82ed88 100644
+--- a/caret_common/CaretVersion.h
++++ b/caret_common/CaretVersion.h
+@@ -29,12 +29,23 @@
+ 
+ #include <QString>
+ 
++#ifdef CARET_BUILDID
++# undef  SHSH
++# undef  SHSHSH
++# undef  CARET_BUILDID_STRING
++# define SHSH(x)   #x
++# define SHSHSH(x) SHSH(x)
++# define CARET_BUILDID_STRING  SHSHSH(CARET_BUILDID)   /* now in "quotes" */
++#else
++# undef  CARET_BUILDID_STRING
++#endif
++
+ /// class for caret version information
+ class CaretVersion {
+    public:
+       /// Version 5.62, Feb 25, 2011
+       /// get the version of caret as a QString
+-      static QString getCaretVersionAsString() { return "5.62"; }
++      static QString getCaretVersionAsString() { return "5.62" " " CARET_BUILDID_STRING; }
+ };
+ 
+ #endif // __CARET_VERSION_H__

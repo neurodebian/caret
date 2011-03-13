@@ -1,14 +1,29 @@
-caret (5.6.1.6~dfsg.1-1) UNRELEASED; urgency=low
+caret (5.6.2~dfsg.1-1) unstable; urgency=low
 
-  * New upstream release. Merged all patches. Thanks to John Harwell and
+  * New upstream release. Merged most patches. Thanks to John Harwell and
     Jon Schindler.
   * Switch the source package format 3.0 (quilt). Moved remaining patch under
     quilt's arms.
   * Bumped Standards-Version to 3.9.1, no changes necessary.
   * Changed maintainer to NeuroDebian team.
   * Updated debian/copyright.
+  * Improved package description to mention unavailable functionality when
+    the caret-data package is missing.
+  * Addressed upstream's concerns about support for the Debian package, by a)
+    adding a patch that clearly identifies Caret as a Debian build and b) put
+    explicit support information into README.Debian.
+  * Patch upstream's "this is not a supported version" dialog on application
+    startup to show information on missing functionality and how to obtain
+    the missing pieces. Moreover, this dialog won't be displayed when all
+    relevant data files are found on a particular system to keep the
+    nuisance-level low.
+  * Address removal of QAssistantClient() from Qt 4.7 by adjusting
+    dependencies accordingly (Closes: #588977). Thanks to Alex Valavanis
+    and for the report and patch.
+  * Fix FTBFS due to underspecified linking for internal libraries
+    (Closes: #554061).
 
- -- Michael Hanke <michael.hanke@gmail.com>  Tue, 16 Nov 2010 17:28:18 -0500
+ -- Michael Hanke <mih@debian.org>  Sun, 13 Mar 2011 13:32:13 -0400
 
 caret (5.6.1.3~dfsg.1-2) unstable; urgency=low
 

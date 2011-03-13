@@ -2,8 +2,36 @@ Caret for Debian
 ================
 
 This document describes the differences between the Debian package of Caret
-and original Caret releases.
+and original Caret releases. But first a note from the Caret authors:
 
+  | The official version of Caret software is produced by the Van Essen
+  | Laboratory at Washington University and is available from:
+  | http://brainvis.wustl.edu/wiki/index.php/Caret:About
+  |
+  | Only versions of Caret downloaded from the above web site are supported by
+  | the Van Essen Laboratory.
+  |
+  | This version of Caret is an Debian package and is neither distributed, nor
+  | supported, by the Van Essen Laboratory.
+  |
+  | Some functionality may be missing if Caret cannot locate resources that are
+  | included in the official distribution. These functions include, but are not
+  | limited to:
+  |
+  | - Help Menu Documentation
+  | - Landmark Border Drawing
+  | - Map Volumes to Surface via PALS Atlas
+  | - Movie Making
+  | - Multi-Resolution Morphing
+  | - Projection of Foci via PALS Atlas
+  | - Surface-Based Registration
+  | - Surface Flattening
+  |
+  | The official Caret distribution contains specific versions of third party
+  | software known to function correctly with Caret.  However, this version
+  | of Caret relies on separately installed packages that contain the third
+  | party software and these third party packages may not be compatible with
+  | Caret. As a result, some functions in Caret may not operate correctly.
 
 
 User interface
@@ -28,10 +56,10 @@ Debian maintainer has to figure out what kind of advantages ITK support really
 has.
 
 Unlike the source distribution, the binary distribution of Caret comes with a
-set of additional documentation and data files, e.g. for fMRI mapping data
-into several stereotaxic spaces.  This package does not include them.
-Currently, they are available from unofficial Debian repositories (e.g.
-http://apsy.gse.uni-magdeburg.de/debian).  However, the Debian maintainer is
-working on integrating this package in Debian as well.
+set of additional documentation and data files, e.g. for fMRI mapping data into
+several stereotaxic spaces.  This package does not include them.  Currently,
+all additional data packages are are available from the NeuroDebian repository
+at http://neuro.debian.net.  However, the Debian maintainer is working on
+integrating this package in Debian as well.
 
- -- Michael Hanke <michael.hanke@gmail.com>  Tue, 15 Jul 2008 08:23:34 +0200
+ -- Michael Hanke <mih@debian.org>  Sat, 12 Mar 2011 14:49:15 -0500
