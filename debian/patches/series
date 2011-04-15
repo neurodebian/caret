@@ -1,3 +1,4 @@
+kfreebsd_fixes
 no_undefineds
 ifdef_fixes
 version_suffix
