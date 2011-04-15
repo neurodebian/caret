@@ -2,7 +2,7 @@
 # -*- makefile -*-
 
 # build identifier
-BUILD_ID = $(shell dpkg-vendor --query Vendor)_$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
+BUILD_ID = $(shell cut -d ' ' -f 1,1 < /etc/issue.net)_$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
