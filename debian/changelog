@@ -1,3 +1,12 @@
+caret (5.6.2~dfsg.1-2) unstable; urgency=low
+
+  * Added patch to fix a FTBFS on kFreeBSD due to changes in the way Qt
+    handles platform defines (i.e. Q_OS_GLIBC -> Q_OS_FREEBSD_KERNEL).
+    Closes: #618645
+  * Move Caret into the "science" section of the menu (LP: #680495).
+
+ -- Michael Hanke <mih@debian.org>  Fri, 15 Apr 2011 16:21:10 -0400
+
 caret (5.6.2~dfsg.1-1) unstable; urgency=low
 
   * New upstream release. Merged most patches. Thanks to John Harwell and
