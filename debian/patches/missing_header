@@ -1,0 +1,12 @@
+diff --git a/caret_statistics/StatisticRandomNumberOperator.h b/caret_statistics/StatisticRandomNumberOperator.h
+index 1fc300d..84b877b 100644
+--- a/caret_statistics/StatisticRandomNumberOperator.h
++++ b/caret_statistics/StatisticRandomNumberOperator.h
+@@ -28,6 +28,7 @@
+ /*LICENSE_END*/
+ 
+ #include <cstdlib>
++#include <stddef.h>
+ 
+ /// class for a random number generator object used with standard library algorithms
+ class StatisticRandomNumberOperator {

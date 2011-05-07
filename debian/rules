@@ -29,7 +29,7 @@ cfg-%:
 	@echo "Configuring: '$*'"
 	cd $* && qmake-qt4 "CONFIG+=release ubuntu dll" \
 	                   "QMAKE_CXXFLAGS_RELEASE=$(CXXFLAGS) -DCARET_BUILDID=\"$(BUILD_ID)\"" \
-	                   "QMAKE_LFLAGS_RELEASE += -Wl,--as-needed --no-undefined" \
+	                   "QMAKE_LFLAGS_RELEASE += -Wl,--as-needed" \
 	                   "CONFIG -= profile"
 
 

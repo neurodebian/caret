@@ -1,5 +1,6 @@
 kfreebsd_fixes
 no_undefineds
 ifdef_fixes
+missing_header
 version_suffix
 nuisance2advice

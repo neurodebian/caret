@@ -1,3 +1,10 @@
+caret (5.6.2~dfsg.1-3) unstable; urgency=low
+
+  * Remove dysfunctional --no-undefined linker option.
+  * Add patch to add header include required by GCC 4.6 (Closes: #625110).
+
+ -- Michael Hanke <mih@debian.org>  Sat, 07 May 2011 12:47:02 -0400
+
 caret (5.6.2~dfsg.1-2) unstable; urgency=low
 
   * Added patch to fix a FTBFS on kFreeBSD due to changes in the way Qt
