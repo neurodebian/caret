@@ -1,6 +1,6 @@
 --- a/caret/main.cxx
 +++ b/caret/main.cxx
-@@ -612,11 +612,13 @@
+@@ -613,11 +613,13 @@
  #endif
  
  #ifdef UBUNTU

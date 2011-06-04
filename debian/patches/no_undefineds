@@ -18,7 +18,7 @@
  !vs:TEMPLATE=lib
 --- a/caret/caret5.pro
 +++ b/caret/caret5.pro
-@@ -187,7 +187,7 @@
+@@ -201,7 +201,7 @@
     
     LIBS += $$VTK_LIBS
     LIBS -= -lvtkjpeg -lvtkpng -lvtkexpat -lvtkzlib

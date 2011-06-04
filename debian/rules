@@ -47,7 +47,7 @@ clean-%:
 
 configure: configure-stamp
 configure-stamp: cfg-caret_statistics cfg-caret_common cfg-caret_brain_set \
-                 cfg-caret_command_operations cfg-caret_files \
+                 cfg-caret_command_operations cfg-caret_files cfg-caret_cifti \
                  cfg-caret_uniformize cfg-caret_widgets cfg-caret \
                  cfg-caret_command
 	dh_testdir
@@ -58,14 +58,14 @@ build: build-stamp
 build-stamp: configure \
              build-caret_statistics build-caret_common \
              build-caret_uniformize build-caret_widgets build-caret_files \
-             build-caret_brain_set build-caret_command_operations \
+             build-caret_brain_set build-caret_cifti build-caret_command_operations \
              build-caret build-caret_command
 	dh_testdir
 	touch $@
 
 
 clean: clean-caret_statistics clean-caret_common clean-caret_brain_set \
-       clean-caret_command_operations clean-caret_files \
+       clean-caret_command_operations clean-caret_cifti clean-caret_files \
        clean-caret_uniformize clean-caret_widgets clean-caret \
        clean-caret_command
 	dh_testdir
@@ -80,7 +80,7 @@ clean: clean-caret_statistics clean-caret_common clean-caret_brain_set \
 install: build
 	dh_testdir
 	dh_testroot
-	dh_clean -k
+	dh_prep
 	dh_installdirs
 	
 	# install internal libs
@@ -113,7 +113,7 @@ binary-arch: build install
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	dh_shlibdeps -lcaret_brain_set:caret_command_operations:caret_uniformize:caret_widgets:caret_common:caret_files:caret_statistics
+	dh_shlibdeps -lcaret_brain_set:caret_command_operations:caret_uniformize:caret_widgets:caret_common:caret_files:caret_statistics:caret_cifti
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
