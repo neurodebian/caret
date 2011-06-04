@@ -2542,7 +2542,11 @@ BrainModelSurfaceNodeColoring::assignColors()
       std::cout << "WARNING: Paint names with no corresponding area colors:" << std::endl;
       for (std::set<int>::iterator iter = paintIndicesWithNoAreaColor.begin();
            iter != paintIndicesWithNoAreaColor.end(); iter++) {
-         std::cout << "   " << pf->getPaintNameFromIndex(*iter).toAscii().constData() << std::endl;
+           QString name = pf->getPaintNameFromIndex(*iter);
+           if (name.isEmpty()) {
+               name = "<...empty name for index=" + QString::number(*iter) + ">";
+           }
+         std::cout << "   " << name.toAscii().constData() << std::endl;
       }
       std::cout << std::endl;
       paintIndicesWithNoAreaColor.clear();

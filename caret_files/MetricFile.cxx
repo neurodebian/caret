@@ -2260,8 +2260,9 @@ MetricFile::readFileVersion_0(QFile& file, QTextStream& stream,
    int numCols  = 0;
    
    // get starting position of data
-   qint64 startOfMetricData = stream.pos(); //file.pos();
-   
+   //qint64 startOfMetricData = stream.pos(); //file.pos();
+   qint64 startOfMetricData = this->getQTextStreamPosition(stream);
+
    // read through file once to get number of nodes and number of columns
    QString line;
    while(stream.atEnd() == false) {
@@ -2474,7 +2475,8 @@ MetricFile::readLegacyNodeFileData(QFile& file, QTextStream& stream,
                          QDataStream& binStream) throw (FileException)
 {
    // get starting position of data
-   const qint64 startOfMetricData = stream.pos(); //file.pos();
+   //const qint64 startOfMetricData = stream.pos(); //file.pos();
+   const qint64 startOfMetricData = this->getQTextStreamPosition(stream);
    
    int version = 0;
    
@@ -2528,7 +2530,7 @@ MetricFile::postFileReadingProcessing() throw (FileException)
             throw FileException("data dimensions must be 2 or less");
         }
         else if (dims.size() == 2) {
-            if (dims[1] > 1) {
+            if (dims[1] > 1 && dims[0] > 1) {
 
                 //
                 // Split the two dimensional array into single dim arrays
@@ -2536,6 +2538,42 @@ MetricFile::postFileReadingProcessing() throw (FileException)
                 GiftiDataArray* twoDimArray = this->getDataArray(i);
                 long numNewArrays = dims[1];
                 long numNodes = dims[0];
+                float* twoDimData = twoDimArray->getDataPointerFloat();
+
+                //
+                // Dimensions for the new arrays
+                //
+                std::vector<int> newDim;
+                newDim.push_back(numNodes);
+                newDim.push_back(1);
+                for (long j = 0; j < numNewArrays; j++) {
+                    //
+                    // Create the new data arrays and fill them with the data
+                    //
+                    GiftiDataArray* gda = new GiftiDataArray(this,
+                                                       twoDimArray->getIntent(),
+                                                       twoDimArray->getDataType(),
+                                                       newDim,
+                                                       GiftiDataArray::ENCODING_INTERNAL_COMPRESSED_BASE64_BINARY);
+                    float* data = gda->getDataPointerFloat();
+                    long twoDimDataOffset = numNodes * j;
+                    for (long m = 0; m < numNodes; m++) {
+                        data[m] = twoDimData[twoDimDataOffset + m];
+                    }
+
+                    newArrays.push_back(gda);
+                }
+
+                arrayIndicesToRemove.push_back(i);
+            }
+            else if(dims[1] > 1 && dims[0] == 1)
+            {
+               //
+                // Split the two dimensional array into single dim arrays
+                //
+                GiftiDataArray* twoDimArray = this->getDataArray(i);
+                long numNewArrays = dims[0];
+                long numNodes = dims[1];
                 float* twoDimData = twoDimArray->getDataPointerFloat();
 
                 //

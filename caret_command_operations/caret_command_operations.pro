@@ -20,7 +20,9 @@ HEADERS += CommandBase.h \
            CommandCaretFileNamingUnitTesting.h \
            CommandCaretHelpCreateHtmlIndexFile.h \
            CommandColorFileAddColor.h \
+           CommandCreateCiftiDenseTimeseries.h \
            CommandDataFileCompare.h \
+           CommandCiftiCorrelationMatrix.h \
            CommandConvertDataFileToCaret6.h \
            CommandConvertSpecFileToCaret6.h \
            CommandColorFileCreateMissingColors.h \
@@ -55,6 +57,9 @@ HEADERS += CommandBase.h \
            CommandMetricExtrema.h \
            CommandMetricFileCreate.h \
            CommandMetricGradient.h \
+           CommandMetricROIGradient.h \
+           CommandMetricROIMask.h \
+           CommandMetricROISmoothing.h \
            CommandMetricGradientAll.h \
            CommandMetricInGroupDifference.h \
            CommandMetricInformation.h \
@@ -194,6 +199,7 @@ HEADERS += CommandBase.h \
            CommandVerify.h \
            CommandVersion.h \
            CommandVolumeAnatomyPeaks.h \
+           CommandVolumeAtlasResamplingAndSmoothing.h \
            CommandVolumeBiasCorrection.h \
            CommandVolumeBlur.h \
            CommandVolumeClassifyIntensities.h \
@@ -239,6 +245,7 @@ HEADERS += CommandBase.h \
            CommandVolumeResize.h \
            CommandVolumeROIGradient.h \
            CommandVolumeROIMinima.h \
+           CommandVolumeROISmoothing.h \
            CommandVolumeScale0to255.h \
            CommandVolumeScalePercent0to255.h \
            CommandVolumeSculpt.h \
@@ -262,15 +269,18 @@ HEADERS += CommandBase.h \
            CommandVolumeVectorCombine.h \
            OffScreenOpenGLWidget.h \
            ScriptBuilderParameters.h \
-    CommandSurfaceTopologyFixOrientation.h
+    CommandSurfaceTopologyFixOrientation.h \
+    CommandCaretFileCopy.h
 
 SOURCES += CommandBase.cxx \
            CommandCaretFileNamingUnitTesting.cxx \
            CommandCaretHelpCreateHtmlIndexFile.cxx \
+           CommandCiftiCorrelationMatrix.cxx \
            CommandColorFileAddColor.cxx \
            CommandColorFileCreateMissingColors.cxx \
            CommandConvertDataFileToCaret6.cxx \
            CommandConvertSpecFileToCaret6.cxx \
+           CommandCreateCiftiDenseTimeseries.cxx \
            CommandDataFileCompare.cxx \
            CommandDeformationMapApply.cxx \
            CommandDeformationMapApplyGenericNames.cxx \
@@ -304,6 +314,9 @@ SOURCES += CommandBase.cxx \
            CommandMetricFileCreate.cxx \
            CommandMetricGradientAll.cxx \
            CommandMetricGradient.cxx \
+           CommandMetricROIGradient.cxx \
+           CommandMetricROIMask.cxx \
+           CommandMetricROISmoothing.cxx \
            CommandMetricInGroupDifference.cxx \
            CommandMetricInformation.cxx \
            CommandMetricMath.cxx \
@@ -442,6 +455,7 @@ SOURCES += CommandBase.cxx \
            CommandVerify.cxx \
            CommandVersion.cxx \
            CommandVolumeAnatomyPeaks.cxx \
+           CommandVolumeAtlasResamplingAndSmoothing.cxx \
            CommandVolumeBiasCorrection.cxx \
            CommandVolumeBlur.cxx \
            CommandVolumeClassifyIntensities.cxx \
@@ -487,6 +501,7 @@ SOURCES += CommandBase.cxx \
            CommandVolumeResize.cxx \
            CommandVolumeROIGradient.cxx \
            CommandVolumeROIMinima.cxx \
+           CommandVolumeROISmoothing.cxx \
            CommandVolumeScale0to255.cxx \
            CommandVolumeScalePercent0to255.cxx \
            CommandVolumeSculpt.cxx \
@@ -510,4 +525,5 @@ SOURCES += CommandBase.cxx \
            CommandVolumeVectorCombine.cxx \
            OffScreenOpenGLWidget.cxx \
            ScriptBuilderParameters.cxx \
-    CommandSurfaceTopologyFixOrientation.cxx
+    CommandSurfaceTopologyFixOrientation.cxx \
+    CommandCaretFileCopy.cxx

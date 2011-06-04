@@ -20,8 +20,13 @@ include(../caret_qmake_include.pro)
 
 CONFIG += assistant
 
+unix:release:!debug:!profile {
+   QMAKE_POST_LINK=strip $(TARGET)
+   ##QMAKE_POST_LINK=strip --strip-debug $(TARGET)
+}
+
 win32 {
-    !vs {
+    !vs:!nmake {
         CONFIG(debug) {
            LIBS += ..\caret_common\debug\libCaretCommon.a \
               ..\caret_command_operations\debug\libCaretCommandOperations.a \
@@ -31,7 +36,8 @@ win32 {
               ..\caret_uniformize\debug\libCaretUniformize.a \
               ..\caret_statistics\debug\libCaretStatistics.a \
               ..\caret_widgets\debug\libCaretWidgets.a \
-              ..\caret_common\debug\libCaretCommon.a 
+              ..\caret_common\debug\libCaretCommon.a \
+              ..\caret_cifti\debug\libCaretCifti.a
         }
         CONFIG(release) {
            LIBS += ..\caret_common\release\libCaretCommon.a \
@@ -42,12 +48,13 @@ win32 {
 	           ..\caret_uniformize\release\libCaretUniformize.a \
               ..\caret_statistics\release\libCaretStatistics.a \
               ..\caret_widgets\release\libCaretWidgets.a \
-              ..\caret_common\release\libCaretCommon.a 
+              ..\caret_common\release\libCaretCommon.a \
+              ..\caret_cifti\release\libCaretCifti.a
         }
         LIBS += $$VTK_LIBS
    }
 
-   vs {
+   else { #it's either vs or nmake if it failed the test above
         CONFIG(debug,debug|release) {
                 LIBS += ..\caret_common\debug\CaretCommon.lib \
                     ..\caret_command_operations\debug\CaretCommandOperations.lib \
@@ -57,7 +64,8 @@ win32 {
                     ..\caret_uniformize\debug\CaretUniformize.lib \
                     ..\caret_statistics\debug\CaretStatistics.lib \
                     ..\caret_widgets\debug\CaretWidgets.lib \
-                    ..\caret_common\debug\CaretCommon.lib
+                    ..\caret_common\debug\CaretCommon.lib \
+                    ..\caret_cifti\debug\CaretCifti.lib
                 LIBS-=$$VTK_RELEASE_LIBS
                 LIBS+=$$VTK_LIBS
         }
@@ -70,7 +78,8 @@ win32 {
                     ..\caret_uniformize\release\CaretUniformize.lib \
                     ..\caret_statistics\release\CaretStatistics.lib \
                     ..\caret_widgets\release\CaretWidgets.lib \
-                    ..\caret_common\release\CaretCommon.lib
+                    ..\caret_common\release\CaretCommon.lib \
+                    ..\caret_cifti\release\CaretCifti.lib
                 LIBS-=$$VTK_LIBS
                 LIBS+=$$VTK_RELEASE_LIBS
         }   
@@ -85,8 +94,8 @@ win32 {
     }
     CONFIG(release,debug|release)
     {
-        CONFIG -= console
-        CONFIG += windows
+        CONFIG -= windows
+		CONFIG += console        
     }
     contains( DEFINES, HAVE_QWT ) {
         LIBS += $$QWT_LIBS
@@ -106,7 +115,8 @@ unix:!ubuntu {
         ../caret_uniformize/libCaretUniformize.a \
         ../caret_statistics/libCaretStatistics.a \
         ../caret_common/libCaretCommon.a \
-        ../caret_widgets/libCaretWidgets.a      
+        ../caret_widgets/libCaretWidgets.a \
+        ../caret_cifti/libCaretCifti.a     
     }
 
    dll {
@@ -118,7 +128,8 @@ unix:!ubuntu {
            ../caret_uniformize/libCaretUniformize.so \
            ../caret_statistics/libCaretStatistics.so \
            ../caret_common/libCaretCommon.so \
-           ../caret_widgets/libCaretWidgets.so
+           ../caret_widgets/libCaretWidgets.so \
+           ../caret_cifti/libCaretCifti.so
            LIBS += -ldl 
     }
 }
@@ -134,7 +145,8 @@ macx {
         -L../caret_uniformize -lCaretUniformize \
         -L../caret_statistics -lCaretStatistics \
         -L../caret_common -lCaretCommon \
-        -L../caret_widgets -lCaretWidgets 
+        -L../caret_widgets -lCaretWidgets \
+        -L../caret_cifti -lCaretCifti
     
     LIBS += \
         -framework Carbon \
@@ -175,7 +187,8 @@ ubuntu {
            ../caret_uniformize/libCaretUniformize.so \
            ../caret_statistics/libCaretStatistics.so \
            ../caret_common/libCaretCommon.so \
-           ../caret_widgets/libCaretWidgets.so
+           ../caret_widgets/libCaretWidgets.so \
+           ../caret_cifti/libCaretCifti.so
    LIBS +=  \
       -L../caret_command_operations -lCaretCommandOperations \
            -L../caret_brain_set -lCaretBrainSet \
@@ -183,7 +196,8 @@ ubuntu {
            -L../caret_uniformize -lCaretUniformize \
            -L../caret_statistics -lCaretStatistics \
            -L../caret_common -lCaretCommon \
-           -L../caret_widgets -lCaretWidgets
+           -L../caret_widgets -lCaretWidgets \
+           -L../caret_cifti -lCaretCifti
    
    LIBS += $$VTK_LIBS
    LIBS -= -lvtkjpeg -lvtkpng -lvtkexpat -lvtkzlib
@@ -205,7 +219,8 @@ unix:!macx:!ubuntu {
         -L../caret_uniformize -lCaretUniformize \
         -L../caret_statistics -lCaretStatistics \
         -L../caret_common -lCaretCommon \
-        -L../caret_widgets -lCaretWidgets
+        -L../caret_widgets -lCaretWidgets \
+        -L../caret_cifti -lCaretCifti
 
     LIBS += $$VTK_LIBS
     contains( DEFINES, HAVE_QWT ) {

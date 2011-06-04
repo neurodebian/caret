@@ -1,8 +1,8 @@
 Set objShell = WScript.CreateObject("WScript.Shell")
 Set colUsrEnvVars = objShell.Environment("USER")
 
-QtPath = "C:\dev64\3rdparty\Qt\bin"
-
+QtPath = "C:\dev64\install\Qt\bin"
+CCommandPath = "C:\dev64\caret5_source\caret_command\debug;C:\dev64\caret5_source\caret_command\release"
 Path = colUsrEnvVars("OLDPATH")
 
 If Len(Path) = 0 Then
@@ -12,18 +12,18 @@ If Len(Path) = 0 Then
     Path = colUsrEnvVars("OLDPATH")
 End If
 
-NewPath =  (QtPath & ";" & Path)
+NewPath =  (QtPath & ";" & CCommandPath & ";" & Path)
 colUsrEnvVars("PATH") = (NewPath)
 
-colUsrEnvVars("QTDIR") = "C:\dev64\3rdparty\Qt"
-colUsrEnvVars("VTK_LIB_DIR") = "C:\dev64\3rdparty\VTKDebug\lib\vtk-5.6"
-colUsrEnvVars("VTK_INC_DIR") = "C:\dev64\3rdparty\VTKDebug\include\vtk-5.6"
-colUsrEnvVars("QWT_LIB_DIR") = "C:\dev64\3rdparty\qwt-5.2.1\lib"
-colUsrEnvVars("QWT_INC_DIR") = "C:\dev64\3rdparty\qwt-5.2.1\include"
-colUsrEnvVars("ZLIB_LIB_DIR") = "C:\dev64\3rdparty\zlib\lib"
-colUsrEnvVars("ZLIB_INC_DIR") = "C:\dev64\3rdparty\zlib\include"
+colUsrEnvVars("QTDIR") = "C:\dev64\install\Qt"
+colUsrEnvVars("VTK_LIB_DIR") = "C:\dev64\install\VTKDebug\lib\vtk-5.6"
+colUsrEnvVars("VTK_INC_DIR") = "C:\dev64\install\VTKDebug\include\vtk-5.6"
+colUsrEnvVars("QWT_LIB_DIR") = "C:\dev64\install\qwt-5.2.1\lib"
+colUsrEnvVars("QWT_INC_DIR") = "C:\dev64\install\qwt-5.2.1\include"
+colUsrEnvVars("ZLIB_LIB_DIR") = "C:\dev64\install\zlib\lib"
+colUsrEnvVars("ZLIB_INC_DIR") = "C:\dev64\install\zlib\include"
 
-colUsrEnvVars("VTK_RELEASE_LIB_DIR") = "C:\dev64\3rdparty\VTKRelease\lib\vtk-5.6"
-colUsrEnvVars("VTK_RELEASE_INC_DIR") = "C:\dev64\3rdparty\VTKRelease\include\vtk-5.6"
-colUsrEnvVars("NETCDF_INC_DIR") = "C:\dev64\3rdparty\minc-netcdf\include"
-colUsrEnvVars("NETCDF_LIB_DIR") = "C:\dev64\3rdparty\minc-netcdf\lib"
+colUsrEnvVars("VTK_RELEASE_LIB_DIR") = "C:\dev64\install\VTKRelease\lib\vtk-5.6"
+colUsrEnvVars("VTK_RELEASE_INC_DIR") = "C:\dev64\install\VTKRelease\include\vtk-5.6"
+colUsrEnvVars("NETCDF_INC_DIR") = "C:\dev64\install\minc-netcdf\include"
+colUsrEnvVars("NETCDF_LIB_DIR") = "C:\dev64\install\minc-netcdf\lib"

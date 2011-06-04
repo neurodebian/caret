@@ -65,7 +65,16 @@ void
 BrainModelRunExternalProgram::execute() throw (BrainModelAlgorithmException)
 {
    outputText = "";
-   
+      
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Caret Home Directory: "
+                << BrainSet::getCaretHomeDirectory().toAscii().constData()
+                << std::endl;
+      std::cout << "Caret Bin Directory: "
+                << BrainSet::getBinDirectoryName().toAscii().constData()
+                << std::endl;
+   }
+
    //
    // Start path to executable
    //
@@ -75,6 +84,7 @@ BrainModelRunExternalProgram::execute() throw (BrainModelAlgorithmException)
       pgm.append("/");
       pgm.append(BrainSet::getBinDirectoryName());
       pgm.append("/");
+
 /*
 #ifdef Q_OS_MACX
       pgm.append("/bin_macosx/");
@@ -91,6 +101,11 @@ BrainModelRunExternalProgram::execute() throw (BrainModelAlgorithmException)
    }
    pgm.append(programName);
    
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Program to run is: "
+                << pgm.toAscii().constData()
+                << std::endl;
+   }
 /*
 #ifdef Q_OS_MACX
    //pgm.append("/apps/map_fmri_to_surface.app/Contents/MacOS/");
@@ -160,6 +175,35 @@ BrainModelRunExternalProgram::execute() throw (BrainModelAlgorithmException)
    // Create the process object
    //
    QProcess* process = new QProcess(this);
+
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Parameters for QProcess" << std::endl;
+      std::cout << "   Program to run: " << pgm.toAscii().constData() << std::endl;
+   }
+   int numArgs = this->programArguments.size();
+   for (int i = 0; i < numArgs; i++) {
+      QString p = this->programArguments.at(i);
+      if (DebugControl::getDebugOn()) {
+         std::cout << "   Arg "
+                   << i
+                   << ": "
+                   << p.toAscii().constData()
+                   << std::endl;
+      }
+
+      if (p.startsWith('"') && p.endsWith('"')) {
+         const int len = p.length();
+         if (len > 2) {
+            p = p.mid(1, len - 2);
+            this->programArguments.replace(i, p);
+            if (DebugControl::getDebugOn()) {
+               std::cout << "      Removed quotes, now: "
+                         << p.toAscii().constData()
+                         << std::endl;
+            }
+         }
+      }
+   }
 
    //
    // Execute the process

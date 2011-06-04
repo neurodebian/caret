@@ -353,6 +353,7 @@ GuiMainWindowAttributesActions::slotVolumeToSurfaceMapperComplete()
 {
    GuiFilesModified fm;
    fm.setStatusForAll(true);
+   fm.setInhibitSurfaceDefaultScaling();
    theMainWindow->fileModificationUpdate(fm);
    GuiBrainModelOpenGL::updateAllGL(NULL);
 }

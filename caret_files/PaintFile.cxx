@@ -106,110 +106,20 @@ PaintFile::copyHelperPaint(const PaintFile& /*pf*/)
 {
 }
       
-/**
- * Clean up paint names (elminate unused ones).
- *
-void
-PaintFile::cleanUpPaintNames()
-{
-   std::vector<QString> paintNames;
-   labelTable.getAllLabels(paintNames);
-   
-   if (paintNames.size() == 0) {
-      return;
-   }
-   
-   const int numNodes = getNumberOfNodes();
-   const int numCols  = getNumberOfColumns();
-   if ((numNodes == 0) || (numCols == 0)) {
-      labelTable.clear();
-      return;
+class LabelOldToNew {
+public:
+   LabelOldToNew(const QString& nameIn) {
+      this->name = nameIn;
+      this->newIndex = -1;
+      this->usedFlag = false;
+      this->duplicateFlag = false;
    }
 
-   //
-   // Find the "???" paint or add if not found
-   //
-   int questionPaint = getPaintIndexFromName("???");
-   if (questionPaint < 0) {
-      questionPaint = addPaintName("???");
-   }
-   
-   const int numPaintNames = getNumberOfPaintNames();
-   std::vector<bool> paintNameUsed(numPaintNames, false);
-   
-   //
-   // Handle any duplicate names by using first index for name
-   //
-   for (int m = 0; m < (numPaintNames - 1); m++) {
-      const QString paintName = getPaintNameFromIndex(m);
-      for (int n = 0; n < numPaintNames; n++) {
-         if (paintName == getPaintNameFromIndex(n)) {
-            for (int i = 0; i < numNodes; i++) {
-               for (int j = 0; j < numCols; j++) {
-                  if (getPaint(i, j) == n) {
-                     setPaint(i, j, m);
-                  }
-               }
-            }
-         }
-      }
-   }
-   
-   //
-   // Keep the "???" paint even if it is not used.
-   //
-   paintNameUsed[questionPaint] = true;
-      
-   //
-   // Determine which paint names are used
-   //
-   for (int i = 0; i < numNodes; i++) {
-      for (int j = 0; j < numCols; j++) {
-         int paint = getPaint(i, j);
-         //
-         // If paint index is invalid, set it to the ??? paint
-         //
-         if ((paint < 0) || (paint >= numPaintNames)) {
-            paint = questionPaint;
-         }
-         paintNameUsed[paint] = true;
-      }
-   } 
-   
-   //
-   // Create an indices from old paint index to new
-   //
-   std::vector<QString> usedNames;
-   std::vector<int> oldToNew(numPaintNames, 0);
-   for (int k = 0; k < numPaintNames; k++) {
-      oldToNew[k] = -1;
-      if (paintNameUsed[k]) {
-         oldToNew[k] = usedNames.size();
-         usedNames.push_back(getPaintNameFromIndex(k));
-      }
-   }
-   
-   //
-   // Update paint indices
-   //
-   for (int i = 0; i < numNodes; i++) {
-      for (int j = 0; j < numCols; j++) {
-         const int paint = getPaint(i, j);
-         setPaint(i, j, oldToNew[paint]);
-      }
-   }
-   
-   //
-   // Update paint names
-   //
-   labelTable.clear();
-   for (unsigned int i = 0; i < usedNames.size(); i++) {
-      labelTable.addLabel(usedNames[i]);
-   }
-   
-   setModified();
-}
-*/
+   int newIndex;
+   QString name;
+   bool usedFlag;
+   bool duplicateFlag;
+};
 
 /**
  * Clean up paint names (elminate unused ones).
@@ -217,12 +127,6 @@ PaintFile::cleanUpPaintNames()
 void
 PaintFile::cleanUpPaintNames()
 {
-   const int numPaintNames = this->getNumberOfPaintNames();
-   if (numPaintNames == 0) {
-      labelTable.clear();
-      return;
-   }
-
    const int numNodes = getNumberOfNodes();
    const int numCols  = getNumberOfColumns();
    if ((numNodes == 0) || (numCols == 0)) {
@@ -230,74 +134,185 @@ PaintFile::cleanUpPaintNames()
       return;
    }
 
-   GiftiLabelTable newLabelTable;
-
-   //
-   // Loop through all label names mapping into new label table
-   //
-   std::map<QString,int> namesToIndicesMap;
-   std::vector<int> remapIndices;
-   namesToIndicesMap.insert(std::make_pair("???", newLabelTable.getNumberOfLabels()));
-   int remapCount = 0;
-   for (int i = 0; i < numPaintNames; i++) {
-      if (i > 0) {
-         if ((i % 10000) == 0) {
-            std::cout << "Remap "
-                      << i
-                      << " of "
-                      << numPaintNames
-                      << std::endl;
-         }
-      }
-
-      const QString paintName = this->getPaintNameFromIndex(i);
-      std::map<QString,int>::iterator iter = namesToIndicesMap.find(paintName);
-
-      int newIndex = -1;
-      if (iter != namesToIndicesMap.end()) {
-         newIndex = iter->second;
-      }
-      else {
-         newIndex = newLabelTable.addLabel(paintName);;
-         namesToIndicesMap.insert(std::make_pair(paintName, newIndex));
-      }
-
-
-      if (newIndex != i) {
-         remapCount++;
-      }
-      remapIndices.push_back(newIndex);
-   }
-   if (remapCount == 0) {
+   int numLabels = this->labelTable.getNumberOfLabels();
+   if (numLabels <= 0) {
       return;
    }
-   std::cout << "Remapping "
-             << remapCount
-             << " paint names."
-             << std::endl;
 
-   //
-   // Update any indices
-   //
-   for (int i = 0; i < numNodes; i++) {
-      for (int j = 0; j < numCols; j++) {
-         int paintIndex = this->getPaint(i, j);
-         if ((paintIndex >=0) &&
-             (paintIndex < numPaintNames)) {
-            paintIndex = remapIndices[paintIndex];
-            this->setPaint(i, j, paintIndex);
+   /*
+    * Create a mapping that will map old indices to new indices
+    * after unused and duplicate labels are removed.
+    */
+   std::vector<LabelOldToNew> labelsOldToNew;
+   labelsOldToNew.reserve(numLabels);
+   for (int m = 0; m < numLabels; m++) {
+      LabelOldToNew lotn(this->labelTable.getLabel(m));
+      labelsOldToNew.push_back(lotn);
+   }
+
+   /*
+    * Find duplicate label names.
+    */
+   for (int m = 0; m < (numLabels - 1); m++) {
+      if (labelsOldToNew[m].duplicateFlag == false) {
+         const QString& labelName = this->labelTable.getLabel(m);
+         for (int n = (m + 1); n < numLabels; n++) {
+             const QString& dupLabelName = this->labelTable.getLabel(n);
+             if (labelName == dupLabelName) {
+                labelsOldToNew[n].duplicateFlag = true;
+                if (DebugControl::getDebugOn()) {
+                   std::cout << "Duplicate label: " << dupLabelName.toAscii().constData() << std::endl;
+                }
+             }
          }
       }
    }
 
-   //
-   // Update paint names
-   //
-   labelTable.clear();
-   int numNewNames = newLabelTable.getNumberOfLabels();
-   for (int i = 0; i < numNewNames; i++) {
-      labelTable.addLabel(newLabelTable.getLabel(i));
+   /*
+    * Find labels that are used.
+    */
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         const int labelIndex = this->getPaint(i, j);
+         labelsOldToNew[labelIndex].usedFlag = true;
+      }
    }
+
+   /*
+    * Remove duplicate and unused labels
+    * Need to start at last index since labels are
+    * being removed.
+    */
+   int numUsedLabels = 0;
+   for (int m = (numLabels - 1); m >= 0; m--) {
+      const QString& labelName = this->getLabelTable()->getLabel(m);
+      if (labelsOldToNew[m].usedFlag == false) {
+         this->labelTable.deleteLabel(m);
+         if (DebugControl::getDebugOn()) {
+            std::cout << "Label is not used: " << labelName.toAscii().constData() << std::endl;
+         }
+      }
+      else if (labelsOldToNew[m].duplicateFlag) {
+         this->labelTable.deleteLabel(m);
+         if (DebugControl::getDebugOn()) {
+            std::cout << "Label is duplicate: " << labelName.toAscii().constData() << std::endl;
+         }
+      }
+      else {
+         numUsedLabels++;
+      }
+   }
+   if (DebugControl::getDebugOn()) {
+      std::cout << "Labels UNused: " << (numLabels - numUsedLabels) << std::endl;
+      std::cout << "Labels used: " << numUsedLabels << std::endl;
+   }
+
+   /*
+    * If no labels are removed, then exit.
+    */
+   if (numLabels == numUsedLabels) {
+      return;
+   }
+
+   /*
+    * Create a mapping from old indices to new indices
+    * now that labels have been removed.
+    */
+   int numOldLabels = static_cast<int>(labelsOldToNew.size());
+   for (int m = 0; m < numOldLabels; m++) {
+      const QString& labelName = labelsOldToNew[m].name;
+      int newIndex = this->labelTable.getLabelIndex(labelName);
+      labelsOldToNew[m].newIndex = newIndex;
+   }
+
+   /*
+    * Update to new label indices.
+    */
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         int oldIndex = this->getPaint(i, j);
+         int newIndex = labelsOldToNew[oldIndex].newIndex;
+         if (newIndex >= 0) {
+            this->setPaint(i, j, newIndex);
+         }
+         else {
+            std::cout << "PROGRAM ERROR Cleaning paint names: "
+                      << "New index for "
+                      << labelsOldToNew[oldIndex].name.toAscii().constData()
+                      << " is invalid.";
+         }
+      }
+   }
+
+
+   //   GiftiLabelTable newLabelTable;
+
+//   //
+//   // Loop through all label names mapping into new label table
+//   //
+//   std::map<QString,int> namesToIndicesMap;
+//   std::vector<int> remapIndices;
+//   namesToIndicesMap.insert(std::make_pair("???", newLabelTable.getNumberOfLabels()));
+//   int remapCount = 0;
+//   for (int i = 0; i < numPaintNames; i++) {
+//      if (i > 0) {
+//         if ((i % 10000) == 0) {
+//            std::cout << "Remap "
+//                      << i
+//                      << " of "
+//                      << numPaintNames
+//                      << std::endl;
+//         }
+//      }
+
+//      const QString paintName = this->getPaintNameFromIndex(i);
+//      std::map<QString,int>::iterator iter = namesToIndicesMap.find(paintName);
+
+//      int newIndex = -1;
+//      if (iter != namesToIndicesMap.end()) {
+//         newIndex = iter->second;
+//      }
+//      else {
+//         newIndex = newLabelTable.addLabel(paintName);;
+//         namesToIndicesMap.insert(std::make_pair(paintName, newIndex));
+//      }
+
+
+//      if (newIndex != i) {
+//         remapCount++;
+//      }
+//      remapIndices.push_back(newIndex);
+//   }
+//   if (remapCount == 0) {
+//      return;
+//   }
+//   std::cout << "Remapping "
+//             << remapCount
+//             << " paint names."
+//             << std::endl;
+
+//   //
+//   // Update any indices
+//   //
+//   for (int i = 0; i < numNodes; i++) {
+//      for (int j = 0; j < numCols; j++) {
+//         int paintIndex = this->getPaint(i, j);
+//         if ((paintIndex >=0) &&
+//             (paintIndex < numPaintNames)) {
+//            paintIndex = remapIndices[paintIndex];
+//            this->setPaint(i, j, paintIndex);
+//         }
+//      }
+//   }
+
+//   //
+//   // Update paint names
+//   //
+//   labelTable.clear();
+//   int numNewNames = newLabelTable.getNumberOfLabels();
+//   for (int i = 0; i < numNewNames; i++) {
+//      labelTable.addLabel(newLabelTable.getLabel(i));
+//   }
 
    setModified();
 }
@@ -365,6 +380,8 @@ PaintFile::deformFile(const DeformationMapFile& dmf,
    }
    
    delete[] paints;
+
+   deformedPaintFile.cleanUpPaintNames();
 }
 
 /**
@@ -651,19 +668,36 @@ void
 PaintFile::getPaintNamesForColumn(const int column, std::vector<int>& indices) const
 {
    indices.clear();
-   
+   std::set<int> invalidPaintIndices;
+
    const int numNames = getNumberOfPaintNames();
    if (numNames > 0) {
       std::vector<int> namesUsed(numNames, -1);
       const int numNodes = getNumberOfNodes();
       for (int i = 0; i < numNodes; i++) {
-         namesUsed[getPaint(i, column)] = 1;
+         int paintIndex = this->getPaint(i, column);
+         if ((paintIndex >= 0) && (paintIndex < numNames)) {
+             namesUsed[paintIndex] = 1;
+         }
+         else {
+            invalidPaintIndices.insert(paintIndex);
+         }
       }
       
       for (int i = 0; i < numNames; i++) {
          if (namesUsed[i] >= 0) {
             indices.push_back(i);
          }
+      }
+
+      if (invalidPaintIndices.empty() == false) {
+          std::cout << "Invalid paint indices:";
+          for (std::set<int>::iterator iter = invalidPaintIndices.begin();
+               iter != invalidPaintIndices.end();
+               iter++) {
+              std::cout << " " << *iter;
+          }
+          std::cout << std::endl;
       }
    }
 }
@@ -1194,8 +1228,9 @@ PaintFile::readLegacyNodeFileData(QFile& file, QTextStream& stream,
 {
    QString line;
    
-   const qint64 pos = stream.pos(); //file.pos();
-   
+   //const qint64 pos = stream.pos(); //file.pos();
+   const qint64 pos = this->getQTextStreamPosition(stream);
+
    readLine(stream, line);
    
    int fileVersion = 0;
@@ -1205,7 +1240,15 @@ PaintFile::readLegacyNodeFileData(QFile& file, QTextStream& stream,
 
    if (tagFileVersion != versionTag) {
       fileVersion = 0;
-      file.seek(pos);
+      if (file.seek(pos) == false) {
+         std::cout << "ERROR: file.seek("
+                   << pos
+                   << ") failed  at "
+                   << __LINE__
+                   << " in "
+                   << __FILE__
+                   << std::endl;
+      }
       stream.seek(pos);
    }
 
@@ -1413,8 +1456,10 @@ PaintFile::readPaintDataForNodes(const std::vector<int>& paintToPaintNameIndex,
                                  QTextStream& stream,
                                  QDataStream& binStream) throw (FileException)
 {
-   file.seek(stream.pos()); // QT 4.2.2
-   
+   //file.seek(stream.pos()); // QT 4.2.2
+   const qint64 streamPos = this->getQTextStreamPosition(stream);
+   file.seek(streamPos);
+
    QString line;
    std::vector<QString> tokens;
 
@@ -1796,3 +1841,50 @@ PaintFile::writeFileInCaret6Format(const QString& filenameIn, Structure structur
    return name;
 }
 
+/**
+ * validate the data arrays (optional for subclasses).
+ */
+void
+PaintFile::validateDataArrays() throw (FileException)
+{
+   int numNodes = this->getNumberOfNodes();
+   int numCols = this->getNumberOfColumns();
+   int numberOfPaintNames = this->getNumberOfPaintNames();
+
+   bool negativeIndexCount = 0;
+   std::set<int> invalidPaintIndices;
+   for (int i = 0; i < numNodes; i++) {
+      for (int j = 0; j < numCols; j++) {
+         int paintIndex = this->getPaint(i, j);
+         if (paintIndex >= numberOfPaintNames) {
+            invalidPaintIndices.insert(paintIndex);
+         }
+         else if (paintIndex < 0) {
+            negativeIndexCount++;
+            this->setPaint(i, j, 0);
+         }
+      }
+   }
+
+   if (negativeIndexCount > 0) {
+      std::cout << negativeIndexCount << " Negative Paint Indices changed to zero." << std::endl;
+   }
+
+   if (invalidPaintIndices.empty() == false) {
+       for (std::set<int>::iterator iter = invalidPaintIndices.begin();
+            iter != invalidPaintIndices.end();
+            iter++) {
+           int indx = *iter;
+           QString name("InvalidIndex_" + QString::number(indx));
+           this->getLabelTable()->setLabel(indx, name);
+           std::cout
+                 << "INFO: added paint name "
+                 << name.toAscii().constData()
+                 << " for invalid index "
+                 << indx
+                 << std::endl;
+       }
+   }
+
+   this->clearModified();
+}

@@ -498,7 +498,7 @@ class AbstractFile {
          return allowExistingFileOverwriteFlag;
       }
 
-   protected:    
+   protected:
       /// Constructor  
       AbstractFile(const QString& descriptiveName,
                    const QString& defaultExtensionIn,
@@ -544,7 +544,10 @@ class AbstractFile {
 
       /// clear the abstract file's members
       void clearAbstractFile();
-   
+
+      /// get the position of the QTextStream and try to fix it if the QT bug is detected
+      qint64 getQTextStreamPosition(QTextStream& textStream) throw (FileException);
+
       /// read header data from an XML file
       void readHeaderXML(QDomElement& rootElement);
       

@@ -489,14 +489,14 @@ GuiPaintNameEditorDialog::loadPaintNames()
       else {
          paintColorLabels[i]->setText("None");
       }
-      
+
       QPalette pal;
       pal.setColor(QPalette::Window, labelColor);
       paintColorLabels[i]->setAutoFillBackground(autoFill);
-      paintColorLabels[i]->setBackgroundRole(backgroundRole);
       paintColorLabels[i]->setPalette(pal);
       paintColorLabels[i]->repaint();
-      
+      paintColorLabels[i]->setBackgroundRole(backgroundRole);
+
       rowWidgetGroups[i]->setVisible(true);
    }
    
@@ -747,10 +747,10 @@ GuiPaintNameEditorDialog::slotEditColorButtonClicked(int indx)
 void 
 GuiPaintNameEditorDialog::updateGUI()
 {
-      theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
       GuiFilesModified fm;
       fm.setPaintModified();   
       theMainWindow->fileModificationUpdate(fm);
+      theMainWindow->getBrainSet()->getNodeColoring()->assignColors();
       GuiBrainModelOpenGL::updateAllGL();
 }
 

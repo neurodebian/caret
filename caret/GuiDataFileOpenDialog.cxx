@@ -2159,7 +2159,7 @@ GuiDataFileOpenDialog::openDataFile(QWidget* parentWidget, const QString specFil
          theMainWindow->updateDisplayControlDialog();
       }
    }
-   
+   fm.setInhibitSurfaceDefaultScaling();
    theMainWindow->fileModificationUpdate(fm);
    if (fm.getCoordinateModified()) {
       theMainWindow->displayNewestSurfaceInMainWindow();

@@ -38,12 +38,15 @@
 #include "StringUtilities.h"
 #include "VolumeFile.h"
 
+#include "CommandCaretFileCopy.h"
 #include "CommandCaretFileNamingUnitTesting.h"  
 #include "CommandCaretHelpCreateHtmlIndexFile.h"
+#include "CommandCiftiCorrelationMatrix.h"
 #include "CommandColorFileAddColor.h"
 #include "CommandColorFileCreateMissingColors.h"
 #include "CommandConvertDataFileToCaret6.h"
 #include "CommandConvertSpecFileToCaret6.h"
+#include "CommandCreateCiftiDenseTimeseries.h"
 #include "CommandDataFileCompare.h"
 #include "CommandDeformationMapApply.h"
 #include "CommandDeformationMapApplyGenericNames.h"
@@ -75,6 +78,9 @@
 #include "CommandMetricFileCreate.h"
 #include "CommandMetricGradient.h"
 #include "CommandMetricGradientAll.h"
+#include "CommandMetricROIGradient.h"
+#include "CommandMetricROIMask.h"
+#include "CommandMetricROISmoothing.h"
 #include "CommandMetricInGroupDifference.h"
 #include "CommandMetricInformation.h"
 #include "CommandMetricMath.h"
@@ -215,6 +221,7 @@
 #include "CommandVerify.h"
 #include "CommandVersion.h"
 #include "CommandVolumeAnatomyPeaks.h"
+#include "CommandVolumeAtlasResamplingAndSmoothing.h"
 #include "CommandVolumeBiasCorrection.h"
 #include "CommandVolumeBlur.h"
 #include "CommandVolumeClassifyIntensities.h"
@@ -261,6 +268,7 @@
 #include "CommandVolumeResize.h"
 #include "CommandVolumeROIGradient.h"
 #include "CommandVolumeROIMinima.h"
+#include "CommandVolumeROISmoothing.h"
 #include "CommandVolumeScale0to255.h"
 #include "CommandVolumeScalePercent0to255.h"
 #include "CommandVolumeSculpt.h"
@@ -310,12 +318,15 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
 {
    commandsOut.clear();
    
+   commandsOut.push_back(new CommandCaretFileCopy);
    commandsOut.push_back(new CommandCaretFileNamingUnitTesting);
    commandsOut.push_back(new CommandCaretHelpCreateHtmlIndexFile);
+   commandsOut.push_back(new CommandCiftiCorrelationMatrix);
    commandsOut.push_back(new CommandColorFileAddColor);
    commandsOut.push_back(new CommandColorFileCreateMissingColors);
    commandsOut.push_back(new CommandConvertDataFileToCaret6);
    commandsOut.push_back(new CommandConvertSpecFileToCaret6);
+   commandsOut.push_back(new CommandCreateCiftiDenseTimeseries);
    commandsOut.push_back(new CommandDataFileCompare);
    commandsOut.push_back(new CommandDeformationMapApply);
    commandsOut.push_back(new CommandDeformationMapApplyGenericNames);
@@ -353,6 +364,9 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandMetricMath);
    commandsOut.push_back(new CommandMetricMathPostfix);
    commandsOut.push_back(new CommandMetricMultipleCorrelationCoefficientMap);
+   commandsOut.push_back(new CommandMetricROIGradient);
+   commandsOut.push_back(new CommandMetricROIMask);
+   commandsOut.push_back(new CommandMetricROISmoothing);
    commandsOut.push_back(new CommandMetricSetColumnName);
    commandsOut.push_back(new CommandMetricSetColumnToScalar);
    commandsOut.push_back(new CommandMetricSmoothing);
@@ -487,6 +501,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandVerify);
    commandsOut.push_back(new CommandVersion);
    commandsOut.push_back(new CommandVolumeAnatomyPeaks);
+   commandsOut.push_back(new CommandVolumeAtlasResamplingAndSmoothing);
    commandsOut.push_back(new CommandVolumeBiasCorrection);
    commandsOut.push_back(new CommandVolumeBlur);
    commandsOut.push_back(new CommandVolumeClassifyIntensities);
@@ -533,6 +548,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandVolumeResize);
    commandsOut.push_back(new CommandVolumeROIGradient);
    commandsOut.push_back(new CommandVolumeROIMinima);
+   commandsOut.push_back(new CommandVolumeROISmoothing);
    commandsOut.push_back(new CommandVolumeScale0to255);
    commandsOut.push_back(new CommandVolumeScalePercent0to255);
    commandsOut.push_back(new CommandVolumeSculpt);

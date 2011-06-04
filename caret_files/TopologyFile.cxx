@@ -1769,8 +1769,12 @@ TopologyFile::readLegacyFileData(QFile& file, QTextStream& stream,
 
    switch(version) {
       case 1:
-         file.seek(stream.pos());
-         readFileDataVersion1(file, stream, binStream);
+         {
+            //file.seek(stream.pos());
+            const qint64 pos = this->getQTextStreamPosition(stream);
+            file.seek(pos);
+            readFileDataVersion1(file, stream, binStream);
+         }
          break;
       default:
 /*

@@ -28,6 +28,9 @@ cd ..
 cd caret_command
 %QTDIR%\bin\qmake -t vcapp "CONFIG+= vs"
 cd ..
+cd caret_cifti
+%QTDIR%\bin\qmake -t vclib "CONFIG+= vs"
+cd ..
 cd caret_edit
 %QTDIR%\bin\qmake -t vcapp "CONFIG+= vs"
 cd ..\windows
