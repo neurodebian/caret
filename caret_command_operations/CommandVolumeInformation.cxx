@@ -31,6 +31,7 @@
 #include "ProgramParameters.h"
 #include "ScriptBuilderParameters.h"
 #include "VolumeFile.h"
+#include <iomanip>
 
 /**
  * constructor.
@@ -98,17 +99,23 @@ CommandVolumeInformation::executeCommand() throw (BrainModelAlgorithmException,
    
    int dim[3];
    volume.getDimensions(dim);
-   std::cout << "   dimensions: " << dim[0] << ", " << dim[1] << ", " << dim[2] << ", "
-             << volume.getNumberOfComponentsPerVoxel() << std::endl;
+   std::cout << "   dimensions: " << std::endl;
+   std::cout << indent9.toAscii().data() << "X: " << dim[0] << std::endl;
+   std::cout << indent9.toAscii().data() << "Y: " << dim[1] << std::endl;
+   std::cout << indent9.toAscii().data() << "Z: " << dim[2] << std::endl;
+   if(volume.getNumberOfSubVolumes() > 1) std::cout << indent9.toAscii().data() << "Time: " << volume.getNumberOfSubVolumes() << std::endl;
+   if(volume.getNumberOfComponentsPerVoxel() > 1) std::cout << indent9.toAscii().data() << "Components Per Voxel: " << volume.getNumberOfComponentsPerVoxel() << std::endl;
    
    float space[3];
    volume.getSpacing(space);
-   std::cout << "   spacing: " << space[0] << ", " << space[1] << ", " << space[2] << std::endl;
+   std::ios_base::fmtflags flags = std::cout.flags( );
+   std::cout << "   spacing: " << std::setprecision(std::numeric_limits<float>::digits10) << std::scientific <<space[0] << ", " << space[1] << ", " << space[2] << std::endl;
    
    float org[3];
    volume.getOrigin(org);
-   std::cout << "   origin (center of first voxel): " << org[0] << ", " << org[1] << ", " << org[2] << std::endl;
+   std::cout << "   origin (center of first voxel): " << std::setprecision(std::numeric_limits< float >::digits10) << std::scientific<<org[0] << ", " << org[1] << ", " << org[2] << std::endl;
    
+   std::cout.flags(flags);
    VolumeFile::ORIENTATION orient[3];
    volume.getOrientation(orient);
    std::cout << "   orientation: " 

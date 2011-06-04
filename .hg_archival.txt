@@ -1,5 +1,0 @@
-repo: 1c44ab390402193f2b1f101f494ebe82899a4109
-node: 7c152f342db3c12b5997510f2d03ecf1b5620671
-branch: default
-latesttag: Version 5.62, Released 28 Feb 2011
-latesttagdistance: 1

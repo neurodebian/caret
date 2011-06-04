@@ -12848,15 +12848,15 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // Set the dimensions
    //
-   hdr.dim[0] = 4; // should be 4 even though elem[5] is set to 1
+   hdr.dim[0] = 3; //set at 3 to start
    hdr.dim[1] = firstVolume->dimensions[0];
    hdr.dim[2] = firstVolume->dimensions[1];
    hdr.dim[3] = firstVolume->dimensions[2];
    hdr.dim[4] = 1;
    hdr.dim[5] = 1;
    if (numSubVolumes > 1) {
-      hdr.dim[0] = 5;
-      hdr.dim[5] = numSubVolumes;
+      hdr.dim[0]++;
+      hdr.dim[hdr.dim[0]] = numSubVolumes;
    }
    //
    // Set the datatype
@@ -12908,18 +12908,18 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
          break;
       case VOXEL_DATA_TYPE_RGB_VOXEL_INTERLEAVED:
          hdr.datatype = NIFTI_TYPE_RGB24;
-         hdr.dim[0] = 5;  
-         hdr.dim[5] = 3;  // 3 values per voxel
+         hdr.dim[0]++;  
+         hdr.dim[hdr.dim[0]] = 3;  // 3 values per voxel
          break;
       case VOXEL_DATA_TYPE_RGB_SLICE_INTERLEAVED:
          hdr.datatype = NIFTI_TYPE_RGB24;
-         hdr.dim[0] = 5;  
-         hdr.dim[5] = 3;  // 3 values per voxel
+         hdr.dim[0]++;  
+         hdr.dim[hdr.dim[0]] = 3;  // 3 values per voxel
          break;
       case VOXEL_DATA_TYPE_VECTOR:
          hdr.datatype = NIFTI_TYPE_FLOAT32;
-         hdr.dim[0] = 5;  
-         hdr.dim[5] = 3;  // 3 values per voxel
+         hdr.dim[0]++;  
+         hdr.dim[hdr.dim[0]] = 3;  // 3 values per voxel
          break;
    }
    
@@ -13326,14 +13326,14 @@ VolumeFile::writeFileSPM(const QString& fileNameIn,
    //
    // dimensions
    //
-   hdr.dime.dim[0] = 4;
+   hdr.dime.dim[0] = 3;
    hdr.dime.dim[1] = firstVolume->dimensions[0];
    hdr.dime.dim[2] = firstVolume->dimensions[1];
    hdr.dime.dim[3] = firstVolume->dimensions[2];
    hdr.dime.dim[4] = 1;
    if (numSubVolumes > 1) {
-      hdr.dime.dim[0] = 5;
-      hdr.dime.dim[5] = numSubVolumes;
+      hdr.dime.dim[0]++;
+      hdr.dime.dim[hdr.dime.dim[0]] = numSubVolumes;
    }
    
    //

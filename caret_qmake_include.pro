@@ -45,7 +45,8 @@ INCLUDEPATH += \
 ../caret_statistics \
 ../caret_files \
 ../caret_uniformize \
-../caret_widgets
+../caret_widgets \
+../caret_cifti
 
 DEPENDPATH += \
 ../caret_brain_set \
@@ -54,7 +55,8 @@ DEPENDPATH += \
 ../caret_statistics \
 ../caret_files \
 ../caret_uniformize \
-../caret_widgets
+../caret_widgets \
+../caret_cifti
 
 #=================================================================================
 #
@@ -109,7 +111,7 @@ exists( $(QWT_INC_DIR)/qwt.h ) {
 #
 # VTK settings
 #
-!vs:INCLUDEPATH	+= $$(VTK_INC_DIR) #visual studio has separate include dirs for debug and release
+!vs:!nmake:INCLUDEPATH	+= $$(VTK_INC_DIR) #visual studio has separate include dirs for debug and release
 
 #
 # have VTK compiler defines (primarily for GIFTI API)
@@ -148,66 +150,68 @@ VTK_LIBS_TEMP = -lvtkFiltering \
 #
 # Windows/Msys Specific
 #
-win32:!vs {
-    INCLUDEPATH += ../caret_vtk4_classes
-    INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
-    VTK_LIBS = -L$$(VTK_LIB_DIR) $$VTK_LIBS_TEMP
-    exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
-        message( "Building WITH MPEG support" )
-        DEFINES += HAVE_MPEG
-        VTK_LIBS += -lvtkMPEG2Encode
-    }
-    
-    #
-    # We need to include zlib on windows
-    #
-    !exists( $(ZLIB_INC_DIR)/zlib.h ) {
-    error( "You must define ZLIB_INC_DIR to the ZLIB include files directory.")
-    }
-    CONFIG      += rtti exceptions console
-    INCLUDEPATH += $$(ZLIB_INC_DIR)
-    LIBS        += -L$$(ZLIB_LIB_DIR) -lz
-    contains (DEFINES, HAVE_QWT) {
-        QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt 
-    }
-}
+# qmake doesn't have an OR operator when checking conditionals, so I check for win32, then if it's not vs AND not nmake, assume msys,
+# otherwise it's either vs or nmake.
+win32 {
+	!vs:!nmake {
+		INCLUDEPATH += ../caret_vtk4_classes
+		INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
+		VTK_LIBS = -L$$(VTK_LIB_DIR) $$VTK_LIBS_TEMP
+		exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+			message( "Building WITH MPEG support" )
+			DEFINES += HAVE_MPEG
+			VTK_LIBS += -lvtkMPEG2Encode
+		}
+		
+		#
+		# We need to include zlib on windows
+		#
+		!exists( $(ZLIB_INC_DIR)/zlib.h ) {
+		error( "You must define ZLIB_INC_DIR to the ZLIB include files directory.")
+		}
+		CONFIG      += rtti exceptions console
+		INCLUDEPATH += $$(ZLIB_INC_DIR)
+		LIBS        += -L$$(ZLIB_LIB_DIR) -lz
+		contains (DEFINES, HAVE_QWT) {
+			QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt 
+		}
+	}
 
 #
 # Windows/Visual Studio Specific
 #
-
-vs {
-    CONFIG(debug,release|debug):INCLUDEPATH	+= $$(VTK_INC_DIR)
-	CONFIG(release,release|debug):INCLUDEPATH	+= $$(VTK_RELEASE_INC_DIR)
-    INCLUDEPATH += ../caret_vtk4_classes
-    CONFIG(debug,release|debug):INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
-	CONFIG(release,release|debug):INCLUDEPATH += $$(VTK_RELEASE_INC_DIR)/vtkmpeg2encode
-    VTK_LIBS = -L$$(VTK_LIB_DIR) $$VTK_LIBS_TEMP
-    VTK_RELEASE_LIBS = -L$$(VTK_RELEASE_LIB_DIR) $$VTK_LIBS_TEMP
-	
-    exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
-        message( "Building WITH MPEG support" )
-        DEFINES += HAVE_MPEG
-        VTK_LIBS += -lvtkMPEG2Encode
-        VTK_REELEASE_LIBS += -lvtkMPEG2Encode
-    }    
-    
-    #
-    # We need to include zlib on windows
-    #
-    !exists( $(ZLIB_INC_DIR)/zlib.h ) {
-    error( "You must define ZLIB_INC_DIR to the ZLIB include files directory.")
-    }
-    CONFIG      += rtti exceptions console
-    INCLUDEPATH += $$(ZLIB_INC_DIR)
-    LIBS        += -L$$(ZLIB_LIB_DIR) -lzlib
-    
-    contains (DEFINES, HAVE_QWT) {
-        CONFIG(release,release|debug):QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt 
-        CONFIG(debug,release|debug):QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwtd
-    }
+	else {
+		CONFIG(debug,release|debug):INCLUDEPATH	+= $$(VTK_INC_DIR)
+		CONFIG(release,release|debug):INCLUDEPATH	+= $$(VTK_RELEASE_INC_DIR)
+		INCLUDEPATH += ../caret_vtk4_classes
+		CONFIG(debug,release|debug):INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
+		CONFIG(release,release|debug):INCLUDEPATH += $$(VTK_RELEASE_INC_DIR)/vtkmpeg2encode
+		VTK_LIBS = -L$$(VTK_LIB_DIR) $$VTK_LIBS_TEMP
+		VTK_RELEASE_LIBS = -L$$(VTK_RELEASE_LIB_DIR) $$VTK_LIBS_TEMP
+		
+		exists( $(VTK_INC_DIR)/vtkMPEG2Writer.h ) {
+			message( "Building WITH MPEG support" )
+			DEFINES += HAVE_MPEG
+			VTK_LIBS += -lvtkMPEG2Encode
+			VTK_REELEASE_LIBS += -lvtkMPEG2Encode
+		}    
+		
+		#
+		# We need to include zlib on windows
+		#
+		!exists( $(ZLIB_INC_DIR)/zlib.h ) {
+		error( "You must define ZLIB_INC_DIR to the ZLIB include files directory.")
+		}
+		CONFIG      += rtti exceptions console
+		INCLUDEPATH += $$(ZLIB_INC_DIR)
+		LIBS        += -L$$(ZLIB_LIB_DIR) -lzlib
+		
+		contains (DEFINES, HAVE_QWT) {
+			CONFIG(release,release|debug):QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt 
+			CONFIG(debug,release|debug):QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwtd
+		}
+	}
 }
-
 #
 # OsX Specific
 # 
@@ -228,9 +232,23 @@ macx {
     contains (DEFINES, HAVE_QWT) {
        QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt    
     }    
-    QMAKE_CXXFLAGS +=  -isysroot /Developer/SDKs/MacOSX10.5.sdk
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.4
-    QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk
+
+    #
+    # Target 10.5 if it is available, else 10.6
+    #
+    exists( /Developer/SDKs/MacOSX10.5.sdk ) {
+       QMAKE_CXXFLAGS +=  -isysroot /Developer/SDKs/MacOSX10.5.sdk
+       QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.5
+       QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk
+    }
+    !exists( /Developer/SDKs/MacOSX10.5.sdk ) {
+       exists( /Developer/SDKs/MacOSX10.6.sdk ) {
+          QMAKE_CXXFLAGS +=  -isysroot /Developer/SDKs/MacOSX10.6.sdk
+          QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.6
+          QMAKE_LFLAGS_RELEASE += -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk
+       }
+    }
+
     QMAKE_LFLAGS_APP += -w
 }
 
@@ -303,7 +321,7 @@ unix:!macx:!ubuntu {
 #
 # Unix (including msys win32) Build Flags
 #
-!vs {
+!vs:!nmake {
     release {
         QMAKE_CXXFLAGS -= -g -O1 -Wl,-O1
         QMAKE_LFLAGS -= -g -O1 -Wl,-O1
@@ -328,18 +346,18 @@ unix:!macx:!ubuntu {
 #
 # Visual Studio specific build flags
 #
-win32:vs {
+else:win32 {
     CONFIG(release,release|debug) {
         QMAKE_CXXFLAGS_RELEASE -= -O1 -Wl,-O2
         QMAKE_LFLAGS_RELEASE -= -O1 -Wl,-O2
-        QMAKE_CXXFLAGS_RELEASE += -O2 -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX
+        QMAKE_CXXFLAGS_RELEASE += -O2 -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS
         QMAKE_LFLAGS_RELEASE += -O2 -D_USE_MATH_DEFINES -STACK:10000000
     }
 
     CONFIG(debug,release|debug) {
         QMAKE_CXXFLAGS_DEBUG -= -O2 
         QMAKE_LFLAGS_DEBUG -= -O2
-        QMAKE_CXXFLAGS_DEBUG += -D_DEBUG -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX
+        QMAKE_CXXFLAGS_DEBUG += -D_DEBUG -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS
         QMAKE_LFLAGS_DEBUG += -DEBUG -STACK:10000000
     }
 }

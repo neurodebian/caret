@@ -1823,8 +1823,9 @@ AbstractFile::readHeader(QFile& file, QTextStream& stream) throw(FileException)
 {
    QString tag, value;
    
-   const qint64 origFilePos = stream.pos();
-   
+   //const qint64 origFilePos = stream.pos();
+   qint64 origFilePos = this->getQTextStreamPosition(stream);
+
    readTagLine(stream, tag, value);
    if (tag == "BeginHeader") {
       bool done = false;
@@ -1860,11 +1861,21 @@ AbstractFile::readHeader(QFile& file, QTextStream& stream) throw(FileException)
       //
       // Need to set so binary data read correctly
       //
-      file.seek(stream.pos());
+      //file.seek(stream.pos());
+      qint64 streamPos = this->getQTextStreamPosition(stream);
+      if (file.seek(streamPos) == false) {
+         std::cout << "ERROR: file.seek("
+                   << streamPos
+                   << ") failed  at "
+                   << __LINE__
+                   << " in "
+                   << __FILE__
+                   << std::endl;
+      }
    }
    else {
       //
-      // Close and reopen the file.  I tried to get the file position 
+      // Close and reopen the file.  I tried to get the file position
       // prior to reading and then setting the file position but the first 
       // read from the file would get the first character twice.  (JWH)
       //
@@ -1889,6 +1900,65 @@ AbstractFile::readHeader(QFile& file, QTextStream& stream) throw(FileException)
       stream.seek(origFilePos);
 #endif // QT4_FILE_POS_BUG
    }
+}
+
+/**
+ * As of QT 4.7.1 there is a bug in QT such that QTextStream::pos()
+ * alters its position and corrupts further reading from the stream.
+ * This method will try to detect this error and, if detected, it
+ * will try to correct the error.  If the error is detected a
+ * message is printed to the console.
+ */
+qint64
+AbstractFile::getQTextStreamPosition(QTextStream& textStream) throw (FileException)
+{
+   const bool abortIfErrorFlag = true;
+   //
+   // Need to set so binary data read correctly
+   //
+   //file.seek(stream.pos());
+   qint64 streamPos = textStream.pos();
+   qint64 streamPos2 = textStream.pos();
+   if (streamPos != streamPos2) {
+      if (abortIfErrorFlag) {
+         QString message =
+               "PROGRAM ERROR: A bug in QT software (qt.nokia.com) prevents this file ("
+               + this->getFileName()
+               + ") from being read correctly.  You may be able to work around "
+               + "this problem by editing the file and removing any long lines "
+               + "in the FileHeader such as the \"comment\".  Make a backup copy "
+               + "if you are going to alter the file.\n"
+               + "QT Version (Compiled): "
+               + QT_VERSION_STR
+               + "\n"
+               + "QT Version (Runtime): "
+               + qVersion();
+         throw FileException(message);
+      }
+
+      std::cout << "PROGRAM ERROR while reading: "
+                << this->filename.toAscii().constData()
+                << ".  QT Software's QTextStream::pos() "
+                << "has altered the file position and the file being "
+                << "read may be read incorrectly or Caret will crash."
+                << std::endl
+                << "QT Version (Compiled): "
+                << QT_VERSION_STR
+                << "QT Version (Runtime): "
+                << qVersion()
+                << std::endl
+                << "Correct position is "
+                << streamPos
+                << " and altered, incorrect position is "
+                << streamPos2
+                << ".  Caret will try to fix the file position."
+                << std::endl;
+      if (textStream.seek(streamPos) == false) {
+         std::cout << "Caret failed to fix the file position." << std::endl;
+      }
+   }
+
+   return streamPos;
 }
 
 /**

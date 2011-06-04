@@ -10,7 +10,7 @@ INCLUDEPATH += .
 include(../caret_qmake_include.pro)
 
 win32 {
-   !vs {
+   !vs:!nmake {
         debug {
             LIBS +=  ..\caret_widgets\debug\libCaretWidgets.a \
                     ..\caret_brain_set\debug\libCaretBrainSet.a \
@@ -30,7 +30,7 @@ win32 {
         }
    }
 
-   vs {
+   else { #else it's either vs or nmake
         CONFIG(debug,debug|release) {
             LIBS += ..\caret_common\debug\CaretCommon.lib \
                 ..\caret_command_operations\debug\CaretCommandOperations.lib \
@@ -60,8 +60,9 @@ win32 {
     }
 }
 
-win32:debug {
+win32 {
    CONFIG += console
+   CONFIG -= windows
 }
 
 unix:!ubuntu {
@@ -127,7 +128,7 @@ contains( DEFINES, HAVE_MINC ) {
    LIBS += $$NETCDF_LIBS
 }  
 
-!vs:LIBS += $$VTK_LIBS
+!vs:!nmake:LIBS += $$VTK_LIBS
 
 # Input
 #HEADERS += 

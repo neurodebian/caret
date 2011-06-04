@@ -758,6 +758,12 @@ GuiCaretCommandParameterFile::slotPushButtonPressed()
 QStringList 
 GuiCaretCommandParameterFile::getParameterValueAsText() const
 {
+   if (fileNameLineEdit->text().size() >= 2) {
+      if (fileNameLineEdit->text().startsWith('\"')
+         && fileNameLineEdit->text().endsWith('\"')) {
+         return QStringList(fileNameLineEdit->text());
+      }
+   }
    return QStringList(fileNameLineEdit->text().split(' ', QString::SkipEmptyParts));
 }
 

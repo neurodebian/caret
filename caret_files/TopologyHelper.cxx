@@ -497,6 +497,54 @@ TopologyHelper::getNodeNeighbors(const int nodeNum,
 }
 
 /**
+ * Get the neighboring nodes for a node, within a given ROI
+ */
+void
+TopologyHelper::getNodeNeighborsInROI(const int nodeNum,
+                                 std::vector<int>& neighborsOut, const float *roiValues) const
+{
+   if ((nodeNum >= 0) && (nodeNum < static_cast<int>(nodes.size()))) {
+      //Since we are restricting to an roi, we need to make sure that the neighbors are within the ROI, and
+      //if not, build a new neighbor list
+      std::vector<int> neighbors = nodes[nodeNum].neighbors;
+      //optimization, first, loop through and see any neighbors are outside the roi
+      bool neighborOutsideOfRoi = false;
+      for(int i = 0;i<neighbors.size();i++)
+      {
+         if(roiValues[neighbors[i]] == 0.0)
+         {
+            neighborOutsideOfRoi = true;
+            break;
+         }
+      }
+
+      if(!neighborOutsideOfRoi)
+      {
+         neighborsOut = nodes[nodeNum].neighbors;
+      }
+      else
+      {
+         neighborsOut.clear();
+
+         for(int i = 0;i<neighbors.size();i++)
+         {
+            if(roiValues[neighbors[i]] == 0.0)//filter out neighbors that are outside of ROI
+            {
+               continue;
+            }
+            else
+            {
+               neighborsOut.push_back(neighbors[i]);
+            }
+         }
+      }
+   }
+   else {
+      neighborsOut.clear();
+   }
+}
+
+/**
  * Get the neighbors of a node to a specified depth.
  */
 void 

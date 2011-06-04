@@ -1,34 +1,37 @@
 cd ..
+cd caret_cifti
+nmake %1
+cd ..
 cd caret_brain_set
-nmake
+nmake %1
 cd ..
 cd caret_common
-nmake
+nmake %1
 cd ..
 cd caret_command_operations 
-nmake
+nmake %1
 cd ..
 cd caret_statistics
-nmake
+nmake %1
 cd ..
 cd caret_vtk4_classes
-nmake
+nmake %1
 cd ..
 cd caret_uniformize
-nmake
+nmake %1
 cd ..
 cd caret_files
-nmake
+nmake %1
 cd ..
 cd caret_widgets
-nmake
+nmake %1
 cd ..
 cd caret_command
-nmake
+nmake %1
 cd ..
 cd caret_edit
-nmake
+nmake %1
 cd ..
 cd caret
-nmake
+nmake %1
 cd ..\windows

@@ -486,19 +486,42 @@ BrainSet::setDisplayCrossForNode(const int node, BrainModelSurface* surface)
 QString 
 BrainSet::getBinDirectoryName()
 {
-   QString binName("bin_other");
-#ifdef  Q_OS_WIN32
-   binName = "bin_windows";
-#endif
-#ifdef  Q_OS_FREEBSD
-   binName = "bin_freebsd";
-#endif
-#ifdef  Q_OS_UNIX
-   binName = "bin_linux";
-#endif
-#ifdef Q_OS_MACX
-   binName = "bin_macosx";
-#endif
+   QString binName("ERROR_BIN_DIRECTORY_IS_UNKNOWN");
+
+   QString program = qApp->applicationDirPath();
+   if (program.contains("macosx32")) {
+      binName = "bin_macosx32";
+   }
+   else if (program.contains("macosx64")) {
+      binName = "bin_macosx64";
+   }
+   else if (program.contains("windows32")) {
+      binName = "bin_windows32";
+   }
+   else if (program.contains("windows64")) {
+      binName = "bin_windows64";
+   }
+   else if (program.contains("linux32")) {
+      binName = "bin_linux32";
+   }
+   else if (program.contains("linux64")) {
+      binName = "bin_linux64";
+   }
+   else if (program.contains("linux_intel64")) {
+      binName = "bin_linux_intel64";
+   }
+//#ifdef  Q_OS_WIN32
+//   binName = "bin_windows";
+//#endif
+//#ifdef  Q_OS_FREEBSD
+//   binName = "bin_freebsd";
+//#endif
+//#ifdef  Q_OS_UNIX
+//   binName = "bin_linux";
+//#endif
+//#ifdef Q_OS_MACX
+//   binName = "bin_macosx";
+//#endif
 
    return binName;
 }

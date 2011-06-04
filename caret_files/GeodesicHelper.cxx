@@ -38,10 +38,8 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
       numNodes = 0;
       return;
    }//sanity checks passed
-   bool found;
    const TopologyHelper* topoHelpIn = topoFileIn->getTopologyHelper(false, true, false);
-   int i, j, k, numChanged, myneigh, myneigh2, coordbase, neigh2base, neighbase, sidebase;
-   float ep[3], ns[3], d[3], ne[3], tempvec[3], tempvec2[3], fullmag, partmag, dmag, tempf, tempf2;
+   int i, j, k, m, myneigh, myneigh2, farnode, farbase, coordbase, neigh2base, neighbase;
    numNodes = coordsIn->getNumberOfNodes();
    //allocate
    float* coords = new float[3 * numNodes];
@@ -53,6 +51,7 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
    nodeNeighbors = new int*[numNodes];
    distances = new float*[numNodes];
    coordsIn->getAllCoordinates(coords);//get coords
+   float d[3], g[3], ac[3], abhat[3], abmag, ad[3], efhat[3], efmag, ea[3], cdmag, eg[3], eh[3], ah[3], tempvec[3], tempf;
    for (i = 0; i < numNodes; ++i)
    {//get neighbors
       const int* neighbors = topoHelpIn->getNodeNeighbors(i, numNeighbors[i]);
@@ -69,6 +68,7 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
    }
    std::vector<int> tempneigh2;
    std::vector<float> tempdist2;
+   std::vector<int> maintiles, neightiles;
    nodeNeighbors2 = new int*[numNodes];
    numNeighbors2 = new int[numNodes];
    distances2 = new float*[numNodes];
@@ -76,98 +76,101 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
    {//find shared neighbors, for smoothed dijkstra
       tempneigh2.clear();
       tempdist2.clear();
-      numChanged = 0;//only tracks non-neighbors
-      marked[i] = 1;
-      coordbase = i * 3;
-      for (j = 0; j < numNeighbors[i]; ++j)
+      coordbase = i * 3;//precompute the multiplicative part of the coordinate index, for efficiency
+      topoHelpIn->getNodeTiles(i, maintiles);
+      for (j = 0; j < (int)maintiles.size(); ++j)
       {
-         marked[nodeNeighbors[i][j]] = 1;//use marked as scratch space
-      }
-      for (j = 0; j < numNeighbors[i]; ++j)
-      {
-         myneigh = nodeNeighbors[i][j];
-         neighbase = myneigh * 3;
-         for (k = 0; k < numNeighbors[myneigh]; ++k)
+         const int* tile1 = topoFileIn->getTile(maintiles[j]);
+         myneigh = -1;
+         myneigh2 = -1;
+         for (k = 0; k < 3; ++k)
          {
-            myneigh2 = nodeNeighbors[myneigh][k];
-            if (marked[myneigh2] != 1)
-            {//don't need bitwise, sets are mutually exclusive
-               if (marked[myneigh2] > 1)
+            if (tile1[k] != i)
+            {
+               if (myneigh == -1)
                {
-                  if (myneigh2 < i)//find the symmetric value
-                  {
-                     found = false;
-                     for (int m = 0; m < numNeighbors2[myneigh2]; ++m)
-                     {
-                        if (nodeNeighbors2[myneigh2][m] == i)
-                        {
-                           tempf = distances2[myneigh2][m];
-                           found = true;
-                           break;
-                        }
-                     }
-                     if (!found)
-                     {//was rejected by the previous (reverse) calculation, due to the tetrahedron being obtuse, so reject it now too
-                        continue;
-                     }
-                  } else {
-                     neigh2base = myneigh2 * 3;//uses a bunch of vector math/geometry to find the path across the two faces of the tetrahedron
-                     sidebase = parent[myneigh2] * 3;//the crossing point of the path with the shared edge will be at the smallest separation between the euclidean path and the shared edge
-                     coordDiff(coords + coordbase, coords + neigh2base, ep);//ep = vector from this neighbor to this node's parent
-                     coordDiff(coords + sidebase, coords + neighbase, ns);//ns = vector from this node to shared neighbor of parent and this neighbor
-                     coordDiff(coords + neigh2base, coords + neighbase, ne);//ne = vector from this node to this neighbor
-                     crossProd(ep, ns, d);//d is a vector perpendicular to both: it is the direction of shortest distance between them
-                     fullmag = normalize(d);//now a unit vector in the correct direction, fullmag is used later
-                     dmag = dotProd(d, ne);//dmag is distance between the lines
-                     d[0] *= dmag; d[1] *= dmag; d[2] *= dmag;//d is the vector between the lines, from ns to ep
-                     tempvec[0] = ne[0] - d[0];
-                     tempvec[1] = ne[1] - d[1];
-                     tempvec[2] = ne[2] - d[2];
-                     crossProd(tempvec, ns, tempvec2);//cannot use a vector as both input and output to crossprod
-                     partmag = std::sqrt(tempvec2[0] * tempvec2[0] + tempvec2[1] * tempvec2[1] + tempvec2[2] * tempvec2[2]);
-                     tempvec2[0] = coords[neigh2base] + ep[0] * partmag / fullmag - d[0];//this formula calculates the point on the opposite edge of the tetrahedron
-                     tempvec2[1] = coords[neigh2base + 1] + ep[1] * partmag / fullmag - d[1];//that the path must pass through for shortest path
-                     tempvec2[2] = coords[neigh2base + 2] + ep[2] * partmag / fullmag - d[2];//temporarily assumes tetrahedron is fully acute
-                     coordDiff(tempvec2, coords + neighbase, tempvec);//so, let's check the range and make sure
-                     tempf2 = normalize(ns);//tempf2 is the magnitude before normalization
-                     tempf = dotProd(ns, tempvec);
-                     if (tempf < tempf2 * 0.5f)
-                     {
-                        parent[myneigh2] = myneigh;//adjust parent to be the current 1hop neighbor if shortest path on faces is closer to it, just in case
-                     }
-                     if (tempf < 0)
-                     {//intersection went past n away from s, discard, regular dijkstra will find this distance
-                        continue;
-                     } else if (tempf > tempf2) {//went past s away from n, ditto
-                        continue;
-                     }//tempvec2 should now be a point on the shared edge of the triangles, which the shortest path along those triangles passes through
-                     coordDiff(coords + coordbase, tempvec2, tempvec);//the rest is straight lines, so euclidean and we're done
-                     tempf = std::sqrt(tempvec[0] * tempvec[0] + tempvec[1] * tempvec[1] + tempvec[2] * tempvec[2]);
-                     coordDiff(tempvec2, coords + myneigh2 * 3, tempvec);
-                     tempf += std::sqrt(tempvec[0] * tempvec[0] + tempvec[1] * tempvec[1] + tempvec[2] * tempvec[2]);
-                     coordDiff(coords + coordbase, coords + neigh2base, tempvec);
-                     tempf2 = std::sqrt(tempvec[0] * tempvec[0] + tempvec[1] * tempvec[1] + tempvec[2] * tempvec[2]);//straight line dist for comparison
-                     if (tempf2 > tempf)
-                     {//catch floating point inconsistencies
-                        tempf = tempf2;
-                     }
-                  }
-                  if (marked[myneigh2] == 2)
-                  {
-                     tempneigh2.push_back(myneigh2);
-                     tempdist2.push_back(tempf);
-                     marked[myneigh2] = tempneigh2.size() + 2;//encode position in tempneigh2 in the marked array, subtract 3 to retrieve
-                  } else {//more than 2 ways to reach a 2 step neighbor...hopefully this won't be needed, because it doesn't try all combinations
-                     if (tempf < tempdist2[marked[myneigh2] - 3])
-                     {
-                        tempdist2[marked[myneigh2] - 3] = tempf;
-                     }
-                  }
+                  myneigh = tile1[k];
                } else {
-                  marked[myneigh2] = 2;
-                  parent[myneigh2] = myneigh;//repurpose parent array to store the other node that can reach the second hop neighbor
-                  changed[numChanged++] = myneigh2;
+                  myneigh2 = tile1[k];
                }
+            }
+         }
+         if (myneigh2 == -1) continue;//a tile has less than 3 distinct node numbers, move to next tile
+         neighbase = myneigh * 3;
+         neigh2base = myneigh2 * 3;
+         topoHelpIn->getNodeTiles(myneigh, neightiles);
+         for (k = 0; k < (int)neightiles.size(); ++k)
+         {
+            const int* tile2 = topoFileIn->getTile(neightiles[k]);
+            farnode = -1;
+            for (m = 0; m < 3; ++m)
+            {
+               if (tile2[m] == i) break;//discard both tiles that have the root node
+               if (tile2[m] != myneigh && tile2[m] != myneigh2)
+               {//check for matching edge between myneigh and myneigh2 by looking for exactly 1 node that doesn't match either
+                  if (farnode == -1)
+                  {
+                     farnode = tile2[m];
+                  } else break;//if 2 nodes do not belong to the close triangle, this is not the right tile
+               }
+            }
+            if (m == 3)//loop completed without break (correct triangle found), time to do some math
+            {
+               if (farnode < i)//we have already computed from anything less than i to all possibilities, so grab that value instead
+               {
+                  for (m = 0; m < numNeighbors2[farnode]; ++m)
+                  {//so find it
+                     if (nodeNeighbors2[farnode][m] == i)
+                     {
+                        tempneigh2.push_back(farnode);
+                        tempdist2.push_back(distances2[farnode][m]);
+                        break;
+                     }
+                  }//if it wasn't found, then it was invalid (obtuse tetralateral after unfolding)
+                  break;//consider next root tile
+               }
+               farbase = farnode * 3;
+               coordDiff(coords + neigh2base, coords + neighbase, abhat);//a is neigh, b is neigh2, b - a = (vector)ab
+               abmag = normalize(abhat);
+               coordDiff(coords + farbase, coords + neighbase, ac);//c is farnode, c - a = (vector)ac
+               tempf = dotProd(abhat, ac);
+               ad[0] = abhat[0] * tempf;//d is the point on the shared edge that farnode (c) is closest to
+               ad[1] = abhat[1] * tempf;//this way we can "unfold" the triangles by projecting the unit vector of the root node to closest point on shared edge from d, the distance of cd
+               ad[2] = abhat[2] * tempf;
+               d[0] = coords[neighbase] + ad[0];//and now we have the point d
+               d[1] = coords[neighbase + 1] + ad[1];
+               d[2] = coords[neighbase + 2] + ad[2];
+               coordDiff(coords + neighbase, coords + coordbase, ea);//e is node i, the root node, a - e = (vector)ea
+               tempf = dotProd(abhat, ea);//find the component of ea perpendicular to the shared edge
+               tempvec[0] = abhat[0] * tempf;//find vector fa, f being the point on shared edge closest to e, the root node
+               tempvec[1] = abhat[1] * tempf;
+               tempvec[2] = abhat[2] * tempf;
+               efhat[0] = ea[0] - tempvec[0];//and subtract it to obtain only the perpendicular
+               efhat[1] = ea[1] - tempvec[1];
+               efhat[2] = ea[2] - tempvec[2];
+               efmag = normalize(efhat);//normalize to get unit vector
+               coordDiff(&d[0], coords + farbase, tempvec);//this is vector cd, perpendicular to shared edge, from shared edge to far point
+               cdmag = normalize(tempvec);//get its magnitude
+               tempvec[0] = efhat[0] * cdmag;//vector dg, from shared edge at closest point to c (far node), to the unfolded position of farnode (g)
+               tempvec[1] = efhat[1] * cdmag;
+               tempvec[2] = efhat[2] * cdmag;
+               g[0] = d[0] + tempvec[0];//add vector dg to point d to get point g, the unfolded position of farnode
+               g[1] = d[1] + tempvec[1];
+               g[2] = d[2] + tempvec[2];
+               coordDiff(&g[0], coords + coordbase, eg);//this is the vector from root (e) to far node after unfolding (g), this is our distance
+               tempf = efmag / (efmag + cdmag);//now we need to check that the path stays inside the tetralateral (ie, that it is convex)
+               eh[0] = eg[0] * tempf;//this is a vector from e (root node) to the point on the shared edge that the full path (eg) crosses
+               eh[1] = eg[1] * tempf;//this is because the lengths of the two perpendiculars to the root and far nodes from the shared edge establishes proportionality
+               eh[2] = eg[2] * tempf;
+               ah[0] = eh[0] - ea[0];//eh - ea = eh + ae = ae + eh = ah, vector from neigh to the point on shared edge the path goes through
+               ah[1] = eh[1] - ea[1];
+               ah[2] = eh[2] - ea[2];
+               tempf = normalize(ah);//get the magnitude so we can test that it is positive and less than |ab|
+               if (tempf <= 0.0f || tempf >= abmag) break;//tetralateral is obtuse or triangular, our path is invalid or not shorter, so consider next root tile
+               tempf = normalize(eg);//this is our path length
+               tempneigh2.push_back(farnode);
+               tempdist2.push_back(tempf);
+               break;//there should not be 3 tiles sharing one edge, move to next root tile
             }
          }
       }
@@ -179,15 +182,6 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
          nodeNeighbors2[i][j] = tempneigh2[j];
          distances2[i][j] = tempdist2[j];
       }
-      for (j = 0; j < numNeighbors[i]; ++j)
-      {
-         marked[nodeNeighbors[i][j]] = 0;
-      }
-      for (j = 0; j < numChanged; ++j)
-      {
-         marked[changed[j]] = 0;
-      }
-      marked[i] = 0;
    }
 }
 

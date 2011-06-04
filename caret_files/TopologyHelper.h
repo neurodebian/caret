@@ -142,6 +142,9 @@ class TopologyHelper {
 
       /// Get the neighbors of a node
       void getNodeNeighbors(const int nodeNum, std::vector<int>& neighborsOut) const;
+
+      /// Get the node neighbors, restricted by roi
+      void getNodeNeighborsInROI(const int nodeNum, std::vector<int>& neighborsOut, const float *roiValues) const;
       
       /// Get the neighbors of a node to a specified depth the old way
       void getNodeNeighborsToDepthOld(const int nodeNum, 

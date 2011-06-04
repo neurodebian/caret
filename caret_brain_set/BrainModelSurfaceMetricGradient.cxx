@@ -338,63 +338,70 @@ BrainModelSurfaceMetricGradient::executeSingleColumn() throw (BrainModelAlgorith
       nodemetric = metricData[i];//uses metric difference for 2 reasons: makes rref cumulate smaller values, and makes root node not matter to calculation
       myhelper->getNodeNeighbors(i, neighbors);//intelligently detects depth == 1 (and invalid depth)
       numNeigh = neighbors.size();
-      for (j = 0; j < numNeigh; ++j)
+      if (numNeigh >= 2)//dont attempt regression if the system is underdetermined
       {
-         whichnode = neighbors[j];
-         tempd = metricData[whichnode] - nodemetric;//metric difference
-         coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], somevec);//position delta vector
-         xmag = dotProd(xhat, somevec);//project to 2d plane tangent to surface
-         ymag = dotProd(yhat, somevec);
-         rrefb[0][0] += xmag * xmag;//gather A'A and A'b sums for regression
-         rrefb[0][1] += xmag * ymag;
-         rrefb[0][2] += xmag;
-         rrefb[1][1] += ymag * ymag;
-         rrefb[1][2] += ymag;
-         rrefb[2][2] += 1.0f;
-         rrefb[0][3] += xmag * tempd;
-         rrefb[1][3] += ymag * tempd;
-         rrefb[2][3] += tempd;
-      }
-      rrefb[1][0] = rrefb[0][1];//complete the symmetric elements
-      rrefb[2][0] = rrefb[0][2];
-      rrefb[2][1] = rrefb[1][2];
-      calcrref(rrefb, 3, 4);
-      somevecf[0] = (float)(somevec[0] = xhat[0] * rrefb[0][3] + yhat[0] * rrefb[1][3]);
-      somevecf[1] = (float)(somevec[1] = xhat[1] * rrefb[0][3] + yhat[1] * rrefb[1][3]);
-      somevecf[2] = (float)(somevec[2] = xhat[2] * rrefb[0][3] + yhat[2] * rrefb[1][3]);//somevec is now our surface gradient
-      sanity = somevec[0] + somevec[1] + somevec[2];
-      if (sanity != sanity)
-      {
-         if (!haveWarned) std::cerr << "WARNING: gradient calculation found a NaN/inf with regression method" << endl;
-         haveWarned = true;
-         somevecf[0] = 0.0f;
-         somevecf[1] = 0.0f;
-         somevecf[2] = 0.0f;
-         somevec[0] = 0.0;
-         somevec[1] = 0.0;
-         somevec[2] = 0.0;
          for (j = 0; j < numNeigh; ++j)
          {
             whichnode = neighbors[j];
-            coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], xhat);//xhat repurposed as a temp variable
-            for (k = 0; k < 3; ++k)
-               yhat[k] = xhat[k];
-            normalize(xhat);
-            tempd = (metricData[whichnode] - nodemetric) / (yhat[0] * yhat[0] + yhat[1] * yhat[1] + yhat[2] * yhat[2]);//difference over distance gives gradient magnitude
-            for (k = 0; k < 3; ++k)
-               somevec[k] += tempd * xhat[k];//magnitude times unit vector parallel to distance vector gives crude estimate
+            tempd = metricData[whichnode] - nodemetric;//metric difference
+            coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], somevec);//position delta vector
+            xmag = dotProd(xhat, somevec);//project to 2d plane tangent to surface
+            ymag = dotProd(yhat, somevec);
+            rrefb[0][0] += xmag * xmag;//gather A'A and A'b sums for regression
+            rrefb[0][1] += xmag * ymag;
+            rrefb[0][2] += xmag;
+            rrefb[1][1] += ymag * ymag;
+            rrefb[1][2] += ymag;
+            rrefb[2][2] += 1.0f;
+            rrefb[0][3] += xmag * tempd;
+            rrefb[1][3] += ymag * tempd;
+            rrefb[2][3] += tempd;
          }
-         for (j = 0; j < 3; ++j)
+         rrefb[1][0] = rrefb[0][1];//complete the symmetric elements
+         rrefb[2][0] = rrefb[0][2];
+         rrefb[2][1] = rrefb[1][2];
+         rrefb[2][2] += 1.0f;//include center (metric and coord differences will be zero, so this is all that is needed)
+         calcrref(rrefb, 3, 4);
+         somevecf[0] = (float)(somevec[0] = xhat[0] * rrefb[0][3] + yhat[0] * rrefb[1][3]);
+         somevecf[1] = (float)(somevec[1] = xhat[1] * rrefb[0][3] + yhat[1] * rrefb[1][3]);
+         somevecf[2] = (float)(somevec[2] = xhat[2] * rrefb[0][3] + yhat[2] * rrefb[1][3]);//somevec is now our surface gradient
+         sanity = somevec[0] + somevec[1] + somevec[2];
+      }
+      if (numNeigh < 2 || !(sanity == sanity))
+      {
+         if (!haveWarned) std::cerr << "WARNING: gradient calculation found a NaN/inf with regression method" << endl;
+         haveWarned = true;
+         if (numNeigh != 0)
          {
-            somevec[j] /= numNeigh;//now we have the 3d gradient, time to subtract the dot product with normal
-            xhat[j] = mynormal[j];
+            somevecf[0] = 0.0f;
+            somevecf[1] = 0.0f;
+            somevecf[2] = 0.0f;
+            somevec[0] = 0.0;
+            somevec[1] = 0.0;
+            somevec[2] = 0.0;
+            for (j = 0; j < numNeigh; ++j)
+            {
+               whichnode = neighbors[j];
+               coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], xhat);//xhat repurposed as a temp variable
+               for (k = 0; k < 3; ++k)
+                  yhat[k] = xhat[k];
+               normalize(xhat);
+               tempd = (metricData[whichnode] - nodemetric) / sqrt(yhat[0] * yhat[0] + yhat[1] * yhat[1] + yhat[2] * yhat[2]);//difference over distance gives gradient magnitude
+               for (k = 0; k < 3; ++k)
+                  somevec[k] += tempd * xhat[k];//magnitude times unit vector parallel to distance vector gives crude estimate
+            }
+            for (j = 0; j < 3; ++j)
+            {
+               somevec[j] /= numNeigh;//now we have the 3d gradient, time to subtract the dot product with normal
+               xhat[j] = mynormal[j];
+            }
+            normalize(xhat);//for sanity, in case your normals aren't unit vectors somehow
+            tempd = dotProd(somevec, xhat);
+            sanity = 0.0;
+            for (j = 0; j < 3; ++j)
+               sanity += (somevecf[j] = (float)(somevec[j] -= tempd * xhat[j]));
          }
-         normalize(xhat);//for sanity, in case your normals aren't unit vectors somehow
-         tempd = dotProd(somevec, xhat);
-         sanity = 0.0;
-         for (j = 0; j < 3; ++j)
-            sanity += (somevecf[j] = (float)(somevec[j] -= tempd * xhat[j]));
-         if (sanity != sanity)
+         if (numNeigh == 0 || !(sanity == sanity))
          {
             if (!haveFailed)
             {
@@ -565,63 +572,70 @@ BrainModelSurfaceMetricGradient::processSingleColumn(const TopologyHelper* myhel
       nodemetric = metricData[i];//uses metric difference for 2 reasons: makes rref cumulate smaller values, and makes root node not matter to calculation
       myhelper->getNodeNeighbors(i, neighbors);//intelligently detects depth == 1 (and invalid depth)
       const int numNeigh = neighbors.size();
-      for (int j = 0; j < numNeigh; ++j)
+      if (numNeigh >= 2)//dont attempt regression if the system is underdetermined
       {
-         const int whichnode = neighbors[j];
-         tempd = metricData[whichnode] - nodemetric;//metric difference
-         coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], somevec);//position delta vector
-         xmag = dotProd(xhat, somevec);//project to 2d plane tangent to surface
-         ymag = dotProd(yhat, somevec);
-         rrefb[0][0] += xmag * xmag;//gather A'A and A'b sums for regression
-         rrefb[0][1] += xmag * ymag;
-         rrefb[0][2] += xmag;
-         rrefb[1][1] += ymag * ymag;
-         rrefb[1][2] += ymag;
-         rrefb[2][2] += 1.0f;
-         rrefb[0][3] += xmag * tempd;
-         rrefb[1][3] += ymag * tempd;
-         rrefb[2][3] += tempd;
-      }
-      rrefb[1][0] = rrefb[0][1];//complete the symmetric elements
-      rrefb[2][0] = rrefb[0][2];
-      rrefb[2][1] = rrefb[1][2];
-      calcrref(rrefb, 3, 4);
-      somevecf[0] = (float)(somevec[0] = xhat[0] * rrefb[0][3] + yhat[0] * rrefb[1][3]);
-      somevecf[1] = (float)(somevec[1] = xhat[1] * rrefb[0][3] + yhat[1] * rrefb[1][3]);
-      somevecf[2] = (float)(somevec[2] = xhat[2] * rrefb[0][3] + yhat[2] * rrefb[1][3]);//somevec is now our surface gradient
-      sanity = somevec[0] + somevec[1] + somevec[2];
-      if (sanity != sanity)
-      {
-         if (!haveWarned) std::cerr << "WARNING: gradient calculation found a NaN/inf with regression method" << endl;
-         haveWarned = true;
-         somevecf[0] = 0.0f;
-         somevecf[1] = 0.0f;
-         somevecf[2] = 0.0f;
-         somevec[0] = 0.0;
-         somevec[1] = 0.0;
-         somevec[2] = 0.0;
          for (int j = 0; j < numNeigh; ++j)
          {
             const int whichnode = neighbors[j];
-            coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], xhat);//xhat repurposed as a temp variable
-            for (int k = 0; k < 3; ++k)
-               yhat[k] = xhat[k];
-            normalize(xhat);
-            tempd = (metricData[whichnode] - nodemetric) / (yhat[0] * yhat[0] + yhat[1] * yhat[1] + yhat[2] * yhat[2]);//difference over distance gives gradient magnitude
-            for (int k = 0; k < 3; ++k)
-               somevec[k] += tempd * xhat[k];//magnitude times unit vector parallel to distance vector gives crude estimate
+            tempd = metricData[whichnode] - nodemetric;//metric difference
+            coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], somevec);//position delta vector
+            xmag = dotProd(xhat, somevec);//project to 2d plane tangent to surface
+            ymag = dotProd(yhat, somevec);
+            rrefb[0][0] += xmag * xmag;//gather A'A and A'b sums for regression
+            rrefb[0][1] += xmag * ymag;
+            rrefb[0][2] += xmag;
+            rrefb[1][1] += ymag * ymag;
+            rrefb[1][2] += ymag;
+            rrefb[2][2] += 1.0f;
+            rrefb[0][3] += xmag * tempd;
+            rrefb[1][3] += ymag * tempd;
+            rrefb[2][3] += tempd;
          }
-         for (int j = 0; j < 3; ++j)
+         rrefb[1][0] = rrefb[0][1];//complete the symmetric elements
+         rrefb[2][0] = rrefb[0][2];
+         rrefb[2][1] = rrefb[1][2];
+         rrefb[2][2] += 1.0f;//include center (metric and coord differences will be zero, so this is all that is needed)
+         calcrref(rrefb, 3, 4);
+         somevecf[0] = (float)(somevec[0] = xhat[0] * rrefb[0][3] + yhat[0] * rrefb[1][3]);
+         somevecf[1] = (float)(somevec[1] = xhat[1] * rrefb[0][3] + yhat[1] * rrefb[1][3]);
+         somevecf[2] = (float)(somevec[2] = xhat[2] * rrefb[0][3] + yhat[2] * rrefb[1][3]);//somevec is now our surface gradient
+         sanity = somevec[0] + somevec[1] + somevec[2];
+      }
+      if (numNeigh < 2 || !(sanity == sanity))
+      {
+         if (!haveWarned) std::cerr << "WARNING: gradient calculation found a NaN/inf with regression method" << endl;
+         haveWarned = true;
+         if (numNeigh != 0)
          {
-            somevec[j] /= numNeigh;//now we have the 3d gradient, time to subtract the dot product with normal
-            xhat[j] = mynormal[j];
+            somevecf[0] = 0.0f;
+            somevecf[1] = 0.0f;
+            somevecf[2] = 0.0f;
+            somevec[0] = 0.0;
+            somevec[1] = 0.0;
+            somevec[2] = 0.0;
+            for (int j = 0; j < numNeigh; ++j)
+            {
+               const int whichnode = neighbors[j];
+               coordDiff(&sourceData[whichnode * 3], &sourceData[i * 3], xhat);//xhat repurposed as a temp variable
+               for (int k = 0; k < 3; ++k)
+                  yhat[k] = xhat[k];
+               normalize(xhat);
+               tempd = (metricData[whichnode] - nodemetric) / sqrt(yhat[0] * yhat[0] + yhat[1] * yhat[1] + yhat[2] * yhat[2]);//difference over distance gives gradient magnitude
+               for (int k = 0; k < 3; ++k)
+                  somevec[k] += tempd * xhat[k];//magnitude times unit vector parallel to distance vector gives crude estimate
+            }
+            for (int j = 0; j < 3; ++j)
+            {
+               somevec[j] /= numNeigh;//now we have the 3d gradient, time to subtract the dot product with normal
+               xhat[j] = mynormal[j];
+            }
+            normalize(xhat);//for sanity, in case your normals aren't unit vectors somehow
+            tempd = dotProd(somevec, xhat);
+            sanity = 0.0;
+            for (int j = 0; j < 3; ++j)
+               sanity += (somevecf[j] = (float)(somevec[j] -= tempd * xhat[j]));
          }
-         normalize(xhat);//for sanity, in case your normals aren't unit vectors somehow
-         tempd = dotProd(somevec, xhat);
-         sanity = 0.0;
-         for (int j = 0; j < 3; ++j)
-            sanity += (somevecf[j] = (float)(somevec[j] -= tempd * xhat[j]));
-         if (sanity != sanity)
+         if (numNeigh == 0 || !(sanity == sanity))
          {
             if (!haveFailed)
             {

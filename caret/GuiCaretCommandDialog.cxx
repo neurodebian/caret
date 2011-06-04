@@ -419,15 +419,18 @@ GuiCaretCommandDialog::slotProcessCommandButton()
             //
             for (int m = 0; m < commandParameters.count(); m++) {
                //
-               // Remove anything enclosed in double quotes
+               // Remove anything enclosed in double quotes unless
+               // it contains a space
                //
                QString param = commandParameters[m];
                if (param.startsWith("\"") &&
                    param.endsWith("\"")) {
-                  const int len = param.length();
-                  if (len >= 2) {
-                     param = param.mid(1, len - 2);
-                     commandParameters[m] = param;
+                  if (param.indexOf(" ") < 0) {
+                     const int len = param.length();
+                     if (len >= 2) {
+                        param = param.mid(1, len - 2);
+                        commandParameters[m] = param;
+                     }
                   }
                }
             }

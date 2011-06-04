@@ -16,7 +16,8 @@ UBUNTULIBS	= \
 	  caret_brain_set \
 	  caret_command_operations \
 	  caret_uniformize \
-	  caret_widgets
+	  caret_widgets \
+	  caret_cifti
 
 LIBS = $(UBUNTULIBS) caret_vtk4_classes
 

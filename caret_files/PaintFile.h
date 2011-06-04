@@ -217,6 +217,9 @@ class PaintFile : public GiftiNodeDataFile {
                                               const bool removeSuffixesFlag);
 
    protected:
+      // validate the data arrays (optional for subclasses)
+      virtual void validateDataArrays() throw (FileException);
+
       // import a single free surfer label file
       void importSingleFreeSurferLabelFile(const int column,
                                  const int numNodes,

@@ -27,6 +27,7 @@ HEADERS += BorderFileProjector.h \
 	   BrainModelAlgorithmMultiThreaded.h \
       BrainModelAlgorithmRunAsThread.h \
 	   BrainModelBorderSet.h \
+       BrainModelCiftiCorrelationMatrix.h \
 	   BrainModelContours.h \
 	   BrainModelContourToSurfaceConverter.h \
       BrainModelIdentification.h \
@@ -105,6 +106,8 @@ HEADERS += BorderFileProjector.h \
       BrainModelSurfaceROIFoldingMeasurementReport.h \
       BrainModelSurfaceROIIntegratedFoldingIndexReport.h \
       BrainModelSurfaceROIMetricClusterReport.h \
+      BrainModelSurfaceROIMetricGradient.h \
+	  BrainModelSurfaceROIMetricSmoothing.h \
       BrainModelSurfaceROINodeSelection.h \
       BrainModelSurfaceROIOperation.h \
       BrainModelSurfaceROIPaintReport.h \
@@ -133,8 +136,10 @@ HEADERS += BorderFileProjector.h \
       BrainModelVolumeNearToPlane.h \
       BrainModelVolumeProbAtlasToFunctional.h \
       BrainModelVolumeRegionOfInterest.h \
+      BrainModelVolumeROIAtlasResamplingAndSmoothing.h \
       BrainModelVolumeROIGradient.h \
       BrainModelVolumeROIMinima.h \
+      BrainModelVolumeROISmoothing.h \
       BrainModelVolumeSegmentationStereotaxic.h \
       BrainModelVolumeSureFitErrorCorrection.h \
       BrainModelVolumeSureFitSegmentation.h \
@@ -204,6 +209,7 @@ SOURCES += BorderFileProjector.cxx \
 	   BrainModelAlgorithmMultiThreaded.cxx \
       BrainModelAlgorithmRunAsThread.cxx \
 	   BrainModelBorderSet.cxx \
+       BrainModelCiftiCorrelationMatrix.cxx \
 	   BrainModelContours.cxx \
 	   BrainModelContourToSurfaceConverter.cxx \
       BrainModelIdentification.cxx \
@@ -282,6 +288,8 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelSurfaceROIFoldingMeasurementReport.cxx \
       BrainModelSurfaceROIIntegratedFoldingIndexReport.cxx \
       BrainModelSurfaceROIMetricClusterReport.cxx \
+      BrainModelSurfaceROIMetricGradient.cxx \
+	  BrainModelSurfaceROIMetricSmoothing.cxx \
       BrainModelSurfaceROINodeSelection.cxx \
       BrainModelSurfaceROIOperation.cxx \
       BrainModelSurfaceROIPaintReport.cxx \
@@ -310,8 +318,10 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelVolumeNearToPlane.cxx \
       BrainModelVolumeProbAtlasToFunctional.cxx \
       BrainModelVolumeRegionOfInterest.cxx \
+      BrainModelVolumeROIAtlasResamplingAndSmoothing.cxx \
       BrainModelVolumeROIGradient.cxx \
       BrainModelVolumeROIMinima.cxx \
+      BrainModelVolumeROISmoothing.cxx \
       BrainModelVolumeSegmentationStereotaxic.cxx \
       BrainModelVolumeSureFitErrorCorrection.cxx \
       BrainModelVolumeSureFitSegmentation.cxx \
