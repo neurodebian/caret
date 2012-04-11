@@ -28,9 +28,12 @@
 #define __COORDINATE_FILE_H__
 
 #include "GiftiNodeDataFile.h"
+#ifdef CARET_FLAG
 #include "BrainVoyagerFile.h"
-#include "FileException.h"
 #include "FreeSurferSurfaceFile.h"
+#endif //CARET_FLAG
+#include "FileException.h"
+
 
 class MetricFile;
 class MniObjSurfaceFile;
@@ -63,7 +66,8 @@ class CoordinateFile : public GiftiNodeDataFile {
 
       // clear the coordinate file
       void clear();
-      
+
+#ifdef CARET_FLAG
       // get the coordinates out of a brain voyager file
       void importFromBrainVoyagerFile(const BrainVoyagerFile& bvf);
       
@@ -73,6 +77,7 @@ class CoordinateFile : public GiftiNodeDataFile {
       
       // add the coordinates to of a free surfer surface file
       void exportToFreeSurferSurfaceFile(FreeSurferSurfaceFile& fssf);
+#endif //CARET_FLAG
       
       // Get the coordinates out of a vtkPolyData object
       void importFromVtkFile(vtkPolyData* polyData);

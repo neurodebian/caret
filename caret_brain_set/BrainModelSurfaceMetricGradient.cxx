@@ -136,7 +136,7 @@ double BrainModelSurfaceMetricGradient::det3(double* matrix[], int column)
  */
 BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(
                                                BrainSet* bs,
-                                               int bsIndexIn,
+                                               BrainModelSurface* surfaceIn,
                                                MetricFile* valuesIn,
                                                int metricIndexIn,
                                                VectorFile* gradOutIn,
@@ -147,7 +147,7 @@ BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(
 {
    initialize();
    
-   setIndex   = bsIndexIn;
+   m_surface = surfaceIn;
    values     = valuesIn;
    metricIndex = metricIndexIn;
    gradOut    = gradOutIn;
@@ -161,7 +161,7 @@ BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(
  * Constructor for execution of all columns.
  */
 BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(BrainSet* bs,
-                                  int bsIndexIn,
+                                  BrainModelSurface* surfaceIn,
                                   MetricFile* valuesIn,
                                   MetricFile* gradMagOutIn,
                                   bool avgNormalsIn,
@@ -170,7 +170,7 @@ BrainModelSurfaceMetricGradient::BrainModelSurfaceMetricGradient(BrainSet* bs,
 {
    initialize();
    
-   setIndex   = bsIndexIn;
+   m_surface = surfaceIn;
    values     = valuesIn;
    gradMagOut = gradMagOutIn;
    avgNormals = avgNormalsIn;
@@ -218,12 +218,11 @@ BrainModelSurfaceMetricGradient::executeSingleColumn() throw (BrainModelAlgorith
    //
    // Verify files exist, are valid, etc.
    //
-   BrainModelSurface* mysurf = brainSet->getBrainModelSurface(setIndex);//reference
-   CoordinateFile* source = mysurf->getCoordinateFile();//reference
-   TopologyFile* topo = mysurf->getTopologyFile();
+   CoordinateFile* source = m_surface->getCoordinateFile();//reference
+   TopologyFile* topo = m_surface->getTopologyFile();
    const TopologyHelper* myhelper = topo->getTopologyHelper(false, true, false);
-   mysurf->computeNormals();
-   mysurf->orientNormalsOut();
+   m_surface->computeNormals();
+   m_surface->orientNormalsOut();
    if (source == NULL) {
       throw BrainModelAlgorithmException("Invalid coordinate file.");
    }
@@ -292,7 +291,7 @@ BrainModelSurfaceMetricGradient::executeSingleColumn() throw (BrainModelAlgorith
    for (i = 0; i < numNodes; ++i)
    {
       j = i * 3;
-      const float* mynormal = mysurf->getNormal(i);
+      const float* mynormal = m_surface->getNormal(i);
       allnormals[j] = mynormal[0];
       allnormals[j + 1] = mynormal[1];
       allnormals[j + 2] = mynormal[2];
@@ -301,7 +300,7 @@ BrainModelSurfaceMetricGradient::executeSingleColumn() throw (BrainModelAlgorith
    {//assume normals have identical length
       for (i = 0; i < numNodes; ++i)
       {
-         const float* mynormal = mysurf->getNormal(i);
+         const float* mynormal = m_surface->getNormal(i);
          myhelper->getNodeNeighbors(i, neighbors);
          numNeigh = neighbors.size();
          for (j = 0; j < numNeigh; ++j)
@@ -449,12 +448,11 @@ BrainModelSurfaceMetricGradient::executeAllColumns() throw (BrainModelAlgorithmE
    //
    // Verify files exist, are valid, etc.
    //
-   BrainModelSurface* mysurf = brainSet->getBrainModelSurface(setIndex);//reference
-   CoordinateFile* source = mysurf->getCoordinateFile();//reference
-   TopologyFile* topo = mysurf->getTopologyFile();
+   CoordinateFile* source = m_surface->getCoordinateFile();//reference
+   TopologyFile* topo = m_surface->getTopologyFile();
    const TopologyHelper* myhelper = topo->getTopologyHelper(false, true, false);
-   mysurf->computeNormals();
-   mysurf->orientNormalsOut();
+   m_surface->computeNormals();
+   m_surface->orientNormalsOut();
    if (source == NULL) {
       throw BrainModelAlgorithmException("Invalid coordinate file.");
    }
@@ -476,7 +474,7 @@ BrainModelSurfaceMetricGradient::executeAllColumns() throw (BrainModelAlgorithmE
    for (int i = 0; i < numNodes; ++i)
    {
       int j = i * 3;
-      const float* mynormal = mysurf->getNormal(i);
+      const float* mynormal = m_surface->getNormal(i);
       allnormals[j] = mynormal[0];
       allnormals[j + 1] = mynormal[1];
       allnormals[j + 2] = mynormal[2];
@@ -486,7 +484,7 @@ BrainModelSurfaceMetricGradient::executeAllColumns() throw (BrainModelAlgorithmE
    {//assume normals have identical length
       for (int i = 0; i < numNodes; ++i)
       {
-         const float* mynormal = mysurf->getNormal(i);
+         const float* mynormal = m_surface->getNormal(i);
          myhelper->getNodeNeighbors(i, neighbors);
          const int numNeigh = neighbors.size();
          for (int j = 0; j < numNeigh; ++j)

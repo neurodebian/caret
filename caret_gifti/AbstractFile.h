@@ -639,12 +639,13 @@ class AbstractFile {
       QFile* writingQFile;
       
    private:
+#ifdef CARET_FLAG
       /// determine if the file is an XML file
       bool isFileXML(QFile& file);
       
       /// determine if the file is a comma separated value file
       bool isCommaSeparatedValueFile(QFile& file);
-      
+#endif //CARET_FLAG      
       /// method used while reading files
       void readFileContents(QFile& file) throw (FileException);
       

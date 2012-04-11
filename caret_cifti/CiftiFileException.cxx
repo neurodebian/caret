@@ -55,13 +55,12 @@ CiftiFileException::~CiftiFileException() throw()
 /**
  * Text message describing exception.
  */
-/*
+
 const char*
 CiftiFileException::what() const throw() 
 {
    return exceptionDescription.toAscii().constData();
 }
-*/
 
 /**
  * Text message describing exception.

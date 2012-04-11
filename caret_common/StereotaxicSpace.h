@@ -45,6 +45,10 @@ class StereotaxicSpace {
          SPACE_FLIRT,
          /// FLIRT 222 space
          SPACE_FLIRT_222,
+         /// FNIRT space
+         SPACE_FNIRT,
+         /// FNIRT 222 space
+         SPACE_FNIRT_222,
          /// macaque atlas
          SPACE_MACAQUE_F6,
          /// Macaque F99

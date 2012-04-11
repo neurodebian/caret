@@ -73,6 +73,7 @@ CommandCiftiCorrelationMatrix::getHelpInformation() const
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
        + indent9 + "<input-cifti-dense-timeseries>\n"
        + indent9 + "<output-cifti-dense-connectivity>\n"
+       + indent9 + "[-output-gifti-external-binary filename]\n"//specified in .gii, .dat is created automatically
        + indent9 + "[-apply-fisher-z-transform]\n"
        + indent9 + "[-parallel]\n"
        + indent9 + "\n"
@@ -94,7 +95,12 @@ CommandCiftiCorrelationMatrix::getHelpInformation() const
        + indent9 + "that measure the similarity of the timepoints from all\n"
        + indent9 + "nodes to all nodes.\n"
        + indent9 + "\n"
-       + indent9 + "If \"-apply-fisher-z-transform\" options is specified a\n"
+       + indent9 + "If \"-output-gifti-external-binary\" option is specified a\n"
+       + indent9 + "a gifti file header and external binary are written to disk.\n"
+       + indent9 + "The command expects a gifti file to be specified here, and\n"
+       + indent9 + "an externa binary *.dat file is created with the same prefix.\n"
+       + indent9 + "\n"
+       + indent9 + "If \"-apply-fisher-z-transform\" option is specified a\n"
        + indent9 + "a fischer transform is applied to the correlation values.\n"
        + indent9 + "\n"
        + indent9 + "If the \"-parallel\" option is specified, the algorithm\n"
@@ -124,6 +130,7 @@ CommandCiftiCorrelationMatrix::executeCommand() throw (BrainModelAlgorithmExcept
       parameters->getNextParameterAsString("Output Cifti File Name");
    bool applyFisherZTransformFlag = false;
    bool parallelFlag = false;
+   QString outputGiftiFileName;
       
    //
    // Process optional parameters
@@ -139,6 +146,9 @@ CommandCiftiCorrelationMatrix::executeCommand() throw (BrainModelAlgorithmExcept
       }
       else if (paramName == "-parallel") {
          parallelFlag = true;
+      }
+      else if (paramName == "-output-gifti-external-binary") {
+         outputGiftiFileName = parameters->getNextParameterAsString("Output Gifti File Name");
       }
       else {
          throw CommandException("Unrecognized parameter: " + paramName);
@@ -189,6 +199,26 @@ CommandCiftiCorrelationMatrix::executeCommand() throw (BrainModelAlgorithmExcept
    outputCiftiFile->writeFile(outputCiftiFileName);
    //delete outputCiftiFile;
          delete alg;
+
+   if(outputGiftiFileName.length() > 0)
+   {
+      QString binaryFileName;
+      binaryFileName = outputGiftiFileName;
+      QRegExp rx;
+      rx.setPatternSyntax(QRegExp::Wildcard);
+      rx.setPattern("*.gii");
+      if(rx.exactMatch(outputGiftiFileName))
+      {
+         binaryFileName.truncate(binaryFileName.length()-4);
+         binaryFileName.append(".dat");
+      }
+      std::vector <int> dimensions;
+      float *data;
+      CiftiMatrix *matrix = outputCiftiFile->getCiftiMatrix();
+      matrix->getMatrixData(data, dimensions);
+      writeGiftiHeader(outputGiftiFileName,binaryFileName,dimensions);    
+      writeGiftiExternalBinary(binaryFileName,matrix);
+   }
    
    if(DebugControl::getDebugOn()) 
       std::cout << "Time to write file "
@@ -198,5 +228,78 @@ CommandCiftiCorrelationMatrix::executeCommand() throw (BrainModelAlgorithmExcept
    
 }
 
+//hack
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE GIFTI SYSTEM "http://www.nitrc.org/frs/download.php/115/gifti.dtd">
+<GIFTI Version="1.0"  NumberOfDataArrays="1">
+   <MetaData/>
+   <LabelTable/>
+   <DataArray  ArrayIndexingOrder="ColumnMajorOrder"
+               DataType="NIFTI_TYPE_FLOAT32"
+               Dim0="48085"
+               Dim1="48085"
+               Dimensionality="2"
+               Encoding="ExternalFileBinary"
+               Endian="LittleEndian"
+               ExternalFileName="DenseConnectome.dat"
+               ExternalFileOffset="0"
+               Intent="NIFTI_INTENT_NONE">
+      <MetaData>
+      </MetaData>
+      <Data></Data>
+   </DataArray>
+</GIFTI>
+*/
+void 
+CommandCiftiCorrelationMatrix::writeGiftiHeader(QString &fileName, QString &binaryFileName, std::vector < int > &dimensions)
+{
+   QFile file;
+   file.setFileName(fileName);
+   file.open(QIODevice::WriteOnly);
+   QString indent12 = "            ";
+   QString header = 
+   (QString::fromAscii("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    + QString::fromAscii("<!DOCTYPE GIFTI SYSTEM \"http://www.nitrc.org/frs/download.php/115/gifti.dtd\">\n")
+    + QString::fromAscii("<GIFTI Version=\"1.0\"  NumberOfDataArrays=\"1\">\n")
+    + indent3 + "<MetaData/>\n"
+    + indent3 + "<LabelTable/>\n"
+    + indent3 + "<DataArray  ArrayIndexingOrder=\"ColumnMajorOrder\"\n"
+    + indent12 + "DataType=\"NIFTI_TYPE_FLOAT32\"\n"
+    + indent12 + "Dim0=\"" + QString::number(dimensions[0]) + "\"\n"
+    + indent12 + "Dim1=\"" + QString::number(dimensions[1]) + "\"\n"
+    + indent12 + "Dimensionality=\"2\"\n"
+    + indent12 + "Encoding=\"ExternalFileBinary\"\n"
+    + indent12 + "Endian=\"LittleEndian\"\n"
+    + indent12 + "ExternalFileName=\""+ binaryFileName + "\"\n"
+    + indent12 + "ExternalFileOffset=\"0\"\n"
+    + indent12 + "Intent=\"NIFTI_INTENT_NONE\">\n"
+    + indent6 + "<MetaData>\n"
+    + indent6 + "</MetaData>\n"
+    + indent6 + "<Data></Data>\n"
+    + indent3 + "</DataArray>\n"
+    + QString::fromAscii("</GIFTI>\n")
+    );
+   
+   QByteArray temp;
+   temp.append(header);
+   file.write(temp);
+   file.close();
+}
+
+void CommandCiftiCorrelationMatrix::writeGiftiExternalBinary(QString& binaryFileName, CiftiMatrix *matrix)
+{
+   QFile file;
+   file.setFileName(binaryFileName);
+   file.open(QIODevice::WriteOnly);
+   
+   matrix->writeMatrix(file);
+   file.close();
+   
+}
+
+
+                         
+                         
       
 

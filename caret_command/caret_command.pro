@@ -29,6 +29,7 @@ unix:!ubuntu {
         ../caret_command_operations/libCaretCommandOperations.a \
         ../caret_brain_set/libCaretBrainSet.a \
         ../caret_vtk4_classes/libCaretVtk4Classes.a \
+        ../caret_gifti/libCaretGifti.a \
         ../caret_files/libCaretFiles.a \
         ../caret_uniformize/libCaretUniformize.a \
         ../caret_statistics/libCaretStatistics.a \
@@ -42,6 +43,7 @@ unix:!ubuntu {
            ../caret_command_operations/libCaretCommandOperations.so \
            ../caret_brain_set/libCaretBrainSet.so \
            ../caret_vtk4_classes/libCaretVtk4Classes.so \
+           ../caret_gifti/libCaretGifti.so \
            ../caret_files/libCaretFiles.so \
            ../caret_uniformize/libCaretUniformize.so \
            ../caret_statistics/libCaretStatistics.so \
@@ -59,6 +61,7 @@ win32 {
                 ..\caret_command_operations\debug\libCaretCommandOperations.a \
                 ..\caret_brain_set\debug\libCaretBrainSet.a \
                 ..\caret_vtk4_classes\debug\libCaretVtk4Classes.a \
+                ..\caret_gifti\debug\libCaretGifti.a \
                 ..\caret_files\debug\libCaretFiles.a \
                 ..\caret_widgets\debug\libCaretWidgets.a \
                 ..\caret_uniformize\debug\libCaretUniformize.a \
@@ -72,6 +75,7 @@ win32 {
                 ..\caret_command_operations\release\libCaretCommandOperations.a \
                 ..\caret_brain_set\release\libCaretBrainSet.a \
                 ..\caret_vtk4_classes\release\libCaretVtk4Classes.a \
+                ..\caret_gifti\release\libCaretGifti.a \
                 ..\caret_files\release\libCaretFiles.a \
                 ..\caret_widgets\release\libCaretWidgets.a \
                 ..\caret_uniformize\release\libCaretUniformize.a \
@@ -88,6 +92,7 @@ win32 {
                 ..\caret_command_operations\debug\CaretCommandOperations.lib \
                 ..\caret_brain_set\debug\CaretBrainSet.lib \
                 ..\caret_vtk4_classes\debug\CaretVtk4Classes.lib \
+                ..\caret_gifti\debug\CaretGifti.lib \
                 ..\caret_files\debug\CaretFiles.lib \
                 ..\caret_uniformize\debug\CaretUniformize.lib \
                 ..\caret_statistics\debug\CaretStatistics.lib \
@@ -102,6 +107,7 @@ win32 {
                 ..\caret_command_operations\release\CaretCommandOperations.lib \
                 ..\caret_brain_set\release\CaretBrainSet.lib \
                 ..\caret_vtk4_classes\release\CaretVtk4Classes.lib \
+                ..\caret_gifti\release\CaretGifti.lib \
                 ..\caret_files\release\CaretFiles.lib \
                 ..\caret_uniformize\release\CaretUniformize.lib \
                 ..\caret_statistics\release\CaretStatistics.lib \
@@ -128,6 +134,7 @@ macx {
            -L../caret_command_operations -lCaretCommandOperations \
            -L../caret_brain_set -lCaretBrainSet \
            -L../caret_vtk4_classes -lCaretVtk4Classes \
+           -L../caret_gifti -lCaretGifti \
            -L../caret_files -lCaretFiles \
            -L../caret_widgets -lCaretWidgets \
            -L../caret_uniformize -lCaretUniformize \
@@ -158,6 +165,7 @@ ubuntu {
    PRE_TARGETDEPS +=  \
       ../caret_command_operations/libCaretCommandOperations.so \
            ../caret_brain_set/libCaretBrainSet.so \
+           ../caret_gifti/libCaretGifti.so \
            ../caret_files/libCaretFiles.so \
            ../caret_uniformize/libCaretUniformize.so \
            ../caret_statistics/libCaretStatistics.so \
@@ -167,6 +175,7 @@ ubuntu {
    LIBS +=  \
       -L../caret_command_operations -lCaretCommandOperations \
            -L../caret_brain_set -lCaretBrainSet \
+           -L../caret_gifti -lCaretGifti \
            -L../caret_files -lCaretFiles \
            -L../caret_uniformize -lCaretUniformize \
            -L../caret_statistics -lCaretStatistics \
@@ -189,6 +198,7 @@ unix:!macx:!ubuntu {
            -L../caret_command_operations -lCaretCommandOperations \
            -L../caret_brain_set -lCaretBrainSet \
            -L../caret_vtk4_classes -lCaretVtk4Classes \
+           -L../caret_gifti -lCaretGifti \
            -L../caret_files -lCaretFiles \
            -L../caret_widgets -lCaretWidgets \
            -L../caret_uniformize -lCaretUniformize \

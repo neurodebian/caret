@@ -29,7 +29,14 @@
 #include <unistd.h>
 #endif //ifdef Q_OS_WIN32
 
-
+/**
+ * Constructor
+ * 
+ * Constructor
+ * @param file handle to a file that is positioned at the start of the Cifti Matrix
+ * @param dimensions an std::vector containing the number and size of all dimensions i.e. x,y,z,t
+ * @param CACHE_LEVEL
+ */
 CiftiMatrix::CiftiMatrix(QFile &file, std::vector<int> &dimensions,CACHE_LEVEL clevel) throw (CiftiFileException)
 {
    init();
@@ -37,6 +44,15 @@ CiftiMatrix::CiftiMatrix(QFile &file, std::vector<int> &dimensions,CACHE_LEVEL c
    readMatrix(file, dimensions);   
 }
 
+/**
+ * Constructor
+ * 
+ * Constructor
+ * @param fileName name of file that contains the Cifti Matrix
+ * @param dimensions an std::vector containing the number and size of all dimensions i.e. x,y,z,t
+ * @param offset the position of the beginning of the CiftiMatrix within the file
+ * @param CACHE_LEVEL
+ */
 CiftiMatrix::CiftiMatrix(const QString &fileName, std::vector<int> &dimensions, unsigned long long offset, CACHE_LEVEL clevel) throw (CiftiFileException)
 {
    init();
@@ -44,6 +60,14 @@ CiftiMatrix::CiftiMatrix(const QString &fileName, std::vector<int> &dimensions, 
    readMatrix(fileName, dimensions, offset);
 }
 
+/**
+ * Constructor
+ * 
+ * Constructor
+ * @param fileName name of file that contains the Cifti Matrix
+ * @param dimensions an std::vector containing the number and size of all dimensions i.e. x,y,z,t
+ * @param CACHE_LEVEL
+ */
 CiftiMatrix::CiftiMatrix(const QString &fileName, std::vector <int> &dimensions, CACHE_LEVEL clevel) throw (CiftiFileException)
 {
    init();
@@ -51,23 +75,45 @@ CiftiMatrix::CiftiMatrix(const QString &fileName, std::vector <int> &dimensions,
    readMatrix(fileName, dimensions);
 }
 
+/**
+ * Default Constructor
+ * 
+ * Default Constructor
+ */
 CiftiMatrix::CiftiMatrix() throw (CiftiFileException)
 {
    init();   
 }
 
+/**
+ * Destructor
+ * 
+ * Destructor
+ */
 CiftiMatrix::~CiftiMatrix()
 {
    freeMatrix();
 }
 
+/**
+ * swap byte order
+ * 
+ * swap the byte order of the internal matrix from big to little endian, or vice versa
+ */
 void CiftiMatrix::swapByteOrder()
 {
    CiftiByteSwap::swapBytes(m_matrix,m_length);   
 }
 
-//gets the entire matrix, depending on the copy data preferences,
-//either copies all of the data
+/**
+ * get Matrix Data
+ * 
+ * gets the entire matrix, depending on the copy data preferences,
+ * either copies all of the data to a newly allocated matrix, or
+ * returns a pointer the internal matrix data
+ * @param matrix
+ * @param dimensions 
+ */
 void CiftiMatrix::getMatrixData(float *&matrix, std::vector <int> &dimensions)
 {   
    dimensions = m_dimensions;
@@ -82,6 +128,15 @@ void CiftiMatrix::getMatrixData(float *&matrix, std::vector <int> &dimensions)
    }   
 }
 
+/**
+ * set Matrix Data
+ * 
+ * sets the matrix data, depending on the copy data preferences,
+ * either copies the data to a newly allocated internal matrix, or
+ * sets the internal matrix to point to the supplied matrix
+ * @param data
+ * @param dimensions
+ */
 void CiftiMatrix::setMatrixData(float *data, std::vector <int> &dimensions)
 {
    freeMatrix();
@@ -98,6 +153,12 @@ void CiftiMatrix::setMatrixData(float *data, std::vector <int> &dimensions)
    }
 }
 
+/**
+ * set Dimensions
+ * 
+ * set matrix Dimensions
+ * @param dimensions
+ */
 void CiftiMatrix::setDimensions(std::vector <int> dimensions)
 {
    m_dimensions = dimensions;
@@ -108,15 +169,38 @@ void CiftiMatrix::setDimensions(std::vector <int> dimensions)
    }
 }
 
+void CiftiMatrix::getDimensions(std::vector <int>& dimensions)
+{
+   dimensions = m_dimensions;
+}
+
+/**
+ * set Copy Data
+ * 
+ * set Copy Data value, if set to true, then set/getMatrixData
+ * will return copies of the internal matrix data.  If set to
+ * false, then pointers to the internal data are set/get
+ * @param copyData
+ */
 void CiftiMatrix::setCopyData(bool copyData)
 {
    m_copyData = copyData;
 }
 
+/**
+ * get Copy Data
+ * 
+ * get Copy Data value, if set to true, then set/getMatrixData
+ * will return copies of the internal matrix data.  If set to
+ * false, then the actual pointer to the internal data are affected
+ * by set/getMatrixData
+ * @return copyData
+ */
 bool CiftiMatrix::getCopyData()
 {
    return m_copyData;
 }
+
 void CiftiMatrix::init()
 {
    m_clevel = IN_MEMORY;
@@ -137,11 +221,26 @@ void CiftiMatrix::freeMatrix()
    initMatrix();
 }
 
+/**
+ * readMatrix
+ * 
+ * read Matrix from file. 
+ * @param fileName
+ * @param dimensions
+ */
 void CiftiMatrix::readMatrix(const QString &fileName, std::vector<int> &dimensions)
 {
    readMatrix(fileName, dimensions, 0);   
 }
 
+/**
+ * readMatrix
+ * 
+ * read Matrix from file, starting at specified offset
+ * @param fileName
+ * @param dimensions
+ * @param offset
+ */
 void CiftiMatrix::readMatrix(const QString &fileName, std::vector<int> &dimensions, unsigned long long offset)
 {
    QFile ciftiFile;
@@ -160,6 +259,13 @@ void CiftiMatrix::readMatrix(const QString &fileName, std::vector<int> &dimensio
    }
 }
 
+/**
+ * readMatrix
+ * 
+ * read Matrix from file handle. 
+ * @param file
+ * @param dimensions
+ */
 void CiftiMatrix::readMatrix(QFile &file, std::vector<int> &dimensions)
 {
    freeMatrix();
@@ -188,6 +294,12 @@ void CiftiMatrix::readMatrix(QFile &file, std::vector<int> &dimensions)
    }   
 }
 
+/**
+ * writeMatrix
+ * 
+ * write Matrix to specified file handle
+ * @param file handle to file for writing matrix data
+ */
 void CiftiMatrix::writeMatrix(QFile &file)
 {   
    file.write((char *)m_matrix,m_length*4);

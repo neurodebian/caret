@@ -877,7 +877,10 @@ CoordinateFile::readLegacyNodeFileData(QFile& /*file*/, QTextStream& stream,
             int index;
             for (int i = 0; i < num; i++) {
                readLine(stream, line);
-               sscanf(line.toAscii().constData(), "%d %f %f %f", &index, &x, &y, &z);
+               if (sscanf(line.toAscii().constData(), "%d %f %f %f", &index, &x, &y, &z) != 4)
+               {
+                  throw FileException(filename, "Truncated coordinate file detected");
+               }
                const int i3 = i * 3;
                coordPtr[i3]     = x;
                coordPtr[i3 + 1] = y;

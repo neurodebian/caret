@@ -1576,7 +1576,7 @@ GuiVolumeAttributesDialog::slotFlipYPushButton()
          volumeInMainWindow = true;
       }
    }
-   if (volumeInMainWindow = false) {
+   if (volumeInMainWindow == false) {
       QApplication::restoreOverrideCursor();
       QMessageBox::critical(this, "ERROR",
                             "The selected volume must be displayed in\n"

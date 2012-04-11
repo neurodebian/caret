@@ -172,13 +172,13 @@ CommandMetricGradientAll::executeCommand() throw (BrainModelAlgorithmException,
    bool newFlag = true;
    if (newFlag) {
           BrainModelSurfaceMetricGradient myobject(
-             &mybs, 0, &mymetric, &mymetric, avgNormals, parallelFlag);
+             NULL, mysurf, &mymetric, &mymetric, avgNormals, parallelFlag);
           myobject.execute();
    }
    else {
       for (int i = 0; i < numCols; i++) {
           BrainModelSurfaceMetricGradient myobject(
-             &mybs, 0, &mymetric, i, NULL, &mymetric, i, avgNormals);
+             NULL, mysurf, &mymetric, i, NULL, &mymetric, i, avgNormals);
           myobject.execute();
       }
    }

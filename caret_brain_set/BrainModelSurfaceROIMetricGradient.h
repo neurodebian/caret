@@ -33,13 +33,14 @@ class CoordinateFile;
 class MetricFile;
 class VectorFile;
 class TopologyHelper;
+class BrainModelSurface;
 
 /// class for create a functional volume using a probabilistic volume
 class BrainModelSurfaceROIMetricGradient : public BrainModelAlgorithm {
    public:
       /// Constructor for execution on single column
       BrainModelSurfaceROIMetricGradient(BrainSet* bs,
-                                        int bsIndexIn,
+                                        BrainModelSurface* surfaceIn,
                                         MetricFile* roiIn,
                                         MetricFile* valuesIn,
                                         int metricIndexIn,
@@ -50,7 +51,7 @@ class BrainModelSurfaceROIMetricGradient : public BrainModelAlgorithm {
                                             
       /// Constructor for execution of all columns
       BrainModelSurfaceROIMetricGradient(BrainSet* bs,
-                                        int bsIndexIn,
+                                        BrainModelSurface* surfaceIn,
                                         MetricFile* roiIn,
                                         MetricFile* valuesIn,
                                         bool avgNormalsIn,
@@ -78,9 +79,10 @@ class BrainModelSurfaceROIMetricGradient : public BrainModelAlgorithm {
       
       bool allColumnsFlag;
       bool parallelFlag;
-      int setIndex, metricIndex, magOutIndex, depth;
+      int metricIndex, magOutIndex, depth;
       MetricFile* values, *roi, *gradMagOut;
       VectorFile* gradOut;
+      BrainModelSurface* m_surface;
       bool avgNormals;
       void crossProd(const float in1[3], const double in2[3], double out[3]);
       void crossProd(const double in1[3], const double in2[3], double out[3]);

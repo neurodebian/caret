@@ -31,10 +31,11 @@
 #include <vector>
 
 #include "FileException.h"
-
+#include "XmlGenericWriter.h"
 class ColorFile;
 class QTextStream;
 class StringTable;
+
 
 /// table for label indices and names
 class GiftiLabelTable {
@@ -57,7 +58,8 @@ class GiftiLabelTable {
       // append a label table to this one
       void append(const GiftiLabelTable& nlt,
                   const std::vector<int>* labelsWithTheseIndicesOnly = NULL);
-      
+
+#ifdef CARET_FLAG
       // assign colors to the labels
       void assignColors(const ColorFile& colorFile);
 
@@ -66,6 +68,7 @@ class GiftiLabelTable {
 
       // Create a label from each of the colors in a color file
       void createLabelsFromColors(const ColorFile& colorFile);
+#endif //CARET_FLAG
 
       // clear out the labels
       void clear();
@@ -174,10 +177,10 @@ class GiftiLabelTable {
                                        float& alphaOut) {
          unsigned char r, g, b, a;
          getDefaultColor(r, g, b, a);
-         redOut   = ((float)r / 255.0);
-         greenOut = ((float)g / 255.0);
-         blueOut  = ((float)b / 255.0);
-         alphaOut = ((float)a / 255.0);
+         redOut   = ((float)r / 255.0f);
+         greenOut = ((float)g / 255.0f);
+         blueOut  = ((float)b / 255.0f);
+         alphaOut = ((float)a / 255.0f);
       }
 
    protected:
@@ -259,10 +262,10 @@ class GiftiLabelTable {
                                float& greenOut,
                                float& blueOut,
                                float& alphaOut) const {
-               redOut   = ((float)red / 255.0);
-               greenOut = ((float)green / 255.0);
-               blueOut  = ((float)blue / 255.0);
-               alphaOut = ((float)alpha / 255.0);
+               redOut   = ((float)red / 255.0f);
+               greenOut = ((float)green / 255.0f);
+               blueOut  = ((float)blue / 255.0f);
+               alphaOut = ((float)alpha / 255.0f);
             }
 
             /// set the color components from floats ranging 0.0 to 1.0
@@ -270,10 +273,10 @@ class GiftiLabelTable {
                                const float greenIn,
                                const float blueIn,
                                const float alphaIn) {
-               red   = (unsigned char)(redIn * 255.0);
-               green = (unsigned char)(greenIn * 255.0);
-               blue  = (unsigned char)(blueIn * 255.0);
-               alpha = (unsigned char)(alphaIn * 255.0);
+               red   = (unsigned char)(redIn * 255.0f);
+               green = (unsigned char)(greenIn * 255.0f);
+               blue  = (unsigned char)(blueIn * 255.0f);
+               alpha = (unsigned char)(alphaIn * 255.0f);
             }
 
          protected:

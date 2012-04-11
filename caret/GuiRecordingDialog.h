@@ -91,7 +91,7 @@ class GuiRecordingDialog : public WuQDialog {
          IMAGE_SIZE_TYPE_352x240,
          IMAGE_SIZE_TYPE_640x480,
          IMAGE_SIZE_TYPE_720x480,
-         IMAGE_SIZE_TYPE_CUSTOM,
+         IMAGE_SIZE_TYPE_CUSTOM
       };
       
       /// Movie file type

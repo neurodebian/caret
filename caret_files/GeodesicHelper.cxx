@@ -165,7 +165,7 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
                ah[0] = eh[0] - ea[0];//eh - ea = eh + ae = ae + eh = ah, vector from neigh to the point on shared edge the path goes through
                ah[1] = eh[1] - ea[1];
                ah[2] = eh[2] - ea[2];
-               tempf = normalize(ah);//get the magnitude so we can test that it is positive and less than |ab|
+               tempf = dotProd(ah, abhat);//get the component along ab so we can test that it is positive and less than |ab|
                if (tempf <= 0.0f || tempf >= abmag) break;//tetralateral is obtuse or triangular, our path is invalid or not shorter, so consider next root tile
                tempf = normalize(eg);//this is our path length
                tempneigh2.push_back(farnode);
@@ -183,6 +183,7 @@ GeodesicHelper::GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFil
          distances2[i][j] = tempdist2[j];
       }
    }
+   delete[] coords;
 }
 
 void GeodesicHelper::getNodesToGeoDist(const int node, const float maxdist, std::vector<int>& nodesOut, std::vector<float>& distsOut, const bool smoothflag)

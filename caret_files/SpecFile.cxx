@@ -2526,6 +2526,7 @@ SpecFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure
  */
 SpecFile::Entry::Entry()
 {
+   fileType = FILE_TYPE_OTHER;//fix valgrind jump on uninitialized value
 }
       
 /**

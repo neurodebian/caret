@@ -30,6 +30,8 @@
 #include <vector>
 
 class BrainModelSurface;
+class TopologyFile;
+class CoordinateFile;
 
 /// class that generates a tetrahedron surface
 class BrainModelSurfacePolyhedronNew : public BrainModelAlgorithm {

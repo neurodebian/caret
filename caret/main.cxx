@@ -618,7 +618,7 @@ main(int argc, char* argv[])
    te->setMinimumSize(600, 600);
    te->setText(UbuntuMessage::getWarningMessage());
    te->exec();                    
-#endif UBUNTU
+#endif //UBUNTU
 
    if (initialSpecFiles.empty() == false) {
       if (QFile::exists(initialSpecFiles[0]) == false) {

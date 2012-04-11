@@ -99,11 +99,11 @@ class GeodesicHelper
    void alltoall(float** out, int** parents, bool smooth);//must be fully allocated
    void dijkstra(const int root, const std::vector<int>& interested, bool smooth);//partial surface
    QMutex inUse;
-public:
    static void crossProd(const float in1[3], const float in2[3], float out[3]);//DO NOT PASS AN INPUT AS OUT
    static float dotProd(const float in1[3], const float in2[3]);
    static float normalize(float in[3]);
    static void coordDiff(const float* coord1, const float* coord2, float out[3]);
+public:
    GeodesicHelper(const CoordinateFile* coordsIn, const TopologyFile* topoFileIn);
    ~GeodesicHelper() {
       if (marked) {
@@ -136,7 +136,7 @@ public:
    void getGeoFromNode(const int node, float* valuesOut, const bool smoothflag = true);//MUST be already allocated to number of nodes
 
    /// Get distances from root node to entire surface, vector method (not as fast)
-   void getGeoFromNode(const int node, std::vector<float>& valuesOut, const bool smoothflag = true);//MUST be already allocated to number of nodes
+   void getGeoFromNode(const int node, std::vector<float>& valuesOut, const bool smoothflag = true);
    
    /// Get distances from root node to entire surface and parents - fastest method with parents for full surface, single node, allocate both arrays first (root node has self as parent)
    void getGeoFromNode(const int node, float* valuesOut, int* parentsOut, const bool smoothflag = true);

@@ -40,6 +40,7 @@ HEADERS += Basename.h \
       HtmlColors.h \
 	   HttpFileDownload.h \
 	   MathUtilities.h \
+	   MatrixUtilities.h \
       NameIndexSort.h \
       PointLocator.h \
       ProgramParameters.h \

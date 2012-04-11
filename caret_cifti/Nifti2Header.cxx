@@ -25,16 +25,35 @@
 #include "Nifti2Header.h"
 #include <vector>
 
+/**
+ * Constructor
+ * 
+ * Constructor that opens and reads from the specified file 
+ * @param inputFileName the name of the input file that starts with the Nifti2Header
+ */
 Nifti2Header::Nifti2Header(const QString& inputFileName) throw (CiftiFileException)
 {
    readFile(inputFileName);   
 }
 
+/**
+ * Constructor
+ * 
+ * Constructor that reads from the specified file handle 
+ * @param inputFile the input handle that starts with the Nifti2Header
+ */
 Nifti2Header::Nifti2Header(QFile &inputFile) throw (CiftiFileException)
 {
    readFile(inputFile);
 }
 
+
+/**
+ * readFile
+ * 
+ * read Nifti2Header data from file name, closes file when finished loading data
+ * @param inputFileName name and path of Nifti2 Header file
+ */
 void Nifti2Header::readFile(const QString& inputFileName) throw (CiftiFileException)
 {
    QFile inputFile;
@@ -45,11 +64,25 @@ void Nifti2Header::readFile(const QString& inputFileName) throw (CiftiFileExcept
    
 }
 
+/**
+ * getSwapNeed
+ * 
+ * determines whether the byte order needs to be swapped, i.e. if
+ * the Nifti file is in big endian format, but the machine architecture
+ * is little-endian, then a swap would be necessary
+ * @return swapNeeded true if swap is needed
+ */
 bool Nifti2Header::getSwapNeeded()
 {
    return m_swapNeeded;
 }
 
+/**
+ * Constructor
+ * 
+ * Constructor that takes an input nifti_2_header struct * 
+ * @param header 
+ */
 void Nifti2Header::readFile(QFile &inputFile) throw (CiftiFileException)
 {
    int bytes_read = 0;
@@ -102,20 +135,45 @@ void Nifti2Header::readFile(QFile &inputFile) throw (CiftiFileException)
    }
 }
 
+/**
+ * Constructor
+ * 
+ * Constructor that takes an input nifti_2_header struct
+ * 
+ * @param header 
+ */
 Nifti2Header::Nifti2Header(const nifti_2_header &header) throw (CiftiFileException)
 {
    memcpy((void *)&m_header,&header,sizeof(m_header));   
 }
 
+/**
+ * Default Constructor
+ * 
+ * Default Constructor 
+ */
 Nifti2Header::Nifti2Header() throw (CiftiFileException)
 {
    initHeaderStruct(m_header);
 }
 
+/**
+ * Destructor
+ * 
+ * Destructor
+ */
 Nifti2Header::~Nifti2Header()
 {   
 }
 
+/**
+ * getHeaderAsString
+ * 
+ * creates a formatted string containing the Nifti2 Header data, this
+ * is useful for printing out the Nifti2 Header in a human readable
+ * format.
+ * @return string containing human readable Nifti 2 Header
+ */
 QString *Nifti2Header::getHeaderAsString()
 {
    QString *string = new QString;   
@@ -175,25 +233,57 @@ QString *Nifti2Header::getHeaderAsString()
    return string;
 }
 
+/**
+ * getHeaderStruct
+ * 
+ * get the raw nifti_2_header struct, as defined in nifti2.h
+ * @param header
+ */
 void Nifti2Header::getHeaderStruct(nifti_2_header &header) const throw (CiftiFileException)
 {   
    memcpy(&header, &m_header, sizeof(m_header));
 }
 
-void Nifti2Header::SetHeaderStuct(const nifti_2_header &header) throw (CiftiFileException)
+/** 
+ * setHeaderStruct
+ * 
+ * sets the raw nifti_2_header struct, as defined in nifti2.h
+ * @param header
+ */
+void Nifti2Header::setHeaderStuct(const nifti_2_header &header) throw (CiftiFileException)
 {
    memcpy(&m_header, &header, sizeof(m_header));   
 }
+
+/** 
+ * getCiftiType
+ * 
+ * gets the Cifti intent code from the supplied nifti_2_header struct
+ * @param header
+ * @return int containing the nifti header intent_code
+ */
 int Nifti2Header::getCiftiType(const nifti_2_header &header)   const throw (CiftiFileException)
 {
    return header.intent_code;
 }
 
+/** 
+ * getCiftiType
+ * 
+ * gets the Cifti intent code
+ * @return int containing the nifti header intent_code
+ */
 int Nifti2Header::getCiftiType() const throw (CiftiFileException)
 {
    return m_header.intent_code;
 }
 
+/**
+ * writeFile
+ * 
+ * writes the nifti 2 header to the output file handle
+ * @param outputFile
+ */
 void Nifti2Header::writeFile(QFile &outputFile) const throw (CiftiFileException)
 {
    if(!outputFile.isOpen()) 
@@ -210,6 +300,12 @@ void Nifti2Header::writeFile(QFile &outputFile) const throw (CiftiFileException)
    //outputFile.close();
 }
 
+/**
+ * writeFile
+ * 
+ * writes the nifti 2 header to the output file name
+ * @param outputFileName
+ */
 void Nifti2Header::writeFile(const QString &outputFileName) const throw (CiftiFileException)
 {
    QFile outputFile;
@@ -223,6 +319,12 @@ void Nifti2Header::initHeaderStruct()
    initHeaderStruct(this->m_header);
 }
 
+/**
+ * initHeaderStruct
+ * 
+ * initializes the supplied nifti 2 header struct to sensible defaults for Cifti
+ * @param header
+ */
 void Nifti2Header::initHeaderStruct(nifti_2_header &header)
 {
    header.sizeof_hdr = NIFTI2_HEADER_SIZE;
@@ -276,6 +378,12 @@ void Nifti2Header::initHeaderStruct(nifti_2_header &header)
    memset(header.unused_str,0x00,15);
 }
 
+/**
+ * initTimeSeriesHeaderStruct
+ * 
+ * initializes the supplied nifti 2 header struct to sensible defaults for Cifti
+ * @param header
+ */
 void Nifti2Header::initTimeSeriesHeaderStruct()
 {
    initTimeSeriesHeaderStruct(m_header);
@@ -299,4 +407,12 @@ void Nifti2Header::getCiftiDimensions(std::vector< int >& dimensions)
    if(m_header.dim[5]!=1) dimensions.push_back(m_header.dim[5]);
    if(m_header.dim[6]!=1) dimensions.push_back(m_header.dim[6]);
    if(m_header.dim[7]!=1) dimensions.push_back(m_header.dim[7]);
+}
+
+void Nifti2Header::setCiftiDimensions(std::vector< int >& dimensions)
+{
+   for (int i = 0; i < (int)dimensions.size() && i < 3; ++i)
+   {
+      m_header.dim[5 + i] = dimensions[i];
+   }
 }

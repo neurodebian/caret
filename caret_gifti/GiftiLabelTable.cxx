@@ -26,7 +26,9 @@
 
 #include <QTextStream>
 
+#ifdef CARET_FLAG
 #include "ColorFile.h"
+#endif //CARET_FLAG
 #include "GiftiCommon.h"
 #include "GiftiLabelTable.h"
 #include "StringTable.h"
@@ -340,6 +342,7 @@ GiftiLabelTable::copyHelperGiftiLabelTable(const GiftiLabelTable& nlt)
    hadColorsWhenRead = nlt.hadColorsWhenRead;
 }      
 
+#ifdef CARET_FLAG
 /**
  * Get colors from the labels.
  */
@@ -442,7 +445,7 @@ GiftiLabelTable::assignColors(const ColorFile& colorFile)
       this->setColorFloat(unknownIndex, ur, ug, ub, 0.0);
    }
 }      
-
+#endif //CARET_FLAG
 /**
  * write metadata (used by other classes so static).
  */

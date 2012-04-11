@@ -23,6 +23,8 @@ HEADERS += CommandBase.h \
            CommandCreateCiftiDenseTimeseries.h \
            CommandDataFileCompare.h \
            CommandCiftiCorrelationMatrix.h \
+           CommandCiftiDenseConnectomeGradient.h \
+           CommandCiftiGradient.h \
            CommandConvertDataFileToCaret6.h \
            CommandConvertSpecFileToCaret6.h \
            CommandColorFileCreateMissingColors.h \
@@ -87,6 +89,7 @@ HEADERS += CommandBase.h \
            CommandMetricTranspose.h \
            CommandMetricTwinComparison.h \
            CommandMetricTwinPairedDataDiffs.h \
+           CommandMyelinMapping.h \
            CommandPaintAddColumns.h \
            CommandPaintAssignNodes.h \
            CommandPaintAssignNodesRelativeToLine.h \
@@ -147,6 +150,7 @@ HEADERS += CommandBase.h \
            CommandSurfaceCellCreate.h \
            CommandSurfaceCellProjection.h \
            CommandSurfaceCellUnprojection.h \
+           CommandSurfaceCreateSpheres.h \
            CommandSurfaceCrossoverCheck.h \
            CommandSurfaceCurvature.h \
            CommandSurfaceDistortion.h \
@@ -276,6 +280,8 @@ SOURCES += CommandBase.cxx \
            CommandCaretFileNamingUnitTesting.cxx \
            CommandCaretHelpCreateHtmlIndexFile.cxx \
            CommandCiftiCorrelationMatrix.cxx \
+           CommandCiftiDenseConnectomeGradient.cxx \
+           CommandCiftiGradient.cxx \
            CommandColorFileAddColor.cxx \
            CommandColorFileCreateMissingColors.cxx \
            CommandConvertDataFileToCaret6.cxx \
@@ -343,6 +349,7 @@ SOURCES += CommandBase.cxx \
            CommandMetricTranspose.cxx \
            CommandMetricTwinComparison.cxx \
            CommandMetricTwinPairedDataDiffs.cxx \
+           CommandMyelinMapping.cxx \
            CommandPaintAddColumns.cxx \
            CommandPaintAssignNodes.cxx \
            CommandPaintAssignNodesRelativeToLine.cxx \
@@ -403,6 +410,7 @@ SOURCES += CommandBase.cxx \
            CommandSurfaceCellCreate.cxx \
            CommandSurfaceCellProjection.cxx \
            CommandSurfaceCellUnprojection.cxx \
+           CommandSurfaceCreateSpheres.cxx \
            CommandSurfaceCrossoverCheck.cxx \
            CommandSurfaceCurvature.cxx \
            CommandSurfaceDistortion.cxx \

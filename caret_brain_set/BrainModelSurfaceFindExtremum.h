@@ -57,7 +57,7 @@ class BrainModelSurfaceFindExtremum : public BrainModelAlgorithm {
          /// move negative Z
          DIRECTION_Z_NEGATIVE,
          /// move positive Z
-         DIRECTION_Z_POSITIVE,
+         DIRECTION_Z_POSITIVE
       };
       
       /// paint operation

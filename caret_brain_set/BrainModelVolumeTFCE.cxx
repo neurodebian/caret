@@ -98,13 +98,13 @@ BrainModelVolumeTFCE::execute() throw (BrainModelAlgorithmException)
    float fmax = 0.0f, thresh, valToAdd;
    float* voxels = inFuncVolume->getVoxelData(), *outData = outFuncVolume->getVoxelData();
    bool* flagUsed = new bool[numVoxels];//bitwise saves little space, due to other arrays, so make it simple
-   short* growing = new short[numVoxels * 3];//excessive array for storing clusters, just in case (and in case indices range outside 0-255)
+   int* growing = new int[numVoxels * 3];//excessive array for storing clusters, just in case (and in case indices range outside 0-255)
    for (temp = 0; temp < numVoxels; ++temp)
    {
       if (voxels[temp] > fmax) fmax = voxels[temp];
       outData[temp] = 0.0f;
    }
-   for (thresh = fmax / numSteps / 2.0; thresh < fmax; thresh += fmax / numSteps)
+   for (thresh = fmax / numSteps / 2.0f; thresh < fmax; thresh += fmax / numSteps)
    {
       for (temp = 0; temp < numVoxels; ++temp) flagUsed[temp] = false;
       for (k = 0; k < aDim[2]; ++k)
@@ -172,4 +172,5 @@ BrainModelVolumeTFCE::execute() throw (BrainModelAlgorithmException)
    }
    outFuncVolume->setVoxelColoringInvalid();
    delete[] flagUsed;
+   delete[] growing;
 }

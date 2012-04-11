@@ -61,7 +61,7 @@ void parseMatrixElement(QXmlStreamReader &xml, CiftiMatrixElement &matrixElement
          }
          else if(elementName == "Volume")
          {
-            matrixElement.m_volume.push_back(CiftiVolume());
+            matrixElement.m_volume.push_back(CiftiVolumeElement());
             parseVolume(xml,matrixElement.m_volume.back());
          }
          else std::cout << "unknown element: " << elementName.toAscii().data() << std::endl;             
@@ -360,7 +360,7 @@ void parseBrainModel(QXmlStreamReader &xml, CiftiBrainModelElement &brainModel)
    }
 }
 
-void parseVolume(QXmlStreamReader &xml, CiftiVolume &volume)
+void parseVolume(QXmlStreamReader &xml, CiftiVolumeElement &volume)
 {
    QXmlStreamAttributes attributes = xml.attributes();
    
@@ -382,7 +382,7 @@ void parseVolume(QXmlStreamReader &xml, CiftiVolume &volume)
          QString elementName = xml.name().toString();
          if(elementName == "TransformationMatrixVoxelIndicesIJKtoXYZ")
          {
-            volume.m_transformationMatrixVoxelIndicesIJKtoXYZ.push_back(TransformationMatrixVoxelIndicesIJKtoXYZ());
+            volume.m_transformationMatrixVoxelIndicesIJKtoXYZ.push_back(TransformationMatrixVoxelIndicesIJKtoXYZElement());
             parseTransformationMatrixVoxelIndicesIJKtoXYZ(xml,volume.m_transformationMatrixVoxelIndicesIJKtoXYZ.back());
          }         
          else std::cout << "unknown element: " << elementName.toAscii().data() << std::endl;             
@@ -396,7 +396,7 @@ void parseVolume(QXmlStreamReader &xml, CiftiVolume &volume)
    }
 }
 
-void parseTransformationMatrixVoxelIndicesIJKtoXYZ(QXmlStreamReader &xml, TransformationMatrixVoxelIndicesIJKtoXYZ &transform)
+void parseTransformationMatrixVoxelIndicesIJKtoXYZ(QXmlStreamReader &xml, TransformationMatrixVoxelIndicesIJKtoXYZElement &transform)
 {
    QXmlStreamAttributes attributes = xml.attributes();
    

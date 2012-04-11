@@ -197,7 +197,7 @@ class BrainModelSurface : public BrainModel {
                                   DeformationFieldFile& dff) const;
                                           
       /// compute normals
-      void computeNormals(const float* coordsIn = NULL);
+      void computeNormals(const float* coordsIn = NULL, bool averageNormals = false);
       
       /// copy normals to vector file
       void copyNormalsToVectorFile(VectorFile* vf) const;

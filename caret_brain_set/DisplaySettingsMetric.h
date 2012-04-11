@@ -72,7 +72,7 @@ class DisplaySettingsMetric : public DisplaySettingsNodeAttributeFile {
       enum METRIC_THRESHOLDING_TYPE {
          METRIC_THRESHOLDING_TYPE_FILE_COLUMN,
          METRIC_THRESHOLDING_TYPE_FILE_COLUMN_AVERAGE,
-         METRIC_THRESHOLDING_TYPE_USER_VALUES,
+         METRIC_THRESHOLDING_TYPE_USER_VALUES
       };
       
       /// Constructor

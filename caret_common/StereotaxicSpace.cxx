@@ -117,6 +117,18 @@ StereotaxicSpace::setDataFromSpace(const SPACE spaceIn)
                                2.0, 2.0, 2.0,
                                -90.0, -126.0, -72.0);
          break;
+      case SPACE_FNIRT:
+         setData("FNIRT",
+                               182, 218, 182,
+                               1.0, 1.0, 1.0,
+                               -90.0, -126.0, -72.0);
+         break;
+      case SPACE_FNIRT_222:
+         setData("FNIRT-222",
+                               91, 109, 91,
+                               2.0, 2.0, 2.0,
+                               -90.0, -126.0, -72.0);
+         break;
       case SPACE_MACAQUE_F99:
          setData("MACAQUE-F99",
                                143, 187, 118,

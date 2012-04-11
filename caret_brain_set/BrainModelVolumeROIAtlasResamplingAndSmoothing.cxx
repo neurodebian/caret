@@ -313,7 +313,7 @@ void BrainModelVolumeROIAtlasResamplingAndSmoothing::execute_optimized() throw (
                {//if selected
 
                   inputVal = values->getVoxel(i, j, k);
-                  int numWeights = 0;
+                  float weightSum = 0;
                   smoothVal = 0.0f;
                   for (ki = -irange[0]; ki <= irange[0]; ++ki)
                   {//loop through kernel
@@ -338,7 +338,7 @@ void BrainModelVolumeROIAtlasResamplingAndSmoothing::execute_optimized() throw (
                               atlasVal = atlas->getVoxel(i + ki, j + kj, k + kk);
                               weightVal = weights[ki + irange[0]][kj + irange[1]][kk + irange[2]];
                               smoothVal += inputVal * weightVal;
-                              numWeights++;                              
+                              weightSum += weightVal;                              
                            }
                         }
                      }
@@ -349,7 +349,7 @@ void BrainModelVolumeROIAtlasResamplingAndSmoothing::execute_optimized() throw (
                   }
                   else
                   {
-                     smoothVal /= numWeights;
+                     smoothVal /= weightSum;
                   }
                   smoothSubVol->setVoxel(i, j, k, 0, smoothVal);
                } else {
@@ -362,5 +362,5 @@ void BrainModelVolumeROIAtlasResamplingAndSmoothing::execute_optimized() throw (
       }
 
   }
-}*/
+}//*/
 

@@ -46,26 +46,26 @@ class BrainModelSurfaceROIMetricSmoothing : public BrainModelAlgorithm {
                                        const int columnIn, 
                                        const int outputColumnIn,
                                        const QString& outputColumnNameIn,
-                                       const float strengthIn,
-                                       const int iterationsIn,
-                                       const float gaussNormBelowCutoffIn,
-                                       const float gaussNormAboveCutoffIn,
-                                       const float gaussSigmaNormIn,
-                                       const float gaussSigmaTangIn,
-                                       const float gaussTangentCutoffIn,
-                                       const float geodesicGaussSigmaIn); // = 2.0f);
+                                       const float strengthIn,//all of these are unused
+                                       const int iterationsIn,//technically this is used, but it should always be 1, though it might be slightly faster (in theory) to iterate small kernels to equal a large kernel
+                                       const float gaussNormBelowCutoffIn,//unused
+                                       const float gaussNormAboveCutoffIn,//unused
+                                       const float gaussSigmaNormIn,//unused
+                                       const float gaussSigmaTangIn,//unused
+                                       const float gaussTangentCutoffIn,//to here
+                                       const float geodesicGaussSigmaIn); // = 2.0f);//this one is the only smoothing parameter actually used
       /// Parallel Smoothing Constructor
       BrainModelSurfaceROIMetricSmoothing(BrainSet* bs,
                                        BrainModelSurface* fiducialSurfaceIn,
                                        MetricFile* metricFileIn,
                                        MetricFile* roiFileIn,                                       
-                                       const float strengthIn,
-                                       const int iterationsIn,
-                                       const float gaussNormBelowCutoffIn,
-                                       const float gaussNormAboveCutoffIn,
-                                       const float gaussSigmaNormIn,
-                                       const float gaussSigmaTangIn,
-                                       const float gaussTangentCutoffIn,
+                                       const float strengthIn,//unused
+                                       const int iterationsIn,//should be 1
+                                       const float gaussNormBelowCutoffIn,//unused
+                                       const float gaussNormAboveCutoffIn,//unused
+                                       const float gaussSigmaNormIn,//unused
+                                       const float gaussSigmaTangIn,//unused
+                                       const float gaussTangentCutoffIn,//unused
                                        const float geodesicGaussSigmaIn,//=2.0f
                                        const bool parallelSmoothingFlagIn=true);
       
@@ -86,9 +86,12 @@ class BrainModelSurfaceROIMetricSmoothing : public BrainModelAlgorithm {
       class NeighborInfo {
          public:
             /// Constructor
-            NeighborInfo(const std::vector<int>& neighborsIn,                         
-                         const std::vector<float>* distances,
+            NeighborInfo(const std::vector<int>& neighborsIn,
+                         const std::vector<float>& distances,
+                         const std::vector<float>& geoWeights,
                          const float* roiValuesIn);
+            
+            NeighborInfo() { };//default constructor to make vector resize happy
             
             /// Destructor
             ~NeighborInfo();
@@ -98,6 +101,9 @@ class BrainModelSurfaceROIMetricSmoothing : public BrainModelAlgorithm {
             
             /// distance to neighbor 
             std::vector<float> distanceToNeighbor;
+            
+            /// distance based precomputed gaussian weight
+            std::vector<float> geoGaussWeights;
             
             /// number of neighbors
             int numNeighbors;

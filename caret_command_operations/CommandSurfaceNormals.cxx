@@ -23,6 +23,9 @@
  */
 /*LICENSE_END*/
 
+#include <vector>
+#include <cmath>
+
 #include "BrainModelSurface.h"
 #include "BrainSet.h"
 #include "CommandSurfaceNormals.h"
@@ -31,6 +34,8 @@
 #include "GiftiDataArray.h"
 #include "GiftiDataArrayFile.h"
 #include "ProgramParameters.h"
+#include "TopologyFile.h"
+#include "TopologyHelper.h"
 #include "ScriptBuilderParameters.h"
 
 /**
@@ -62,6 +67,7 @@ CommandSurfaceNormals::getScriptBuilderParameters(ScriptBuilderParameters& param
                      FileFilters::getTopologyGenericFileFilter());
    paramsOut.addFile("Output GIFTI Vector File Name",
                      FileFilters::getGiftiVectorFileFilter());
+   paramsOut.addBoolean("Average Normals With Neighbors");
 }
 
 /**
@@ -76,10 +82,13 @@ CommandSurfaceNormals::getHelpInformation() const
        + indent9 + "<fiducial-coordinate-file-name>\n"
        + indent9 + "<closed-topology-file-name>\n"
        + indent9 + "<output-gifti-vector-file-name>\n"
+       + indent9 + "<average-normals>\n"
        + indent9 + "\n"
        + indent9 + "Write surface normals into a GIFTI Vector File.\n"
        + indent9 + "The GIFTI Vector File will contain a two-dimensional\n"
-       + indent9 + "data array with dimensions (number-of-nodes, 3). \n"
+       + indent9 + "data array with dimensions (number-of-nodes, 3). If\n"
+       + indent9 + "<average-normals> is \"true\", average the normals of\n"
+       + indent9 + "each node with its neighbors before output.\n"
        + indent9 + "\n");
 
    return helpInfo;
@@ -101,6 +110,8 @@ CommandSurfaceNormals::executeCommand() throw (BrainModelAlgorithmException,
       parameters->getNextParameterAsString("Topology File Name");
    const QString outputGiftiVectorFileName =
       parameters->getNextParameterAsString("Output GIFTI Vector File Name");
+   const bool averageNormals =
+      parameters->getNextParameterAsBoolean("AverageNormals");
 
    //
    // Create a brain set
@@ -139,7 +150,12 @@ CommandSurfaceNormals::executeCommand() throw (BrainModelAlgorithmException,
    //
    // Add normals
    //
-   bms->computeNormals();
+   if (averageNormals)
+   {
+	   bms->computeNormals(NULL, true);
+   } else {
+	   bms->computeNormals();
+	}
    for (int i = 0; i < numNodes; i++) {
        const float* normal = bms->getNormal(i);
 

@@ -105,7 +105,7 @@ class BrainModelSurfaceMetricClustering : public BrainModelAlgorithm {
          CLUSTER_ALGORITHM_NONE,
          CLUSTER_ALGORITHM_ANY_SIZE,
          CLUSTER_ALGORITHM_MINIMUM_NUMBER_OF_NODES,
-         CLUSTER_ALGORITHM_MINIMUM_SURFACE_AREA,
+         CLUSTER_ALGORITHM_MINIMUM_SURFACE_AREA
       };
 
       /// Constructor

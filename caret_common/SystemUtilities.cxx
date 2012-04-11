@@ -71,6 +71,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <QGlobalStatic>
 #include <QProcess>
+#include <QThread>
 #include <QWidget>
 
 #ifdef Q_OS_WIN32
@@ -138,7 +139,8 @@ SystemUtilities::getNumberOfProcessors()
 #endif  // Q_OS_WIN32
 
 #ifdef Q_OS_MACX
-   numProcessors = MPProcessors();
+///   numProcessors = MPProcessors(); // DOES NOT WORK ON ALL MACS
+   numProcessors = QThread::idealThreadCount();
 #endif
 
 #ifdef Q_OS_UNIX

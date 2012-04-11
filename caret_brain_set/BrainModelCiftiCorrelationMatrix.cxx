@@ -214,7 +214,7 @@ BrainModelCiftiCorrelationMatrix::getOutputCiftiFile()
       head.intent_code = NIFTI_INTENT_CONNECTIVITY_DENSE;
       memset(head.intent_name,0x00,16);
       memcpy(head.intent_name,"ConnDense",9);      
-      header.SetHeaderStuct(head);
+      header.setHeaderStuct(head);
       CiftiRootElement root;
       xml.getXMLRoot(root);
       int mmCount = root.m_matrices.at(0).m_matrixIndicesMap.size();

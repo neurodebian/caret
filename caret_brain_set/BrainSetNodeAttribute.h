@@ -35,7 +35,7 @@ class BrainSetNodeAttribute {
       enum HIGHLIGHT_NODE_TYPE {
          HIGHLIGHT_NODE_NONE,
          HIGHLIGHT_NODE_LOCAL,
-         HIGHLIGHT_NODE_REMOTE,
+         HIGHLIGHT_NODE_REMOTE
       };
       
       enum CLASSIFICATION_TYPE {
