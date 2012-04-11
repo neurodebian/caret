@@ -1,4 +1,4 @@
-kfreebsd_fixes
+nonlinux_fixes
 no_undefineds
 ifdef_fixes
 missing_header
