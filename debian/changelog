@@ -8,8 +8,9 @@ caret (5.6.5~dfsg.1-1) UNRELEASED; urgency=low
   * Bumped Standards-Version to 3.9.3, no changes necessary.
   * Removed DM-Upload flag, no longer necessary.
   * Install icon for Caret (Closes: #639973).
+  * Remove backport patch for wheezy -- it has libqtassistantclient-dev now.
 
- -- Michael Hanke <mih@debian.org>  Wed, 11 Apr 2012 14:57:20 +0200
+ -- Michael Hanke <mih@debian.org>  Wed, 11 Apr 2012 20:38:22 +0200
 
 caret (5.6.4~dfsg.1-1) unstable; urgency=low
 
