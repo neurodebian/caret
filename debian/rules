@@ -25,7 +25,7 @@ else
 endif
 
 
-cfg-%:
+caretcfg-%:
 	@echo "Configuring: '$*'"
 	cd $* && qmake-qt4 "CONFIG+=release ubuntu dll" \
 	                   "QMAKE_CXXFLAGS_RELEASE=$(CXXFLAGS) -DCARET_BUILDID=\"$(BUILD_ID)\"" \
@@ -33,12 +33,12 @@ cfg-%:
 	                   "CONFIG -= profile"
 
 
-build-%:
+caretbuild-%:
 	@echo "Building: '$*'"
 	cd $* && make
 
 
-clean-%:
+caretclean-%:
 	@echo "Cleaning: '$*'"
 	# ignore when there is no Makefile
 	-cd $* && make clean
@@ -46,28 +46,28 @@ clean-%:
 
 
 configure: configure-stamp
-configure-stamp: cfg-caret_statistics cfg-caret_common cfg-caret_brain_set \
-                 cfg-caret_command_operations cfg-caret_files cfg-caret_cifti \
-                 cfg-caret_uniformize cfg-caret_widgets cfg-caret \
-                 cfg-caret_command
+configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_brain_set \
+                 caretcfg-caret_command_operations caretcfg-caret_files caretcfg-caret_cifti \
+                 caretcfg-caret_uniformize caretcfg-caret_widgets caretcfg-caret \
+                 caretcfg-caret_command
 	dh_testdir
 	touch $@
 
 
 build: build-stamp
 build-stamp: configure \
-             build-caret_statistics build-caret_common \
-             build-caret_uniformize build-caret_widgets build-caret_files \
-             build-caret_brain_set build-caret_cifti build-caret_command_operations \
-             build-caret build-caret_command
+             caretbuild-caret_statistics caretbuild-caret_common \
+             caretbuild-caret_uniformize caretbuild-caret_widgets caretbuild-caret_files \
+             caretbuild-caret_brain_set caretbuild-caret_cifti caretbuild-caret_command_operations \
+             caretbuild-caret caretbuild-caret_command
 	dh_testdir
 	touch $@
 
 
-clean: clean-caret_statistics clean-caret_common clean-caret_brain_set \
-       clean-caret_command_operations clean-caret_cifti clean-caret_files \
-       clean-caret_uniformize clean-caret_widgets clean-caret \
-       clean-caret_command
+clean: caretclean-caret_statistics caretclean-caret_common caretclean-caret_brain_set \
+       caretclean-caret_command_operations caretclean-caret_cifti caretclean-caret_files \
+       caretclean-caret_uniformize caretclean-caret_widgets caretclean-caret \
+       caretclean-caret_command
 	dh_testdir
 	dh_testroot
 	-find . -name '*.so' -exec rm '{}' \;
