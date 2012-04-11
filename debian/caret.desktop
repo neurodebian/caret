@@ -6,5 +6,6 @@ Exec=caret5
 TryExec=caret5
 Type=Application
 Terminal=false
+Icon=caret5
 Categories=Education;Graphics;Science;DataVisualization;MedicalSoftware;Qt;Viewer;
 
