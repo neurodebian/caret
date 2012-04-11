@@ -12,7 +12,7 @@
 -   te->exec();                    
 +   te->exec();
 +   }
- #endif UBUNTU
+ #endif //UBUNTU
  
     if (initialSpecFiles.empty() == false) {
 --- a/caret_common/UbuntuMessage.h

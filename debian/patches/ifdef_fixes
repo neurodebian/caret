@@ -1,7 +1,7 @@
 Author: Michael Hanke <michael.hanke@gmail.com>
 Description: Prevent compile failure when -DQT4_FILE_POS_BUG=1
---- a/caret_files/DeformationMapFile.cxx
-+++ b/caret_files/DeformationMapFile.cxx
+--- a/caret_gifti/DeformationMapFile.cxx
++++ b/caret_gifti/DeformationMapFile.cxx
 @@ -381,7 +381,7 @@
   * Read the deformation map file's data.
   */
@@ -11,9 +11,9 @@ Description: Prevent compile failure when -DQT4_FILE_POS_BUG=1
                                    QDomElement& /* rootElement */) 
                                                      throw (FileException)
  {
---- a/caret_files/TopologyFile.cxx
-+++ b/caret_files/TopologyFile.cxx
-@@ -1694,7 +1694,7 @@
+--- a/caret_gifti/TopologyFile.cxx
++++ b/caret_gifti/TopologyFile.cxx
+@@ -1700,7 +1700,7 @@
   * Read topology file version 1.
   */
  void
