@@ -48,8 +48,8 @@ caretclean-%:
 configure: configure-stamp
 configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_brain_set \
                  caretcfg-caret_command_operations caretcfg-caret_files caretcfg-caret_cifti \
-                 caretcfg-caret_uniformize caretcfg-caret_widgets caretcfg-caret \
-                 caretcfg-caret_command
+                 caretcfg-caret_uniformize caretcfg-caret_widgets caretcfg-caret_gifti \
+                 caretcfg-caret caretcfg-caret_command
 	dh_testdir
 	touch $@
 
@@ -58,8 +58,8 @@ build: build-stamp
 build-stamp: configure \
              caretbuild-caret_statistics caretbuild-caret_common \
              caretbuild-caret_uniformize caretbuild-caret_widgets caretbuild-caret_files \
-             caretbuild-caret_brain_set caretbuild-caret_cifti caretbuild-caret_command_operations \
-             caretbuild-caret caretbuild-caret_command
+             caretbuild-caret_brain_set caretbuild-caret_cifti caretbuild-caret_gifti \
+             caretbuild-caret_command_operations caretbuild-caret caretbuild-caret_command
 	dh_testdir
 	touch $@
 
@@ -67,7 +67,7 @@ build-stamp: configure \
 clean: caretclean-caret_statistics caretclean-caret_common caretclean-caret_brain_set \
        caretclean-caret_command_operations caretclean-caret_cifti caretclean-caret_files \
        caretclean-caret_uniformize caretclean-caret_widgets caretclean-caret \
-       caretclean-caret_command
+       caretclean-caret_command caretclean-caret_gifti
 	dh_testdir
 	dh_testroot
 	-find . -name '*.so' -exec rm '{}' \;
@@ -97,6 +97,9 @@ install: build
 binary-indep: build install
 # We have nothing to do by default.
 
+# dummy targets
+build-arch: build
+build-indep: build
 
 # Build architecture-dependent files here.
 binary-arch: build install
@@ -107,7 +110,6 @@ binary-arch: build install
 	dh_install
 	dh_installmenu
 	dh_installman
-	dh_desktop
 	dh_link
 	dh_strip
 	dh_compress
