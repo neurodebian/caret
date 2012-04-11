@@ -32,6 +32,9 @@ echo "Debian orig version: $ORIG_VERSION"
 
 # remove non-free pieces
 rm -rf $SUBDIR/caret_vtk4_classes
+# remove rubbish
+rm -f $SUBDIR/caret_brain_set/stE0IX1E
+rm -f $SUBDIR/caret_statistics/sttxIrBF
 
 mv $SUBDIR caret-$ORIG_VERSION.orig
 tar czf caret_$ORIG_VERSION.orig.tar.gz caret-$ORIG_VERSION.orig
