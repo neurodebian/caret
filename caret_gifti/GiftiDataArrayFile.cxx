@@ -25,7 +25,6 @@
 
 #include <iostream>
 
-#include "PaintFile.h"
 #include <set>
 #include <sstream>
 
@@ -39,10 +38,11 @@
 #undef __GIFTI_DATA_ARRAY_FILE_MAIN__
 #include "GiftiDataArrayFileStreamReader.h"
 #include "GiftiDataArrayFileSaxReader.h"
-
+#ifdef CARET_FLAG
 #include "MetricFile.h"
 #include "SurfaceShapeFile.h"
 #include "PaintFile.h"
+#endif //CARET_FLAG
 #include "StringUtilities.h"
 
 /**
@@ -862,6 +862,8 @@ GiftiDataArrayFile::readFileData(QFile& file,
    //
    // Force metric, paint, shape data arrays to float
    //
+   
+#ifdef CARET_FLAG   
    if ((dynamic_cast<MetricFile*>(this) != NULL) ||
        (dynamic_cast<PaintFile*>(this) != NULL) ||
        (dynamic_cast<SurfaceShapeFile*>(this) != NULL)) {
@@ -870,9 +872,11 @@ GiftiDataArrayFile::readFileData(QFile& file,
          this->getDataArray(i)->convertToDataType(this->defaultDataType);
       }
    }
+#endif //CARET_FLAG
 
    this->validateDataArrays();
 }
+
 
 /**
  * Write the file's data (header has already been written).
@@ -1032,105 +1036,6 @@ GiftiDataArrayFile::readFileDataXML(QFile& file) throw (FileException)
    //   }
    //}
 }
-
-/*
-{
-   QXmlSimpleReader reader;
-   GiftiDataArrayFileSaxReader saxReader(this);
-   reader.setContentHandler(&saxReader);
-   reader.setErrorHandler(&saxReader);
- 
-   //
-   // Some constant to determine how to read a file based upon the file's size
-   //
-   const int oneMegaByte = 1048576;
-   const qint64 bigFileSize = 25 * oneMegaByte;
-   
-   if (file.size() < bigFileSize) {
-      //
-      // This call reads the entire file at once but this is a problem
-      // since the XML files can be very large and will cause the 
-      // QT XML parsing to crash
-      //
-      if (reader.parse(&file) == false) {
-         throw FileException(filename, saxReader.getErrorMessage());
-      }
-   }
-   else {
-      //
-      // The following code reads the XML file in pieces
-      // and hopefully will prevent QT from crashing when
-      // reading large files
-      //
-      
-      //
-      // Create a data stream
-      //   
-      QDataStream stream(&file);
-	  stream.setVersion(QDataStream::Qt_4_3);
-      
-      //
-      // buffer for data read
-      //
-      const int bufferSize = oneMegaByte;
-      char buffer[bufferSize];
-      
-      //
-      // the XML input source
-      //
-      QXmlInputSource xmlInput;
-
-      int totalRead = 0;
-      
-      bool firstTime = true;
-      while (stream.atEnd() == false) {
-         int numRead = stream.readRawData(buffer, bufferSize);
-         totalRead += numRead;
-         if (DebugControl::getDebugOn()) {
-            std::cout << "GIFTI large file read, total: " << numRead << ", " << totalRead << std::endl;
-         }
-         
-         //
-         // Place the input data into the XML input
-         //
-         xmlInput.setData(QByteArray(buffer, numRead));
-         
-         //
-         // Process the data that was just read
-         //
-         if (firstTime) {
-            if (reader.parse(&xmlInput, true) == false) {
-               throw FileException(filename, saxReader.getErrorMessage());            
-            }
-         }
-         else {
-            if (reader.parseContinue() == false) {
-               throw FileException(filename, saxReader.getErrorMessage());
-            }
-         }
-         
-         firstTime = false;
-      }
-      
-      //
-      // Tells parser that there is no more data
-      //
-      xmlInput.setData(QByteArray());
-      if (reader.parseContinue() == false) {
-         throw FileException(filename, saxReader.getErrorMessage());
-      }
-   }
-    
-   //
-   // Transfer MetaData
-   //
-   const GiftiMetaData::MetaDataContainer* data = metaData.getMetaData();
-   for (GiftiMetaData::ConstMetaDataIterator iter = data->begin(); iter != data->end(); iter++) {
-      setHeaderTag(iter->first, iter->second);
-   }   
-}
-*/
-
 /**
  * write the XML file. 
  */

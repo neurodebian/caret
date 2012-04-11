@@ -28,6 +28,9 @@ HEADERS += BorderFileProjector.h \
       BrainModelAlgorithmRunAsThread.h \
 	   BrainModelBorderSet.h \
        BrainModelCiftiCorrelationMatrix.h \
+      BrainModelCiftiDenseConnectomeGradient.h \
+      BrainModelCiftiGradient.h \
+      BrainModelCiftiROIDenseConnectomeGradient.h \
 	   BrainModelContours.h \
 	   BrainModelContourToSurfaceConverter.h \
       BrainModelIdentification.h \
@@ -210,6 +213,9 @@ SOURCES += BorderFileProjector.cxx \
       BrainModelAlgorithmRunAsThread.cxx \
 	   BrainModelBorderSet.cxx \
        BrainModelCiftiCorrelationMatrix.cxx \
+      BrainModelCiftiDenseConnectomeGradient.cxx \
+      BrainModelCiftiGradient.cxx \
+      BrainModelCiftiROIDenseConnectomeGradient.cxx \
 	   BrainModelContours.cxx \
 	   BrainModelContourToSurfaceConverter.cxx \
       BrainModelIdentification.cxx \

@@ -40,6 +40,10 @@
 #include "TopologyFile.h"
 #include "TopologyHelper.h"
 
+#ifdef _OPENMP
+#include "omp.h"
+#endif
+
 /**
  * Constructor.
  */
@@ -238,6 +242,9 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
       //
       // smooth all of the nodes
       //
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
       for (int i = 0; i < numberOfNodes; i++) {
          //
          // copy input to output in event this node is not smoothed
@@ -406,11 +413,10 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
                case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
                   {//distance to neighbor is geodesic, not euclidean, check determineNeighbors
                      int j, end = neighInfo.numNeighbors;
-                     float totalWeight = 0.0f, weight, tempf;
+                     float totalWeight = 0.0f, weight;
                      for (j = 0; j < end; ++j)
                      {//weighted average, using gaussian of geodesic distance as weight
-                        tempf = neighInfo.distanceToNeighbor[j] / geodesicGaussSigma;
-                        weight = std::exp(-tempf * tempf * 0.5f);//the gaussian function
+                        weight = neighInfo.geoGaussWeight[j];//the gaussian function, this could be precomputed in determineNeighbors
                         totalWeight += weight;
                         neighborSum += weight * inputValues[neighInfo.neighbors[j]];
                      }
@@ -525,106 +531,123 @@ BrainModelSurfaceMetricSmoothing::execute() throw (BrainModelAlgorithmException)
 /**
  * determine neighbors for each node.
  */
-void 
+void
 BrainModelSurfaceMetricSmoothing::determineNeighbors()
 {
-   //
-   // Clear the neighbors
-   //
-   nodeNeighbors.clear();
-   
-   //
-   // Get the topology helper
-   //
-   const TopologyFile* topologyFile = fiducialSurface->getTopologyFile();
-   const TopologyHelper* topologyHelper = 
-                      topologyFile->getTopologyHelper(false, true, false);
-   
-   //
-   // Coordinate file and maximum distance cutoff
-   //
-   CoordinateFile* cf = fiducialSurface->getCoordinateFile();
-   GeodesicHelper* gh = NULL;
-   float maxDistanceCutoff = std::numeric_limits<float>::max();
-   float geoCutoff = 4.0f * geodesicGaussSigma;
-   std::vector<float>* distance = NULL;
-   switch (algorithm) {
-      case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
-          break;
-      case SMOOTH_ALGORITHM_DILATE:
-          break;
-      case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
-          break;
-      case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
-          break;
-      case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
-         cf = gaussianSphericalSurface->getCoordinateFile();
-         maxDistanceCutoff = std::max(std::max(gaussNormBelowCutoff,
-                                               gaussNormAboveCutoff),
-                                               gaussTangentCutoff);
-         break;
-      case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
-         cf = fiducialSurface->getCoordinateFile();
-         gh = new GeodesicHelper(cf, topologyFile);
-         distance = new std::vector<float>;
-         break;
-      case SMOOTH_ALGORITHM_NONE:
-         break;
-   }
-   
-   //
-   // Loop through the nodes
-   //
-   QTime timer;
-   timer.start();
-   for (int i = 0; i < numberOfNodes; i++) {
-      std::vector<int> neighbors;
-      
-      switch (algorithm) {
-         case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
-         case SMOOTH_ALGORITHM_DILATE:
-         case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
-         case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
+    //
+    // Clear the neighbors
+    //
+    nodeNeighbors.clear();
+    nodeNeighbors.resize(numberOfNodes);
+
+    QTime timer;
+    timer.start();
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    {
+        //
+        // Get the topology helper
+        //
+        const TopologyFile* topologyFile = fiducialSurface->getTopologyFile();
+        const TopologyHelper topologyHelper(topologyFile, false, true, false);//each thread gets its own, due to locks slowing it down otherwise
+
+        //
+        // Coordinate file and maximum distance cutoff
+        //
+        CoordinateFile* cf = fiducialSurface->getCoordinateFile();
+        GeodesicHelper* gh = NULL;
+        float maxDistanceCutoff = std::numeric_limits<float>::max();
+        float geoCutoff = 4.0f * geodesicGaussSigma;
+        std::vector<float>* geoGaussWeight = NULL, distance;
+        switch (algorithm) {
+        case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+            break;
+        case SMOOTH_ALGORITHM_DILATE:
+            break;
+        case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+            break;
+        case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
+            break;
+        case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+            cf = gaussianSphericalSurface->getCoordinateFile();
+            maxDistanceCutoff = std::max(std::max(gaussNormBelowCutoff,
+                                                  gaussNormAboveCutoff),
+                                         gaussTangentCutoff);
+            break;
+        case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
+            cf = fiducialSurface->getCoordinateFile();
+            gh = new GeodesicHelper(cf, topologyFile);//each thread gets its own
+            geoGaussWeight = new std::vector<float>;
+            break;
+        case SMOOTH_ALGORITHM_NONE:
+            break;
+        }
+
+        //
+        // Loop through the nodes
+        //
+#ifdef _OPENMP
+#pragma omp for
+#endif
+        for (int i = 0; i < numberOfNodes; i++) {
+            std::vector<int> neighbors;
+            int numNeigh;
+            float tempf;
+
+            switch (algorithm) {
+            case SMOOTH_ALGORITHM_AVERAGE_NEIGHBORS:
+            case SMOOTH_ALGORITHM_DILATE:
+            case SMOOTH_ALGORITHM_FULL_WIDTH_HALF_MAXIMUM:
+            case SMOOTH_ALGORITHM_WEIGHTED_AVERAGE_NEIGHBORS:
             {
-               //
-               // Get the neighbors for the node
-               //
-               topologyHelper->getNodeNeighbors(i, neighbors);
+                //
+                // Get the neighbors for the node
+                //
+                topologyHelper.getNodeNeighbors(i, neighbors);
             }
             break;
-         case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
+            case SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN:
             {
-               //
-               // Get the neighbors for the node to the specified depth
-               //
-               topologyHelper->getNodeNeighborsToDepth(i, 5, neighbors);
+                //
+                // Get the neighbors for the node to the specified depth
+                //
+                topologyHelper.getNodeNeighborsToDepth(i, 5, neighbors);
             }
             break;
-         case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
-            gh->getNodesToGeoDist(i, geoCutoff, neighbors, *distance, true);
-            if (neighbors.size() < 6)
-            {//in case a really small kernel is specified
-               topologyHelper->getNodeNeighbors(i, neighbors);
-               neighbors.push_back(i);//for geogauss, we want the center node in the list
-               gh->getGeoToTheseNodes(i, neighbors, *distance, true);
+            case SMOOTH_ALGORITHM_GEODESIC_GAUSSIAN:
+                gh->getNodesToGeoDist(i, geoCutoff, neighbors, distance, true);
+                if (neighbors.size() < 7)//5 neighbor nodes may fail this unneccesarily, but better than letting 6 neighbor nodes slip through with 5
+                {//in case a really small kernel is specified
+                    topologyHelper.getNodeNeighbors(i, neighbors);
+                    neighbors.push_back(i);//for geogauss, we want the center node in the list
+                    gh->getGeoToTheseNodes(i, neighbors, distance, true);
+                }
+                numNeigh = (int)neighbors.size();
+                geoGaussWeight->resize(numNeigh);
+                for (int j = 0; j < numNeigh; ++j)
+                {
+                   tempf = distance[j] / geodesicGaussSigma;
+                   (*geoGaussWeight)[j] = std::exp(-tempf * tempf * 0.5f);//the gaussian function
+                }
+                break;
+            case SMOOTH_ALGORITHM_NONE:
+                break;
             }
-            break;
-         case SMOOTH_ALGORITHM_NONE:
-            break;
-      }
-      
-      //
-      // add to all neighbors
-      //
-      nodeNeighbors.push_back(NeighborInfo(cf, i, neighbors, maxDistanceCutoff, distance));
-   }
-   if (gh) delete gh;
-   if (distance) delete distance;
-   const float elapsedTime = timer.elapsed() * 0.001;
-   if (DebugControl::getDebugOn()) {
-      std::cout << "Time to determine neighbors: " << elapsedTime << " seconds." << std::endl;
-   }
-}      
+
+            //
+            // add to all neighbors
+            //
+            nodeNeighbors[i] = NeighborInfo(cf, i, neighbors, maxDistanceCutoff, geoGaussWeight);
+        }
+        if (gh) delete gh;
+        if (geoGaussWeight) delete geoGaussWeight;
+    }//omp parallel
+    const float elapsedTime = timer.elapsed() * 0.001;
+    if (DebugControl::getDebugOn()) {
+        std::cout << "Time to determine neighbors: " << elapsedTime << " seconds." << std::endl;
+    }
+}
 
 //***************************************************************************************
 
@@ -635,12 +658,12 @@ BrainModelSurfaceMetricSmoothing::NeighborInfo::NeighborInfo(const CoordinateFil
                                                     const int myNodeNumber,
                                                     const std::vector<int>& neighborsIn,
                                                     const float maxDistanceCutoff,
-                                                    const std::vector<float>* distances)
+                                                    const std::vector<float>* distanceWeights)
 {
    const int numNeighborsIn = static_cast<int>(neighborsIn.size());
-   if (distances)
+   if (distanceWeights)
    {//use STL vector copy operator, don't need to exclude anything
-      distanceToNeighbor = *distances;
+      geoGaussWeight = *distanceWeights;
       neighbors = neighborsIn;
    } else {
       for (int i = 0; i < numNeighborsIn; i++) {

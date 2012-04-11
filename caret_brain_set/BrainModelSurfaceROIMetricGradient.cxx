@@ -124,7 +124,7 @@ void BrainModelSurfaceROIMetricGradient::calcrref(double* matrix[], int rows, in
  */
 BrainModelSurfaceROIMetricGradient::BrainModelSurfaceROIMetricGradient(
                                                BrainSet* bs,
-                                               int bsIndexIn,
+                                               BrainModelSurface* surfaceIn,
                                                MetricFile* roiIn,
                                                MetricFile* valuesIn,
                                                int metricIndexIn,
@@ -136,7 +136,7 @@ BrainModelSurfaceROIMetricGradient::BrainModelSurfaceROIMetricGradient(
 {
    initialize();
    
-   setIndex   = bsIndexIn;
+   m_surface = surfaceIn;
    values     = valuesIn;
    roi = roiIn;
    metricIndex = metricIndexIn;
@@ -151,7 +151,7 @@ BrainModelSurfaceROIMetricGradient::BrainModelSurfaceROIMetricGradient(
  * Constructor for execution of all columns.
  */
 BrainModelSurfaceROIMetricGradient::BrainModelSurfaceROIMetricGradient(BrainSet* bs,
-                                  int bsIndexIn,
+                                  BrainModelSurface* surfaceIn,
                                   MetricFile* roiIn,
                                   MetricFile* valuesIn,
                                   bool avgNormalsIn,
@@ -160,7 +160,7 @@ BrainModelSurfaceROIMetricGradient::BrainModelSurfaceROIMetricGradient(BrainSet*
 {
    initialize();
    
-   setIndex   = bsIndexIn;
+   m_surface = surfaceIn;
    roi = roiIn;
    values     = valuesIn;
    gradMagOut = valuesIn;
@@ -208,12 +208,11 @@ BrainModelSurfaceROIMetricGradient::executeAllColumns() throw (BrainModelAlgorit
    //
    // Verify files exist, are valid, etc.
    //
-   BrainModelSurface* mysurf = brainSet->getBrainModelSurface(setIndex);//reference
-   CoordinateFile* source = mysurf->getCoordinateFile();//reference
-   TopologyFile* topo = mysurf->getTopologyFile();
+   CoordinateFile* source = m_surface->getCoordinateFile();//reference
+   TopologyFile* topo = m_surface->getTopologyFile();
    const TopologyHelper* myhelper = topo->getTopologyHelper(false, true, false);
-   mysurf->computeNormals();
-   mysurf->orientNormalsOut();
+   m_surface->computeNormals(NULL, avgNormals);
+   m_surface->orientNormalsOut();
    if (source == NULL) {
       throw BrainModelAlgorithmException("Invalid coordinate file.");
    }
@@ -237,7 +236,7 @@ BrainModelSurfaceROIMetricGradient::executeAllColumns() throw (BrainModelAlgorit
    } 
 
    int numNodes = source->getNumberOfCoordinates();
-   int i, j, k, numNeigh;
+   int i, j;
    float* sourceData = new float[numNodes * 3];
    source->getAllCoordinates(sourceData);
    float* roiValues = new float[numNodes];
@@ -251,16 +250,16 @@ BrainModelSurfaceROIMetricGradient::executeAllColumns() throw (BrainModelAlgorit
    for (i = 0; i < numNodes; ++i)
    {
       j = i * 3;
-      const float* mynormal = mysurf->getNormal(i);
+      const float* mynormal = m_surface->getNormal(i);
       allnormals[j] = mynormal[0];
       allnormals[j + 1] = mynormal[1];
       allnormals[j + 2] = mynormal[2];
    }
-   if (avgNormals)
+   /*if (avgNormals) //TSC: this is taken care of by BrainModelSurface::computeNormals(NULL, true)
    {//assume normals have identical length
       for (i = 0; i < numNodes; ++i)
       {
-         const float* mynormal = mysurf->getNormal(i);
+         const float* mynormal = m_surface->getNormal(i);
          if(roiValues[i] == 0.0f) continue;
          //should these be filtered or not?,  I'm thinking for now that
          //normals should not be filtered
@@ -276,7 +275,7 @@ BrainModelSurfaceROIMetricGradient::executeAllColumns() throw (BrainModelAlgorit
          }
       }
    }//WARNING: normals are not normalized, nor identical length - below algorithm normalizes after every use of a normal though   
-
+*/
    int numColumns = values->getNumberOfColumns();
    if (parallelFlag) {
       #pragma omp parallel for
@@ -368,7 +367,6 @@ BrainModelSurfaceROIMetricGradient::processSingleColumn(const TopologyHelper* my
       nodemetric = metricData[i];//uses metric difference for 2 reasons: makes rref cumulate smaller values, and makes root node not matter to calculation
       //use function below to filter node neighbors based on ROI
       myhelper->getNodeNeighborsInROI(i, neighbors,roiValues);//intelligently detects depth == 1 (and invalid depth)
-      //TODO: need to check if neighbors.size is zero
       numNeigh = neighbors.size();
       /*unsigned int MinimumNeighbors = 3;//let fallback handle this by calculating gradient vectors to neighbors and averaging
       if(neighbors.size() < MinimumNeighbors)
@@ -466,7 +464,7 @@ BrainModelSurfaceROIMetricGradient::processSingleColumn(const TopologyHelper* my
    {
       //In the case of nodes with a small number of neighbors, the gradient magnitude and size are the gaussian weighted average
       //of the Neighbors' vector and magnitude
-      //TODO: currently it's just the average, look into making this gaussian weighted (weighting probably isn't necessary since
+      //currently it's just the average, look into making this gaussian weighted (weighting probably isn't necessary since
       //we're dealing with first order neighbors
       //This relies on the fact that nodes with less than 3 neighbors are always connected to nodes with more than two neighbors
       //in the ROI (and as a result, have a proper vector and magnitude).
@@ -502,6 +500,7 @@ BrainModelSurfaceROIMetricGradient::processSingleColumn(const TopologyHelper* my
 
    gradMagOut->setColumnForAllNodes(columnIndex, magData);
    gradMagOut->setColumnName(columnIndex, "surface gradient");   
+   delete[] savedVec;
    delete[] magData;
    delete[] metricData;
    delete[] rrefb[0];
@@ -519,12 +518,11 @@ BrainModelSurfaceROIMetricGradient::executeSingleColumn() throw (BrainModelAlgor
    //
    // Verify files exist, are valid, etc.
    //
-   BrainModelSurface* mysurf = brainSet->getBrainModelSurface(setIndex);//reference
-   CoordinateFile* source = mysurf->getCoordinateFile();//reference
-   TopologyFile* topo = mysurf->getTopologyFile();
+   CoordinateFile* source = m_surface->getCoordinateFile();//reference
+   TopologyFile* topo = m_surface->getTopologyFile();
    const TopologyHelper* myhelper = topo->getTopologyHelper(false, true, false);
-   mysurf->computeNormals();
-   mysurf->orientNormalsOut();
+   m_surface->computeNormals();
+   m_surface->orientNormalsOut();
    if (source == NULL) {
       throw BrainModelAlgorithmException("Invalid coordinate file.");
    }
@@ -604,7 +602,7 @@ BrainModelSurfaceROIMetricGradient::executeSingleColumn() throw (BrainModelAlgor
    for (i = 0; i < numNodes; ++i)
    {
       j = i * 3;
-      const float* mynormal = mysurf->getNormal(i);
+      const float* mynormal = m_surface->getNormal(i);
       allnormals[j] = mynormal[0];
       allnormals[j + 1] = mynormal[1];
       allnormals[j + 2] = mynormal[2];
@@ -613,7 +611,7 @@ BrainModelSurfaceROIMetricGradient::executeSingleColumn() throw (BrainModelAlgor
    {//assume normals have identical length
       for (i = 0; i < numNodes; ++i)
       {
-         const float* mynormal = mysurf->getNormal(i);
+         const float* mynormal = m_surface->getNormal(i);
          if(roiValues[i] == 0.0f) continue;
          //should these be filtered or not?,  I'm thinking for now that
          //normals should not be filtered
@@ -668,7 +666,6 @@ BrainModelSurfaceROIMetricGradient::executeSingleColumn() throw (BrainModelAlgor
       nodemetric = metricData[i];//uses metric difference for 2 reasons: makes rref cumulate smaller values, and makes root node not matter to calculation
       //use function below to filter node neighbors based on ROI
       myhelper->getNodeNeighborsInROI(i, neighbors,roiValues);//intelligently detects depth == 1 (and invalid depth)
-      //TODO: need to check if neighbors.size is zero
       numNeigh = neighbors.size();
       /*unsigned int MinimumNeighbors = 3;//let fallback handle this by calculating gradient vectors to neighbors and averaging
       if(neighbors.size() < MinimumNeighbors)
@@ -774,7 +771,7 @@ BrainModelSurfaceROIMetricGradient::executeSingleColumn() throw (BrainModelAlgor
    {
       //In the case of nodes with a small number of neighbors, the gradient magnitude and size are the gaussian weighted average
       //of the Neighbors' vector and magnitude
-      //TODO: currently it's just the average, look into making this gaussian weighted (weighting probably isn't necessary since
+      //currently it's just the average, look into making this gaussian weighted (weighting probably isn't necessary since
       //we're dealing with first order neighbors
       //This relies on the fact that nodes with less than 3 neighbors are always connected to nodes with more than two neighbors
       //in the ROI (and as a result, have a proper vector and magnitude).

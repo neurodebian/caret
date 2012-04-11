@@ -1573,9 +1573,12 @@ TopologyFile::readFileDataVersion0(QTextStream& stream,
       int pointNumber;
       int categoryInt;
      
-      sscanf(line.toAscii().constData(), "%d %d %d %d %d %d", 
+      if (sscanf(line.toAscii().constData(), "%d %d %d %d %d %d", 
              &nodeNumber, &numNeighbors, &sectionNumber,
-             &contourNumber, &pointNumber, &categoryInt); 
+             &contourNumber, &pointNumber, &categoryInt) != 6)
+      {
+         throw FileException(filename, "Truncated topology file detected");
+      }
       nodeSections[i] = sectionNumber;
 /* using sscanf is faster
       QTextIStream(&line) >> nodeNumber
@@ -1625,7 +1628,10 @@ TopologyFile::readTilesAscii(QTextStream& stream,
       for (int j = 0; j < numTiles; j++) {
          // readLine & sscanf is faster than    "stream >> t1 >> t2 >> t3;"
          readLine(stream, line);
-         sscanf(line.toAscii().constData(), "%d %d %d", &t1, &t2, &t3);
+         if (sscanf(line.toAscii().constData(), "%d %d %d", &t1, &t2, &t3) != 3)
+         {
+            throw FileException(filename, "Truncated topology file detected");
+         }
          
          const int j3 = j * 3;
          if (clockwiseOrientation) {

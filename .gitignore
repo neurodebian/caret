@@ -15,6 +15,7 @@ caret_common/Makefile
 caret_edit/Makefile
 caret_edit/caret_edit.app/
 caret_files/Makefile
+caret_gifti/Makefile
 caret_statistics/Makefile
 caret_uniformize/Makefile
 caret_vtk4_classes/Makefile
@@ -40,3 +41,4 @@ ipch
 *.opensdf
 *.cxx~
 *.h~
+data_files

@@ -26,15 +26,6 @@ error("The environment variable for VTK includes \"VTK_INC_DIR\" not defined.")
 
 #=================================================================================
 #
-# if this file exists then QT4 is being used
-#
-exists( $(QTDIR)/include/Qt/qicon.h ) {
-DEFINES += CARET_QT4
-QT += network opengl xml
-}
-
-#=================================================================================
-#
 # Update include paths
 #
 
@@ -42,6 +33,7 @@ INCLUDEPATH += \
 ../caret_brain_set \
 ../caret_command_operations \
 ../caret_common \
+../caret_gifti \
 ../caret_statistics \
 ../caret_files \
 ../caret_uniformize \
@@ -52,6 +44,7 @@ DEPENDPATH += \
 ../caret_brain_set \
 ../caret_command_operations \
 ../caret_common \
+../caret_gifti \
 ../caret_statistics \
 ../caret_files \
 ../caret_uniformize \
@@ -250,6 +243,7 @@ macx {
     }
 
     QMAKE_LFLAGS_APP += -w
+    LIBS += -lz
 }
 
 #
@@ -338,7 +332,7 @@ unix:!macx:!ubuntu {
     }
 
     profile {
-       QMAKE_CXXFLAGS +=  -pg -O2
+       QMAKE_CXXFLAGS +=  -pg -O0
        QMAKE_LFLAGS += -pg
     } 
 }

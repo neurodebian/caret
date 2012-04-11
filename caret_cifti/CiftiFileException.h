@@ -48,14 +48,15 @@ class CiftiFileException : public std::exception {
       
       /// get description of exception
       virtual QString whatQString() const throw();
+      
+      /// get description of exception (private to prevent its use)
+      virtual const char* what() const throw();
             
    protected:
       /// Description of the exception
       QString exceptionDescription;
       
-   private:
-      /// get description of exception (private to prevent its use)
-      virtual const char* what() const throw() { return ""; }
+   private:      
 };
 
 #endif // __FILE_EXCEPTION_H__

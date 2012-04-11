@@ -39,7 +39,7 @@ class DisplaySettingsVolume : public DisplaySettings {
       enum ANATOMY_COLORING_TYPE {
          ANATOMY_COLORING_TYPE_0_255,
          ANATOMY_COLORING_TYPE_MIN_MAX,
-         ANATOMY_COLORING_TYPE_2_98,
+         ANATOMY_COLORING_TYPE_2_98
       };
       
       /// segmentation draw type

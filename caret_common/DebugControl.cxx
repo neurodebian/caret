@@ -27,13 +27,13 @@
 
 #include <cstdlib>
 
-#include "vtkObject.h"
-
 #define __DEBUG_CONTROL_MAIN__ 
 #include "DebugControl.h"
 #undef __DEBUG_CONTROL_MAIN__
+#ifdef CARET_FLAG
+#include "vtkObject.h"
 #include "StatisticAlgorithm.h"
-
+#endif
 /**
  * Get debugging on
  */
@@ -50,8 +50,10 @@ void
 DebugControl::setDebugOn(const bool onOff)
 {
    debugOn = onOff;
+#ifdef CARET_FLAG
    StatisticAlgorithm::setDebugOn(debugOn);
    vtkObject::SetGlobalWarningDisplay(debugOn);
+#endif
 }
 
 /**
@@ -79,7 +81,9 @@ void
 DebugControl::setDebugOnWithEnvironmentVariable(const QString& envVarName)
 {
    debugOn = (std::getenv(envVarName.toAscii().constData()) != NULL);
+#ifdef CARET_FLAG
    StatisticAlgorithm::setDebugOn(debugOn);
    vtkObject::SetGlobalWarningDisplay(debugOn);
+#endif
 }
 

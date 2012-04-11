@@ -212,7 +212,7 @@ void writeBrainModel(QXmlStreamWriter &xml, CiftiBrainModelElement &brainModel)
    xml.writeEndElement();
 }
 
-void writeVolume(QXmlStreamWriter &xml, CiftiVolume &volume)
+void writeVolume(QXmlStreamWriter &xml, CiftiVolumeElement &volume)
 {     
    xml.writeStartElement("Volume");
    
@@ -226,7 +226,7 @@ void writeVolume(QXmlStreamWriter &xml, CiftiVolume &volume)
    xml.writeEndElement();   
 }
 
-void writeTransformationMatrixVoxelIndicesIJKtoXYZ(QXmlStreamWriter &xml, TransformationMatrixVoxelIndicesIJKtoXYZ &transform)
+void writeTransformationMatrixVoxelIndicesIJKtoXYZ(QXmlStreamWriter &xml, TransformationMatrixVoxelIndicesIJKtoXYZElement &transform)
 {     
    xml.writeStartElement("TransformationMatrixVoxelIndicesIJKtoXYZ");
    

@@ -36,6 +36,7 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
+#include <vector>
 
 #include <QApplication>
 #include <QProgressDialog>
@@ -1521,17 +1522,12 @@ BrainModelSurface::copyNormalsToVectorFile(VectorFile* vf) const
  * do not have to load the coordinates into the surface.
  */
 void
-BrainModelSurface::computeNormals(const float* coordsIn)
+BrainModelSurface::computeNormals(const float* coordsIn, bool averageNormals)
 {
    if (topology != NULL) {
       const int numCoords = coordinates.getNumberOfCoordinates();
       if (numCoords > 0) {
 
-         float* numContribute = new float[numCoords];
-         for (int j = 0; j < numCoords; j++) {
-            numContribute[j] = 0.0;
-         }
-         
          //
          // pointer to coordinates
          //
@@ -1565,33 +1561,48 @@ BrainModelSurface::computeNormals(const float* coordsIn)
             normals[va3]   += tileNormal[0];
             normals[va3+1] += tileNormal[1];
             normals[va3+2] += tileNormal[2];
-            numContribute[va] += 1.0;
             normals[vb3]   += tileNormal[0];
             normals[vb3+1] += tileNormal[1];
             normals[vb3+2] += tileNormal[2];
-            numContribute[vb] += 1.0;
             normals[vc3]   += tileNormal[0];
             normals[vc3+1] += tileNormal[1];
             normals[vc3+2] += tileNormal[2];
-            numContribute[vc] += 1.0;
          }
          
          for (int k = 0; k < numCoords; k++) {
             const int k3 = k * 3;
-            if (numContribute[k] > 0.0) {
-               normals[k3]   /= numContribute[k];
-               normals[k3+1] /= numContribute[k];
-               normals[k3+2] /= numContribute[k];
-               MathUtilities::normalize(&normals[k3]);               
-            }
-            else {
-               normals[k3]   = 0.0;
-               normals[k3+1] = 0.0;
-               normals[k3+2] = 0.0;
-            }
+               MathUtilities::normalize(&normals[k3]);//checks for length 0 vectors, so we don't need to track number that contribute
          }
          
-         delete[] numContribute;
+         if (averageNormals)
+         {
+            float* normalSum = new float[3 * numCoords];
+         	const TopologyHelper* myhelper = topology->getTopologyHelper(false, true, false);
+         	std::vector<int> neighbors;
+            for (int i = 0; i < numCoords; ++i)
+            {
+               const int i3 = i * 3;
+               normalSum[i3] = normals[i3];
+               normalSum[i3 + 1] = normals[i3 + 1];
+               normalSum[i3 + 2] = normals[i3 + 2];
+               myhelper->getNodeNeighbors(i, neighbors);
+               const int numNeigh = (int)neighbors.size();
+               for (int j = 0; j < numNeigh; ++j)
+               {
+                  const int node3 = neighbors[j] * 3;
+                  normalSum[i3] += normals[node3];
+                  normalSum[i3 + 1] += normals[node3 + 1];
+                  normalSum[i3 + 2] += normals[node3 + 2];
+               }
+               MathUtilities::normalize(&normalSum[i3]);//don't need to divide by 1 + number of neighbors if we just normalize
+            }
+            const int numCoords3 = numCoords * 3;
+            for (int i = 0; i < numCoords3; ++i)
+            {//now that we are done with the original normals, we can overwrite them
+               normals[i] = normalSum[i];
+            }
+            delete[] normalSum;
+         }
       }
    }
    coordinates.clearDisplayList();

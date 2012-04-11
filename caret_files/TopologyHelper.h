@@ -65,7 +65,7 @@ class TopologyEdgeInfo {
       
       /// equals operator
       bool operator==(const TopologyEdgeInfo& e) {
-         return ((node1 = e.node1) && (node2 == e.node2));
+         return ((node1 == e.node1) && (node2 == e.node2));
       }
       
       /// add a tile to the edge

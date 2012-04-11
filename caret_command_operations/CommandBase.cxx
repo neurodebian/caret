@@ -42,6 +42,8 @@
 #include "CommandCaretFileNamingUnitTesting.h"  
 #include "CommandCaretHelpCreateHtmlIndexFile.h"
 #include "CommandCiftiCorrelationMatrix.h"
+#include "CommandCiftiDenseConnectomeGradient.h"
+#include "CommandCiftiGradient.h"
 #include "CommandColorFileAddColor.h"
 #include "CommandColorFileCreateMissingColors.h"
 #include "CommandConvertDataFileToCaret6.h"
@@ -108,6 +110,7 @@
 #include "CommandMetricTranspose.h"
 #include "CommandMetricTwinComparison.h"
 #include "CommandMetricTwinPairedDataDiffs.h"
+#include "CommandMyelinMapping.h"
 #include "CommandPaintAddColumns.h"
 #include "CommandPaintAssignNodes.h"
 #include "CommandPaintAssignNodesRelativeToLine.h"
@@ -168,6 +171,7 @@
 #include "CommandSurfaceCellCreate.h"
 #include "CommandSurfaceCellProjection.h"
 #include "CommandSurfaceCellUnprojection.h"
+#include "CommandSurfaceCreateSpheres.h"
 #include "CommandSurfaceCrossoverCheck.h"
 #include "CommandSurfaceCurvature.h"
 #include "CommandSurfaceDistortion.h"
@@ -322,6 +326,8 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandCaretFileNamingUnitTesting);
    commandsOut.push_back(new CommandCaretHelpCreateHtmlIndexFile);
    commandsOut.push_back(new CommandCiftiCorrelationMatrix);
+   commandsOut.push_back(new CommandCiftiDenseConnectomeGradient);
+   commandsOut.push_back(new CommandCiftiGradient);
    commandsOut.push_back(new CommandColorFileAddColor);
    commandsOut.push_back(new CommandColorFileCreateMissingColors);
    commandsOut.push_back(new CommandConvertDataFileToCaret6);
@@ -388,6 +394,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandMetricTranspose);
    commandsOut.push_back(new CommandMetricTwinComparison);
    commandsOut.push_back(new CommandMetricTwinPairedDataDiffs);
+   commandsOut.push_back(new CommandMyelinMapping);
    commandsOut.push_back(new CommandPaintAddColumns);
    commandsOut.push_back(new CommandPaintAssignNodes);
    commandsOut.push_back(new CommandPaintAssignNodesRelativeToLine);
@@ -449,6 +456,7 @@ CommandBase::getAllCommandsUnsorted(std::vector<CommandBase*>& commandsOut)
    commandsOut.push_back(new CommandSurfaceCellCreate);
    commandsOut.push_back(new CommandSurfaceCellProjection);
    commandsOut.push_back(new CommandSurfaceCellUnprojection);
+   commandsOut.push_back(new CommandSurfaceCreateSpheres);
    commandsOut.push_back(new CommandSurfaceCurvature);
    commandsOut.push_back(new CommandSurfaceDistortion);
    commandsOut.push_back(new CommandSurfaceFlatMultiResMorphing);

@@ -30,16 +30,24 @@
 
 #include "CommaSeparatedValueFile.h"
 #include "DebugControl.h"
-#include "SpecFile.h"
 #include "StringTable.h"
 #include "XhtmlTableExtractorFile.h"
+#ifdef CARET_FLAG
+#include "SpecFile.h"
 
+#endif //CARET_FLAG
+#include "GiftiCommon.h"
+#include "CoordinateFile.h"
 /**
  * constructor.
  */
 XhtmlTableExtractorFile::XhtmlTableExtractorFile()
  : AbstractFile("XHTML Table Extractor File",            // description
+#ifdef CARET_FLAG
                 SpecFile::getXmlFileExtension(),         // default extension
+#else //CARET_FLAG
+                ".gii",                                  // default extension
+#endif //CARET_FLAG
                 true,                                    // has header
                 FILE_FORMAT_COMMA_SEPARATED_VALUE_FILE,  // default write type
                 FILE_IO_NONE,                            // ascii support

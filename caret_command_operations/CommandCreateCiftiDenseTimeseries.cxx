@@ -25,6 +25,7 @@
 
 #include <iostream>
 
+#include "Basename.h"
 #include "CommandCreateCiftiDenseTimeseries.h"
 #include "FileFilters.h"
 #include "FileUtilities.h"
@@ -74,29 +75,30 @@ CommandCreateCiftiDenseTimeseries::getHelpInformation() const
     QString helpInfo =
       (indent3 + getShortDescription() + "\n"
        + indent6 + parameters->getProgramNameWithoutPath() + " " + getOperationSwitch() + "  \n"
-       + indent9 + "[-time-step] (default of 1.0 seconds)\n"
+       + indent9 + "[-time-step value] (default of 1.0 seconds)\n"
        + "\n"
-       + indent9 + "[-input-volume]\n"
+       + indent9 + "[-input-volume filename]\n"
        + "\n"
-       + indent9 + "[-cifti-structure-name]\n"
-       + indent9 + "[[-input-surface-roi]]\n"
-       + indent9 + "[-input-timeseries]\n"
+       + indent9 + "[-cifti-structure-name structurename]\n"
+       + indent9 + "[[-input-surface-roi filename]]\n"
+       + indent9 + "[-input-timeseries filename]\n"
        + indent9 + "\n"
-       + indent9 + "[-cifti-structure-name]\n"
-       + indent9 + "[-input-volumetric-roi]\n"
+       + indent9 + "[-cifti-structure-name structurename]\n"
+       + indent9 + "[-input-volumetric-roi filename]\n"
        + indent9 + "...\n"
        + indent9 + "\n"
-       + indent9 + "[-cifti-structure-name]\n"
-       + indent9 + "[[-input-surface-roi]]\n"
-       + indent9 + "[-input-timeseries]\n"
+       + indent9 + "[-cifti-structure-name structurename]\n"
+       + indent9 + "[[-input-surface-roi filename]]\n"
+       + indent9 + "[-input-timeseries filename]\n"
        + indent9 + "\n"
-       + indent9 + "[-cifti-structure-name]\n"
-       + indent9 + "[-input-volumetric-roi]\n"
+       + indent9 + "[-cifti-structure-name structurename]\n"
+       + indent9 + "[-input-volumetric-roi filename]\n"
        + indent9 + "...\n"
        + indent9 + "\n"
-       + indent9 + "<-output-cifti-file>\n"
-       + indent9 + "[-output-header]\n"
-       + indent9 + "[-output-matrix]\n"
+       + indent9 + "<-output-cifti-file filename>\n"
+       + indent9 + "[-output-header filename]\n"
+       + indent9 + "[-output-matrix filename]\n"
+       + indent9 + "[-output-gifti-external-binary-header]\n"
        + indent9 + "\n"
        + indent9 + "Combine surface and volume timeseries into a single CIFTI dense timeseries\n"
        + indent9 + "file.  All inputs are optional but there must be at least one input.  If\n"
@@ -292,7 +294,7 @@ void createCiftiFile(QString &inputVolume, std::vector < ciftiStructParamsType >
    header.getHeaderStruct(head);
    head.dim[5] = nodeCount;
    head.dim[6] = timeCount;
-   header.SetHeaderStuct(head);
+   header.setHeaderStuct(head);
    
    //now create the Cifti XML
    CiftiRootElement root;
@@ -304,14 +306,14 @@ void createCiftiFile(QString &inputVolume, std::vector < ciftiStructParamsType >
 
    if(vol)
    {
-	  me->m_volume.push_back(CiftiVolume());
-      CiftiVolume *volume =&(me->m_volume.at(0));
+	  me->m_volume.push_back(CiftiVolumeElement());
+      CiftiVolumeElement *volume =&(me->m_volume.at(0));
       volume->m_volumeDimensions[0] = dim[0];
       volume->m_volumeDimensions[1] = dim[1];
       volume->m_volumeDimensions[2] = dim[2];
       
       VolumeFile::ORIENTATION orientation[3];
-      TransformationMatrixVoxelIndicesIJKtoXYZ voxIndTrans;
+      TransformationMatrixVoxelIndicesIJKtoXYZElement voxIndTrans;
       voxIndTrans.m_dataSpace = NIFTI_XFORM_UNKNOWN;
       vol->getOrientation(orientation);
       if ((orientation[0] == VolumeFile::ORIENTATION_LEFT_TO_RIGHT) && 
@@ -505,6 +507,7 @@ CommandCreateCiftiDenseTimeseries::executeCommand() throw (CommandException,
     QString outputCiftiFile;
     QString outputHeaderFile;
     QString outputMatrixFile;
+    QString outputGiftiHeaderFile;
     int structLast=-1;//last Element in Cifti Structures vector
     float timeStep = 1.0;
     
@@ -550,6 +553,10 @@ CommandCreateCiftiDenseTimeseries::executeCommand() throw (CommandException,
       {
          timeStep = parameters->getNextParameterAsFloat("Time Step");
       }
+      else if(paramValue == "-output-gifti-external-binary-header")
+      {
+         outputGiftiHeaderFile = parameters->getNextParameterAsString("Output Gifti External Binary Header");         
+      }      
       else {
          throw CommandException("Unrecognized parameter: " + paramValue);
       }
@@ -579,6 +586,39 @@ CommandCreateCiftiDenseTimeseries::executeCommand() throw (CommandException,
       file.setFileName(outputHeaderFile);
       file.open(QIODevice::WriteOnly);
       file.write(text);
+      file.close();
+   }
+   if(outputGiftiHeaderFile.length())
+   {
+      std::vector<int> dimensions(2,0);
+      
+      matrix.getDimensions(dimensions);
+      QString text;
+      text.append( "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+      text.append("<!DOCTYPE GIFTI SYSTEM \"http://www.nitrc.org/frs/download.php/115/gifti.dtd\">\n");
+      text.append("<GIFTI Version=\"1.0\"  NumberOfDataArrays=\"1\">\n");
+      text.append("   <MetaData/>\n");
+      text.append("   <LabelTable/>\n");
+      text.append("   <DataArray  ArrayIndexingOrder=\"RowMajorOrder\"\n");
+      text.append("            DataType=\"NIFTI_TYPE_FLOAT32\"\n");
+      text.append(QString::fromAscii("            Dim0=\"")+QString::number(dimensions[0])+"\"\n");
+      text.append(QString::fromAscii("            Dim1=\"")+QString::number(dimensions[1])+"\"\n");
+      text.append("            Dimensionality=\"2\"\n");
+      text.append("            Encoding=\"ExternalFileBinary\"\n");
+      text.append("            Endian=\"LittleEndian\"\n");
+// no basename on Mac, use caret_common/Basename      text.append(QString::fromAscii("             ExternalFileName=\"")+ basename(outputMatrixFile.toAscii())+ "\"\n");
+      text.append(QString::fromAscii("             ExternalFileName=\"")+ Basename((char*)qPrintable(outputMatrixFile))+ "\"\n");
+      text.append("            ExternalFileOffset=\"0\"\n");
+      text.append("            Intent=\"NIFTI_INTENT_NONE\">\n");
+      text.append("   <MetaData>\n");
+      text.append("   </MetaData>\n");
+      text.append("   <Data></Data>\n");
+      text.append("   </DataArray>\n");
+      text.append("</GIFTI>\n");
+      QFile file;
+      file.setFileName(outputGiftiHeaderFile);
+      file.open(QIODevice::WriteOnly);
+      file.write(text.toAscii());
       file.close();
    }
    if(outputMatrixFile.length())

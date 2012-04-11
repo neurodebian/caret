@@ -193,7 +193,7 @@ BrainModelSurfaceROIMetricSmoothing::execute() throw (BrainModelAlgorithmExcepti
    smoothComment.append(StringUtilities::fromNumber(iterations));
    smoothComment.append("\n");
    
-   bool debugOpenMpFlag = false; 
+   /*bool debugOpenMpFlag = false; 
    if (this->smoothAllColumnsFlag) {
       int numColumns = this->metricFile->getNumberOfColumns();
       
@@ -224,8 +224,17 @@ BrainModelSurfaceROIMetricSmoothing::execute() throw (BrainModelAlgorithmExcepti
    }
    else {
       this->smoothSingleColumn(smoothComment, column, outputColumn);
-   } 
-
+   } //*/
+   if (smoothAllColumnsFlag)
+   {
+      int numColumns = metricFile->getNumberOfColumns();
+      for (int i = 0; i < numColumns; ++i)
+      {
+         smoothSingleColumn(smoothComment, i, i);//this is node parallel
+      }
+   } else {
+      smoothSingleColumn(smoothComment, column, outputColumn);
+   }
    
    delete[] roiValues;
 }
@@ -274,6 +283,9 @@ BrainModelSurfaceROIMetricSmoothing::smoothSingleColumn(const QString& columnDes
       //
       // smooth all of the nodes
       //
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
       for (int i = 0; i < numberOfNodes; i++) {
          //
          // copy input to output in event this node is not smoothed
@@ -299,11 +311,10 @@ BrainModelSurfaceROIMetricSmoothing::smoothSingleColumn(const QString& columnDes
             
             //distance to neighbor is geodesic, not euclidean, check determineNeighbors
             int j, end = neighInfo.numNeighbors;
-            float totalWeight = 0.0f, weight, tempf;
+            float totalWeight = 0.0f, weight;
             for (j = 0; j < end; ++j)
             {//weighted average, using gaussian of geodesic distance as weight
-               tempf = neighInfo.distanceToNeighbor[j] / geodesicGaussSigma;
-               weight = std::exp((double)(-tempf * tempf * 0.5f));//the gaussian function
+               weight = neighInfo.geoGaussWeights[j];//precomputed gaussian weights
                totalWeight += weight;
                neighborSum += weight * inputValues[neighInfo.neighbors[j]];
             }
@@ -323,7 +334,7 @@ BrainModelSurfaceROIMetricSmoothing::smoothSingleColumn(const QString& columnDes
                   }
                }
        
-               outputValues[i] = neighborSum;//WARNING: used for geodesic gaussian, if this is changed, make geogauss gives the same result (ignore strength)
+               outputValues[i] = neighborSum;
                
             }
          }
@@ -357,55 +368,60 @@ BrainModelSurfaceROIMetricSmoothing::determineNeighbors()
    // Clear the neighbors
    //
    nodeNeighbors.clear();
+   nodeNeighbors.resize(numberOfNodes);
    
    //
    // Get the topology helper
    //
    const TopologyFile* topologyFile = fiducialSurface->getTopologyFile();
-   const TopologyHelper* topologyHelper = 
-                      topologyFile->getTopologyHelper(false, true, false);
    
    //
    // Coordinate file and maximum distance cutoff
    //
    CoordinateFile* cf = fiducialSurface->getCoordinateFile();
-   GeodesicHelper* gh = NULL;
    float geoCutoff = 4.0f * geodesicGaussSigma;
-   std::vector<float>* distance = NULL;
    cf = fiducialSurface->getCoordinateFile();
-   gh = new GeodesicHelper(cf, topologyFile);
-   distance = new std::vector<float>;
-   
-   //
-   // Loop through the nodes
-   //
    QTime timer;
    timer.start();
-   for (int i = 0; i < numberOfNodes; i++) {
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+   {
+      TopologyHelper topologyHelper(topologyFile, false, true, false);
+      GeodesicHelper gh(cf, topologyFile);//need private copies of this due to mutex locking
+      std::vector<float> distance;
+
+      //
+      // Loop through the nodes
+      //
       std::vector<int> neighbors;
-      int NumberofNeighborsInROI = 0;
-      
-      gh->getNodesToGeoDist(i, geoCutoff, neighbors, *distance, true);
-      for(unsigned int j = 0;j<neighbors.size();j++)//small hack, should
-      {
-         if(roiValues[neighbors[j]]!=0.0f) 
-         {
-            NumberofNeighborsInROI++;                 
+      std::vector<float> geoWeights;
+#ifdef _OPENMP
+#pragma omp for
+#endif
+      for (int i = 0; i < numberOfNodes; i++) {
+         neighbors.clear();//vectors shouldn't deallocate memory on clear(), so this saves lots and lots of slow new and delete calls
+         geoWeights.clear();
+         gh.getNodesToGeoDist(i, geoCutoff, neighbors, distance, true);
+         if (neighbors.size() < 7)//5 neighbor nodes may fail this unneccesarily, but better than letting 6 neighbor nodes slip through with 5
+         {//in case a really small kernel is specified - do NOT test only for ROI neighbors here, this is only to make sure the geoCutoff isn't too harsh
+            //maybe it should union getNodeNeighbors and getNodesToGeoDist?  Probably only useful for extreme edge cases
+            topologyHelper.getNodeNeighbors(i, neighbors);
+            neighbors.push_back(i);//for geogauss, we want the center node in the list
+            gh.getGeoToTheseNodes(i, neighbors, distance, true);
          }
+         //
+         // add to all neighbors - this constructor uses roiValues to exclude neighbors outside ROI
+         //
+         int numNeigh = (int)neighbors.size();
+         for (int j = 0; j < numNeigh; ++j)
+         {
+            float tempf = distance[j] / geodesicGaussSigma;
+            geoWeights.push_back(std::exp((double)(-tempf * tempf * 0.5f)));
+         }
+         nodeNeighbors[i] = NeighborInfo(neighbors, distance, geoWeights, roiValues);
       }
-      if (NumberofNeighborsInROI < 6)
-      {//in case a really small kernel is specified
-         topologyHelper->getNodeNeighbors(i, neighbors);
-         neighbors.push_back(i);//for geogauss, we want the center node in the list
-         gh->getGeoToTheseNodes(i, neighbors, *distance, true);
-      }      
-      //
-      // add to all neighbors
-      //
-      nodeNeighbors.push_back(NeighborInfo(neighbors,distance,roiValues));
    }
-   if (gh) delete gh;
-   if (distance) delete distance;
    const float elapsedTime = timer.elapsed() * 0.001;
    if (DebugControl::getDebugOn()) {
       std::cout << "Time to determine neighbors: " << elapsedTime << " seconds." << std::endl;
@@ -418,7 +434,8 @@ BrainModelSurfaceROIMetricSmoothing::determineNeighbors()
  * Constructor.
  */
 BrainModelSurfaceROIMetricSmoothing::NeighborInfo::NeighborInfo(const std::vector<int>& neighborsIn,                                                    
-                                                    const std::vector<float>* distances,
+                                                    const std::vector<float>& distances,
+                                                    const std::vector<float>& geoWeights,
                                                     const float * roiValuesIn)
 {
    const int numNeighborsIn = static_cast<int>(neighborsIn.size());
@@ -426,11 +443,13 @@ BrainModelSurfaceROIMetricSmoothing::NeighborInfo::NeighborInfo(const std::vecto
    for (int i = 0; i < numNeighborsIn; i++) {
       const int node = neighborsIn[i];
       // here is where we filter out neighbors that aren't in the ROI
-      if(roiValuesIn[neighborsIn[i]] == 0.0) continue; //make sure round-off errors don't affect this
+      if(roiValuesIn[node] == 0.0) continue; //make sure round-off errors don't affect this
       neighbors.push_back(node);
       
       
-      distanceToNeighbor.push_back((*distances)[i]);        
+      distanceToNeighbor.push_back(distances[i]);
+      
+      geoGaussWeights.push_back(geoWeights[i]);
    }
 
    numNeighbors = static_cast<int>(neighbors.size());

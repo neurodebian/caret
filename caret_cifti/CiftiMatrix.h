@@ -33,7 +33,7 @@ enum  CACHE_LEVEL {
   IN_MEMORY,
   ON_DISK
 };
-
+/// Class for reading and writing Cifti Matrix Data
 //warning!!! when using ON_DISK cache level, don't plan on using the file handle again, consider it gone, once handing it to a CiftiMatrix object.
 class CiftiMatrix
 { 
@@ -51,6 +51,7 @@ public:
    void getMatrixData(float *&data, std::vector <int> &dimensions);//gets the entire matrix, depending on the copy data preferences,
                            //either copies all of the data
    void setMatrixData(float *data, std::vector <int> &dimensions);   
+   void getDimensions(std::vector <int>& dimensions);
    void setCopyData(bool copyData);
    bool getCopyData();
 protected:

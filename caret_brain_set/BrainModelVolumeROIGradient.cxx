@@ -132,10 +132,9 @@ void BrainModelVolumeROIGradient::execute() throw (BrainModelAlgorithmException)
    irange[0] = (int)floor(frange / fabs(spacing[0]));
    irange[1] = (int)floor(frange / fabs(spacing[1]));
    irange[2] = (int)floor(frange / fabs(spacing[2]));
-   if (!irange[0] || !irange[1] || !irange[2])
-   {
-      throw BrainModelAlgorithmException("Kernel too small.");
-   }
+   if (!irange[0]) irange[0] = 1;
+   if (!irange[1]) irange[1] = 1;
+   if (!irange[2]) irange[2] = 1;
    float*** weights = new float**[2 * irange[0] + 1];//precompute kernel weights
    for (i = 0; i < 2 * irange[0] + 1; ++i)
    {
@@ -241,4 +240,13 @@ void BrainModelVolumeROIGradient::execute() throw (BrainModelAlgorithmException)
          }
       }
    }
+   for (i = 0; i < 2 * irange[0] + 1; ++i)
+   {
+      for (j = 0; j < 2 * irange[1] + 1; ++j)
+      {
+         delete[] weights[i][j];
+      }
+      delete[] weights[i];
+   }
+   delete[] weights;
 }

@@ -32,6 +32,7 @@
 #include "CiftiByteSwap.h"
 #include <vector>
 
+/// Simple Container class for storing Nifti2Header data
 class Nifti2Header {
 public:
    Nifti2Header() throw (CiftiFileException);
@@ -42,7 +43,7 @@ public:
    void readFile(const QString &inputFileName) throw (CiftiFileException);
    void readFile(QFile &inputFile) throw (CiftiFileException);
    void getHeaderStruct(nifti_2_header &header) const throw (CiftiFileException);
-   void SetHeaderStuct(const nifti_2_header &header) throw (CiftiFileException);
+   void setHeaderStuct(const nifti_2_header &header) throw (CiftiFileException);
    int getCiftiType(const nifti_2_header &header) const throw (CiftiFileException);
    int getCiftiType() const throw (CiftiFileException);
    void writeFile(QFile &outputFile) const throw (CiftiFileException);
@@ -54,6 +55,7 @@ public:
    void initTimeSeriesHeaderStruct();
    bool getSwapNeeded();
    void getCiftiDimensions(std::vector <int> &dimensions);
+   void setCiftiDimensions(std::vector <int> &dimensions);
 private:
    nifti_2_header m_header; 
    bool m_swapNeeded;

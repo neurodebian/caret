@@ -90,15 +90,21 @@ class BrainModelSurfaceMetricSmoothing : public BrainModelAlgorithm {
                          const int myNodeNumber,
                          const std::vector<int>& neighborsIn,
                          const float maxDistanceCutoff,
-                         const std::vector<float>* distances = NULL);
+                         const std::vector<float>* distanceWeights = NULL);
             
             /// Destructor
             ~NeighborInfo();
             
+            /// Default constructor so vector resize can work
+            NeighborInfo() {};
+            
             /// the neighbors
             std::vector<int> neighbors;
             
-            /// distance to neighbor 
+            /// precomputed geodesic gaussian weights
+            std::vector<float> geoGaussWeight;
+            
+            /// neighbor distances
             std::vector<float> distanceToNeighbor;
             
             /// number of neighbors

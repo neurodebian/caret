@@ -185,7 +185,7 @@ CommandMetricGradient::executeCommand() throw (BrainModelAlgorithmException,
       myvec = new VectorFile();
       myvec->setFileName(vector);
    }
-   BrainModelSurfaceMetricGradient myobject(&mybs, 0, &mymetric, metricCol, myvec, mymag, magCol - 1, avgNormals);
+   BrainModelSurfaceMetricGradient myobject(NULL, mysurf, &mymetric, metricCol, myvec, mymag, magCol - 1, avgNormals);
    myobject.execute();
    if (myvec != NULL) myvec->writeFile(vector);
    if (mymag != NULL) mymag->writeFile(mag);

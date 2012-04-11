@@ -28,6 +28,7 @@
 /*LICENSE_END*/
 
 #include "CommandBase.h"
+#include "CiftiFile.h"
 
 /// class for
 class CommandCiftiCorrelationMatrix : public CommandBase {
@@ -43,6 +44,10 @@ class CommandCiftiCorrelationMatrix : public CommandBase {
       
       // get the script builder parameters
       virtual void getScriptBuilderParameters(ScriptBuilderParameters& paramsOut) const;
+      
+      void writeGiftiHeader(QString &fileName, QString &binaryFileName, std::vector < int > &dimensions);
+      void writeGiftiExternalBinary(QString &binaryFileName, CiftiMatrix *matrix);
+
       
    protected:
       // execute the command

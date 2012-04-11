@@ -80,7 +80,7 @@ class DisplaySettingsSurface : public DisplaySettings {
       enum CLIPPING_PLANE_APPLICATION {
          CLIPPING_PLANE_APPLICATION_MAIN_WINDOW_ONLY,
          CLIPPING_PLANE_APPLICATION_FIDUCIAL_SURFACES_ONLY,
-         CLIPPING_PLANE_APPLICATION_ALL_SURFACES,
+         CLIPPING_PLANE_APPLICATION_ALL_SURFACES
       };
 
       /// get the drawing mode

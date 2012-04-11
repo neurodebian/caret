@@ -12,6 +12,7 @@ PROGS	= $(PROGS_CMD) \
 UBUNTULIBS	= \
 	  caret_statistics \
 	  caret_common \
+          caret_gifti \
 	  caret_files \
 	  caret_brain_set \
 	  caret_command_operations \

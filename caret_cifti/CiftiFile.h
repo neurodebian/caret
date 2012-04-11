@@ -33,22 +33,36 @@
 #include "CiftiXML.h"
 #include "CiftiMatrix.h"
 
-
+/// Class for opening, reading, and writing generic Cifti Data
 class CiftiFile {
 public:
+   /// Constructor
    CiftiFile(CACHE_LEVEL clevel = IN_MEMORY) throw (CiftiFileException);
+   /// Constructor
    CiftiFile(const QString &fileName,CACHE_LEVEL clevel = IN_MEMORY) throw (CiftiFileException);
+   /// Open the Cifti File
    virtual void openFile(const QString &fileName) throw (CiftiFileException);
+   /// Open the Cifti File
    virtual void openFile(const QString &fileName, CACHE_LEVEL clevel) throw (CiftiFileException);
+   /// Write the Cifti File
    virtual void writeFile(const QString &fileName) const throw (CiftiFileException);
+   /// set Nifti2Header
    virtual void setHeader(const Nifti2Header &header) throw (CiftiFileException);
+   /// get Nifti2Header
    virtual Nifti2Header * getHeader() throw (CiftiFileException);
+   /// get Nifti2Header
    virtual void getHeader(Nifti2Header &header) throw (CiftiFileException);
+   /// set CiftiXML
    virtual void setCiftiXML(CiftiXML &ciftixml) throw (CiftiFileException);
+   /// get CiftiXML
    virtual CiftiXML * getCiftiXML() throw (CiftiFileException);   
+   /// get CiftiXML
    virtual void getCiftiXML(CiftiXML &xml) throw (CiftiFileException);
+   /// set CiftiMatrix
    virtual void setCiftiMatrix(CiftiMatrix &matrix) throw (CiftiFileException);
+   /// get CiftiMatrix
    virtual CiftiMatrix * getCiftiMatrix() throw (CiftiFileException);
+   /// Destructor
    virtual ~CiftiFile();
 protected:
    virtual void init();

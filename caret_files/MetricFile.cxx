@@ -2177,8 +2177,12 @@ MetricFile::setColumnAllNodesToScalar(const int columnNumber,
                                       const float value)
 {
    const int numberOfNodes = getNumberOfNodes();
-   for (int i = 0; i < numberOfNodes; i++) {
+   /*for (int i = 0; i < numberOfNodes; i++) {
       setValue(i, columnNumber, value);
+   }//*/
+   float* data = dataArrays[columnNumber]->getDataPointerFloat();
+   for (int i = 0; i < numberOfNodes; i++) {
+      data[i] = value;
    }
    setColumnColorMappingMinMax(columnNumber, value, value);
 }

@@ -930,6 +930,7 @@ AbstractFile::clearModified()
 /**
  * determine if the file is a comma separated value file.
  */
+#ifdef CARET_FLAG
 bool 
 AbstractFile::isCommaSeparatedValueFile(QFile& file)
 {
@@ -1024,7 +1025,7 @@ AbstractFile::isFileXML(QFile& file)
    
    return isXML;
 }
-      
+
 /**
  * read the contents of a file stored in memory.
  */
@@ -1292,7 +1293,7 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
 
    clearModified();
 }
-
+#endif //CARET_FLAG
 /**
  * Allows files to do processing after a file is read.
  */
@@ -1532,6 +1533,7 @@ AbstractFile::writeHeaderXML(QDomDocument& doc, QDomElement& rootElement)
 /**
  * Write header to XML writer.
  */
+#include <GiftiCommon.h>
 void
 AbstractFile::writeHeaderXMLWriter(XmlGenericWriter& xmlWriter) throw (FileException)
 {
@@ -2510,7 +2512,7 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
    if (filenameIn.isEmpty()) {
       throw FileException(filenameIn, "Filename for writing is isEmpty");
    }
-
+#ifdef CARET_FLAG
    filename = filenameIn;
    
    //
@@ -2645,11 +2647,13 @@ AbstractFile::writeFile(const QString& filenameIn) throw (FileException)
                 << timeToWriteFileInSeconds
                 << " seconds." << std::endl;
    }
+#endif //CARET_FLAG
 }
 
 /**
  * Update the file's metadata for Caret6.
  */
+#ifdef CARET_FLAG
 void
 AbstractFile::updateMetaDataForCaret6()
 {
@@ -2670,7 +2674,7 @@ AbstractFile::writeFileInCaret6Format(const QString& filenameIn, Structure struc
    throw FileException(filenameIn
                        + " cannot be written in Caret6 format at this time.");
 }
-
+#endif //CARET_FLAG
 /**
  * Write the file's header.
  */
@@ -3347,6 +3351,7 @@ AbstractFile::readDataFromCommaSeparatedValuesTable(const CommaSeparatedValueFil
 /**
  * write the header's data into a StringTable.
  */
+#ifdef CARET_FLAG
 void 
 AbstractFile::writeHeaderDataIntoStringTable(StringTable& table) const
 {
@@ -3402,7 +3407,8 @@ AbstractFile::readHeaderDataFromStringTable(const StringTable& table) throw (Fil
       setHeaderTag(tag, value);
    }
 }
-      
+#endif //CARET_FLAG
+
 /**
  * generate a date and time timestamp.
  */

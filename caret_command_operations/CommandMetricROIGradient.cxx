@@ -92,9 +92,9 @@ CommandMetricROIGradient::getHelpInformation() const
        + indent9 + "<average-normals>\n"
        + indent9 + "<smooth-kernel>\n"
        + indent9 + "\n"
-       + indent9 + "[metric-col]\n"
-       + indent9 + "[out-metric-col-num]\n"
-       + indent9 + "[parallel-flag]\n"
+       + indent9 + "[-metric-col column]\n"
+       + indent9 + "[-out-metric-col-num column]\n"
+       + indent9 + "[-parallel-flag]\n"
        //+ indent9 + "[output-vector]\n"
        + indent9 + "\n"
        + indent9 + "Generate the surface gradient of a metric file on a ROI.  Uses a linear\n"
@@ -208,7 +208,7 @@ CommandMetricROIGradient::executeCommand() throw (BrainModelAlgorithmException,
                                                       1.0f, 1, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, smoothing, parallelFlag);
          mysmooth.execute();         
       }
-      BrainModelSurfaceROIMetricGradient myobject(&mybs, 0, &myroi, &mymetric, avgNormals,parallelFlag);
+      BrainModelSurfaceROIMetricGradient myobject(NULL, mysurf, &myroi, &mymetric, avgNormals,parallelFlag);
       myobject.execute();
       if (mag != QString("NULL")) mymetric.writeFile(mag);
    }
@@ -238,7 +238,7 @@ CommandMetricROIGradient::executeCommand() throw (BrainModelAlgorithmException,
          myvec = new VectorFile();
          myvec->setFileName(vector);
       }
-      BrainModelSurfaceROIMetricGradient myobject(&mybs, 0, &myroi, &mymetric, metricCol, myvec, mymag, magCol - 1, avgNormals);
+      BrainModelSurfaceROIMetricGradient myobject(NULL, mysurf, &myroi, &mymetric, metricCol, myvec, mymag, magCol - 1, avgNormals);
       myobject.execute();
       if (myvec != NULL) myvec->writeFile(vector);
       if (mymag != NULL) mymag->writeFile(mag);

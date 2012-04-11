@@ -33,7 +33,10 @@
 
 #include "CommaSeparatedValueFile.h"
 #include "CoordinateFile.h"
+#ifdef CARET_FLAG
+
 #include "DeformationMapFile.h"
+#endif //CARET_FLAG
 #include "FileUtilities.h"
 #include "GiftiCommon.h"
 #include "StringTable.h"
@@ -324,6 +327,7 @@ GiftiNodeDataFile::clear()
 /**
  * transfer file data.
  */
+#ifdef CARET_FLAG
 void 
 GiftiNodeDataFile::transferFileDataForDeformation(const DeformationMapFile& dmf,
                                     GiftiNodeDataFile& destinationFile) const
@@ -413,7 +417,7 @@ GiftiNodeDataFile::deform(const DeformationMapFile& dmf,
    //
    deformFile(dmf, deformedFile, dt);
 }
-
+#endif //CARET_FLAG
 /**
  * check for columns with the same name (returns true if there are any).
  */
