@@ -1,4 +1,4 @@
-caret (5.6.4~dfsg.1-2) UNRELEASED; urgency=low
+caret (5.6.4~dfsg.1-2) unstable; urgency=low
 
   * Add patch to support HURD as well.
   * Rename custom rules targets to avoid conflict with standard names,
