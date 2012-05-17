@@ -4,3 +4,4 @@ ifdef_fixes
 missing_header
 version_suffix
 nuisance2advice
+compile_against_libglu

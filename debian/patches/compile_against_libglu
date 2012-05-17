@@ -1,0 +1,41 @@
+Description: Include and link with libGLU library
+ Caret uses directly functions from libGLU without include GL/glu.h header
+ neither linking against libGLU.so. The build process used to work luckily
+ in the past because QtOpenGL depended it (not anymore).
+Author: Nicolas Bourdaud <nicolas.bourdaud@gmail.com>
+Origin: vendor
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=672020
+Forwarded: no
+Last-Update: 2012-05-17
+--- a/caret_files/BorderFile.cxx
++++ b/caret_files/BorderFile.cxx
+@@ -34,6 +34,8 @@
+ #include <limits>
+ #include <sstream>
+ 
++#include <GL/glu.h>
++
+ #include "BorderFile.h"
+ #include "ColorFile.h"
+ #include "CoordinateFile.h"
+--- a/caret_brain_set/BrainModelOpenGL.h
++++ b/caret_brain_set/BrainModelOpenGL.h
+@@ -30,6 +30,7 @@
+ 
+ #include <QGLWidget>  // includes OpenGL includes ;)
+ #include <QMutex>
++#include <GL/glu.h>
+ 
+ #include "BorderFile.h"
+ #include "BrainModel.h"
+--- a/caret_qmake_include.pro
++++ b/caret_qmake_include.pro
+@@ -263,7 +263,7 @@
+             -lvtkCommon \
+             -lvtksys
+         
+-    LIBS += -lpng
++    LIBS += -lpng -lGLU
+     contains (DEFINES, HAVE_QWT) {
+        QWT_LIBS = -L$$(QWT_LIB_DIR) -lqwt-qt4
+     }
