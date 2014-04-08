@@ -49,7 +49,7 @@ configure: configure-stamp
 configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_brain_set \
                  caretcfg-caret_command_operations caretcfg-caret_files caretcfg-caret_cifti \
                  caretcfg-caret_uniformize caretcfg-caret_widgets caretcfg-caret_gifti \
-                 caretcfg-caret5 caretcfg-caret_command
+                 caretcfg-caret_gui caretcfg-caret5 caretcfg-caret_command
 	dh_testdir
 	touch $@
 
@@ -59,19 +59,20 @@ build-stamp: configure \
              caretbuild-caret_statistics caretbuild-caret_common \
              caretbuild-caret_uniformize caretbuild-caret_widgets caretbuild-caret_files \
              caretbuild-caret_brain_set caretbuild-caret_cifti caretbuild-caret_gifti \
-             caretbuild-caret_command_operations caretbuild-caret5 caretbuild-caret_command
+             caretbuild-caret_command_operations \
+             caretbuild-caret_gui caretbuild-caret5 caretbuild-caret_command
 	dh_testdir
 	touch $@
 
 
 clean: caretclean-caret_statistics caretclean-caret_common caretclean-caret_brain_set \
        caretclean-caret_command_operations caretclean-caret_cifti caretclean-caret_files \
-       caretclean-caret_uniformize caretclean-caret_widgets caretclean-caret \
-       caretclean-caret_command caretclean-caret_gifti
+       caretclean-caret_uniformize caretclean-caret_widgets caretclean-caret5 \
+       caretclean-caret_gui caretclean-caret_command caretclean-caret_gifti
 	dh_testdir
 	dh_testroot
 	-find . -name '*.so' -exec rm '{}' \;
-	-rm caret/caret5 caret_command/caret_command
+	-rm caret5/caret5 caret_command/caret_command
 	rm -f build-stamp configure-stamp
 	
 	dh_clean
