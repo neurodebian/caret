@@ -167,6 +167,29 @@ GiftiLabelTable::getLabel(const int indx) const
 }
 
 /**
+ * get the label that best matches as a substring 
+ * in the beginning of the given name
+ */
+int 
+GiftiLabelTable::getBestMatchingLabelIndex(const QString& name) const
+{
+    int bestMatchIndex = -1;
+    int bestMatchLength = -1;
+    
+    int numLabels = getNumberOfLabels();
+    for (int i = 0; i < numLabels; i++) {
+        if (name.startsWith(labels[i].getLabelName())) {
+            const int len = labels[i].getLabelName().length();
+            if (len > bestMatchLength) {
+                bestMatchLength = len;
+                bestMatchIndex = i;
+            }
+        }
+    }
+    return bestMatchIndex;    
+}
+
+/**
  * set the label for a specified index.
  */
 void 

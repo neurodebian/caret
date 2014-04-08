@@ -1960,35 +1960,36 @@ GiftiDataArray::updateMetaDataBeforeWriting()
       QString caretGeomType;
       if (metaData.get(AbstractFile::headerTagConfigurationID, caretGeomType)) {
          QString giftiGeomType;
-         if (caretGeomType == "Raw") {
+          caretGeomType = caretGeomType.toUpper();
+         if (caretGeomType == "RAW") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeReconstruction;
          }
-         else if (caretGeomType == "Fiducial") {
+         else if (caretGeomType == "FIDUCIAL") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeAnatomical;
          }
-         else if (caretGeomType == "Inflated") {
+         else if (caretGeomType == "INFLATED") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeInflated;
          }
-         else if ((caretGeomType == "Very_Inflated") ||
-                  (caretGeomType == "VeryInflated")) {
+         else if ((caretGeomType == "VERY_INFLATED") ||
+                  (caretGeomType == "VERYINFLATED")) {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeVeryInflated;
          }
-         else if (caretGeomType == "Spherical") {
+         else if (caretGeomType == "SPHERICAL") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeSpherical;
          }
-         else if (caretGeomType == "Ellipsoidal") {
+         else if (caretGeomType == "ELLIPSOIDAL") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeEllipsoid;
          }
-         else if (caretGeomType == "CompMedWall") {
+         else if (caretGeomType == "COMPMEDWALL") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeSemiSpherical;
          }
-         else if (caretGeomType == "Flat") {
+         else if (caretGeomType == "FLAT") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeFlat;
          }
-         else if (caretGeomType == "FlatLobar") {
+         else if (caretGeomType == "FLATLOBAR") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeFlatLobar;
          }
-         else if (caretGeomType == "Hull") {
+         else if (caretGeomType == "HULL") {
             giftiGeomType = GiftiCommon::metaDataValueGeometricTypeHull;
          }
          
@@ -2049,6 +2050,7 @@ GiftiDataArray::updateMetaDataBeforeWriting()
       QString caretTopoType;
       if (metaData.get(AbstractFile::headerTagPerimeterID, caretTopoType)) {
          QString giftiTopoType;
+          caretTopoType = caretTopoType.toUpper();
          if (caretTopoType == "CLOSED") {
             giftiTopoType = GiftiCommon::metaDataValueTopologicalTypeClosed;
          }

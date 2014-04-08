@@ -28,6 +28,17 @@
 #define NOMINMAX
 #endif
 
+#ifdef CARET_OS_WINDOWS
+#include <Windows.h>
+#endif
+#ifdef CARET_OS_MACOSX
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#else
+#include <GL/gl.h>
+#include <GL/glu.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -2637,5 +2648,99 @@ BorderFile::writeFileInCaret6Format(const QString& filenameIn, Structure structu
    file.close();
 
    return name;
+}
+
+/**
+ * Write the file's memory in caret7 format to the specified name.
+ */
+QString
+BorderFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                    Structure structure,
+                                    const ColorFile* colorFileIn, 
+                                    const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    int numBorders = this->getNumberOfBorders();
+    if (numBorders <= 0) {
+        throw FileException("Contains no borders");
+    }
+    
+    QString name = filenameIn;
+    QFile file(name);
+    if (file.open(QFile::WriteOnly) == false) {
+        throw FileException("Unable to open for writing");
+    }
+    QTextStream stream(&file);
+    
+    XmlGenericWriter xmlWriter(stream);
+    xmlWriter.writeStartDocument();
+    
+    XmlGenericWriterAttributes attributes;
+    attributes.addAttribute("Version", "1.0");
+    xmlWriter.writeStartElement("BorderFile", attributes);
+    
+    this->writeHeaderXMLWriter(xmlWriter);
+    
+    GiftiLabelTable labelTable;
+    if (colorFileIn != NULL) {
+        labelTable.createLabelsFromColors(*colorFileIn);
+    }
+    labelTable.writeAsXML(xmlWriter);
+    
+    for (int i = 0; i < numBorders; i++) {
+        Border* b = this->getBorder(i);
+        int numLinks = b->getNumberOfLinks();
+        if (numLinks > 0) {
+            QString className = "";
+            QString colorName = "BLACK";
+            const QString borderName = b->getName();
+            const int labelIndex = labelTable.getBestMatchingLabelIndex(borderName);
+            if (labelIndex >= 0) {
+                className = labelTable.getLabel(labelIndex);
+                if (className.isEmpty() == false) {
+                    colorName = "CLASS";
+                }
+            }
+            
+            xmlWriter.writeStartElement("Border");
+            
+            xmlWriter.writeElementCharacters("Name", 
+                                             borderName);
+            
+            xmlWriter.writeElementCharacters("ClassName", 
+                                             className);
+            xmlWriter.writeElementCharacters("ColorName",
+                                             colorName);
+            
+            QString structureName = "Invalid";
+            if (structure.isLeftCortex()) {
+                structureName = "CORTEX_LEFT";
+            }
+            else if (structure.isRightCortex()) {
+                structureName = "CORTEX_RIGHT";
+            }
+            else if (structure.isCerebellum()) {
+                structureName = "CEREBELLUM";
+            }
+            
+            for (int j = 0; j < numLinks; j++) {
+                const float* xyz = b->getLinkXYZ(j);
+                
+                xmlWriter.writeStartElement("SurfaceProjectedItem");
+                xmlWriter.writeElementCharacters("Structure", structureName);
+                xmlWriter.writeElementCharacters("StereotaxicXYZ", xyz, 3);
+                xmlWriter.writeEndElement();
+            }
+            
+            xmlWriter.writeEndElement();
+        }
+    }
+    
+    xmlWriter.writeEndElement();
+    
+    xmlWriter.writeEndDocument();
+    
+    file.close();
+    
+    return name;
 }
 

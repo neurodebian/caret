@@ -18,10 +18,14 @@ cd ..\caret_files
 nmake %1
 cd ..\caret_widgets
 nmake %1
+cd ..\caret_gui
+nmake %1
 cd ..\caret_command
 nmake %1
 cd ..\caret_edit
 nmake %1
-cd ..\caret
+cd ..\caret5
+nmake %1
+cd ..\wb_import
 nmake %1
 cd ..\windows

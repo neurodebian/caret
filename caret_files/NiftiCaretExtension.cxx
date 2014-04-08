@@ -53,9 +53,11 @@ static const QString TAG_VOLUME_TYPE = "VolumeType";
  * Constructor.
  */
 NiftiCaretExtension::NiftiCaretExtension(std::vector<VolumeFile*>& volumesIn,
-                                         const ColorFile* labelColorsIn)
+                                         const ColorFile* labelColorsIn,
+                                          const int writeForCaretVersionIn)
    : volumes(volumesIn),
-     labelColors(labelColorsIn)
+     labelColors(labelColorsIn),
+     writeForCaretVersion(writeForCaretVersionIn)
 {
 
 }

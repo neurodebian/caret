@@ -161,6 +161,15 @@ BrainModelSurfaceMetricSmoothingAll::execute() throw (BrainModelAlgorithmExcepti
       throw BrainModelAlgorithmException("Metric file contains no data.");
    }
    
+   if (metricFile->getNumberOfNodes() != fiducialSurface->getNumberOfNodes())
+   {
+       throw BrainModelAlgorithmException("metric file has different number of nodes from surface");
+   }
+   if (algorithm == SMOOTH_ALGORITHM_SURFACE_NORMAL_GAUSSIAN && metricFile->getNumberOfNodes() != gaussianSphericalSurface->getNumberOfNodes())
+   {
+       throw BrainModelAlgorithmException("metric file has different number of nodes from gaussian spherical surface");
+   }
+   
    //
    // Create a new column if needed.
    //

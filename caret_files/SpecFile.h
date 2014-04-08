@@ -424,9 +424,18 @@ class SpecFile : public AbstractFile {
       /// write the file's memory in caret6 format to the specified name
       virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
+    /// write the file's memory in caret7 format to the specified name
+    virtual QString writeFileInCaret7Format(const QString& filenameIn, 
+                                            Structure structure,
+                                            const ColorFile* colorFileIn, 
+                                            const bool useCaret7ExtensionFlag) throw (FileException);
+    
       // convert to caret6 spec file tag, returns empty string if tag invalid for Caret6
       static QString convertToCaret6SpecFileTag(const QString& tagCaret5);
 
+    // convert to caret6 spec file tag, returns empty string if tag invalid for Caret7
+    static QString convertToCaret7DataFileType(const QString& tagCaret5);
+    
       // IMPORTANT if new extensions added, update the method
       //    addUnknownTypeOfFileToSpecFile()
       static QString getTopoFileExtension() { return ".topo"; }

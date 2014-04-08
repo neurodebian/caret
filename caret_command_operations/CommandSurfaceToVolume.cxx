@@ -167,7 +167,8 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
     
    int inputDataFileColumnNumber = -1;
    BrainModelSurfaceToVolumeConverter::CONVERSION_MODE conversionMode;
-   if (nodeAttributeFileName.endsWith(SpecFile::getMetricFileExtension())) {
+   if (nodeAttributeFileName.endsWith(SpecFile::getMetricFileExtension())
+       || nodeAttributeFileName.endsWith(SpecFile::getGiftiFunctionalFileExtension())) {
       specFile.addToSpecFile(SpecFile::getMetricFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_METRIC_INTERPOLATE;
@@ -176,7 +177,8 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       file.readFile(nodeAttributeFileName);
       inputDataFileColumnNumber = file.getColumnFromNameOrNumber(nodeAttributeColumnIdentifier, false);
    }
-   else if (nodeAttributeFileName.endsWith(SpecFile::getPaintFileExtension())) {
+   else if (nodeAttributeFileName.endsWith(SpecFile::getPaintFileExtension())
+            || nodeAttributeFileName.endsWith(SpecFile::getGiftiLabelFileExtension())) {
       specFile.addToSpecFile(SpecFile::getPaintFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_PAINT;
@@ -185,7 +187,8 @@ CommandSurfaceToVolume::executeCommand() throw (BrainModelAlgorithmException,
       file.readFile(nodeAttributeFileName);
       inputDataFileColumnNumber = file.getColumnFromNameOrNumber(nodeAttributeColumnIdentifier, false);
    }
-   else if (nodeAttributeFileName.endsWith(SpecFile::getSurfaceShapeFileExtension())) {
+   else if (nodeAttributeFileName.endsWith(SpecFile::getSurfaceShapeFileExtension())
+            || nodeAttributeFileName.endsWith(SpecFile::getGiftiShapeFileExtension())) {
       specFile.addToSpecFile(SpecFile::getSurfaceShapeFileTag(), nodeAttributeFileName, 
                              "", SpecFile::SPEC_FALSE);
       conversionMode = BrainModelSurfaceToVolumeConverter::CONVERT_TO_ROI_VOLUME_USING_SURFACE_SHAPE;

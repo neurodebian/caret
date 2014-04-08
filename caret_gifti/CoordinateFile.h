@@ -201,6 +201,9 @@ class CoordinateFile : public GiftiNodeDataFile {
       /// Update the file's metadata for Caret6
       virtual void updateMetaDataForCaret6();
 
+    /// Update the file's metadata for Caret7
+    virtual void updateMetaDataForCaret7();
+    
       /// write the file's memory in caret6 format to the specified name
       virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 

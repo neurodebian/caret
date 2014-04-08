@@ -1,13 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "caret5", "..\caret\caret5.vcxproj", "{57B7F9AF-341D-3D6F-9508-FB48FFE167FB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "caret5", "..\caret5\caret5.vcxproj", "{57B7F9AF-341D-3D6F-9508-FB48FFE167FB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wb_import", "..\wb_import\wb_import.vcxproj", "{57B7F9AF-341D-3D6F-9508-FB48FFE167FB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "caret_command", "..\caret_command\caret_command.vcxproj", "{8AD45AA0-D00D-3F8E-AC95-E19FD03266F0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "caret_edit", "..\caret_edit\caret_edit.vcxproj", "{3741A127-2977-3ABE-A34A-FBA8660783F4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CaretBrainSet", "..\caret_brain_set\CaretBrainSet.vcxproj", "{7C6B19BA-5B7D-3F48-B2B9-BECE409BA412}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CaretGui", "..\caret_gui\CaretGui.vcxproj", "{7C6B19BA-5B7D-3F48-B2B9-BECE409BA412}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CaretCommandOperations", "..\caret_command_operations\CaretCommandOperations.vcxproj", "{2E16351A-4F5A-3197-B483-5F5686E59EA2}"
 EndProject

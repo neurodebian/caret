@@ -10,6 +10,12 @@ cd ..
 cd caret_uniformize
 mingw32-make
 cd ..
+cd caret_gifti
+mingw32-make
+cd ..
+cd caret_cifti
+mingw32-make
+cd ..
 cd caret_files
 mingw32-make
 cd ..
@@ -22,7 +28,10 @@ cd ..
 cd caret_command_operations
 mingw32-make
 cd ..
-cd caret
+cd caret_gui
+mingw32-make
+cd ..
+cd caret5
 mingw32-make
 cd ..
 cd caret_command

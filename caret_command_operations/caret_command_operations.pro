@@ -26,7 +26,9 @@ HEADERS += CommandBase.h \
            CommandCiftiDenseConnectomeGradient.h \
            CommandCiftiGradient.h \
            CommandConvertDataFileToCaret6.h \
+           CommandConvertDataFileToCaret7.h \
            CommandConvertSpecFileToCaret6.h \
+           CommandConvertSpecFileToCaret7.h \
            CommandColorFileCreateMissingColors.h \
            CommandDeformationMapApply.h \
            CommandDeformationMapApplyGenericNames.h \
@@ -285,7 +287,9 @@ SOURCES += CommandBase.cxx \
            CommandColorFileAddColor.cxx \
            CommandColorFileCreateMissingColors.cxx \
            CommandConvertDataFileToCaret6.cxx \
+           CommandConvertDataFileToCaret7.cxx \
            CommandConvertSpecFileToCaret6.cxx \
+           CommandConvertSpecFileToCaret7.cxx \
            CommandCreateCiftiDenseTimeseries.cxx \
            CommandDataFileCompare.cxx \
            CommandDeformationMapApply.cxx \

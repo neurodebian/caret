@@ -53,6 +53,8 @@ class Species {
          TYPE_HUMAN,
          /// macaque monkey
          TYPE_MACAQUE,
+         /// marmoset
+         TYPE_MARMOSET,
          /// mouse
          TYPE_MOUSE,
          /// orangutan

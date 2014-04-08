@@ -911,6 +911,112 @@ BrainModelSurface::writeSurfaceInCaret6Format(const QString& filenameIn,
 }
 
 /**
+ * Write the file's memory in caret7 format to the specified name.
+ */
+QString
+BrainModelSurface::writeSurfaceInCaret7Format(const QString& filenameIn,
+                                              const QString& prependToFileNameExtension,
+                                              Structure structure,
+                                              const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    this->setStructure(structure);
+    
+    //
+    // Determine number of coordinates and triangles
+    //
+    coordinates.updateMetaDataForCaret7();
+    const int numCoords = coordinates.getNumberOfCoordinates();
+    int numTriangles = 0;
+    if (topology != NULL) {
+        topology->updateMetaDataForCaret7();
+        numTriangles = topology->getNumberOfTiles();
+    }
+    
+    //
+    // Create the surface file
+    //
+    SurfaceFile sf(numCoords, numTriangles);
+    
+    //
+    // Copy the coordinates and normals
+    //
+    for (int i = 0; i < numCoords; i++) {
+        sf.setCoordinate(i, coordinates.getCoordinate(i));
+    }
+    
+    //
+    // Copy the triangles
+    //
+    for (int i = 0; i < numTriangles; i++) {
+        sf.setTriangle(i, topology->getTile(i));
+    }
+    
+    //
+    // Set the coordinate type and topology type
+    //
+//    sf.setCoordinateType(getSurfaceTypeName());
+    sf.setCoordinateType(coordinates.getHeaderTag(AbstractFile::headerTagConfigurationID));
+    if (topology != NULL) {
+        sf.setTopologyType(topology->getTopologyTypeName());
+    }
+    
+    //
+    // set the metadata
+    //
+    GiftiMetaData* coordMetaData = sf.getCoordinateMetaData();
+    if (coordMetaData != NULL) {
+        std::cout << "Before copy metadata: " << qPrintable(sf.getCoordinateType()) << std::endl;
+        coordMetaData->copyMetaDataFromCaretFile(&coordinates);
+        std::cout << "After copy metadata: " << qPrintable(sf.getCoordinateType()) << std::endl;
+    }
+    
+    GiftiMetaData* topoMetaData = sf.getTopologyMetaData();
+    if (topoMetaData != NULL) {
+        topoMetaData->copyMetaDataFromCaretFile(topology);
+    }
+    
+    sf.removeHeaderTag("date");
+    sf.removeHeaderTag("encoding");
+    sf.setHeaderTag("Date", QDateTime::currentDateTime().toString(Qt::ISODate));
+    sf.setHeaderTag("UserName", SystemUtilities::getUserName());
+    
+    QString fileName = FileUtilities::basename(filenameIn);
+    if (fileName.endsWith(".coord")) {
+        fileName = FileUtilities::replaceExtension(fileName, ".coord",
+                                                   prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension());
+    }
+    else if (fileName.endsWith(".surf.gii")) {
+        fileName = FileUtilities::replaceExtension(fileName, ".surf.gii",
+                                                   prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension());
+    }
+    else if (fileName.endsWith(".coord.gii")) {
+        fileName = FileUtilities::replaceExtension(fileName, ".coord.gii",
+                                                   prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension());
+    }
+    else {
+        fileName = fileName + prependToFileNameExtension + SpecFile::getGiftiSurfaceFileExtension();
+    }
+    
+    //
+    // Write the file
+    //
+    try {
+        sf.setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+        sf.writeFile(fileName);
+    }
+    catch (FileException& e) {
+        throw e;
+    }
+    
+    //
+    // clear modified status for coordinates and topology
+    //
+    coordinates.clearModified();
+    
+    return fileName;
+}
+
+/**
  * write the surface file.
  */
 void 

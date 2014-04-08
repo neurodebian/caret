@@ -110,6 +110,10 @@ BrainModelSurfaceToVolumeConverter::BrainModelSurfaceToVolumeConverter(
          break;
       case StereotaxicSpace::SPACE_FLIRT_222:
          break;
+      case StereotaxicSpace::SPACE_FNIRT:
+         break;
+      case StereotaxicSpace::SPACE_FNIRT_222:
+         break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F99:
@@ -648,6 +652,10 @@ BrainModelSurfaceToVolumeConverter::execute() throw (BrainModelAlgorithmExceptio
          break;
       case StereotaxicSpace::SPACE_FLIRT_222:
          break;
+      case StereotaxicSpace::SPACE_FNIRT:
+         break;
+      case StereotaxicSpace::SPACE_FNIRT_222:
+         break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F99:
@@ -760,6 +768,10 @@ BrainModelSurfaceToVolumeConverter::resampleVolumeToStandardSpace()
       case StereotaxicSpace::SPACE_FLIRT:
          break;
       case StereotaxicSpace::SPACE_FLIRT_222:
+         break;
+      case StereotaxicSpace::SPACE_FNIRT:
+         break;
+      case StereotaxicSpace::SPACE_FNIRT_222:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;

@@ -411,8 +411,13 @@ void Nifti2Header::getCiftiDimensions(std::vector< int >& dimensions)
 
 void Nifti2Header::setCiftiDimensions(std::vector< int >& dimensions)
 {
-   for (int i = 0; i < (int)dimensions.size() && i < 3; ++i)
-   {
-      m_header.dim[5 + i] = dimensions[i];
-   }
+    for (int i = 1; i < 5; ++i)
+    {
+        m_header.dim[i] = 1;//ignore xyzt dims
+    }
+    for (int i = 0; i < (int)dimensions.size() && i < 3; ++i)
+    {
+        m_header.dim[5 + i] = dimensions[i];
+        m_header.dim[0] = 5 + i;//yes, it sets it multiple times, but it keeps it consistent
+    }
 }

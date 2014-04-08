@@ -85,6 +85,10 @@ class GiftiLabelTable {
       // get label using its index
       QString getLabel(const int indx) const;
       
+      // get the label that best matches as a substring 
+      // in the beginning of the given name
+      int getBestMatchingLabelIndex(const QString& name) const;
+    
       // get all labels
       void getAllLabels(std::vector<QString>& labelsOut) const;
            

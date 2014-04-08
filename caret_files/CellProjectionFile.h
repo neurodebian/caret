@@ -80,6 +80,9 @@ class CellProjection : public CellBase {
       /// set the volume position
       void setVolumeXYZ(const float xyzIn[3]);
       
+      /// get the fiducial position
+    void getPosFiducial(float xyzOut[3]) const;
+    
       /// called to read from an XML DOM structure
       virtual void readXMLWithDOM(QDomNode& node) throw (FileException);
       

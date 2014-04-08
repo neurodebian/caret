@@ -814,7 +814,8 @@ class VolumeFile : public AbstractFile {
                             const VOXEL_DATA_TYPE writeVoxelDataType,
                             std::vector<VolumeFile*>& volumesToWrite,
                             const bool zipAfniBrikFile = false,
-                            const ColorFile* labelColorsForCaret6 = NULL) throw (FileException);
+                            const ColorFile* labelColorsForCaret6or7 = NULL,
+                            const int writeForCaretVersion = 5) throw (FileException);
                             
       /// read a raw volume file that has no header
       void readFileVolumeRaw(const QString& name,
@@ -1253,6 +1254,12 @@ class VolumeFile : public AbstractFile {
       /// write the file's memory in caret6 format to the specified name
       virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
+      /// write the file's memory in caret7 format to the specified name
+      virtual QString writeFileInCaret7Format(const QString& filenameIn, 
+                                              Structure structure,
+                                              const ColorFile* colorFileIn, 
+                                              const bool useCaret7ExtensionFlag) throw (FileException);
+    
       /// get study meta data link
       //StudyMetaDataLinkSet getStudyMetaDataLinkSet() const { return studyMetaDataLinkSet; }
 
@@ -1322,7 +1329,8 @@ class VolumeFile : public AbstractFile {
       static void writeFileNifti(const QString& fileNameIn,
                             const VOXEL_DATA_TYPE writeVoxelDataType,
                             std::vector<VolumeFile*>& volumesToWrite,
-                            const ColorFile* labelColorsForCaret6 = NULL) throw (FileException);
+                            const ColorFile* labelColorsForCaret6or7 = NULL,
+                                 const int writeForCaretVersion = 5) throw (FileException);
                             
       /// write the specified SPM sub-volumes
       static void writeFileSPM(const QString& fileNameIn,

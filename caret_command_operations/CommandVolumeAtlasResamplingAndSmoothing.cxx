@@ -98,7 +98,7 @@ CommandVolumeAtlasResamplingAndSmoothing::getHelpInformation() const
        + indent9 + "      output-volume      the output file\n"
        + indent9 + "\n"
        + indent9 + "      sigma      sigma for the weighting function for\n"
-       + indent9 + "                       weighted least squares\n"
+       + indent9 + "                       smoothing\n"
        + indent9 + "\n"
        + indent9 + "\n");
       

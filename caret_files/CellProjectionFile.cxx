@@ -577,7 +577,17 @@ CellProjection::setVolumeXYZ(const float xyzIn[3])
    volumeXYZ[2] = xyzIn[2];
    setModified();
 }
-      
+    
+/// get the fiducial position
+void
+CellProjection::getPosFiducial(float xyzOut[3]) const
+{
+    xyzOut[0] = posFiducial[0];
+    xyzOut[1] = posFiducial[1];
+    xyzOut[2] = posFiducial[2];
+}
+
+
 /**
  * Read a version 1 cell projection.
  */

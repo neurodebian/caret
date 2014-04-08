@@ -498,7 +498,7 @@ BrainModelCiftiROIDenseConnectomeGradient::execute() throw (BrainModelAlgorithmE
          --i;//move back
       }
    }
-   CiftiMatrixIndicesMapElement tempMapping;
+   /*CiftiMatrixIndicesMapElement tempMapping;//old code that modified old mapping instead of building a new one
    tempMapping.m_appliesToMatrixDimension.push_back(1);
    tempMapping.m_indicesMapToDataType = CIFTI_INDEX_TYPE_TIME_POINTS;
    tempMapping.m_timeStep = 1.0;
@@ -523,11 +523,11 @@ BrainModelCiftiROIDenseConnectomeGradient::execute() throw (BrainModelAlgorithmE
       outputValues[myRightIndexList[i] + rightOffset] = myRightOutput[i];
    }
    matrix->setMatrixData(outputValues, dimensions);//takes ownership of the pointer and deletes old matrix
-   m_inputCiftiFile->setCiftiMatrix(*matrix);//because getMatrix sets matrix to NULL for some reason
+   CiftiXML mycxml(myrootXML);
+   m_inputCiftiFile->setCiftiXML(mycxml);
+   m_inputCiftiFile->setCiftiMatrix(*matrix);//*///because getMatrix sets matrix to NULL for some reason
    
-   //TODO: fix implementation of CIFTI to handle single column partial surface files, then use below code
-   
-   /*int leftdim = (int)myLeftIndexList.size(), rightdim = (int)myRightIndexList.size();
+   int leftdim = (int)myLeftIndexList.size(), rightdim = (int)myRightIndexList.size();
    maparray.erase(maparray.begin(), maparray.end());//remove all existing mappings from the XML
    CiftiMatrixIndicesMapElement tempMapping;
    tempMapping.m_appliesToMatrixDimension.push_back(0);
@@ -577,6 +577,4 @@ BrainModelCiftiROIDenseConnectomeGradient::execute() throw (BrainModelAlgorithmE
    }
    matrix->setMatrixData(outputValues, dimensions);//takes ownership of the pointer and deletes old matrix
    m_inputCiftiFile->setCiftiMatrix(*matrix);//because getMatrix sets matrix to NULL for some reason
-   //*/
-   //TODO: figure out why this isn't outputting the right data
 }

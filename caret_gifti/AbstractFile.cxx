@@ -1154,12 +1154,21 @@ AbstractFile::readFileContents(QFile& file) throw (FileException)
          if (rootXmlElementTagName != "html") {
             if (rootXmlElementTagName.left(abName.length()) != abName) {
                std::ostringstream str;
-               str << "File's XML Root Element Tag Name should be " 
-                   << rootXmlElementTagName.toAscii().constData()
-                   << "\n"
-                   << "but it is "
-                   << rootElement.tagName().toAscii().constData()
-                   << ".\n";
+               if (rootElement.tagName() == "CaretSpecFile") {
+                  str << "The spec file selected is for use with\n"
+                      << "Workbench (Caret7) and cannot be read\n"
+                      << "by Caret5.  If you need to use this data\n"
+                      << "set, contact the Van Essen Lab for\n"
+                      << "assistance.";
+               }
+               else {
+                  str << "File's XML Root Element Tag Name should be " 
+                      << rootXmlElementTagName.toAscii().constData()
+                      << "\n"
+                      << "but it is "
+                      << rootElement.tagName().toAscii().constData()
+                      << ".\n";
+               }
                throw FileException(filename, str.str().c_str());
             }
          }
@@ -2674,6 +2683,31 @@ AbstractFile::writeFileInCaret6Format(const QString& filenameIn, Structure struc
    throw FileException(filenameIn
                        + " cannot be written in Caret6 format at this time.");
 }
+
+void
+AbstractFile::updateMetaDataForCaret7()
+{
+    this->removeHeaderTag("encoding");
+    this->removeHeaderTag("pubmed_id");
+    //this->setHeaderTag("Caret-Version", CaretVersion::getCaretVersionAsString());
+    this->removeHeaderTag("date");
+    this->setHeaderTag("Date", QDateTime::currentDateTime().toString(Qt::ISODate));
+    this->setHeaderTag("UserName", SystemUtilities::getUserName());
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+AbstractFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                      Structure structure,
+                                      const ColorFile* colorFileIn, 
+                                      const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    throw FileException(filenameIn
+                        + " cannot be written in Caret7 format at this time.");
+}
+
 #endif //CARET_FLAG
 /**
  * Write the file's header.
@@ -2743,10 +2777,7 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    }
    
    const QString imageExt = QImageReader::imageFormat(filename);
-   if (imageExt.isEmpty() == false) {
-      af = new ImageFile;
-   }
-   else if (filename.endsWith(SpecFile::getAreaColorFileExtension())) {
+   if (filename.endsWith(SpecFile::getAreaColorFileExtension())) {
       af = new AreaColorFile;
    }
    else if (filename.endsWith(SpecFile::getArealEstimationFileExtension())) {
@@ -2960,6 +2991,9 @@ AbstractFile::getSubClassDataFile(const QString& filename,
    }
    else if (ext == SpecFile::getGiftiGenericFileExtension()) {
       af = new GiftiDataArrayFile;
+   }
+   else if (imageExt.isEmpty() == false) {
+      af = new ImageFile;
    }
    else {
       errorMessageOut = "Unrecognized file extension = ";

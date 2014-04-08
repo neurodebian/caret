@@ -28,6 +28,7 @@
 /*LICENSE_END*/
 
 #include <cstdlib>
+#include <cstddef>
 
 /// class for a random number generator object used with standard library algorithms
 class StatisticRandomNumberOperator {

@@ -2,6 +2,18 @@ CONFIG	+= qt thread
 QT += network opengl xml
 QT -= qt3support
 
+#message("WINDOWS with MINGW")
+#message("If you get link errors with MinGW on windows ")
+#message("with OpenGL, you may to add the MinGW library ")
+#message("path from Qt's SDK into the link path. ")
+#message("   -L\C:\QtSDK\mingw\lib")
+#message("")
+#message("If you get a link error something like ")
+#message("GetStockObject@4, you may need to add ")
+#message("-mwindows into the link command")
+#message("")
+
+        
 #
 # when missing, it must be the GIFTI API library
 #
@@ -18,7 +30,9 @@ error("The environment variable for VTK includes \"VTK_INC_DIR\" not defined.")
 !exists( $(QTDIR)/include/Qt ) {
     !exists( $(QTDIR)/include/qt4/qt.h ) {
         !exists( $(QTDIR)/include/qt4/Qt ) {
-            error("The environment variable for QT \"QTDIR\" not defined.")
+            !exists( $(QTDIR)/include ) {
+                error("The environment variable for QT \"QTDIR\" not defined.")
+            }
         }
     }
 }
@@ -34,6 +48,7 @@ INCLUDEPATH += \
 ../caret_command_operations \
 ../caret_common \
 ../caret_gifti \
+../caret_gui \
 ../caret_statistics \
 ../caret_files \
 ../caret_uniformize \
@@ -45,6 +60,7 @@ DEPENDPATH += \
 ../caret_command_operations \
 ../caret_common \
 ../caret_gifti \
+../caret_gui \
 ../caret_statistics \
 ../caret_files \
 ../caret_uniformize \
@@ -209,7 +225,7 @@ win32 {
 # OsX Specific
 # 
 macx {
-    QMAKE_CXXFLAGS   += -fopenmp
+    QMAKE_CXXFLAGS   += -fopenmp -DCARET_OS_MACOSX
     QMAKE_LFLAGS     += -fopenmp
     INCLUDEPATH += ../caret_vtk4_classes
     INCLUDEPATH += $$(VTK_INC_DIR)/vtkmpeg2encode
@@ -342,16 +358,16 @@ unix:!macx:!ubuntu {
 #
 else:win32 {
     CONFIG(release,release|debug) {
-        QMAKE_CXXFLAGS_RELEASE -= -O1 -Wl,-O2
+        QMAKE_CXXFLAGS_RELEASE -= -O1 -Wl,-O2 
         QMAKE_LFLAGS_RELEASE -= -O1 -Wl,-O2
-        QMAKE_CXXFLAGS_RELEASE += -O2 -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS
+        QMAKE_CXXFLAGS_RELEASE += -O2 -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DCARET_OS_WINDOWS
         QMAKE_LFLAGS_RELEASE += -O2 -D_USE_MATH_DEFINES -STACK:10000000
     }
 
     CONFIG(debug,release|debug) {
-        QMAKE_CXXFLAGS_DEBUG -= -O2 
+        QMAKE_CXXFLAGS_DEBUG -= -O2
         QMAKE_LFLAGS_DEBUG -= -O2
-        QMAKE_CXXFLAGS_DEBUG += -D_DEBUG -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS
+        QMAKE_CXXFLAGS_DEBUG += -D_DEBUG -D_USE_MATH_DEFINES -wd"4290" -wd"4244" -wd"4267" -wd"4305" -wd"4100" -wd"4005" -MP -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DCARET_OS_WINDOWS
         QMAKE_LFLAGS_DEBUG += -DEBUG -STACK:10000000
     }
 }

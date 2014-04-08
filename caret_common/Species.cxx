@@ -43,6 +43,7 @@ Species::getAllSpeciesTypesAndNames(std::vector<TYPE>& speciesTypesOut,
    speciesTypesOut.push_back(TYPE_GORILLA);    speciesNamesOut.push_back("Gorilla");
    speciesTypesOut.push_back(TYPE_HUMAN);      speciesNamesOut.push_back("Human");
    speciesTypesOut.push_back(TYPE_MACAQUE);    speciesNamesOut.push_back("Macaque");
+   speciesTypesOut.push_back(TYPE_MARMOSET);    speciesNamesOut.push_back("Marmoset");
    speciesTypesOut.push_back(TYPE_MOUSE);      speciesNamesOut.push_back("Mouse");
    speciesTypesOut.push_back(TYPE_ORANGUTAN);  speciesNamesOut.push_back("Orangutan");
    speciesTypesOut.push_back(TYPE_RAT);        speciesNamesOut.push_back("Rat");

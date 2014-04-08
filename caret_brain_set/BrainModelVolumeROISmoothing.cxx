@@ -26,7 +26,9 @@
 #include "BrainModelVolumeROISmoothing.h"
 #include "VolumeFile.h"
 #include <cmath>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <iostream>
 
 using namespace std;
