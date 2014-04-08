@@ -1,4 +1,4 @@
-cd ..\caret
+cd ..\caret5
 %QTDIR%\bin\qmake -t app "CONFIG+= nmake"
 cd ..\caret_brain_set
 %QTDIR%\bin\qmake -t lib "CONFIG+= nmake"
@@ -20,9 +20,13 @@ cd ..\caret_files
 %QTDIR%\bin\qmake -t lib "CONFIG+= nmake"
 cd ..\caret_widgets
 %QTDIR%\bin\qmake -t lib "CONFIG+= nmake"
+cd ..\caret_gui
+%QTDIR%\bin\qmake -t lib "CONFIG+= nmake"
 cd ..\caret_command
 %QTDIR%\bin\qmake -t app "CONFIG+= nmake"
 cd ..\caret_edit
+%QTDIR%\bin\qmake -t app "CONFIG+= nmake"
+cd ..\wb_import
 %QTDIR%\bin\qmake -t app "CONFIG+= nmake"
 cd ..\windows
 

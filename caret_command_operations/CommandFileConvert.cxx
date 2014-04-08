@@ -800,13 +800,15 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
             conversionFormats.push_back(format);
          }
          else {
-            throw CommandException("Invalid file format name \""
+            throw CommandException("Invalid file output format name \""
                                    + formatName
                                    + "\"");
          }
       }
    }
 
+    QString allErrorMessages;
+    
    //
    // Process the files
    //
@@ -816,29 +818,39 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
    }
    for (int i = 0; i < numberOfDataFiles; i++) {
       const QString filename(dataFileNames[i]);
-      QString errorMessage;
       
       //
       // Skip directories and symbolic links
       //
       QFileInfo fileInfo(filename);
-      if (fileInfo.isDir() ||
-          fileInfo.isSymLink()) {
+       if (fileInfo.isDir()) {
+           continue;
+       }
+       else if (fileInfo.isSymLink()) {
+           allErrorMessages += (filename
+                                + "Error: is symbolic link\n");
          continue;
       }
       
       //
       // Read the header of the file
       //
-      AbstractFile* af = AbstractFile::readAnySubClassDataFile(filename, true, errorMessage);
+       QString readErrorMessage;
+      AbstractFile* af = AbstractFile::readAnySubClassDataFile(filename, true, readErrorMessage);
       
       std::cout << FileUtilities::basename(filename).toAscii().constData() << ": ";
       if (af == NULL) {
+          allErrorMessages += (filename
+                               + "Error: "
+                               + readErrorMessage
+                               + "\n");
          std::cout << "unable to read file or not a caret data file.\n"
                    << "error: " 
-                   << errorMessage.toAscii().constData();
+                   << readErrorMessage.toAscii().constData();
       }
       else if (af->getFileHasHeader() == false) {
+          allErrorMessages += (filename
+                               + "Error: file does not have header, cannot determine input format\n");
          std::cout << "file does not have header.";
       }
       else {
@@ -850,14 +862,16 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
          const AbstractFile::FILE_FORMAT dataFileFormat = 
             AbstractFile::convertFormatNameToType(formatString, &validFormatFlag);
             
-         if (infoFlag) {
-            if (validFormatFlag == false) {
-               std::cout << "unrecognized format: "
-                         << formatString.toAscii().constData(); 
-            }
-            else {
+          if (validFormatFlag == false) {
+              allErrorMessages += (filename
+                                   + "Error: unrecognized input encoding "
+                                   + formatString
+                                   + "\n");
+              std::cout << "unrecognized encoding: "
+              << formatString.toAscii().constData();
+          }
+         else if (infoFlag) {
                std::cout << formatString.toAscii().constData() << ".";
-            }
          }
          else {
             bool fileProcessedFlag = false;
@@ -873,6 +887,17 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
                else if (af->getCanWrite(conversionFormats[i])) {
                   try {
                      af->readFile(filename);
+                  }
+                   catch (FileException& e) {
+                       allErrorMessages += (filename
+                                            + "Error reading: "
+                                            + e.whatQString()
+                                            + "\n");
+                       std::cout << "error reading: "
+                       << e.whatQString().toAscii().constData()
+                       << std::endl;
+                   }
+                   try {
                      af->setFileWriteType(conversionFormats[i]);
                      
                      //
@@ -891,7 +916,11 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
                                << ".";
                   }
                   catch (FileException& e) {
-                     std::cout << "error converting or writing: "
+                      allErrorMessages += (filename
+                                           + "Error writing: "
+                                           + e.whatQString()
+                                           + "\n");
+                     std::cout << "error writing: "
                                << e.whatQString().toAscii().constData()
                                << std::endl;
                   }
@@ -903,6 +932,8 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
             }
             
             if (fileProcessedFlag == false) {
+                allErrorMessages += (filename
+                                     + " does not support desired format\n");
                std::cout << " does not support specified formats.";
             }
          }
@@ -913,6 +944,10 @@ CommandFileConvert::fileFormatConvert(const std::vector<QString>& dataFileNames,
       }
       
       std::cout << std::endl;
+       
+       if (allErrorMessages.isEmpty() == false) {
+           throw CommandException(allErrorMessages);
+       }
    }
 }
       

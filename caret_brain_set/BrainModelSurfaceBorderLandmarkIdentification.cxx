@@ -652,6 +652,10 @@ BrainModelSurfaceBorderLandmarkIdentification::getScalingForStereotaxicSpace(
          break;
       case StereotaxicSpace::SPACE_FLIRT_222:
          break;
+      case StereotaxicSpace::SPACE_FNIRT:
+         break;
+      case StereotaxicSpace::SPACE_FNIRT_222:
+         break;
       case StereotaxicSpace::SPACE_MACAQUE_F6:
          break;
       case StereotaxicSpace::SPACE_MACAQUE_F99:

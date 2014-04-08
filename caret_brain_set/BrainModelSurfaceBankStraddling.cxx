@@ -110,7 +110,7 @@ BrainModelSurfaceBankStraddling::execute() throw (BrainModelAlgorithmException)
       metricOut->addColumns(1);
    }
    metricOut->setColumnName(metricOutIndex, QString("Bank Straddling ") + QString::number(voxdim[0]) + QString("x") +
-                              QString::number(voxdim[0]) + QString("x") + QString::number(voxdim[0]) + QString("mm, ") +
+                              QString::number(voxdim[1]) + QString("x") + QString::number(voxdim[2]) + QString("mm, ") +
                               (interp ? QString("interpolated") : QString("enclosing")));
    int numNodes = source->getNumberOfCoordinates();
    int i, j, numInrange, whichnode, coordbase;//, worstnode;
@@ -157,13 +157,17 @@ BrainModelSurfaceBankStraddling::execute() throw (BrainModelAlgorithmException)
          {
             whichnode = inrange[j];
             coordbase = whichnode * 3;
-            tempf2 = (1 - std::abs(rootCoord[0] - sourceData[coordbase]) / selectrange[0]) *
-                        (1 - std::abs(rootCoord[1] - sourceData[coordbase + 1]) / selectrange[1]) *
-                        (1 - std::abs(rootCoord[2] - sourceData[coordbase + 2]) / selectrange[2]);
-            tempf3 = 1 - tempf2;
-            tempf2 *= tempf2;
-            tempf3 *= tempf3;
-            tempf2 /= (tempf2 + tempf3);//this is r^2 / (r^2 + (1 - r)^2), derived forced correlation
+            float weight[3], remain[3], weight2[3], remain2[3];//calculate weights for the other voxels and square them, in order to find the variance of the convolution of the other voxels' distributions
+            for (int k = 0; k < 3; ++k)
+            {
+                remain[k] = std::abs(rootCoord[k] - sourceData[coordbase + k]) / selectrange[k];
+                weight[k] = 1.0f - remain[k];
+                remain2[k] = remain[k] * remain[k];
+                weight2[k] = weight[k] * weight[k];
+            }
+            tempf2 = weight2[0] * weight2[1] * weight2[2];
+            tempf3 = (remain2[0] + weight2[0]) * (remain2[1] + weight2[1]) * (remain2[2] + weight2[2]) - tempf2;//this distributes out to all 8 variances, then we subtract the shared voxel to get the 7 non-shared
+            tempf2 /= tempf2 + tempf3;
             tempf2 *= distances[j];//times geodesic distance
             if (tempf2 > tempf)
             {

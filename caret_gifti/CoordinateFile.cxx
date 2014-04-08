@@ -1121,6 +1121,45 @@ CoordinateFile::updateMetaDataForCaret6()
 
    this->removeHeaderTag("topo_file");
 }
+
+/**
+ * Update the file's metadata for Caret7.
+ */
+void
+CoordinateFile::updateMetaDataForCaret7()
+{
+    QString coordTypeName = getHeaderTag(AbstractFile::headerTagConfigurationID);
+    if ((coordTypeName != "RAW") &&
+        (coordTypeName != "FIDUCIAL") &&
+        (coordTypeName != "INFLATED") &&
+        (coordTypeName != "VERY_INFLATED") &&
+        (coordTypeName != "SPHERICAL") &&
+        (coordTypeName != "ELLIPSOIDAL") &&
+        (coordTypeName != "CMW") &&
+        (coordTypeName != "FLAT") &&
+        (coordTypeName != "FLAT_LOBAR") &&
+        (coordTypeName != "HULL")) {
+        const QString& name = getFileNameNoPath().toLower();
+        if (name.contains("fiducial")
+            || name.contains("anatomical")
+            || name.contains("midthick")
+            || name.contains("pial")
+            || name.contains("white")) {
+            setHeaderTag(AbstractFile::headerTagConfigurationID, "FIDUCIAL");
+        }
+        else if (name.contains("inflate")) {
+            if (name.contains("very")) {
+                setHeaderTag(AbstractFile::headerTagConfigurationID, "VERY_INFLATED");
+            }
+            else {
+                setHeaderTag(AbstractFile::headerTagConfigurationID, "INFLATED");
+            }
+        }
+    }
+    
+    AbstractFile::updateMetaDataForCaret7();
+}
+
 /**
  * Write the file's memory in caret6 format to the specified name.
  */

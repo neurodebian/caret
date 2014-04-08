@@ -29,6 +29,8 @@
 
 #include <vector>
 
+#include <QWidget>
+
 #ifdef HAVE_QWT
 #include <qwt_plot.h>
 #endif // HAVE_QWT

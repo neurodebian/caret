@@ -455,6 +455,12 @@ class BorderFile : public AbstractFile {
       /// write the file's memory in caret6 format to the specified name
       virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
+    /// write the file's memory in caret7 format to the specified name
+    virtual QString writeFileInCaret7Format(const QString& filenameIn, 
+                                            Structure structure,
+                                            const ColorFile* colorFileIn, 
+                                            const bool useCaret7ExtensionFlag) throw (FileException);
+    
    protected:
       /// read the file's data
       void readFileData(QFile& file, QTextStream& stream, QDataStream& binStream,

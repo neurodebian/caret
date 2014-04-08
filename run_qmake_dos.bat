@@ -1,6 +1,10 @@
-cd caret
+cd caret5
 %QTDIR%\qmake\qmake "CONFIG += release" "CONFIG -= debug"
 REM %QTDIR%\qmake\qmake -makefile -t app
+cd ..
+cd caret_gui
+%QTDIR%\qmake\qmake "CONFIG += release" "CONFIG -= debug"
+REM %QTDIR%\qmake\qmake -makefile -t lib
 cd ..
 cd caret_brain_set
 %QTDIR%\qmake\qmake "CONFIG += release" "CONFIG -= debug"
@@ -27,6 +31,14 @@ cd caret_uniformize
 REM %QTDIR%\qmake\qmake -makefile -t lib
 cd ..
 cd caret_files
+%QTDIR%\qmake\qmake "CONFIG += release" "CONFIG -= debug"
+REM %QTDIR%\qmake\qmake -makefile -t lib
+cd ..
+cd caret_cifti
+%QTDIR%\qmake\qmake "CONFIG += release" "CONFIG -= debug"
+REM %QTDIR%\qmake\qmake -makefile -t lib
+cd ..
+cd caret_gifti
 %QTDIR%\qmake\qmake "CONFIG += release" "CONFIG -= debug"
 REM %QTDIR%\qmake\qmake -makefile -t lib
 cd ..

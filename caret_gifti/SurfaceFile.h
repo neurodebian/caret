@@ -90,6 +90,15 @@ class SurfaceFile : public GiftiDataArrayFile {
       /// write the file's memory in caret6 format to the specified name
       virtual QString writeFileInCaret6Format(const QString& filenameIn, Structure structure,const ColorFile* colorFileIn, const bool useCaret6ExtensionFlag) throw (FileException);
 
+    /// Update the file's metadata for Caret7
+    virtual void updateMetaDataForCaret7();
+    
+    /// write the file's memory in caret7 format to the specified name
+    virtual QString writeFileInCaret7Format(const QString& filenameIn, 
+                                            Structure structure,
+                                            const ColorFile* colorFileIn, 
+                                            const bool useCaret7ExtensionFlag) throw (FileException);
+    
    protected:
       // the copy helper used by copy constructor and assignement operator
       void copyHelperSurface(const SurfaceFile& sf);

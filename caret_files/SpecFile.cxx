@@ -2428,6 +2428,87 @@ SpecFile::convertToCaret6SpecFileTag(const QString& tagCaret5)
 }
 
 /**
+ * Convert to caret7 data file type tag, returns empty string if tag invalid for Caret6.
+ */
+QString
+SpecFile::convertToCaret7DataFileType(const QString& tagCaret5)
+{
+    static bool firstTimeFlag = true;
+    static std::map<QString,QString> tags;
+    
+    if (firstTimeFlag) {
+        firstTimeFlag = false;
+        
+        tags["area_color_file"]           = "";
+        tags["border_color_file"]         = "";
+        tags["border_file"]               = "BORDER";
+        tags["borderproj_file"]           = "BORDER";
+        tags["coord_file"]                = "";
+        tags["FIDUCIALcoord_file"]        = "";
+        tags["ELLIPSOIDcoord_file"]       = "";
+        tags["FLATcoord_file"]            = "";
+        tags["LOBAR_FLATcoord_file"]      = "";
+        tags["HULLcoord_file"]            = "";
+        tags["INFLATEDcoord_file"]        = "";
+        tags["VERY_INFLATEDcoord_file"]   = "";
+        tags["RAWcoord_file"]             = "";
+        tags["COMPRESSED_MEDIAL_WALLcoord_file"] = "";
+        tags["SPHERICALcoord_file"]       = "";
+        tags["fociproj_file"]             = "FOCI";
+        tags["foci_color_file"]           = "";
+        tags["foci_search_file"]          = "FOCI_SEARCH";
+        tags["gar_file"]                  = "";
+        tags["image_file"]                = "";
+        tags["label_file"]                = "LABEL";
+        tags["metric_file"]               = "METRIC";
+        tags["paint_file"]                = "LABEL";
+        tags["study_collection_file"]     = "STUDY_COLLECTION";
+        tags["study_metadata_file"]       = "STUDY_METADATA";
+        tags["surface_file"]              = "SURFACE";
+        tags["FIDUCIALsurface_file"]      = "SURFACE";
+        tags["ELLIPSOIDsurface_file"]     = "SURFACE";
+        tags["FLATsurface_file"]          = "SURFACE";
+        tags["LOBAR_FLATsurface_file"]    = "SURFACE";
+        tags["HULLsurface_file"]          = "SURFACE";
+        tags["INFLATEDsurface_file"]      = "SURFACE";
+        tags["VERY_INFLATEDsurface_file"] = "SURFACE";
+        tags["RAWsurface_file"]           = "SURFACE";
+        tags["COMPRESSED_MEDIAL_WALLsurface_file"] = "SURFACE";
+        tags["SPHERICALsurface_file"]     = "SURFACE";
+        tags["surface_shape_file"]        = "METRIC";
+        tags["topo_file"]                 = "";
+        tags["CLOSEDtopo_file"]           = "";
+        tags["CUTtopo_file"]              = "";
+        tags["LOBAR_CUTtopo_file"]        = "";
+        tags["OPENtopo_file"]             = "";
+        tags["vector_file"]               = "VECTOR";
+        tags["vocabulary_file"]           = "VOCABULARY";
+        tags["volume_file"]               = "VOLUME";
+        tags["volume_anatomy_file"]       = "VOLUME";
+        tags["volume_functional_file"]    = "VOLUME";
+        tags["volume_label_file"]         = "VOLUME";
+        tags["volume_paint_file"]         = "VOLUME";
+        tags["volume_prob_atlas_file"]    = "VOLUME";
+        tags["volume_rgb_file"]           = "VOLUME";
+        tags["volume_segmentation_file"]  = "VOLUME";
+        tags["volume_vector_file"]        = "VOLUME";
+    }
+    
+    QString newTag;
+    
+    for (std::map<QString,QString>::iterator iter = tags.begin();
+         iter != tags.end();
+         iter++) {
+        if (iter->first == tagCaret5) {
+            newTag = iter->second;
+            break;
+        }
+    }
+    
+    return newTag;
+}
+
+/**
  * Write the file's memory in caret6 format to the specified name.
  */
 QString
@@ -2514,6 +2595,93 @@ SpecFile::writeFileInCaret6Format(const QString& filenameIn, Structure structure
    file.close();
 
    return filenameIn;
+}
+
+/**
+ * Write the file's memory in caret6 format to the specified name.
+ */
+QString
+SpecFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                  Structure structure,
+                                  const ColorFile* colorFileIn, 
+                                  const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    if (allEntries.size() <= 0) {
+        throw FileException("Contains no foci");
+    }
+    
+    QFile file(filenameIn);
+    if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+        if (file.exists()) {
+            throw FileException("file exists and overwrite is prohibited.");
+        }
+    }
+    if (file.open(QFile::WriteOnly) == false) {
+        throw FileException("Unable to open for writing");
+    }
+    QTextStream stream(&file);
+    
+    XmlGenericWriter xmlWriter(stream);
+    xmlWriter.writeStartDocument();
+    
+    XmlGenericWriterAttributes attributes;
+    attributes.addAttribute("Version", "1");
+    xmlWriter.writeStartElement("CaretSpecFile", attributes);
+    
+    this->writeHeaderXMLWriter(xmlWriter);
+    
+    for (unsigned int i = 0; i < allEntries.size(); i++) {
+        Entry* entry = allEntries[i];
+        if (entry->getNumberOfFiles() > 0) {
+            XmlGenericWriterAttributes attributes;
+            QString dataFileType = SpecFile::convertToCaret7DataFileType(entry->getSpecFileTag());
+            if (dataFileType.isEmpty() == false) {
+                QString structureName = structure.getTypeAsString();
+                if (dataFileType.startsWith("COORDINATE") ||
+                    dataFileType.startsWith("LABEL") ||
+                    dataFileType.startsWith("METRIC") ||
+                    dataFileType.startsWith("SHAPE") ||
+                    dataFileType.startsWith("SURFACE") ||
+                    dataFileType.startsWith("TOPOLOGY")) {
+                    if (structureName == "cerebellum") {
+                        structureName = "Cerebellum";
+                    }
+                    else if (structureName == "left") {
+                        structureName = "CortexLeft";
+                    }
+                    else if (structureName == "right") {
+                        structureName = "CortexRight";
+                    }
+                }
+                else {
+                    structureName = "";
+                }
+                
+                attributes.addAttribute("DataFileType",
+                                        dataFileType);
+                attributes.addAttribute("Structure", structureName);
+                for (int j = 0; j < entry->getNumberOfFiles(); j++) {
+                    QString outName = entry->getFileName(j);
+                    if (outName.isEmpty() == false) {
+                        xmlWriter.writeElementCData("DataFile", attributes, outName);
+                    }
+                }
+            }
+            else {
+                std::cout << "WARNING, Unsupported specification file tag: "
+                << entry->getSpecFileTag().toAscii().constData()
+                << std::endl;
+            }
+        }
+    }
+    
+    xmlWriter.writeEndElement();
+    
+    xmlWriter.writeEndDocument();
+    
+    file.close();
+    
+    return filenameIn;
 }
 
 //!!***********************************************************************************

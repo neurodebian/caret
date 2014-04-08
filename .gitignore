@@ -5,6 +5,8 @@ moc_*
 *.pro.user
 caret/Makefile
 caret/caret5.app/
+caret5/Makefile
+caret5/caret5
 caret_brain_set/Makefile
 caret_command/Makefile
 caret_command/caret_command.app/
@@ -14,6 +16,7 @@ caret_edit/Makefile
 caret_edit/caret_edit.app/
 caret_files/Makefile
 caret_gifti/Makefile
+caret_gui/Makefile
 caret_statistics/Makefile
 caret_uniformize/Makefile
 caret_vtk4_classes/Makefile
@@ -24,6 +27,8 @@ caret_widgets/caret_widgets
 caret/caret5
 caret_command/caret_command
 caret_edit/caret_edit
+wb_import/Makefile
+wb_import/wb_import
 #ignore kdev projects
 .cproject
 *.kdev4
@@ -40,3 +45,4 @@ ipch
 *.cxx~
 *.h~
 data_files
+*.kate-swp

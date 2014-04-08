@@ -31,6 +31,17 @@
 #include <QGLWidget>  // includes OpenGL includes ;)
 #include <QMutex>
 
+#ifdef CARET_OS_WINDOWS
+#include <Windows.h>
+#endif
+#ifdef CARET_OS_MACOSX
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#else
+#include <GL/gl.h>
+#include <GL/glu.h>
+#endif
+
 #include "BorderFile.h"
 #include "BrainModel.h"
 #include "BrainModelOpenGLSelectedItem.h"

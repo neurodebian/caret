@@ -9670,7 +9670,8 @@ VolumeFile::writeFile(const QString& fileNameIn,
                       const VOXEL_DATA_TYPE writeVoxelDataType,
                       std::vector<VolumeFile*>& volumesToWrite,
                       const bool zipAfniBrikFile,
-                      const ColorFile* labelColorsForCaret6) throw (FileException)
+                      const ColorFile* labelColorsForCaret6or7,
+                      const int writeForCaretVersion) throw (FileException)
 {
    QFile file(fileNameIn);
    if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
@@ -9753,7 +9754,7 @@ VolumeFile::writeFile(const QString& fileNameIn,
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getNiftiVolumeFileExtension()) ||
             StringUtilities::endsWith(fileNameIn, SpecFile::getNiftiGzipVolumeFileExtension())) {
-      writeFileNifti(fileNameIn, writeVoxelDataType, volumesToWrite, labelColorsForCaret6);
+      writeFileNifti(fileNameIn, writeVoxelDataType, volumesToWrite, labelColorsForCaret6or7, writeForCaretVersion);
    }
    else if (StringUtilities::endsWith(fileNameIn, SpecFile::getWustlVolumeFileExtension())) {
       writeFileWuNil(fileNameIn, writeVoxelDataType, volumesToWrite);
@@ -11292,7 +11293,7 @@ VolumeFile::readFileNifti(const QString& fileNameIn,
       }
 
       if (caretExtensionString.isEmpty() == false) {
-         NiftiCaretExtension caretExtension(volumesReadOut, NULL);
+         NiftiCaretExtension caretExtension(volumesReadOut, NULL, 5);
          QString filesComment = "";
          caretExtension.readAndApplyExtensionToVolumes(caretExtensionString,
                                                        filesComment);
@@ -12785,7 +12786,8 @@ void
 VolumeFile::writeFileNifti(const QString& fileNameIn,
                            const VOXEL_DATA_TYPE writeVoxelDataTypeIn,
                            std::vector<VolumeFile*>& volumesToWrite,
-                           const ColorFile* labelColorsForCaret6) throw (FileException)
+                           const ColorFile* labelColorsForCaret6or7,
+                           const int writeForCaretVersion) throw (FileException)
 {
    const int numSubVolumes = static_cast<int>(volumesToWrite.size());
    if (numSubVolumes <= 0) {
@@ -13052,7 +13054,7 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    // create the extension
    //   
    firstVolume->afniHeader.setupFromVolumeFiles(volumesToWrite,
-                                                labelColorsForCaret6);
+                                                labelColorsForCaret6or7);
    QString afniExtensionString;
    firstVolume->afniHeader.writeToNiftiExtension(afniExtensionString,
                                                  &hdr);
@@ -13092,7 +13094,9 @@ VolumeFile::writeFileNifti(const QString& fileNameIn,
    //
    // Create the Caret extension
    //
-   NiftiCaretExtension caretExtensionCreator(volumesToWrite, labelColorsForCaret6);
+   NiftiCaretExtension caretExtensionCreator(volumesToWrite, 
+                                             labelColorsForCaret6or7,
+                                             writeForCaretVersion);
    QString caretExtensionString = caretExtensionCreator.getExtensionAsString();
    // Make sure niftiExtension length is a multiple of 16 bytes !!!!!
    // and that includes the "esize" and "ecode".
@@ -14787,10 +14791,76 @@ VolumeFile::writeFileInCaret6Format(const QString& filenameIn, Structure structu
                             voxelDataType,
                             volumes,
                             true,
-                            colorFileIn);
+                            colorFileIn,
+                            6);
 
       return name;
    }
 
    return "";
 }
+
+/**
+ * Write the file's memory in caret7 format to the specified name.
+ */
+QString
+VolumeFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                    Structure structure,
+                                    const ColorFile* colorFileIn, 
+                                    const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    //
+    // The generic method to read a volume file only reads the first volume
+    // so read again to get all volumes
+    //
+    QString nameToRead = this->getFileName();
+    std::vector<VolumeFile*> volumes;
+    VolumeFile::readFile(nameToRead, VOLUME_READ_SELECTION_ALL, volumes, false);
+    if (volumes.size() > 0) {
+        QString name = filenameIn;
+        if (useCaret7ExtensionFlag) {
+            if (name.endsWith(SpecFile::getNiftiGzipVolumeFileExtension()) == false) {
+                if (name.endsWith(SpecFile::getAfniVolumeFileExtension())) {
+                    name = FileUtilities::replaceExtension(filenameIn,
+                                                           SpecFile::getAfniVolumeFileExtension(),
+                                                           SpecFile::getNiftiGzipVolumeFileExtension());
+                }
+                else if (name.endsWith(SpecFile::getAnalyzeVolumeFileExtension())) {
+                    name = FileUtilities::replaceExtension(filenameIn,
+                                                           SpecFile::getAnalyzeVolumeFileExtension(),
+                                                           SpecFile::getNiftiGzipVolumeFileExtension());
+                }
+                else if (name.endsWith(SpecFile::getNiftiVolumeFileExtension())) {
+                    name = FileUtilities::replaceExtension(filenameIn,
+                                                           SpecFile::getNiftiVolumeFileExtension(),
+                                                           SpecFile::getNiftiGzipVolumeFileExtension());
+                }
+                else if (name.endsWith(SpecFile::getWustlVolumeFileExtension())) {
+                    name = FileUtilities::replaceExtension(filenameIn,
+                                                           SpecFile::getWustlVolumeFileExtension(),
+                                                           SpecFile::getNiftiGzipVolumeFileExtension());
+                }
+                else {
+                    name = FileUtilities::replaceExtension(filenameIn,
+                                                           "XXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+                                                           SpecFile::getNiftiGzipVolumeFileExtension());
+                }
+            }
+        }
+        
+        VOLUME_TYPE volumeType = volumes[0]->getVolumeType();
+        VOXEL_DATA_TYPE voxelDataType = volumes[0]->getVoxelDataType();
+        VolumeFile::writeFile(name,
+                              volumeType,
+                              voxelDataType,
+                              volumes,
+                              true,
+                              colorFileIn,
+                              7);
+        
+        return name;
+    }
+    
+    return "";
+}
+

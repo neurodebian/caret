@@ -30,6 +30,8 @@
 #define NOMINMAX
 #endif
 
+#include <QString>
+
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -46,6 +48,7 @@
 #include "BrainModelSurfacePointProjector.h"
 #include "CellFileProjector.h"
 #include "CellProjectionFile.h"
+#include "CellProjectionUnprojector.h"
 #include "MathUtilities.h"
 #include "TopologyFile.h"
 
@@ -140,6 +143,32 @@ CellFileProjector::projectFile(CellProjectionFile* cpf,
          progressDialog->setValue(numCells + 1);
          delete progressDialog;
       }
+       
+       
+       bool validateFlag = false;
+       if (validateFlag) {
+           for (int i = 0; i < numCells; i++) {
+               CellProjection* cp = cpf->getCellProjection(i);
+               const Structure::STRUCTURE_TYPE cellStructure = cp->getCellStructure();
+               if (cellStructure == hemisphere.getType()) {
+                   float fidXYZ[3];
+                   cp->getPosFiducial(fidXYZ);
+                   float xyz[3];
+                   if (cp->getProjectedPosition(coordinateFile, topologyFile, false, false, false, xyz)) {
+                       const float dist = MathUtilities::distance3D(fidXYZ, xyz);
+                       if (dist > 1.0) {
+                           QString msg = ("Cell Projection Failed "
+                                          + QString::number(i)
+                                          + " "
+                                          + cp->getName()
+                                          + ": distance="
+                                          + QString::number(dist,'f', 4));
+                           std::cout << qPrintable(msg) << std::endl;
+                       }
+                   }
+               }
+           }
+       }
    }
 }
 

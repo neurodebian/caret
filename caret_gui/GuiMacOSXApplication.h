@@ -48,7 +48,7 @@ class GuiMainWindow;
 /// This class allows the Mac OSX version of Caret to get the open file event
 /// that occurs when a ".spec" file is double clicked.
 class GuiMacOSXApplication : public QApplication {
-   Q_OBJECT
+//   Q_OBJECT
    
    public:
       // constructor

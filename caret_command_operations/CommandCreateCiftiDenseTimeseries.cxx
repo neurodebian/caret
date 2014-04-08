@@ -175,7 +175,7 @@ typedef struct {
 
 //void getMaskedVolumeValues(VolumeFile *vol, VolumeFile *roi, int timeSlice, std::vector< float > &values, std::vector < std::vector < unsigned long long > > &ijk) throw (FileException);
 //void getMaskedSurfaceValues(MetricFile *valuesFile, MetricFile *roiFile, int timeSlice, std::vector < float > &maskedValues, std::vector < unsigned long long > & indices) throw (FileException);
-void createCiftiFile(QString &inputVolume, std::vector < ciftiStructParamsType > &ciftiStructures, Nifti2Header &header, CiftiXML &xml, CiftiMatrix &matrix, float timeStep) throw (FileException);
+void createCiftiFile(QString &inputVolume, std::vector < ciftiStructParamsType > &ciftiStructures, Nifti2Header &header, CiftiXML &xml, CiftiMatrix &matrix, double timeStep) throw (FileException);
 void openCiftiStructures(QString &volumeFileName, VolumeFile *&vol, std::vector < ciftiStructParamsType > &ciftiStructureParams, std::vector < ciftiStructType > &ciftiStructures) throw (FileException);
 
 void getVolumeValuesOnly(VolumeFile *&vol, int timeSlice, std::vector < std::vector < unsigned long long > > &ijk, std::vector< float > &values) throw (FileException)
@@ -240,7 +240,7 @@ void getSurfaceValues(MetricFile* valuesFile, MetricFile* roiFile, int timeSlice
    }
 }
 
-void createCiftiFile(QString &inputVolume, std::vector < ciftiStructParamsType > &ciftiStructureParams, Nifti2Header &header, CiftiXML &xml, CiftiMatrix &matrix,float timeStep) throw (FileException)
+void createCiftiFile(QString &inputVolume, std::vector < ciftiStructParamsType > &ciftiStructureParams, Nifti2Header &header, CiftiXML &xml, CiftiMatrix &matrix,double timeStep) throw (FileException)
 {
    VolumeFile * vol = NULL;
    std::vector < ciftiStructType > ciftiStructures;
@@ -509,7 +509,7 @@ CommandCreateCiftiDenseTimeseries::executeCommand() throw (CommandException,
     QString outputMatrixFile;
     QString outputGiftiHeaderFile;
     int structLast=-1;//last Element in Cifti Structures vector
-    float timeStep = 1.0;
+    double timeStep = 1.0;
     
     
     while (parameters->getParametersAvailable()) {      
@@ -551,7 +551,7 @@ CommandCreateCiftiDenseTimeseries::executeCommand() throw (CommandException,
       }
       else if(paramValue == "-time-step")
       {
-         timeStep = parameters->getNextParameterAsFloat("Time Step");
+         timeStep = parameters->getNextParameterAsDouble("Time Step");
       }
       else if(paramValue == "-output-gifti-external-binary-header")
       {

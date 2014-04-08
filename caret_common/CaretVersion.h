@@ -34,7 +34,7 @@ class CaretVersion {
    public:
       /// Version 5.65, January 23, 2012
       /// get the version of caret as a QString
-      static QString getCaretVersionAsString() { return "5.65"; }
+      static QString getCaretVersionAsString() { return "5.66"; }
 };
 
 #endif // __CARET_VERSION_H__

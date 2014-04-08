@@ -540,3 +540,92 @@ SurfaceFile::writeFileInCaret6Format(const QString& filenameIn, Structure struct
 
    return name;
 }
+
+/**
+ * Update the file's metadata for Caret7.
+ */
+void
+SurfaceFile::updateMetaDataForCaret7()
+{
+    QString coordTypeName = getCoordinateType();
+    if ((coordTypeName != "RAW") &&
+        (coordTypeName != "FIDUCIAL") &&
+        (coordTypeName != "INFLATED") &&
+        (coordTypeName != "VERY_INFLATED") &&
+        (coordTypeName != "SPHERICAL") &&
+        (coordTypeName != "ELLIPSOIDAL") &&
+        (coordTypeName != "CMW") &&
+        (coordTypeName != "FLAT") &&
+        (coordTypeName != "FLAT_LOBAR") &&
+        (coordTypeName != "HULL")) {
+        const QString& name = getFileNameNoPath().toLower();
+        if (name.contains("fiducial")
+            || name.contains("anatomical")
+            || name.contains("midthick")
+            || name.contains("pial")
+            || name.contains("white")) {
+            setCoordinateType("FIDUCIAL");
+        }
+        else if (name.contains("inflate")) {
+            if (name.contains("very")) {
+                setCoordinateType("VERY_INFLATED");
+            }
+            else {
+                setCoordinateType("INFLATED");
+            }
+        }
+    }
+    
+    AbstractFile::updateMetaDataForCaret7();
+    
+    
+    //this->removeHeaderTag("topo_file");
+    
+    /*
+     switch (this->getTopologyType()) {
+     case TOPOLOGY_TYPE_CLOSED:
+     this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+     "Closed");
+     break;
+     case TOPOLOGY_TYPE_OPEN:
+     this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+     "Open");
+     break;
+     case TOPOLOGY_TYPE_CUT:
+     this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+     "Cut");
+     break;
+     case TOPOLOGY_TYPE_LOBAR_CUT:
+     this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+     "Cut");
+     break;
+     case TOPOLOGY_TYPE_UNKNOWN:
+     case TOPOLOGY_TYPE_UNSPECIFIED:
+     this->setHeaderTag(GiftiCommon::metaDataNameTopologicalType,
+     "Closed");
+     break;
+     }
+     
+     this->removeHeaderTag("perimeter_id");
+     */
+}
+
+/**
+ * Write the file's memory in caret7 format to the specified name.
+ */
+QString
+SurfaceFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                     Structure structure,
+                                     const ColorFile* colorFileIn, 
+                                     const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    QString name = filenameIn;
+    if (useCaret7ExtensionFlag) {
+        name = FileUtilities::replaceExtension(filenameIn, ".surface",
+                                               SpecFile::getGiftiSurfaceFileExtension());
+    }
+    this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+    this->writeFile(name);
+    
+    return name;
+}

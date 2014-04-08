@@ -327,6 +327,12 @@ class BrainModelSurface : public BrainModel {
                                          Structure structure,
                                          const bool useCaret6ExtensionFlag) throw (FileException);
 
+    /// write the file's memory in caret7 format to the specified name
+    QString writeSurfaceInCaret7Format(const QString& filenameIn,
+                                       const QString& prependToFileNameExtension,
+                                       Structure structure,
+                                       const bool useCaret7ExtensionFlag) throw (FileException);
+    
       /// get the structure
       Structure getStructure() const { return structure; }
       

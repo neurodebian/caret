@@ -27,6 +27,7 @@ HEADERS += AbstractFile.h \
 	   BrainVoyagerFile.h \
 	   ByteSwapping.h \
       Caret6ProjectedItem.h \
+      Caret7ProjectedItem.h \
       CaretScriptFile.h \
       CellClass.h \
       CellColorFile.h \
@@ -131,6 +132,7 @@ SOURCES += AbstractFile.cxx \
 	   BrainVoyagerFile.cxx \
 	   ByteSwapping.cxx \
       Caret6ProjectedItem.cxx \
+      Caret7ProjectedItem.cxx \
       CaretScriptFile.cxx \
       CellBase.cxx \
       CellColorFile.cxx \

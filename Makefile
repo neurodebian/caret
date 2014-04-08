@@ -1,15 +1,18 @@
 SHELL	= /bin/sh
 
-PROGS_CMD = caret_command
+PROGS_CMD = \
+	caret_command \
+	wb_import
 
 PROGS_GUI = \
-	  caret \
+	  caret5 \
 	  caret_edit 
 
 PROGS	= $(PROGS_CMD) \
 	  $(PROGS_GUI)
 
 UBUNTULIBS	= \
+          caret_gui \
 	  caret_statistics \
 	  caret_common \
           caret_gifti \

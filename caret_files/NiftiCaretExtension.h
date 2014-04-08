@@ -44,7 +44,8 @@ class NiftiCaretExtension {
        * Constructor.
        */
       NiftiCaretExtension(std::vector<VolumeFile*>& volumes,
-                          const ColorFile* labelColorsIn);
+                          const ColorFile* labelColorsIn,
+                          const int writeForCaretVersionIn);
 
       /**
        * Get the extension in a string for writing.
@@ -61,6 +62,8 @@ class NiftiCaretExtension {
       std::vector<VolumeFile*> volumes;
 
       const ColorFile* labelColors;
+    
+    const int writeForCaretVersion;
 };
 
 #endif	/* __NIFTI_CARET_EXTENSION_H__ */

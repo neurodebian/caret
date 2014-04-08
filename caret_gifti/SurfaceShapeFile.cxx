@@ -210,3 +210,24 @@ SurfaceShapeFile::writeFileInCaret6Format(const QString& filenameIn, Structure s
 
    return name;
 }
+
+/**
+ * Write the file's memory in caret7 format to the specified name.
+ */
+QString
+SurfaceShapeFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                          Structure structure,
+                                          const ColorFile* colorFileIn, 
+                                          const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    QString name = filenameIn;
+    if (useCaret7ExtensionFlag) {
+        name = FileUtilities::replaceExtension(filenameIn, ".surface_shape",
+                                               SpecFile::getGiftiFunctionalFileExtension());
+    }
+    this->setFileWriteType(AbstractFile::FILE_FORMAT_XML_GZIP_BASE64);
+    this->writeFile(name);
+    
+    return name;
+}
+

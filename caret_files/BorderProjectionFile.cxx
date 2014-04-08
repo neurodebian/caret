@@ -35,6 +35,7 @@
 #undef __BORDER_PROJECTION_MAIN__
 #include "ColorFile.h"
 #include "CoordinateFile.h"
+#include "FileUtilities.h"
 #include "MathUtilities.h"
 #include "SpecFile.h"
 #include "TopologyHelper.h"
@@ -1575,5 +1576,141 @@ BorderProjectionFile::writeFileInCaret6Format(const QString& filenameIn, Structu
    file.close();
 
    return filenameIn;
+}
+
+/**
+ * Write the file's memory in caret7 format to the specified name.
+ */
+QString
+BorderProjectionFile::writeFileInCaret7Format(const QString& filenameIn, 
+                                              Structure structure,
+                                              const ColorFile* colorFileIn, 
+                                              const bool useCaret7ExtensionFlag) throw (FileException)
+{
+    int numBorders = this->getNumberOfBorderProjections();
+    if (numBorders <= 0) {
+        throw FileException("Contains no borders");
+    }
+
+    QString name = filenameIn;
+    if (useCaret7ExtensionFlag) {
+        name = FileUtilities::replaceExtension(filenameIn, ".borderproj",
+                                               ".border");
+    }
+    QFile file(name);
+    if (AbstractFile::getOverwriteExistingFilesAllowed() == false) {
+        if (file.exists()) {
+            throw FileException("file exists and overwrite is prohibited.");
+        }
+    }
+    if (file.open(QFile::WriteOnly) == false) {
+        throw FileException("Unable to open for writing");
+    }
+    QTextStream stream(&file);
+    
+    XmlGenericWriter xmlWriter(stream);
+    xmlWriter.writeStartDocument();
+    
+    XmlGenericWriterAttributes attributes;
+    attributes.addAttribute("Version", "1.0");
+    xmlWriter.writeStartElement("BorderFile", attributes);
+    
+    this->writeHeaderXMLWriter(xmlWriter);
+    
+    GiftiLabelTable labelTable;
+    if (colorFileIn != NULL) {
+        labelTable.createLabelsFromColors(*colorFileIn);
+    }
+    labelTable.writeAsXML(xmlWriter);
+    
+    for (int i = 0; i < numBorders; i++) {
+        BorderProjection* bp = this->getBorderProjection(i);
+        int numLinks = bp->getNumberOfLinks();
+        if (numLinks > 0) {
+            
+            QString className = "";
+            QString colorName = "BLACK";
+            const QString borderName = bp->getName();
+            const int labelIndex = labelTable.getBestMatchingLabelIndex(borderName);
+            if (labelIndex >= 0) {
+                className = labelTable.getLabel(labelIndex);
+                if (className.isEmpty() == false) {
+                    colorName = "CLASS";
+                }
+            }
+            
+            xmlWriter.writeStartElement("Border");
+            
+            xmlWriter.writeElementCharacters("Name", 
+                                             borderName);
+            
+            xmlWriter.writeElementCharacters("ClassName", 
+                                             className);
+            xmlWriter.writeElementCharacters("ColorName",
+                                             colorName);
+            
+            QString structureName = "Invalid";
+            if (structure.isLeftCortex()) {
+                structureName = "CORTEX_LEFT";
+            }
+            else if (structure.isRightCortex()) {
+                structureName = "CORTEX_RIGHT";
+            }
+            else if (structure.isCerebellum()) {
+                structureName = "CEREBELLUM";
+            }
+            
+            for (int j = 0; j < numLinks; j++) {
+                BorderProjectionLink* bpl = bp->getBorderProjectionLink(j);
+                int section, nodes[3];
+                float areas[3], radius;
+                bpl->getData(section, nodes, areas, radius);
+                
+                //
+                // Area and node indices do not match in Caret5 but
+                // they do in Caret6
+                //  In Caret5:  node-index area-index
+                //                   0         1
+                //                   1         2
+                //                   2         0
+                //
+                // But caret5 was clockwise order and we want
+                // counter clockwise so
+                //
+                //    node-index  area-index
+                //        2            0
+                //        1            2
+                //        0            1
+                //
+                //
+                int nodesCaret6[3];
+                float areasCaret6[3];
+                areasCaret6[0] = areas[0];
+                areasCaret6[1] = areas[2];
+                areasCaret6[2] = areas[1];
+                nodesCaret6[0] = nodes[2];
+                nodesCaret6[1] = nodes[1];
+                nodesCaret6[2] = nodes[0];
+                
+                xmlWriter.writeStartElement("SurfaceProjectedItem");
+                xmlWriter.writeElementCharacters("Structure", structureName);
+                xmlWriter.writeStartElement("ProjectionBarycentric");
+                xmlWriter.writeElementCharacters("TriangleNodes", nodesCaret6, 3);
+                xmlWriter.writeElementCharacters("TriangleAreas", areasCaret6, 3);
+                xmlWriter.writeEndElement();
+                xmlWriter.writeEndElement();
+            }
+            
+            xmlWriter.writeEndElement();
+        }
+    }
+    
+    xmlWriter.writeEndElement();
+    
+    xmlWriter.writeEndDocument();
+    
+    file.close();
+    
+    return name;
 }
 
