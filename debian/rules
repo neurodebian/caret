@@ -49,7 +49,7 @@ configure: configure-stamp
 configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_brain_set \
                  caretcfg-caret_command_operations caretcfg-caret_files caretcfg-caret_cifti \
                  caretcfg-caret_uniformize caretcfg-caret_widgets caretcfg-caret_gifti \
-                 caretcfg-caret caretcfg-caret_command
+                 caretcfg-caret5 caretcfg-caret_command
 	dh_testdir
 	touch $@
 
@@ -59,7 +59,7 @@ build-stamp: configure \
              caretbuild-caret_statistics caretbuild-caret_common \
              caretbuild-caret_uniformize caretbuild-caret_widgets caretbuild-caret_files \
              caretbuild-caret_brain_set caretbuild-caret_cifti caretbuild-caret_gifti \
-             caretbuild-caret_command_operations caretbuild-caret caretbuild-caret_command
+             caretbuild-caret_command_operations caretbuild-caret5 caretbuild-caret_command
 	dh_testdir
 	touch $@
 
