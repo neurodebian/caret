@@ -16,9 +16,9 @@
  
  vs:TEMPLATE=vclib
  !vs:TEMPLATE=lib
---- a/caret/caret5.pro
-+++ b/caret/caret5.pro
-@@ -210,7 +210,7 @@
+--- a/caret5/caret5.pro
++++ b/caret5/caret5.pro
+@@ -223,7 +223,7 @@ ubuntu {
     
     LIBS += $$VTK_LIBS
     LIBS -= -lvtkjpeg -lvtkpng -lvtkexpat -lvtkzlib

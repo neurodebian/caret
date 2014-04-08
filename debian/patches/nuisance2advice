@@ -1,6 +1,6 @@
---- a/caret/main.cxx
-+++ b/caret/main.cxx
-@@ -613,11 +613,13 @@
+--- a/caret5/main.cxx
++++ b/caret5/main.cxx
+@@ -613,11 +613,13 @@ main(int argc, char* argv[])
  #endif
  
  #ifdef UBUNTU
@@ -17,7 +17,7 @@
     if (initialSpecFiles.empty() == false) {
 --- a/caret_common/UbuntuMessage.h
 +++ b/caret_common/UbuntuMessage.h
-@@ -18,7 +18,7 @@
+@@ -18,7 +18,7 @@ public:
        "Only versions of Caret downloaded from the above web site "
        "are supported by the Van Essen Laboratory."
        "\n\n"
@@ -26,7 +26,7 @@
        "distributed, nor supported, by the Van Essen Laboratory."
        "\n\n"
        "Some functionality may be missing if Caret cannot locate "
-@@ -33,10 +33,15 @@
+@@ -33,10 +33,15 @@ public:
        "   - Surface-Based Registration\n"
        "   - Surface Flattening\n"
        "\n"
@@ -44,7 +44,7 @@
        "software and these third party packages may not be "
        "compatible with Caret.  As a result, some functions in Caret "
        "may not operate correctly.  Faulty surface drawing is one "
-@@ -45,4 +50,4 @@
+@@ -45,4 +50,4 @@ public:
        return s;
     }
  };
