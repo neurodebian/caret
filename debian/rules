@@ -24,7 +24,20 @@ else
 	CXXFLAGS += -O2
 endif
 
+%:
+	dh $@ --parallel --buildsystem=cmake
 
+override_dh_auto_configure:
+	OSMESA_DIR=/usr \
+     dh_auto_configure -- \
+		-DCMAKE_SKIP_RPATH:BOOL=OFF \
+		-DCARET_BUILDID="$(BUILD_ID)"
+#
+#		-DVTK_DIR:PATH=$(VTK_LIB_DIR) \
+#		-DNETCDF_DIR:PATH=$(NET
+
+
+# OLD STYLE
 caretcfg-%:
 	@echo "Configuring: '$*'"
 	cd $* && qmake-qt4 "CONFIG+=release ubuntu dll" \
@@ -45,8 +58,8 @@ caretclean-%:
 	-cd $* && rm Makefile
 
 
-configure: configure-stamp
-configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_brain_set \
+_configure: configure-stamp
+_configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_brain_set \
                  caretcfg-caret_command_operations caretcfg-caret_files caretcfg-caret_cifti \
                  caretcfg-caret_uniformize caretcfg-caret_widgets caretcfg-caret_gifti \
                  caretcfg-caret_gui caretcfg-caret5 caretcfg-caret_command
@@ -54,8 +67,8 @@ configure-stamp: caretcfg-caret_statistics caretcfg-caret_common caretcfg-caret_
 	touch $@
 
 
-build: build-stamp
-build-stamp: configure \
+_build: build-stamp
+_build-stamp: configure \
              caretbuild-caret_statistics caretbuild-caret_common \
              caretbuild-caret_uniformize caretbuild-caret_widgets caretbuild-caret_files \
              caretbuild-caret_brain_set caretbuild-caret_cifti caretbuild-caret_gifti \
@@ -65,7 +78,7 @@ build-stamp: configure \
 	touch $@
 
 
-clean: caretclean-caret_statistics caretclean-caret_common caretclean-caret_brain_set \
+_clean: caretclean-caret_statistics caretclean-caret_common caretclean-caret_brain_set \
        caretclean-caret_command_operations caretclean-caret_cifti caretclean-caret_files \
        caretclean-caret_uniformize caretclean-caret_widgets caretclean-caret5 \
        caretclean-caret_gui caretclean-caret_command caretclean-caret_gifti
@@ -74,36 +87,36 @@ clean: caretclean-caret_statistics caretclean-caret_common caretclean-caret_brai
 	-find . -name '*.so' -exec rm '{}' \;
 	-rm caret5/caret5 caret_command/caret_command
 	rm -f build-stamp configure-stamp
-	
+
 	dh_clean
 
 
-install: build
+_install: build
 	dh_testdir
 	dh_testroot
 	dh_prep
 	dh_installdirs
-	
-	# install internal libs
+
+	: # install internal libs
 	find $(CURDIR) -name '*.so' -exec cp \{\} $(CURDIR)/debian/caret/usr/lib/caret/lib \;
-	
-	# install binaries
+
+	: # install binaries
 	cp caret/caret5 caret_command/caret_command $(CURDIR)/debian/caret/usr/lib/caret/bin
-	
-	# ensure executable permissions for wrapper script
+
+	: # ensure executable permissions for wrapper script
 	chmod +x debian/caret_app_wrapper
 
 
 # Build architecture-independent files here.
-binary-indep: build install
+_binary-indep: build install
 # We have nothing to do by default.
 
 # dummy targets
-build-arch: build
-build-indep: build
+_build-arch: build
+_build-indep: build
 
 # Build architecture-dependent files here.
-binary-arch: build install
+_binary-arch: build install
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs
@@ -122,5 +135,5 @@ binary-arch: build install
 	dh_builddeb
 
 
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install configure
+_binary: binary-indep binary-arch
+__PHONY: build clean binary-indep binary-arch binary install configure
