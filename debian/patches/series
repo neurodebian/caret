@@ -3,5 +3,3 @@ no_undefineds
 ifdef_fixes
 version_suffix
 nuisance2advice
-deb_missing_links
-deb_no_vtk4_classes
