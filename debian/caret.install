@@ -1,3 +1,3 @@
 debian/caret_app_wrapper usr/lib/caret/bin
 debian/caret.desktop usr/share/applications
-caret/caret5.png usr/share/pixmaps
+caret5/caret5.png usr/share/pixmaps
