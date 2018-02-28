@@ -3,3 +3,9 @@ no_undefineds
 ifdef_fixes
 version_suffix
 nuisance2advice
+no-vtk4-dir
+another-buildid-fix
+caret5-libs
+caret-command-libs
+caret-edit-libs
+wb-import-libs
