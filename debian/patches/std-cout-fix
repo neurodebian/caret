@@ -1,0 +1,11 @@
+--- a/caret_brain_set/BrainModelVolumeSureFitSegmentation.cxx
++++ b/caret_brain_set/BrainModelVolumeSureFitSegmentation.cxx
+@@ -3845,7 +3845,7 @@
+ {
+ 	//%printf("#### GenerateOuterBoundary begin ####\n");
+    if (DebugControl::getDebugOn()) {
+-      std::cout << "#### GenerateOuterBoundary ####" << std::cout;
++      std::cout << "#### GenerateOuterBoundary ####" << std::endl;
+    }
+    
+ 	//%int i;

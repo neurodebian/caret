@@ -9,3 +9,8 @@ caret5-libs
 caret-command-libs
 caret-edit-libs
 wb-import-libs
+GuiMapFmriDialog-fix-call
+vtk6-adaptations
+BrainSetCtorFix
+std-cout-fix
+brain-set-writer-hack

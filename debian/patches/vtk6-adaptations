@@ -1,0 +1,950 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -9,7 +9,7 @@
+ #
+ MESSAGE("   ")
+ MESSAGE("REQUIRED environment variables for VTK:")
+-MESSAGE("   VTK_DIR - The directory containing the VTK include and lib directories")
++MESSAGE("   VTK_DIR - The directory containing the VTK include and lib directories:" ${VTK_DIR})
+ MESSAGE("   ")
+ MESSAGE("OPTIONAL environment variables for MINC and NETCDF:")
+ MESSAGE("   MINC_DIR - The directory containing the MINC include and lib directories")
+@@ -116,11 +116,16 @@
+ 
+ #=================================================================================
+ SET (VTK_DIR $ENV{VTK_DIR})
+-FIND_PACKAGE(VTK REQUIRED)
++FIND_PACKAGE(VTK REQUIRED NO_MODULE)
+ IF (VTK_FOUND)
+   MESSAGE("VTK: " ${VTK_INCLUDE_DIRS})
+   MESSAGE("VTK: " ${VTK_LIBRARY_DIRS})
+   INCLUDE(${VTK_USE_FILE})
++  ADD_DEFINITIONS( -DHAVE_VTK )
++  ADD_DEFINITIONS( -DHAVE_VTK5 )
++  IF (VTK_MAJOR_VERSION EQUAL 6)
++    ADD_DEFINITIONS( -DHAVE_VTK6 )
++  ENDIF (VTK_MAJOR_VERSION EQUAL 6)
+ ELSE (VTK_FOUND)
+    MESSAGE(FATAL_ERROR "VTK not found, is environment variable VTK_DIR set?")
+ ENDIF(VTK_FOUND)
+@@ -142,8 +147,6 @@
+ # 
+ ADD_DEFINITIONS( -DCARET_BUILDID=${CARET_BUILDID} )
+ ADD_DEFINITIONS( -DCARET_FLAG )
+-ADD_DEFINITIONS( -DHAVE_VTK )
+-ADD_DEFINITIONS( -DHAVE_VTK5 )
+ 
+ #=================================================================================
+ #
+@@ -278,35 +281,6 @@
+ ENDIF (OPENGL_FOUND)
+ 
+ 
+-#=================================================================================
+-SET (VTK_LIBRARIES
+-            -L${VTK_LIBRARY_DIRS}
+-            vtkFiltering 
+-            vtkGenericFiltering 
+-            vtkImaging 
+-            vtkGraphics 
+-            vtkIO 
+-            vtkFiltering 
+-            vtkCommon 
+-            vtksys)
+-#            vtkjpeg 
+-#            vtkpng 
+-#            vtkexpat 
+-#            vtkzlib)
+-
+-#SET (VTK_LIBRARIES
+-#            -lvtkFiltering 
+-#            -lvtkGenericFiltering 
+-#            -lvtkImaging 
+-#            -lvtkGraphics 
+-#            -lvtkIO 
+-#            -lvtkFiltering 
+-#            -lvtkCommon 
+-#            -lvtksys 
+-#            -lvtkjpeg 
+-#            -lvtkpng 
+-#            -lvtkexpat 
+-#            -lvtkzlib)
+ 
+ #=================================================================================
+ #
+--- a/caret_gui/GuiRecordingDialog.cxx
++++ b/caret_gui/GuiRecordingDialog.cxx
+@@ -851,9 +851,13 @@
+ 
+    vtkImageData* vtkImage = vtkImageData::New();
+    vtkImage->SetDimensions(width, height, 1);
++#ifdef HAVE_VTK6
++   vtkImage->AllocateScalars(VTK_FLOAT, 3);
++#else
+    vtkImage->SetScalarType(VTK_UNSIGNED_CHAR);
+    vtkImage->SetNumberOfScalarComponents(3);
+    vtkImage->AllocateScalars();
++#endif
+    unsigned char* vtkData = static_cast<unsigned char*>(vtkImage->GetScalarPointer());
+    
+    //
+@@ -889,10 +893,18 @@
+       vtkMpeg1MovieWriter = vtkMPEG1Writer::New();
+       vtkMpeg1MovieWriter->DebugOn();
+       vtkMpeg1MovieWriter->SetFileName(movieNameLineEdit->text().toAscii().constData());
++#ifdef HAVE_VTK6
++      vtkMpeg1MovieWriter->SetInputData(vtkImage);
++#else
+       vtkMpeg1MovieWriter->SetInput(vtkImage);
++#endif
+       vtkMpeg1MovieWriter->Start();
+    }
++#ifdef HAVE_VTK6
++   vtkMpeg1MovieWriter->SetInputData(vtkImage);
++#else
+    vtkMpeg1MovieWriter->SetInput(vtkImage);
++#endif
+    vtkMpeg1MovieWriter->Write();
+ 
+    vtkImage->Delete();
+@@ -916,10 +928,18 @@
+       vtkMpeg2MovieWriter = vtkMPEG2Writer::New();
+       vtkMpeg2MovieWriter->DebugOn();
+       vtkMpeg2MovieWriter->SetFileName(fileName.toAscii().constData());
++#ifdef HAVE_VTK6
++      vtkMpeg2MovieWriter->SetInputData(vtkImage);
++#else
+       vtkMpeg2MovieWriter->SetInput(vtkImage);
++#endif
+       vtkMpeg2MovieWriter->Start();
+    }
++#ifdef HAVE_VTK6
++   vtkMpeg2MovieWriter->SetInputData(vtkImage);
++#else
+    vtkMpeg2MovieWriter->SetInput(vtkImage);
++#endif
+    vtkMpeg2MovieWriter->Write();
+ 
+    vtkImage->Delete();
+@@ -943,7 +963,11 @@
+       vtkAviMovieWriter = vtkAVIWriter::New();
+       vtkAviMovieWriter->DebugOn();
+       vtkAviMovieWriter->SetFileName(movieNameLineEdit->text().toAscii().constData());
++#ifdef HAVE_VTK6
++      vtkAviMovieWriter->SetInputData(vtkImage);
++#else
+       vtkAviMovieWriter->SetInput(vtkImage);
++#endif
+       vtkAviMovieWriter->Start();
+    }
+ /*
+@@ -952,7 +976,11 @@
+  *     jpeg->SetInput(vtkImage);
+  *     jpeg->Write();
+  */
++#ifdef HAVE_VTK6
++   vtkAviMovieWriter->SetInputData(vtkImage);
++#else
+    vtkAviMovieWriter->SetInput(vtkImage);
++#endif
+    vtkAviMovieWriter->Write();
+ 
+    vtkImage->Delete();
+--- a/caret_files/TopologyHelper.cxx
++++ b/caret_files/TopologyHelper.cxx
+@@ -171,7 +171,11 @@
+    vtkTriangleFilter *triangleFilter = NULL;
+    if (vtk->GetNumberOfStrips() > 0) {
+       triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++      triangleFilter->SetInputData(vtk);
++#else
+       triangleFilter->SetInput(vtk);
++#endif
+       triangleFilter->Update();
+       vtk = triangleFilter->GetOutput();
+    }
+--- a/caret_command_operations/CommandSurfaceToCerebralHull.cxx
++++ b/caret_command_operations/CommandSurfaceToCerebralHull.cxx
+@@ -205,7 +205,11 @@
+    // Write the Hull VTK file
+    //
+    vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++   writer->SetInputData(hullPolyData);
++#else
+    writer->SetInput(hullPolyData);
++#endif
+    writer->SetHeader("Written by Caret");
+    writer->SetFileName((char*)outputCerebralHullVtkFileName.toAscii().constData());
+    writer->Write();
+--- a/caret_brain_set/BrainModelContourToSurfaceConverter.cxx
++++ b/caret_brain_set/BrainModelContourToSurfaceConverter.cxx
+@@ -312,7 +312,11 @@
+    
+    if (DebugControl::getDebugOn()) {
+       vtkPolyDataWriter* contourWriter = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      contourWriter->SetInputData(contours);
++#else
+       contourWriter->SetInput(contours);
++#endif
+       contourWriter->SetHeader("");
+       contourWriter->SetFileName("contours.vtk");
+       contourWriter->Write();
+@@ -324,7 +328,11 @@
+    //
+    vtkVoxelContoursToSurfaceFilter *surface = 
+                           vtkVoxelContoursToSurfaceFilter::New();
++#ifdef HAVE_VTK6
++   surface->SetInputData(contours);
++#else
+    surface->SetInput(contours);
++#endif
+    surface->SetMemoryLimitInBytes(1000000000);
+    
+    //
+@@ -332,7 +340,11 @@
+    //
+    if (DebugControl::getDebugOn()) {
+       vtkPolyDataWriter* writer1 = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer1->SetInputConnection(surface->GetOutputPort());
++#else
+       writer1->SetInput(surface->GetOutput());
++#endif
+       writer1->SetHeader("");
+       writer1->SetFileName("raw_surface.vtk");
+       writer1->Write();
+@@ -344,7 +356,11 @@
+    // Make sure mesh is only triangles
+    //
+    vtkTriangleFilter *triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++   triangleFilter->SetInputConnection(surface->GetOutputPort());
++#else
+    triangleFilter->SetInput(surface->GetOutput());
++#endif
+    triangleFilter->Update();
+    
+    //
+@@ -418,8 +434,11 @@
+    if (polygonLimit < numberOfPolygons) {
+    
+       clean1 = vtkCleanPolyData::New();
++#ifdef HAVE_VTK6
++      clean1->SetInputData(surfaceData);
++#else
+       clean1->SetInput(surfaceData);
+-      
++#endif
+       if (DebugControl::getDebugOn()) {
+          std::cout << "Before decimation surface has " << numberOfPolygons
+                    << " polygons." << std::endl;
+@@ -427,7 +446,11 @@
+       const double errorVal = 0.001;
+       const double reduction = 1.0 - static_cast<double>(polygonLimit) / static_cast<double>(numberOfPolygons);
+       decimater = vtkDecimatePro::New();
++#ifdef HAVE_VTK6
++      decimater->SetInputConnection(clean1->GetOutputPort());
++#else
+       decimater->SetInput(clean1->GetOutput());
++#endif
+       decimater->SetTargetReduction(reduction); //0.90);
+       decimater->PreserveTopologyOn();
+       decimater->SetFeatureAngle(180.0); //5); //30);
+@@ -441,7 +464,11 @@
+       decimater->SetErrorIsAbsolute(1);
+       
+       vtkCleanPolyData* clean2 = vtkCleanPolyData::New();
++#if HAVE_VTK6
++      clean2->SetInputConnection(decimater->GetOutputPort());
++#else
+       clean2->SetInput(decimater->GetOutput());
++#endif
+       clean2->Update();
+       surfaceData = clean2->GetOutput();
+       
+@@ -505,7 +532,11 @@
+    //
+    if (DebugControl::getDebugOn()) {
+       vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer->SetInputData(surfaceData);
++#else
+       writer->SetInput(surfaceData);
++#endif
+       writer->SetHeader("");
+       writer->SetFileName("surface.vtk");
+       writer->Write();
+--- a/caret_brain_set/BrainModelSurface.cxx
++++ b/caret_brain_set/BrainModelSurface.cxx
+@@ -1293,7 +1293,11 @@
+          polyData->SetPolys(cells);
+          
+          vtkPolyDataNormals* normals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++         normals->SetInputData(polyData);
++#else
+          normals->SetInput(polyData);
++#endif
+          normals->SplittingOff();
+          normals->ConsistencyOn();
+          normals->ComputePointNormalsOn();
+@@ -1424,7 +1428,11 @@
+       vtkTriangleFilter* triangleFilter = NULL;
+       if (polyData->GetNumberOfStrips() > 0) {
+          triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++         triangleFilter->SetInputData(polyData);
++#else
+          triangleFilter->SetInput(polyData);
++#endif
+          triangleFilter->Update();
+          polyData->Delete();
+          polyData = triangleFilter->GetOutput();
+@@ -1807,7 +1815,11 @@
+    //    Compute Normals for the points.
+    //
+    vtkPolyDataNormals* polyNormals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++   polyNormals->SetInputData(polyData);
++#else
+    polyNormals->SetInput(polyData);
++#endif
+    polyNormals->SplittingOff(); 
+    polyNormals->ConsistencyOn();
+    polyNormals->ComputePointNormalsOn(); 
+@@ -7708,14 +7720,22 @@
+       // Set up to Decimate the polygon data
+       //
+       vtkDecimatePro* decimater = vtkDecimatePro::New();
++#ifdef HAVE_VTK6
++      decimater->SetInputData(inputPolyData);
++#else
+       decimater->SetInput(inputPolyData);
++#endif
+       const float reduction = 1.0 - ((float)maxPolygons /
+                                      (float)numTriangles);
+       if (DebugControl::getDebugOn()) {
+          std::cout << "Reduction is " << reduction * 100.0 << "%" << std::endl;
+       }
+       const double errorVal = VTK_DOUBLE_MAX; //1.0;
++#ifdef HAVE_VTK6
++      decimater->SetInputData(inputPolyData);
++#else
+       decimater->SetInput(inputPolyData);
++#endif
+       decimater->SetTargetReduction(reduction);
+       decimater->PreserveTopologyOff(); //On();
+       decimater->SetFeatureAngle(30);
+@@ -7732,7 +7752,11 @@
+       // Compute normals on the surface
+       //
+       vtkPolyDataNormals* vtkNormals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++      vtkNormals->SetInputConnection(decimater->GetOutputPort());
++#else
+       vtkNormals->SetInput(decimater->GetOutput());
++#endif
+       vtkNormals->SplittingOff();
+       vtkNormals->ConsistencyOn();
+       vtkNormals->ComputePointNormalsOn();
+--- a/caret_brain_set/BrainModelVolumeToSurfaceConverter.cxx
++++ b/caret_brain_set/BrainModelVolumeToSurfaceConverter.cxx
+@@ -226,7 +226,11 @@
+    // Shrinker - does this actually do anything ?
+    //
+    vtkImageShrink3D* shrinker = vtkImageShrink3D::New();
++#ifdef HAVE_VTK6
++   shrinker->SetInputData(sp);
++#else
+    shrinker->SetInput(sp);
++#endif
+    shrinker->SetShrinkFactors(1, 1, 1);
+    shrinker->AveragingOn();
+ 
+@@ -236,8 +240,11 @@
+    vtkImageGaussianSmooth* gaussian = vtkImageGaussianSmooth::New();
+    gaussian->SetDimensionality(3);
+    gaussian->SetStandardDeviation(0);
++#ifdef HAVE_VTK6
++   gaussian->SetInputConnection(shrinker->GetOutputPort());
++#else
+    gaussian->SetInput(shrinker->GetOutput());
+-   
++#endif
+    gaussian->Update();
+    vtkImageData* gaussOut = gaussian->GetOutput();
+    gaussOut->GetBounds(bounds);
+@@ -253,7 +260,11 @@
+    // Marching cubes converts volume to a surface
+    //
+    vtkMarchingCubes* mc = vtkMarchingCubes::New();
++#ifdef HAVE_VTK6
++   mc->SetInputConnection(gaussian->GetOutputPort());
++#else
+    mc->SetInput(gaussian->GetOutput());
++#endif
+    //mc->SetValue(0, 511.5);
+    mc->SetValue(0, 127.5);
+    mc->ComputeScalarsOff();
+@@ -264,17 +275,28 @@
+    // Clean up surface created by marching cubes
+    //
+    vtkCleanPolyData* clean = vtkCleanPolyData::New();
++#ifdef HAVE_VTK6
++   clean->SetInputConnection(mc->GetOutputPort());
++#else
+    clean->SetInput(mc->GetOutput());
+-   
++#endif
+    //
+    // Make sure mesh is only triangles
+    //
+    vtkTriangleFilter *triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++   triangleFilter->SetInputConnection(clean->GetOutputPort());
++#else
+    triangleFilter->SetInput(clean->GetOutput());
++#endif
+    if (DebugControl::getDebugOn()) {
+       triangleFilter->Update();
+       vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer->SetInputConnection(triangleFilter->GetOutputPort());
++#else
+       writer->SetInput(triangleFilter->GetOutput());
++#endif
+       writer->SetFileName("surface_undecimated.vtk");
+       writer->Write();
+       writer->Delete();
+@@ -303,7 +325,11 @@
+       //if (maxPolygonsFlag) {
+       //   errorVal = 0.0;
+       //}
++#ifdef HAVE_VTK6
++      decimater->SetInputConnection(triangleFilter->GetOutputPort());
++#else
+       decimater->SetInput(triangleFilter->GetOutput());
++#endif
+       decimater->SetTargetReduction(0.90);
+       decimater->PreserveTopologyOn();
+       decimater->SetFeatureAngle(30.0);  //45.0); //1);   // orig == 30
+@@ -321,7 +347,11 @@
+          decimater->Update();
+          decimater->PrintSelf(std::cout, static_cast<vtkIndent>(3));
+          vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++         writer->SetInputConnection(decimater->GetOutputPort());
++#else
+          writer->SetInput(decimater->GetOutput());
++#endif
+          writer->SetFileName("surface_decimated.vtk");
+          writer->Write();
+          writer->Delete();
+@@ -333,10 +363,18 @@
+    //
+    vtkCleanPolyData* clean2 = vtkCleanPolyData::New();
+    if (decimater != NULL) {
+-      clean2->SetInput(decimater->GetOutput());
++#ifdef HAVE_VTK6
++	      clean2->SetInputConnection(decimater->GetOutputPort());
++#else
++	      clean2->SetInput(decimater->GetOutput());
++#endif
+    }
+    else {
++#ifdef HAVE_VTK6
++      clean2->SetInputConnection(triangleFilter->GetOutputPort());
++#else
+       clean2->SetInput(triangleFilter->GetOutput());
++#endif
+    }
+    
+    //
+@@ -348,7 +386,11 @@
+    // Compute normals on the surface
+    //
+    vtkPolyDataNormals* rawNormals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++   rawNormals->SetInputConnection(clean2->GetOutputPort());
++#else
+    rawNormals->SetInput(clean2->GetOutput());
++#endif
+    rawNormals->SplittingOff();
+    rawNormals->ConsistencyOn();
+    rawNormals->ComputePointNormalsOn();
+@@ -366,7 +408,11 @@
+   
+    if (DebugControl::getDebugOn()) {
+       vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer->SetInputData(rawPolyDataSurface);
++#else
+       writer->SetInput(rawPolyDataSurface);
++#endif
+       writer->SetFileName("raw.vtk");
+       writer->Write();
+       writer->Delete();
+@@ -469,7 +515,11 @@
+    // Smooth the surface
+    //
+    vtkSmoothPolyDataFilter* smooth = vtkSmoothPolyDataFilter::New();
++#ifdef HAVE_VTK6
++   smooth->SetInputData(rawPolyDataSurface);
++#else
+    smooth->SetInput(rawPolyDataSurface);
++#endif
+    smooth->SetNumberOfIterations(10);
+    smooth->SetRelaxationFactor(0.2);
+    smooth->SetFeatureAngle(180.0);
+@@ -481,7 +531,11 @@
+    // Compute normals on the surface
+    //
+    vtkPolyDataNormals* normals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++   normals->SetInputConnection(smooth->GetOutputPort());
++#else
+    normals->SetInput(smooth->GetOutput());
++#endif
+    normals->SplittingOff();
+    normals->ConsistencyOn();
+    normals->ComputePointNormalsOn();
+@@ -507,10 +561,18 @@
+       plane->SetNormal(0.0, -1.0, 0.0);
+       vtkClipPolyData* clipper = vtkClipPolyData::New();
+       clipper->SetClipFunction(plane);
++#ifdef HAVE_VTK6
++      clipper->SetInputData(polyDataSurface);
++#else
+       clipper->SetInput(polyDataSurface);
++#endif
+       clipper->Update();
+       vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer->SetInputConnection(clipper->GetOutputPort());
++#else
+       writer->SetInput(clipper->GetOutput());
++#endif
+       writer->SetFileName("surface_cut.vtk");
+       writer->Write();
+       writer->Delete();
+@@ -623,7 +685,11 @@
+    // Shrinker - does this actually do anything ?
+    //
+    vtkImageShrink3D* shrinker = vtkImageShrink3D::New();
++#ifdef HAVE_VTK6
++   shrinker->SetInputData(sp);
++#else
+    shrinker->SetInput(sp);
++#endif
+    shrinker->SetShrinkFactors(1, 1, 1);
+    shrinker->AveragingOn();
+ 
+@@ -633,13 +699,21 @@
+    vtkImageGaussianSmooth* gaussian = vtkImageGaussianSmooth::New();
+    gaussian->SetDimensionality(3);
+    gaussian->SetStandardDeviation(0);
++#ifdef HAVE_VTK6
++   gaussian->SetInputConnection(shrinker->GetOutputPort());
++#else
+    gaussian->SetInput(shrinker->GetOutput());
++#endif
+    
+    //
+    // Marching cubes converts volume to a surface
+    //
+    vtkMarchingCubes* mc = vtkMarchingCubes::New();
++#ifdef HAVE_VTK6
++   mc->SetInputConnection(gaussian->GetOutputPort());
++#else
+    mc->SetInput(gaussian->GetOutput());
++#endif
+    //mc->SetValue(0, 511.5);
+    mc->SetValue(0, 127.5);
+    mc->ComputeScalarsOff();
+@@ -650,13 +724,21 @@
+    // Clean up surface created by marching cubes
+    //
+    vtkCleanPolyData* clean = vtkCleanPolyData::New();
++#ifdef HAVE_VTK6
++   clean->SetInputConnection(mc->GetOutputPort());
++#else
+    clean->SetInput(mc->GetOutput());
++#endif
+    
+    //
+    // Make sure mesh is only triangles
+    //
+    vtkTriangleFilter *triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++   triangleFilter->SetInputConnection(clean->GetOutputPort());
++#else
+    triangleFilter->SetInput(clean->GetOutput());
++#endif
+ 
+    //
+    // See if the surface should be decimated
+@@ -668,7 +750,11 @@
+          decimater->DebugOn();
+       }
+       const double errorVal = 0.001;
++#ifdef HAVE_VTK6
++      decimater->SetInputConnection(triangleFilter->GetOutputPort());
++#else
+       decimater->SetInput(triangleFilter->GetOutput());
++#endif
+       decimater->SetTargetReduction(0.90);
+       decimater->PreserveTopologyOn();
+       decimater->SetFeatureAngle(30);
+@@ -687,17 +773,29 @@
+    //
+    vtkCleanPolyData* clean2 = vtkCleanPolyData::New();
+    if (decimater != NULL) {
+-      clean2->SetInput(decimater->GetOutput());
++#ifdef HAVE_VTK6
++	      clean2->SetInputConnection(decimater->GetOutputPort());
++#else
++	      clean2->SetInput(decimater->GetOutput());
++#endif
+    }
+    else {
+-      clean2->SetInput(triangleFilter->GetOutput());
++#ifdef HAVE_VTK6
++	      clean2->SetInputConnection(triangleFilter->GetOutputPort());
++#else
++	      clean2->SetInput(triangleFilter->GetOutput());
++#endif
+    }
+    
+    //
+    // Smooth the surface
+    //
+    vtkSmoothPolyDataFilter* smooth = vtkSmoothPolyDataFilter::New();
++#ifdef HAVE_VTK6
++   smooth->SetInputConnection(clean2->GetOutputPort());
++#else
+    smooth->SetInput(clean2->GetOutput());
++#endif
+    smooth->SetNumberOfIterations(10);
+    smooth->SetRelaxationFactor(0.2);
+    smooth->SetFeatureAngle(180.0);
+@@ -709,7 +807,11 @@
+    // Compute normals on the surface
+    //
+    vtkPolyDataNormals* rawNormals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++   rawNormals->SetInputConnection(smooth->GetOutputPort());
++#else
+    rawNormals->SetInput(smooth->GetOutput());
++#endif
+    rawNormals->SplittingOff();
+    rawNormals->ConsistencyOn();
+    rawNormals->ComputePointNormalsOn();
+--- a/caret_brain_set/BrainSet.cxx
++++ b/caret_brain_set/BrainSet.cxx
+@@ -10591,7 +10591,11 @@
+       vtkPolyData* polyData = bms->convertToVtkPolyData();
+       if (polyData != NULL) {
+          vtkBYUWriter *writer = vtkBYUWriter::New();
++#ifdef HAVE_VTK6
++         writer->SetInputData(polyData);
++#else
+          writer->SetInput(polyData);
++#endif
+          writer->SetHeader("Written by Caret");
+          writer->SetGeometryFileName((char*)filename.toAscii().constData());
+          writer->Write();
+@@ -10630,7 +10634,11 @@
+          colors->Delete();
+       
+          vtkIVWriter *writer = vtkIVWriter::New();
++#ifdef HAVE_VTK6
++         writer->SetInputData(polyData);
++#else
+          writer->SetInput(polyData);
++#endif
+          writer->SetHeader("Written by Caret");
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+@@ -10652,7 +10660,11 @@
+       vtkPolyData* polyData = bms->convertToVtkPolyData();
+       if (polyData != NULL) {
+          vtkSTLWriter *writer = vtkSTLWriter::New();
++#ifdef HAVE_VTK6
++         writer->SetInputData(polyData);
++#else
+          writer->SetInput(polyData);
++#endif
+          writer->SetHeader("Written by Caret");
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+@@ -11052,7 +11064,11 @@
+       vtkPolyData* polyData = convertToVtkPolyData(bms, exportColors);
+       if (polyData != NULL) {      
+          vtkPolyDataWriter *writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++         writer->SetInputData(polyData);
++#else
+          writer->SetInput(polyData);
++#endif
+          writer->SetHeader("Written by Caret");
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+@@ -11075,7 +11091,11 @@
+       vtkPolyData* polyData = convertToVtkPolyData(bms, exportColors);
+       if (polyData != NULL) {      
+          vtkXMLPolyDataWriter *writer = vtkXMLPolyDataWriter::New();
++#ifdef HAVE_VTK6
++         writer->SetInputData(polyData);
++#else
+          writer->SetInput(polyData);
++#endif
+          writer->SetDataModeToAscii();
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+--- a/caret_command_operations/CommandVolumeSegmentationToCerebralHull.cxx
++++ b/caret_command_operations/CommandVolumeSegmentationToCerebralHull.cxx
+@@ -138,7 +138,11 @@
+    // Write the hull surface
+    //
+    vtkPolyDataWriter* writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++   writer->SetInputData(hullSurface);
++#else
+    writer->SetInput(hullSurface);
++#endif
+    writer->SetHeader("Written by Caret");
+    writer->SetFileName((char*)vtkSurfaceFileName.toAscii().constData());
+    writer->Write();
+--- a/caret_files/VolumeFile.cxx
++++ b/caret_files/VolumeFile.cxx
+@@ -3694,6 +3694,16 @@
+    const int numVoxels = getTotalNumberOfVoxels();
+    
+    vtkDataArray* scalars = NULL;
++#ifdef HAVE_VTK6
++   if (makeUnsignedCharType) {
++      scalars = vtkUnsignedCharArray::New();
++      sp->AllocateScalars(VTK_UNSIGNED_CHAR, numberOfComponentsPerVoxel);
++   }
++   else {
++      scalars = vtkFloatArray::New();
++      sp->AllocateScalars(VTK_FLOAT, numberOfComponentsPerVoxel);
++   }
++#else
+    if (makeUnsignedCharType) {
+       scalars = vtkUnsignedCharArray::New();
+       sp->SetScalarTypeToUnsignedChar();
+@@ -3704,6 +3714,7 @@
+    }
+    
+    scalars->SetNumberOfComponents(numberOfComponentsPerVoxel);
++#endif
+    scalars->SetNumberOfTuples(numVoxels);
+    float* temp = new float[numberOfComponentsPerVoxel];
+    for (int i = 0; i < numVoxels; i++) {
+@@ -3841,6 +3852,16 @@
+    const int numVoxels = getTotalNumberOfVoxels();
+    
+    vtkDataArray* scalars = NULL;
++#ifdef HAVE_VTK6
++   if (makeUnsignedCharType) {
++      scalars = vtkUnsignedCharArray::New();
++      id->AllocateScalars(VTK_UNSIGNED_CHAR, numberOfComponentsPerVoxel);
++   }
++   else {
++      scalars = vtkFloatArray::New();
++      id->AllocateScalars(VTK_FLOAT, numberOfComponentsPerVoxel);
++   }
++#else
+    if (makeUnsignedCharType) {
+       scalars = vtkUnsignedCharArray::New();
+       id->SetScalarTypeToUnsignedChar();
+@@ -3851,6 +3872,7 @@
+    }
+    
+    scalars->SetNumberOfComponents(numberOfComponentsPerVoxel);
++#endif
+    scalars->SetNumberOfTuples(numVoxels);
+    float* temp = new float[numberOfComponentsPerVoxel];
+    for (int i = 0; i < numVoxels; i++) {
+@@ -3904,7 +3926,11 @@
+    
+    vtkImageReslice* reslice = vtkImageReslice::New();   
+    reslice->SetNumberOfThreads(1);
++#ifdef HAVE_VTK6
++   reslice->SetInputData(spInput);
++#else
+    reslice->SetInput(spInput);
++#endif
+    reslice->SetInformationInput(spInput);
+    reslice->SetResliceTransform(transform);
+    reslice->SetAutoCropOutput(1);
+@@ -3962,7 +3988,11 @@
+ 
+    vtkImageResample* resample = vtkImageResample::New();   
+    resample->SetNumberOfThreads(1);
++#ifdef HAVE_VTK6
++   resample->SetInputData(spInput);
++#else
+    resample->SetInput(spInput);
++#endif
+    resample->SetAxisOutputSpacing(0, newSpacing[0]);
+    resample->SetAxisOutputSpacing(1, newSpacing[1]);
+    resample->SetAxisOutputSpacing(2, newSpacing[2]);
+@@ -4387,7 +4417,11 @@
+       vtkStructuredPoints* sp = convertToVtkStructuredPoints();
+       vtkStructuredPointsWriter* writer = vtkStructuredPointsWriter::New();
+       writer->SetFileName((char*)fileName.toAscii().constData());
++#ifdef HAVE_VTK6
++      writer->SetInputData(sp);
++#else
+       writer->SetInput(sp);
++#endif
+       writer->Write();
+       writer->Delete();
+       sp->Delete();
+@@ -6772,7 +6806,11 @@
+    vtkStructuredPoints* sp = convertToVtkStructuredPoints(true);
+    
+    vtkImageSeedConnectivity* connect = vtkImageSeedConnectivity::New();
++#ifdef HAVE_VTK6
++   connect->SetInputData(sp);
++#else
+    connect->SetInput(sp);
++#endif
+    connect->SetInputConnectValue(connectedValueIn);
+    connect->SetOutputConnectedValue(connectedValueOut);
+    connect->SetOutputUnconnectedValue(unconnectedValueOut);
+@@ -8714,7 +8752,11 @@
+    // Shrinker - does this actually do anything ?
+    //
+    vtkImageShrink3D* shrinker = vtkImageShrink3D::New();
++#ifdef HAVE_VTK6
++   shrinker->SetInputData(sp);
++#else
+    shrinker->SetInput(sp);
++#endif
+    shrinker->SetShrinkFactors(1, 1, 1);
+    shrinker->AveragingOn();
+ 
+@@ -8724,13 +8766,21 @@
+    vtkImageGaussianSmooth* gaussian = vtkImageGaussianSmooth::New();
+    gaussian->SetDimensionality(3);
+    gaussian->SetStandardDeviation(0);
++#ifdef HAVE_VTK6
++   gaussian->SetInputConnection(shrinker->GetOutputPort());
++#else
+    gaussian->SetInput(shrinker->GetOutput());
++#endif
+ 
+    //
+    // Marching cubes converts volume to a surface
+    //
+    vtkMarchingCubes* mc = vtkMarchingCubes::New();
++#ifdef HAVE_VTK6
++   mc->SetInputConnection(gaussian->GetOutputPort());
++#else
+    mc->SetInput(gaussian->GetOutput());
++#endif
+    mc->SetValue(0, 127.5);
+    mc->ComputeScalarsOff();
+    mc->ComputeGradientsOff();
+@@ -8740,19 +8790,31 @@
+    // Clean up surface created by marching cubes
+    //
+    vtkCleanPolyData* clean = vtkCleanPolyData::New();
++#ifdef HAVE_VTK6
++   clean->SetInputConnection(mc->GetOutputPort());
++#else
+    clean->SetInput(mc->GetOutput());
++#endif
+          
+    //    
+    // Make sure mesh is only triangles
+    //
+    vtkTriangleFilter *triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++   triangleFilter->SetInputConnection(clean->GetOutputPort());
++#else
+    triangleFilter->SetInput(clean->GetOutput());
++#endif
+    
+    //
+    // Compute normals on the surface to fix polygon orientations
+    //
+    vtkPolyDataNormals* rawNormals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++   rawNormals->SetInputConnection(triangleFilter->GetOutputPort());
++#else
+    rawNormals->SetInput(triangleFilter->GetOutput());
++#endif
+    rawNormals->SplittingOff();
+    rawNormals->ConsistencyOn();
+    rawNormals->ComputePointNormalsOn();
+--- a/caret_files/VtkModelFile.cxx
++++ b/caret_files/VtkModelFile.cxx
+@@ -401,7 +401,11 @@
+    vtkTriangleFilter* triangleFilter = NULL;
+    if (polyData->GetNumberOfStrips() > 0) {
+       triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++      triangleFilter->SetInputData(polyData);
++#else
+       triangleFilter->SetInput(polyData);
++#endif
+       triangleFilter->Update();
+       polyData = triangleFilter->GetOutput();
+    }
+@@ -410,7 +414,11 @@
+    // Compute normals
+    //
+    vtkPolyDataNormals* polyNormals = vtkPolyDataNormals::New();
++#ifdef HAVE_VTK6
++   polyNormals->SetInputData(polyData);
++#else
+    polyNormals->SetInput(polyData);
++#endif
+    polyNormals->SplittingOff();
+    polyNormals->ConsistencyOn();
+    polyNormals->ComputePointNormalsOn();
+@@ -878,7 +886,11 @@
+ 
+    if (FileUtilities::filenameExtension(filename) == "vtp") {
+       vtkXMLPolyDataWriter *writer = vtkXMLPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer->SetInputData(polyData);
++#else
+       writer->SetInput(polyData);
++#endif
+       //writer->SetHeader("Written by Caret");
+       writer->SetFileName((char*)filename.toAscii().constData());
+       writer->Write();
+@@ -887,7 +899,11 @@
+    }
+    else {
+       vtkPolyDataWriter *writer = vtkPolyDataWriter::New();
++#ifdef HAVE_VTK6
++      writer->SetInputData(polyData);
++#else
+       writer->SetInput(polyData);
++#endif
+       writer->SetHeader("Written by Caret");
+       writer->SetFileName((char*)filename.toAscii().constData());
+       writer->Write();
+--- a/caret_gifti/TopologyFile.cxx
++++ b/caret_gifti/TopologyFile.cxx
+@@ -1384,7 +1384,11 @@
+    vtkTriangleFilter* triangleFilter = NULL;
+    if (polyData->GetNumberOfStrips() > 0) {
+       triangleFilter = vtkTriangleFilter::New();
++#ifdef HAVE_VTK6
++      triangleFilter->SetInputData(polyDataIn);
++#else
+       triangleFilter->SetInput(polyDataIn);
++#endif
+       triangleFilter->Update();
+       polyData = triangleFilter->GetOutput();
+    }
