@@ -14,3 +14,4 @@ vtk6-adaptations
 BrainSetCtorFix
 std-cout-fix
 brain-set-writer-hack
+pointer-integer-comparison
