@@ -48,3 +48,4 @@ ipch
 *.h~
 data_files
 *.kate-swp
+/build/
