@@ -24,18 +24,21 @@ else
 	CXXFLAGS += -O2
 endif
 
-%:
-	dh $@ --parallel --buildsystem=cmake
 
+# Note, using builddirectory=build.... 
+# It seems that debhelper uses a build dir of "obj-x86_64-linux-gnu", which 
+# is hard to use without hard-coding it. See caret.install file for usage 
+# of this folder in setting up the packaging
+
+%:
+	dh $@ --parallel --buildsystem=cmake --builddirectory=build
+
+# auto configure will run cmake
 override_dh_auto_configure:
 	OSMESA_DIR=/usr \
      dh_auto_configure -- \
 		-DCMAKE_SKIP_RPATH:BOOL=OFF \
 		-DCARET_BUILDID="$(BUILD_ID)"
-#
-#		-DVTK_DIR:PATH=$(VTK_LIB_DIR) \
-#		-DNETCDF_DIR:PATH=$(NET
-
 
 # OLD STYLE
 caretcfg-%:
