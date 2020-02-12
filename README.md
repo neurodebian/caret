@@ -30,3 +30,11 @@ I've done away with this nonsense and hassle with the patched branches - see bel
  
 These branches (*splash-patched* and beyond) have the patches applied and changes committed. For one thing this makes development on windows a lot easier. For another thing, why not? Upstream caret development is basically dead, so preserving these patches in the event some upstream change makes its way down here to caret is, well, a waste IMHO.
 
+
+## Building windows packages
+
+1. VTK
+1. QWT
+   * Run Qt env script for Qt-5.12.6 (msvc 64)
+   * nmake install puts all in c:\Qwt-6.1.4 (configurable in qwtConfig.pri)
+1. 
