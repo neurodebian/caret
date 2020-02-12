@@ -28,7 +28,5 @@ I've done away with this nonsense and hassle with the patched branches - see bel
  
 ## post-patch branches
  
-These branches have the patches applied and changes committed. For one thing this makes development on windows a lot easier. 
-For another thing, why not? Upstream caret development is basically dead, so preserving these patches in the event some 
-upstream change makes its way down here to caret is, well, a waste IMHO.
+These branches (*splash-patched* and beyond) have the patches applied and changes committed. For one thing this makes development on windows a lot easier. For another thing, why not? Upstream caret development is basically dead, so preserving these patches in the event some upstream change makes its way down here to caret is, well, a waste IMHO.
 
