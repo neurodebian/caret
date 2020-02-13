@@ -37,4 +37,19 @@ These branches (*splash-patched* and beyond) have the patches applied and change
 1. QWT
    * Run Qt env script for Qt-5.12.6 (msvc 64)
    * nmake install puts all in c:\Qwt-6.1.4 (configurable in qwtConfig.pri)
-1. 
+1. netCDF - Download binaries [here](https://www.unidata.ucar.edu/software/netcdf/docs/winbin.html "netCDF windows binaries")
+1. HDF5 - must register at [HDF site](https://www.hdfgroup.org/) before downloading installer.
+1. zlib - build from [source](https://www.zlib.net/)
+   * Must build INSTALL project as administrator
+1. nifti
+   * Changes in cmake config for main and "znz"
+      * ZLIB_LIBRARY_DEBUG="C:/Program Files (x86)/zlib/lib/zlibstatic.lib" 
+      * ZLIB_LIBRARY_RELEASE="C:/Program Files (x86)/zlib/lib/zlibstatic.lib" 
+      * BUILD_TESTING="0" 
+      * ZLIB_INCLUDE_DIR "C:/Program Files (x86)/zlib/include" 
+      * FIND_PACKAGE(ZLIB REQUIRED) (this line was present)
+      * include_directories(${ZLIB_INCLUDE_DIRS})
+      * set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
+   * Must build "INSTALL" project as Administrator (start vs as Admin)
+
+1. libminc - must build from source.
