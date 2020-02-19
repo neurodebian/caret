@@ -51,5 +51,12 @@ These branches (*splash-patched* and beyond) have the patches applied and change
       * include_directories(${ZLIB_INCLUDE_DIRS})
       * set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
    * Must build "INSTALL" project as Administrator (start vs as Admin)
-
-1. libminc - must build from source.
+1. libminc
+   * git clone https://github.com/BIC-MNI/libminc.git 
+   * run cmake-gui, fix these values:
+      * LIBMINC_USE_SYSTEM_NIFTI - check this box (requires setting the 4 vals below)
+      * NIFTI_INCLUDE_DIR (location of "nifticdf.h")
+      * NIFTI_LIBRARY (location of "nifticdf.lib")
+      * ZNZ_INCLUDE_DIR (location of "znzlib.h")
+      * ZNZ_LIBRARY (location of "znz.lib")
+   * Must build INSTALL as admin
