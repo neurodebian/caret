@@ -33,11 +33,18 @@ These branches (*splash-patched* and beyond) have the patches applied and change
 
 ## Building windows packages
 
+1. Qt 4.8 - have to build this to make it all work. I found a site that patched a version of the source. 
+   * git clone https://github.com/scharsig/Qt.git
+   * run MSVC "vcvars32.bat" to set environment for building 32 bit stuff (though I think the platform arg below takes care of that)
+   * cd qt-4.8.7-vs2017
+   * configure.exe -release -opensource -static -platform win32-msvc2017
+   * nmake
 1. VTK
 1. QWT
-   * Run Qt env script for Qt-5.12.6 (msvc 64)
-   * nmake install puts all in c:\Qwt-6.1.4 (configurable in qwtConfig.pri)
-1. netCDF - Download binaries [here](https://www.unidata.ucar.edu/software/netcdf/docs/winbin.html "netCDF windows binaries")
+   * download qwt 5.2.3 source (compatible with qt4)
+   * set PATH to use qmake from Qt4.8 (32 bit)
+   * nmake install puts all in c:\Qwt-5.2.3 (configurable in qwtConfig.pri)
+1. netCDF - Download binaries for 32-bit netCDF-3 (legacy) [here](https://www.unidata.ucar.edu/software/netcdf/docs/winbin.html "netCDF windows binaries")
 1. HDF5 - must register at [HDF site](https://www.hdfgroup.org/) before downloading installer.
 1. zlib - build from [source](https://www.zlib.net/)
    * Must build INSTALL project as administrator
@@ -54,6 +61,7 @@ These branches (*splash-patched* and beyond) have the patches applied and change
 1. libminc
    * git clone https://github.com/BIC-MNI/libminc.git 
    * run cmake-gui, fix these values:
+      * LIBMINC_MINC1_SUPPORT - check this box
       * LIBMINC_USE_SYSTEM_NIFTI - check this box (requires setting the 4 vals below)
       * NIFTI_INCLUDE_DIR (location of "nifticdf.h")
       * NIFTI_LIBRARY (location of "nifticdf.lib")
