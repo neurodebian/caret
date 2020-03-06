@@ -44,8 +44,12 @@ These branches (*splash-patched* and beyond) have the patches applied and change
    * download qwt 5.2.3 source (compatible with qt4)
    * set PATH to use qmake from Qt4.8 (32 bit)
    * nmake install puts all in c:\Qwt-5.2.3 (configurable in qwtConfig.pri)
-1. netCDF - Download binaries for 32-bit netCDF-3 (legacy) [here](https://www.unidata.ucar.edu/software/netcdf/docs/winbin.html "netCDF windows binaries")
-1. HDF5 - must register at [HDF site](https://www.hdfgroup.org/) before downloading installer.
+1. netCDF
+   * Download binaries for 32-bit netCDF-4 (legacy) [here](https://www.unidata.ucar.edu/software/netcdf/docs/winbin.html "netCDF windows binaries")
+   * Install in a directory without spaces! Something like c:\netCDF-2.4.3. Default uses "Program Files (x86)" which is terrible. Don't.
+1. HDF5
+   * must register at [HDF site](https://www.hdfgroup.org/) before downloading installer.
+   * download 32 bit version, older builds only, 1.8.20 has 32 bit msvc 2015 build....
 1. zlib - build from [source](https://www.zlib.net/)
    * Must build INSTALL project as administrator
 1. nifti
@@ -59,12 +63,15 @@ These branches (*splash-patched* and beyond) have the patches applied and change
       * set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
    * Must build "INSTALL" project as Administrator (start vs as Admin)
 1. libminc
-   * git clone https://github.com/BIC-MNI/libminc.git 
-   * run cmake-gui, fix these values:
+   * git clone https://github.com/djsperka/libminc.git
+   * (switch branch) git checkout libmin1-win32
+   * env var: set NETCDF_DIR="C:\Program Files (x86)\netCDF 4.7.3" (adjust dir accordingly)
+   * env var: set HDF5_DIR="C:\Program Files (x86)\HDF_Group\HDF5\1.8.20\cmake" (adjust dir accordingly, and yes, use cmake dir) 
+   * run cmake-gui, click "Generate", select "Win32" generator. (will fail first time)
+   * fix these values:
+      * BUILD_TESTING (OFF)
       * LIBMINC_MINC1_SUPPORT - check this box
       * LIBMINC_USE_SYSTEM_NIFTI - check this box (requires setting the 4 vals below)
-      * NIFTI_INCLUDE_DIR (location of "nifticdf.h")
-      * NIFTI_LIBRARY (location of "nifticdf.lib")
-      * ZNZ_INCLUDE_DIR (location of "znzlib.h")
-      * ZNZ_LIBRARY (location of "znz.lib")
-   * Must build INSTALL as admin
+   * re-run 
+   * Open MSVC project, build "Release" "Win32", for project "ALL_BUILD"
+   * Build "INSTALL" project
