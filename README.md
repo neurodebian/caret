@@ -50,18 +50,12 @@ These branches (*splash-patched* and beyond) have the patches applied and change
 1. HDF5
    * must register at [HDF site](https://www.hdfgroup.org/) before downloading installer.
    * download 32 bit version, older builds only, 1.8.20 has 32 bit msvc 2015 build....
-1. zlib - build from [source](https://www.zlib.net/)
-   * Must build INSTALL project as administrator
+   * this lib will give us zlib (used to build NIFTI and CARET)
 1. nifti
-   * Changes in cmake config for main and "znz"
-      * ZLIB_LIBRARY_DEBUG="C:/Program Files (x86)/zlib/lib/zlibstatic.lib" 
-      * ZLIB_LIBRARY_RELEASE="C:/Program Files (x86)/zlib/lib/zlibstatic.lib" 
-      * BUILD_TESTING="0" 
-      * ZLIB_INCLUDE_DIR "C:/Program Files (x86)/zlib/include" 
-      * FIND_PACKAGE(ZLIB REQUIRED) (this line was present)
-      * include_directories(${ZLIB_INCLUDE_DIRS})
-      * set(LIBS ${LIBS} ${ZLIB_LIBRARIES})
-   * Must build "INSTALL" project as Administrator (start vs as Admin)
+   * git clone https://github.com/djsperka/NIFTI.git
+   * cd NIFTI
+   * set ZLIB_ROOT=C:/HDF5-1.8.20-win32  (NOTE: forward slash, no spaces) - run cmake-gui with this in env.
+   * installs in c:/NIFTI
 1. libminc
    * git clone https://github.com/djsperka/libminc.git
    * (switch branch) git checkout libmin1-win32
