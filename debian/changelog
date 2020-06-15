@@ -1,3 +1,29 @@
+caret (5.6.6~dfsg.1-1.3) UNRELEASED; urgency=medium
+
+  * Non-maintainer upload.
+  * Bump version number to fix changed-by email address. Ugh. 
+  * Fixes to build under ubuntu/bionic and debian/buster.
+
+ -- Daniel J. Sperka <djsperka@gmail.com>  Fri, 16 Mar 2018 14:02:10 -0700
+
+caret (5.6.6~dfsg.1-1.2) UNRELEASED; urgency=medium
+
+  * Non-maintainer upload.
+  * Clean build-deps in control file
+
+ -- Daniel J. Sperka <djsperka@gmail.com>  Fri, 16 Mar 2018 08:45:11 -0700
+
+caret (5.6.6~dfsg.1-1.1) UNRELEASED; urgency=medium
+
+  * Non-maintainer upload.
+  * debian/patches
+    - removed missing patches from series 
+    - numerous fixes to CMakeLists.txt files
+    - fix API changes in switch from vtk5 to vtk6
+  * debian packaging fixes to Build-depends, Standards-Version, compat
+
+ -- Daniel J. Sperka <djsperka@ucdavis.edu>  Wed, 14 Mar 2018 15:19:38 -0700
+
 caret (5.6.6~dfsg.1-1) UNRELEASED; urgency=low
 
   [ Yaroslav Halchenko ]

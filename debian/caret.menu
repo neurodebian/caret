@@ -1,7 +1,0 @@
-?package(caret): \
-  needs="X11" \
-  section="Applications/Science/Medicine" \
-  title="Caret" \
-  longtitle="Computerized Anatomical Reconstruction and Editing Toolkit" \
-  command="/usr/bin/caret5" \
-  hints="MRI,fMRI"

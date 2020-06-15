@@ -1,0 +1,28 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -287,11 +287,11 @@
+             vtkIO 
+             vtkFiltering 
+             vtkCommon 
+-            vtksys 
+-            vtkjpeg 
+-            vtkpng 
+-            vtkexpat 
+-            vtkzlib)
++            vtksys)
++#            vtkjpeg 
++#            vtkpng 
++#            vtkexpat 
++#            vtkzlib)
+ 
+ #SET (VTK_LIBRARIES
+ #            -lvtkFiltering 
+@@ -312,7 +312,7 @@
+ # All subdirectories that will be configured for building
+ #
+ ADD_SUBDIRECTORY ( caret_common )
+-ADD_SUBDIRECTORY ( caret_vtk4_classes )
++#ADD_SUBDIRECTORY ( caret_vtk4_classes )
+ ADD_SUBDIRECTORY ( caret_uniformize )
+ ADD_SUBDIRECTORY ( caret_gifti )
+ ADD_SUBDIRECTORY ( caret_files )

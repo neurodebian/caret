@@ -1,0 +1,42 @@
+--- a/caret_brain_set/BrainSet.cxx
++++ b/caret_brain_set/BrainSet.cxx
+@@ -10595,8 +10595,8 @@
+          writer->SetInputData(polyData);
+ #else
+          writer->SetInput(polyData);
+-#endif
+          writer->SetHeader("Written by Caret");
++#endif
+          writer->SetGeometryFileName((char*)filename.toAscii().constData());
+          writer->Write();
+       
+@@ -10638,8 +10638,8 @@
+          writer->SetInputData(polyData);
+ #else
+          writer->SetInput(polyData);
+-#endif
+          writer->SetHeader("Written by Caret");
++#endif
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+       
+@@ -10664,8 +10664,8 @@
+          writer->SetInputData(polyData);
+ #else
+          writer->SetInput(polyData);
+-#endif
+          writer->SetHeader("Written by Caret");
++#endif
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+       
+@@ -11068,8 +11068,8 @@
+          writer->SetInputData(polyData);
+ #else
+          writer->SetInput(polyData);
+-#endif
+          writer->SetHeader("Written by Caret");
++#endif
+          writer->SetFileName((char*)filename.toAscii().constData());
+          writer->Write();
+       

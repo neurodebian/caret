@@ -1,0 +1,29 @@
+--- a/caret_edit/CMakeLists.txt
++++ b/caret_edit/CMakeLists.txt
+@@ -51,7 +51,7 @@
+    CaretGui
+    CaretCommandOperations
+    CaretBrainSet
+-   CaretVtk4Classes
++#   CaretVtk4Classes
+    CaretGifti
+    CaretFiles
+    CaretUniformize
+@@ -86,7 +86,7 @@
+    IF (NOT APPLE) 
+       TARGET_LINK_LIBRARIES(${EXE_NAME}
+          ${OPENGL_LIBRARIES}
+-         gobject-2.0
++#         gobject-2.0
+       )
+    ENDIF (NOT APPLE)
+ ENDIF (UNIX)
+@@ -116,7 +116,7 @@
+ ${CMAKE_SOURCE_DIR}/caret_gifti
+ ${CMAKE_SOURCE_DIR}/caret_statistics
+ ${CMAKE_SOURCE_DIR}/caret_uniformize
+-${CMAKE_SOURCE_DIR}/caret_vtk4_classes
++#${CMAKE_SOURCE_DIR}/caret_vtk4_classes
+ ${CMAKE_SOURCE_DIR}/caret_widgets
+ )
+ 

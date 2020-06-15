@@ -3,5 +3,15 @@ no_undefineds
 ifdef_fixes
 version_suffix
 nuisance2advice
-deb_missing_links
-deb_no_vtk4_classes
+no-vtk4-dir
+another-buildid-fix
+caret5-libs
+caret-command-libs
+caret-edit-libs
+wb-import-libs
+GuiMapFmriDialog-fix-call
+vtk6-adaptations
+BrainSetCtorFix
+std-cout-fix
+brain-set-writer-hack
+pointer-integer-comparison
